@@ -11,10 +11,11 @@ typedef enum {
    WHERE, AND, OR, NOT, EDGE, TRUE, FALSE, INDEG, OUTDEG,    /* Schema condition keywords */
    INT, STRING, ATOM, LIST,                                  /* Types keywords */
    LPAR, RPAR, LBRACE, RBRACE, 				     /* Left and right brackets */
+   BAR, COMMA, ARROW,						     /* Delimiters */
    SEQ, ALAP,                                                /* Program operators */
    DOT, COLON,						     /* Label operators */
    ADD, SUB, MUL, DIV,  				     /* Arithmetic operators */
-   GT, GTE, LT, LTE,					     /* Boolean operators */
+   EQ, GT, GTE, LT, LTE,				     /* Boolean operators */
    NUM, STR, ID,                                             /* Numbers, strings, identifiers */
    END 							     /* End of file */
 } Token;
@@ -22,6 +23,8 @@ typedef enum {
 /* Potential issue: 'or' is a program keyword and a condition keyword. Not sure how to deal with this yet. */
 
 /* Potential issue #2: Positions can be represented with decimal numbers. The compiler may be able to ignore this, depending on what the editor does. If not, then unclear whether to represent decimal numbers as a separate token from integers. Probably. */
+
+/* Should (R) be its own token or not? I would think so. */
 
 void printToken(Token t)
 {
@@ -49,6 +52,9 @@ void printToken(Token t)
    if (t == RPAR)	printf("RPAR");
    if (t == LBRACE)	printf("LBRACE");
    if (t == RBRACE)	printf("RBRACE");
+   if (t == BAR)	printf("BAR");
+   if (t == COMMA)	printf("COMMA");
+   if (t == ARROW)	printf("ARROW");
    if (t == SEQ)	printf("SEQ");
    if (t == ALAP)	printf("ALAP");
    if (t == DOT)	printf("DOT");
@@ -57,6 +63,7 @@ void printToken(Token t)
    if (t == SUB)	printf("SUB");
    if (t == MUL)	printf("MUL");
    if (t == DIV)	printf("DIV");
+   if (t == EQ)	        printf("EQ");
    if (t == GT)		printf("GT");
    if (t == GTE)	printf("GTE");
    if (t == LT)		printf("LT");
@@ -112,6 +119,8 @@ list		    return LIST;
 ")"		    return RPAR;
 "{"		    return LBRACE;
 "}"		    return RBRACE;
+"|"		    return BAR;
+","                 return COMMA;
 ";"		    return SEQ;
 "!"		    return ALAP;
 "." 		    return DOT;
@@ -120,6 +129,8 @@ list		    return LIST;
 "-"		    return SUB;
 "*"		    return MUL;
 "/"		    return DIV;
+"="                 return EQ;
+"=>"                return ARROW;
 ">="	            return GTE;
 ">" 		    return GT; 
 "<="	            return LTE;
@@ -132,9 +143,6 @@ list		    return LIST;
 
 %%
 
-/* There is an error in the do loop somewhere as the generated scanner does not terminate. It runs
-fine when compiled with a more basic main function, specifically a main function from the SYAC labs that just calls yylex in a while loop until t == END. */
-
 int main(int argc, char** argv) {
   Token t;
   int i;
@@ -143,23 +151,26 @@ int main(int argc, char** argv) {
     return 1;
   }
   for(i=1; i<argc; i++) {
-     if(fopen(argv[i], "r")) {
 
-       curfilename = argv[i];
-       printf("Processing %s\n\n", curfilename);
+     if(!(yyin = fopen(argv[i], "r"))) {
+       perror(argv[1]);
+       return 1;
+       }
+  
+  curfilename = argv[i];
+  printf("Processing %s\n\n", curfilename);
 
-       do  {
+     do {
        t = yylex();
-       printToken(t);
-       if (t == NUM) printf("(%s)",yylval.num);
-       if (t == STRING) printf("(%s)",yylval.str);
+       printToken(t);       
+       if (t == NUM) printf("(%d)", yylval.num);
+       if (t == STRING) printf("(%s)", yylval.str);
        if (t == ID) printf("(%s)", yylval.str);
-       printf(", ");
-       } while(t != END);
-
-       printf("\n");
-     }
-  }
+       printf(" ");
+     } while(t!=END);  
+     
+  printf("\n\n");
+  } 
 
 return 0;
 } 
