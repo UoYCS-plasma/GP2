@@ -1,8 +1,28 @@
-/* Scanner for GP2. Created 10/5/2013 by Chris Bak */
+/* ///////////////////////////////////////////////////////////////////////////////////////////////// */
+
+/*                                       gplexer.lex  
+*                                        Version 1.1
+
+* This is a Flex scanner for the textual program format of GP2. 
+* The scanner tokenises its input files and passes them to the Bison parser. 
+
+* Created on 10/5/2013 by Chris Bak 
+
+* Potential issue: 'or' is a program keyword and a condition keyword. Not sure how to deal with this yet.
+
+* Potential issue: Positions can be represented with decimal numbers. The compiler may be able to ignore this, depending on what the editor does. If not, then unclear whether to represent decimal numbers as a separate token from integers. Probably. */
+
+/* ///////////////////////////////////////////////////////////////////////////////////////////////// */
+
 
 %option noyywrap nodefault case-insensitive yylineno
 
-%x COMMENT
+/* yywrap is an old flex library routine to manage multiple input files. This is done manually here */
+/* nodefault removes default action if the input rules don't cover all possible input. */
+/* case-insensitive tells flex to treat upper- and lowercase the same */
+/* yylineno is a flex-maintained integer variable storing the current line number of input */
+
+%x COMMENT	/* exclusive start state for ignoring GP2 comments */    
 
 %{
 
@@ -11,20 +31,14 @@ typedef enum {
    WHERE, AND, OR, NOT, EDGE, TRUE, FALSE, INDEG, OUTDEG,    /* Schema condition keywords */
    INT, STRING, ATOM, LIST,                                  /* Types keywords */
    LPAR, RPAR, LBRACE, RBRACE, 				     /* Left and right brackets */
-   BAR, COMMA, ARROW,						     /* Delimiters */
+   BAR, COMMA, ARROW,					     /* Delimiters */
    SEQ, ALAP,                                                /* Program operators */
    DOT, COLON,						     /* Label operators */
    ADD, SUB, MUL, DIV,  				     /* Arithmetic operators */
    EQ, GT, GTE, LT, LTE,				     /* Boolean operators */
-   NUM, STR, ID,                                             /* Numbers, strings, identifiers */
+   NUM, STR, ID, ROOT,                                       /* Numbers, strings, identifiers, root node */
    END 							     /* End of file */
 } Token;
-
-/* Potential issue: 'or' is a program keyword and a condition keyword. Not sure how to deal with this yet. */
-
-/* Potential issue #2: Positions can be represented with decimal numbers. The compiler may be able to ignore this, depending on what the editor does. If not, then unclear whether to represent decimal numbers as a separate token from integers. Probably. */
-
-/* Should (R) be its own token or not? I would think so. */
 
 void printToken(Token t)
 {
@@ -71,6 +85,7 @@ void printToken(Token t)
    if (t == NUM)	printf("NUM");
    if (t == STR)	printf("STR");
    if (t == ID)		printf("ID");
+   if (t == ROOT)	printf("ROOT");
    if (t == END)	printf("END");
 }
 
@@ -79,15 +94,13 @@ typedef union {
   char *str;  /* STRING and ID tokens contain a string */
 } TokenValue;
 
-TokenValue yylval;
+TokenValue yylval;   /* stores semantic value of tokens */
 
-char *curfilename;   /* name of current input file */
+char *curfilename;   /* name of current input file; used for error messages */
 
 %}
 
 %%
-
-  
 
 "/*"		    BEGIN(COMMENT);
 <COMMENT>"*/"       BEGIN(INITIAL);
@@ -117,6 +130,7 @@ atom		    return ATOM;
 list		    return LIST;
 "("		    return LPAR;
 ")"		    return RPAR;
+"(R)" 		    return ROOT;
 "{"		    return LBRACE;
 "}"		    return RBRACE;
 "|"		    return BAR;
@@ -144,16 +158,17 @@ list		    return LIST;
 %%
 
 int main(int argc, char** argv) {
-  Token t;
-  int i;
+  Token t; 	/* stores current token */
+  int i;        
   if(argc < 2) {
     fprintf(stderr, "ERROR: filename required\n");
     return 1;
   }
-  for(i=1; i<argc; i++) {
+  for(i=1; i<argc; i++) {	/* Iterate over all files from the command line */
 
-     if(!(yyin = fopen(argv[i], "r"))) {
+     if(!(yyin = fopen(argv[i], "r"))) {	/* Flex scans from yyin which is assigned to input file. */
        perror(argv[1]);
+       yylineno = 1;	/* reset yylineno */
        return 1;
        }
   
@@ -161,13 +176,13 @@ int main(int argc, char** argv) {
   printf("Processing %s\n\n", curfilename);
 
      do {
-       t = yylex();
+       t = yylex();	/* flex function to read tokens from input */
        printToken(t);       
        if (t == NUM) printf("(%d)", yylval.num);
        if (t == STRING) printf("(%s)", yylval.str);
        if (t == ID) printf("(%s)", yylval.str);
        printf(" ");
-     } while(t!=END);  
+     } while(t!=END);  /* t=END when end of file has been reached */
      
   printf("\n\n");
   } 
