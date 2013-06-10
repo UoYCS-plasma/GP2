@@ -1,18 +1,23 @@
 /* ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
-/*                                       gplexer.lex  
-*                                        Version 1.1
-
+/*                                       gplexer.lex                                          
+*
 * This is a Flex scanner for the textual program format of GP2. 
 * The scanner tokenises its input files and passes them to the Bison parser. 
-
+*
 * Created on 10/5/2013 by Chris Bak 
-
+*
 * Potential issue: 'or' is a program keyword and a condition keyword. Not sure how to deal with this yet.
-
-* Potential issue: Positions can be represented with decimal numbers. The compiler may be able to ignore this, depending on what the editor does. If not, then unclear whether to represent decimal numbers as a separate token from integers. Probably. */
-
-/* ///////////////////////////////////////////////////////////////////////////////////////////////// */
+*
+* Potential issue: Positions can be represented with decimal numbers. The compiler may be able to ignore this, depending on what the editor does. If not, then unclear whether to represent decimal numbers as a separate token from integers. Probably. 
+*
+* Edit action code to return yytext[0] for single characters.
+*
+* 29/5/13: Added tokens INTER (interface keyword), EMPTY (empty keyword) and NE (!=).
+* 10/6/13: Added token INJECTIVE (injective matching flag), changed INTER to INTERFACE, modified
+* rules and tokens for single characters
+* 
+* ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
 
 %option noyywrap nodefault case-insensitive yylineno
@@ -22,23 +27,31 @@
 /* case-insensitive tells flex to treat upper- and lowercase the same */
 /* yylineno is a flex-maintained integer variable storing the current line number of input */
 
-%x COMMENT	/* exclusive start state for ignoring GP2 comments */    
+/* exclusive start state for ignoring GP2 comments */
+%x COMMENT	    
 
 %{
 
+# include "gpparser.h"
+# include "gpparser-tab.h"
+
 typedef enum {
+   END = 258, 						     /* End of file. Value 258 avoids clashes with character literals */		
    MAIN, IF, TRY, THEN, ELSE, SKIP, FAIL,                    /* Program text keywords */
    WHERE, AND, OR, NOT, EDGE, TRUE, FALSE, INDEG, OUTDEG,    /* Schema condition keywords */
-   INT, STRING, ATOM, LIST,                                  /* Types keywords */
-   LPAR, RPAR, LBRACE, RBRACE, 				     /* Left and right brackets */
-   BAR, COMMA, ARROW,					     /* Delimiters */
-   SEQ, ALAP,                                                /* Program operators */
-   DOT, COLON,						     /* Label operators */
-   ADD, SUB, MUL, DIV,  				     /* Arithmetic operators */
-   EQ, GT, GTE, LT, LTE,				     /* Boolean operators */
-   NUM, STR, ID, ROOT,                                       /* Numbers, strings, identifiers, root node */
-   END 							     /* End of file */
+   INT, STRING, ATOM, LIST,                                  /* Type keywords */
+   INTERFACE, EMPTY, INJECTIVE,				     /* Other keywords */
+   NUM, STR, ID, ROOT, ARROW,                                /* Numbers, strings, identifiers, root node, arrow */
+   NE, GTE, LTE, EQ = '=', GT = '>', LT = '<', 		     /* Boolean operators */
+   BAR = '|', COMMA = ',',      			     /* Delimiters */
+   SEQ = ';', ALAP = '!',                                    /* Program operators */
+   DOT = '.', COLON = ':',				     /* Label operators */
+   ADD = '+', SUB = '-', MUL = '*', DIV = '/',  	     /* Arithmetic operators */
+   LPAR = '(', RPAR = ')', LBRACE = '{', RBRACE = '}'        /* Left and right brackets */ 	
 } Token;
+
+/* The single character tokens are declared after the other tokens to make the enumeration
+work when compiling this Flex scanner. */
 
 void printToken(Token t)
 {
@@ -49,7 +62,10 @@ void printToken(Token t)
    if (t == ELSE)	printf("ELSE");
    if (t == SKIP)	printf("SKIP");
    if (t == FAIL)	printf("FAIL");
+   if (t == INTERFACE)	printf("INTERFACE");
+   if (t == EMPTY)	printf("EMPTY");
    if (t == WHERE)	printf("WHERE");
+   if (t == INJECTIVE)	printf("INJECTIVE");
    if (t == AND)	printf("AND");
    if (t == OR)	        printf("OR");
    if (t == NOT)	printf("NOT");
@@ -62,25 +78,26 @@ void printToken(Token t)
    if (t == STRING)	printf("STRING");
    if (t == ATOM)	printf("ATOM");
    if (t == LIST)	printf("LIST");
-   if (t == LPAR)	printf("LPAR");
-   if (t == RPAR)	printf("RPAR");
-   if (t == LBRACE)	printf("LBRACE");
-   if (t == RBRACE)	printf("RBRACE");
-   if (t == BAR)	printf("BAR");
-   if (t == COMMA)	printf("COMMA");
+   if (t == LPAR)	printf("(");
+   if (t == RPAR)	printf(")");
+   if (t == LBRACE)	printf("{");
+   if (t == RBRACE)	printf("}");
+   if (t == BAR)	printf("|");
+   if (t == COMMA)	printf(",");
    if (t == ARROW)	printf("ARROW");
-   if (t == SEQ)	printf("SEQ");
-   if (t == ALAP)	printf("ALAP");
-   if (t == DOT)	printf("DOT");
-   if (t == COLON)	printf("COLON");
-   if (t == ADD)	printf("ADD");
-   if (t == SUB)	printf("SUB");
-   if (t == MUL)	printf("MUL");
-   if (t == DIV)	printf("DIV");
-   if (t == EQ)	        printf("EQ");
-   if (t == GT)		printf("GT");
+   if (t == SEQ)	printf(";");
+   if (t == ALAP)	printf("!");
+   if (t == DOT)	printf(".");
+   if (t == COLON)	printf(":");
+   if (t == ADD)	printf("+");
+   if (t == SUB)	printf("-");
+   if (t == MUL)	printf("*");
+   if (t == DIV)	printf("/");
+   if (t == EQ)	        printf("=");
+   if (t == NE)	        printf("NE");
+   if (t == GT)		printf(">");
    if (t == GTE)	printf("GTE");
-   if (t == LT)		printf("LT");
+   if (t == LT)		printf("<");
    if (t == LTE)	printf("LTE");
    if (t == NUM)	printf("NUM");
    if (t == STR)	printf("STR");
@@ -108,6 +125,8 @@ char *curfilename;   /* name of current input file; used for error messages */
 <COMMENT><<EOF>>   { printf("%s:%d: Unterminated comment\n", curfilename, yylineno); return 0; }
 
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
+
+ /* keywords */
 main		    return MAIN;
 if	            return IF;
 try		    return TRY;
@@ -128,27 +147,36 @@ int		    return INT;
 string	            return STRING;
 atom		    return ATOM;
 list		    return LIST;
-"("		    return LPAR;
-")"		    return RPAR;
+interface	    return INTERFACE;
+empty		    return EMPTY;
+injective           return INJECTIVE;
+
+ /* single character tokens */
+"(" |		  
+")" |		  
+"{" |		  
+"}" |		
+"|" |		 
+"," |               
+";" | 		 
+"!" |		
+"." |		  
+":" |		 
+"+" |		  
+"-" |		    
+"*" |		  
+"/" |		    
+"=" |                 
+">" |		
+"<"		    return yytext[0];
+
+ /* multiple character tokens */
 "(R)" 		    return ROOT;
-"{"		    return LBRACE;
-"}"		    return RBRACE;
-"|"		    return BAR;
-","                 return COMMA;
-";"		    return SEQ;
-"!"		    return ALAP;
-"." 		    return DOT;
-":"		    return COLON;
-"+"		    return ADD;
-"-"		    return SUB;
-"*"		    return MUL;
-"/"		    return DIV;
-"="                 return EQ;
+"!="		    return NE;
 "=>"                return ARROW;
 ">="	            return GTE;
-">" 		    return GT; 
 "<="	            return LTE;
-"<"		    return LT;
+
 [_a-z][a-z0-9_-]*   { yylval.str = yytext; return ID; }
 \"[a-z]*\"          { yylval.str = yytext; return STR; }
 [ \t\n\r]+          /* ignore white space */
@@ -157,37 +185,5 @@ list		    return LIST;
 
 %%
 
-int main(int argc, char** argv) {
-  Token t; 	/* stores current token */
-  int i;        
-  if(argc < 2) {
-    fprintf(stderr, "ERROR: filename required\n");
-    return 1;
-  }
-  for(i=1; i<argc; i++) {	/* Iterate over all files from the command line */
-
-     if(!(yyin = fopen(argv[i], "r"))) {	/* Flex scans from yyin which is assigned to input file. */
-       perror(argv[1]);
-       yylineno = 1;	/* reset yylineno */
-       return 1;
-       }
-  
-  curfilename = argv[i];
-  printf("Processing %s\n\n", curfilename);
-
-     do {
-       t = yylex();	/* flex function to read tokens from input */
-       printToken(t);       
-       if (t == NUM) printf("(%d)", yylval.num);
-       if (t == STRING) printf("(%s)", yylval.str);
-       if (t == ID) printf("(%s)", yylval.str);
-       printf(" ");
-     } while(t!=END);  /* t=END when end of file has been reached */
-     
-  printf("\n\n");
-  } 
-
-return 0;
-} 
 
 
