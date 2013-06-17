@@ -14,10 +14,13 @@
 * but the graph grammar of this parser can be used. I will focus on just GP programs for the
 * time being.
 * 
+* 17/6/13: Changed MacroDecl production order: ComSeq ProcList -> ProcList ComSeq
+*          Added '@' before MacroCall 
+*          Changed RuleSetCall to '[' IDList ']'
 /* /////////////////////////////////////////////////////////////////////////////////////////// */
 
 %{
-# define YYDEBUG 1
+# define YYDEBUG 1	/* for producing the debugging file gpparser.output */
 # include <stdio.h>
 # include <stdlib.h>
 # include "gpparser.h"
@@ -35,9 +38,15 @@
 %token NUM STR ID ROOT                                           /* Numbers, strings, identifiers, root node */
 %token END 							 /* End of file */
 
-%left '+' '-' '.' OR	/* lowest precedence level, left associative */
+%left '+' '-' OR	/* lowest precedence level, left associative */
 %left '*' '/' AND
-%nonassoc UMINUS NOT	/* highest precedence level. UMINUS represents unary '-' */
+%left UMINUS NOT	
+%left '.'	/* highest precedence level. UMINUS represents unary '-' */
+
+%union {
+  int num;    /* A NUM token contains a number */
+  char *str;  /* STRING and ID tokens contain a string */
+} 
 
 %start Program	/* Program is the start symbol of the grammar */
 
@@ -55,7 +64,7 @@ Declaration: MainDecl
 MainDecl: MAIN '=' ComSeq
 
 MacroDecl: MacroID '=' ComSeq 
-         | MacroID '=' '{' ComSeq ProcList '}' /* 2-char-lookahead issue? */
+         | MacroID '=' '{' ProcList ComSeq '}' 
 
 ProcList: /* empty */
         | ProcList RuleDecl
@@ -84,13 +93,13 @@ SimpleCommand: RuleSetCall
              | FAIL
 
 RuleSetCall: RuleID 
-	   | '{' IDList '}'
+	   | '[' IDList ']'
 
 IDList: /* empty */ 
       | RuleID
       | IDList ',' RuleID
 
-MacroCall: MacroID
+MacroCall: '@' MacroID
 
  /* Grammar for GP2 conditional rule schemata */
 
@@ -149,7 +158,7 @@ Subtype: INT | STRING | ATOM
 ListArg: /* empty */	
        | ',' List
 
-RelOp: '=' | NE | '>' | GTE | '<' | LTE
+RelOp: '>' | GTE | '<' | LTE
  
  /* Grammar for GP2 Labels */
 
@@ -166,11 +175,12 @@ AtomExp: Variable
        | OUTDEG '(' NodeID ')'
        | '-' AtomExp %prec UMINUS	/* Use the precedence of UMINUS for this rule */
        | '(' AtomExp ')'
-       | AtomExp ArithOp AtomExp
+       | AtomExp '+' AtomExp
+       | AtomExp '-' AtomExp
+       | AtomExp '*' AtomExp
+       | AtomExp '/' AtomExp
        | STR
        | AtomExp '.' AtomExp
-
-ArithOp: '+' | '-' | '*' | '/'
 
  /* Identifiers */
 
@@ -182,10 +192,30 @@ Variable: ID
 
 %%
 
-void main()
+int main(int argc, char** argv) {
+       
+  if(argc != 2) {
+    fprintf(stderr, "ERROR: filename required\n");
+    return 1;
+  }
+
+  if(!(yyin = fopen(argv[1], "r"))) {	/* Flex scans from yyin which is assigned to input file. */
+     perror(argv[1]);
+     yylineno = 1;	/* reset yylineno */
+     return 1;
+  }
+
+  curfilename = argv[1];
+  printf("Processing %s\n\n", curfilename);
+
+  yyparse();
+}
+
+
+int yyerror (char const *s)	/* basic error function for parser */
 {
-        yyparse();
-} 
+  fprintf (stderr, "%s\n", s);
+}
 
 
 

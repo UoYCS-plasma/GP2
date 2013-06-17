@@ -12,9 +12,9 @@
 /* /////////////////////////////////////////////////////////////////////////////////////// */
 
 /* interface to the lexer */
-extern int yylineno;	/* from lexer */
-int yydebug = 1;	/* generates y.output for debugging */
-void yyerror(char *s, ...);	/* takes multiple arguments, not sure if necessary yet */
+extern int yylineno;	
+extern FILE* yyin;	
+extern char *curfilename;	/* all from gplexer.lex */
 
 /* Abstract syntax tree goes here too */
 

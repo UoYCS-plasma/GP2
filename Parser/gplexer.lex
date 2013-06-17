@@ -13,10 +13,7 @@
 *
 * Edit action code to return yytext[0] for single characters.
 *
-* 29/5/13: Added tokens INTER (interface keyword), EMPTY (empty keyword) and NE (!=).
-* 10/6/13: Added token INJECTIVE (injective matching flag), changed INTER to INTERFACE, modified
-* rules and tokens for single characters
-* 
+* 16/7/13: Added '@', '[', ']' single character tokens, #include gpparser.tab.c
 * ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
 
@@ -33,85 +30,7 @@
 %{
 
 # include "gpparser.h"
-# include "gpparser-tab.h"
-
-typedef enum {
-   END = 258, 						     /* End of file. Value 258 avoids clashes with character literals */		
-   MAIN, IF, TRY, THEN, ELSE, SKIP, FAIL,                    /* Program text keywords */
-   WHERE, AND, OR, NOT, EDGE, TRUE, FALSE, INDEG, OUTDEG,    /* Schema condition keywords */
-   INT, STRING, ATOM, LIST,                                  /* Type keywords */
-   INTERFACE, EMPTY, INJECTIVE,				     /* Other keywords */
-   NUM, STR, ID, ROOT, ARROW,                                /* Numbers, strings, identifiers, root node, arrow */
-   NE, GTE, LTE, EQ = '=', GT = '>', LT = '<', 		     /* Boolean operators */
-   BAR = '|', COMMA = ',',      			     /* Delimiters */
-   SEQ = ';', ALAP = '!',                                    /* Program operators */
-   DOT = '.', COLON = ':',				     /* Label operators */
-   ADD = '+', SUB = '-', MUL = '*', DIV = '/',  	     /* Arithmetic operators */
-   LPAR = '(', RPAR = ')', LBRACE = '{', RBRACE = '}'        /* Left and right brackets */ 	
-} Token;
-
-/* The single character tokens are declared after the other tokens to make the enumeration
-work when compiling this Flex scanner. */
-
-void printToken(Token t)
-{
-   if (t == MAIN)	printf("MAIN");
-   if (t == IF)		printf("IF");
-   if (t == TRY)	printf("TRY");
-   if (t == THEN)	printf("THEN");
-   if (t == ELSE)	printf("ELSE");
-   if (t == SKIP)	printf("SKIP");
-   if (t == FAIL)	printf("FAIL");
-   if (t == INTERFACE)	printf("INTERFACE");
-   if (t == EMPTY)	printf("EMPTY");
-   if (t == WHERE)	printf("WHERE");
-   if (t == INJECTIVE)	printf("INJECTIVE");
-   if (t == AND)	printf("AND");
-   if (t == OR)	        printf("OR");
-   if (t == NOT)	printf("NOT");
-   if (t == EDGE)	printf("EDGE");
-   if (t == TRUE)	printf("TRUE");
-   if (t == FALSE)	printf("FALSE");
-   if (t == INDEG)	printf("INDEG");
-   if (t == OUTDEG)	printf("OUTDEG");
-   if (t == INT)	printf("INT");
-   if (t == STRING)	printf("STRING");
-   if (t == ATOM)	printf("ATOM");
-   if (t == LIST)	printf("LIST");
-   if (t == LPAR)	printf("(");
-   if (t == RPAR)	printf(")");
-   if (t == LBRACE)	printf("{");
-   if (t == RBRACE)	printf("}");
-   if (t == BAR)	printf("|");
-   if (t == COMMA)	printf(",");
-   if (t == ARROW)	printf("ARROW");
-   if (t == SEQ)	printf(";");
-   if (t == ALAP)	printf("!");
-   if (t == DOT)	printf(".");
-   if (t == COLON)	printf(":");
-   if (t == ADD)	printf("+");
-   if (t == SUB)	printf("-");
-   if (t == MUL)	printf("*");
-   if (t == DIV)	printf("/");
-   if (t == EQ)	        printf("=");
-   if (t == NE)	        printf("NE");
-   if (t == GT)		printf(">");
-   if (t == GTE)	printf("GTE");
-   if (t == LT)		printf("<");
-   if (t == LTE)	printf("LTE");
-   if (t == NUM)	printf("NUM");
-   if (t == STR)	printf("STR");
-   if (t == ID)		printf("ID");
-   if (t == ROOT)	printf("ROOT");
-   if (t == END)	printf("END");
-}
-
-typedef union {
-  int num;    /* A NUM token contains as number */
-  char *str;  /* STRING and ID tokens contain a string */
-} TokenValue;
-
-TokenValue yylval;   /* stores semantic value of tokens */
+# include "gpparser.tab.c"
 
 char *curfilename;   /* name of current input file; used for error messages */
 
@@ -155,7 +74,9 @@ injective           return INJECTIVE;
 "(" |		  
 ")" |		  
 "{" |		  
-"}" |		
+"}" |
+"[" |
+"]" |		
 "|" |		 
 "," |               
 ";" | 		 
@@ -168,7 +89,8 @@ injective           return INJECTIVE;
 "/" |		    
 "=" |                 
 ">" |		
-"<"		    return yytext[0];
+"<" |	 	   
+"@"	 return yytext[0];
 
  /* multiple character tokens */
 "(R)" 		    return ROOT;
