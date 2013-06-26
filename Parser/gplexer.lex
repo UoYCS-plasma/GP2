@@ -9,19 +9,13 @@
 *
 * Potential issue: 'or' is a program keyword and a condition keyword. Not sure how to deal with this yet.
 *
-* Potential issue: Positions can be represented with decimal numbers. The compiler may be able to ignore this, depending on what the editor does. If not, then unclear whether to represent decimal numbers as a separate token from integers. Probably. 
-*
-* Edit action code to return yytext[0] for single characters.
-*
-* 16/7/13: Added '@', '[', ']' single character tokens, #include gpparser.tab.c
 * ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
 
-%option noyywrap nodefault case-insensitive yylineno
+%option noyywrap nodefault yylineno
 
 /* yywrap is an old flex library routine to manage multiple input files. This is done manually here */
 /* nodefault removes default action if the input rules don't cover all possible input. */
-/* case-insensitive tells flex to treat upper- and lowercase the same */
 /* yylineno is a flex-maintained integer variable storing the current line number of input */
 
 /* exclusive start state for ignoring GP2 comments */
@@ -66,6 +60,11 @@ int		    return INT;
 string	            return STRING;
 atom		    return ATOM;
 list		    return LIST;
+red		    return RED;
+green		    return GREEN;
+blue		    return BLUE;
+grey		    return GREY;
+dashed		    return DASHED;
 interface	    return INTERFACE;
 empty		    return EMPTY;
 injective           return INJECTIVE;
@@ -90,7 +89,7 @@ injective           return INJECTIVE;
 "=" |                 
 ">" |		
 "<" |	 	   
-"@"	 return yytext[0];
+"#"	 return yytext[0];
 
  /* multiple character tokens */
 "(R)" 		    return ROOT;
@@ -99,10 +98,12 @@ injective           return INJECTIVE;
 ">="	            return GTE;
 "<="	            return LTE;
 
-[_a-z][a-z0-9_-]*   { yylval.str = yytext; return ID; }
+ /* macro identifiers must start with a capital letter 
+  * other identifiers start with a lowercase letter    */
+[A-Z][a-zA-Z0-9_-]*   { yylval.str = yytext; return MACID; }
+[a-z][a-zA-Z0-9_-]*   { yylval.str = yytext; return ID; }
 \"[a-z]*\"          { yylval.str = yytext; return STR; }
 [ \t\n\r]+          /* ignore white space */
-<<EOF>>             return END;      
 .                   printf("%s:%d: Mystery character '%s'\n", curfilename, yylineno, yytext);
 
 %%

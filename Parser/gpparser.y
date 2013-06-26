@@ -14,9 +14,8 @@
 * but the graph grammar of this parser can be used. I will focus on just GP programs for the
 * time being.
 * 
-* 17/6/13: Changed MacroDecl production order: ComSeq ProcList -> ProcList ComSeq
-*          Added '@' before MacroCall 
-*          Changed RuleSetCall to '[' IDList ']'
+* Add enumerated colour type at some point.
+*
 /* /////////////////////////////////////////////////////////////////////////////////////////// */
 
 %{
@@ -32,11 +31,11 @@
 %token MAIN IF TRY THEN ELSE SKIP FAIL                           /* Program text keywords */
 %token WHERE EDGE TRUE FALSE INDEG OUTDEG                        /* Schema condition keywords */
 %token INT STRING ATOM LIST 	                                 /* Type keywords */
+%token RED GREEN BLUE GREY DASHED				 /* Colour keywords */
 %token INTERFACE EMPTY INJECTIVE				 /* Other keywords */
 %token ARROW					                 /* Arrow */
 %token NE GTE LTE			                         /* Boolean operators */
-%token NUM STR ID ROOT                                           /* Numbers, strings, identifiers, root node */
-%token END 							 /* End of file */
+%token NUM STR MACID ID ROOT                                     /* Numbers, strings, identifiers, root node */
 
 %left '+' '-' OR	/* lowest precedence level, left associative */
 %left '*' '/' AND
@@ -64,7 +63,7 @@ Declaration: MainDecl
 MainDecl: MAIN '=' ComSeq
 
 MacroDecl: MacroID '=' ComSeq 
-         | MacroID '=' '{' ProcList ComSeq '}' 
+         | MacroID '=' ComSeq '[' ProcList ']' 
 
 ProcList: /* empty */
         | ProcList RuleDecl
@@ -93,27 +92,29 @@ SimpleCommand: RuleSetCall
              | FAIL
 
 RuleSetCall: RuleID 
-	   | '[' IDList ']'
+	   | '{' IDList '}'
 
 IDList: /* empty */ 
       | RuleID
       | IDList ',' RuleID
 
-MacroCall: '@' MacroID
+MacroCall:  MacroID
 
  /* Grammar for GP2 conditional rule schemata */
 
-RuleDecl: RuleID '(' ParamList ')' '=' '{' Graphs Inter WHERE CondDecl INJECTIVE '=' Bool '}'
+RuleDecl: RuleID '(' ParamList ')' Graphs Inter WHERE CondDecl INJECTIVE '=' Bool 
 
 ParamList: /* empty */
-	 | ParamList ';' VarList ':' Type 
+	 | VarList ':' Type 
+	 | ParamList ';' VarList ':' Type  
 
-VarList: /* empty */
+VarList: Variable 
        | VarList ',' Variable
 
-Inter: INTERFACE '=' '{' NodePairList '}'
+Inter: INTERFACE '{' NodePairList '}'
 
 NodePairList: /* empty */
+	    | '(' NodeID ',' NodeID ')'
             | NodePairList ',' '(' NodeID ',' NodeID ')'
 
 Bool: TRUE | FALSE
@@ -122,7 +123,7 @@ Type: INT | STRING | ATOM | LIST
 
  /* Grammar for GP2 graphs */
 
-Graphs: '{' LHS '}' ARROW '{' RHS '}'
+Graphs: '[' LHS ']' ARROW '[' RHS ']'
 
 LHS: Graph
 RHS: Graph
@@ -163,11 +164,13 @@ RelOp: '>' | GTE | '<' | LTE
  /* Grammar for GP2 Labels */
 
 Label: List 
-     | List '#'
+     | List '#' Colour
 
 List: EMPTY
     | AtomExp 
     | List ':' AtomExp
+
+Colour: RED | BLUE | GREEN | GREY | DASHED
 
 AtomExp: Variable
        | NUM 
@@ -184,7 +187,7 @@ AtomExp: Variable
 
  /* Identifiers */
 
-MacroID: ID
+MacroID: MACID
 RuleID: ID
 NodeID: ID
 EdgeID: ID
@@ -206,16 +209,16 @@ int main(int argc, char** argv) {
   }
 
   curfilename = argv[1];
-  printf("Processing %s\n\n", curfilename);
+  printf("Processing %s\n", curfilename);
 
   yyparse();
 }
 
 
-int yyerror (char const *s)	/* basic error function for parser */
+int yyerror(char *s)
 {
-  fprintf (stderr, "%s\n", s);
+   printf("%d: %s at %s\n", yylineno, s, yytext);
+   return 0;
 }
-
 
 
