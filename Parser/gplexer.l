@@ -18,24 +18,35 @@
 /* nodefault removes default action if the input rules don't cover all possible input. */
 /* yylineno is a flex-maintained integer variable storing the current line number of input */
 
-/* exclusive start state for ignoring GP2 comments */
-%x COMMENT	    
+
 
 %{
 
-# include "gpparser.h"
-# include "gpparser.tab.c"
+#include "gpparser.h"
+#include "gpparser.tab.c"
 
-char *curfilename;   /* name of current input file; used for error messages */
+int yycolumn = 1;
+
+/* macro YY_USER_ACTION invoked for each token recognised by yylex before calling action
+   code. Here it is defined to track line and column numbers for bison locations. */
+
+#define YY_USER_ACTION yylloc.filename = filename; \
+   yylloc.first_line = yylloc.last_line = yylineno; \
+   yylloc.first_column = yycolumn; yylloc.last_column = yycolumn + yyleng-1; \
+   yycolumn += yyleng;	
 
 %}
+
+ /* exclusive start state for ignoring GP2 comments */
+%x COMMENT	    
 
 %%
 
 "/*"		    BEGIN(COMMENT);
 <COMMENT>"*/"       BEGIN(INITIAL);
-<COMMENT>([^*]|\n)+|.  /* ignore all characters except '*' */
-<COMMENT><<EOF>>   { printf("%s:%d: Unterminated comment\n", curfilename, yylineno); return 0; }
+<COMMENT>([^*\n])+|.  /* ignore all characters except '*' */
+<COMMENT>(\n)	   { yycolumn = 1; } /* reset yycolumn on newline */
+<COMMENT><<EOF>>   { printf("%s:%d: Unterminated comment\n", filename, yylineno); return 0; }
 
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
@@ -102,9 +113,10 @@ injective           return INJECTIVE;
   * other identifiers start with a lowercase letter    */
 [A-Z][a-zA-Z0-9_-]*   { yylval.str = yytext; return MACID; }
 [a-z][a-zA-Z0-9_-]*   { yylval.str = yytext; return ID; }
-\"[a-z]*\"          { yylval.str = yytext; return STR; }
-[ \t\n\r]+          /* ignore white space */
-.                   printf("%s:%d: Mystery character '%s'\n", curfilename, yylineno, yytext);
+\"[a-z_-]*\"          { yylval.str = yytext; return STR; }
+[ \t\r]+              /* ignore white space */
+\n		      { yycolumn = 1;}  /* reset yycolumn on newline */
+.                     printf("%s:%d: Unexpected symbol '%s'\n", filename, yylineno, yytext);
 
 %%
 

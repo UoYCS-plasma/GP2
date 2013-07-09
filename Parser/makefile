@@ -1,6 +1,6 @@
-parser: gpparser.h gpparser.y gplexer.lex
+parser: gpparser.h gpparser.y gplexer.l
 	bison -dtv gpparser.y
-	flex gplexer.lex
+	flex gplexer.l
 	gcc -o gpparse lex.yy.c
 	
 	

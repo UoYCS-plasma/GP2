@@ -1,12 +1,9 @@
 /* //////////////////////////////////////////////////////////////////////////////////////////// */
 /*
-*						gpparser.y
-* 						Version 1.0
+*						gpparser.y 					
 * 
-* This is the parser for GP2, written in Bison. In combination with Flex, it  performs syntax 
+* This is the parser for GP2, written in Bison. In combination with Flex, it performs syntax 
 * checking, creates a symbol table and generates an Abstract Syntax Tree for the input GP2 program.
-*
-* v1.0 Basic parser that interacts with the scanner to print something to the screen.
 *
 * Created on 28/5/13 by Chris Bak 
 * 
@@ -14,19 +11,69 @@
 * but the graph grammar of this parser can be used. I will focus on just GP programs for the
 * time being.
 * 
-* Add enumerated colour type at some point.
-*
 /* /////////////////////////////////////////////////////////////////////////////////////////// */
 
+
 %{
-# define YYDEBUG 1	/* for producing the debugging file gpparser.output */
-# include <stdio.h>
-# include <stdlib.h>
-# include "gpparser.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include "gpparser.h"
+void yyerror(char *errormsg, ...);
 %}
+
+%code requires /* place this code before YYLTYPE is defined in the generated parser */
+{ 
+
+char *filename; /* current filename for the lexer */
+
+/* The code below redefines Bison's location structure and macro to include filenames. 
+   Only the lines dealing with filenames are new; the rest is the same as Bison's definitions */
+
+/* Bison uses a global variable yylloc of type YYLTYPE to keep track of the locations of 
+   tokens and nonterminals. The scanner will set these values upon reading each token. */
+
+typedef struct YYLTYPE {
+  int first_line;
+  int first_column;
+  int last_line;
+  int last_column;
+  char *filename;	/* new */
+} YYLTYPE;
+
+# define YYLTYPE_IS_DECLARED 1 /* tells the parser that YYLTYPE is defined here */
+
+/* YYLLOC_DEFAULT copies location information from the RHS of a rule to the LHS symbol 
+   'Current' when the parser reduces a rule (before action code is executed). The location
+   of the LHS symbol will start at the first character of the first RHS symbol and will
+   finish at the last character of the last RHS symbol. N is the number of symbols
+   on the RHS. Bison's YYRHSLOC macro returns the location of a particular RHS symbol. */ 
+
+# define YYLLOC_DEFAULT(Current, Rhs, N)						 \
+    do											 \
+      if (N)										 \
+       {										 \
+         (Current).first_line	= YYRHSLOC (Rhs, 1).first_line;				 \
+         (Current).first_column = YYRHSLOC (Rhs, 1).first_column;			 \
+         (Current).last_line	= YYRHSLOC (Rhs, N).last_line;				 \
+         (Current).last_column	= YYRHSLOC (Rhs, N).last_column;			 \
+         (Current).filename	= YYRHSLOC (Rhs, 1).filename;	/* new */		 \
+       }										 \
+     else										 \
+       {  /* empty RHS */								 \
+         (Current).first_line = (Current).last_line = YYRHSLOC (Rhs, 0).last_line;	 \
+         (Current).first_column = (Current).last_column = YYRHSLOC (Rhs, 0).last_column; \
+         (Current).filename = YYRHSLOC (Rhs, 0).filename;	/* new */		 \
+       }										 \
+    while (0)
+}   
+
 
 /* declare tokens */
 /* single-character tokens do not need to be explicitly declared */
+
+%locations /* generates code to process locations. Automatically enabled when '@n' tokens used 
+              in grammar */
 
 %token MAIN IF TRY THEN ELSE SKIP FAIL                           /* Program text keywords */
 %token WHERE EDGE TRUE FALSE INDEG OUTDEG                        /* Schema condition keywords */
@@ -102,11 +149,11 @@ MacroCall:  MacroID
 
  /* Grammar for GP2 conditional rule schemata */
 
-RuleDecl: RuleID '(' ParamList ')' Graphs Inter WHERE CondDecl INJECTIVE '=' Bool 
+RuleDecl: RuleID '(' ParamList ';' ')' Graphs Inter CondDecl INJECTIVE '=' Bool 
 
 ParamList: /* empty */
 	 | VarList ':' Type 
-	 | ParamList ';' VarList ':' Type  
+	 | ParamList ';' VarList ':' Type 
 
 VarList: Variable 
        | VarList ',' Variable
@@ -145,32 +192,37 @@ Position: '(' NUM ',' NUM ')'
 
  /* Grammar for GP2 conditions */
 
-CondDecl: Subtype '(' Variable ')'          
-	| List '=' List
-        | List NE List
-        | AtomExp RelOp AtomExp
-        | EDGE '(' NodeID ',' NodeID ListArg ')'	/*ListArg NT is for optional List argument */
-        | NOT CondDecl 
-        | CondDecl OR CondDecl   
-        | CondDecl AND CondDecl		/* Amibiguity resolved by explicit precedences */
+CondDecl: /* empty */
+        | WHERE Condition
+
+Condition: Subtype '(' Variable ')'   
+         | EDGE '(' NodeID ',' NodeID LabelArg ')'	/*ListArg NT is for optional List argument */
+         | RelList
+         | NOT Condition
+         | Condition OR Condition  
+         | Condition AND Condition
+	 | '(' Condition ')'
 
 Subtype: INT | STRING | ATOM
 
-ListArg: /* empty */	
-       | ',' List
+LabelArg: /* empty */	
+       | ',' Label
 
-RelOp: '>' | GTE | '<' | LTE
+RelList: List RelOp List
+       | RelList RelOp List
+
+RelOp: '=' | NE | '>' | GTE | '<' | LTE
  
  /* Grammar for GP2 Labels */
 
 Label: List 
-     | List '#' Colour
+     | List '#' Mark
 
 List: EMPTY
     | AtomExp 
     | List ':' AtomExp
 
-Colour: RED | BLUE | GREEN | GREY | DASHED
+Mark: RED | BLUE | GREEN | GREY | DASHED
 
 AtomExp: Variable
        | NUM 
@@ -181,7 +233,7 @@ AtomExp: Variable
        | AtomExp '+' AtomExp
        | AtomExp '-' AtomExp
        | AtomExp '*' AtomExp
-       | AtomExp '/' AtomExp
+       | AtomExp '/' AtomExp		/* Ambiguity resolved by explicit precedences */
        | STR
        | AtomExp '.' AtomExp
 
@@ -197,6 +249,12 @@ Variable: ID
 
 int main(int argc, char** argv) {
        
+  extern FILE *yyin; 
+ 
+  if(argc > 1 && !strcmp(argv[1], "-d")) {
+    yydebug = 1; argc--; argv++;	/* for producing the debugging file gpparser.output */
+  }
+
   if(argc != 2) {
     fprintf(stderr, "ERROR: filename required\n");
     return 1;
@@ -208,17 +266,44 @@ int main(int argc, char** argv) {
      return 1;
   }
 
-  curfilename = argv[1];
-  printf("Processing %s\n", curfilename);
+  filename = argv[1];
+  printf("Processing %s\n", filename);
 
-  yyparse();
+  if(!yyparse())
+    printf("GP2 parse succeeded\n");
+  else
+    printf("GP2 parse failed\n");
+ 
+  fclose(yyin);
 }
 
+/* default bison error function, uses the location stored in yylloc */
 
-int yyerror(char *s)
+void yyerror(char *errormsg, ...)
 {
-   printf("%d: %s at %s\n", yylineno, s, yytext);
-   return 0;
+   va_list args;
+   va_start(args, errormsg);
+
+   if(yylloc.first_line)
+     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': ", yylloc.filename, yylloc.first_line,
+       yylloc.first_column, yylloc.last_line, yylloc.last_column, yytext);
+     vfprintf(stderr, errormsg, args);
+     fprintf(stderr, "\n");
 }
+
+/* alternate error function with a location as its first argument */
+
+void lyyerror(YYLTYPE loc, char *errormsg, ...)
+{
+   va_list args;
+   va_start(args, errormsg);
+
+   if(loc.first_line)
+     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': ", loc.filename, loc.first_line,
+       loc.first_column, loc.last_line, loc.last_column, yytext);
+     vfprintf(stderr, errormsg, args);
+     fprintf(stderr, "\n");
+}
+
 
 
