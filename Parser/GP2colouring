@@ -1,6 +1,6 @@
 /* macro definitions */
 
-Colouring = ((colour; if illegal then stop)!; back)!
+Colouring = ((colour; if illegal! then stop)!; back)!
 
 /* rule definitions */
 

@@ -11,6 +11,9 @@
 * but the graph grammar of this parser can be used. I will focus on just GP programs for the
 * time being.
 * 
+* 11/7/13: Removed Block '!' from Command, added '!' productions lower down so that 'rule!' 
+* statements in conditional branches aren't required to be bracketed.
+*
 /* /////////////////////////////////////////////////////////////////////////////////////////// */
 
 
@@ -134,7 +137,9 @@ Block: '(' ComSeq ')'
      | SimpleCommand
 
 SimpleCommand: RuleSetCall
+	     | RuleSetCall '!'
 	     | MacroCall
+             | MacroCall '!'
              | SKIP
              | FAIL
 
@@ -145,7 +150,7 @@ IDList: /* empty */
       | RuleID
       | IDList ',' RuleID
 
-MacroCall:  MacroID
+MacroCall: MacroID
 
  /* Grammar for GP2 conditional rule schemata */
 
@@ -196,7 +201,7 @@ CondDecl: /* empty */
         | WHERE Condition
 
 Condition: Subtype '(' Variable ')'   
-         | EDGE '(' NodeID ',' NodeID LabelArg ')'	/*ListArg NT is for optional List argument */
+         | EDGE '(' NodeID ',' NodeID LabelArg ')'	/*LabelArg NT is for optional Label argument */
          | RelList
          | NOT Condition
          | Condition OR Condition  
