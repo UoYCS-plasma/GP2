@@ -4,7 +4,7 @@ Colouring = ((colour; if illegal! then stop)!; back)!
 
 /* rule definitions */
 
-init(x:atom;)
+init(x:atom)
 [
  (1,1) |
  ( n1(R), x, (1,1) ) |
@@ -20,7 +20,7 @@ init(x:atom;)
 interface { (n1, n1) }
 injective = true
 
-stop(x:list;)
+stop(x:list)
 [
  (1,1) |
  ( n1(R), x, (1,1) ) |
@@ -36,7 +36,7 @@ stop(x:list;)
 interface { (n1, n1) }
 injective = true
 
-unmarked(x:list;)
+unmarked(x:list)
 [
  (1,1) |
  ( n1(R), x, (1,1) ) |
@@ -54,7 +54,7 @@ injective = true
 
 /* colouring rules */
 
-colour1(a:list; i:int; x,y:atom;)
+colour1(a:list; i:int; x,y:atom)
 [
  (1,1) |
  ( n1(R), x:i, (1,1) ), ( n2, y, (1,1) ) |
@@ -72,7 +72,7 @@ colour1(a:list; i:int; x,y:atom;)
 interface { (n1, n1), (n2, n2) }
 injective = true
 
-colour2(a:list; i:int; x,y:atom;)
+colour2(a:list; i:int; x,y:atom)
 [
  (1,1) |
  ( n1(R), x:i, (1,1) ), ( n2, y, (1,1) ) |
@@ -92,7 +92,7 @@ injective = true
 
 /* checking if a node adjacent to the root has the same colour as the root */
 
-illegal1(a:list; i:int; x,y:atom;)
+illegal1(a:list; i:int; x,y:atom)
 [
  (1,1) |
  ( n1(R), x:i, (1,1) ), ( n2, y:i, (1,1) ) |
@@ -110,7 +110,7 @@ illegal1(a:list; i:int; x,y:atom;)
 interface { (n1, n1), (n2, n2) }
 injective = true
 
-illegal2(a:list; i:int; x,y:atom;)
+illegal2(a:list; i:int; x,y:atom)
 [
  (1,1) |
  ( n1(R), x:i, (1,1) ), ( n2, y:i, (1,1) ) |
@@ -130,7 +130,7 @@ injective = true
 
 /* backtracks along a path of dashed edges */
 
-back1(a:list; i:int; x,y:atom;)
+back1(a:list; i:int; x,y:atom)
 [
  (1,1) |
  ( n1(R), x:i, (1,1) ), ( n2, y:j, (1,1) ) |
@@ -148,7 +148,7 @@ back1(a:list; i:int; x,y:atom;)
 interface { (n1, n1), (n2, n2) }
 injective = true
 
-back2(a:list; i:int; x,y:atom;)
+back2(a:list; i:int; x,y:atom)
 [
  (1,1) |
  ( n1(R), x:i, (1,1) ), ( n2, y:j, (1,1) ) |

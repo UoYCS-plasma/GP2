@@ -1,7 +1,6 @@
 /* /////////////////////////////////////////////////////////////////////////////////////// */
 
-/*                                     gpparser.h
- *                                     Version 1.0
+/*                                     gpparser.h                               
  * 
  * This is a header file for the GP2 parser. It contains an interface to the lexer and
  * some other stuff which I will identify later.
@@ -36,6 +35,9 @@ struct GPCondBranch {
   struct AST *else_Branch;
 }
 
+/* an idea is to merge GP's constants into one node type with
+a union value. */
+
 struct GPNumber {
   int nodetype; /* Integer constant */
   YYLTYPE position;  
@@ -57,14 +59,14 @@ struct GPMark {
 struct GPDegree {
   int nodetype; /* Indegree or Outdegree */
   YYLTYPE position; 
-  struct GPNode *argument;
+  struct AST *argument;
 }
 
 struct GPEdgePred {
   int nodetype; /* EdgePred */
   YYLTYPE position; 
-  struct GPNode *source;
-  struct GPNode *target;
+  struct AST *source;
+  struct AST *target;
   struct AST* label;
 }
 
@@ -88,7 +90,7 @@ struct GPNode {
   symbol *name; /* pointer to identifier entry in symbol table */
   int root; /* 0 if node is not a root, 1 otherwise */
   struct AST *label; /* probably belongs in the symbol table */
-  struct GPPos *position; /* see above */
+  struct AST *gpposition; 
 }
 
 struct GPEdge {
@@ -96,15 +98,20 @@ struct GPEdge {
   YYLTYPE position;
   symbol *name; /* pointer to edge identifier in symbol table */
   /* below three fields should probably be in the symbol table entry */
-  struct GPNode *source; /* pointer to source node in symbol table */
-  struct GPNode *target; 
+  struct AST *source; /* pointer to source node in symbol table */
+  struct AST *target; 
   struct AST* label; 
 }
 
 struct GPGraph {
   int nodetype; /* Graph */
-  YYLTYPE position;
-  
+  YYLTYPE position
+  struct AST *gpposition;
+  struct AST *nodes;
+  struct AST *edges;
+}
+
+
   
 
 

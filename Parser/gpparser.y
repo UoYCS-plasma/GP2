@@ -113,7 +113,7 @@ Declaration: MainDecl
 MainDecl: MAIN '=' ComSeq
 
 MacroDecl: MacroID '=' ComSeq 
-         | MacroID '=' ComSeq '[' ProcList ']' 
+         | MacroID '=''[' ProcList ']' ComSeq 
 
 ProcList: /* empty */
         | ProcList RuleDecl
@@ -123,8 +123,6 @@ ComSeq: Command
       | ComSeq ';' Command
 
 Command: Block
-       | Block '!'
-       | Block OR Block
        | IF Block THEN Block 
        | IF Block THEN Block ELSE Block
        | TRY Block
@@ -134,7 +132,9 @@ Command: Block
  /* Perhaps create new NTs IfStatement and TryStatement? */
 
 Block: '(' ComSeq ')'
+     | '(' ComSeq ')' '!'
      | SimpleCommand
+     | Block OR Block
 
 SimpleCommand: RuleSetCall
 	     | RuleSetCall '!'
@@ -154,7 +154,7 @@ MacroCall: MacroID
 
  /* Grammar for GP2 conditional rule schemata */
 
-RuleDecl: RuleID '(' ParamList ';' ')' Graphs Inter CondDecl INJECTIVE '=' Bool 
+RuleDecl: RuleID '(' ParamList ')' Graphs Inter CondDecl INJECTIVE '=' Bool 
 
 ParamList: /* empty */
 	 | VarList ':' Type 
