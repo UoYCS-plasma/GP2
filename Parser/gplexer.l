@@ -51,7 +51,7 @@ int yycolumn = 1;
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
  /* keywords */
-main		    return MAIN;
+Main		    return MAIN;
 if	            return IF;
 try		    return TRY;
 then 	  	    return THEN;

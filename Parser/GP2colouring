@@ -23,7 +23,7 @@ injective = true
 stop(x:list)
 [
  (1,1) |
- ( n1(R), x, (1,1) ) |
+ ( n1(R), "hell"."o":indeg(n):-1+3:a:(7/2)+1 # red, (1,1) ) |
 ]
 
 =>
@@ -169,5 +169,5 @@ injective = true
 
 /* GP program text */
 
-main = try (init; Colouring; unmarked)
+Main = try (init; Colouring; unmarked)
 

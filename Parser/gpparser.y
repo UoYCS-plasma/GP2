@@ -87,8 +87,8 @@ typedef struct YYLTYPE {
 %token NE GTE LTE			                         /* Boolean operators */
 %token NUM STR MACID ID ROOT                                     /* Numbers, strings, identifiers, root node */
 
-%left '+' '-' OR	/* lowest precedence level, left associative */
-%left '*' '/' AND
+%left '+' '-' AND	/* lowest precedence level, left associative */
+%left '*' '/' OR
 %left UMINUS NOT	
 %left '.'	/* highest precedence level. UMINUS represents unary '-' */
 
@@ -112,58 +112,60 @@ Declaration: MainDecl
 
 MainDecl: MAIN '=' ComSeq
 
-MacroDecl: MacroID '=' ComSeq 
-         | MacroID '=''[' ProcList ']' ComSeq 
+MacroDecl: MacroID '=' ComSeq /* new GPMacroDecl with empty second branch */
+         | MacroID '=' '[' ProcList ']' ComSeq /* new GPMacroDecl */ 
 
 ProcList: /* empty */
-        | ProcList RuleDecl
-	| ProcList MacroDecl
+        | ProcList RuleDecl /* new AST */
+	| ProcList MacroDecl /* new AST */
 
-ComSeq: Command
-      | ComSeq ';' Command
+ComSeq: Command /* $$ = $1 */ 
+      | Command ';' ComSeq  /* new AST. Explain right recursion. */
 
-Command: Block
-       | IF Block THEN Block 
+Command: Block /* $$ = $1 */
+       | IF Block THEN Block /* new GPCond, third arg empty */
        | IF Block THEN Block ELSE Block
-       | TRY Block
+       | TRY Block /* new GPCond, null pointers for two arguments, or maybe pointers to skip */
        | TRY Block THEN Block
        | TRY Block THEN Block ELSE Block
 
  /* Perhaps create new NTs IfStatement and TryStatement? */
 
-Block: '(' ComSeq ')'
-     | '(' ComSeq ')' '!'
-     | SimpleCommand
-     | Block OR Block
+Block: '(' ComSeq ')' /* $$ = $2 */
+     | '(' ComSeq ')' '!' /* new GPloop $2 */
+     | SimpleCommand /* $$ = $1 */
+     | Block OR Block /* new  AST */
 
-SimpleCommand: RuleSetCall
-	     | RuleSetCall '!'
-	     | MacroCall
-             | MacroCall '!'
+SimpleCommand: RuleSetCall /* $$ = $1 */
+	     | RuleSetCall '!' /* new GPloop $1 */
+	     | MacroCall /* $$ = $1 */
+             | MacroCall '!' /* new GPloop $1 */
              | SKIP
              | FAIL
 
-RuleSetCall: RuleID 
-	   | '{' IDList '}'
+RuleSetCall: RuleID /* $$ = $1 */
+	   | '{' IDList '}' /* new GPChoice */
 
 IDList: /* empty */ 
-      | RuleID
-      | IDList ',' RuleID
+      | RuleID /* $$ = $1 */
+      | RuleID ',' IDList /* new AST */
 
 MacroCall: MacroID
 
  /* Grammar for GP2 conditional rule schemata */
 
-RuleDecl: RuleID '(' ParamList ')' Graphs Inter CondDecl INJECTIVE '=' Bool 
+RuleDecl: RuleID '(' ParamList ')' Graphs Inter CondDecl INJECTIVE '=' Bool /* new GPRule - injective bool is attribute, ruleID is pointer to symbol table */
 
 ParamList: /* empty */
-	 | VarList ':' Type 
+	 | VarList ':' Type /* new AST type [Type]List where [Type] depends on $3. Or maybe a generic VarList will suffice as symtable will contain type information */
 	 | ParamList ';' VarList ':' Type 
 
-VarList: Variable 
-       | VarList ',' Variable
+VarList: Variable /* $$ = $1 or maybe nothing */
+       | VarList ',' Variable /* new AST type VarList */
 
 Inter: INTERFACE '{' NodePairList '}'
+
+ /* Like NodeList, split NodePairList up into NodePair */
 
 NodePairList: /* empty */
 	    | '(' NodeID ',' NodeID ')'
@@ -175,14 +177,18 @@ Type: INT | STRING | ATOM | LIST
 
  /* Grammar for GP2 graphs */
 
-Graphs: '[' LHS ']' ARROW '[' RHS ']'
+Graphs: '[' LHS ']' ARROW '[' RHS ']' /* new AST $2 $6 */
 
-LHS: Graph
-RHS: Graph
+LHS: Graph /* $$ = $1, possibly a LHS flag */
+RHS: Graph /* $$ = $1, possible a RHS flag */
 
-Graph: Position '|' NodeList '|' EdgeList
+Graph: Position '|' NodeList '|' EdgeList /* new GPGraph */
 
-NodeList: /* empty */
+ /* for NodeList and EdgeList, create new NTs for each individual
+    item i.e. Node: '(' NodeID ... and then do
+    NodeList: empty | Node | NodeList ',' Node. This will make the AST construction possible. */
+
+NodeList: /* empty */ 
         | '(' NodeID RootNode ',' Label ',' Position ')'
 	| NodeList ',' '(' NodeID RootNode ',' Label ',' Position ')'
 
@@ -191,66 +197,70 @@ EdgeList: /* empty */
 	| EdgeList ',' '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
 
 RootNode: /* empty */
-	| ROOT
+	| ROOT /* switch root flag on */
 
-Position: '(' NUM ',' NUM ')'
+Position: '(' NUM ',' NUM ')' /* new GPPos $2 $4 */
 
  /* Grammar for GP2 conditions */
 
 CondDecl: /* empty */
         | WHERE Condition
 
-Condition: Subtype '(' Variable ')'   
+Condition: Subtype '(' Variable ')' /* use the subtype flag from Subtype production to create a new node of the appropriate type, with a symbol table pointer to Variable. Or maybe do nothing with the Subtype production and deal with this as if it were, say, STRING '(' Variable ')' */
          | EDGE '(' NodeID ',' NodeID LabelArg ')'	/*LabelArg NT is for optional Label argument */
          | RelList
-         | NOT Condition
-         | Condition OR Condition  
-         | Condition AND Condition
-	 | '(' Condition ')'
+         | NOT Condition /* new AST with one branch */
+         | Condition OR Condition  /* new AST */
+         | Condition AND Condition /* new AST */
+	 | '(' Condition ')' /* $$ = $2 */
 
-Subtype: INT | STRING | ATOM
+Subtype: INT | STRING | ATOM /* set a subtype flag to whichever keyworld is reduced. Somehow. */
 
 LabelArg: /* empty */	
        | ',' Label
 
-RelList: List RelOp List
-       | RelList RelOp List
+RelList: List RelOp List /* new AST with type RelOp */
+       | RelList RelOp List /* as above. Is there a way to make this into a sequence of AND ASTs instead of a list of RelOps? MAYBE. */
 
-RelOp: '=' | NE | '>' | GTE | '<' | LTE
+RelOp: '=' | NE | '>' | GTE | '<' | LTE /* record the operator somehow */
+
  
  /* Grammar for GP2 Labels */
 
-Label: List 
-     | List '#' Mark
+Label: List /* $$ = $1 */
+     | List '#' Mark /* new AST with type Label, left points to List, right to Mark */
 
 List: EMPTY
-    | AtomExp 
-    | List ':' AtomExp
+    | AtomExp /* when this is reduced, AtomExp ($1) points to the AST of the most recently parsed AtomExp. Make List point to this with $$ = $1. */
+    | AtomExp ':' List /* new AST, left branch List, right branch AtomExp. Explain right recursion. */
 
 Mark: RED | BLUE | GREEN | GREY | DASHED
 
-AtomExp: Variable
-       | NUM 
-       | INDEG '(' NodeID ')'
-       | OUTDEG '(' NodeID ')'
-       | '-' AtomExp %prec UMINUS	/* Use the precedence of UMINUS for this rule */
-       | '(' AtomExp ')'
-       | AtomExp '+' AtomExp
+AtomExp: Variable /* new GPVarExp */
+       | NUM /* new GPnum */
+       | INDEG '(' NodeID ')' /* new GPdegree */
+       | OUTDEG '(' NodeID ')' /* new GPdegree */
+       | '-' AtomExp %prec UMINUS	/* Use the precedence of UMINUS for this rule. Change value of AST pointed to by AtomExp to  0 - yylval. Context: AtomExp must be an integer expression */ 
+       | '(' AtomExp ')' /* probably $$ = $2 */
+       | AtomExp '+' AtomExp /* new AST for arithops. Context: AtomExps must be integer expressions */
        | AtomExp '-' AtomExp
        | AtomExp '*' AtomExp
        | AtomExp '/' AtomExp		/* Ambiguity resolved by explicit precedences */
-       | STR
-       | AtomExp '.' AtomExp
+       | STR /* new GPstring */
+       | AtomExp '.' AtomExp /* new AST. Context: Both AtomExps need to be strings */
 
  /* Identifiers */
 
-MacroID: MACID
+ /* symtable contains scoping information for rules/macros */
+MacroID: MACID /* pointers to symtable for these rules */
 RuleID: ID
 NodeID: ID
 EdgeID: ID
 Variable: ID
 
 %%
+
+/* add a token printing procedure here for debugging */
 
 int main(int argc, char** argv) {
        
