@@ -7,8 +7,7 @@
 *
 * Created on 10/5/2013 by Chris Bak 
 *
-* Potential issue: 'or' is a program keyword and a condition keyword. Not sure how to deal with this yet.
-*
+* 
 * ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
 
@@ -71,14 +70,22 @@ int		    return INT;
 string	            return STRING;
 atom		    return ATOM;
 list		    return LIST;
-red		    return RED;
-green		    return GREEN;
-blue		    return BLUE;
-grey		    return GREY;
-dashed		    return DASHED;
 interface	    return INTERFACE;
 empty		    return EMPTY;
 injective           return INJECTIVE;
+
+ /* keywords for node and edge marks */
+red		    { yylval.mark = RED; return MARK; } 
+green		    { yylval.mark = GREEN; return MARK; } 
+blue		    { yylval.mark = BLUE; return MARK; } 
+grey		    { yylval.mark = GREY; return MARK; } 
+dashed		    { yylval.mark = DASHED; return MARK; } 
+
+ /* keywords for GP types */
+int		    { yylval.type = GP_INT; return INT; } 
+string		    { yylval.type = GP_STRING; return STRING; } 
+atom     	    { yylval.type = GP_ATOM; return ATOM; } 
+list		    { yylval.type = GP_LIST; return LIST; } 
 
  /* single character tokens */
 "(" |		  
@@ -111,7 +118,7 @@ injective           return INJECTIVE;
 
  /* macro identifiers must start with a capital letter 
   * other identifiers start with a lowercase letter    */
-[A-Z][a-zA-Z0-9_-]*   { yylval.str = yytext; return MACID; }
+[A-Z][a-zA-Z0-9_-]*   { yylval.str = yytext; return MACID; } /* other characters may be allowed */
 [a-z][a-zA-Z0-9_-]*   { yylval.str = yytext; return ID; }
 \"[a-z_-]*\"          { yylval.str = yytext; return STR; }
 [ \t\r]+              /* ignore white space */

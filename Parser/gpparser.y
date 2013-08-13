@@ -89,12 +89,16 @@ typedef struct YYLTYPE {
 
 %left '+' '-' AND	/* lowest precedence level, left associative */
 %left '*' '/' OR
-%left UMINUS NOT	
-%left '.'	/* highest precedence level. UMINUS represents unary '-' */
+%left UMINUS NOT	/* UMINUS represents unary '-' */
+%left '.'	/* highest precedence level */
 
-%union {
-  int num;    /* A NUM token contains a number */
-  char *str;  /* STRING and ID tokens contain a string */
+%union {  /* defines possible values of nonterminals and tokens */
+  int num;    /* value of a NUM token */
+  char *str;  /* value of STRING and ID tokens */
+  mark_t mark; /* value of a MARK token */
+  type_t type; /* value of TYPE and SUBTYPE tokens */
+  symbol *name; /* pointer to symbol table */
+  AST *tree; /* pointer to an AST */
 } 
 
 %start Program	/* Program is the start symbol of the grammar */
@@ -104,9 +108,9 @@ typedef struct YYLTYPE {
  /* Grammar for textual GP2 programs */
 
 Program: /* empty */
-       | Program Declaration
+       | Program Declaration /* new AST. */ 
 
-Declaration: MainDecl
+Declaration: MainDecl /* $$ = $1 */
      	   | MacroDecl
            | RuleDecl
 
@@ -120,7 +124,7 @@ ProcList: /* empty */
 	| ProcList MacroDecl /* new AST */
 
 ComSeq: Command /* $$ = $1 */ 
-      | Command ';' ComSeq  /* new AST. Explain right recursion. */
+      | ComSeq ';' Command  /* new AST */
 
 Command: Block /* $$ = $1 */
        | IF Block THEN Block /* new GPCond, third arg empty */
@@ -148,7 +152,7 @@ RuleSetCall: RuleID /* $$ = $1 */
 
 IDList: /* empty */ 
       | RuleID /* $$ = $1 */
-      | RuleID ',' IDList /* new AST */
+      | IDList ',' RuleID /* new AST */
 
 MacroCall: MacroID
 
@@ -158,22 +162,26 @@ RuleDecl: RuleID '(' ParamList ')' Graphs Inter CondDecl INJECTIVE '=' Bool /* n
 
 ParamList: /* empty */
 	 | VarList ':' Type /* new AST type [Type]List where [Type] depends on $3. Or maybe a generic VarList will suffice as symtable will contain type information */
-	 | ParamList ';' VarList ':' Type 
+	 | ParamList ';' VarList ':' Type /* new AST [Type]List as above*/
 
-VarList: Variable /* $$ = $1 or maybe nothing */
+ /* some post-processing could be done to sort out the parameter list AST here as the AST generated
+    in this manner is a bit strange. Need to remove the intermediate ASTs created from the reduction
+    of the second VarList production so that their parents point directly to the variables. This may be achieved during AST construction with some pointer manipulation */
+
+VarList: Variable /* $$ = $1 */
        | VarList ',' Variable /* new AST type VarList */
 
 Inter: INTERFACE '{' NodePairList '}'
 
- /* Like NodeList, split NodePairList up into NodePair */
-
 NodePairList: /* empty */
-	    | '(' NodeID ',' NodeID ')'
-            | NodePairList ',' '(' NodeID ',' NodeID ')'
+	    | NodePair
+            | NodePairList ',' NodePair
+
+NodePair: '(' NodeID ',' NodeID ')'
 
 Bool: TRUE | FALSE
 
-Type: INT | STRING | ATOM | LIST
+Type: INT | STRING | ATOM | LIST /* keep track of the specific type somehow for VarList : Type */
 
  /* Grammar for GP2 graphs */
 
@@ -184,17 +192,17 @@ RHS: Graph /* $$ = $1, possible a RHS flag */
 
 Graph: Position '|' NodeList '|' EdgeList /* new GPGraph */
 
- /* for NodeList and EdgeList, create new NTs for each individual
-    item i.e. Node: '(' NodeID ... and then do
-    NodeList: empty | Node | NodeList ',' Node. This will make the AST construction possible. */
+NodeList: /* empty */
+        | Node
+        | NodeList ',' Node	
 
-NodeList: /* empty */ 
-        | '(' NodeID RootNode ',' Label ',' Position ')'
-	| NodeList ',' '(' NodeID RootNode ',' Label ',' Position ')'
+Node:  '(' NodeID RootNode ',' Label ',' Position ')'
 
 EdgeList: /* empty */
-	| '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
-	| EdgeList ',' '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
+	| Edge
+        | Edge ',' EdgeList
+
+Edge: '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
 
 RootNode: /* empty */
 	| ROOT /* switch root flag on */
@@ -206,7 +214,7 @@ Position: '(' NUM ',' NUM ')' /* new GPPos $2 $4 */
 CondDecl: /* empty */
         | WHERE Condition
 
-Condition: Subtype '(' Variable ')' /* use the subtype flag from Subtype production to create a new node of the appropriate type, with a symbol table pointer to Variable. Or maybe do nothing with the Subtype production and deal with this as if it were, say, STRING '(' Variable ')' */
+Condition: Subtype '(' Variable ')' /* new GPTypeCheck node */
          | EDGE '(' NodeID ',' NodeID LabelArg ')'	/*LabelArg NT is for optional Label argument */
          | RelList
          | NOT Condition /* new AST with one branch */
@@ -214,7 +222,7 @@ Condition: Subtype '(' Variable ')' /* use the subtype flag from Subtype product
          | Condition AND Condition /* new AST */
 	 | '(' Condition ')' /* $$ = $2 */
 
-Subtype: INT | STRING | ATOM /* set a subtype flag to whichever keyworld is reduced. Somehow. */
+Subtype: INT | STRING | ATOM /* type_t values  */
 
 LabelArg: /* empty */	
        | ',' Label
@@ -224,17 +232,14 @@ RelList: List RelOp List /* new AST with type RelOp */
 
 RelOp: '=' | NE | '>' | GTE | '<' | LTE /* record the operator somehow */
 
- 
- /* Grammar for GP2 Labels */
+  /* Grammar for GP2 Labels */
 
 Label: List /* $$ = $1 */
-     | List '#' Mark /* new AST with type Label, left points to List, right to Mark */
+     | List '#' MARK /* new AST with type Label, left points to List, right to either a GPMark node or just have the Mark as an attribute. For the former, the argument for the right branch can be newMark. */
 
 List: EMPTY
     | AtomExp /* when this is reduced, AtomExp ($1) points to the AST of the most recently parsed AtomExp. Make List point to this with $$ = $1. */
-    | AtomExp ':' List /* new AST, left branch List, right branch AtomExp. Explain right recursion. */
-
-Mark: RED | BLUE | GREEN | GREY | DASHED
+    | List ':' AtomExp /* new AST, left branch List, right branch AtomExp. */
 
 AtomExp: Variable /* new GPVarExp */
        | NUM /* new GPnum */
@@ -275,7 +280,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if(!(yyin = fopen(argv[1], "r"))) {	/* Flex scans from yyin which is assigned to input file. */
+  if(!(yyin = fopen(argv[1], "r"))) {	/* Flex scans from yyin. */
      perror(argv[1]);
      yylineno = 1;	/* reset yylineno */
      return 1;
@@ -292,7 +297,7 @@ int main(int argc, char** argv) {
   fclose(yyin);
 }
 
-/* default bison error function, uses the location stored in yylloc */
+/* default bison error function, implicitly uses the location stored in yylloc */
 
 void yyerror(char *errormsg, ...)
 {
@@ -306,7 +311,7 @@ void yyerror(char *errormsg, ...)
      fprintf(stderr, "\n");
 }
 
-/* alternate error function with a location as its first argument */
+/* alternate error function for an explicit location */
 
 void lyyerror(YYLTYPE loc, char *errormsg, ...)
 {
