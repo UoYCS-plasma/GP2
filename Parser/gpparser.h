@@ -2,8 +2,9 @@
 
 /*                                     gpparser.h                               
  * 
- * This is a header file for the GP2 parser. It contains an interface to the lexer and
- * some other stuff which I will identify later.
+ * This is a header file for the GP2 parser. It contains an interface to the lexer, enumerated
+ * type definitions, AST node definitions and prototypes for AST constructors.
+ * 
  *
  * Created on 28/5/13 by Chris Bak */
 
@@ -18,6 +19,8 @@ extern char *curfilename;
 typedef enum {RED, GREEN, BLUE, GREY, DASHED} mark_t; /* node/edge marks */
 
 typedef enum {GP_INT, GP_STRING, GP_ATOM, GP_LIST} type_t; 
+
+typedef enum {EQ, NEQ, GT, GTE, LT, LTE} rel_t; /* relational operators *?
 
 /* AST node types are as follows:
  * Program - The root of the AST. List of declarations. 
@@ -138,6 +141,12 @@ typedef struct GPDegree {
   YYLTYPE position; 
   symbol *node;
 } GPDegree;
+
+typedef struct GPLength {
+  int nodetype; /* List length or String length */
+  YYLTYPE position;
+  struct AST *arg;
+}
 
 typedef struct GPTypeCheck {
   int nodetype; /* Int, String or Atom */

@@ -11,16 +11,13 @@
 * but the graph grammar of this parser can be used. I will focus on just GP programs for the
 * time being.
 * 
-* 11/7/13: Removed Block '!' from Command, added '!' productions lower down so that 'rule!' 
-* statements in conditional branches aren't required to be bracketed.
-*
 /* /////////////////////////////////////////////////////////////////////////////////////////// */
 
 
 %{
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
+#include <stdarg.h> /* for error functions */
 #include "gpparser.h"
 void yyerror(char *errormsg, ...);
 %}
@@ -92,9 +89,12 @@ typedef struct YYLTYPE {
 %left UMINUS NOT	/* UMINUS represents unary '-' */
 %left '.'	/* highest precedence level */
 
+/* %type to set types of NTs */
+
 %union {  /* defines possible values of nonterminals and tokens */
   int num;    /* value of a NUM token */
   char *str;  /* value of STRING and ID tokens */
+  rel_t rel;  /* value of REL token */
   mark_t mark; /* value of a MARK token */
   type_t type; /* value of TYPE and SUBTYPE tokens */
   symbol *name; /* pointer to symbol table */
@@ -216,7 +216,7 @@ CondDecl: /* empty */
 
 Condition: Subtype '(' Variable ')' /* new GPTypeCheck node */
          | EDGE '(' NodeID ',' NodeID LabelArg ')'	/*LabelArg NT is for optional Label argument */
-         | RelList
+         | CmpList
          | NOT Condition /* new AST with one branch */
          | Condition OR Condition  /* new AST */
          | Condition AND Condition /* new AST */
@@ -227,10 +227,9 @@ Subtype: INT | STRING | ATOM /* type_t values  */
 LabelArg: /* empty */	
        | ',' Label
 
-RelList: List RelOp List /* new AST with type RelOp */
-       | RelList RelOp List /* as above. Is there a way to make this into a sequence of AND ASTs instead of a list of RelOps? MAYBE. */
+CmpList: List CMP List /* new AST with type $2 */
+       | RelList CMP  List /* as above. Is there a way to make this into a sequence of AND ASTs instead of a list of RelOps? MAYBE. */
 
-RelOp: '=' | NE | '>' | GTE | '<' | LTE /* record the operator somehow */
 
   /* Grammar for GP2 Labels */
 
@@ -243,8 +242,10 @@ List: EMPTY
 
 AtomExp: Variable /* new GPVarExp */
        | NUM /* new GPnum */
-       | INDEG '(' NodeID ')' /* new GPdegree */
-       | OUTDEG '(' NodeID ')' /* new GPdegree */
+       | INDEG '(' NodeID ')' /* new GPDegree */
+       | OUTDEG '(' NodeID ')' /* new GPDegree */
+       | LLEN '(' AtomExp ')' /* new GPLength */
+       | SLEN '(' AtomExp ')' /* new GPLength */
        | '-' AtomExp %prec UMINUS	/* Use the precedence of UMINUS for this rule. Change value of AST pointed to by AtomExp to  0 - yylval. Context: AtomExp must be an integer expression */ 
        | '(' AtomExp ')' /* probably $$ = $2 */
        | AtomExp '+' AtomExp /* new AST for arithops. Context: AtomExps must be integer expressions */

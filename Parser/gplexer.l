@@ -73,6 +73,8 @@ list		    return LIST;
 interface	    return INTERFACE;
 empty		    return EMPTY;
 injective           return INJECTIVE;
+llength		    return LLEN;
+slength	            return SLEN;
 
  /* keywords for node and edge marks */
 red		    { yylval.mark = RED; return MARK; } 
@@ -86,6 +88,14 @@ int		    { yylval.type = GP_INT; return INT; }
 string		    { yylval.type = GP_STRING; return STRING; } 
 atom     	    { yylval.type = GP_ATOM; return ATOM; } 
 list		    { yylval.type = GP_LIST; return LIST; } 
+
+ /* relational operators */
+">"		    { yylval.type = GT; return CMP; } 
+"<"          	    { yylval.type = LT; return CMP; } 
+"="                 { yylval.rel = EQ; return CMP; }
+"!="		    { yylval.rel = NEQ; return CMP; }
+">="	            { yylval.rel = GTE; return CMP; }
+"<="	            { yylval.rel = LTE; return CMP; }
 
  /* single character tokens */
 "(" |		  
@@ -104,17 +114,9 @@ list		    { yylval.type = GP_LIST; return LIST; }
 "-" |		    
 "*" |		  
 "/" |		    
-"=" |                 
-">" |		
-"<" |	 	   
-"#"	 return yytext[0];
-
- /* multiple character tokens */
-"(R)" 		    return ROOT;
-"!="		    return NE;
-"=>"                return ARROW;
-">="	            return GTE;
-"<="	            return LTE;
+"#"		 return yytext[0];
+"=>"             return ARROW;
+"(R)"	 	 return ROOT;
 
  /* macro identifiers must start with a capital letter 
   * other identifiers start with a lowercase letter    */
