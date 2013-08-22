@@ -20,9 +20,9 @@ typedef enum {RED, GREEN, BLUE, GREY, DASHED} mark_t; /* node/edge marks */
 
 typedef enum {GP_INT, GP_STRING, GP_ATOM, GP_LIST} type_t; 
 
-typedef enum {EQ, NEQ, GT, GTE, LT, LTE} rel_t; /* relational operators *?
+typedef enum {EQ, NEQ, GT, GTE, LT, LTE} rel_t; /* relational operators */
 
-/* AST node types are as follows:
+/* struct AST node types are as follows:
  * Program - The root of the AST. List of declarations. 
  * Main - Points to the command sequence following 'main ='. Only one such node allowed.
  * Sequence - The sequential composition operator ';'. The command sequence of the left
@@ -43,18 +43,21 @@ typedef enum {EQ, NEQ, GT, GTE, LT, LTE} rel_t; /* relational operators *?
  * Label - Points to a mark and to a list of AtomExps
  * Cons - The list operator ':'
  * Concat - The string operator '.'
- * Arithmetic Operatprs - +, -, *, /  
+ * Arithmetic Operators - +, -, *, /  
  */
 
+typedef enum {PROGRAM, MAIN, SEQUENCE, LOCAL_MACRO, LOCAL_RULE, RULE_LIST, VAR_LIST, RULE_GRAPHS, INTERFACE_LIST, NODE_PAIR, NODE_LIST, EDGE_LIST, BOOL_OP, REL_OP, LABEL, CONS, CONCAT, ARITH_OP,
+IF_STMT, TRY_STMT, MACRO_DECL, ALAP, RULE_CHOICE, RULE_DECL, VARIABLE, GRAPH, POSITION, NODE, EDGE, EDGE_PRED, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH, INT_CHECK, STR_CHECK, ATOM_CHECK, INT_CONST, STRING_CONST, ATOM_CONST} ast_node_t; /* AST node types */
+
 typedef struct AST {
-  int nodetype; 
-  YYLTYPE position;  /* Location of symbol in the source file */
+  ast_node_t nodetype; 
+  YYLTYPE position;  /* location of symbol in the source file */
   struct AST *left; 
   struct AST *right;
 } AST;
 
 typedef struct GPCond {
-  int nodetype; /* IfStmt, TryStmt */
+  ast_node_t nodetype; /* IF_STMT, TRY_STMT */
   YYLTYPE position; 
   struct AST *condition;
   struct AST *then_branch;
@@ -62,40 +65,46 @@ typedef struct GPCond {
 } GPCond;
 
 typedef struct GPMacroDecl {
-  int nodetype; /* MacroDecl */
+  ast_node_t nodetype; /* MACRO_DECL */
   YYLTYPE position;
-  symbol *name /* name of macro */
+  symbol *name 
   struct AST *localmacro
   struct AST *localrule
   struct AST *comseq
 } GPMacroDecl;
 
 typedef struct GPAlap {
-  int nodetype; /* '!' */
+  ast_node_t nodetype; /* ALAP */
   YYLTYPE position;  
   struct AST *comseq;
 } GPAlap;
 
 typedef struct GPChoice {
-  int nodetype; /* RuleChoice */
+  ast_node_t nodetype; /* RULE_CHOICE */
   YYLTYPE position;  
   struct AST *first_comseq;
   struct AST *second_comseq;
 } GPChoice;
 
 typedef struct GPRuleDecl {
-  int nodetype; /* RuleDecl */
+  ast_node_t nodetype; /* RULE_DECL */
   YYLTYPE position;
-  symbol *name /* name of rule */
-  int injective; /* 0 or 1 */
+  symbol *name 
+  int injective; /* 0 for non-injective matching, 1 otherwise */
   struct AST *vars
   struct AST *graphs
   struct AST *interface
   struct AST *condition  
 } GPRuleDecl;
 
+typedef struct GPVar {
+  ast_node_t nodetype; /* VARIABLE */
+  YYLTYPE position;
+  symbol *name;
+}
+
 typedef struct GPGraph {
-  int nodetype; /* Graph */
+  ast_node_t nodetype; /* GRAPH */
   YYLTYPE position
   struct AST *gpposition;
   struct AST *nodes;
@@ -103,33 +112,32 @@ typedef struct GPGraph {
 } GPGraph;
 
 typedef struct GPPos {
-  int nodetype; /* Position */
+  ast_node_t nodetype; /* POSITION */
   YYLTYPE position; 
   int x;
   int y;
 } GPPos;
 
 typedef struct GPNode {
-  int nodetype; /* Node */
+  ast_node_t nodetype; /* NODE */
   YYLTYPE position; 
-  symbol *name; /* pointer to identifier entry in symbol table */
+  symbol *name; 
   int root; /* 0 if node is not a root, 1 otherwise */
-  struct AST *label; /* probably belongs in the symbol table */
+  struct AST *label; 
   struct AST *gpposition; 
 } GPNode;
 
 typedef struct GPEdge {
-  int nodetype; /* Edge */
+  ast_node_t nodetype; /* EDGE */
   YYLTYPE position;
-  symbol *name; /* pointer to edge identifier in symbol table */
-  /* below three fields should probably be in the symbol table entry */
-  struct AST *source; /* pointer to source node in symbol table */
+  symbol *name; 
+  struct AST *source; 
   struct AST *target; 
   struct AST *label; 
 } GPEdge;
 
 typedef struct GPEdgePred {
-  int nodetype; /* EdgePred */
+  ast_node_t nodetype; /* EDGEPRED */
   YYLTYPE position; 
   struct AST *source;
   struct AST *target;
@@ -137,61 +145,61 @@ typedef struct GPEdgePred {
 } GPEdgePred;
 
 typedef struct GPDegree {
-  int nodetype; /* Indegree or Outdegree */
+  ast_node_t nodetype; /* INDEGREE, OUTDEGREE */
   YYLTYPE position; 
   symbol *node;
 } GPDegree;
 
 typedef struct GPLength {
-  int nodetype; /* List length or String length */
+  ast_node_t nodetype; /* LIST_LENGTH, STRING_LENGTH */
   YYLTYPE position;
   struct AST *arg;
 }
 
 typedef struct GPTypeCheck {
-  int nodetype; /* Int, String or Atom */
+  ast_node_t nodetype; /* INT_CHECK, STRING_CHECK, ATOM_CHECK */
   YYLTYPE position; 
   symbol *var;
 } GPTypeCheck;
 
-/* an idea is to merge GP's constants into one node type with
-a union value. */
-
 typedef struct GPNumber {
-  int nodetype; /* Integer constant */
+  ast_node_t nodetype; /* INT_CONST */
   YYLTYPE position;  
   int val;
 } GPNumber;
 
 typedef struct GPString {
-  int nodetype; /* String constant */
+  ast_node_t nodetype; /* STRING_CONST */
   YYLTYPE position; 
   char *val;
 } GPString;
 
 typedef struct GPMark {
-  int nodetype; /* Mark */
+  ast_node_t nodetype; /* MARK_CONST */
   YYLTYPE position; 
-  mark_t val; /* enum type of all the possible marks in GP */
+  mark_t val;
 } GPMark;
 
 /* constructors */
 
-AST *newAST (int nodetype, YYLTYPE pos, AST *left, AST* right);
-AST *newCond (int nodetype, YYLTYPE pos, AST *condition, AST *then_branch, AST *else_branch);
-AST *newMacroDecl (int nodetype, YYLTYPE pos, symbol *name, AST *localmacro, AST *localrule, AST* comseq);
-AST *newAlap (int nodetype, YYLTYPE pos, AST *comseq);
-AST *newChoice (int nodetype, YYLTYPE pos, AST *first_comseq, AST* second_comseq);
-AST *newRuleDecl (int nodetype, YYLTYPE pos, symbol *name, int injective, AST *vars, AST *graphs, AST *interface, AST *condition);
-AST *newGraph (int nodetype, YYLTYPE pos, AST *gpposition, AST *nodes, AST *edges);
-AST *newPos (int nodetype, YYLTYPE pos, int x, int y);
-AST *newNode (int nodetype, YYLTYPE pos, symbol *name, AST *label, AST *gpposition);
-AST *newEdge (int nodetype, YYLTYPE pos, symbol *name, AST *source, AST *target, AST *label);
-AST *newEdgePred (int nodetype, YYLTYPE pos, AST *source, AST *target, AST *label);
-AST *newTypeCheck (int nodetype, YYLTYPE pos, symbol *var);
-AST *newNumber (int nodetype, YYLTYPE pos, int val);
-AST *newString (int nodetype, YYLTYPE pos, char *val);
-AST *newMark (int nodetype, YYLTYPE pos, mark_t val);
+AST *newAST (ast_node_t nodetype, YYLTYPE position, AST *left, AST* right);
+AST *newCond (ast_node_t nodetype, YYLTYPE position, AST *condition, AST *then_branch, AST *else_branch);
+AST *newMacroDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, AST *localmacro, AST *localrule, AST* comseq);
+AST *newAlap (ast_node_t nodetype, YYLTYPE position, AST *comseq);
+AST *newChoice (ast_node_t nodetype, YYLTYPE position, AST *first_comseq, AST* second_comseq);
+AST *newRuleDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, int injective, AST *vars, AST *graphs, AST *interface, AST *condition);
+AST *newVar (ast_node_t nodetype, YYLTYPE position, symbol *name);
+AST *newGraph (ast_node_t nodetype, YYLTYPE position, AST *gpposition, AST *nodes, AST *edges);
+AST *newPos (ast_node_t nodetype, YYLTYPE position, int x, int y);
+AST *newNode (ast_node_t nodetype, YYLTYPE position, symbol *name, int root, AST *label, AST *gpposition);
+AST *newEdge (ast_node_t nodetype, YYLTYPE position, symbol *name, AST *source, AST *target, AST *label);
+AST *newEdgePred (ast_node_t nodetype, YYLTYPE position, AST *source, AST *target, AST *label);
+AST *newDegree (ast_node_t nodetype, YYLTYPE position, symbol *name);
+AST *newLength (ast_node_t nodetype, YYLTYPE position, AST *arg);
+AST *newTypeCheck (ast_node_t nodetype, YYLTYPE position, symbol *var);
+AST *newNumber (ast_node_t nodetype, YYLTYPE position, int val);
+AST *newString (ast_node_t nodetype, YYLTYPE position, char *val);
+AST *newMark (ast_node_t nodetype, YYLTYPE position, mark_t val);
 
 
   

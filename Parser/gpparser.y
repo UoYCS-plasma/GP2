@@ -244,8 +244,8 @@ AtomExp: Variable /* new GPVarExp */
        | NUM /* new GPnum */
        | INDEG '(' NodeID ')' /* new GPDegree */
        | OUTDEG '(' NodeID ')' /* new GPDegree */
-       | LLEN '(' AtomExp ')' /* new GPLength */
-       | SLEN '(' AtomExp ')' /* new GPLength */
+       | LLEN '(' List ')' /* new GPLength */
+       | SLEN '(' List ')' /* new GPLength */
        | '-' AtomExp %prec UMINUS	/* Use the precedence of UMINUS for this rule. Change value of AST pointed to by AtomExp to  0 - yylval. Context: AtomExp must be an integer expression */ 
        | '(' AtomExp ')' /* probably $$ = $2 */
        | AtomExp '+' AtomExp /* new AST for arithops. Context: AtomExps must be integer expressions */
@@ -302,14 +302,16 @@ int main(int argc, char** argv) {
 
 void yyerror(char *errormsg, ...)
 {
-   va_list args;
-   va_start(args, errormsg);
+   va_list args; /* variables of type va_list stores variable length argument list */
+   va_start(args, errormsg); /* macro to initalise args to retrieve arguments after char *errormsg */
 
    if(yylloc.first_line)
      fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': ", yylloc.filename, yylloc.first_line,
        yylloc.first_column, yylloc.last_line, yylloc.last_column, yytext);
      vfprintf(stderr, errormsg, args);
      fprintf(stderr, "\n");
+
+   va_end(args);
 }
 
 /* alternate error function for an explicit location */
@@ -324,6 +326,8 @@ void lyyerror(YYLTYPE loc, char *errormsg, ...)
        loc.first_column, loc.last_line, loc.last_column, yytext);
      vfprintf(stderr, errormsg, args);
      fprintf(stderr, "\n");
+
+   va_end(args);
 }
 
 
