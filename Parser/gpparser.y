@@ -93,7 +93,8 @@ typedef struct YYLTYPE {
 
 %union {  /* defines possible values of nonterminals and tokens */
   int num;    /* value of a NUM token */
-  char *str;  /* value of STRING and ID tokens */
+  char *str;  /* value of STRING tokens */
+  char *id;   /* value of MACID and ID tokens */
   rel_t rel;  /* value of REL token */
   mark_t mark; /* value of a MARK token */
   type_t type; /* value of TYPE and SUBTYPE tokens */
@@ -225,35 +226,36 @@ Condition: Subtype '(' Variable ')' /* new GPTypeCheck node */
 Subtype: INT | STRING | ATOM /* type_t values  */
 
 LabelArg: /* empty */	
-       | ',' Label
+ 	| ',' Label
 
 CmpList: List CMP List /* new AST with type $2 */
-       | RelList CMP  List /* as above. Is there a way to make this into a sequence of AND ASTs instead of a list of RelOps? MAYBE. */
+       | RelList CMP List /* as above. Is there a way to make this into a sequence of AND ASTs instead of a list of RelOps? MAYBE. */
 
 
   /* Grammar for GP2 Labels */
 
-Label: List /* $$ = $1 */
-     | List '#' MARK /* new AST with type Label, left points to List, right to either a GPMark node or just have the Mark as an attribute. For the former, the argument for the right branch can be newMark. */
+Label: List 				{ $$ = newLabel(yylloc, NONE , $1); }
+     | List '#' MARK			{ $$ = newLabel(yylloc, $3, $1); } 
 
-List: EMPTY
-    | AtomExp /* when this is reduced, AtomExp ($1) points to the AST of the most recently parsed AtomExp. Make List point to this with $$ = $1. */
-    | List ':' AtomExp /* new AST, left branch List, right branch AtomExp. */
+List: EMPTY                             { $$ = 0; }
+    | AtomExp				{ $$ = newAtom(yylloc, $1, 0 /* null pointer */); } 
+    | List ':' AtomExp			{ $$ = newAtom(yylloc, $3, $1); }
 
-AtomExp: Variable /* new GPVarExp */
-       | NUM /* new GPnum */
-       | INDEG '(' NodeID ')' /* new GPDegree */
-       | OUTDEG '(' NodeID ')' /* new GPDegree */
-       | LLEN '(' List ')' /* new GPLength */
-       | SLEN '(' List ')' /* new GPLength */
-       | '-' AtomExp %prec UMINUS	/* Use the precedence of UMINUS for this rule. Change value of AST pointed to by AtomExp to  0 - yylval. Context: AtomExp must be an integer expression */ 
-       | '(' AtomExp ')' /* probably $$ = $2 */
-       | AtomExp '+' AtomExp /* new AST for arithops. Context: AtomExps must be integer expressions */
-       | AtomExp '-' AtomExp
-       | AtomExp '*' AtomExp
-       | AtomExp '/' AtomExp		/* Ambiguity resolved by explicit precedences */
-       | STR /* new GPstring */
-       | AtomExp '.' AtomExp /* new AST. Context: Both AtomExps need to be strings */
+AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
+       | NUM 				{ $$ = newNumber(yylloc, $1); }
+       | STR 				{ $$ = newString(yylloc, $1); }
+       | INDEG '(' NodeID ')' 		{ $$ = newDegreeOp(INDEGREE, yylloc, $3); }
+       | OUTDEG '(' NodeID ')' 		{ $$ = newDegreeOp(OUTDEGREE, yylloc, $3); }
+       | LLEN '(' List ')' 		{ $$ = newListLength(yylloc, $3); }
+       | SLEN '(' AtomExp ')' 		{ $$ = newStringLength(yylloc, $3); }
+       | '-' AtomExp %prec UMINUS 	{ $2 = $2*(-1); $$ = $2; } 
+       | '(' AtomExp ')' 		{ $$ = $2; }
+       | AtomExp '+' AtomExp 		{ $$ = newBinaryOp(ADD, yylloc, $1, $3);  }
+       | AtomExp '-' AtomExp 		{ $$ = newBinaryOp(SUBTRACT, yylloc, $1, $3); }
+       | AtomExp '*' AtomExp 		{ $$ = newBinaryOp(MULTIPLY, yylloc, $1, $3); }
+       | AtomExp '/' AtomExp 		{ $$ = newBinaryOp(DIVIDE, yylloc, $1, $3); }
+	/* Ambiguity resolved by explicit precedences */
+       | AtomExp '.' AtomExp 		{ $$ = newBinaryOp(CONCAT, yylloc, $1, $3); }
 
  /* Identifiers */
 

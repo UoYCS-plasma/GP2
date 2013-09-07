@@ -5,7 +5,7 @@
 * Contains the functions for creating AST tree nodes, manipulating the AST and symbol table
 * management. 
 *
-* Created on 22/5/2013 by Chris Bak 
+* Created on 22/7/2013 by Chris Bak 
 * 
 * ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
@@ -15,19 +15,209 @@
 
 AST *newAST (ast_node_t nodetype, YYLTYPE position, AST *left, AST* right)
 {
-    AST *ast = malloc(sizeof(ast));
+    AST *a = malloc(sizeof(ast));
     
     if(!a) {
       yyerror("insufficient space");
       exit(0);
     }
-    ast->nodetype = nodetype;
-    ast->position = position;
-    ast->left = left;
-    ast->right = right;
+    a->nodetype = nodetype;
+    a->position = position;
+    a->left = left;
+    a->right = right;
 
-    return ast;
+    return a;
 }
+
+
+GPAtomicExp *newVariable (YYLTYPE position, symbol *name)
+{
+     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+ 
+     if(!a) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     a->nodetype = VARIABLE;
+     a->position = position;
+     a->value.var = name;
+
+     return a;
+}
+
+GPAtomicExp *newNumber (YYLTYPE position, int num)
+{
+     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+ 
+     if(!a) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     a->nodetype = INT_CONSTANT;
+     a->position = position;
+     a->value.num = num;
+
+     return a;
+}
+
+
+GPAtomicExp *newString (YYLTYPE position, char *str)
+{
+     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+ 
+     if(!a) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     a->nodetype = STRING_CONSTANT;
+     a->position = position;
+     a->value.str = str;
+
+     return a;
+}
+
+GPAtomicExp *newDegreeOp (atomexp_t nodetype, YYLTYPE position, symbol *node_id)
+{
+     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+ 
+     if(!a) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     a->nodetype = nodetype; /*INDEGREE or OUTDEGREE */
+     a->position = position;
+     a->value.indeg.node_id = node_id;
+
+     return a;
+}
+
+GPAtomicExp *newListLength (YYLTYPE position, AST *list)
+{
+     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+ 
+     if(!a) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     a->nodetype = LIST_LENGTH 
+     a->position = position;
+     a->value.llength.list = list;
+
+     return a;
+}
+
+GPAtomicExp *newStringLength (YYLTYPE position, GPAtomicExp *slength)
+{
+     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+ 
+     if(!a) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     a->nodetype = STRING_LENGTH 
+     a->position = position;
+     a->value.slength = slength;
+
+     return a;
+}
+
+GPAtomicExp *newBinaryOp (atomexp_t nodetype; YYLTYPE position, GPAtomicExp *left, GPAtomicExp *right)
+{
+     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+ 
+     if(!a) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     a->nodetype = nodetype /* ADD, SUBTRACT, MULTIPLE, DIVIDE, CONCAT */ 
+     a->position = position;
+     a->value.binOp.left = left;
+     a->value.binOp.right = right;
+
+     return a;
+}
+
+GPCondExp *newSubtypePred (YYLTYPE position, symbol *var)
+{
+     GPCondExp *c = malloc(sizeof(GPCondExp));
+ 
+     if(!c) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     c->nodetype = SUBTYPE
+     c->position = position;
+     c->var = var;
+
+     return c;
+}
+
+GPCondExp *newEdgePred (YYLTYPE position, symbol *source, symbol *target, AST *label)
+{
+     GPCondExp *c = malloc(sizeof(GPCondExp));
+ 
+     if(!c) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     c->nodetype = EDGE_PRED
+     c->position = position;
+     c->value.edgePred.source = source;
+     c->value.edgePred.target = target;
+     c->value.edgePred.label = label;
+
+     return c;
+}
+
+
+GPCondExp *newNotExp (YYLTYPE position, GPCondExp *notExp)
+{
+     GPCondExp *c = malloc(sizeof(GPCondExp));
+ 
+     if(!c) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     c->nodetype = NOT
+     c->position = position;
+     c->value.notExp = notExp;
+
+     return c;
+}
+
+GPCondExp *newBinaryExp (condexp_t nodetype; YYLTYPE position, GPCondExp *left, GPCondExp *right)
+{
+     GPCondExp *c = malloc(sizeof(GPCondExp));
+ 
+     if(!c) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     c->nodetype = nodetype /* AND, OR */ 
+     c->position = position;
+     c->value.binExp.left = left;
+     c->value.binExp.right = right;
+
+     return c;
+}
+
+
+GPCondExp *newRelationalOp (condexp_t nodetype; YYLTYPE position, AST *left, AST *right)
+{
+     GPCondExp *c = malloc(sizeof(GPCondExp));
+ 
+     if(!c) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     c->nodetype = nodetype /* EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */ 
+     c->position = position;
+     c->value.relExp.left = left;
+     c->value.rekExp.right = right;
+
+     return c;
+}
+
 
 
 AST *newCond (ast_node_t nodetype, YYLTYPE position, AST *condition, AST *then_branch, AST *else_branch)
@@ -115,20 +305,7 @@ AST *newRuleDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, int injec
     return (struct ast *) ruledecl;
 }
 
-AST *newVar (ast_node_t nodetype, YYLTYPE position, symbol *name)
-{
-     AST *var = malloc(sizeof(GPVar));
- 
-     if(!var) {
-       yyerror("insufficient space");
-       exit(0);
-     }
-     var->nodetype = nodetype;
-     var->position = position;
-     var->name = name
 
-     return (struct ast *) var;
-}
 
 AST *newGraph (ast_node_t nodetype, YYLTYPE position, AST *gpposition, AST *nodes, AST *edges)
 {

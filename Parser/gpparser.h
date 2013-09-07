@@ -16,11 +16,11 @@ extern int yylineno;
 extern FILE* yyin;	
 extern char *curfilename;	
 
-typedef enum {RED, GREEN, BLUE, GREY, DASHED} mark_t; /* node/edge marks */
+typedef enum {RED, GREEN, BLUE, GREY, DASHED, NONE} mark_t; /* node/edge marks */
 
 typedef enum {GP_INT, GP_STRING, GP_ATOM, GP_LIST} type_t; 
 
-typedef enum {EQ, NEQ, GT, GTE, LT, LTE} rel_t; /* relational operators */
+typedef enum {EQ, NEQ, GT, GTEQ, LT, LTEQ} rel_t; /* relational operators */
 
 /* struct AST node types are as follows:
  * Program - The root of the AST. List of declarations. 
@@ -46,23 +46,87 @@ typedef enum {EQ, NEQ, GT, GTE, LT, LTE} rel_t; /* relational operators */
  * Arithmetic Operators - +, -, *, /  
  */
 
-typedef enum {PROGRAM, MAIN, SEQUENCE, LOCAL_MACRO, LOCAL_RULE, RULE_LIST, VAR_LIST, RULE_GRAPHS, INTERFACE_LIST, NODE_PAIR, NODE_LIST, EDGE_LIST, BOOL_OP, REL_OP, LABEL, CONS, CONCAT, ARITH_OP,
-IF_STMT, TRY_STMT, MACRO_DECL, ALAP, RULE_CHOICE, RULE_DECL, VARIABLE, GRAPH, POSITION, NODE, EDGE, EDGE_PRED, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH, INT_CHECK, STR_CHECK, ATOM_CHECK, INT_CONST, STRING_CONST, ATOM_CONST} ast_node_t; /* AST node types */
+/* general structure for lists. Maybe rename to ListExp or something */
 
-typedef struct AST {
-  ast_node_t nodetype; 
+typedef enum {PROGRAM, MAIN, SEQUENCE, LOCAL_MACRO, LOCAL_RULE, RULE_LIST, VAR_LIST, RULE_GRAPHS, INTERFACE_LIST, NODE_PAIR, NODE_LIST, EDGE_LIST, IF_STMT, TRY_STMT, MACRO_DECL, ALAP, RULE_CHOICE, RULE_DECL, VARIABLE, GRAPH, POSITION, NODE, EDGE, GREATER, GREATER_EQUAL, EQUAL, NOT_EQUAL, LESS, LESS_EQUAL} astnode_t; /* AST node types */
+
+typedef enum {LABEL, LIST} listnode_t;
+
+typedef struct ListNode {
+  listnode_t nodetype; 
   YYLTYPE position;  /* location of symbol in the source file */
-  struct AST *left; 
-  struct AST *right;
-} AST;
+  union {
+    mark_t mark; /* root of a GP2 list in the AST, points to first atom via *next and has mark as its attribute */
+    GPAtomicExp *atom;
+    
+    
 
-typedef struct GPCond {
+  } value;
+  struct ListNode *next;
+} ListNode;
+
+ListNode *newLabelHead (YYLTYPE position, mark_t mark, ListNode *next);
+ListNode *newAtom (YYLTYPE position, GPAtomicExp *atom, ListNode *next);
+
+
+/* AST node for atomic expressions in GP, corresponding to AtomExp production */
+
+typedef enum {VARIABLE, INT_CONSTANT, STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH, NEGATIVE, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} atomexp_t;
+
+typedef struct GPAtomicExp {
+  atomexp_t nodetype;
+  YYLTYPE position;
+  union {
+    symbol *var;
+    int num;
+    char *str;
+    struct { symbol *node_id; } indeg;
+    struct { symbol *node_id; } outdeg;
+    struct { AST *list; } llength;
+    struct GPAtomicExp *slength; 
+    struct { struct GPAtomicExp *left; struct GPAtomicExp *right; } binOp;
+  } value;
+} GPAtomicExp;
+
+GPAtomicExp *newVariable (YYLTYPE position, symbol *name);
+GPAtomicExp *newNumber (YYLTYPE position, int num);
+GPAtomicExp *newString (YYLTYPE position, char *str);
+GPAtomicExp *newDegreeOp (atomexp_t nodetype, YYLTYPE position, symbol *node_id);
+GPAtomicExp *newListLength (YYLTYPE position, AST *list);
+GPAtomicExp *newStringLength (YYLTYPE position, GPAtomicExp *slength);
+GPAtomicExp *newBinaryOp (atomexp_t nodetype; YYLTYPE position, GPAtomicExp *left, GPAtomicExp *right);
+
+
+/* AST node for conditional expressions in GP, corresponding to Condition production */
+
+typedef enum {SUBTYPE, EDGE_PRED, NOT, OR, AND, EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL} condexp_t;
+
+typedef struct GPCondExp {
+  condexp_t nodetype;
+  YYLTYPE position;
+  union {
+    symbol *var;
+    struct { symbol *source; symbol *target; AST *label; } edgePred;
+    struct GPCondExp *notExp;
+    struct { struct GPCondExp *left; struct GPCondExp *right; } binExp;
+    struct { AST *left; AST *right; } relExp;  
+  } value;
+} GPCondExp;
+
+GPCondExp *newSubtypePred (YYLTYPE position, symbol *var);
+GPCondExp *newEdgePred (YYLTYPE position, symbol *source, symbol *target, AST *label);
+GPCondExp *newNotExp (YYLTYPE position, GPCondExp *notExp);
+GPCondExp *newBinaryExp (condexp_t nodetype; YYLTYPE position, GPCondExp *left, GPCondExp *right);
+GPCondExp *newRelationalOp (condexp_t nodetype; YYLTYPE position, AST *left, AST *right);
+
+
+typedef struct GPCondStmt {
   ast_node_t nodetype; /* IF_STMT, TRY_STMT */
   YYLTYPE position; 
   struct AST *condition;
   struct AST *then_branch;
   struct AST *else_Branch;
-} GPCond;
+} GPCondStmt;
 
 typedef struct GPMacroDecl {
   ast_node_t nodetype; /* MACRO_DECL */
@@ -136,53 +200,55 @@ typedef struct GPEdge {
   struct AST *label; 
 } GPEdge;
 
-typedef struct GPEdgePred {
-  ast_node_t nodetype; /* EDGEPRED */
-  YYLTYPE position; 
-  struct AST *source;
-  struct AST *target;
-  struct AST *label;
-} GPEdgePred;
-
-typedef struct GPDegree {
-  ast_node_t nodetype; /* INDEGREE, OUTDEGREE */
-  YYLTYPE position; 
-  symbol *node;
-} GPDegree;
-
-typedef struct GPLength {
-  ast_node_t nodetype; /* LIST_LENGTH, STRING_LENGTH */
-  YYLTYPE position;
-  struct AST *arg;
-}
-
-typedef struct GPTypeCheck {
-  ast_node_t nodetype; /* INT_CHECK, STRING_CHECK, ATOM_CHECK */
-  YYLTYPE position; 
-  symbol *var;
-} GPTypeCheck;
-
-typedef struct GPNumber {
-  ast_node_t nodetype; /* INT_CONST */
-  YYLTYPE position;  
-  int val;
-} GPNumber;
-
-typedef struct GPString {
-  ast_node_t nodetype; /* STRING_CONST */
-  YYLTYPE position; 
-  char *val;
-} GPString;
-
 typedef struct GPMark {
   ast_node_t nodetype; /* MARK_CONST */
   YYLTYPE position; 
   mark_t val;
 } GPMark;
 
+/*
+typedef struct GPEdgePred {
+  ast_node_t nodetype; /* EDGEPRED 
+  YYLTYPE position; 
+  struct AST *source;
+  struct AST *target;
+  struct AST *label;
+} GPEdgePred;
+
+
+typedef struct GPDegree {
+  ast_node_t nodetype; /* INDEGREE, OUTDEGREE 
+  YYLTYPE position; 
+  symbol *node;
+} GPDegree; 
+
+typedef struct GPLength {
+  ast_node_t nodetype; /* LIST_LENGTH, STRING_LENGTH 
+  YYLTYPE position;
+  struct AST *arg;
+} 
+
+typedef struct GPTypeCheck {
+  ast_node_t nodetype; /* INT_CHECK, STRING_CHECK, ATOM_CHECK 
+  YYLTYPE position; 
+  symbol *var;
+} GPTypeCheck;
+
+typedef struct GPNumber {
+  ast_node_t nodetype; /* INT_CONST 
+  YYLTYPE position;  
+  int val;
+} GPNumber;
+
+typedef struct GPString 
+  ast_node_t nodetype; /* STRING_CONST 
+  YYLTYPE position; 
+  char *val;
+} GPString; */
+
 /* constructors */
 
-AST *newAST (ast_node_t nodetype, YYLTYPE position, AST *left, AST* right);
+
 AST *newCond (ast_node_t nodetype, YYLTYPE position, AST *condition, AST *then_branch, AST *else_branch);
 AST *newMacroDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, AST *localmacro, AST *localrule, AST* comseq);
 AST *newAlap (ast_node_t nodetype, YYLTYPE position, AST *comseq);

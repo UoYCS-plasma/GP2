@@ -94,8 +94,8 @@ list		    { yylval.type = GP_LIST; return LIST; }
 "<"          	    { yylval.type = LT; return CMP; } 
 "="                 { yylval.rel = EQ; return CMP; }
 "!="		    { yylval.rel = NEQ; return CMP; }
-">="	            { yylval.rel = GTE; return CMP; }
-"<="	            { yylval.rel = LTE; return CMP; }
+">="	            { yylval.rel = GTEQ; return CMP; }
+"<="	            { yylval.rel = LTEQ; return CMP; }
 
  /* single character tokens */
 "(" |		  
@@ -115,13 +115,15 @@ list		    { yylval.type = GP_LIST; return LIST; }
 "*" |		  
 "/" |		    
 "#"		 return yytext[0];
+
+ /* other tokens */
 "=>"             return ARROW;
 "(R)"	 	 return ROOT;
 
  /* macro identifiers must start with a capital letter 
   * other identifiers start with a lowercase letter    */
-[A-Z][a-zA-Z0-9_-]*   { yylval.str = yytext; return MACID; } /* other characters may be allowed */
-[a-z][a-zA-Z0-9_-]*   { yylval.str = yytext; return ID; }
+[A-Z][a-zA-Z0-9_-]*   { yylval.id = yytext; return MACID; } /* other characters may be allowed */
+[a-z][a-zA-Z0-9_-]*   { yylval.id = yytext; return ID; }
 \"[a-z_-]*\"          { yylval.str = yytext; return STR; }
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1;}  /* reset yycolumn on newline */
