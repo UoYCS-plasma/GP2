@@ -13,22 +13,37 @@
 #include <stdlib.h>
 #include "gpparser.h"
 
-AST *newAST (ast_node_t nodetype, YYLTYPE position, AST *left, AST* right)
+ListNode *newLabelHead (YYLTYPE position, mark_t mark, ListNode *next)
 {
-    AST *a = malloc(sizeof(ast));
+    ListNode *l = malloc(sizeof(ListNode));
     
-    if(!a) {
+    if(!l) {
       yyerror("insufficient space");
       exit(0);
     }
-    a->nodetype = nodetype;
-    a->position = position;
-    a->left = left;
-    a->right = right;
+    l->nodetype = LABEL;
+    l->position = position;
+    l->value.mark = mark;
+    l->next = next;
 
-    return a;
+    return l;
 }
 
+ListNode *newLabelHead (YYLTYPE position, GPAtomicExp *atom, ListNode *next)
+{
+    ListNode *l = malloc(sizeof(ListNode));
+    
+    if(!l) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    l->nodetype = LABEL;
+    l->position = position;
+    l->value.atom = atom;
+    l->next = next;
+
+    return l;
+}
 
 GPAtomicExp *newVariable (YYLTYPE position, symbol *name)
 {
