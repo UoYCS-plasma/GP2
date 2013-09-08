@@ -89,14 +89,6 @@ string		    { yylval.type = GP_STRING; return STRING; }
 atom     	    { yylval.type = GP_ATOM; return ATOM; } 
 list		    { yylval.type = GP_LIST; return LIST; } 
 
- /* relational operators */
-">"		    { yylval.type = GT; return CMP; } 
-"<"          	    { yylval.type = LT; return CMP; } 
-"="                 { yylval.rel = EQ; return CMP; }
-"!="		    { yylval.rel = NEQ; return CMP; }
-">="	            { yylval.rel = GTEQ; return CMP; }
-"<="	            { yylval.rel = LTEQ; return CMP; }
-
  /* single character tokens */
 "(" |		  
 ")" |		  
@@ -113,16 +105,22 @@ list		    { yylval.type = GP_LIST; return LIST; }
 "+" |		  
 "-" |		    
 "*" |		  
-"/" |		    
+"/" |	
+">" |		   
+"<" |         	  
+"=" |            	    
 "#"		 return yytext[0];
 
  /* other tokens */
 "=>"             return ARROW;
 "(R)"	 	 return ROOT;
+"!="		 return NEQ; 
+">="	         return GREQ; 
+"<="	         return LTEQ; 
 
  /* macro identifiers must start with a capital letter 
   * other identifiers start with a lowercase letter    */
-[A-Z][a-zA-Z0-9_-]*   { yylval.id = yytext; return MACID; } /* other characters may be allowed */
+[A-Z][a-zA-Z0-9_-]*   { yylval.id = yytext; return PROCID; } /* other characters may be allowed */
 [a-z][a-zA-Z0-9_-]*   { yylval.id = yytext; return ID; }
 \"[a-z_-]*\"          { yylval.str = yytext; return STR; }
 [ \t\r]+              /* ignore white space */

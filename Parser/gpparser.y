@@ -81,8 +81,8 @@ typedef struct YYLTYPE {
 %token RED GREEN BLUE GREY DASHED				 /* Colour keywords */
 %token INTERFACE EMPTY INJECTIVE				 /* Other keywords */
 %token ARROW					                 /* Arrow */
-%token NE GTE LTE			                         /* Boolean operators */
-%token NUM STR MACID ID ROOT                                     /* Numbers, strings, identifiers, root node */
+%token NEQ GTEQ LTEQ			                         /* Boolean operators */
+%token NUM STR PROCID ID ROOT                                    /* Numbers, strings, identifiers, root node */
 
 %left '+' '-' AND	/* lowest precedence level, left associative */
 %left '*' '/' OR
@@ -108,138 +108,146 @@ typedef struct YYLTYPE {
 
  /* Grammar for textual GP2 programs */
 
-Program: /* empty */
+Program: Declaration	                
        | Program Declaration /* new AST. */ 
 
-Declaration: MainDecl /* $$ = $1 */
-     	   | MacroDecl
-           | RuleDecl
+Declaration: MainDecl 			{ $$ = addGlobalDecl(MAIN_DECL, yylloc, $1, NULL); }
+     	   | ProcDecl			{ $$ = addGlobalDecl(PROCEDURE_DECL, yylloc, $1, NULL); }
+           | RuleDecl			{ $$ = addGlobalDecl(RULE_DECL, yylloc, $1, NULL); }
 
-MainDecl: MAIN '=' ComSeq
+MainDecl: MAIN '=' ComSeq		{ $$ = newMain(yylloc, $3); }
 
-MacroDecl: MacroID '=' ComSeq /* new GPMacroDecl with empty second branch */
-         | MacroID '=' '[' ProcList ']' ComSeq /* new GPMacroDecl */ 
+ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(yylloc, $1, NULL, $3); }
+        | ProcID '=' '[' ProcList ']' ComSeq 
+					{ $$ = newProcedure(yylloc, $1, $4, $6); }
 
-ProcList: /* empty */
-        | ProcList RuleDecl /* new AST */
-	| ProcList MacroDecl /* new AST */
+ProcList: /* empty */			{ $$ = NULL; }
+        | ProcList RuleDecl             { $$ = addLocalDecl(yylloc, $2, $1); }
+	| ProcList ProcDecl 		{ $$ = addLocalDecl(yylloc, $2, $1); }
 
-ComSeq: Command /* $$ = $1 */ 
-      | ComSeq ';' Command  /* new AST */
+ComSeq: Command 			{ $$ = addCommand(yylloc, $1, NULL; }
+      | ComSeq ';' Command  		{ $$ = addCommand(yylloc, $3, $1); }
 
-Command: Block /* $$ = $1 */
-       | IF Block THEN Block /* new GPCond, third arg empty */
-       | IF Block THEN Block ELSE Block
-       | TRY Block /* new GPCond, null pointers for two arguments, or maybe pointers to skip */
-       | TRY Block THEN Block
-       | TRY Block THEN Block ELSE Block
+Command: Block 				/* default $$ = $1 */
+       | IF Block THEN Block      	{ $$ = newCondBranch(IF, yylloc, $2, $4, newSkip(@6)); }
+       | IF Block THEN Block ELSE Block { $$ = newCondBranch(IF, yylloc, $2, $4, $6); }
+       | TRY Block 			{ $$ = newCondBranch(TRY, yylloc, $2, newSkip(@4), newSkip(@6)); }
+       | TRY Block THEN Block		{ $$ = newCondBranch(TRY, yylloc, $2, $4, newSkip(@6)); }
+       | TRY Block THEN Block ELSE Block 
+					{ $$ = newCondBranch(TRY, yylloc, $2, $4, $6); }
 
- /* Perhaps create new NTs IfStatement and TryStatement? */
+Block: '(' ComSeq ')' 	                { $$ = $2; }
+     | '(' ComSeq ')' '!' 		{ $$ = newAlap(yylloc, $2); } 
+     | SimpleCommand 			/* default $$ = $1 */
+     | Block OR Block 			{ $$ = newOrStmt(yylloc, $1, $3); }
 
-Block: '(' ComSeq ')' /* $$ = $2 */
-     | '(' ComSeq ')' '!' /* new GPloop $2 */
-     | SimpleCommand /* $$ = $1 */
-     | Block OR Block /* new  AST */
+SimpleCommand: RuleSetCall 	        { $$ = newRuleSetCall(yylloc, $1); }
+	     | RuleSetCall '!' 		{ $$ = newAlap(yylloc, $1); }
+	     | ProcCall 		{ $$ = newProcCall(yylloc, $1); }
+             | ProcCall '!' 		{ $$ = newAlap(yylloc, $1); }
+             | SKIP			{ $$ = newSkip(yylloc); }
+             | FAIL			{ $$ = newFail(yylloc); }
 
-SimpleCommand: RuleSetCall /* $$ = $1 */
-	     | RuleSetCall '!' /* new GPloop $1 */
-	     | MacroCall /* $$ = $1 */
-             | MacroCall '!' /* new GPloop $1 */
-             | SKIP
-             | FAIL
+RuleSetCall: RuleID                     /* default $$ = $1 */
+	   | '{' IDList '}'		{ $$ = $2; } 
 
-RuleSetCall: RuleID /* $$ = $1 */
-	   | '{' IDList '}' /* new GPChoice */
+IDList: RuleID 				{ $$ = addRule(yylloc, $1, NULL); }
+      | IDList ',' RuleID 		{ $$ = addRule(yylloc, $3, $1); } 
 
-IDList: /* empty */ 
-      | RuleID /* $$ = $1 */
-      | IDList ',' RuleID /* new AST */
-
-MacroCall: MacroID
+ProcCall: ProcID
 
  /* Grammar for GP2 conditional rule schemata */
 
-RuleDecl: RuleID '(' ParamList ')' Graphs Inter CondDecl INJECTIVE '=' Bool /* new GPRule - injective bool is attribute, ruleID is pointer to symbol table */
+RuleDecl: RuleID '(' VarDecls ')' '[' Graph ']' ARROW '[' Graph ']' Inter CondDecl INJECTIVE '=' Bool
+					{ $$ = newRule(yylloc, injective_flag /*to be defined */, $1, $3, $6, $10, $12, $13); }
 
-ParamList: /* empty */
-	 | VarList ':' Type /* new AST type [Type]List where [Type] depends on $3. Or maybe a generic VarList will suffice as symtable will contain type information */
-	 | ParamList ';' VarList ':' Type /* new AST [Type]List as above*/
+VarDecls: 				{ $$ = NULL; }
+	 | VarList ':' Type		{ $$ = newVariableDecl($3, yylloc, $1, NULL); }  
+	 | VarDecls ';' VarList ':' Type 
+					{ $$ = newVariableDecl($5, yylloc, $3, $1); }
 
  /* some post-processing could be done to sort out the parameter list AST here as the AST generated
     in this manner is a bit strange. Need to remove the intermediate ASTs created from the reduction
-    of the second VarList production so that their parents point directly to the variables. This may be achieved during AST construction with some pointer manipulation */
+    of the second VarList production so that their parents point directly to the variables. This may be achieved during AST construction with some pointer manipulation. 8/8/13: I suspect the above is nonsense. */
 
-VarList: Variable /* $$ = $1 */
-       | VarList ',' Variable /* new AST type VarList */
+VarList: Variable 			{ $$ = addVariable(yylloc, $1, NULL); }
+       | VarList ',' Variable          	{ $$ = addVariable(yylloc, $3, $1); }
 
-Inter: INTERFACE '{' NodePairList '}'
+Inter: INTERFACE '{' NodePairList '}'   { $$ = $3; }
 
-NodePairList: /* empty */
-	    | NodePair
-            | NodePairList ',' NodePair
+NodePairList: /* empty */		{ $$ = NULL; }
+	    | NodePair			{ $$ = addNodePair(yylloc, $1, NULL); }
+            | NodePairList ',' NodePair { $$ = addNodePair(yylloc, $3, $1);   }
 
-NodePair: '(' NodeID ',' NodeID ')'
+NodePair: '(' NodeID ',' NodeID ')'   	{ $$ = newNodePair(yylloc, $2, $4); }
 
-Bool: TRUE | FALSE
+Bool: TRUE | FALSE /* set injective flag */
 
-Type: INT | STRING | ATOM | LIST /* keep track of the specific type somehow for VarList : Type */
+Type: INT				{ $$ = INT_DECL; } 
+    | STRING                            { $$ = STRING_DECL; }
+    | ATOM 	                        { $$ = ATOM_DECL; }
+    | LIST				{ $$ = LIST_DECL; }
 
  /* Grammar for GP2 graphs */
 
-Graphs: '[' LHS ']' ARROW '[' RHS ']' /* new AST $2 $6 */
+Graph: Position '|' NodeList '|' EdgeList 
+     					{ $$ = newGraph($1, $3, $5); }
 
-LHS: Graph /* $$ = $1, possibly a LHS flag */
-RHS: Graph /* $$ = $1, possible a RHS flag */
+NodeList: /* empty */			{ $$ = NULL; }
+        | Node				{ $$ = addNode(yylloc, $1, NULL); }
+        | NodeList ',' Node		{ $$ = addNode(yylloc, $3, $1); }
 
-Graph: Position '|' NodeList '|' EdgeList /* new GPGraph */
+Node: '(' NodeID RootNode ',' Label ',' Position ')'
+    					{ $$ = newNode(yylloc, rootflag /*to be defined */, $2, $5, $7); }
 
-NodeList: /* empty */
-        | Node
-        | NodeList ',' Node	
-
-Node:  '(' NodeID RootNode ',' Label ',' Position ')'
-
-EdgeList: /* empty */
-	| Edge
-        | Edge ',' EdgeList
+EdgeList: /* empty */			{ $$ = NULL; }
+	| Edge				{ $$ = addEdge(yylloc, $1, NULL); }
+        | EdgeList ',' Edge		{ $$ = addEdge(yylloc, $3, $1); }
 
 Edge: '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
-
+					{ $$ = newEdge(yylloc, $2, $4, $6, $8); }
 RootNode: /* empty */
 	| ROOT /* switch root flag on */
 
-Position: '(' NUM ',' NUM ')' /* new GPPos $2 $4 */
+Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(yylloc, ($2)->value.num, ($4)->value.num); }
 
  /* Grammar for GP2 conditions */
 
-CondDecl: /* empty */
-        | WHERE Condition
+CondDecl: /* empty */                   { $$ = NULL; }
+        | WHERE Condition		{ $$ = $2; }
 
-Condition: Subtype '(' Variable ')' /* new GPTypeCheck node */
-         | EDGE '(' NodeID ',' NodeID LabelArg ')'	/*LabelArg NT is for optional Label argument */
-         | CmpList
-         | NOT Condition /* new AST with one branch */
-         | Condition OR Condition  /* new AST */
-         | Condition AND Condition /* new AST */
-	 | '(' Condition ')' /* $$ = $2 */
+Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, yylloc, $3); }
+         | EDGE '(' NodeID ',' NodeID LabelArg ')' 
+					{ $$ = newEdgePred(yylloc, $3, $5, $6); }	
+         | RelExp 			/* default $$ = $1 */
+         | NOT Condition	        { $$ = newNotExp(yylloc, $2); }
+         | Condition OR Condition  	{ $$ = newBinaryExp(OR, yylloc, $1, $3); }
+         | Condition AND Condition      { $$ = newBinaryExp(AND, yylloc, $1, $3); }
+	 | '(' Condition ')' 		{ $$ = $2; }
 
-Subtype: INT | STRING | ATOM /* type_t values  */
+Subtype: INT				{ $$ = INT_CHECK; } 
+       | STRING                         { $$ = STRING_CHECK; }
+       | ATOM 	                        { $$ = ATOM_CHECK; }
 
-LabelArg: /* empty */	
- 	| ',' Label
+LabelArg: /* empty */			{ $$ = NULL; }
+ 	| ',' Label			{ $$ = $2; }
 
-CmpList: List CMP List /* new AST with type $2 */
-       | RelList CMP List /* as above. Is there a way to make this into a sequence of AND ASTs instead of a list of RelOps? MAYBE. */
-
+RelExp: List 				/* default $$ = $1 */
+      | RelExp '=' RelExp		{ $$ = newRelationalExp(EQUAL, yylloc, $1,$3); }
+      | RelExp NEQ RelExp		{ $$ = newRelationalExp(NOT_EQUAL, yylloc, $1,$3); }
+      | RelExp '>' RelExp		{ $$ = newRelationalExp(GREATER, yylloc, $1,$3); }
+      | RelExp GEQ RelExp		{ $$ = newRelationalExp(GREATER_EQUAL, yylloc, $1,$3); }
+      | RelExp '<' RelExp		{ $$ = newRelationalExp(LESS, yylloc, $1,$3); }
+      | RelExp LEQ RelExp		{ $$ = newRelationalExp(LESS_EQUAL, yylloc, $1,$3); }
 
   /* Grammar for GP2 Labels */
 
 Label: List 				{ $$ = newLabel(yylloc, NONE , $1); }
      | List '#' MARK			{ $$ = newLabel(yylloc, $3, $1); } 
 
-List: EMPTY                             { $$ = 0; }
-    | AtomExp				{ $$ = newAtom(yylloc, $1, 0 /* null pointer */); } 
-    | List ':' AtomExp			{ $$ = newAtom(yylloc, $3, $1); }
+List: EMPTY                             { $$ = NULL; }
+    | AtomExp				{ $$ = addAtom(yylloc, $1, NULL); } 
+    | List ':' AtomExp			{ $$ = addAtom(yylloc, $3, $1); }
 
 AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
        | NUM 				{ $$ = newNumber(yylloc, $1); }
@@ -260,7 +268,7 @@ AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
  /* Identifiers */
 
  /* symtable contains scoping information for rules/macros */
-MacroID: MACID /* pointers to symtable for these rules */
+ProcID: PROCID /* pointers to symtable for these rules */
 RuleID: ID
 NodeID: ID
 EdgeID: ID

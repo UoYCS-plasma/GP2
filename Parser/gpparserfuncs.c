@@ -1,8 +1,7 @@
 /* ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
 /*                                       gpparserfuncs.c                                       
-*
-* Contains the functions for creating AST tree nodes, manipulating the AST and symbol table
+* * Contains the functions for creating AST tree nodes, manipulating the AST and symbol table
 * management. 
 *
 * Created on 22/7/2013 by Chris Bak 
@@ -13,229 +12,416 @@
 #include <stdlib.h>
 #include "gpparser.h"
 
-ListNode *newLabelHead (YYLTYPE position, mark_t mark, ListNode *next)
-{
-    ListNode *l = malloc(sizeof(ListNode));
+List *addRule (YYLTYPE location, symbol *name, List *next)
+{ 
+    List *newrule = malloc(sizeof(List));
     
-    if(!l) {
+    if(!newrule) {
       yyerror("insufficient space");
       exit(0);
     }
-    l->nodetype = LABEL;
-    l->position = position;
-    l->value.mark = mark;
-    l->next = next;
+    newrule->listtype = RULES;
+    newrule->location = location;
+    newrule->value.rulename = rulename;
+    newrule->next = next;
 
-    return l;
+    return newrule;
 }
 
-ListNode *newLabelHead (YYLTYPE position, GPAtomicExp *atom, ListNode *next)
-{
-    ListNode *l = malloc(sizeof(ListNode));
+List *addVariableDecl (list_t nodetype, YYLTYPE location, List *vars, List *next)
+{ 
+    List *newvardecl = malloc(sizeof(List));
     
-    if(!l) {
+    if(!newvar) {
       yyerror("insufficient space");
       exit(0);
     }
-    l->nodetype = LABEL;
-    l->position = position;
-    l->value.atom = atom;
-    l->next = next;
+    newvardecl->listtype = VARIABLE;
+    newvardecl->location = location;
+    newvardecl->value.vars = vars;
+    newvardecl->next = next;
 
-    return l;
+    return newvardecl;
 }
 
-GPAtomicExp *newVariable (YYLTYPE position, symbol *name)
+List *addVariable (YYLTYPE location, symbol *var, List *next)
+{ 
+    List *newvar = malloc(sizeof(List));
+    
+    if(!newvar) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    newvar->listtype = VARIABLE;
+    newvar->location = location;
+    newvar->value.var = var;
+    newvar->next = next;
+
+    return newvar;
+}
+
+List *addNodePair (YYLTYPE location, GPNodePair *nodepair, List *next)
+{ 
+    List *newpair = malloc(sizeof(List));
+    
+    if(!newpair) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    newpair->listtype = INTERFACE;
+    newpair->location = location;
+    newpair->value.nodepair = nodepair;
+    newpair->next = next;
+
+    return newpair;
+}
+
+List *newLabel (YYLTYPE location, mark_t mark, List *next)
 {
-     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+    List *newlabel = malloc(sizeof(List));
+    
+    if(!newlabel) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    newlabel->listtype = LABEL;
+    newlabel->location = location;
+    newlabel->value.mark = mark;
+    newlabel->next = next;
+
+    return newlabel;
+}
+
+List *addAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
+{
+    List *newatom = malloc(sizeof(List));
+   
+    if(!newatom) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    newatom->listtype = LABEL;
+    newatom->location = location;
+    newatom->value.atom = atom;
+    newatom->next = next;
+
+    return newatom;
+}
+
+List *addNode (YYLTYPE location, GPNode *node, List *next)
+{
+     List *newnode = malloc(sizeof(List));
+     
+     if(!newnode) {
+	yyerror("insufficient space");
+        exit(0);
+     }
+
+     newnode->listtype = NODES;
+     newnode->location = location;
+     newnode->value.node = node;
+     newnode->next = next;
+
+     return newnode;
+}
+      
+List *addEdge (YYLTYPE location, GPEdge *edge, List *next)
+{
+     List *newedge = malloc(sizeof(List));
+     
+     if(!newedge) {
+	yyerror("insufficient space");
+        exit(0);
+     }
+
+     newedge->listtype = EDGES;
+     newedge->location = location;
+     newedge->value.edge = edge;
+     newedge->next = next;
+
+     return newedge;
+}
+
+GPAtomicExp *newVariable (YYLTYPE location, symbol *name)
+{
+     GPAtomicExp *variable = malloc(sizeof(GPAtomicExp));
  
-     if(!a) {
+     if(!variable) {
        yyerror("insufficient space");
        exit(0);
      }
-     a->nodetype = VARIABLE;
-     a->position = position;
-     a->value.var = name;
+     variable->nodetype = VARIABLE;
+     variable->location = location;
+     variable->value.var = name;
 
-     return a;
+     return variable;
 }
 
-GPAtomicExp *newNumber (YYLTYPE position, int num)
+GPAtomicExp *newNumber (YYLTYPE location, int num)
 {
-     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+     GPAtomicExp *number = malloc(sizeof(GPAtomicExp));
  
-     if(!a) {
+     if(!number) {
        yyerror("insufficient space");
        exit(0);
      }
-     a->nodetype = INT_CONSTANT;
-     a->position = position;
-     a->value.num = num;
+     number->nodetype = INT_CONSTANT;
+     number->location = location;
+     number->value.num = num;
 
-     return a;
+     return number;
 }
 
 
-GPAtomicExp *newString (YYLTYPE position, char *str)
+GPAtomicExp *newString (YYLTYPE location, char *str)
 {
-     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+     GPAtomicExp *string = malloc(sizeof(GPAtomicExp));
  
-     if(!a) {
+     if(!string) {
        yyerror("insufficient space");
        exit(0);
      }
-     a->nodetype = STRING_CONSTANT;
-     a->position = position;
-     a->value.str = str;
+     string->nodetype = STRING_CONSTANT;
+     string->location = location;
+     string->value.str = str;
 
-     return a;
+     return string;
 }
 
-GPAtomicExp *newDegreeOp (atomexp_t nodetype, YYLTYPE position, symbol *node_id)
+GPAtomicExp *newDegreeOp (atomexp_t nodetype, YYLTYPE location, symbol *node_id)
 {
-     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+     GPAtomicExp *degree = malloc(sizeof(GPAtomicExp));
  
-     if(!a) {
+     if(!degree) {
        yyerror("insufficient space");
        exit(0);
      }
-     a->nodetype = nodetype; /*INDEGREE or OUTDEGREE */
-     a->position = position;
-     a->value.indeg.node_id = node_id;
+     degree->nodetype = nodetype; /*INDEGREE or OUTDEGREE */
+     degree->location = location;
+     degree->value.degree.node_id = node_id;
 
-     return a;
+     return degree;
 }
 
-GPAtomicExp *newListLength (YYLTYPE position, AST *list)
+GPAtomicExp *newListLength (YYLTYPE location, AST *list)
 {
-     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+     GPAtomicExp *llength = malloc(sizeof(GPAtomicExp));
  
-     if(!a) {
+     if(!llength) {
        yyerror("insufficient space");
        exit(0);
      }
-     a->nodetype = LIST_LENGTH 
-     a->position = position;
-     a->value.llength.list = list;
+     llength->nodetype = LIST_LENGTH 
+     llength->location = location;
+     llength->value.llength.list = list;
 
-     return a;
+     return llength;
 }
 
-GPAtomicExp *newStringLength (YYLTYPE position, GPAtomicExp *slength)
+GPAtomicExp *newStringLength (YYLTYPE location, GPAtomicExp *slength)
 {
-     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+     GPAtomicExp *slength = malloc(sizeof(GPAtomicExp));
  
-     if(!a) {
+     if(!slength) {
        yyerror("insufficient space");
        exit(0);
      }
-     a->nodetype = STRING_LENGTH 
-     a->position = position;
-     a->value.slength = slength;
+     slength->nodetype = STRING_LENGTH 
+     slength->location = location;
+     slength->value.slength = slength;
 
-     return a;
+     return slength;
 }
 
-GPAtomicExp *newBinaryOp (atomexp_t nodetype; YYLTYPE position, GPAtomicExp *left, GPAtomicExp *right)
+GPAtomicExp *newBinaryOp (atomexp_t nodetype, YYLTYPE location, GPAtomicExp *leftexp, GPAtomicExp *rightexp)
 {
-     GPAtomicExp *a = malloc(sizeof(GPAtomicExp));
+     GPAtomicExp *newbinop = malloc(sizeof(GPAtomicExp));
  
-     if(!a) {
+     if(!newbinop) {
        yyerror("insufficient space");
        exit(0);
      }
-     a->nodetype = nodetype /* ADD, SUBTRACT, MULTIPLE, DIVIDE, CONCAT */ 
-     a->position = position;
-     a->value.binOp.left = left;
-     a->value.binOp.right = right;
+     newbinop->nodetype = nodetype /* ADD, SUBTRACT, MULTIPLE, DIVIDE, CONCAT */ 
+     newbinop->location = location;
+     newbinop->value.binOp.left = leftexp;
+     newbinop->value.binOp.right = rightexp;
 
-     return a;
+     return newbinop;
 }
 
-GPCondExp *newSubtypePred (YYLTYPE position, symbol *var)
+GPCondExp *newSubtypePred (condexp_t nodetype, YYLTYPE location, symbol *var)
 {
-     GPCondExp *c = malloc(sizeof(GPCondExp));
+     GPCondExp *newsubtypepred = malloc(sizeof(GPCondExp));
+ 
+     if(!newsubtypepred) {
+       yyerror("insufficient space");
+       exit(0);
+     }
+     newsubtypepred->nodetype = SUBTYPE
+     newsubtypepred->location = location;
+     newsubtypepred->var = var;
+
+     return newsubtypepred;
+}
+
+GPCondExp *newEdgePred (YYLTYPE location, symbol *source, symbol *target, List *label)
+{
+     GPCondExp *edgepred = malloc(sizeof(GPCondExp));
  
      if(!c) {
        yyerror("insufficient space");
        exit(0);
      }
-     c->nodetype = SUBTYPE
-     c->position = position;
-     c->var = var;
+     edgepred->nodetype = EDGE_PRED
+     edgepred->location = location;
+     edgepred->value.edgePred.source = source;
+     edgepred->value.edgePred.target = target;
+     edgepred->value.edgePred.label = label;
 
      return c;
 }
 
-GPCondExp *newEdgePred (YYLTYPE position, symbol *source, symbol *target, AST *label)
+
+GPCondExp *newNotExp (YYLTYPE location, GPCondExp *exp)
 {
-     GPCondExp *c = malloc(sizeof(GPCondExp));
+     GPCondExp *notexp = malloc(sizeof(GPCondExp));
  
-     if(!c) {
+     if(!notexp) {
        yyerror("insufficient space");
        exit(0);
      }
-     c->nodetype = EDGE_PRED
-     c->position = position;
-     c->value.edgePred.source = source;
-     c->value.edgePred.target = target;
-     c->value.edgePred.label = label;
+     notexp->nodetype = NOT
+     notexp->location = location;
+     notexp->value.notExp = exp;
 
-     return c;
+     return notexp;
 }
 
-
-GPCondExp *newNotExp (YYLTYPE position, GPCondExp *notExp)
+GPCondExp *newBinaryExp (condexp_t nodetype, YYLTYPE location, GPCondExp *leftexp, GPCondExp *rightexp)
 {
-     GPCondExp *c = malloc(sizeof(GPCondExp));
+     GPCondExp *binexp = malloc(sizeof(GPCondExp));
  
-     if(!c) {
+     if(!binexp) {
        yyerror("insufficient space");
        exit(0);
      }
-     c->nodetype = NOT
-     c->position = position;
-     c->value.notExp = notExp;
+     binexp->nodetype = nodetype /* AND, OR */ 
+     binexp->location = location;
+     binexp->value.binExp.left = leftexp;
+     binexp->value.binExp.right = rightexp;
 
      return c;
 }
 
-GPCondExp *newBinaryExp (condexp_t nodetype; YYLTYPE position, GPCondExp *left, GPCondExp *right)
+
+GPCondExp *newRelationalExp (condexp_t nodetype, YYLTYPE location, List *leftexp, List *rightexp
 {
-     GPCondExp *c = malloc(sizeof(GPCondExp));
+     GPCondExp *relexp = malloc(sizeof(GPCondExp));
  
-     if(!c) {
+     if(!relexp) {
        yyerror("insufficient space");
        exit(0);
      }
-     c->nodetype = nodetype /* AND, OR */ 
-     c->position = position;
-     c->value.binExp.left = left;
-     c->value.binExp.right = right;
+     relexp->nodetype = nodetype /* EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */ 
+     relexp->location = location;
+     relexp->value.relExp.left = leftexp;
+     relexp->value.relExp.right = rightexp;
 
-     return c;
+     return relexp;
 }
 
+   
+	     
 
-GPCondExp *newRelationalOp (condexp_t nodetype; YYLTYPE position, AST *left, AST *right)
+GPPos *newPosition (YYLTYPE location, int x, int y)
 {
-     GPCondExp *c = malloc(sizeof(GPCondExp));
- 
-     if(!c) {
-       yyerror("insufficient space");
-       exit(0);
-     }
-     c->nodetype = nodetype /* EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */ 
-     c->position = position;
-     c->value.relExp.left = left;
-     c->value.rekExp.right = right;
+    GPPos *pos = malloc(sizeof(GPPos));
+    
+    if(!pos) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    pos->nodetype = POSITION;
+    pos->location = location;
+    pos->x = x;
+    pos->y = y;
 
-     return c;
+    return pos;
+}
+
+GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes, List *edges);
+{
+    GPGraph *graph = malloc(sizeof(GPGraph));
+    
+    if(!graph) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    graph->nodetype = GRAPH;
+    graph->location = location;
+    graph->position = position; 
+    graph->nodes = nodes;
+    graph->edges = edges;
+
+    return graph;
 }
 
 
+GPNode *newNode (YYLTYPE location, int root, symbol *name, List *label, GPPos *position)
+{
+    GPNode *node = malloc(sizeof(GPNode));
+    
+    if(!node) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    node->nodetype = NODE;
+    node->location = location;
+    node->root = root;
+    node->name = name;
+    node->label = label;
+    node->position = position;
 
-AST *newCond (ast_node_t nodetype, YYLTYPE position, AST *condition, AST *then_branch, AST *else_branch)
+    return node;
+}
+
+GPEdge *newEdge (YYLTYPE location, symbol *name, symbol *source, symbol *target, List *label)
+{
+    GPEdge *edge = malloc(sizeof(GPEdge));
+    
+    if(!edge) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    edge->nodetype = EDGE;
+    edge->location = location;
+    edge->name = name;
+    edge->source = source;
+    edge->target = target;
+    edge->label = label;
+
+    return edge;
+}
+
+GPNodePair *newNodePair (YYLTYPE location, symbol *leftnode, symbol *rightnode)
+{
+    GPEdge *nodepair = malloc(sizeof(GPEdge));
+    
+    if(!nodepair) {
+      yyerror("insufficient space");
+      exit(0);
+    }
+    nodepair->nodetype = NODE_PAIR;
+    nodepair->location = location;
+    nodepair->leftnode = leftnode;
+    nodepair->rightnode = rightnode;
+
+    return nodepair;
+}
+
+/* ----------------------- */
+
+AST *newCond (ast_node_t nodetype, YYLTYPE location, AST *condition, AST *then_branch, AST *else_branch)
 {
     AST *cond = malloc(sizeof(GPCond));
     
@@ -244,7 +430,7 @@ AST *newCond (ast_node_t nodetype, YYLTYPE position, AST *condition, AST *then_b
       exit(0);
     }
     cond->nodetype = nodetype; /* if or try */
-    cond->position = position;
+    cond->location = location;
     cond->condition = condition;
     cond->then_branch = then_branch;
     cond->else_branch = else_branch;
@@ -252,7 +438,7 @@ AST *newCond (ast_node_t nodetype, YYLTYPE position, AST *condition, AST *then_b
     return (struct ast *) cond;
 }
 
-AST *newMacroDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, AST *localmacro, AST *localrule, AST* comseq)
+AST *newMacroDecl (ast_node_t nodetype, YYLTYPE location, symbol *name, AST *localmacro, AST *localrule, AST* comseq)
 {
     AST *macro = malloc(sizeof(GPMacroDecl));
     
@@ -261,7 +447,7 @@ AST *newMacroDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, AST *loc
       exit(0);
     }
     macro->nodetype = MacroDecl; /* macrodecl */
-    macro->position = position;
+    macro->location = location;
     macro->name = name;
     macro->localmacro = localmacro;
     macro->localrule = localrule;
@@ -269,7 +455,7 @@ AST *newMacroDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, AST *loc
     return (struct ast *) macro;
 }
 
-AST *newAlap (ast_node_t nodetype, YYLTYPE position, AST *comseq)
+AST *newAlap (ast_node_t nodetype, YYLTYPE location, AST *comseq)
 {
     AST *alap = malloc(sizeof(GPAlap));
     
@@ -278,13 +464,13 @@ AST *newAlap (ast_node_t nodetype, YYLTYPE position, AST *comseq)
       exit(0);
     }
     alap->nodetype = Alap; /* alap */
-    alap->position = position;
+    alap->location = location;
     alap->comseq = comseq; 
 
     return (struct ast *) alap;
 }
 
-AST *newChoice (ast_node_t nodetype, YYLTYPE position, AST *first_comseq, AST* second_comseq)
+AST *newChoice (ast_node_t nodetype, YYLTYPE location, AST *first_comseq, AST* second_comseq)
 {
     AST *choice = malloc(sizeof(GPChoice));
     
@@ -293,14 +479,14 @@ AST *newChoice (ast_node_t nodetype, YYLTYPE position, AST *first_comseq, AST* s
       exit(0);
     }
     choice->nodetype = nodetype; /* choice */
-    choice->position = position;
+    choice->location = location;
     choice->first_comseq = first_comseq;
     choice->second_comseq = second_comseq;
 
     return (struct ast *) choice;
 }
 
-AST *newRuleDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, int injective, AST *vars, AST *graphs, AST *interface, AST *condition)
+AST *newRuleDecl (ast_node_t nodetype, YYLTYPE location, symbol *name, int injective, AST *vars, AST *graphs, AST *interface, AST *condition)
 {
     AST *ruledecl = malloc(sizeof(GPRuleDecl));
     
@@ -309,7 +495,7 @@ AST *newRuleDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, int injec
       exit(0);
     }
     ruledecl->nodetype = nodetype; /* ruledecl */
-    ruledecl->position = position;
+    ruledecl->location = location;
     ruledecl->name = name;
     ruledecl->injective = injective;
     ruledecl->vars = vars;
@@ -322,75 +508,8 @@ AST *newRuleDecl (ast_node_t nodetype, YYLTYPE position, symbol *name, int injec
 
 
 
-AST *newGraph (ast_node_t nodetype, YYLTYPE position, AST *gpposition, AST *nodes, AST *edges)
-{
-    AST *graph = malloc(sizeof(GPGraph));
-    
-    if(!graph) {
-      yyerror("insufficient space");
-      exit(0);
-    }
-    graph->nodetype = nodetype; /* graph */
-    graph->position = position;
-    graph->gpposition = gpposition;
-    graph->nodes = nodes;
-    graph->edges = edges;
 
-    return (struct ast *) graph;
-}
-
-AST *newPos (ast_node_t nodetype, YYLTYPE position, int x, int y)
-{
-    AST *pos = malloc(sizeof(GPPos));
-    
-    if(!pos) {
-      yyerror("insufficient space");
-      exit(0);
-    }
-    pos->nodetype = nodetype; /* position */
-    pos->position = position;
-    pos->x = x;
-    pos->y = y;
-
-    return (struct ast *) pos;
-}
-
-AST *newNode (ast_node_t nodetype, YYLTYPE position, symbol *name, int root, AST *label, AST *gpposition)
-{
-    AST *node = malloc(sizeof(GPNode));
-    
-    if(!node) {
-      yyerror("insufficient space");
-      exit(0);
-    }
-    node->nodetype = nodetype; /* node */
-    node->position = position;
-    node->name = name;
-    node->root = root;
-    node->y = y;
-
-    return (struct ast *) node;
-}
-
-AST *newEdge (ast_node_t nodetype, YYLTYPE position, symbol *name, AST *source, AST *target, AST *label)
-{
-    AST *edge = malloc(sizeof(GPEdge));
-    
-    if(!edge) {
-      yyerror("insufficient space");
-      exit(0);
-    }
-    edge->nodetype = nodetype; /* edge */
-    edge->position = position;
-    edge->name = name;
-    edge->source = source;
-    edge->target = target;
-    edge->label = label;
-
-    return (struct ast *) edge;
-}
-
-AST *newEdgePred (ast_node_t nodetype, YYLTYPE position, AST *source, AST *target, AST *label)
+AST *newEdgePred (ast_node_t nodetype, YYLTYPE location, AST *source, AST *target, AST *label)
 {
     AST *edgepred = malloc(sizeof(GPEdgePred));
     
@@ -399,7 +518,7 @@ AST *newEdgePred (ast_node_t nodetype, YYLTYPE position, AST *source, AST *targe
       exit(0);
     }
     edgepred->nodetype = nodetype; /* if or try */
-    edgepred->position = position;
+    edgepred->location = location;
     edgepred->source = source;
     edgepred->target = target;
     edgepred->label = label;
@@ -407,7 +526,7 @@ AST *newEdgePred (ast_node_t nodetype, YYLTYPE position, AST *source, AST *targe
     return (struct ast *) edgepred;
 }
 
-AST *newDegree (ast_node_t nodetype, YYLTYPE position, symbol *name)
+AST *newDegree (ast_node_t nodetype, YYLTYPE location, symbol *name)
 {
     AST *degree = malloc(sizeof(GPDegree));
     
@@ -416,13 +535,13 @@ AST *newDegree (ast_node_t nodetype, YYLTYPE position, symbol *name)
       exit(0);
     }
     degree->nodetype = nodetype; /* indeg or outdeg */
-    degree->position = position;
+    degree->location = location;
     degree->name = name;
 
     return (struct ast *) degree;
 }
 
-AST *newLength (ast_node_t nodetype, YYLTYPE position, AST *arg)
+AST *newLength (ast_node_t nodetype, YYLTYPE location, AST *arg)
 {
     AST *length = malloc(sizeof(GPLength));
     
@@ -431,14 +550,14 @@ AST *newLength (ast_node_t nodetype, YYLTYPE position, AST *arg)
       exit(0);
     }
     length->nodetype = nodetype; /* llen or slen */
-    length->position = position;
+    length->location = location;
     length->arg = arg;
 
     return (struct ast *) length;
 }
 
 
-AST *newTypeCheck (ast_node_t nodetype, YYLTYPE position, symbol *var)
+AST *newTypeCheck (ast_node_t nodetype, YYLTYPE location, symbol *var)
 {
     AST *typecheck = malloc(sizeof(GPTypeCheck));
     
@@ -447,13 +566,13 @@ AST *newTypeCheck (ast_node_t nodetype, YYLTYPE position, symbol *var)
       exit(0);
     }
     typecheck->nodetype = nodetype; /* int, string, atom */
-    typecheck->position = position;
+    typecheck->location = location;
     typecheck->var = var;
 
     return (struct ast *) typecheck;
 }
 
-AST *newNumber (ast_node_t nodetype, YYLTYPE position, int val)
+AST *newNumber (ast_node_t nodetype, YYLTYPE location, int val)
 {
     AST *num = malloc(sizeof(GPNum));
     
@@ -462,13 +581,13 @@ AST *newNumber (ast_node_t nodetype, YYLTYPE position, int val)
       exit(0);
     }
     num->nodetype = nodetype; /* num */
-    num->position = position;
+    num->location = location;
     num->val = val;
 
     return (struct ast *) num;
 }
 
-AST *newString (ast_node_t nodetype, YYLTYPE position, char *val)
+AST *newString (ast_node_t nodetype, YYLTYPE location, char *val)
 {
     AST *string = malloc(sizeof(GPString));
     
@@ -477,13 +596,13 @@ AST *newString (ast_node_t nodetype, YYLTYPE position, char *val)
       exit(0);
     }
     string->nodetype = nodetype; /* string */
-    string->position = position;
+    string->location = location;
     string->val = val;
 
     return (struct ast *) string;
 }
 
-AST *newMark (ast_node_t nodetype, YYLTYPE position, mark_t val)
+AST *newMark (ast_node_t nodetype, YYLTYPE location, mark_t val)
 {
     AST *mark = malloc(sizeof(GPMark));
     
@@ -492,10 +611,10 @@ AST *newMark (ast_node_t nodetype, YYLTYPE position, mark_t val)
       exit(0);
     }
     mark->nodetype = nodetype; /* mark */
-    mark->position = position;
+    mark->location = location;
     mark->val = val;
 
     return (struct ast *) mark;
 }
 
-
+ /* post processing AST functions: reverse lists, convert relational expressions with two or more comparsions into a bunch of ANDs */
