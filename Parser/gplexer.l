@@ -21,7 +21,6 @@
 
 %{
 
-#include "gpparser.h"
 #include "gpparser.tab.c"
 
 int yycolumn = 1;
@@ -61,15 +60,11 @@ where		    return WHERE;
 and                 return AND;
 or                  return OR;
 not                 return NOT;
-edge                return EDGE;
+edge                return EDGETEST;
 true                return TRUE;
 false               return FALSE;
 indeg 		    return INDEG;
 outdeg		    return OUTDEG;
-int		    return INT;
-string	            return STRING;
-atom		    return ATOM;
-list		    return LIST;
 interface	    return INTERFACE;
 empty		    return EMPTY;
 injective           return INJECTIVE;
@@ -84,10 +79,10 @@ grey		    { yylval.mark = GREY; return MARK; }
 dashed		    { yylval.mark = DASHED; return MARK; } 
 
  /* keywords for GP types */
-int		    { yylval.type = GP_INT; return INT; } 
-string		    { yylval.type = GP_STRING; return STRING; } 
-atom     	    { yylval.type = GP_ATOM; return ATOM; } 
-list		    { yylval.type = GP_LIST; return LIST; } 
+int		    return INT;  
+string		    return STRING;  
+atom     	    return ATOM;  
+list		    return LIST;  
 
  /* single character tokens */
 "(" |		  
@@ -115,7 +110,7 @@ list		    { yylval.type = GP_LIST; return LIST; }
 "=>"             return ARROW;
 "(R)"	 	 return ROOT;
 "!="		 return NEQ; 
-">="	         return GREQ; 
+">="	         return GTEQ; 
 "<="	         return LTEQ; 
 
  /* macro identifiers must start with a capital letter 

@@ -19,7 +19,10 @@
 #include <stdlib.h>
 #include <stdarg.h> /* for error functions */
 #include "gpparser.h"
-void yyerror(char *errormsg, ...);
+#include "gpparserfuncs.c"
+
+int yyerror(char *s);
+void print_error(YYLTYPE loc, char *errormsg, ...);
 %}
 
 %code requires /* place this code before YYLTYPE is defined in the generated parser */
@@ -27,27 +30,14 @@ void yyerror(char *errormsg, ...);
 
 char *filename; /* current filename for the lexer */
 
-/* The code below redefines Bison's location structure and macro to include filenames. 
-   Only the lines dealing with filenames are new; the rest is the same as Bison's definitions */
-
-/* Bison uses a global variable yylloc of type YYLTYPE to keep track of the locations of 
-   tokens and nonterminals. The scanner will set these values upon reading each token. */
-
-typedef struct YYLTYPE {
-  int first_line;
-  int first_column;
-  int last_line;
-  int last_column;
-  char *filename;	/* new */
-} YYLTYPE;
-
-# define YYLTYPE_IS_DECLARED 1 /* tells the parser that YYLTYPE is defined here */
 
 /* YYLLOC_DEFAULT copies location information from the RHS of a rule to the LHS symbol 
    'Current' when the parser reduces a rule (before action code is executed). The location
    of the LHS symbol will start at the first character of the first RHS symbol and will
    finish at the last character of the last RHS symbol. N is the number of symbols
-   on the RHS. Bison's YYRHSLOC macro returns the location of a particular RHS symbol. */ 
+   on the RHS. Bison's YYRHSLOC macro returns the location of a particular RHS symbol.
+   Filename processing code has been added to the macro; everything else is as Bison
+   would define it. */ 
 
 # define YYLLOC_DEFAULT(Current, Rhs, N)						 \
     do											 \
@@ -75,32 +65,72 @@ typedef struct YYLTYPE {
 %locations /* generates code to process locations. Automatically enabled when '@n' tokens used 
               in grammar */
 
-%token MAIN IF TRY THEN ELSE SKIP FAIL                           /* Program text keywords */
-%token WHERE EDGE TRUE FALSE INDEG OUTDEG                        /* Schema condition keywords */
-%token INT STRING ATOM LIST 	                                 /* Type keywords */
-%token RED GREEN BLUE GREY DASHED				 /* Colour keywords */
-%token INTERFACE EMPTY INJECTIVE				 /* Other keywords */
-%token ARROW					                 /* Arrow */
-%token NEQ GTEQ LTEQ			                         /* Boolean operators */
-%token NUM STR PROCID ID ROOT                                    /* Numbers, strings, identifiers, root node */
+%union {  /* defines types of tokens */
+  int num;    							/* value of a NUM token */
+  char *str;  							/* value of STRING tokens */
+  char *id;   							/* value of MACID and ID tokens */
+  mark_t mark; 							/* value of a MARK token */
+}
+
+/* single character tokens implicitly defined */
+%token MAIN IF TRY THEN ELSE SKIP FAIL                          /* Program text keywords */
+%token WHERE EDGETEST TRUE FALSE 		                        /* Schema condition keywords */
+%token INDEG OUTDEG LLEN SLEN					/* Function keywords */
+%token INT STRING ATOM LIST 	                                /* Type keywords */
+%token INTERFACE EMPTY INJECTIVE 	
+%token <mark> MARK			                        
+%token ARROW					                
+%token NEQ GTEQ LTEQ			                        /* Relational operators */
+%token <num> NUM 
+%token <str> STR 
+%token <id> PROCID ID           				/* Identifiers */
+%token ROOT							/* Root node */
+
 
 %left '+' '-' AND	/* lowest precedence level, left associative */
 %left '*' '/' OR
 %left UMINUS NOT	/* UMINUS represents unary '-' */
-%left '.'	/* highest precedence level */
+%left '.'		/* highest precedence level */
 
-/* %type to set types of NTs */
+%union {  /* defines types of AST structs */
+  List *list; 
+  GPDeclaration *decl;
+  GPStatement *stmt;
+  GPProcedure *proc;
+  GPRule *rule;
+  GPNodePair *node_pair;
+  GPGraph *graph;
+  GPNode *node;
+  GPEdge *edge;
+  GPPos *pos;
+  GPCondExp *cond_exp;
+  GPLabel *label;  
+  GPAtomicExp *atom_exp;
 
-%union {  /* defines possible values of nonterminals and tokens */
-  int num;    /* value of a NUM token */
-  char *str;  /* value of STRING tokens */
-  char *id;   /* value of MACID and ID tokens */
-  rel_t rel;  /* value of REL token */
-  mark_t mark; /* value of a MARK token */
-  type_t type; /* value of TYPE and SUBTYPE tokens */
-  symbol *name; /* pointer to symbol table */
-  AST *tree; /* pointer to an AST */
+  list_t list_type;
+  condexp_t check_type;
+
+  symbol *name;	/* pointer to symbol table */
 } 
+
+%type <list> Program ProcList ComSeq RuleSetCall IDList VarDecls VarList Inter NodePairList 
+             NodeList EdgeList RelExp List
+%type <decl> Declaration
+%type <stmt> MainDecl Command Block SimpleCommand 
+%type <proc> ProcDecl
+%type <rule> RuleDecl
+%type <node_pair> NodePair
+%type <graph> Graph
+%type <node> Node
+%type <edge> Edge
+%type <pos> Position
+/* Type and Subtype */
+%type <cond_exp> CondDecl Condition 
+%type <label> LabelArg Label
+%type <atom_exp> AtomExp
+%type <list_type> Type RelOp 
+%type <check_type> Subtype
+%type <name> RuleCall ProcCall ProcID RuleID NodeID EdgeID Variable 
 
 %start Program	/* Program is the start symbol of the grammar */
 
@@ -108,63 +138,69 @@ typedef struct YYLTYPE {
 
  /* Grammar for textual GP2 programs */
 
-Program: Declaration	                
-       | Program Declaration /* new AST. */ 
+Program: Declaration	      		{ $$ = addDecl(GLOBAL_DECLS, yylloc, $1, NULL); }          
+       | Program Declaration            { $$ = addDecl(GLOBAL_DECLS, yylloc, $2, $1); }  
 
-Declaration: MainDecl 			{ $$ = addGlobalDecl(MAIN_DECL, yylloc, $1, NULL); }
-     	   | ProcDecl			{ $$ = addGlobalDecl(PROCEDURE_DECL, yylloc, $1, NULL); }
-           | RuleDecl			{ $$ = addGlobalDecl(RULE_DECL, yylloc, $1, NULL); }
+Declaration: MainDecl 			{ $$ = newMainDecl(yylloc, $1); }
+     	   | ProcDecl			{ $$ = newProcedureDecl(yylloc, $1); }
+           | RuleDecl			{ $$ = newRuleDecl(yylloc, $1); }
 
-MainDecl: MAIN '=' ComSeq		{ $$ = newMain(yylloc, $3); }
+MainDecl: MAIN '=' ComSeq		{ $$ = newCommandSequence(yylloc,$3); }
 
-ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(yylloc, $1, NULL, $3); }
+ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(yylloc, $1, NULL, 
+                                               newCommandSequence(yylloc,$3)); }
         | ProcID '=' '[' ProcList ']' ComSeq 
-					{ $$ = newProcedure(yylloc, $1, $4, $6); }
+					{ $$ = newProcedure(yylloc, $1, $4, 
+                                               newCommandSequence(yylloc,$6)); }
 
 ProcList: /* empty */			{ $$ = NULL; }
-        | ProcList RuleDecl             { $$ = addLocalDecl(yylloc, $2, $1); }
-	| ProcList ProcDecl 		{ $$ = addLocalDecl(yylloc, $2, $1); }
+        | ProcList RuleDecl             { $$ = addDecl(LOCAL_DECLS, yylloc, 
+                                               newRuleDecl(yylloc, $2), $1); }
+	| ProcList ProcDecl 		{ $$ = addDecl(LOCAL_DECLS, yylloc,
+                                               newProcedureDecl(yylloc, $2), $1); }
 
-ComSeq: Command 			{ $$ = addCommand(yylloc, $1, NULL; }
+ComSeq: Command 			{ $$ = addCommand(yylloc, $1, NULL); }
       | ComSeq ';' Command  		{ $$ = addCommand(yylloc, $3, $1); }
 
 Command: Block 				/* default $$ = $1 */
-       | IF Block THEN Block      	{ $$ = newCondBranch(IF, yylloc, $2, $4, newSkip(@6)); }
-       | IF Block THEN Block ELSE Block { $$ = newCondBranch(IF, yylloc, $2, $4, $6); }
-       | TRY Block 			{ $$ = newCondBranch(TRY, yylloc, $2, newSkip(@4), newSkip(@6)); }
-       | TRY Block THEN Block		{ $$ = newCondBranch(TRY, yylloc, $2, $4, newSkip(@6)); }
+       | IF Block THEN Block      	{ $$ = newCondBranch(IF_STMT, yylloc, $2, $4, newSkip(yylloc)); }
+       | IF Block THEN Block ELSE Block { $$ = newCondBranch(IF_STMT, yylloc, $2, $4, $6); }
+       | TRY Block 			{ $$ = newCondBranch(TRY_STMT, yylloc, $2, 
+                                               newSkip(yylloc), newSkip(yylloc)); }
+       | TRY Block THEN Block		{ $$ = newCondBranch(TRY_STMT, yylloc, $2, $4, newSkip(yylloc)); }
        | TRY Block THEN Block ELSE Block 
-					{ $$ = newCondBranch(TRY, yylloc, $2, $4, $6); }
+					{ $$ = newCondBranch(TRY_STMT, yylloc, $2, $4, $6); }
 
-Block: '(' ComSeq ')' 	                { $$ = $2; }
-     | '(' ComSeq ')' '!' 		{ $$ = newAlap(yylloc, $2); } 
+Block: '(' ComSeq ')' 	                { $$ = newCommandSequence(yylloc,$2); }
+     | '(' ComSeq ')' '!' 		{ $$ = newAlap(yylloc, newCommandSequence(yylloc,$2)); } 
      | SimpleCommand 			/* default $$ = $1 */
      | Block OR Block 			{ $$ = newOrStmt(yylloc, $1, $3); }
 
 SimpleCommand: RuleSetCall 	        { $$ = newRuleSetCall(yylloc, $1); }
-	     | RuleSetCall '!' 		{ $$ = newAlap(yylloc, $1); }
+	     | RuleSetCall '!' 		{ $$ = newAlap(yylloc, newRuleSetCall(yylloc, $1)); }
 	     | ProcCall 		{ $$ = newProcCall(yylloc, $1); }
-             | ProcCall '!' 		{ $$ = newAlap(yylloc, $1); }
+             | ProcCall '!' 		{ $$ = newAlap(yylloc, newProcCall(yylloc, $1)); }
              | SKIP			{ $$ = newSkip(yylloc); }
              | FAIL			{ $$ = newFail(yylloc); }
 
-RuleSetCall: RuleID                     /* default $$ = $1 */
+RuleSetCall: RuleCall                   { $$ = addRule(yylloc, $1, NULL); }
 	   | '{' IDList '}'		{ $$ = $2; } 
 
-IDList: RuleID 				{ $$ = addRule(yylloc, $1, NULL); }
+IDList: RuleID				{ $$ = addRule(yylloc, $1, NULL); }
       | IDList ',' RuleID 		{ $$ = addRule(yylloc, $3, $1); } 
 
-ProcCall: ProcID
+RuleCall: RuleID			/* default $$ = $1 */
+ProcCall: ProcID			/* default $$ = $1 */
 
  /* Grammar for GP2 conditional rule schemata */
 
 RuleDecl: RuleID '(' VarDecls ')' '[' Graph ']' ARROW '[' Graph ']' Inter CondDecl INJECTIVE '=' Bool
-					{ $$ = newRule(yylloc, injective_flag /*to be defined */, $1, $3, $6, $10, $12, $13); }
-
-VarDecls: 				{ $$ = NULL; }
-	 | VarList ':' Type		{ $$ = newVariableDecl($3, yylloc, $1, NULL); }  
-	 | VarDecls ';' VarList ':' Type 
-					{ $$ = newVariableDecl($5, yylloc, $3, $1); }
+					{ $$ = newRule(yylloc, is_injective,
+ 					        $1, $3, $6, $10, $12, $13); }
+					  
+VarDecls: /* empty */			{ $$ = NULL; }
+	| VarList ':' Type		{ $$ = addVariableDecl($3, yylloc, $1, NULL); }  
+	| VarDecls ';' VarList ':' Type { $$ = addVariableDecl($5, yylloc, $3, $1); }
 
  /* some post-processing could be done to sort out the parameter list AST here as the AST generated
     in this manner is a bit strange. Need to remove the intermediate ASTs created from the reduction
@@ -181,24 +217,26 @@ NodePairList: /* empty */		{ $$ = NULL; }
 
 NodePair: '(' NodeID ',' NodeID ')'   	{ $$ = newNodePair(yylloc, $2, $4); }
 
-Bool: TRUE | FALSE /* set injective flag */
+Bool: TRUE 				{ is_injective = 1; }
+    | FALSE				{ is_injective = 0; }
 
-Type: INT				{ $$ = INT_DECL; } 
-    | STRING                            { $$ = STRING_DECL; }
-    | ATOM 	                        { $$ = ATOM_DECL; }
-    | LIST				{ $$ = LIST_DECL; }
+Type: INT				{ $$ = INT_DECLS; } 
+    | STRING                            { $$ = STRING_DECLS; }
+    | ATOM 	                        { $$ = ATOM_DECLS; }
+    | LIST				{ $$ = LIST_DECLS; }
 
  /* Grammar for GP2 graphs */
 
 Graph: Position '|' NodeList '|' EdgeList 
-     					{ $$ = newGraph($1, $3, $5); }
+     					{ $$ = newGraph(yylloc, $1, $3, $5); }
 
 NodeList: /* empty */			{ $$ = NULL; }
         | Node				{ $$ = addNode(yylloc, $1, NULL); }
         | NodeList ',' Node		{ $$ = addNode(yylloc, $3, $1); }
 
 Node: '(' NodeID RootNode ',' Label ',' Position ')'
-    					{ $$ = newNode(yylloc, rootflag /*to be defined */, $2, $5, $7); }
+    					{ $$ = newNode(yylloc, is_root, $2, $5, $7); 
+ 					  is_root = 0; /* reset root flag */	    }
 
 EdgeList: /* empty */			{ $$ = NULL; }
 	| Edge				{ $$ = addEdge(yylloc, $1, NULL); }
@@ -207,9 +245,9 @@ EdgeList: /* empty */			{ $$ = NULL; }
 Edge: '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
 					{ $$ = newEdge(yylloc, $2, $4, $6, $8); }
 RootNode: /* empty */
-	| ROOT /* switch root flag on */
+	| ROOT 				{ is_root = 1; }
 
-Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(yylloc, ($2)->value.num, ($4)->value.num); }
+Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(yylloc, $2, $4); }
 
  /* Grammar for GP2 conditions */
 
@@ -217,12 +255,12 @@ CondDecl: /* empty */                   { $$ = NULL; }
         | WHERE Condition		{ $$ = $2; }
 
 Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, yylloc, $3); }
-         | EDGE '(' NodeID ',' NodeID LabelArg ')' 
+         | EDGETEST '(' NodeID ',' NodeID LabelArg ')' 
 					{ $$ = newEdgePred(yylloc, $3, $5, $6); }	
-         | RelExp 			/* default $$ = $1 */
+         | RelExp 			{ $$ = newRelationalExp(yylloc, $1); }
          | NOT Condition	        { $$ = newNotExp(yylloc, $2); }
-         | Condition OR Condition  	{ $$ = newBinaryExp(OR, yylloc, $1, $3); }
-         | Condition AND Condition      { $$ = newBinaryExp(AND, yylloc, $1, $3); }
+         | Condition OR Condition  	{ $$ = newBinaryExp(BOOL_OR, yylloc, $1, $3); }
+         | Condition AND Condition      { $$ = newBinaryExp(BOOL_AND, yylloc, $1, $3); }
 	 | '(' Condition ')' 		{ $$ = $2; }
 
 Subtype: INT				{ $$ = INT_CHECK; } 
@@ -232,20 +270,22 @@ Subtype: INT				{ $$ = INT_CHECK; }
 LabelArg: /* empty */			{ $$ = NULL; }
  	| ',' Label			{ $$ = $2; }
 
-RelExp: List 				/* default $$ = $1 */
-      | RelExp '=' RelExp		{ $$ = newRelationalExp(EQUAL, yylloc, $1,$3); }
-      | RelExp NEQ RelExp		{ $$ = newRelationalExp(NOT_EQUAL, yylloc, $1,$3); }
-      | RelExp '>' RelExp		{ $$ = newRelationalExp(GREATER, yylloc, $1,$3); }
-      | RelExp GEQ RelExp		{ $$ = newRelationalExp(GREATER_EQUAL, yylloc, $1,$3); }
-      | RelExp '<' RelExp		{ $$ = newRelationalExp(LESS, yylloc, $1,$3); }
-      | RelExp LEQ RelExp		{ $$ = newRelationalExp(LESS_EQUAL, yylloc, $1,$3); }
+RelExp: List RelOp List 		{ $$ = addRelationalExp($2, yylloc, $1, $3); }
+      | RelExp RelOp List 		{ $$ = addRelationalExp($2, yylloc, $3, $1); }
+
+RelOp: '='				{ $$ = EQUAL; }
+     | NEQ				{ $$ = NOT_EQUAL; }
+     | '>'				{ $$ = GREATER; }
+     | GTEQ				{ $$ = GREATER_EQUAL; }
+     | '<'				{ $$ = LESS; }
+     | LTEQ				{ $$ = LESS_EQUAL; }
 
   /* Grammar for GP2 Labels */
 
-Label: List 				{ $$ = newLabel(yylloc, NONE , $1); }
+Label: List 				{ $$ = newLabel(yylloc, NONE, $1); }
      | List '#' MARK			{ $$ = newLabel(yylloc, $3, $1); } 
 
-List: EMPTY                             { $$ = NULL; }
+List: EMPTY  				{ $$ = NULL; }
     | AtomExp				{ $$ = addAtom(yylloc, $1, NULL); } 
     | List ':' AtomExp			{ $$ = addAtom(yylloc, $3, $1); }
 
@@ -256,7 +296,7 @@ AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
        | OUTDEG '(' NodeID ')' 		{ $$ = newDegreeOp(OUTDEGREE, yylloc, $3); }
        | LLEN '(' List ')' 		{ $$ = newListLength(yylloc, $3); }
        | SLEN '(' AtomExp ')' 		{ $$ = newStringLength(yylloc, $3); }
-       | '-' AtomExp %prec UMINUS 	{ $2 = $2*(-1); $$ = $2; } 
+       | '-' AtomExp %prec UMINUS 	{ $$ = newNegExp(yylloc, $2); } 
        | '(' AtomExp ')' 		{ $$ = $2; }
        | AtomExp '+' AtomExp 		{ $$ = newBinaryOp(ADD, yylloc, $1, $3);  }
        | AtomExp '-' AtomExp 		{ $$ = newBinaryOp(SUBTRACT, yylloc, $1, $3); }
@@ -268,11 +308,11 @@ AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
  /* Identifiers */
 
  /* symtable contains scoping information for rules/macros */
-ProcID: PROCID /* pointers to symtable for these rules */
-RuleID: ID
-NodeID: ID
-EdgeID: ID
-Variable: ID
+ProcID: PROCID 				{ $$ = (symbol*) $1; }
+RuleID: ID				{ $$ = (symbol*) $1; }
+NodeID: ID				{ $$ = (symbol*) $1; }
+EdgeID: ID				{ $$ = (symbol*) $1; }
+Variable: ID				{ $$ = (symbol*) $1; }
 
 %%
 
@@ -310,30 +350,25 @@ int main(int argc, char** argv) {
 
 /* default bison error function, implicitly uses the location stored in yylloc */
 
-void yyerror(char *errormsg, ...)
+int yyerror(char *s)
 {
-   va_list args; /* variables of type va_list stores variable length argument list */
-   va_start(args, errormsg); /* macro to initalise args to retrieve arguments after char *errormsg */
-
    if(yylloc.first_line)
-     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': ", yylloc.filename, yylloc.first_line,
-       yylloc.first_column, yylloc.last_line, yylloc.last_column, yytext);
-     vfprintf(stderr, errormsg, args);
-     fprintf(stderr, "\n");
+     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': %s\n", yylloc.filename, yylloc.first_line,
+       yylloc.first_column, yylloc.last_line, yylloc.last_column, yytext, s);
 
-   va_end(args);
+   return 0;
 }
 
 /* alternate error function for an explicit location */
 
-void lyyerror(YYLTYPE loc, char *errormsg, ...)
+void print_error(YYLTYPE location, char *errormsg, ...)
 {
    va_list args;
    va_start(args, errormsg);
 
-   if(loc.first_line)
-     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': ", loc.filename, loc.first_line,
-       loc.first_column, loc.last_line, loc.last_column, yytext);
+   if(location.first_line)
+     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': ", location.filename, location.first_line,
+       location.first_column, location.last_line, location.last_column, yytext);
      vfprintf(stderr, errormsg, args);
      fprintf(stderr, "\n");
 
