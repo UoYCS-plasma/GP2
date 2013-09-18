@@ -21,14 +21,15 @@
 
 %{
 
-#include "gpparser.tab.c"
+#include "ast.h"
+#include "gpparser.tab.h"
 
 int yycolumn = 1;
 
 /* macro YY_USER_ACTION invoked for each token recognised by yylex before calling action
    code. Here it is defined to track line and column numbers for bison locations. */
 
-#define YY_USER_ACTION yylloc.filename = filename; \
+#define YY_USER_ACTION  \
    yylloc.first_line = yylloc.last_line = yylineno; \
    yylloc.first_column = yycolumn; yylloc.last_column = yycolumn + yyleng-1; \
    yycolumn += yyleng;	
@@ -44,7 +45,7 @@ int yycolumn = 1;
 <COMMENT>"*/"       BEGIN(INITIAL);
 <COMMENT>([^*\n])+|.  /* ignore all characters except '*' */
 <COMMENT>(\n)	   { yycolumn = 1; } /* reset yycolumn on newline */
-<COMMENT><<EOF>>   { printf("%s:%d: Unterminated comment\n", filename, yylineno); return 0; }
+<COMMENT><<EOF>>   { printf("%s:%d: Unterminated comment\n", file_name, yylineno); return 0; }
 
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
@@ -120,7 +121,7 @@ list		    return LIST;
 \"[a-z_-]*\"          { yylval.str = yytext; return STR; }
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1;}  /* reset yycolumn on newline */
-.                     printf("%s:%d: Unexpected symbol '%s'\n", filename, yylineno, yytext);
+.                     printf("%s:%d: Invalid symbol '%s'\n", file_name, yylineno, yytext);
 
 %%
 

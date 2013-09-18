@@ -1,38 +1,29 @@
-/* /////////////////////////////////////////////////////////////////////////////////////// */
+/* ////////////////////////////////////////////////////////////////////////////////////// */
 
-/*                                     gpparser.h                               
+/*                                       ast.h                               
  * 
- * This is a header file for the GP2 parser. It contains an interface to the lexer, enumerated
+ * This is a header file for the GP2 parser. It contains enumerated
  * type definitions, AST node definitions and prototypes for AST constructors.
  * 
  *
- * Created on 28/5/13 by Chris Bak */
-
-
+ * Created on 28/5/13 by Chris Bak 
+ *
 /* /////////////////////////////////////////////////////////////////////////////////////// */
 
-/* interface to the lexer. From gplexer.lex */
-extern int yylineno;	
-extern FILE* yyin;	
-extern char *curfilename;	
 
-/* for AST construction */
-int is_root = 0;
-int is_injective = 0;
+extern char *file_name; /* defined in gpparser.y */
 
 typedef char symbol; /* temporary, for testing */
 
 /* Bison uses a global variable yylloc of type YYLTYPE to keep track of the locations of 
    tokens and nonterminals. The scanner will set these values upon reading each token. 
-   This definition of YYLTYPE adds a filename; everything else exists in Bison's default
-   definition of YYLTYPE. */
+   This is the standard YYLTYPE definition but I define it here so it is seen by every file. */
 
 typedef struct YYLTYPE {
   int first_line;
   int first_column;
   int last_line;
   int last_column;
-  char *filename;	/* new */
 } YYLTYPE;
 
 # define YYLTYPE_IS_DECLARED 1 /* tells the parser that YYLTYPE is defined here */
@@ -134,7 +125,7 @@ typedef struct GPCondExp {
   YYLTYPE location;
   union {
     symbol *var; /* type checking predicates: INT_CHECK, STRING_CHECK, ATOM_CHECK */
-    struct { symbol *source; symbol *target; struct GPLabel *label; } edge_pred;
+    struct { char *source; char *target; struct GPLabel *label; } edge_pred;
     struct List *rel_exp; 
     struct GPCondExp *not_exp;
     struct { struct GPCondExp *left_exp; struct GPCondExp *right_exp; } bin_exp; /* OR, AND */
@@ -142,7 +133,7 @@ typedef struct GPCondExp {
 } GPCondExp;
 
 GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, symbol *var);
-GPCondExp *newEdgePred (YYLTYPE location, symbol *source, symbol *target, struct GPLabel *label);
+GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, struct GPLabel *label);
 GPCondExp *newRelationalExp (YYLTYPE location, struct List *rel_exp);
 GPCondExp *newNotExp (YYLTYPE location, struct GPCondExp *not_exp);
 GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, struct GPCondExp *left_exp, struct GPCondExp *right_exp);
@@ -159,7 +150,7 @@ typedef struct GPAtomicExp {
     symbol *var;
     int num;
     char *str;
-    symbol *node_id; /* INDEGREE, OUTDEGREE */
+    char *node_id; /* INDEGREE, OUTDEGREE */
     struct List *list_arg; /* list length query */
     struct GPAtomicExp *str_arg; /* string length query */
     struct GPAtomicExp *exp; /* negated expression */
@@ -170,7 +161,7 @@ typedef struct GPAtomicExp {
 GPAtomicExp *newVariable (YYLTYPE location, symbol *name);
 GPAtomicExp *newNumber (YYLTYPE location, int num);
 GPAtomicExp *newString (YYLTYPE location, char *str);
-GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, symbol *node_id);
+GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id);
 GPAtomicExp *newListLength (YYLTYPE location, struct List *list_arg);
 GPAtomicExp *newStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);
 GPAtomicExp *newNegExp (YYLTYPE location, struct GPAtomicExp *exp);
@@ -216,11 +207,11 @@ GPRule *newRule(YYLTYPE location, int injective, symbol *name, struct List *vari
 typedef struct GPNodePair {
   ast_node_t node_type; /* NODE_PAIR */
   YYLTYPE location;
-  symbol *left_node;
-  symbol *right_node;
+  char *left_node;
+  char *right_node;
 } GPNodePair;
 
-GPNodePair *newNodePair (YYLTYPE location, symbol *left_node, symbol *right_node);
+GPNodePair *newNodePair (YYLTYPE location, char *left_node, char *right_node);
 
 
 typedef struct GPGraph {
@@ -238,24 +229,24 @@ typedef struct GPNode {
   ast_node_t node_type;	
   YYLTYPE location; 
   int root; /* 1 if node is a root, 0 otherwise */
-  symbol *name; 
+  char *name; 
   struct GPLabel *label; 
   struct GPPos *position; 
 } GPNode;
 
-GPNode *newNode (YYLTYPE location, int root, symbol *name, struct GPLabel *label, struct GPPos *position);
+GPNode *newNode (YYLTYPE location, int root, char *name, struct GPLabel *label, struct GPPos *position);
 
 
 typedef struct GPEdge {
   ast_node_t node_type;	
   YYLTYPE location; 
-  symbol *name; 
-  symbol *source; 
-  symbol *target; 
+  char *name; 
+  char *source; 
+  char *target; 
   struct GPLabel *label; 
 } GPEdge;
 
-GPEdge *newEdge (YYLTYPE location, symbol *name, symbol *source, symbol *target, struct GPLabel *label);
+GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target, struct GPLabel *label);
 
 
 /* Data for graph presentation in the GUI */
@@ -277,9 +268,7 @@ typedef struct GPLabel {
   struct List *gp_list;
 } GPLabel;
 
-GPLabel *newLabel (YYLTYPE location, mark_t mark, struct List *gp_list;);
-
-
+GPLabel *newLabel (YYLTYPE location, mark_t mark, struct List *gp_list);
 
 
 

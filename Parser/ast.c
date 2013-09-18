@@ -1,8 +1,7 @@
 /* ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
-/*                                       gpparserfuncs.c                                       
-* * Contains the functions for creating AST tree nodes, manipulating the AST and symbol table
-* management. 
+/*              ast.c                                       
+* Contains AST constructor definitions. 
 *
 * Created on 22/7/2013 by Chris Bak 
 * 
@@ -10,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "ast.h"
 
 /* constructors for struct List */
 
@@ -380,7 +380,7 @@ GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, symbol *var)
      return cond;
 }
 
-GPCondExp *newEdgePred (YYLTYPE location, symbol *source, symbol *target, GPLabel *label)
+GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, GPLabel *label)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -492,7 +492,7 @@ GPAtomicExp *newString (YYLTYPE location, char *str)
      return atom;
 }
 
-GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, symbol *node_id)
+GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -609,7 +609,7 @@ GPRule *newRule(YYLTYPE location, int injective, symbol *name, List *variables, 
     return rule;
 }    
 
-GPNodePair *newNodePair (YYLTYPE location, symbol *left_node, symbol *right_node)
+GPNodePair *newNodePair (YYLTYPE location, char *left_node, char *right_node)
 {
     GPNodePair *node_pair = malloc(sizeof(GPEdge));
     

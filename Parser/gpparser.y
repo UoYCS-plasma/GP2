@@ -18,61 +18,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h> /* for error functions */
-#include "gpparser.h"
-#include "gpparserfuncs.c"
+#include "ast.h"
 
+List *gp_program = NULL; /* root of the AST */
+extern int yylineno; /* defined by lexer */
+extern char *yytext; /* defined by lexer */
 int yyerror(char *s);
 void print_error(YYLTYPE loc, char *errormsg, ...);
+char *file_name = NULL; /* for error messages */
+
+/* flags for AST construction */
+int is_root = 0;
+int is_injective = 0;
 %}
 
-%code requires /* place this code before YYLTYPE is defined in the generated parser */
-{ 
-
-char *filename; /* current filename for the lexer */
-
-
-/* YYLLOC_DEFAULT copies location information from the RHS of a rule to the LHS symbol 
-   'Current' when the parser reduces a rule (before action code is executed). The location
-   of the LHS symbol will start at the first character of the first RHS symbol and will
-   finish at the last character of the last RHS symbol. N is the number of symbols
-   on the RHS. Bison's YYRHSLOC macro returns the location of a particular RHS symbol.
-   Filename processing code has been added to the macro; everything else is as Bison
-   would define it. */ 
-
-# define YYLLOC_DEFAULT(Current, Rhs, N)						 \
-    do											 \
-      if (N)										 \
-       {										 \
-         (Current).first_line	= YYRHSLOC (Rhs, 1).first_line;				 \
-         (Current).first_column = YYRHSLOC (Rhs, 1).first_column;			 \
-         (Current).last_line	= YYRHSLOC (Rhs, N).last_line;				 \
-         (Current).last_column	= YYRHSLOC (Rhs, N).last_column;			 \
-         (Current).filename	= YYRHSLOC (Rhs, 1).filename;	/* new */		 \
-       }										 \
-     else										 \
-       {  /* empty RHS */								 \
-         (Current).first_line = (Current).last_line = YYRHSLOC (Rhs, 0).last_line;	 \
-         (Current).first_column = (Current).last_column = YYRHSLOC (Rhs, 0).last_column; \
-         (Current).filename = YYRHSLOC (Rhs, 0).filename;	/* new */		 \
-       }										 \
-    while (0)
-}   
-
-
 /* declare tokens */
-/* single-character tokens do not need to be explicitly declared */
 
 %locations /* generates code to process locations. Automatically enabled when '@n' tokens used 
               in grammar */
 
 %union {  /* defines types of tokens */
-  int num;    							/* value of a NUM token */
+  int num;    							/* value of NUM token */
   char *str;  							/* value of STRING tokens */
   char *id;   							/* value of MACID and ID tokens */
-  mark_t mark; 							/* value of a MARK token */
+  int mark; 							/* enum mark_t, value of MARK token */
 }
 
-/* single character tokens implicitly defined */
+/* single-character tokens do not need to be explicitly declared */
 %token MAIN IF TRY THEN ELSE SKIP FAIL                          /* Program text keywords */
 %token WHERE EDGETEST TRUE FALSE 		                        /* Schema condition keywords */
 %token INDEG OUTDEG LLEN SLEN					/* Function keywords */
@@ -92,25 +64,25 @@ char *filename; /* current filename for the lexer */
 %left UMINUS NOT	/* UMINUS represents unary '-' */
 %left '.'		/* highest precedence level */
 
-%union {  /* defines types of AST structs */
-  List *list; 
-  GPDeclaration *decl;
-  GPStatement *stmt;
-  GPProcedure *proc;
-  GPRule *rule;
-  GPNodePair *node_pair;
-  GPGraph *graph;
-  GPNode *node;
-  GPEdge *edge;
-  GPPos *pos;
-  GPCondExp *cond_exp;
-  GPLabel *label;  
-  GPAtomicExp *atom_exp;
+%union {  /* defines types of non-terminal symbols */
+  struct List *list; 
+  struct GPDeclaration *decl;
+  struct GPStatement *stmt;
+  struct GPProcedure *proc;
+  struct GPRule *rule;
+  struct GPNodePair *node_pair;
+  struct GPGraph *graph;
+  struct GPNode *node;
+  struct GPEdge *edge;
+  struct GPPos *pos;
+  struct GPCondExp *cond_exp;
+  struct GPLabel *label;  
+  struct GPAtomicExp *atom_exp;
 
-  list_t list_type;
-  condexp_t check_type;
+  int list_type; /* enum list_t */
+  int check_type; /* enum cond_exp_t */
 
-  symbol *name;	/* pointer to symbol table */
+  char *name;	/* pointer to symbol table */
 } 
 
 %type <list> Program ProcList ComSeq RuleSetCall IDList VarDecls VarList Inter NodePairList 
@@ -130,15 +102,19 @@ char *filename; /* current filename for the lexer */
 %type <atom_exp> AtomExp
 %type <list_type> Type RelOp 
 %type <check_type> Subtype
-%type <name> RuleCall ProcCall ProcID RuleID NodeID EdgeID Variable 
+%type <name> RuleCall ProcCall ProcID RuleID Variable 
+%type <id> NodeID EdgeID
 
 %start Program	/* Program is the start symbol of the grammar */
+
+%locations
 
 %%
 
  /* Grammar for textual GP2 programs */
 
-Program: Declaration	      		{ $$ = addDecl(GLOBAL_DECLS, yylloc, $1, NULL); }          
+Program: Declaration	      		{ $$ = addDecl(GLOBAL_DECLS, yylloc, $1, NULL);           
+           				       gp_program = $$; }
        | Program Declaration            { $$ = addDecl(GLOBAL_DECLS, yylloc, $2, $1); }  
 
 Declaration: MainDecl 			{ $$ = newMainDecl(yylloc, $1); }
@@ -310,8 +286,8 @@ AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
  /* symtable contains scoping information for rules/macros */
 ProcID: PROCID 				{ $$ = (symbol*) $1; }
 RuleID: ID				{ $$ = (symbol*) $1; }
-NodeID: ID				{ $$ = (symbol*) $1; }
-EdgeID: ID				{ $$ = (symbol*) $1; }
+NodeID: ID				/* default $$ = $1 */
+EdgeID: ID				/* default $$ = $1 */
 Variable: ID				{ $$ = (symbol*) $1; }
 
 %%
@@ -337,8 +313,8 @@ int main(int argc, char** argv) {
      return 1;
   }
 
-  filename = argv[1];
-  printf("Processing %s\n", filename);
+  file_name = argv[1];
+  printf("Processing %s\n", file_name);
 
   if(!yyparse())
     printf("GP2 parse succeeded\n");
@@ -346,6 +322,10 @@ int main(int argc, char** argv) {
     printf("GP2 parse failed\n");
  
   fclose(yyin);
+  
+  print_ast(gp_program);
+
+  return 0;
 }
 
 /* default bison error function, implicitly uses the location stored in yylloc */
@@ -353,7 +333,7 @@ int main(int argc, char** argv) {
 int yyerror(char *s)
 {
    if(yylloc.first_line)
-     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': %s\n", yylloc.filename, yylloc.first_line,
+     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': %s\n", file_name, yylloc.first_line,
        yylloc.first_column, yylloc.last_line, yylloc.last_column, yytext, s);
 
    return 0;
@@ -367,7 +347,7 @@ void print_error(YYLTYPE location, char *errormsg, ...)
    va_start(args, errormsg);
 
    if(location.first_line)
-     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': ", location.filename, location.first_line,
+     fprintf(stderr, "%s:%d.%d-%d.%d: error at '%s': ", file_name, location.first_line,
        location.first_column, location.last_line, location.last_column, yytext);
      vfprintf(stderr, errormsg, args);
      fprintf(stderr, "\n");
