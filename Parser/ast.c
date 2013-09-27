@@ -45,7 +45,7 @@ List *addCommand (YYLTYPE location, GPStatement *command, List *next)
     return new_command;
 }
 
-List *addRule (YYLTYPE location, symbol *rule_name, List *next)
+List *addRule (YYLTYPE location, char *rule_name, List *next)
 { 
     List *new_rule = malloc(sizeof(List));
     
@@ -77,7 +77,7 @@ List *addVariableDecl (list_t list_type, YYLTYPE location, List *vars, List *nex
     return new_var_decl;
 }
 
-List *addVariable (YYLTYPE location, symbol *var, List *next)
+List *addVariable (YYLTYPE location, char *var, List *next)
 { 
     List *new_var = malloc(sizeof(List));
     
@@ -241,7 +241,7 @@ GPStatement *newCommandSequence(YYLTYPE location, List *cmd_seq)
     return stmt;
 }
 
-GPStatement *newRuleCall(YYLTYPE location, symbol *rule_name)
+GPStatement *newRuleCall(YYLTYPE location, char *rule_name)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
@@ -271,7 +271,7 @@ GPStatement *newRuleSetCall(YYLTYPE location, List *rule_set)
     return stmt;
 }
 
-GPStatement *newProcCall(YYLTYPE location, symbol *proc_name)
+GPStatement *newProcCall(YYLTYPE location, char *proc_name)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
@@ -365,7 +365,7 @@ GPStatement *newFail(YYLTYPE location)
 
 /* constructors for struct GPCondExp */
 
-GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, symbol *var)
+GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -446,7 +446,7 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, GPCondExp *left_e
 
 /* constructors for struct GPAtomicExp */
 
-GPAtomicExp *newVariable (YYLTYPE location, symbol *name)
+GPAtomicExp *newVariable (YYLTYPE location, char *name)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -571,7 +571,7 @@ GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, GPAtomicExp *lef
 
 /* constructors for other AST node structs */
 
-GPProcedure *newProcedure(YYLTYPE location, symbol *name, List *local_decls, GPStatement *cmd_seq)
+GPProcedure *newProcedure(YYLTYPE location, char *name, List *local_decls, GPStatement *cmd_seq)
 {
     GPProcedure *proc = malloc(sizeof(GPProcedure));
     
@@ -588,7 +588,7 @@ GPProcedure *newProcedure(YYLTYPE location, symbol *name, List *local_decls, GPS
     return proc;
 }
  
-GPRule *newRule(YYLTYPE location, int injective, symbol *name, List *variables, GPGraph *lhs, GPGraph *rhs, List *interface, GPCondExp *condition)
+GPRule *newRule(YYLTYPE location, int injective, char *name, List *variables, GPGraph *lhs, GPGraph *rhs, List *interface, GPCondExp *condition)
 {
     GPRule *rule = malloc(sizeof(GPProcedure));
     
@@ -644,7 +644,7 @@ GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes, List *edges)
 }
 
 
-GPNode *newNode (YYLTYPE location, int root, symbol *name, GPLabel *label, GPPos *position)
+GPNode *newNode (YYLTYPE location, int root, char *name, GPLabel *label, GPPos *position)
 {
     GPNode *node = malloc(sizeof(GPNode));
     
@@ -662,7 +662,7 @@ GPNode *newNode (YYLTYPE location, int root, symbol *name, GPLabel *label, GPPos
     return node;
 }
 
-GPEdge *newEdge (YYLTYPE location, symbol *name, symbol *source, symbol *target, GPLabel *label)
+GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target, GPLabel *label)
 {
     GPEdge *edge = malloc(sizeof(GPEdge));
     

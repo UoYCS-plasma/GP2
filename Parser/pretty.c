@@ -13,8 +13,7 @@
 
 void print_location(YYLTYPE loc)
 {
-     printf("Location: %s: %d.%d-%d.%d\n", file_name, loc.first_line, 
-            loc.first_column, loc.last_line, loc.last_column);
+     printf("%d.%d-%d.%d\n", loc.first_line, loc.first_column, loc.last_line, loc.last_column);
 }
 
 
@@ -23,143 +22,180 @@ void print_ast(List *list)
      switch(list->list_type) {
 
 	case GLOBAL_DECLS:
-	     printf("Global Declaration\n");
-	     print_location(list->location);
+	     printf("List node: Global Declaration\n\n");
 	     print_declaration(list->value.decl);
-             print_ast(list->next);		
+             if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }
 	     break;	
 
 
 	case LOCAL_DECLS:
-	     printf("Local Declaration\n");
-	     print_location(list->location);
+	     printf("List node: Local Declaration\n\n");
 	     print_declaration(list->value.decl);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;	
 
 
 	case COMMANDS:
-	     printf("Command Sequence\n");
-	     print_location(list->location);
+	     printf("List node: Command Sequence\n\n");
 	     print_statement(list->value.command);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;	
 
 
 	case RULES:
-	     printf("Rule Set Call\n");
-	     print_location(list->location);
-	     print_ast(list->next);	
+             printf("List node: Rule Set\nName: %s\n\n", list->value.rule_name);
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case INT_DECLS:
-	     printf("Integer Variables\n");
-	     print_location(list->location);
+	     printf("List node: Integer Variables\n");
 	     print_ast(list->value.vars);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case STRING_DECLS:
-	     printf("String Variables\n");
-	     print_location(list->location);
+	     printf("List node: String Variables\n");
 	     print_ast(list->value.vars);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case ATOM_DECLS:
-	     printf("Atom Variables\n");
-	     print_location(list->location);
+	     printf("List node: Atom Variables\n");
 	     print_ast(list->value.vars);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case LIST_DECLS:
-	     printf("List Variables\n");
-	     print_location(list->location);
+	     printf("List node: List Variables\n");
 	     print_ast(list->value.vars);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case VARIABLES:
-	     print_location(list->location);
-	     print_ast(list->next);	
+	     printf("List node: Variable\nName: %s\n\n", list->value.var);
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case INTERFACE_LIST:
-	     printf("Interface\n");
-	     print_location(list->location);
+	     printf("List node: Interface\n\n");
 	     print_node_pair(list->value.node_pair);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case NODE_LIST:
-	     printf("Node\n");
-	     print_location(list->location);
+	     printf("List node: Node\n\n");
 	     print_node(list->value.node);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case EDGE_LIST:
-	     printf("Edge\n");
-	     print_location(list->location);
+	     printf("List node: Edge\n\n");
 	     print_edge(list->value.edge);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case NOT_EQUAL:
-	     printf("!=\n");
-	     print_location(list->location);
+	     printf("!=\n\n");
 	     print_ast(list->value.rel_exp);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case GREATER:
-	     printf(">\n");
-	     print_location(list->location);
+	     printf(">\n\n");
 	     print_ast(list->value.rel_exp);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case GREATER_EQUAL:
-	     printf(">=\n");
-	     print_location(list->location);
+	     printf(">=\n\n");
 	     print_ast(list->value.rel_exp);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case LESS:
-	     printf("<\n");
-	     print_location(list->location);
+	     printf("<\n\n");
 	     print_ast(list->value.rel_exp);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }
 	     break;
 	
 
 	case LESS_EQUAL:
-	     printf("<\n");
-	     print_location(list->location);
+	     printf("<\n\n");
 	     print_ast(list->value.rel_exp);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
 	case GP_LIST:
-	     printf("List\n");
-	     print_location(list->location);
+	     printf("List node: GP List\n\n");
 	     print_atom(list->value.atom);
-	     print_ast(list->next);	
+	     if (list->next) {
+                print_ast(list->next);	
+                break;	
+             }	
 	     break;
 	
 
@@ -175,7 +211,7 @@ void print_declaration(GPDeclaration *decl)
 
 	case MAIN_DECL:
 	     print_location(decl->location);
-	     printf("Main: ");
+	     printf("Main\n\n");
 	     print_statement(decl->value.main_program);
 	     break;
 
@@ -201,65 +237,76 @@ void print_statement(GPStatement *stmt)
 
 	case COMMAND_SEQUENCE:	
 	     print_location(stmt->location);
-	     print_ast(stmt->value.cmd_seq);
+	     if (stmt->value.cmd_seq) {
+                print_ast(stmt->value.cmd_seq);	
+                break;	
+             }
 	     break;
 
 	case RULE_CALL:
 	     print_location(stmt->location);
-	     printf("Rule call");
+	     printf("Rule Call\n");
+             printf("Name: %s\n\n", stmt->value.rule_name);
 	     break;
 
 	case RULE_SET_CALL:
 	     print_location(stmt->location);
-	     print_ast(stmt->value.rule_set);
+	     printf("Rule Set Call\n");
+	     if (stmt->value.rule_set) {
+                print_ast(stmt->value.rule_set);
+                break;
+             }
 	     break;
 
 	case PROCEDURE_CALL:
 	     print_location(stmt->location);
-	     printf("Procedure call");
+	     printf("Procedure Call\n");
+             printf("Name: %s\n\n", stmt->value.proc_name);
 	     break;
 
 	case IF_STMT:
 	     print_location(stmt->location);
-	     printf("if ");
+	     printf("If\n\n");
 	     print_statement(stmt->value.cond_branch.condition);
-	     printf(" then ");
+	     printf("Then\n\n");
 	     print_statement(stmt->value.cond_branch.then_stmt);
-	     printf(" else ");
+	     printf("Else\n\n");
 	     print_statement(stmt->value.cond_branch.else_stmt);
 	     break;
 
 	case TRY_STMT:
 	     print_location(stmt->location);
-	     printf("try ");
+	     printf("Try\n\n");
 	     print_statement(stmt->value.cond_branch.condition);
-	     printf(" then ");
+	     printf("Then\n\n");
 	     print_statement(stmt->value.cond_branch.then_stmt);
-	     printf(" else ");
+	     printf("Else\n\n");
 	     print_statement(stmt->value.cond_branch.else_stmt);
 	     break;
 
 	case ALAP_STMT:
 	     print_location(stmt->location);
-	     print_statement(stmt->value.loop_stmt);
-	     printf("!");
+             printf("ALAP\n\n");
+	     print_statement(stmt->value.loop_stmt);	     
 	     break;
 
 	case PROGRAM_OR:
 	     print_location(stmt->location);
+             printf("Or\n\n");
+             printf("First Argument:\n\n");
 	     print_statement(stmt->value.or_stmt.left_stmt);
-	     printf(" or ");
+             printf("Second Argument:\n\n");
 	     print_statement(stmt->value.or_stmt.right_stmt);
 	     break;
 
 	case SKIP_STMT:
 	     print_location(stmt->location);
-	     printf("skip");
+	     printf("Skip\n\n");
 	     break;
 
 	case FAIL_STMT:
 	     print_location(stmt->location);
-	     printf("fail");
+	     printf("Fail\n\n");
 	     break;
 	
 	default: printf("Unexpected value.\n"); break;
@@ -289,38 +336,48 @@ void print_condition(GPCondExp *cond)
 
 	case EDGE_PRED:
 	     print_location(cond->location);
-	     printf("edge(%s, %s, label)\n", cond->value.edge_pred.source, 
+	     printf("edge(%s, %s)\n", cond->value.edge_pred.source, 
                     cond->value.edge_pred.target);
-             printf("Label argument: ");
-	     print_label(cond->value.edge_pred.label);
+             if (cond->value.edge_pred.label) {
+                 printf("Label argument:\n");
+	         print_label(cond->value.edge_pred.label);
+             }
+             else printf("No label argument.\n\n");
              break;
 
 	case REL_EXP:
 	     print_location(cond->location);
-	     print_ast(cond->value.rel_exp);
+	     if (cond->value.rel_exp) {
+                 print_ast(cond->value.rel_exp);
+		 break;
+	     }
              break;
 
 	case BOOL_NOT:
 	     print_location(cond->location);
-	     printf("NOT ");	
-	     print_condition(cond->value.not_exp);
+	     printf("NOT\n\n");	
+	     if(cond->value.not_exp) print_condition(cond->value.not_exp);
 	     break;
 
 	case BOOL_OR:
 	     print_location(cond->location);
-	     print_condition(cond->value.bin_exp.left_exp);
-	     printf(" OR ");
-	     print_condition(cond->value.bin_exp.left_exp);
+             printf("OR\n\n");
+             printf("First Argument:\n\n");
+	     if(cond->value.bin_exp.left_exp) print_condition(cond->value.bin_exp.left_exp);
+	     printf("Second Argument:\n\n");      
+	     if(cond->value.bin_exp.right_exp) print_condition(cond->value.bin_exp.right_exp);
 	     break;
 
 	case BOOL_AND:
 	     print_location(cond->location);
-	     print_condition(cond->value.bin_exp.left_exp);
-	     printf(" AND ");
-	     print_condition(cond->value.bin_exp.left_exp);
+             printf("AND\n\n");
+	     printf("First Argument:\n\n");
+	     if(cond->value.bin_exp.left_exp) print_condition(cond->value.bin_exp.left_exp);
+	     printf("Second Argument:\n\n");
+	     if(cond->value.bin_exp.right_exp) print_condition(cond->value.bin_exp.right_exp);
 	     break;
 
-	default: printf("Unexpected value.\n"); break;
+	default: printf("Unexpected value\n"); break;
 	}
 }
 
@@ -332,33 +389,41 @@ void print_atom(GPAtomicExp *atom)
 
 	case VARIABLE:
 	     print_location(atom->location);		
-             printf("Variable\n");
+             printf("Variable\n\n");
+	     printf("Name: %s",atom->value.var);
              break;
 
 	case INT_CONSTANT:
 	     print_location(atom->location);
-             printf("Number: %d\n", atom->value.num);
+             printf("Number\n");
+	     printf("Value: %d\n\n", atom->value.num);
              break;
           
 	case STRING_CONSTANT:
 	     print_location(atom->location);
-             printf("String: %s\n", atom->value.str);
+             printf("String\n");
+	     printf("Value: %s\n\n", atom->value.str);
              break;
 
 	case INDEGREE:
 	     print_location(atom->location);
-             printf("Indegree: %s\n", atom->value.node_id);
-             break;
+             printf("Indegree\n");
+	     printf("Node: %s\n\n", atom->value.node_id);
+	     break;
  
         case OUTDEGREE:
 	     print_location(atom->location);
-             printf("Outdegree: %s\n", atom->value.node_id);
+             printf("Outdegree\n");
+	     printf("Node: %s\n\n", atom->value.node_id);
              break;
 
 	case LIST_LENGTH:
 	     print_location(atom->location);
-             printf("Length:\n");
-	     print_ast(atom->value.list_arg);
+             printf("Length:\n\n");
+	     if (atom->value.list_arg) {
+		 print_ast(atom->value.list_arg);
+		 break;
+	     }		
              break;
 
 	case STRING_LENGTH:
@@ -369,42 +434,48 @@ void print_atom(GPAtomicExp *atom)
 
 	case NEG:
 	     print_location(atom->location);
-             printf("-");
+             printf("Unary Minus\n\n");
 	     print_atom(atom->value.exp);
              break;
 
 	case ADD:
 	     print_location(atom->location);
+             printf("+\n\n");
+	     printf("First argument\n\n");
              print_atom(atom->value.bin_op.left_exp);
-             printf("+");
+	     printf("Second argument\n\n");
 	     print_atom(atom->value.bin_op.right_exp);
              break;
 
 	case SUBTRACT:
-	     print_location(atom->location);
+             printf("-\n\n");
+	     printf("First argument\n\n");
              print_atom(atom->value.bin_op.left_exp);
-             printf("-");
+	     printf("Second argument\n\n");
 	     print_atom(atom->value.bin_op.right_exp);
              break;
 
 	case MULTIPLY:
-	     print_location(atom->location);
+             printf("*\n\n");
+	     printf("First argument\n\n");
              print_atom(atom->value.bin_op.left_exp);
-             printf("*");
+	     printf("Second argument\n\n");
 	     print_atom(atom->value.bin_op.right_exp);
              break;
 
 	case DIVIDE:
-	     print_location(atom->location);
+             printf("/\n\n");
+	     printf("First argument\n\n");
              print_atom(atom->value.bin_op.left_exp);
-             printf("/");
+	     printf("Second argument\n\n");
 	     print_atom(atom->value.bin_op.right_exp);
              break;
 
 	case CONCAT:
-	     print_location(atom->location);
+             printf(".\n\n");
+	     printf("First argument\n\n");
              print_atom(atom->value.bin_op.left_exp);
-             printf(".");
+	     printf("Second argument\n\n");
 	     print_atom(atom->value.bin_op.right_exp);
              break;
 
@@ -416,13 +487,14 @@ void print_atom(GPAtomicExp *atom)
 
 void print_procedure(GPProcedure *proc)
 {
-     printf("Procedure\n");
- 
      print_location(proc->location);
+
+     printf("Procedure\n");
 
      printf("Name: %s\n", proc->name);		
 
-     print_ast(proc->local_decls);
+     if (proc->local_decls) print_ast(proc->local_decls);
+
      print_statement(proc->cmd_seq);
 }
 
@@ -430,9 +502,9 @@ void print_procedure(GPProcedure *proc)
 
 void print_rule(GPRule *rule)
 {
-     printf("Rule\n");
- 
      print_location(rule->location);
+
+     printf("Rule\n");
 
      if(rule->injective) 
           printf("Injective Matching\n"); 
@@ -440,24 +512,24 @@ void print_rule(GPRule *rule)
 
      printf("Name: %s\n", rule->name);		
 
-     print_ast(rule->variables);
+     if (rule->variables) print_ast(rule->variables);
      print_graph(rule->lhs);
      print_graph(rule->rhs);
-     print_ast(rule->interface);
-     print_condition(rule->condition);
+     if (rule->interface) print_ast(rule->interface);
+     if (rule->condition) print_condition(rule->condition);
 }
 
 
 
 void print_graph(GPGraph *graph)
 {
-     printf("Graph\n");
- 
      print_location(graph->location);
 
+     printf("Graph\n");
+
      print_pos(graph->position);
-     print_ast(graph->nodes);
-     print_ast(graph->edges);
+     if (graph->nodes) print_ast(graph->nodes);
+     if (graph->edges) print_ast(graph->edges);
 }
 
 
@@ -476,15 +548,14 @@ void print_node_pair(GPNodePair *node_pair)
 
 void print_node(GPNode *node)
 {
-     printf("Node\n");
- 
      print_location(node->location);
 
-     printf("Name: %s\n", node->name);
+     printf("Node\nName: %s\n", node->name);
 
      if(node->root) printf("Root Node\n"); 
-
+ 
      print_label(node->label);
+
      print_pos(node->position);
 }
 
@@ -492,43 +563,45 @@ void print_node(GPNode *node)
 
 void print_edge(GPEdge *edge)
 {
-     printf("Edge\n");
- 
      print_location(edge->location);
+
+     printf("Edge\n");
 
      printf("Name: %s\n", edge->name);
      printf("Source: %s\n", edge->name);
      printf("Target: %s\n", edge->name);
+
+     print_label(edge->label);
 }
 
 
 
 void print_label(GPLabel *label)
 {
-     printf("Label\n");
- 
      print_location(label->location);
 
+     printf("Label\nMark: ");
+
      switch (label->mark) {
-        case (RED):	 printf("red\n"); break;
-        case (GREEN): 	 printf("green\n"); break;
-        case (BLUE): 	 printf("blue\n"); break;
-        case (GREY): 	 printf("grey\n"); break;
-        case (DASHED): 	 printf("dashed\n"); break;
-        case (NONE): 	 printf("no mark\n"); break;
-        default: 	 printf("Unexpected value.\n"); break;
+        case (RED):	 printf("Red\n\n"); break;
+        case (GREEN): 	 printf("Green\n\n"); break;
+        case (BLUE): 	 printf("Blue\n\n"); break;
+        case (GREY): 	 printf("Grey\n\n"); break;
+        case (DASHED): 	 printf("Dashed\n\n"); break;
+        case (NONE): 	 printf("No mark\n\n"); break;
+        default: 	 printf("Unexpected value\n\n"); break;
      }
 
-     print_ast(label->gp_list);
+     if (label->gp_list) print_ast(label->gp_list);
 }
 
 
 
 void print_pos(GPPos *pos)
 {
-     printf("Position\n");
- 
      print_location(pos->location);
 
-     printf("x coordinate: %d \ny coordinate: %d", pos->x, pos->y);
+     printf("Position\n");
+
+     printf("x coordinate: %d\ny coordinate: %d\n\n", pos->x, pos->y);
 }

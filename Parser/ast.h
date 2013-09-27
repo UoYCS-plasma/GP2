@@ -8,12 +8,10 @@
  *
  * Created on 28/5/13 by Chris Bak 
  *
-/* /////////////////////////////////////////////////////////////////////////////////////// */
+ * /////////////////////////////////////////////////////////////////////////////////////// */
 
 
 extern char *file_name; /* defined in gpparser.y */
-
-typedef char symbol; /* temporary, for testing */
 
 /* Bison uses a global variable yylloc of type YYLTYPE to keep track of the locations of 
    tokens and nonterminals. The scanner will set these values upon reading each token. 
@@ -43,9 +41,9 @@ typedef struct List {
   union {
     struct GPDeclaration *decl;
     struct GPStatement *command;
-    symbol *rule_name;
+    char *rule_name;
     struct List *vars; /* multiple variables declared with the same type: INT_DECLS, STRING_DECLS, ATOM_DECLS */
-    symbol *var; 	  
+    char *var; 	  
     struct GPNodePair *node_pair; /* pair of nodes specified in the interface of a rule */	   
     struct GPNode *node;    
     struct GPEdge *edge;    
@@ -57,9 +55,9 @@ typedef struct List {
 
 List *addDecl (list_t list_type, YYLTYPE location, struct GPDeclaration *decl, struct List *next);
 List *addCommand (YYLTYPE location, struct GPStatement *command, struct List *next);
-List *addRule (YYLTYPE location, symbol *rule_name, struct List *next);
+List *addRule (YYLTYPE location, char *rule_name, struct List *next);
 List *addVariableDecl (list_t list_type, YYLTYPE location, struct List *vars, struct List *next);
-List *addVariable (YYLTYPE location, symbol *var, struct List *next);
+List *addVariable (YYLTYPE location, char *var, struct List *next);
 List *addNodePair (YYLTYPE location, struct GPNodePair *node_pair, struct List *next);
 List *addNode (YYLTYPE location, struct GPNode *node, struct List *next);
 List *addEdge (YYLTYPE location, struct GPEdge *edge, struct List *next);
@@ -95,9 +93,9 @@ typedef struct GPStatement {
   YYLTYPE location;
   union {    
     struct List *cmd_seq;
-    symbol *rule_name;
+    char *rule_name;
     struct List *rule_set;
-    symbol *proc_name;
+    char *proc_name;
     struct { struct GPStatement *condition; struct GPStatement *then_stmt; struct GPStatement *else_stmt; } cond_branch; /* IF_STMT, TRY_STMT */
     struct GPStatement *loop_stmt;
     struct { struct GPStatement *left_stmt; struct GPStatement *right_stmt; } or_stmt;
@@ -106,9 +104,9 @@ typedef struct GPStatement {
 } GPStatement;
 
 GPStatement *newCommandSequence(YYLTYPE location, struct List *cmd_seq);
-GPStatement *newRuleCall(YYLTYPE location, symbol *rule_name);
+GPStatement *newRuleCall(YYLTYPE location, char *rule_name);
 GPStatement *newRuleSetCall(YYLTYPE location, struct List *rule_set);
-GPStatement *newProcCall(YYLTYPE location, symbol *proc_name);
+GPStatement *newProcCall(YYLTYPE location, char *proc_name);
 GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location, struct GPStatement *condition, struct GPStatement *then_stmt, struct GPStatement *else_stmt);
 GPStatement *newAlap(YYLTYPE location, struct GPStatement *loop_stmt);
 GPStatement *newOrStmt(YYLTYPE location, struct GPStatement *left_stmt, struct GPStatement *right_stmt);
@@ -124,7 +122,7 @@ typedef struct GPCondExp {
   condexp_t exp_type;
   YYLTYPE location;
   union {
-    symbol *var; /* type checking predicates: INT_CHECK, STRING_CHECK, ATOM_CHECK */
+    char *var; /* type checking predicates: INT_CHECK, STRING_CHECK, ATOM_CHECK */
     struct { char *source; char *target; struct GPLabel *label; } edge_pred;
     struct List *rel_exp; 
     struct GPCondExp *not_exp;
@@ -132,7 +130,7 @@ typedef struct GPCondExp {
   } value;
 } GPCondExp;
 
-GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, symbol *var);
+GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var);
 GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, struct GPLabel *label);
 GPCondExp *newRelationalExp (YYLTYPE location, struct List *rel_exp);
 GPCondExp *newNotExp (YYLTYPE location, struct GPCondExp *not_exp);
@@ -147,7 +145,7 @@ typedef struct GPAtomicExp {
   atomexp_t exp_type;
   YYLTYPE location;
   union {
-    symbol *var;
+    char *var;
     int num;
     char *str;
     char *node_id; /* INDEGREE, OUTDEGREE */
@@ -158,7 +156,7 @@ typedef struct GPAtomicExp {
   } value;
 } GPAtomicExp;
 
-GPAtomicExp *newVariable (YYLTYPE location, symbol *name);
+GPAtomicExp *newVariable (YYLTYPE location, char *name);
 GPAtomicExp *newNumber (YYLTYPE location, int num);
 GPAtomicExp *newString (YYLTYPE location, char *str);
 GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id);
@@ -177,12 +175,12 @@ typedef enum {PROCEDURE, RULE, NODE_PAIR, GRAPH, NODE, EDGE, POSITION, LABEL} as
 typedef struct GPProcedure {
   ast_node_t node_type;
   YYLTYPE location;
-  symbol *name; 
+  char *name; 
   struct List *local_decls; 
   struct GPStatement *cmd_seq; 
 } GPProcedure;
 
-GPProcedure *newProcedure(YYLTYPE location, symbol *name, struct List *local_decls, struct GPStatement *cmd_seq);
+GPProcedure *newProcedure(YYLTYPE location, char *name, struct List *local_decls, struct GPStatement *cmd_seq);
 
 
 /* Rule declaration */
@@ -191,7 +189,7 @@ typedef struct GPRule {
   ast_node_t node_type;
   YYLTYPE location;
   int injective; /* 1 for injective matching, 0 otherwise */
-  symbol *name; 
+  char *name; 
   struct List *variables;
   struct GPGraph *lhs;
   struct GPGraph *rhs;
@@ -199,7 +197,7 @@ typedef struct GPRule {
   struct GPCondExp *condition;  
 } GPRule;
 
-GPRule *newRule(YYLTYPE location, int injective, symbol *name, struct List *variables, struct GPGraph *lhs, struct GPGraph *rhs, struct List *interface, struct GPCondExp *condition);
+GPRule *newRule(YYLTYPE location, int injective, char *name, struct List *variables, struct GPGraph *lhs, struct GPGraph *rhs, struct List *interface, struct GPCondExp *condition);
 
 
 /* Pairs of nodes for the interface portion of a rule */

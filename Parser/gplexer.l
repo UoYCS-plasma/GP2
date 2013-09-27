@@ -24,6 +24,7 @@
 #include "ast.h"
 #include "gpparser.tab.h"
 
+
 int yycolumn = 1;
 
 /* macro YY_USER_ACTION invoked for each token recognised by yylex before calling action
@@ -116,11 +117,11 @@ list		    return LIST;
 
  /* macro identifiers must start with a capital letter 
   * other identifiers start with a lowercase letter    */
-[A-Z][a-zA-Z0-9_-]*   { yylval.id = yytext; return PROCID; } /* other characters may be allowed */
-[a-z][a-zA-Z0-9_-]*   { yylval.id = yytext; return ID; }
-\"[a-z_-]*\"          { yylval.str = yytext; return STR; }
+[A-Z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed */
+[a-z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return ID; }
+\"[a-z_-]*\"          { yylval.str = strdup(yytext); return STR; }
 [ \t\r]+              /* ignore white space */
-\n		      { yycolumn = 1;}  /* reset yycolumn on newline */
+\n		      { yycolumn = 1; }  /* reset yycolumn on newline */
 .                     printf("%s:%d: Invalid symbol '%s'\n", file_name, yylineno, yytext);
 
 %%

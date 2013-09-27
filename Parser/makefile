@@ -3,6 +3,9 @@ CC = gcc
 gpparse: gpparser.tab.o lex.yy.o ast.o pretty.o 
 	 $(CC) -o gpparse gpparser.tab.o lex.yy.o ast.o pretty.o
 
+gpdebug: gpparser.tab.c lex.yy.c ast.c pretty.c
+	 $(CC) -g -o gpparse gpparser.tab.c lex.yy.c ast.c pretty.c
+
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
 		$(CC) -c gpparser.tab.c
 
@@ -22,5 +25,5 @@ pretty.o:       pretty.c pretty.h ast.h
 		$(CC) -c pretty.c
 
 clean:
-		- rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c gpparser.exe
+		- rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c gpparse
 

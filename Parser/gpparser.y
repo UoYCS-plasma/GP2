@@ -30,6 +30,7 @@ char *file_name = NULL; /* for error messages */
 /* flags for AST construction */
 int is_root = 0;
 int is_injective = 0;
+
 %}
 
 /* declare tokens */
@@ -81,8 +82,6 @@ int is_injective = 0;
 
   int list_type; /* enum list_t */
   int check_type; /* enum cond_exp_t */
-
-  char *name;	/* pointer to symbol table */
 } 
 
 %type <list> Program ProcList ComSeq RuleSetCall IDList VarDecls VarList Inter NodePairList 
@@ -102,10 +101,9 @@ int is_injective = 0;
 %type <atom_exp> AtomExp
 %type <list_type> Type RelOp 
 %type <check_type> Subtype
-%type <name> RuleCall ProcCall ProcID RuleID Variable 
-%type <id> NodeID EdgeID
+%type <id> NodeID EdgeID ProcID RuleID Variable
 
-%start Program	/* Program is the start symbol of the grammar */
+%start GPProgram /* start symbol of the grammar */
 
 %locations
 
@@ -113,8 +111,9 @@ int is_injective = 0;
 
  /* Grammar for textual GP2 programs */
 
-Program: Declaration	      		{ $$ = addDecl(GLOBAL_DECLS, yylloc, $1, NULL);           
-           				       gp_program = $$; }
+GPProgram: Program			{ gp_program = $1; }
+
+Program: Declaration	      		{ $$ = addDecl(GLOBAL_DECLS, yylloc, $1, NULL); }  
        | Program Declaration            { $$ = addDecl(GLOBAL_DECLS, yylloc, $2, $1); }  
 
 Declaration: MainDecl 			{ $$ = newMainDecl(yylloc, $1); }
@@ -144,29 +143,24 @@ Command: Block 				/* default $$ = $1 */
        | TRY Block 			{ $$ = newCondBranch(TRY_STMT, yylloc, $2, 
                                                newSkip(yylloc), newSkip(yylloc)); }
        | TRY Block THEN Block		{ $$ = newCondBranch(TRY_STMT, yylloc, $2, $4, newSkip(yylloc)); }
-       | TRY Block THEN Block ELSE Block 
-					{ $$ = newCondBranch(TRY_STMT, yylloc, $2, $4, $6); }
+       | TRY Block THEN Block ELSE Block { $$ = newCondBranch(TRY_STMT, yylloc, $2, $4, $6); }
 
 Block: '(' ComSeq ')' 	                { $$ = newCommandSequence(yylloc,$2); }
      | '(' ComSeq ')' '!' 		{ $$ = newAlap(yylloc, newCommandSequence(yylloc,$2)); } 
      | SimpleCommand 			/* default $$ = $1 */
+     | SimpleCommand  '!'		{ $$ = newAlap(yylloc, $1); }
      | Block OR Block 			{ $$ = newOrStmt(yylloc, $1, $3); }
+     | SKIP				{ $$ = newSkip(yylloc); }
+     | FAIL				{ $$ = newFail(yylloc); }
 
 SimpleCommand: RuleSetCall 	        { $$ = newRuleSetCall(yylloc, $1); }
-	     | RuleSetCall '!' 		{ $$ = newAlap(yylloc, newRuleSetCall(yylloc, $1)); }
-	     | ProcCall 		{ $$ = newProcCall(yylloc, $1); }
-             | ProcCall '!' 		{ $$ = newAlap(yylloc, newProcCall(yylloc, $1)); }
-             | SKIP			{ $$ = newSkip(yylloc); }
-             | FAIL			{ $$ = newFail(yylloc); }
+             | RuleID                   { $$ = newRuleCall(yylloc, $1); }
+	     | ProcID	 		{ $$ = newProcCall(yylloc, $1); }
 
-RuleSetCall: RuleCall                   { $$ = addRule(yylloc, $1, NULL); }
-	   | '{' IDList '}'		{ $$ = $2; } 
+RuleSetCall: '{' IDList '}'		{ $$ = $2; } 
 
 IDList: RuleID				{ $$ = addRule(yylloc, $1, NULL); }
       | IDList ',' RuleID 		{ $$ = addRule(yylloc, $3, $1); } 
-
-RuleCall: RuleID			/* default $$ = $1 */
-ProcCall: ProcID			/* default $$ = $1 */
 
  /* Grammar for GP2 conditional rule schemata */
 
@@ -261,7 +255,7 @@ RelOp: '='				{ $$ = EQUAL; }
 Label: List 				{ $$ = newLabel(yylloc, NONE, $1); }
      | List '#' MARK			{ $$ = newLabel(yylloc, $3, $1); } 
 
-List: EMPTY  				{ $$ = NULL; }
+List: EMPTY  				{ $$ = addAtom(yylloc, NULL, NULL); }
     | AtomExp				{ $$ = addAtom(yylloc, $1, NULL); } 
     | List ':' AtomExp			{ $$ = addAtom(yylloc, $3, $1); }
 
@@ -284,11 +278,11 @@ AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
  /* Identifiers */
 
  /* symtable contains scoping information for rules/macros */
-ProcID: PROCID 				{ $$ = (symbol*) $1; }
-RuleID: ID				{ $$ = (symbol*) $1; }
+ProcID: PROCID 				/* default $$ = $1 */
+RuleID: ID		         	/* default $$ = $1 */
 NodeID: ID				/* default $$ = $1 */
 EdgeID: ID				/* default $$ = $1 */
-Variable: ID				{ $$ = (symbol*) $1; }
+Variable: ID		  		/* default $$ = $1 */
 
 %%
 
@@ -298,8 +292,9 @@ int main(int argc, char** argv) {
        
   extern FILE *yyin; 
  
-  if(argc > 1 && !strcmp(argv[1], "-d")) {
-    yydebug = 1; argc--; argv++;	/* for producing the debugging file gpparser.output */
+  if(argc > 1 && !strcmp(argv[1], "-d")) {  /* if called with the -d flag */
+    yydebug = 1; 	/* for producing the debugging file gpparser.output */
+    argc--; argv++;	/* effectively removing "-d" from the command line call */
   }
 
   if(argc != 2) {
@@ -307,23 +302,23 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if(!(yyin = fopen(argv[1], "r"))) {	/* Flex scans from yyin. */
+  if(!(yyin = fopen(argv[1], "r"))) {	/* flex scans from yyin. */
      perror(argv[1]);
-     yylineno = 1;	/* reset yylineno */
+     yylineno = 1;	
      return 1;
   }
 
   file_name = argv[1];
   printf("Processing %s\n", file_name);
 
-  if(!yyparse())
-    printf("GP2 parse succeeded\n");
-  else
-    printf("GP2 parse failed\n");
+  if(!yyparse()) {
+    printf("GP2 parse succeeded\n\n");
+    printf("GP Program %s\n\n", file_name); 
+    print_ast(gp_program);  
+  }
+  else printf("GP2 parse failed\n");
  
-  fclose(yyin);
-  
-  print_ast(gp_program);
+  fclose(yyin);  
 
   return 0;
 }
@@ -354,6 +349,4 @@ void print_error(YYLTYPE location, char *errormsg, ...)
 
    va_end(args);
 }
-
-
-
+        
