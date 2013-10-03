@@ -1,28 +1,27 @@
-/* ///////////////////////////////////////////////////////////////////////////////////////////////// */
+/*////////////////////////////////////////////////////////////////////////////
 
-/*                                       gplexer.lex                                          
-*
-* This is a Flex scanner for the textual program format of GP2. 
-* The scanner tokenises its input files and passes them to the Bison parser. 
-*
-* Created on 10/5/2013 by Chris Bak 
-*
-* 
-* ///////////////////////////////////////////////////////////////////////////////////////////////// */
+                             gplexer.lex                                          
+
+  This is a Flex lexican analyser for the textual program format of GP2. 
+  It scans the input file and sends a token to the Bison parser when required.
+
+                     Created on 10/5/2013 by Chris Bak 
+
+////////////////////////////////////////////////////////////////////////////*/ 
 
 
 %option noyywrap nodefault yylineno
 
-/* yywrap is an old flex library routine to manage multiple input files. This is done manually here */
-/* nodefault removes default action if the input rules don't cover all possible input. */
-/* yylineno is a flex-maintained integer variable storing the current line number of input */
+/* yywrap is an old flex library routine to manage multiple input files. This is done manually here.
+   nodefault removes default action if the input rules don't cover all possible input.
+   yylineno is a flex-maintained integer variable storing the current line number of input. */
 
 
 
 %{
 
 #include "ast.h"
-#include "gpparser.tab.h"
+#include "gpparser.tab.h" /* Token definitions */
 
 
 int yycolumn = 1;
@@ -37,7 +36,7 @@ int yycolumn = 1;
 
 %}
 
- /* exclusive start state for ignoring GP2 comments */
+/* exclusive start state for ignoring GP2 comments */
 %x COMMENT	    
 
 %%
@@ -50,7 +49,8 @@ int yycolumn = 1;
 
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
- /* keywords */
+ /* GP2 keywords */ 
+
 Main		    return MAIN;
 if	            return IF;
 try		    return TRY;
@@ -74,19 +74,21 @@ llength		    return LLEN;
 slength	            return SLEN;
 
  /* keywords for node and edge marks */
+
 red		    { yylval.mark = RED; return MARK; } 
 green		    { yylval.mark = GREEN; return MARK; } 
 blue		    { yylval.mark = BLUE; return MARK; } 
 grey		    { yylval.mark = GREY; return MARK; } 
 dashed		    { yylval.mark = DASHED; return MARK; } 
 
- /* keywords for GP types */
+ /* keywords for GP2 types */
+
 int		    return INT;  
 string		    return STRING;  
 atom     	    return ATOM;  
 list		    return LIST;  
 
- /* single character tokens */
+ 
 "(" |		  
 ")" |		  
 "{" |		  
@@ -108,16 +110,15 @@ list		    return LIST;
 "=" |            	    
 "#"		 return yytext[0];
 
- /* other tokens */
 "=>"             return ARROW;
 "(R)"	 	 return ROOT;
 "!="		 return NEQ; 
 ">="	         return GTEQ; 
 "<="	         return LTEQ; 
 
- /* macro identifiers must start with a capital letter 
-  * other identifiers start with a lowercase letter    */
-[A-Z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed */
+ /* Procedure identifiers must start with a capital letter. 
+    All other identifiers start with a lowercase letter. */  
+[A-Z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
 [a-z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return ID; }
 \"[a-z_-]*\"          { yylval.str = strdup(yytext); return STR; }
 [ \t\r]+              /* ignore white space */

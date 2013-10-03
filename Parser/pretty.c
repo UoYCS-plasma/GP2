@@ -1,582 +1,774 @@
-/* ///////////////////////////////////////////////////////////////////////////////////////////////// */
+/*//////////////////////////////////////////////////////////////////////////// 
 
-/*              pretty.c       
-*                                
-* Pretty printers for AST and symbol table
-*
-* Created on 18/9/2013 by Chris Bak 
-* 
-* ///////////////////////////////////////////////////////////////////////////////////////////////// */
+                           pretty.c       
+                              
+              Pretty printers for AST and symbol table
 
-#include <stdio.h>
-#include "pretty.h"
+                  Created on 18/9/2013 by Chris Bak 
 
-void print_location(YYLTYPE loc)
+/////////////////////////////////////////////////////////////////////////// */ 
+ 
+#include <stdio.h> /* printf */
+#include "pretty.h" /* Function prototypes */
+
+/* The macro pretty_print is shorthand for a function that calls the 
+ * appropriate print function if the first argument is not a null pointer.
+ *
+ * POINTER_ARG is a pointer member of the current structure.
+ *
+ * TYPE corresponds to the print_ functions in this file. For example, calling
+ * pretty_print with second argument 'list' will call print_list on POINTER_ARG
+ * if POINTER_ARG is not NULL.
+ */ 
+
+#define pretty_print(POINTER_ARG,TYPE) if(POINTER_ARG != NULL) print_ ## TYPE (POINTER_ARG)
+
+
+void print_location(YYLTYPE const loc)
 {
      printf("%d.%d-%d.%d\n", loc.first_line, loc.first_column, loc.last_line, loc.last_column);
 }
 
+/* print_list is a recursive function that pretty prints an AST.
+ * Argument: a pointer to an AST node of type struct List.
+ *
+ * It prints the node type of its argument, followed by a depth-first
+ * print of its children which are determined by the node type. 
+ *
+ * The function also outputs additional semantic information in the AST:
+ * rule names, procedure names, variable names, integer values, constant
+ * values, node names, edge names, root node flag and injective matching
+ * flag.
+ *
+ *
+ * Similar pretty printing functions are defined for each AST struct.
+ */ 
 
-void print_ast(List *list)
+void print_list(List const * const list)
 {
      switch(list->list_type) {
 
-	case GLOBAL_DECLS:
+	case GLOBAL_DECLARATIONS:
+
 	     printf("List node: Global Declaration\n\n");
-	     print_declaration(list->value.decl);
-             if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }
+
+	     pretty_print(list->value.decl, declaration);
+             pretty_print(list->next, list);
+
 	     break;	
 
 
-	case LOCAL_DECLS:
+	case LOCAL_DECLARATIONS:
+
 	     printf("List node: Local Declaration\n\n");
-	     print_declaration(list->value.decl);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     pretty_print(list->value.decl, declaration);
+             pretty_print(list->next, list);
+
 	     break;	
 
 
 	case COMMANDS:
-	     printf("List node: Command Sequence\n\n");
-	     print_statement(list->value.command);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     printf("List node: Command\n\n");
+
+	     pretty_print(list->value.command, statement);
+             pretty_print(list->next, list);
+
 	     break;	
 
 
 	case RULES:
-             printf("List node: Rule Set\nName: %s\n\n", list->value.rule_name);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+             if(list->value.rule_name)
+                printf("List node: Rule Set\nName: %s\n\n", list->value.rule_name);
+
+             pretty_print(list->next, list);
+
 	     break;
 	
 
-	case INT_DECLS:
-	     printf("List node: Integer Variables\n");
-	     print_ast(list->value.vars);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+	case INT_DECLARATIONS:
+
+	     printf("List node: Integer Variable\n\n");
+
+	     pretty_print(list->value.vars, list);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
-	case STRING_DECLS:
-	     printf("List node: String Variables\n");
-	     print_ast(list->value.vars);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+	case STRING_DECLARATIONS:
+
+	     printf("List node: String Variable\n\n");
+
+	     pretty_print(list->value.vars, list);
+             pretty_print(list->next, list);
+	     
 	     break;
 	
 
-	case ATOM_DECLS:
-	     printf("List node: Atom Variables\n");
-	     print_ast(list->value.vars);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+	case ATOM_DECLARATIONS:
+
+	     printf("List node: Atom Variable\n\n");
+
+	     pretty_print(list->value.vars, list);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
-	case LIST_DECLS:
-	     printf("List node: List Variables\n");
-	     print_ast(list->value.vars);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+	case LIST_DECLARATIONS:
+
+	     printf("List node: List Variable\n\n");
+
+	     pretty_print(list->value.vars, list);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
-	case VARIABLES:
-	     printf("List node: Variable\nName: %s\n\n", list->value.var);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+	case VARIABLE_LIST:
+
+             if(list->value.var)
+                printf("List node: Variable\nName: %s\n\n", list->value.var);
+
+             pretty_print(list->next, list);
+
 	     break;
 	
 
 	case INTERFACE_LIST:
+
 	     printf("List node: Interface\n\n");
-	     print_node_pair(list->value.node_pair);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     pretty_print(list->value.node_pair, node_pair);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
 	case NODE_LIST:
+
 	     printf("List node: Node\n\n");
-	     print_node(list->value.node);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     pretty_print(list->value.node, node);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
 	case EDGE_LIST:
+
 	     printf("List node: Edge\n\n");
-	     print_edge(list->value.edge);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     pretty_print(list->value.edge, edge);
+             pretty_print(list->next, list);
+
 	     break;
+
 	
+	case EQUAL:
+
+	     printf("List node: =\n\n");
+
+	     pretty_print(list->value.rel_exp, list);
+             pretty_print(list->next, list);
+	
+	     break;	
+
 
 	case NOT_EQUAL:
-	     printf("!=\n\n");
-	     print_ast(list->value.rel_exp);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     printf("List node: !=\n\n");
+
+	     pretty_print(list->value.rel_exp, list);
+             pretty_print(list->next, list);
+	
 	     break;
 	
 
 	case GREATER:
-	     printf(">\n\n");
-	     print_ast(list->value.rel_exp);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     printf("List node: >\n\n");
+
+	     pretty_print(list->value.rel_exp, list);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
 	case GREATER_EQUAL:
-	     printf(">=\n\n");
-	     print_ast(list->value.rel_exp);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     printf("List node: >=\n\n");
+
+	     pretty_print(list->value.rel_exp, list);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
 	case LESS:
-	     printf("<\n\n");
-	     print_ast(list->value.rel_exp);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }
+
+	     printf("List node: <\n\n");
+
+	     pretty_print(list->value.rel_exp, list);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
 	case LESS_EQUAL:
-	     printf("<\n\n");
-	     print_ast(list->value.rel_exp);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     printf("List node: <=\n\n");
+
+	     pretty_print(list->value.rel_exp, list);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
 	case GP_LIST:
+
 	     printf("List node: GP List\n\n");
-	     print_atom(list->value.atom);
-	     if (list->next) {
-                print_ast(list->next);	
-                break;	
-             }	
+
+	     pretty_print(list->value.atom, atom);
+             pretty_print(list->next, list);
+
 	     break;
 	
 
 	default: printf("Unexpected value.\n"); break;
+
 	}
 }
 
 
 
-void print_declaration(GPDeclaration *decl)
+void print_declaration(GPDeclaration const * const decl)
 {
      switch(decl->decl_type) {
 
-	case MAIN_DECL:
+	case MAIN_DECLARATION:
+
 	     print_location(decl->location);
+
 	     printf("Main\n\n");
-	     print_statement(decl->value.main_program);
+
+	     pretty_print(decl->value.main_program, statement);
+
 	     break;
 
-	case PROCEDURE_DECL:
+	case PROCEDURE_DECLARATION:
+
 	     print_location(decl->location);
-	     print_procedure(decl->value.proc);
+
+             printf("Procedure Declaration\n\n");
+
+	     pretty_print(decl->value.proc, procedure);
+
 	     break;
 
-	case RULE_DECL:
+	case RULE_DECLARATION:
+
 	     print_location(decl->location);
-	     print_rule(decl->value.rule);
+
+	     printf("Rule Declaration\n\n");
+
+	     pretty_print(decl->value.rule, rule);
+
 	     break;
 
 	default: printf("Unexpected value.\n"); break;
+
 	}
 }
 
 
 
-void print_statement(GPStatement *stmt)
+void print_statement(GPStatement const * const stmt)
 {
      switch(stmt->statement_type) {
 
 	case COMMAND_SEQUENCE:	
+
 	     print_location(stmt->location);
-	     if (stmt->value.cmd_seq) {
-                print_ast(stmt->value.cmd_seq);	
-                break;	
-             }
+
+             printf("CommandSequence\n\n");
+
+	     pretty_print(stmt->value.cmd_seq, list);
+
 	     break;
 
 	case RULE_CALL:
+
 	     print_location(stmt->location);
+
 	     printf("Rule Call\n");
-             printf("Name: %s\n\n", stmt->value.rule_name);
+
+             if(stmt->value.rule_name) printf("Name: %s\n\n", stmt->value.rule_name);
+
 	     break;
 
 	case RULE_SET_CALL:
+
 	     print_location(stmt->location);
-	     printf("Rule Set Call\n");
-	     if (stmt->value.rule_set) {
-                print_ast(stmt->value.rule_set);
-                break;
-             }
+
+	     printf("Rule Set Call\n\n");
+
+	     pretty_print(stmt->value.rule_set, list);
+
 	     break;
 
 	case PROCEDURE_CALL:
+
 	     print_location(stmt->location);
-	     printf("Procedure Call\n");
-             printf("Name: %s\n\n", stmt->value.proc_name);
+
+	     printf("Procedure Call\n\n");
+
+             if(stmt->value.proc_name) printf("Name: %s\n\n", stmt->value.proc_name);
+
 	     break;
 
-	case IF_STMT:
+	case IF_STATEMENT:
+
 	     print_location(stmt->location);
-	     printf("If\n\n");
-	     print_statement(stmt->value.cond_branch.condition);
-	     printf("Then\n\n");
-	     print_statement(stmt->value.cond_branch.then_stmt);
-	     printf("Else\n\n");
-	     print_statement(stmt->value.cond_branch.else_stmt);
+
+             printf("If\n\n");
+	     pretty_print(stmt->value.cond_branch.condition, statement);
+	    
+             printf("Then\n\n");
+	     pretty_print(stmt->value.cond_branch.then_stmt, statement);
+             
+             printf("Else\n\n");
+	     pretty_print(stmt->value.cond_branch.else_stmt, statement);
+             
 	     break;
 
-	case TRY_STMT:
+	case TRY_STATEMENT:
+
 	     print_location(stmt->location);
-	     printf("Try\n\n");
-	     print_statement(stmt->value.cond_branch.condition);
-	     printf("Then\n\n");
-	     print_statement(stmt->value.cond_branch.then_stmt);
-	     printf("Else\n\n");
-	     print_statement(stmt->value.cond_branch.else_stmt);
+
+             printf("Try\n\n");
+	     pretty_print(stmt->value.cond_branch.condition, statement);
+	    
+             printf("Then\n\n");
+	     pretty_print(stmt->value.cond_branch.then_stmt, statement);
+             
+             printf("Else\n\n");
+	     pretty_print(stmt->value.cond_branch.else_stmt, statement);
+	    
 	     break;
 
-	case ALAP_STMT:
+	case ALAP_STATEMENT:
+
 	     print_location(stmt->location);
-             printf("ALAP\n\n");
-	     print_statement(stmt->value.loop_stmt);	     
+
+	     printf("ALAP\n\n");
+	     pretty_print(stmt->value.cond_branch.condition, statement);
+             
 	     break;
 
 	case PROGRAM_OR:
+
 	     print_location(stmt->location);
+
              printf("Or\n\n");
+ 
              printf("First Argument:\n\n");
-	     print_statement(stmt->value.or_stmt.left_stmt);
+	     pretty_print(stmt->value.or_stmt.right_stmt, statement);
+             
+ 
              printf("Second Argument:\n\n");
-	     print_statement(stmt->value.or_stmt.right_stmt);
+	     pretty_print(stmt->value.or_stmt.right_stmt, statement);
+
 	     break;
 
-	case SKIP_STMT:
+	case SKIP_STATEMENT:
+
 	     print_location(stmt->location);
-	     printf("Skip\n\n");
+
+	     printf("skip\n\n");
+
 	     break;
 
-	case FAIL_STMT:
+	case FAIL_STATEMENT:
+
 	     print_location(stmt->location);
-	     printf("Fail\n\n");
+
+	     printf("fail\n\n");
+
 	     break;
 	
 	default: printf("Unexpected value.\n"); break;
+
 	}
 }
 
 
 
-void print_condition(GPCondExp *cond)
+void print_condition(GPCondExp const * const cond)
 {
      switch(cond->exp_type) {
 
 	case INT_CHECK:
+
 	     print_location(cond->location);
-	     printf("int( )");
+
+	     if(cond->value.var) printf("int(%s)\n\n", cond->value.var);
+
              break;
 
 	case STRING_CHECK:
+
 	     print_location(cond->location);
-	     printf("string( )");
+
+	     if(cond->value.var) printf("string(%s)\n\n", cond->value.var);
+
              break;
 
 	case ATOM_CHECK:
+
 	     print_location(cond->location);
-	     printf("atom( )");
+
+	     if(cond->value.var) printf("atom(%s)\n\n", cond->value.var);
+
              break;
 
 	case EDGE_PRED:
+
 	     print_location(cond->location);
-	     printf("edge(%s, %s)\n", cond->value.edge_pred.source, 
-                    cond->value.edge_pred.target);
-             if (cond->value.edge_pred.label) {
+        
+             if(cond->value.edge_pred.source && cond->value.edge_pred.target)
+	        printf("edge(%s, %s)\n", cond->value.edge_pred.source, 
+                       cond->value.edge_pred.target);
+
+             if(cond->value.edge_pred.label) {
                  printf("Label argument:\n");
 	         print_label(cond->value.edge_pred.label);
              }
              else printf("No label argument.\n\n");
+
              break;
 
 	case REL_EXP:
+
 	     print_location(cond->location);
-	     if (cond->value.rel_exp) {
-                 print_ast(cond->value.rel_exp);
-		 break;
-	     }
+
+	     pretty_print(cond->value.rel_exp, list);
+	     
              break;
 
 	case BOOL_NOT:
+
 	     print_location(cond->location);
+
 	     printf("NOT\n\n");	
-	     if(cond->value.not_exp) print_condition(cond->value.not_exp);
+
+	     pretty_print(cond->value.not_exp, condition);
+
 	     break;
 
 	case BOOL_OR:
+
 	     print_location(cond->location);
+
              printf("OR\n\n");
+    
              printf("First Argument:\n\n");
-	     if(cond->value.bin_exp.left_exp) print_condition(cond->value.bin_exp.left_exp);
-	     printf("Second Argument:\n\n");      
-	     if(cond->value.bin_exp.right_exp) print_condition(cond->value.bin_exp.right_exp);
+	     pretty_print(cond->value.bin_exp.left_exp, condition);
+
+             printf("Second Argument:\n\n");      
+	     pretty_print(cond->value.bin_exp.right_exp, condition);
+
 	     break;
 
 	case BOOL_AND:
+
 	     print_location(cond->location);
+
              printf("AND\n\n");
-	     printf("First Argument:\n\n");
-	     if(cond->value.bin_exp.left_exp) print_condition(cond->value.bin_exp.left_exp);
-	     printf("Second Argument:\n\n");
-	     if(cond->value.bin_exp.right_exp) print_condition(cond->value.bin_exp.right_exp);
+
+             printf("First Argument:\n\n");
+	     pretty_print(cond->value.bin_exp.left_exp, condition);
+
+             printf("Second Argument:\n\n");      
+	     pretty_print(cond->value.bin_exp.right_exp, condition);
+
 	     break;
 
 	default: printf("Unexpected value\n"); break;
+
 	}
 }
 
 
 
-void print_atom(GPAtomicExp *atom)
+void print_atom(GPAtomicExp const * const atom)
 {
      switch(atom->exp_type) {
 
 	case VARIABLE:
-	     print_location(atom->location);		
-             printf("Variable\n\n");
-	     printf("Name: %s",atom->value.var);
+
+	     print_location(atom->location);	
+	
+             printf("Variable\n");
+
+	     if(atom->value.name) printf("Name: %s\n\n",atom->value.name);
+
              break;
 
 	case INT_CONSTANT:
+
 	     print_location(atom->location);
+
              printf("Number\n");
+
 	     printf("Value: %d\n\n", atom->value.num);
+
              break;
           
 	case STRING_CONSTANT:
+
 	     print_location(atom->location);
+
              printf("String\n");
-	     printf("Value: %s\n\n", atom->value.str);
+
+	     if(atom->value.str) printf("Value: %s\n\n", atom->value.str);
+
              break;
 
 	case INDEGREE:
+
 	     print_location(atom->location);
+
              printf("Indegree\n");
-	     printf("Node: %s\n\n", atom->value.node_id);
+
+	     if(atom->value.node_id) printf("Node: %s\n\n", atom->value.node_id);
+
 	     break;
  
         case OUTDEGREE:
+
 	     print_location(atom->location);
+
              printf("Outdegree\n");
-	     printf("Node: %s\n\n", atom->value.node_id);
+
+	     if(atom->value.node_id) printf("Node: %s\n\n", atom->value.node_id);
+
              break;
 
 	case LIST_LENGTH:
+
 	     print_location(atom->location);
-             printf("Length:\n\n");
-	     if (atom->value.list_arg) {
-		 print_ast(atom->value.list_arg);
-		 break;
-	     }		
+ 
+             if(atom->value.list_arg) {
+                printf("Length:\n\n");
+	        print_list(atom->value.list_arg);
+             }
+             else printf("Error: No list argument.\n\n");
+		
              break;
 
 	case STRING_LENGTH:
+
 	     print_location(atom->location);
-             printf("Length:\n");
-	     print_atom(atom->value.str_arg);
+
+             if(atom->value.list_arg) {
+                printf("Length:\n\n");
+	        print_list(atom->value.list_arg);
+             }
+             else printf("Error: No string argument.\n\n");
+
              break;
 
 	case NEG:
+
 	     print_location(atom->location);
-             printf("Unary Minus\n\n");
-	     print_atom(atom->value.exp);
+
+             printf("Minus\n\n");
+	     pretty_print(atom->value.exp, atom);
+
              break;
 
 	case ADD:
+
 	     print_location(atom->location);
+
              printf("+\n\n");
+
 	     printf("First argument\n\n");
-             print_atom(atom->value.bin_op.left_exp);
+	     pretty_print(atom->value.bin_op.left_exp, atom);
+
 	     printf("Second argument\n\n");
-	     print_atom(atom->value.bin_op.right_exp);
+	     pretty_print(atom->value.bin_op.right_exp, atom);
+
              break;
 
 	case SUBTRACT:
+
+             print_location(atom->location);
+
              printf("-\n\n");
+
 	     printf("First argument\n\n");
-             print_atom(atom->value.bin_op.left_exp);
+	     pretty_print(atom->value.bin_op.left_exp, atom);
+
 	     printf("Second argument\n\n");
-	     print_atom(atom->value.bin_op.right_exp);
+	     pretty_print(atom->value.bin_op.right_exp, atom);
+
              break;
 
+
 	case MULTIPLY:
+ 
+             print_location(atom->location);
+
              printf("*\n\n");
+
 	     printf("First argument\n\n");
-             print_atom(atom->value.bin_op.left_exp);
+	     pretty_print(atom->value.bin_op.left_exp, atom);
+
 	     printf("Second argument\n\n");
-	     print_atom(atom->value.bin_op.right_exp);
+	     pretty_print(atom->value.bin_op.right_exp, atom);
+
              break;
 
 	case DIVIDE:
+ 
+             print_location(atom->location);
+
              printf("/\n\n");
+
 	     printf("First argument\n\n");
-             print_atom(atom->value.bin_op.left_exp);
+	     pretty_print(atom->value.bin_op.left_exp, atom);
+
 	     printf("Second argument\n\n");
-	     print_atom(atom->value.bin_op.right_exp);
+	     pretty_print(atom->value.bin_op.right_exp, atom);
+
              break;
 
 	case CONCAT:
+
+             print_location(atom->location);
+
              printf(".\n\n");
+
 	     printf("First argument\n\n");
-             print_atom(atom->value.bin_op.left_exp);
+	     pretty_print(atom->value.bin_op.left_exp, atom);
+
 	     printf("Second argument\n\n");
-	     print_atom(atom->value.bin_op.right_exp);
+	     pretty_print(atom->value.bin_op.right_exp, atom);
+
              break;
 
 	default: printf("Unexpected value.\n"); break;
+
 	}
 }
 
 
 
-void print_procedure(GPProcedure *proc)
+void print_procedure(GPProcedure const * const proc)
 {
      print_location(proc->location);
 
      printf("Procedure\n");
 
-     printf("Name: %s\n", proc->name);		
+     printf("Name: %s\n\n", proc->name);		
 
-     if (proc->local_decls) print_ast(proc->local_decls);
+     pretty_print(proc->local_decls, list);
 
-     print_statement(proc->cmd_seq);
+     pretty_print(proc->cmd_seq, statement);
 }
 
 
 
-void print_rule(GPRule *rule)
+void print_rule(GPRule const * const rule)
 {
      print_location(rule->location);
 
      printf("Rule\n");
 
-     if(rule->injective) 
+     if(rule->injective == true) 
           printf("Injective Matching\n"); 
      else printf("Non-injective Matching\n");
 
      printf("Name: %s\n", rule->name);		
 
-     if (rule->variables) print_ast(rule->variables);
-     print_graph(rule->lhs);
-     print_graph(rule->rhs);
-     if (rule->interface) print_ast(rule->interface);
-     if (rule->condition) print_condition(rule->condition);
+     pretty_print(rule->variables, list);
+     pretty_print(rule->lhs, graph);
+     pretty_print(rule->rhs, graph);
+     pretty_print(rule->interface, list);
+     pretty_print(rule->condition, condition);
 }
 
 
 
-void print_graph(GPGraph *graph)
+void print_graph(GPGraph const * const graph)
 {
      print_location(graph->location);
 
      printf("Graph\n");
 
-     print_pos(graph->position);
-     if (graph->nodes) print_ast(graph->nodes);
-     if (graph->edges) print_ast(graph->edges);
+     pretty_print(graph->position, position);
+
+     pretty_print(graph->nodes, list);
+     pretty_print(graph->edges, list);
 }
 
 
 
-void print_node_pair(GPNodePair *node_pair)
+void print_node_pair(GPNodePair const * const node_pair)
 {
      printf("Node Pair\n");
  
      print_location(node_pair->location);
 
-     printf("Left: %s\n", node_pair->left_node);
-     printf("Right: %s\n", node_pair->right_node);
+     if(node_pair->left_node) printf("Left: %s\n", node_pair->left_node);
+     if(node_pair->right_node) printf("Right: %s\n", node_pair->right_node);
 }
 
 
 
-void print_node(GPNode *node)
+void print_node(GPNode const * const node)
 {
      print_location(node->location);
 
-     printf("Node\nName: %s\n", node->name);
+     if(node->name) printf("Node\nName: %s\n", node->name);
 
-     if(node->root) printf("Root Node\n"); 
- 
-     print_label(node->label);
+     if(node->root == true) printf("Root Node\n");  
+     
+     pretty_print(node->label, label);
 
-     print_pos(node->position);
+     pretty_print(node->position, position);
 }
 
 
 
-void print_edge(GPEdge *edge)
+void print_edge(GPEdge const * const edge)
 {
      print_location(edge->location);
 
      printf("Edge\n");
 
-     printf("Name: %s\n", edge->name);
-     printf("Source: %s\n", edge->name);
-     printf("Target: %s\n", edge->name);
+     if(edge->name) printf("Name: %s\n", edge->name);
+     if(edge->source) printf("Source: %s\n", edge->source);
+     if(edge->target) printf("Target: %s\n", edge->target);
 
-     print_label(edge->label);
+     pretty_print(edge->label, label);
 }
 
 
+void print_position(GPPos const * const pos)
+{
+     print_location(pos->location);
 
-void print_label(GPLabel *label)
+     printf("Position\nx coordinate: %d\ny coordinate: %d\n\n", pos->x, pos->y);
+}
+
+
+void print_label(GPLabel const * const label)
 {
      print_location(label->location);
 
@@ -592,16 +784,8 @@ void print_label(GPLabel *label)
         default: 	 printf("Unexpected value\n\n"); break;
      }
 
-     if (label->gp_list) print_ast(label->gp_list);
+     pretty_print(label->gp_list, list);
 }
 
 
 
-void print_pos(GPPos *pos)
-{
-     print_location(pos->location);
-
-     printf("Position\n");
-
-     printf("x coordinate: %d\ny coordinate: %d\n\n", pos->x, pos->y);
-}
