@@ -128,12 +128,16 @@ ComSeq: Command 			{ $$ = addCommand(yylloc, $1, NULL); }
       | ComSeq ';' Command  		{ $$ = addCommand(yylloc, $3, $1); }
 
 Command: Block 				/* default $$ = $1 */ 
-       | IF Block THEN Block      	{ $$ = newCondBranch(IF_STATEMENT, yylloc, $2, $4, newSkip(yylloc)); }
-       | IF Block THEN Block ELSE Block { $$ = newCondBranch(IF_STATEMENT, yylloc, $2, $4, $6); }
-       | TRY Block 			{ $$ = newCondBranch(TRY_STATEMENT, yylloc, $2, 
-                                               newSkip(yylloc), newSkip(yylloc)); }
-       | TRY Block THEN Block		{ $$ = newCondBranch(TRY_STATEMENT, yylloc, $2, $4, newSkip(yylloc)); }
-       | TRY Block THEN Block ELSE Block { $$ = newCondBranch(TRY_STATEMENT, yylloc, $2, $4, $6); }
+       | IF Block THEN Block      	{ $$ = newCondBranch(IF_STATEMENT, yylloc,
+                                               $2, $4, newSkip(yylloc)); }
+       | IF Block THEN Block ELSE Block { $$ = newCondBranch(IF_STATEMENT, yylloc,
+                                               $2, $4, $6); }
+       | TRY Block 			{ $$ = newCondBranch(TRY_STATEMENT, yylloc,
+                                               $2, newSkip(yylloc), newSkip(yylloc)); }
+       | TRY Block THEN Block		{ $$ = newCondBranch(TRY_STATEMENT, yylloc,
+                                               $2, $4, newSkip(yylloc)); }
+       | TRY Block THEN Block ELSE Block { $$ = newCondBranch(TRY_STATEMENT, yylloc,
+                                                $2, $4, $6); }
 
 Block: '(' ComSeq ')' 	                { $$ = newCommandSequence(yylloc,$2); }
      | '(' ComSeq ')' '!' 		{ $$ = newAlap(yylloc, newCommandSequence(yylloc,$2)); } 
@@ -210,7 +214,7 @@ Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(yylloc, $2, $4); }
 
 /* Grammar for GP2 Conditions. */
 
-CondDecl: /* empty */                    { $$ = NULL; }
+CondDecl: /* empty */                   { $$ = NULL; }
         | WHERE Condition		{ $$ = $2; }
 
 Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, yylloc, $3); }
@@ -245,7 +249,7 @@ RelOp: '='				{ $$ = EQUAL; }
 Label: List 				{ $$ = newLabel(yylloc, NONE, $1); }
      | List '#' MARK			{ $$ = newLabel(yylloc, $3, $1); } 
 
-List: EMPTY  				{ $$ = addAtom(yylloc, NULL, NULL); }
+List: EMPTY  				{ $$ = addAtom(yylloc, newEmpty(yylloc), NULL); }
     | AtomExp				{ $$ = addAtom(yylloc, $1, NULL); } 
     | List ':' AtomExp			{ $$ = addAtom(yylloc, $3, $1); }
 

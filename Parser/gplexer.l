@@ -37,7 +37,10 @@ int yycolumn = 1;
 %}
 
 /* exclusive start state for ignoring GP2 comments */
-%x COMMENT	    
+%x COMMENT	
+
+/* exclusive start state for discarding double quotes in strings */
+%x STRING    
 
 %%
 
@@ -47,7 +50,14 @@ int yycolumn = 1;
 <COMMENT>(\n)	   { yycolumn = 1; } /* reset yycolumn on newline */
 <COMMENT><<EOF>>   { printf("%s:%d: Unterminated comment\n", file_name, yylineno); return 0; }
 
-[0-9]+              { yylval.num = atoi(yytext); return NUM; } 
+"\""	           BEGIN(STRING);
+<STRING>"\""         BEGIN(INITIAL);
+<STRING>[a-zA-Z0-9_-]*    { yylval.str = strdup(yytext); return STR; }
+<STRING>[^\"a-zA-Z0-9_-]  { printf("%s:%d: Invalid character in string: %c\n",
+                                    file_name, yylineno, yytext[0]); return 0; }
+<STRING><<EOF>>    { printf("%s:%d: Unterminated string\n", file_name, yylineno); return 0; }     
+
+[0-9]+             { yylval.num = atoi(yytext); return NUM; } 
 
  /* GP2 keywords */ 
 
@@ -120,7 +130,6 @@ list		    return LIST;
     All other identifiers start with a lowercase letter. */  
 [A-Z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
 [a-z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return ID; }
-\"[a-z_-]*\"          { yylval.str = strdup(yytext); return STR; }
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1; }  /* reset yycolumn on newline */
 .                     printf("%s:%d: Invalid symbol '%s'\n", file_name, yylineno, yytext);

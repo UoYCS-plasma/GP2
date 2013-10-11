@@ -23,13 +23,20 @@
 
 int main(int argc, char** argv) {
 
+  bool draw_tree = false;	
+
   if(argc > 1 && !strcmp(argv[1], "-d")) { 
     yydebug = 1; 	/* yydebug controls generation of the debugging file gpparser.output. */
     argc--; argv++;	/* Effectively removing "-d" from the command line call. */
   }
 
+  if(argc > 1 && !strcmp(argv[1], "-g")) {
+    draw_tree = true; 
+    argc--; argv++;	/* Effectively removing "-d" from the command line call. */
+  }
+
   if(argc != 2) {
-    fprintf(stderr, "ERROR: filename required\n");
+    fprintf(stderr, "Usage: gpparse [-dg] <filename>\n");
     return 1;
   }
 
@@ -40,12 +47,11 @@ int main(int argc, char** argv) {
   }
 
   file_name = argv[1];
-  printf("Processing %s\n", file_name);
+  printf("Processing %s...\n\n", file_name);
 
   if(!yyparse()) {
     printf("GP2 parse succeeded\n\n");
-    printf("GP Program %s\n\n", file_name); 
-    print_list(gp_program);  
+    if(draw_tree) print_dot_ast(gp_program, file_name);  
   }
   else printf("GP2 parse failed\n");
  

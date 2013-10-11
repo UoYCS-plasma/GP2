@@ -48,14 +48,19 @@ extern int yydebug;
 
 /* enum used by the lexer for mark keywords */
 
-typedef enum {RED, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
+typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
 
 
 /* Definition of AST nodes representing lists. */
 
-typedef enum {GLOBAL_DECLARATIONS, LOCAL_DECLARATIONS, COMMANDS, RULES, INT_DECLARATIONS, STRING_DECLARATIONS, ATOM_DECLARATIONS, LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, NODE_LIST, EDGE_LIST, EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, GP_LIST} list_t;
+typedef enum {GLOBAL_DECLARATIONS=0, LOCAL_DECLARATIONS, COMMANDS, RULES, 
+              INT_DECLARATIONS, STRING_DECLARATIONS, ATOM_DECLARATIONS, 
+              LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, NODE_LIST, 
+              EDGE_LIST, EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, 
+              LESS_EQUAL, GP_LIST} list_t;
 
 typedef struct List {
+  int node_id;
   list_t list_type;  
   YYLTYPE location;  /* location of symbol in the source file */
   union {
@@ -88,9 +93,10 @@ List *addAtom (YYLTYPE location, struct GPAtomicExp *atom, struct List *next);
 
 /* Definition of AST nodes representing declarations */
 
-typedef enum {MAIN_DECLARATION, PROCEDURE_DECLARATION, RULE_DECLARATION} decl_t;
+typedef enum {MAIN_DECLARATION=0, PROCEDURE_DECLARATION, RULE_DECLARATION} decl_t;
 
 typedef struct GPDeclaration {
+  int node_id;
   decl_t decl_type;
   YYLTYPE location;
   union {
@@ -107,9 +113,12 @@ GPDeclaration *newRuleDecl (YYLTYPE location, struct GPRule *rule);
 
 /* Definition of AST nodes representing GP program statements. */
 
-typedef enum {COMMAND_SEQUENCE, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL, IF_STATEMENT, TRY_STATEMENT, ALAP_STATEMENT, PROGRAM_OR, SKIP_STATEMENT, FAIL_STATEMENT} stmt_t;
+typedef enum {COMMAND_SEQUENCE=0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL, 
+              IF_STATEMENT, TRY_STATEMENT, ALAP_STATEMENT, PROGRAM_OR, 
+              SKIP_STATEMENT, FAIL_STATEMENT} stmt_t;
 
 typedef struct GPStatement {
+  int node_id;
   stmt_t statement_type;
   YYLTYPE location;
   union {    
@@ -138,9 +147,11 @@ GPStatement *newFail(YYLTYPE location);
 
 /* Definition of AST nodes representing conditional expressions.*/
 
-typedef enum {INT_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED, REL_EXP, BOOL_NOT, BOOL_OR, BOOL_AND} condexp_t;
+typedef enum {INT_CHECK=0, STRING_CHECK, ATOM_CHECK, EDGE_PRED, REL_EXP, 
+              BOOL_NOT, BOOL_OR, BOOL_AND} condexp_t;
 
 typedef struct GPCondExp {
+  int node_id;
   condexp_t exp_type;
   YYLTYPE location;
   union {
@@ -161,9 +172,12 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, struct GPCondExp 
 
 /* Definition of AST nodes representing integer or string expressions. */
 
-typedef enum {VARIABLE, INT_CONSTANT, STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} atomexp_t;
+typedef enum {EMPTY_LIST=0, VARIABLE, INT_CONSTANT, STRING_CONSTANT, INDEGREE, 
+              OUTDEGREE, LIST_LENGTH, STRING_LENGTH, NEG, ADD, SUBTRACT, 
+              MULTIPLY, DIVIDE, CONCAT} atomexp_t;
 
 typedef struct GPAtomicExp {
+  int node_id;
   atomexp_t exp_type;
   YYLTYPE location;
   union {
@@ -179,6 +193,7 @@ typedef struct GPAtomicExp {
   } value;
 } GPAtomicExp;
 
+GPAtomicExp *newEmpty (YYLTYPE location);
 GPAtomicExp *newVariable (YYLTYPE location, char *name);
 GPAtomicExp *newNumber (YYLTYPE location, int num);
 GPAtomicExp *newString (YYLTYPE location, char *str);
@@ -191,11 +206,12 @@ GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, struct GPAtomicE
 
 /* Definition of the remaining AST node types. */
 
-typedef enum {PROCEDURE, RULE, NODE_PAIR, GRAPH, NODE, EDGE, POSITION, LABEL} ast_node_t;
+typedef enum {PROCEDURE=0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, POSITION, LABEL} ast_node_t;
 
 /* Root node for a procedure definition. */
 
 typedef struct GPProcedure {
+  int node_id;
   ast_node_t node_type;
   YYLTYPE location;
   char *name; 
@@ -209,6 +225,7 @@ GPProcedure *newProcedure(YYLTYPE location, char *name, struct List *local_decls
 /* Root node for a rule definition. */
 
 typedef struct GPRule {
+  int node_id;
   ast_node_t node_type;
   YYLTYPE location;
   bool injective; /* Integer flag to mark whether the rule should be matched injectively or not. */
@@ -224,6 +241,7 @@ GPRule *newRule(YYLTYPE location, bool injective, char *name, struct List *varia
 
 
 typedef struct GPNodePair {
+  int node_id;
   ast_node_t node_type; 
   YYLTYPE location;
   char *left_node;
@@ -234,6 +252,7 @@ GPNodePair *newNodePair (YYLTYPE location, char *left_node, char *right_node);
 
 
 typedef struct GPGraph {
+  int node_id;
   ast_node_t node_type;	
   YYLTYPE location;
   struct GPPos *position;
@@ -245,6 +264,7 @@ GPGraph *newGraph (YYLTYPE location, struct GPPos *position, struct List *nodes,
 
 
 typedef struct GPNode {
+  int node_id;
   ast_node_t node_type;	
   YYLTYPE location; 
   bool root; /* Integer flag to mark whether the node is a root node or not. */
@@ -257,6 +277,7 @@ GPNode *newNode (YYLTYPE location, bool root, char *name, struct GPLabel *label,
 
 
 typedef struct GPEdge {
+  int node_id;
   ast_node_t node_type;	
   YYLTYPE location; 
   char *name; 
@@ -271,6 +292,7 @@ GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target, struc
 /* AST node for specifying locations in the graphical editor. */
 
 typedef struct GPPos {
+  int node_id;
   ast_node_t node_type; 
   YYLTYPE location; 
   int x;
@@ -281,6 +303,7 @@ GPPos *newPosition (YYLTYPE location, int x, int y);
 
 
 typedef struct GPLabel {
+  int node_id;
   ast_node_t node_type; 
   YYLTYPE location; 
   mark_t mark;
