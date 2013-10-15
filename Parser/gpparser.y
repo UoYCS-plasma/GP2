@@ -77,8 +77,8 @@ char *file_name = NULL;
   int check_type; /* enum cond_exp_t */
 } 
 
-%type <list> Program ProcList ComSeq RuleSetCall IDList VarDecls VarList Inter NodePairList 
-             NodeList EdgeList RelExp List
+%type <list> GPProgram Program ProcList ComSeq RuleSetCall IDList VarDecls
+             VarList Inter NodePairList NodeList EdgeList List
 %type <decl> Declaration
 %type <stmt> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
@@ -91,7 +91,7 @@ char *file_name = NULL;
 %type <cond_exp> CondDecl Condition 
 %type <label> LabelArg Label
 %type <atom_exp> AtomExp
-%type <list_type> Type RelOp 
+%type <list_type> Type  
 %type <check_type> Subtype
 %type <id> NodeID EdgeID ProcID RuleID Variable
 
@@ -220,7 +220,12 @@ CondDecl: /* empty */                   { $$ = NULL; }
 Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, yylloc, $3); }
          | EDGETEST '(' NodeID ',' NodeID LabelArg ')' 
 					{ $$ = newEdgePred(yylloc, $3, $5, $6); }	
-         | RelExp 			{ $$ = newRelationalExp(yylloc, $1); }
+	 | List '=' List		{ $$ = newListComparison(EQUAL, yylloc, $1, $3); }
+	 | List NEQ List		{ $$ = newListComparison(NOT_EQUAL, yylloc, $1, $3); }
+	 | AtomExp '>' AtomExp          { $$ = newAtomComparison(GREATER, yylloc, $1, $3); }    
+	 | AtomExp GTEQ AtomExp         { $$ = newAtomComparison(GREATER_EQUAL, yylloc, $1, $3); }    
+	 | AtomExp '<' AtomExp          { $$ = newAtomComparison(LESS, yylloc, $1, $3); }    
+	 | AtomExp LTEQ AtomExp         { $$ = newAtomComparison(LESS_EQUAL, yylloc, $1, $3); }    
          | NOT Condition	        { $$ = newNotExp(yylloc, $2); }
          | Condition OR Condition  	{ $$ = newBinaryExp(BOOL_OR, yylloc, $1, $3); }
          | Condition AND Condition      { $$ = newBinaryExp(BOOL_AND, yylloc, $1, $3); }
@@ -233,27 +238,16 @@ Subtype: INT				{ $$ = INT_CHECK; }
 LabelArg: /* empty */ 			{ $$ = NULL; }
  	| ',' Label			{ $$ = $2; }
 
-RelExp: List RelOp List 		{ $$ = addRelationalExp($2, yylloc, $1, $3); }
-      | RelExp RelOp List 		{ $$ = addRelationalExp($2, yylloc, $3, $1); }
-
-RelOp: '='				{ $$ = EQUAL; }
-     | NEQ				{ $$ = NOT_EQUAL; }
-     | '>'				{ $$ = GREATER; }
-     | GTEQ				{ $$ = GREATER_EQUAL; }
-     | '<'				{ $$ = LESS; }
-     | LTEQ				{ $$ = LESS_EQUAL; }
-
-
 /* Grammar for GP2 Labels */
 
 Label: List 				{ $$ = newLabel(yylloc, NONE, $1); }
      | List '#' MARK			{ $$ = newLabel(yylloc, $3, $1); } 
 
-List: EMPTY  				{ $$ = addAtom(yylloc, newEmpty(yylloc), NULL); }
-    | AtomExp				{ $$ = addAtom(yylloc, $1, NULL); } 
+List: AtomExp				{ $$ = addAtom(yylloc, $1, NULL); } 
     | List ':' AtomExp			{ $$ = addAtom(yylloc, $3, $1); }
 
-AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
+AtomExp: EMPTY				{ $$ = newEmpty(yylloc); }
+       | Variable			{ $$ = newVariable(yylloc, $1); }
        | NUM 				{ $$ = newNumber(yylloc, $1); }
        | STR 				{ $$ = newString(yylloc, $1); }
        | INDEG '(' NodeID ')' 		{ $$ = newDegreeOp(INDEGREE, yylloc, $3); }

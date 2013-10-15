@@ -51,7 +51,8 @@ int main(int argc, char** argv) {
 
   if(!yyparse()) {
     printf("GP2 parse succeeded\n\n");
-    if(draw_tree) print_dot_ast(gp_program, file_name);  
+    gp_program = reverse(gp_program); /* ast.c*/
+    if(draw_tree) print_dot_ast(gp_program, file_name); /*pretty.c */ 
   }
   else printf("GP2 parse failed\n");
  

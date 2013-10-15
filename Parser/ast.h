@@ -56,8 +56,7 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t;
 typedef enum {GLOBAL_DECLARATIONS=0, LOCAL_DECLARATIONS, COMMANDS, RULES, 
               INT_DECLARATIONS, STRING_DECLARATIONS, ATOM_DECLARATIONS, 
               LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, NODE_LIST, 
-              EDGE_LIST, EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, 
-              LESS_EQUAL, GP_LIST} list_t;
+              EDGE_LIST, GP_LIST} list_t;
 
 typedef struct List {
   int node_id;
@@ -73,21 +72,23 @@ typedef struct List {
     struct GPNodePair *node_pair; /* pair of nodes specified in the interface of a rule */	   
     struct GPNode *node;    
     struct GPEdge *edge;    
-    struct List *rel_exp; /* chains of relational operators */
     struct GPAtomicExp *atom;
   } value;
   struct List *next;
 } List;
 
-List *addDecl (list_t list_type, YYLTYPE location, struct GPDeclaration *decl, struct List *next);
-List *addCommand (YYLTYPE location, struct GPStatement *command, struct List *next);
+List *addDecl (list_t list_type, YYLTYPE location, struct GPDeclaration *decl, 
+	struct List *next);
+List *addCommand (YYLTYPE location, struct GPStatement *command, 
+	struct List *next);
 List *addRule (YYLTYPE location, char *rule_name, struct List *next);
-List *addVariableDecl (list_t list_type, YYLTYPE location, struct List *vars, struct List *next);
+List *addVariableDecl (list_t list_type, YYLTYPE location, struct List *vars,
+	struct List *next);
 List *addVariable (YYLTYPE location, char *var, struct List *next);
-List *addNodePair (YYLTYPE location, struct GPNodePair *node_pair, struct List *next);
+List *addNodePair (YYLTYPE location, struct GPNodePair *node_pair,
+	struct List *next);
 List *addNode (YYLTYPE location, struct GPNode *node, struct List *next);
 List *addEdge (YYLTYPE location, struct GPEdge *edge, struct List *next);
-List *addRelationalExp (list_t list_type, YYLTYPE location, struct List *rel_exp, struct List *next);
 List *addAtom (YYLTYPE location, struct GPAtomicExp *atom, struct List *next);
 
 
@@ -126,11 +127,13 @@ typedef struct GPStatement {
     char *rule_name;
     struct List *rule_set;
     char *proc_name;
-    struct { struct GPStatement *condition; struct GPStatement *then_stmt; struct GPStatement *else_stmt; } cond_branch; /* IF_STATEMENT, TRY_STATEMENT */
+    struct { struct GPStatement *condition; struct GPStatement *then_stmt; 
+	     struct GPStatement *else_stmt; } cond_branch;
+             /* IF_STATEMENT, TRY_STATEMENT */
     struct GPStatement *loop_stmt;
     struct { struct GPStatement *left_stmt; struct GPStatement *right_stmt; } or_stmt;
-    /* skip and fail are predefined GP rules represented by a struct GPStatement containing only a
-     * statement_type and location */
+    /* skip and fail are predefined GP rules represented by a struct GPStatement
+     * containing only a statement_type and location */
   } value;
 } GPStatement;
 
@@ -138,9 +141,12 @@ GPStatement *newCommandSequence(YYLTYPE location, struct List *cmd_seq);
 GPStatement *newRuleCall(YYLTYPE location, char *rule_name);
 GPStatement *newRuleSetCall(YYLTYPE location, struct List *rule_set);
 GPStatement *newProcCall(YYLTYPE location, char *proc_name);
-GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location, struct GPStatement *condition, struct GPStatement *then_stmt, struct GPStatement *else_stmt);
+GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location, 
+	      struct GPStatement *condition, struct GPStatement *then_stmt, 
+	      struct GPStatement *else_stmt);
 GPStatement *newAlap(YYLTYPE location, struct GPStatement *loop_stmt);
-GPStatement *newOrStmt(YYLTYPE location, struct GPStatement *left_stmt, struct GPStatement *right_stmt);
+GPStatement *newOrStmt(YYLTYPE location, struct GPStatement *left_stmt, 
+	      struct GPStatement *right_stmt);
 GPStatement *newSkip(YYLTYPE location);
 GPStatement *newFail(YYLTYPE location);
 
@@ -148,7 +154,8 @@ GPStatement *newFail(YYLTYPE location);
 /* Definition of AST nodes representing conditional expressions.*/
 
 typedef enum {INT_CHECK=0, STRING_CHECK, ATOM_CHECK, EDGE_PRED, REL_EXP, 
-              BOOL_NOT, BOOL_OR, BOOL_AND} condexp_t;
+              BOOL_NOT, BOOL_OR, BOOL_AND, EQUAL, NOT_EQUAL, GREATER, 
+	      GREATER_EQUAL, LESS, LESS_EQUAL} condexp_t;
 
 typedef struct GPCondExp {
   int node_id;
@@ -158,16 +165,25 @@ typedef struct GPCondExp {
     char *var; /* type checking predicates: INT_CHECK, STRING_CHECK, ATOM_CHECK */
     struct { char *source; char *target; struct GPLabel *label; } edge_pred;
     struct List *rel_exp; 
+    struct { struct List *left_list; struct List *right_list; } list_cmp; /* EQUAL, NOT_EQUAL */
+    struct { struct GPAtomicExp *left_exp; struct GPAtomicExp *right_exp; } atom_cmp;
+            /* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
     struct GPCondExp *not_exp;
     struct { struct GPCondExp *left_exp; struct GPCondExp *right_exp; } bin_exp; /* OR, AND */
   } value;
 } GPCondExp;
 
 GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var);
-GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, struct GPLabel *label);
+GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target,
+	    struct GPLabel *label);
+GPCondExp *newListComparison (condexp_t exp_type, YYLTYPE location, 
+	    struct List *left_list, struct List *right_list);
+GPCondExp *newAtomComparison (condexp_t exp_type, YYLTYPE location,
+	    struct GPAtomicExp *left_exp, struct GPAtomicExp *right_exp);
 GPCondExp *newRelationalExp (YYLTYPE location, struct List *rel_exp);
 GPCondExp *newNotExp (YYLTYPE location, struct GPCondExp *not_exp);
-GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, struct GPCondExp *left_exp, struct GPCondExp *right_exp);
+GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, 
+	    struct GPCondExp *left_exp, struct GPCondExp *right_exp);
 
 
 /* Definition of AST nodes representing integer or string expressions. */
@@ -201,7 +217,8 @@ GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id);
 GPAtomicExp *newListLength (YYLTYPE location, struct List *list_arg);
 GPAtomicExp *newStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);
 GPAtomicExp *newNegExp (YYLTYPE location, struct GPAtomicExp *exp);
-GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, struct GPAtomicExp *left_exp, struct GPAtomicExp *right_exp);
+GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, 
+	      struct GPAtomicExp *left_exp, struct GPAtomicExp *right_exp);
 
 
 /* Definition of the remaining AST node types. */
@@ -219,7 +236,8 @@ typedef struct GPProcedure {
   struct GPStatement *cmd_seq; 
 } GPProcedure;
 
-GPProcedure *newProcedure(YYLTYPE location, char *name, struct List *local_decls, struct GPStatement *cmd_seq);
+GPProcedure *newProcedure(YYLTYPE location, char *name, struct List *local_decls, 
+              struct GPStatement *cmd_seq);
 
 
 /* Root node for a rule definition. */
@@ -237,7 +255,9 @@ typedef struct GPRule {
   struct GPCondExp *condition;  
 } GPRule;
 
-GPRule *newRule(YYLTYPE location, bool injective, char *name, struct List *variables, struct GPGraph *lhs, struct GPGraph *rhs, struct List *interface, struct GPCondExp *condition);
+GPRule *newRule(YYLTYPE location, bool injective, char *name, 
+	 struct List *variables, struct GPGraph *lhs, struct GPGraph *rhs, 
+	 struct List *interface, struct GPCondExp *condition);
 
 
 typedef struct GPNodePair {
@@ -260,7 +280,8 @@ typedef struct GPGraph {
   struct List *edges;
 } GPGraph;
 
-GPGraph *newGraph (YYLTYPE location, struct GPPos *position, struct List *nodes, struct List *edges);
+GPGraph *newGraph (YYLTYPE location, struct GPPos *position, 
+          struct List *nodes, struct List *edges);
 
 
 typedef struct GPNode {
@@ -273,7 +294,8 @@ typedef struct GPNode {
   struct GPPos *position; 
 } GPNode;
 
-GPNode *newNode (YYLTYPE location, bool root, char *name, struct GPLabel *label, struct GPPos *position);
+GPNode *newNode (YYLTYPE location, bool root, char *name, struct GPLabel *label,
+	 struct GPPos *position);
 
 
 typedef struct GPEdge {
@@ -286,7 +308,8 @@ typedef struct GPEdge {
   struct GPLabel *label; 
 } GPEdge;
 
-GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target, struct GPLabel *label);
+GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target,
+	 struct GPLabel *label);
 
 
 /* AST node for specifying locations in the graphical editor. */

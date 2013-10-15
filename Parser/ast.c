@@ -12,6 +12,34 @@
 #include <stdlib.h> /* malloc */
 #include "ast.h" /* AST struct definitions */
 
+
+/* Function to reverse a sequence of List nodes in the AST */
+
+List *reverse (List * listHead) 
+{
+     List *currentNode = listHead;
+     List *tempNode = NULL;
+     List *previousNode = NULL;
+
+     /* invariant: currentNode points to the node being worked on and
+      * previousNode points to the original parent of currentNode.
+      */
+
+     while(currentNode != NULL) {
+        tempNode = currentNode->next; /* keeping a pointer to currentNode->next before
+                                         reassignment. */
+	currentNode->next = previousNode; /* reversing the 'next' pointer of currentNode. */
+
+	/* setting the invariant for the next iteration */
+	previousNode = currentNode;
+	currentNode = tempNode;
+     }
+
+     return previousNode; /* The tail of the original list and the head of the reversed list. */
+}     
+
+
+
 /* The constructor functions for AST nodes of type struct List. */
 
 List *addDecl (list_t list_type, YYLTYPE location, GPDeclaration *decl, List *next)
@@ -153,24 +181,6 @@ List *addEdge (YYLTYPE location, GPEdge *edge, List *next)
      return new_edge;
 }
 
-List *addRelationalExp (list_t list_type, YYLTYPE location, List *rel_exp, List *next)
-{
-    List *new_rel_exp = malloc(sizeof(List));
-   
-    if(new_rel_exp == NULL) {
-      printf("Insufficient space.\n");
-      exit(0);
-    }
-
-    new_rel_exp->list_type = list_type; 
-    /* list_type: EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
-    new_rel_exp->location = location;
-    new_rel_exp->value.rel_exp = rel_exp;
-    new_rel_exp->next = next;
-
-    return new_rel_exp;
-}
-
 List *addAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
 {
     List *new_atom = malloc(sizeof(List));
@@ -306,7 +316,8 @@ GPStatement *newProcCall(YYLTYPE location, char *proc_name)
     return stmt;
 }
 
-GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location, GPStatement *condition, GPStatement *then_stmt, GPStatement *else_stmt)
+GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location, 
+	      GPStatement *condition, GPStatement *then_stmt, GPStatement *else_stmt)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
@@ -341,7 +352,8 @@ GPStatement *newAlap(YYLTYPE location, GPStatement *loop_stmt)
     return stmt;
 }
 
-GPStatement *newOrStmt(YYLTYPE location, GPStatement *left_stmt, GPStatement *right_stmt)
+GPStatement *newOrStmt(YYLTYPE location, GPStatement *left_stmt, 
+	      GPStatement *right_stmt)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
@@ -408,7 +420,8 @@ GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var)
      return cond;
 }
 
-GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, GPLabel *label)
+GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, 
+	    GPLabel *label)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -426,7 +439,8 @@ GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, GPLabel *l
      return cond;
 }
 
-GPCondExp *newRelationalExp (YYLTYPE location, List *rel_exp)
+GPCondExp *newListComparison (condexp_t exp_type, YYLTYPE location,
+	    List *left_list, List *right_list)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -435,9 +449,31 @@ GPCondExp *newRelationalExp (YYLTYPE location, List *rel_exp)
        exit(0);
      }
 
-     cond->exp_type = REL_EXP; 
+     cond->exp_type = exp_type; 
+     /* exp_type: EQUAL, NOT_EQUAL */
      cond->location = location;
-     cond->value.rel_exp = rel_exp;
+     cond->value.list_cmp.left_list = left_list;
+     cond->value.list_cmp.right_list = right_list;
+
+     return cond;
+}
+
+
+GPCondExp *newAtomComparison (condexp_t exp_type, YYLTYPE location,
+	    GPAtomicExp *left_exp, GPAtomicExp *right_exp)
+{
+     GPCondExp *cond = malloc(sizeof(GPCondExp));
+ 
+     if(cond == NULL) {
+       printf("Insufficient space.\n");
+       exit(0);
+     }
+
+     cond->exp_type = exp_type; 
+     /* exp_type: GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
+     cond->location = location;
+     cond->value.atom_cmp.left_exp = left_exp;
+     cond->value.atom_cmp.right_exp = right_exp;
 
      return cond;
 }
@@ -459,7 +495,8 @@ GPCondExp *newNotExp (YYLTYPE location, GPCondExp *not_exp)
      return cond;
 }
 
-GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, GPCondExp *left_exp, GPCondExp *right_exp)
+GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, 
+	    GPCondExp *left_exp, GPCondExp *right_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
