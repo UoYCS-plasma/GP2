@@ -410,7 +410,7 @@ void print_declaration(GPDeclaration * const decl)
 
 	     /* print_location(decl->location); */
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d Main\"]\n",
+	     fprintf(dot_file,"node%d[label=\"%d Main\"]\n",
                      decl->node_id, decl->node_id);
 
              fprintf(dot_file,"node%d->node%d[label=\"main \\n program\"]\n",  

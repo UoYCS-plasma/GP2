@@ -16,7 +16,7 @@
  * This is the standard YYLTYPE definition but I define it here so it is seen by every file.
  */
 
-#include <stdbool.h> 
+#include <stdbool.h>
 
 typedef struct YYLTYPE {
   int first_line;
@@ -45,6 +45,7 @@ extern bool is_injective;
 extern bool is_root;
 extern int yydebug;
 
+List *reverse (List * listHead); /* defined in ast.c */
 
 /* enum used by the lexer for mark keywords */
 
@@ -164,7 +165,6 @@ typedef struct GPCondExp {
   union {
     char *var; /* type checking predicates: INT_CHECK, STRING_CHECK, ATOM_CHECK */
     struct { char *source; char *target; struct GPLabel *label; } edge_pred;
-    struct List *rel_exp; 
     struct { struct List *left_list; struct List *right_list; } list_cmp; /* EQUAL, NOT_EQUAL */
     struct { struct GPAtomicExp *left_exp; struct GPAtomicExp *right_exp; } atom_cmp;
             /* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
@@ -180,7 +180,6 @@ GPCondExp *newListComparison (condexp_t exp_type, YYLTYPE location,
 	    struct List *left_list, struct List *right_list);
 GPCondExp *newAtomComparison (condexp_t exp_type, YYLTYPE location,
 	    struct GPAtomicExp *left_exp, struct GPAtomicExp *right_exp);
-GPCondExp *newRelationalExp (YYLTYPE location, struct List *rel_exp);
 GPCondExp *newNotExp (YYLTYPE location, struct GPCondExp *not_exp);
 GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, 
 	    struct GPCondExp *left_exp, struct GPCondExp *right_exp);

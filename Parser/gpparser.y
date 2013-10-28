@@ -33,7 +33,7 @@ char *file_name = NULL;
 %union {  
   int num;   /* value of NUM token. */
   char *str; /* value of STRING tokens. */
-  char *id;  /* value of MACID and ID tokens. */
+  char *id;  /* value of PROCID and ID tokens. */
   int mark;  /* enum mark_t, value of MARK token. */
 }
 
@@ -77,7 +77,7 @@ char *file_name = NULL;
   int check_type; /* enum cond_exp_t */
 } 
 
-%type <list> GPProgram Program ProcList ComSeq RuleSetCall IDList VarDecls
+%type <list> GPProgram Program LocalDecls ComSeq RuleSetCall IDList VarDecls
              VarList Inter NodePairList NodeList EdgeList List
 %type <decl> Declaration
 %type <stmt> MainDecl Command Block SimpleCommand 
@@ -114,14 +114,14 @@ MainDecl: MAIN '=' ComSeq		{ $$ = newCommandSequence(yylloc,$3); }
 
 ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(yylloc, $1, NULL, 
                                                newCommandSequence(yylloc,$3)); }
-        | ProcID '=' '[' ProcList ']' ComSeq 
+        | ProcID '=' '[' LocalDecls ']' ComSeq 
 					{ $$ = newProcedure(yylloc, $1, $4, 
                                                newCommandSequence(yylloc,$6)); }
 
-ProcList: /* empty */			{ $$ = NULL; }
-        | ProcList RuleDecl             { $$ = addDecl(LOCAL_DECLARATIONS, yylloc, 
+LocalDecls: /* empty */			{ $$ = NULL; }
+        | LocalDecls RuleDecl             { $$ = addDecl(LOCAL_DECLARATIONS, yylloc, 
                                                newRuleDecl(yylloc, $2), $1); }
-	| ProcList ProcDecl 		{ $$ = addDecl(LOCAL_DECLARATIONS, yylloc,
+	| LocalDecls ProcDecl 		{ $$ = addDecl(LOCAL_DECLARATIONS, yylloc,
                                                newProcedureDecl(yylloc, $2), $1); }
 
 ComSeq: Command 			{ $$ = addCommand(yylloc, $1, NULL); }
