@@ -6,8 +6,12 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#include "ast.h" // AST structure declarations.
+#include <glib.h> /* GHashTable, gpointer */
+#include "ast.h" /* AST structure declarations */
 
+void print_symbol(gpointer key, gpointer value, gpointer user_data);
+void print_symbol_table(GHashTable *table);
+int print_dot_ast(List *const gp_ast, char* file_name);
 void print_location(YYLTYPE const loc);
 void print_list(List * const list);
 void print_declaration(GPDeclaration * const decl);

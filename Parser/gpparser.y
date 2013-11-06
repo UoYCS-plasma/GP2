@@ -119,7 +119,7 @@ ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(yylloc, $1, NULL,
                                                newCommandSequence(yylloc,$6)); }
 
 LocalDecls: /* empty */			{ $$ = NULL; }
-        | LocalDecls RuleDecl             { $$ = addDecl(LOCAL_DECLARATIONS, yylloc, 
+        | LocalDecls RuleDecl           { $$ = addDecl(LOCAL_DECLARATIONS, yylloc, 
                                                newRuleDecl(yylloc, $2), $1); }
 	| LocalDecls ProcDecl 		{ $$ = addDecl(LOCAL_DECLARATIONS, yylloc,
                                                newProcedureDecl(yylloc, $2), $1); }
@@ -159,21 +159,25 @@ IDList: RuleID				{ $$ = addRule(yylloc, $1, NULL); }
 
 /* Grammar for GP2 Rule Definitions. */
 
-RuleDecl: RuleID '(' VarDecls ')' '[' Graph ']' ARROW '[' Graph ']' Inter CondDecl INJECTIVE '=' Bool
-					{ $$ = newRule(yylloc, is_injective,
- 					        $1, $3, $6, $10, $12, $13); }
+RuleDecl: RuleID '(' VarDecls ')' '[' Graph ']' ARROW '[' Graph ']' Inter 
+          CondDecl INJECTIVE '=' Bool	{ $$ = newRule(yylloc, is_injective,
+ 					       $1, $3, $6, $10, $12, $13); }
+        | RuleID '(' ')' '[' Graph ']' ARROW '[' Graph ']' Inter CondDecl
+          INJECTIVE '=' Bool	 	{ $$ = newRule(yylloc, is_injective,
+ 					       $1, NULL, $5, $9, $11, $12); }
+
+
 					  
-VarDecls: /* empty */ 			{ $$ = NULL; }
-	| VarList ':' Type		{ $$ = addVariableDecl($3, yylloc, $1, NULL); }  
+VarDecls: VarList ':' Type		{ $$ = addVariableDecl($3, yylloc, $1, NULL); }  
 	| VarDecls ';' VarList ':' Type { $$ = addVariableDecl($5, yylloc, $3, $1); }
 
 VarList: Variable 			{ $$ = addVariable(yylloc, $1, NULL); }
        | VarList ',' Variable          	{ $$ = addVariable(yylloc, $3, $1); }
 
-Inter: INTERFACE '{' NodePairList '}'   { $$ = $3; }
+Inter: INTERFACE '{' '}'   		{ $$ = NULL; }
+     | INTERFACE '{' NodePairList '}'   { $$ = $3; }
 
-NodePairList: /* empty */ 		{ $$ = NULL; }
-	    | NodePair			{ $$ = addNodePair(yylloc, $1, NULL); }
+NodePairList: NodePair			{ $$ = addNodePair(yylloc, $1, NULL); }
             | NodePairList ',' NodePair { $$ = addNodePair(yylloc, $3, $1);   }
 
 NodePair: '(' NodeID ',' NodeID ')'   	{ $$ = newNodePair(yylloc, $2, $4); }
@@ -189,19 +193,19 @@ Type: INT				{ $$ = INT_DECLARATIONS; }
 
 /* Grammar for GP2 Graph Definitions. */
 
-Graph: Position '|' NodeList '|' EdgeList 
+Graph: Position '|' '|'			{ $$ = newGraph(yylloc, $1, NULL, NULL); }
+     | Position '|' NodeList '|'	{ $$ = newGraph(yylloc, $1, $3, NULL); }
+     | Position '|' NodeList '|' EdgeList 
      					{ $$ = newGraph(yylloc, $1, $3, $5); }
 
-NodeList: /* empty */ 			{ $$ = NULL; }
-        | Node				{ $$ = addNode(yylloc, $1, NULL); }
+NodeList: Node				{ $$ = addNode(yylloc, $1, NULL); }
         | NodeList ',' Node		{ $$ = addNode(yylloc, $3, $1); }
 
 Node: '(' NodeID RootNode ',' Label ',' Position ')'
     					{ $$ = newNode(yylloc, is_root, $2, $5, $7); 
  					  is_root = false; } /* Resets the root node flag */	    
 
-EdgeList: /* empty */ 			{ $$ = NULL; }
-	| Edge				{ $$ = addEdge(yylloc, $1, NULL); }
+EdgeList: Edge				{ $$ = addEdge(yylloc, $1, NULL); }
         | EdgeList ',' Edge		{ $$ = addEdge(yylloc, $3, $1); }
 
 Edge: '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'

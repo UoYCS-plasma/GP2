@@ -10,7 +10,12 @@
 //////////////////////////////////////////////////////////////////////////// */
 
 #include "ast.h" /* reverse */
-#include <glib.h> /* hashtable and linked list functions */
+#include "seman.h" /* struct Symbol */
+#include <stdlib.h> /* malloc */
+#include <stdio.h> /* fprintf */
+#include <string.h> /* strdup */
+#include <stdbool.h> 
+#include <glib.h> /* GHashTable and GSList */
 
 /* declaration_scan probes the AST for all rule and procedure declarations,
  * adding the names to the symbol table along with their type and scope.
@@ -19,19 +24,8 @@
  * are lists of struct Symbols, defined in seman.h. Lists are used as in some 
  * cases we want to store more than one occurrence of the same identifier. 
  * We further take advantage of GLib by using GLib's singly-linked lists (GSLists).
- */
-
-/* Creates a new hashtable with strings as keys. g_str_equal is a 
- * string hashing function built into GLib. */
-static GHashTable *symbol_table = g_hash_table_new(g_str_hash, g_str_equal);
-
-void destroy(gpointer key, gpointer value, gpointer data) 
-{
-   free(data); /* identifiers stored in the heap by strdup in gplexer.l */	
-   g_slist_free(value);
-}
-
-/* add_symbol places the symbol object pointed to by SYMBOL in the bucket
+ *
+ * add_symbol places the symbol object pointed to by SYMBOL in the bucket
  * of the symbol table with index hash(KEY).
  *
  * The first line creates a pointer to a GSList by calling g_hash_table_lookup.
@@ -48,91 +42,119 @@ void destroy(gpointer key, gpointer value, gpointer data)
 
 #define add_symbol(KEY, SYMBOL)                                      \
   do {	  						             \
-       GSList *symbol_list = g_hash_table_lookup(symbol_table, KEY); \
+       GSList *symbol_list = g_hash_table_lookup(table, KEY);        \
        symbol_list = g_slist_prepend(symbol_list, SYMBOL);           \
-       g_hash_table_insert(symbol_table, KEY, symbol_list);          \
+       g_hash_table_insert(table, KEY, symbol_list);                 \
      }							             \
   while(0)
 
-void declaration_scan(List *ast)
+
+
+/* void destroy(gpointer key, gpointer value, gpointer data) 
 {
-   int main_count = 0;
-   /* keeps track of the procedure being processed */
-   static char *current_scope = "Main"; 
+   free(data); * identifiers stored in the heap by strdup in gplexer.l 	
+   g_slist_free(value);
+} */
+
+/* Traverses the global declaration list and any local declaration lists. 
+ * 
+ * Argument 1: The head of a declaration list in the AST
+ * Argument 2: The symbol table
+ * Argument 3: The scope of the declaration list the function is traversing.
+ *    This is either "Main" (initial value) or the name of a procedure.
+ *
+ * The function keeps track of the amount of Main declarations for error 
+ * reporting. It recurses over declaration lists. The code after the
+ * while loop is executed only when in Main scope. That is, when the end
+ * of the global declaration list is reached. This prevents the error messages
+ * being printed more than once when exiting recursive calls. 
+ */
+
+void declaration_scan(const List *ast, GHashTable *table, char *current_scope)
+{
+
+   static int main_count = 0;
 
    while(ast!=NULL) {     
 
-      /* The MAIN_DECLARATION node points only to a command sequence: no declarations. */
-      if(ast->decl_type==MAIN_DECLARATION) {
-	 main_count += 1;
-	 declaration_scan(ast->next); 
-      }	 
-  
-      if(ast->decl_type==PROCEDURE_DECLARATION) {
+      switch(ast->value.decl->decl_type) {
 
-         /* Create a symbol for the procedure name */
-
-	 Symbol *proc_symbol = malloc(sizeof(Symbol));
-
-	 if(proc_symbol==NULL) {
-           fprintf(stderr,"Insufficient space.\n");
-	   exit(0);
-	 }
-
-	 Symbol->symbol_type_t = PROCEDURE;
-	 Symbol->scope = current_scope;
-
-         add_symbol(ast->value.proc->name,proc_symbol);
-
-         /* Set the new scope and look for any local declarations. */
-
-         current_scope = ast->value.proc->name;
-
-         declaration_scan(ast->value.proc->local_decls);
-
-         /* Set the scope back to Main and continue down the global 
-          * declaration list. 
+	 /* The MAIN_DECLARATION node points only to a command sequence: no 
+          * declarations in the subtree.
           */
- 
-         current_scope = "Main";
+         case MAIN_DECLARATION:
+   
+              main_count += 1;
 
-         declaration_scan(ast->next);
-      }	 
-	      
+              break; 	 
   
-      if(ast->decl_type==RULE_DECLARATION) {
+         case PROCEDURE_DECLARATION:
+         {
+              /* Create a symbol for the procedure name */
 
-	 /* Create a symbol for the rule name */
+	      Symbol *proc_symbol = malloc(sizeof(Symbol));
 
-	 Symbol *rule_symbol = malloc(sizeof(Symbol));
+	      if(proc_symbol==NULL) {
+                 fprintf(stderr,"Insufficient space.\n");
+	         exit(0);
+	      }
 
-	 if(rule_symbol==NULL) {
-           fprintf(stderr,"Insufficient space.\n");
-	   exit(0);
-	 }
+	      proc_symbol->type = strdup("Procedure Declaration");
+	      proc_symbol->scope = strdup(current_scope);
 
-	 Symbol->symbol_type_t = RULE;
-	 Symbol->scope = current_scope;
+              add_symbol(ast->value.decl->value.proc->name,proc_symbol);
 
-         add_symbol(ast->value.rule->name,rule_symbol);
+              /* Set the new scope and scan for any local declarations. */
+ 
+              declaration_scan(ast->value.decl->value.proc->local_decls, table,
+                               ast->value.decl->value.proc->name);
 
-         declaration_scan(ast->next);
-      }	 
+              break;
+         }
+  
+         case RULE_DECLARATION:
+         {
+	      /* Create a symbol for the rule name */
 
-      if(ast->decl_type!=NULL) 
-         fprintf(stderr, "Error: Unexpected node type %d at node %d\n\n", 
-                 ast->value.decl_type, ast->value.node_id);
+	      Symbol *rule_symbol = malloc(sizeof(Symbol));
+ 
+	      if(rule_symbol==NULL) {
+                 fprintf(stderr,"Insufficient space.\n");
+	         exit(0);
+	      }
 
-      if(main_count == 0) fprintf(stderr,"Error: No main procedure.\n");
+	      rule_symbol->type = strdup("Rule Declaration");
+	      rule_symbol->scope = strdup(current_scope);
 
-      if(main_count > 1) 
-	fprintf(stderr,"Error: More than one main procedure declared.\n");
+              add_symbol(ast->value.decl->value.rule->name,rule_symbol);
+
+              break;
+         }
+
+         default: 
+             fprintf(stderr, "Error: Unexpected node type %d at node %d\n\n", 
+                     ast->value.decl->decl_type, ast->value.decl->node_id);
+
+             break; 
+
+      }     
+
+   /* Proceed down the declaration list */
+   ast = ast->next;  	
 
    }
+
+   if(!strcmp(current_scope,"Global")) {
+     if(main_count == 0) fprintf(stderr,"Error: No main procedure.\n\n");
+     if(main_count > 1) 
+      fprintf(stderr,"Error: More than one main procedure declared.\n\n");
+   }
+}
 
 int semantic_check(List *ast)
 {
    ast = reverse(ast); /* reverses the global decl list at the top of the AST */
+   return 0;
 }   
    
   

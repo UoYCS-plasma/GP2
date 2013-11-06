@@ -16,6 +16,7 @@
  * This is the standard YYLTYPE definition but I define it here so it is seen by every file.
  */
 
+#include <stdio.h> /* FILE type */
 #include <stdbool.h>
 
 typedef struct YYLTYPE {
@@ -45,7 +46,7 @@ extern bool is_injective;
 extern bool is_root;
 extern int yydebug;
 
-List *reverse (List * listHead); /* defined in ast.c */
+struct List *reverse (struct List * listHead); /* defined in ast.c */
 
 /* enum used by the lexer for mark keywords */
 

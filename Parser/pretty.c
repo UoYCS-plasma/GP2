@@ -10,17 +10,45 @@
  
 #include <stdio.h> /* fprintf, fopen, fclose */
 #include <string.h> /* strlen, strcpy, strcat */
+#include <glib.h> /* GHashTable and GSList */ 
 #include "pretty.h" /* function prototypes */
-
-
-
+#include "seman.h" /* struct Symbol */
 
 void print_location(YYLTYPE const loc)
 {
      printf("%d.%d-%d.%d\n", loc.first_line, loc.first_column, loc.last_line, loc.last_column);
 }
 
+/* Auxiliary function used by print_symbol_table. It takes a key and
+ * value provided by g_hash_table_foreach 
+ * user_data is a pointer from the caller, not necessary in this case.
+ */
 
+void print_symbol(gpointer key, gpointer value, gpointer user_data)
+{
+    GSList *current_name = NULL;
+
+    /* iterates over value, which is a GSList of Symbols 
+     * typecasting is required to access the Symbol structs as a GSList's
+     * data field is a gpointer, equivalent to a void pointer.
+     */
+    for(current_name = value; current_name!=NULL; 
+	current_name = current_name->next) 
+        printf("Name: %s\nType: %s\nScope: %s\n\n", (char*)key, 
+	       ((Symbol*)current_name->data)->type, 
+	       ((Symbol*)current_name->data)->scope);
+}
+       
+/* print_symbol_table uses glib's hash table iterator to print the table.
+ * table is the hash table to print.
+ * print_symbol is the function called for each value (GSList) encountered.
+ * The third argument is passed to the print_symbol, but this is not needed here.
+ */
+
+void print_symbol_table(GHashTable *table) 
+{
+   g_hash_table_foreach(table, print_symbol, NULL);
+}
 
 /* print_dot_ast takes as arguments a pointer to the root of the AST and the 
  * name of the GP source file. It creates a new file <source_name>.dot,
@@ -1011,7 +1039,7 @@ void print_atom(GPAtomicExp * const atom)
                         atom->node_id, atom->node_id, atom->value.name);
              else {
                 fprintf(dot_file,"node%d[label=\"%d String: UNDEFINED\"]\n",
-                        atom->node_id, atom->node_id, atom->value.name);
+                        atom->node_id, atom->node_id);
                 fprintf(stderr,"Error: Undefined string at AST node %d", 
                           atom->node_id);
              }

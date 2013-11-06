@@ -20,6 +20,7 @@
 
 %{
 
+#include <string.h> /* strdup */
 #include "ast.h"
 #include "gpparser.tab.h" /* Token definitions */
 
