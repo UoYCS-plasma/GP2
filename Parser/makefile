@@ -1,8 +1,12 @@
+# F must be declared with no extension on the command line e.g. make F=test 
+
 CC = gcc
 CFLAGS = -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 
-gpparse: gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
+default: gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
 	 $(CC) -o gpparse $(CFLAGS) gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
+	 gpparse $(F) 
+	 dot -Tjpeg $(F).dot -o $(F).jpeg 
 
 gpdebug: gpparser.tab.c lex.yy.c ast.c pretty.c seman.c main.c
 	 $(CC) $(CFLAGS) -o gpparse $(CFLAGS) -g gpparser.tab.c lex.yy.c ast.c pretty.c seman.c main.c

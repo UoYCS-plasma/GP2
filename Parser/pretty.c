@@ -50,6 +50,8 @@ void print_symbol_table(GHashTable *table)
    g_hash_table_foreach(table, print_symbol, NULL);
 }
 
+
+
 /* print_dot_ast takes as arguments a pointer to the root of the AST and the 
  * name of the GP source file. It creates a new file <source_name>.dot,
  * writes to it a graph declaration in the dot syntax for graph specification, 
@@ -118,10 +120,17 @@ static unsigned int next_node_id = 1;
 
 /* Two macros used in the printing functions are defined below. 
  *
- * pretty_print is shorthand for a function that calls the 
- * appropriate print function if the first argument is not a null pointer.
- * The function treats a pointer to a null argument as unexpected and
- * handles it appropriately. 
+ * The first handles cases where a NULL pointer is unexpected and hence 
+ * an error.
+ *
+ * The second handles cases where a NULL pointer is expected. These are
+ * almost always struct Lists, hence it calls print_list without an extra 
+ * argument to specify the print function.
+ */
+
+
+/* pretty_print is shorthand for a function that calls the appropriate print
+ * function if the first argument is not a null pointer. 
  *
  * POINTER_ARG is a pointer member of the current structure pointing to
  * an AST node we wish to print.
@@ -130,6 +139,10 @@ static unsigned int next_node_id = 1;
  * pretty_print with second argument 'list' will call print_list on POINTER_ARG
  * if POINTER_ARG is not NULL. Otherwise an error node is created in the 
  * appropriate place and an error message is printed to stderr. 
+ *
+ * Be aware that pretty_print does not write an edge to point to any nodes
+ * written by pretty_print. The edges must be explicitly written directly 
+ * before calling this macro.
  */ 
 
 #define pretty_print(POINTER_ARG,TYPE)                                      \
@@ -144,30 +157,40 @@ static unsigned int next_node_id = 1;
      }                                                                      \
   while (0)
 
-/* pretty_print_list is used to process the 'next' pointers of struct Lists.
+
+/* pretty_print_list is used to process members of AST structs that point
+ * to a struct List. It should only be used when a NULL pointer is valid in
+ * the GP AST. For example, this macro is called to print the node 
+ * and edge lists of a graph, which may be NULL, but not for the list
+ * component of a label, which should not point to NULL. Use print_list
+ * or pretty_print for the latter cases.
+ * 
+ * The NODE_TYPE parameter is the name of the argument of the calling function:
+ * the name of the structure that stores the node_id.
  *
- * If the tail of the list in the AST has been reached, a NULL node is
- * written to the .dot file. An edge is created from the current node to 
- * the NULL node with the label 'next'.
+ * If POINTER_ARG is NULL, a NULL node is written to the .dot file and an edge
+ * is created from the current node to the NULL node with the label EDGE_LABEL. 
+ * Note that stringification is used to print EDGE_LABEL (#EDGE_LABEL is 
+ * converted to the parameter enclosed by double quotes)
  *
- * Otherwise an edge is written, pointing from the current node to the node
- * that will be created by the print_list call immediately following this
- * edge creation. The use of the global node counter next_node_id ensures 
- * that the edge points to the correct node.
+ * Otherwise an edge is written with label EDGE_LABEL, pointing from the 
+ * current node to the node that will be created by the print_list call 
+ * immediately following this edge creation. The use of the global node counter
+ * next_node_id ensures that the edge points to the correct node.
  */
 
-#define pretty_print_list(POINTER_ARG)                                    \
+#define pretty_print_list(POINTER_ARG, NODE_TYPE, EDGE_LABEL)             \
    do {                                                                   \
         if(POINTER_ARG == NULL) {                                         \
           fprintf(dot_file,"node%d[shape=plaintext,label=\"%d NULL\"]\n", \
                   next_node_id, next_node_id);                            \
-          fprintf(dot_file,"node%d->node%d[label=\"next\"]\n",            \
-                  list->node_id, next_node_id);                           \
+          fprintf(dot_file,"node%d->node%d[label=\"" #EDGE_LABEL "\"]\n", \
+                  NODE_TYPE->node_id, next_node_id);                      \
           next_node_id += 1;                                              \
         }							          \
         else {                                                            \
-          fprintf(dot_file,"node%d->node%d[label=\"next\"]\n",            \
-                  list->node_id, next_node_id);                           \
+          fprintf(dot_file,"node%d->node%d[label=\"" #EDGE_LABEL "\"]\n", \
+                  NODE_TYPE->node_id, next_node_id);                      \
           print_list(POINTER_ARG);                                        \
         }                                                                 \
       } 			                                          \
@@ -205,7 +228,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.decl, declaration);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;	
 
@@ -222,7 +245,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  		
 
 	     pretty_print(list->value.decl, declaration);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;	
 
@@ -239,7 +262,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.command, statement);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;	
 
@@ -259,7 +282,7 @@ void print_list(List * const list)
                         list->node_id);
              }
 
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 	
@@ -276,7 +299,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.vars, list);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 	
@@ -293,7 +316,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.vars, list);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 	     
 	     break;
 	
@@ -310,7 +333,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.vars, list);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 	
@@ -327,7 +350,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.vars, list);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 	
@@ -343,7 +366,7 @@ void print_list(List * const list)
              else fprintf(stderr,"Error: Undefined variable name at AST node %d", 
                           list->node_id);
 
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 	
@@ -360,7 +383,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.node_pair, node_pair);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 	
@@ -377,7 +400,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.node, node);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 	
@@ -394,7 +417,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id);  
 
 	     pretty_print(list->value.edge, edge);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 
@@ -413,7 +436,7 @@ void print_list(List * const list)
                      list->node_id, next_node_id); 
 
 	     pretty_print(list->value.atom, atom);
-             pretty_print_list(list->next);
+             pretty_print_list(list->next,list,next);
 
 	     break;
 	
@@ -1276,19 +1299,8 @@ void print_procedure(GPProcedure * const proc)
                   proc->node_id);
      }
 
-     if(proc->local_decls != NULL) {
-        fprintf(dot_file,"node%d->node%d[label=\"local \\n decls\"]\n",  
-                proc->node_id, next_node_id);
-        pretty_print(proc->local_decls, list);
-     }
-     else {
-        fprintf(dot_file,"node%d[shape=plaintext,label=\"%d NULL\"]\n", 
-                next_node_id, next_node_id);  
-        fprintf(dot_file,"node%d->node%d[label=\"local \\n decls\"]\n",          
-                proc->node_id, next_node_id);                     
-        next_node_id += 1;       
-     }
-
+     pretty_print_list(proc->local_decls, proc, decls);
+   
      fprintf(dot_file,"node%d->node%d[label=\"cmd seq\"]\n", proc->node_id, next_node_id); 
      pretty_print(proc->cmd_seq, statement);
 }
@@ -1316,9 +1328,7 @@ void print_rule(GPRule * const rule)
           fprintf(dot_file,"Injective\"]\n"); 
      else fprintf(dot_file,"Non-injective\"]\n");	
 
-     fprintf(dot_file,"node%d->node%d[label=\"variables\"]\n", 
-             rule->node_id, next_node_id); 
-     pretty_print(rule->variables, list);
+     pretty_print_list(rule->variables, rule, variables);
 
      fprintf(dot_file,"node%d->node%d[label=\"lhs\"]\n", 
              rule->node_id, next_node_id); 
@@ -1328,13 +1338,24 @@ void print_rule(GPRule * const rule)
              rule->node_id, next_node_id); 
      pretty_print(rule->rhs, graph);
 
-     fprintf(dot_file,"node%d->node%d[label=\"interface\"]\n", 
-             rule->node_id, next_node_id); 
-     pretty_print(rule->interface, list);
+     pretty_print_list(rule->interface, rule, interface);
 
-     fprintf(dot_file,"node%d->node%d[label=\"condition\"]\n", 
-             rule->node_id, next_node_id); 
-     pretty_print(rule->condition, condition);
+     
+     /* Same code as the pretty_print_list macro, except this fragment needs to
+      * call print_condition instead of print_list.
+      */
+     if(rule->condition == NULL) {                                         
+        fprintf(dot_file,"node%d[shape=plaintext,label=\"%d NULL\"]\n", 
+                next_node_id, next_node_id);                            
+        fprintf(dot_file,"node%d->node%d[label=\"condition\"]\n",            
+                rule->node_id, next_node_id);                           
+        next_node_id += 1;                                              
+     }							          
+     else {                                                            
+        fprintf(dot_file,"node%d->node%d[label=\"condition\"]\n",            
+                rule->node_id, next_node_id);                           
+        print_condition(rule->condition);                                        
+     }  
 }
 
 
@@ -1353,13 +1374,9 @@ void print_graph(GPGraph * const graph)
              graph->node_id, next_node_id); 
      pretty_print(graph->position, position);
 
-     fprintf(dot_file,"node%d->node%d[label=\"nodes\"]\n", 
-             graph->node_id, next_node_id); 
-     pretty_print(graph->nodes, list);
+     pretty_print_list(graph->nodes, graph, nodes);
 
-     fprintf(dot_file,"node%d->node%d[label=\"edges\"]\n", 
-             graph->node_id, next_node_id); 
-     pretty_print(graph->edges, list);
+     pretty_print_list(graph->edges, graph, edges);
 }
 
 
@@ -1414,10 +1431,12 @@ void print_node(GPNode * const node)
           fprintf(dot_file," \\n Root\"]\n"); 
      else fprintf(dot_file,"\"]\n");	
      
-     fprintf(dot_file,"node%d->node%d[label=\"label\"]\n", node->node_id, next_node_id); 
+     fprintf(dot_file,"node%d->node%d[label=\"label\"]\n", 
+             node->node_id, next_node_id); 
      pretty_print(node->label, label);
 
-     fprintf(dot_file,"node%d->node%d[label=\"position\"]\n", node->node_id, next_node_id); 
+     fprintf(dot_file,"node%d->node%d[label=\"position\"]\n", 
+             node->node_id, next_node_id); 
      pretty_print(node->position, position);
 }
 
