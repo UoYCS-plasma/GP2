@@ -33,7 +33,7 @@ char *file_name = NULL;
 %union {  
   int num;   /* value of NUM token. */
   char *str; /* value of STRING tokens. */
-  char *id;  /* value of MACID and ID tokens. */
+  char *id;  /* value of PROCID and ID tokens. */
   int mark;  /* enum mark_t, value of MARK token. */
 }
 
@@ -77,8 +77,8 @@ char *file_name = NULL;
   int check_type; /* enum cond_exp_t */
 } 
 
-%type <list> Program ProcList ComSeq RuleSetCall IDList VarDecls VarList Inter NodePairList 
-             NodeList EdgeList RelExp List
+%type <list> GPProgram Program LocalDecls ComSeq RuleSetCall IDList VarDecls
+             VarList Inter NodePairList NodeList EdgeList List
 %type <decl> Declaration
 %type <stmt> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
@@ -91,7 +91,7 @@ char *file_name = NULL;
 %type <cond_exp> CondDecl Condition 
 %type <label> LabelArg Label
 %type <atom_exp> AtomExp
-%type <list_type> Type RelOp 
+%type <list_type> Type  
 %type <check_type> Subtype
 %type <id> NodeID EdgeID ProcID RuleID Variable
 
@@ -114,14 +114,14 @@ MainDecl: MAIN '=' ComSeq		{ $$ = newCommandSequence(yylloc,$3); }
 
 ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(yylloc, $1, NULL, 
                                                newCommandSequence(yylloc,$3)); }
-        | ProcID '=' '[' ProcList ']' ComSeq 
+        | ProcID '=' '[' LocalDecls ']' ComSeq 
 					{ $$ = newProcedure(yylloc, $1, $4, 
                                                newCommandSequence(yylloc,$6)); }
 
-ProcList: /* empty */			{ $$ = NULL; }
-        | ProcList RuleDecl             { $$ = addDecl(LOCAL_DECLARATIONS, yylloc, 
+LocalDecls: /* empty */			{ $$ = NULL; }
+        | LocalDecls RuleDecl           { $$ = addDecl(LOCAL_DECLARATIONS, yylloc, 
                                                newRuleDecl(yylloc, $2), $1); }
-	| ProcList ProcDecl 		{ $$ = addDecl(LOCAL_DECLARATIONS, yylloc,
+	| LocalDecls ProcDecl 		{ $$ = addDecl(LOCAL_DECLARATIONS, yylloc,
                                                newProcedureDecl(yylloc, $2), $1); }
 
 ComSeq: Command 			{ $$ = addCommand(yylloc, $1, NULL); }
@@ -159,21 +159,25 @@ IDList: RuleID				{ $$ = addRule(yylloc, $1, NULL); }
 
 /* Grammar for GP2 Rule Definitions. */
 
-RuleDecl: RuleID '(' VarDecls ')' '[' Graph ']' ARROW '[' Graph ']' Inter CondDecl INJECTIVE '=' Bool
-					{ $$ = newRule(yylloc, is_injective,
- 					        $1, $3, $6, $10, $12, $13); }
+RuleDecl: RuleID '(' VarDecls ')' '[' Graph ']' ARROW '[' Graph ']' Inter 
+          CondDecl INJECTIVE '=' Bool	{ $$ = newRule(yylloc, is_injective,
+ 					       $1, $3, $6, $10, $12, $13); }
+        | RuleID '(' ')' '[' Graph ']' ARROW '[' Graph ']' Inter CondDecl
+          INJECTIVE '=' Bool	 	{ $$ = newRule(yylloc, is_injective,
+ 					       $1, NULL, $5, $9, $11, $12); }
+
+
 					  
-VarDecls: /* empty */ 			{ $$ = NULL; }
-	| VarList ':' Type		{ $$ = addVariableDecl($3, yylloc, $1, NULL); }  
+VarDecls: VarList ':' Type		{ $$ = addVariableDecl($3, yylloc, $1, NULL); }  
 	| VarDecls ';' VarList ':' Type { $$ = addVariableDecl($5, yylloc, $3, $1); }
 
 VarList: Variable 			{ $$ = addVariable(yylloc, $1, NULL); }
        | VarList ',' Variable          	{ $$ = addVariable(yylloc, $3, $1); }
 
-Inter: INTERFACE '{' NodePairList '}'   { $$ = $3; }
+Inter: INTERFACE '{' '}'   		{ $$ = NULL; }
+     | INTERFACE '{' NodePairList '}'   { $$ = $3; }
 
-NodePairList: /* empty */ 		{ $$ = NULL; }
-	    | NodePair			{ $$ = addNodePair(yylloc, $1, NULL); }
+NodePairList: NodePair			{ $$ = addNodePair(yylloc, $1, NULL); }
             | NodePairList ',' NodePair { $$ = addNodePair(yylloc, $3, $1);   }
 
 NodePair: '(' NodeID ',' NodeID ')'   	{ $$ = newNodePair(yylloc, $2, $4); }
@@ -189,19 +193,19 @@ Type: INT				{ $$ = INT_DECLARATIONS; }
 
 /* Grammar for GP2 Graph Definitions. */
 
-Graph: Position '|' NodeList '|' EdgeList 
+Graph: Position '|' '|'			{ $$ = newGraph(yylloc, $1, NULL, NULL); }
+     | Position '|' NodeList '|'	{ $$ = newGraph(yylloc, $1, $3, NULL); }
+     | Position '|' NodeList '|' EdgeList 
      					{ $$ = newGraph(yylloc, $1, $3, $5); }
 
-NodeList: /* empty */ 			{ $$ = NULL; }
-        | Node				{ $$ = addNode(yylloc, $1, NULL); }
+NodeList: Node				{ $$ = addNode(yylloc, $1, NULL); }
         | NodeList ',' Node		{ $$ = addNode(yylloc, $3, $1); }
 
 Node: '(' NodeID RootNode ',' Label ',' Position ')'
     					{ $$ = newNode(yylloc, is_root, $2, $5, $7); 
  					  is_root = false; } /* Resets the root node flag */	    
 
-EdgeList: /* empty */ 			{ $$ = NULL; }
-	| Edge				{ $$ = addEdge(yylloc, $1, NULL); }
+EdgeList: Edge				{ $$ = addEdge(yylloc, $1, NULL); }
         | EdgeList ',' Edge		{ $$ = addEdge(yylloc, $3, $1); }
 
 Edge: '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
@@ -220,7 +224,12 @@ CondDecl: /* empty */                   { $$ = NULL; }
 Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, yylloc, $3); }
          | EDGETEST '(' NodeID ',' NodeID LabelArg ')' 
 					{ $$ = newEdgePred(yylloc, $3, $5, $6); }	
-         | RelExp 			{ $$ = newRelationalExp(yylloc, $1); }
+	 | List '=' List		{ $$ = newListComparison(EQUAL, yylloc, $1, $3); }
+	 | List NEQ List		{ $$ = newListComparison(NOT_EQUAL, yylloc, $1, $3); }
+	 | AtomExp '>' AtomExp          { $$ = newAtomComparison(GREATER, yylloc, $1, $3); }    
+	 | AtomExp GTEQ AtomExp         { $$ = newAtomComparison(GREATER_EQUAL, yylloc, $1, $3); }    
+	 | AtomExp '<' AtomExp          { $$ = newAtomComparison(LESS, yylloc, $1, $3); }    
+	 | AtomExp LTEQ AtomExp         { $$ = newAtomComparison(LESS_EQUAL, yylloc, $1, $3); }    
          | NOT Condition	        { $$ = newNotExp(yylloc, $2); }
          | Condition OR Condition  	{ $$ = newBinaryExp(BOOL_OR, yylloc, $1, $3); }
          | Condition AND Condition      { $$ = newBinaryExp(BOOL_AND, yylloc, $1, $3); }
@@ -233,27 +242,16 @@ Subtype: INT				{ $$ = INT_CHECK; }
 LabelArg: /* empty */ 			{ $$ = NULL; }
  	| ',' Label			{ $$ = $2; }
 
-RelExp: List RelOp List 		{ $$ = addRelationalExp($2, yylloc, $1, $3); }
-      | RelExp RelOp List 		{ $$ = addRelationalExp($2, yylloc, $3, $1); }
-
-RelOp: '='				{ $$ = EQUAL; }
-     | NEQ				{ $$ = NOT_EQUAL; }
-     | '>'				{ $$ = GREATER; }
-     | GTEQ				{ $$ = GREATER_EQUAL; }
-     | '<'				{ $$ = LESS; }
-     | LTEQ				{ $$ = LESS_EQUAL; }
-
-
 /* Grammar for GP2 Labels */
 
 Label: List 				{ $$ = newLabel(yylloc, NONE, $1); }
      | List '#' MARK			{ $$ = newLabel(yylloc, $3, $1); } 
 
-List: EMPTY  				{ $$ = addAtom(yylloc, newEmpty(yylloc), NULL); }
-    | AtomExp				{ $$ = addAtom(yylloc, $1, NULL); } 
+List: AtomExp				{ $$ = addAtom(yylloc, $1, NULL); } 
     | List ':' AtomExp			{ $$ = addAtom(yylloc, $3, $1); }
 
-AtomExp: Variable			{ $$ = newVariable(yylloc, $1); }
+AtomExp: EMPTY				{ $$ = newEmpty(yylloc); }
+       | Variable			{ $$ = newVariable(yylloc, $1); }
        | NUM 				{ $$ = newNumber(yylloc, $1); }
        | STR 				{ $$ = newString(yylloc, $1); }
        | INDEG '(' NodeID ')' 		{ $$ = newDegreeOp(INDEGREE, yylloc, $3); }

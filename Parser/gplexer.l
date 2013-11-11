@@ -20,6 +20,7 @@
 
 %{
 
+#include <string.h> /* strdup */
 #include "ast.h"
 #include "gpparser.tab.h" /* Token definitions */
 
@@ -126,8 +127,11 @@ list		    return LIST;
 ">="	         return GTEQ; 
 "<="	         return LTEQ; 
 
- /* Procedure identifiers must start with a capital letter. 
-    All other identifiers start with a lowercase letter. */  
+ /* Procedure identifiers must start with a capital letter.
+  * All other identifiers start with a lowercase letter.
+  * Identifier names are retained with strdup which itself calls malloc,
+  * so these strings need to be explicitly freed. 
+  */  
 [A-Z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
 [a-z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return ID; }
 [ \t\r]+              /* ignore white space */

@@ -10,7 +10,41 @@
 
 #include <stdio.h> /* printf */
 #include <stdlib.h> /* malloc */
+
 #include "ast.h" /* AST struct definitions */
+
+/* Function to reverse a sequence of List nodes in the AST. Given a
+ * pointer to a List node representing the head of an AST list, it
+ * reverses the list and returns a pointer to the new head. 
+ *
+ * This function is required as Bison generates lists in reverse order
+ * due to left-recursive grammar rules. 
+ */
+
+List *reverse (List * listHead) 
+{
+     List *currentNode = listHead;
+     List *tempNode = NULL;
+     List *previousNode = NULL;
+
+     /* invariant: currentNode points to the node being worked on and
+      * previousNode points to the original parent of currentNode.
+      */
+
+     while(currentNode != NULL) {
+        tempNode = currentNode->next; /* keeping a pointer to currentNode->next before
+                                         reassignment. */
+	currentNode->next = previousNode; /* reversing the 'next' pointer of currentNode. */
+
+	/* setting the invariant for the next iteration */
+	previousNode = currentNode;
+	currentNode = tempNode;
+     }
+
+     return previousNode; /* The tail of the original list and the head of the reversed list. */
+}     
+
+
 
 /* The constructor functions for AST nodes of type struct List. */
 
@@ -19,7 +53,7 @@ List *addDecl (list_t list_type, YYLTYPE location, GPDeclaration *decl, List *ne
     List *new_decl = malloc(sizeof(List));
     
     if(new_decl == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -37,7 +71,7 @@ List *addCommand (YYLTYPE location, GPStatement *command, List *next)
     List *new_command = malloc(sizeof(List));
     
     if(new_command == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -54,7 +88,7 @@ List *addRule (YYLTYPE location, char *rule_name, List *next)
     List *new_rule = malloc(sizeof(List));
     
     if(new_rule == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -71,7 +105,7 @@ List *addVariableDecl (list_t list_type, YYLTYPE location, List *vars, List *nex
     List *new_var_decl = malloc(sizeof(List));
     
     if(new_var_decl == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -90,7 +124,7 @@ List *addVariable (YYLTYPE location, char *var, List *next)
     List *new_var = malloc(sizeof(List));
     
     if(new_var == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -107,7 +141,7 @@ List *addNodePair (YYLTYPE location, GPNodePair *node_pair, List *next)
     List *new_pair = malloc(sizeof(List));
     
     if(new_pair == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -124,7 +158,7 @@ List *addNode (YYLTYPE location, GPNode *node, List *next)
      List *new_node = malloc(sizeof(List));
      
      if(new_node == NULL) {
-	printf("Insufficient space.\n");
+	fprintf(stderr,"Insufficient space.\n");
         exit(0);
      }
 
@@ -141,7 +175,7 @@ List *addEdge (YYLTYPE location, GPEdge *edge, List *next)
      List *new_edge = malloc(sizeof(List));
      
      if(new_edge == NULL) {
-	printf("Insufficient space.\n");
+	fprintf(stderr,"Insufficient space.\n");
         exit(0);
      }
 
@@ -153,30 +187,12 @@ List *addEdge (YYLTYPE location, GPEdge *edge, List *next)
      return new_edge;
 }
 
-List *addRelationalExp (list_t list_type, YYLTYPE location, List *rel_exp, List *next)
-{
-    List *new_rel_exp = malloc(sizeof(List));
-   
-    if(new_rel_exp == NULL) {
-      printf("Insufficient space.\n");
-      exit(0);
-    }
-
-    new_rel_exp->list_type = list_type; 
-    /* list_type: EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
-    new_rel_exp->location = location;
-    new_rel_exp->value.rel_exp = rel_exp;
-    new_rel_exp->next = next;
-
-    return new_rel_exp;
-}
-
 List *addAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
 {
     List *new_atom = malloc(sizeof(List));
    
     if(new_atom == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -196,7 +212,7 @@ GPDeclaration *newMainDecl (YYLTYPE location, GPStatement *main_program)
     GPDeclaration *new_main = malloc(sizeof(GPDeclaration));
    
     if(new_main == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -212,7 +228,7 @@ GPDeclaration *newProcedureDecl (YYLTYPE location, GPProcedure *proc)
     GPDeclaration *new_proc = malloc(sizeof(GPDeclaration));
    
     if(new_proc == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -228,7 +244,7 @@ GPDeclaration *newRuleDecl (YYLTYPE location, GPRule *rule)
     GPDeclaration *new_rule = malloc(sizeof(GPDeclaration));
    
     if(new_rule == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -247,7 +263,7 @@ GPStatement *newCommandSequence(YYLTYPE location, List *cmd_seq)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -263,7 +279,7 @@ GPStatement *newRuleCall(YYLTYPE location, char *rule_name)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -279,7 +295,7 @@ GPStatement *newRuleSetCall(YYLTYPE location, List *rule_set)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -295,7 +311,7 @@ GPStatement *newProcCall(YYLTYPE location, char *proc_name)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -306,12 +322,13 @@ GPStatement *newProcCall(YYLTYPE location, char *proc_name)
     return stmt;
 }
 
-GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location, GPStatement *condition, GPStatement *then_stmt, GPStatement *else_stmt)
+GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location, 
+	      GPStatement *condition, GPStatement *then_stmt, GPStatement *else_stmt)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -330,7 +347,7 @@ GPStatement *newAlap(YYLTYPE location, GPStatement *loop_stmt)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -341,12 +358,13 @@ GPStatement *newAlap(YYLTYPE location, GPStatement *loop_stmt)
     return stmt;
 }
 
-GPStatement *newOrStmt(YYLTYPE location, GPStatement *left_stmt, GPStatement *right_stmt)
+GPStatement *newOrStmt(YYLTYPE location, GPStatement *left_stmt, 
+	      GPStatement *right_stmt)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -363,7 +381,7 @@ GPStatement *newSkip(YYLTYPE location)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -378,7 +396,7 @@ GPStatement *newFail(YYLTYPE location)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -396,7 +414,7 @@ GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var)
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -408,12 +426,13 @@ GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var)
      return cond;
 }
 
-GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, GPLabel *label)
+GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, 
+	    GPLabel *label)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -426,18 +445,41 @@ GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, GPLabel *l
      return cond;
 }
 
-GPCondExp *newRelationalExp (YYLTYPE location, List *rel_exp)
+GPCondExp *newListComparison (condexp_t exp_type, YYLTYPE location,
+	    List *left_list, List *right_list)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
-     cond->exp_type = REL_EXP; 
+     cond->exp_type = exp_type; 
+     /* exp_type: EQUAL, NOT_EQUAL */
      cond->location = location;
-     cond->value.rel_exp = rel_exp;
+     cond->value.list_cmp.left_list = left_list;
+     cond->value.list_cmp.right_list = right_list;
+
+     return cond;
+}
+
+
+GPCondExp *newAtomComparison (condexp_t exp_type, YYLTYPE location,
+	    GPAtomicExp *left_exp, GPAtomicExp *right_exp)
+{
+     GPCondExp *cond = malloc(sizeof(GPCondExp));
+ 
+     if(cond == NULL) {
+       fprintf(stderr,"Insufficient space.\n");
+       exit(0);
+     }
+
+     cond->exp_type = exp_type; 
+     /* exp_type: GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
+     cond->location = location;
+     cond->value.atom_cmp.left_exp = left_exp;
+     cond->value.atom_cmp.right_exp = right_exp;
 
      return cond;
 }
@@ -448,7 +490,7 @@ GPCondExp *newNotExp (YYLTYPE location, GPCondExp *not_exp)
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -459,12 +501,13 @@ GPCondExp *newNotExp (YYLTYPE location, GPCondExp *not_exp)
      return cond;
 }
 
-GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, GPCondExp *left_exp, GPCondExp *right_exp)
+GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, 
+	    GPCondExp *left_exp, GPCondExp *right_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -486,7 +529,7 @@ GPAtomicExp *newEmpty (YYLTYPE location)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
 
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -502,7 +545,7 @@ GPAtomicExp *newVariable (YYLTYPE location, char *name)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -518,7 +561,7 @@ GPAtomicExp *newNumber (YYLTYPE location, int num)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -535,7 +578,7 @@ GPAtomicExp *newString (YYLTYPE location, char *str)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -551,7 +594,7 @@ GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -568,7 +611,7 @@ GPAtomicExp *newListLength (YYLTYPE location, List *list_arg)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -584,7 +627,7 @@ GPAtomicExp *newStringLength (YYLTYPE location, GPAtomicExp *str_arg)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -600,7 +643,7 @@ GPAtomicExp *newNegExp (YYLTYPE location, struct GPAtomicExp *exp)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -616,7 +659,7 @@ GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, GPAtomicExp *lef
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       printf("Insufficient space.\n");
+       fprintf(stderr,"Insufficient space.\n");
        exit(0);
      }
 
@@ -637,7 +680,7 @@ GPProcedure *newProcedure(YYLTYPE location, char *name, List *local_decls, GPSta
     GPProcedure *proc = malloc(sizeof(GPProcedure));
     
     if(proc == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -655,7 +698,7 @@ GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables, G
     GPRule *rule = malloc(sizeof(GPRule));
     
     if(rule == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -677,7 +720,7 @@ GPNodePair *newNodePair (YYLTYPE location, char *left_node, char *right_node)
     GPNodePair *node_pair = malloc(sizeof(GPEdge));
     
     if(node_pair == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -695,7 +738,7 @@ GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes, List *edges)
     GPGraph *graph = malloc(sizeof(GPGraph));
     
     if(graph == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -714,7 +757,7 @@ GPNode *newNode (YYLTYPE location, bool root, char *name, GPLabel *label, GPPos 
     GPNode *node = malloc(sizeof(GPNode));
     
     if(node == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -733,7 +776,7 @@ GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target, GPLab
     GPEdge *edge = malloc(sizeof(GPEdge));
     
     if(edge == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -752,7 +795,7 @@ GPPos *newPosition (YYLTYPE location, int x, int y)
     GPPos *pos = malloc(sizeof(GPPos));
     
     if(pos == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
@@ -769,7 +812,7 @@ GPLabel *newLabel (YYLTYPE location, mark_t mark, List *gp_list)
     GPLabel *label = malloc(sizeof(GPLabel));
     
     if(label == NULL) {
-      printf("Insufficient space.\n");
+      fprintf(stderr,"Insufficient space.\n");
       exit(0);
     }
 
