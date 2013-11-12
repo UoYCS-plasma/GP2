@@ -22,7 +22,8 @@
 #include <string.h> /* strcmp */
 #include "pretty.h" /* pretty printer function declarations */
 #include "seman.h" /* semantic analysis functions */
-#define DRAW_TREE  
+#define DRAW_ORIGINAL_TREE /* print_dot_ast before semantic_check */
+#define DRAW_FINAL_TREE /* print_dot_ast after semantic_check */
 #define DRAW_TABLE
 
 int main(int argc, char** argv) {
@@ -54,12 +55,28 @@ int main(int argc, char** argv) {
 
   if(!yyparse()) {
     printf("GP2 parse succeeded\n\n");
-    gp_program = reverse(gp_program); /* ast.c*/
-    #ifdef DRAW_TREE
+
+    /* Reverse the global declaration list at the top of the generated AST. */
+    gp_program = reverse(gp_program);
+
+    /* Create a new GHashTable with strings as keys. g_str_equal is a string
+     * hashing function provided by glib.
+     */   
+    gp_symbol_table = g_hash_table_new(g_str_hash, g_str_equal);
+    
+    declaration_scan(gp_program, gp_symbol_table, "Global"); /* seman.c */
+    #ifdef DRAW_ORIGINAL_TREE
        print_dot_ast(gp_program, file_name); /* pretty.c */ 
     #endif
-    gp_symbol_table = g_hash_table_new(g_str_hash, g_str_equal);
-    declaration_scan(gp_program, gp_symbol_table, "Global"); /* seman.c */
+    semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
+    #ifdef DRAW_FINAL_TREE
+       /* create the string <file_name>_F as an argument to print_dot_ast */
+       int length = strlen(file_name)+2;
+       char alt_name[length];
+       strcpy(alt_name,file_name);
+       strcat(alt_name,"_F"); 
+       print_dot_ast(gp_program, alt_name); /* pretty.c */ 
+    #endif
     #ifdef DRAW_TABLE
        print_symbol_table(gp_symbol_table); /* pretty.c */
     #endif

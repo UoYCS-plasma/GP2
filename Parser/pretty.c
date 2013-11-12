@@ -76,6 +76,7 @@ void print_symbol_table(GHashTable *table)
  */ 
 
 
+static unsigned int next_node_id = 1;
 FILE *dot_file; 
 
 int print_dot_ast(List *const gp_ast, char* file_name)
@@ -105,6 +106,7 @@ int print_dot_ast(List *const gp_ast, char* file_name)
      fprintf(dot_file,"node0[shape=plaintext,label=\"ROOT\"]\n");
      fprintf(dot_file,"node0->node1\n");
 
+     next_node_id = 1;
      print_list(gp_ast);
 
      fprintf(dot_file,"}\n\n");
@@ -113,10 +115,6 @@ int print_dot_ast(List *const gp_ast, char* file_name)
 
      return 1;
 }
-
-static unsigned int next_node_id = 1; 
-
-
 
 /* Two macros used in the printing functions are defined below. 
  *
