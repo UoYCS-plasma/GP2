@@ -65,12 +65,14 @@ typedef struct List {
   list_t list_type;  
   YYLTYPE location;  /* location of symbol in the source file */
   union {
-    struct GPDeclaration *decl;
+    struct GPDeclaration *declaration;
     struct GPStatement *command;
     char *rule_name;
-    struct List *vars; /* multiple variables declared with the same type: INT_DECLARATIONS, 
-                        * STRING_DECLARATIONS, ATOM_DECLARATIONS */
-    char *var; 	  
+    struct List *variables; 
+      /* multiple variables declared with the same type: INT_DECLARATIONS, 
+       * STRING_DECLARATIONS, ATOM_DECLARATIONS
+       */ 
+    char *variable_name; 	  
     struct GPNodePair *node_pair; /* pair of nodes specified in the interface of a rule */	   
     struct GPNode *node;    
     struct GPEdge *edge;    
@@ -79,14 +81,14 @@ typedef struct List {
   struct List *next;
 } List;
 
-List *addDecl (list_t list_type, YYLTYPE location, struct GPDeclaration *decl, 
-	struct List *next);
+List *addDecl (list_t list_type, YYLTYPE location, 
+	struct GPDeclaration *declaration, struct List *next);
 List *addCommand (YYLTYPE location, struct GPStatement *command, 
 	struct List *next);
 List *addRule (YYLTYPE location, char *rule_name, struct List *next);
-List *addVariableDecl (list_t list_type, YYLTYPE location, struct List *vars,
-	struct List *next);
-List *addVariable (YYLTYPE location, char *var, struct List *next);
+List *addVariableDecl (list_t list_type, YYLTYPE location, 
+	struct List *variables, struct List *next);
+List *addVariable (YYLTYPE location, char *variable_name, struct List *next);
 List *addNodePair (YYLTYPE location, struct GPNodePair *node_pair,
 	struct List *next);
 List *addNode (YYLTYPE location, struct GPNode *node, struct List *next);
@@ -104,13 +106,13 @@ typedef struct GPDeclaration {
   YYLTYPE location;
   union {
     struct GPStatement *main_program;
-    struct GPProcedure *proc;
+    struct GPProcedure *procedure;
     struct GPRule *rule;
   } value;
 } GPDeclaration;
 
 GPDeclaration *newMainDecl (YYLTYPE location, struct GPStatement *main_program);
-GPDeclaration *newProcedureDecl (YYLTYPE location, struct GPProcedure *proc);
+GPDeclaration *newProcedureDecl (YYLTYPE location, struct GPProcedure *procedure);
 GPDeclaration *newRuleDecl (YYLTYPE location, struct GPRule *rule);
 
 
@@ -198,8 +200,8 @@ typedef struct GPAtomicExp {
   YYLTYPE location;
   union {
     char *name;
-    int num;
-    char *str;
+    int number;
+    char *string;
     char *node_id; /* The indegree and outdegree operators take a node as their argument. */
     struct List *list_arg; /* Query for the length of a list. */
     struct GPAtomicExp *str_arg; /* Query for the length of a string. */
@@ -211,8 +213,8 @@ typedef struct GPAtomicExp {
 
 GPAtomicExp *newEmpty (YYLTYPE location);
 GPAtomicExp *newVariable (YYLTYPE location, char *name);
-GPAtomicExp *newNumber (YYLTYPE location, int num);
-GPAtomicExp *newString (YYLTYPE location, char *str);
+GPAtomicExp *newNumber (YYLTYPE location, int number);
+GPAtomicExp *newString (YYLTYPE location, char *string);
 GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id);
 GPAtomicExp *newListLength (YYLTYPE location, struct List *list_arg);
 GPAtomicExp *newStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);

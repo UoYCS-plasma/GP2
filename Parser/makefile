@@ -8,6 +8,7 @@ default: gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
 	 $(CC) -o gpparse $(CFLAGS) gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
 	 gpparse $(F) 
 	 dot -Tjpeg $(F).dot -o $(F).jpeg 
+	 dot -Tjpeg $(F)_F.dot -o $(F)_F.jpeg
 
 # only builds executable gpparse.
 gpparse: gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o

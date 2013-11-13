@@ -33,10 +33,20 @@ void print_symbol(gpointer key, gpointer value, gpointer user_data)
      * data field is a gpointer, equivalent to a void pointer.
      */
     for(current_name = value; current_name!=NULL; 
-	current_name = current_name->next) 
-        printf("Name: %s\nType: %s\nScope: %s\n\n", (char*)key, 
-	       ((Symbol*)current_name->data)->type, 
-	       ((Symbol*)current_name->data)->scope);
+	current_name = current_name->next)
+	
+	/* Not all symbols have a containing rule */    
+	if(((Symbol*)current_name->data)->containing_rule == NULL) {
+	   printf("Name: %s\nType: %s\nScope: %s\n\n", (char*)key, 
+	          ((Symbol*)current_name->data)->type, 
+	          ((Symbol*)current_name->data)->scope);
+	}	
+	else {	
+           printf("Name: %s\nType: %s\nScope: %s\nContaining Rule: %s\n\n", 
+		  (char*)key, ((Symbol*)current_name->data)->type, 
+	          ((Symbol*)current_name->data)->scope,
+	          ((Symbol*)current_name->data)->containing_rule);
+	}   
 }
        
 /* print_symbol_table uses glib's hash table iterator to print the table.
@@ -47,6 +57,7 @@ void print_symbol(gpointer key, gpointer value, gpointer user_data)
 
 void print_symbol_table(GHashTable *table) 
 {
+   printf("\n\n# Symbol Table #\n\n");	
    g_hash_table_foreach(table, print_symbol, NULL);
 }
 
@@ -225,7 +236,7 @@ void print_list(List * const list)
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
 
-	     pretty_print(list->value.decl, declaration);
+	     pretty_print(list->value.declaration, declaration);
              pretty_print_list(list->next,list,next);
 
 	     break;	
@@ -242,7 +253,7 @@ void print_list(List * const list)
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  		
 
-	     pretty_print(list->value.decl, declaration);
+	     pretty_print(list->value.declaration, declaration);
              pretty_print_list(list->next,list,next);
 
 	     break;	
@@ -296,7 +307,7 @@ void print_list(List * const list)
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
 
-	     pretty_print(list->value.vars, list);
+	     pretty_print(list->value.variables, list);
              pretty_print_list(list->next,list,next);
 
 	     break;
@@ -313,7 +324,7 @@ void print_list(List * const list)
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
 
-	     pretty_print(list->value.vars, list);
+	     pretty_print(list->value.variables, list);
              pretty_print_list(list->next,list,next);
 	     
 	     break;
@@ -330,7 +341,7 @@ void print_list(List * const list)
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
 
-	     pretty_print(list->value.vars, list);
+	     pretty_print(list->value.variables, list);
              pretty_print_list(list->next,list,next);
 
 	     break;
@@ -347,7 +358,7 @@ void print_list(List * const list)
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
 
-	     pretty_print(list->value.vars, list);
+	     pretty_print(list->value.variables, list);
              pretty_print_list(list->next,list,next);
 
 	     break;
@@ -358,9 +369,9 @@ void print_list(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     if(list->value.var != NULL)
+	     if(list->value.variable_name != NULL)
                 fprintf(dot_file,"node%d[shape=box,label=\"%d Variable \\n Name: %s\"]\n",
-                        list->node_id, list->node_id, list->value.var);
+                        list->node_id, list->node_id, list->value.variable_name);
              else fprintf(stderr,"Error: Undefined variable name at AST node %d", 
                           list->node_id);
 
@@ -482,7 +493,7 @@ void print_declaration(GPDeclaration * const decl)
              fprintf(dot_file,"node%d->node%d[label=\"proc\"]\n",  
                      decl->node_id, next_node_id); 
 
-	     pretty_print(decl->value.proc, procedure);
+	     pretty_print(decl->value.procedure, procedure);
 
 	     break;
 
@@ -1044,7 +1055,7 @@ void print_atom(GPAtomicExp * const atom)
 	     /* print_location(atom->location); */
 
              fprintf(dot_file,"node%d[label=\"%d Number: %d\"]\n",
-                     atom->node_id, atom->node_id, atom->value.num);
+                     atom->node_id, atom->node_id, atom->value.number);
 
              break;
           
@@ -1057,7 +1068,7 @@ void print_atom(GPAtomicExp * const atom)
 
              if(atom->value.name != NULL)
                 fprintf(dot_file,"node%d[label=\"%d String: %s\"]\n",
-                        atom->node_id, atom->node_id, atom->value.name);
+                        atom->node_id, atom->node_id, atom->value.string);
              else {
                 fprintf(dot_file,"node%d[label=\"%d String: UNDEFINED\"]\n",
                         atom->node_id, atom->node_id);
