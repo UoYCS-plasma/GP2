@@ -48,7 +48,8 @@ List *reverse (List * listHead)
 
 /* The constructor functions for AST nodes of type struct List. */
 
-List *addDecl (list_t list_type, YYLTYPE location, GPDeclaration *decl, List *next)
+List *addDecl (list_t list_type, YYLTYPE location, GPDeclaration *declaration,
+	       List *next)
 { 
     List *new_decl = malloc(sizeof(List));
     
@@ -60,7 +61,7 @@ List *addDecl (list_t list_type, YYLTYPE location, GPDeclaration *decl, List *ne
     new_decl->list_type = list_type; 
     /* list_type: GLOBAL_DECLARATIONS, LOCAL_DECLARATIONS */
     new_decl->location = location;
-    new_decl->value.decl = decl;
+    new_decl->value.declaration = declaration;
     new_decl->next = next;
 
     return new_decl;
@@ -100,7 +101,8 @@ List *addRule (YYLTYPE location, char *rule_name, List *next)
     return new_rule;
 }
 
-List *addVariableDecl (list_t list_type, YYLTYPE location, List *vars, List *next)
+List *addVariableDecl (list_t list_type, YYLTYPE location, List *variables,
+	               List *next)
 { 
     List *new_var_decl = malloc(sizeof(List));
     
@@ -113,13 +115,13 @@ List *addVariableDecl (list_t list_type, YYLTYPE location, List *vars, List *nex
     /* list_type: INT_DECLARATIONS, STRING_DECLARATIONS, ATOM_DECLARATIONS,
      * LIST_DECLARATIONS */
     new_var_decl->location = location;
-    new_var_decl->value.vars = vars;
+    new_var_decl->value.variables = variables;
     new_var_decl->next = next;
 
     return new_var_decl;
 }
 
-List *addVariable (YYLTYPE location, char *var, List *next)
+List *addVariable (YYLTYPE location, char *variable_name, List *next)
 { 
     List *new_var = malloc(sizeof(List));
     
@@ -130,7 +132,7 @@ List *addVariable (YYLTYPE location, char *var, List *next)
 
     new_var->list_type = VARIABLE_LIST;
     new_var->location = location;
-    new_var->value.var = var;
+    new_var->value.variable_name = variable_name;
     new_var->next = next;
 
     return new_var;
@@ -223,7 +225,7 @@ GPDeclaration *newMainDecl (YYLTYPE location, GPStatement *main_program)
     return new_main;
 }
 
-GPDeclaration *newProcedureDecl (YYLTYPE location, GPProcedure *proc)
+GPDeclaration *newProcedureDecl (YYLTYPE location, GPProcedure *procedure)
 {
     GPDeclaration *new_proc = malloc(sizeof(GPDeclaration));
    
@@ -234,7 +236,7 @@ GPDeclaration *newProcedureDecl (YYLTYPE location, GPProcedure *proc)
 
     new_proc->decl_type = PROCEDURE_DECLARATION;
     new_proc->location = location;
-    new_proc->value.proc = proc;
+    new_proc->value.procedure = procedure;
 
     return new_proc;
 }
@@ -556,7 +558,7 @@ GPAtomicExp *newVariable (YYLTYPE location, char *name)
      return atom;
 }
 
-GPAtomicExp *newNumber (YYLTYPE location, int num)
+GPAtomicExp *newNumber (YYLTYPE location, int number)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -567,13 +569,13 @@ GPAtomicExp *newNumber (YYLTYPE location, int num)
 
      atom->exp_type = INT_CONSTANT;
      atom->location = location;
-     atom->value.num = num;
+     atom->value.number = number;
 
      return atom;
 }
 
 
-GPAtomicExp *newString (YYLTYPE location, char *str)
+GPAtomicExp *newString (YYLTYPE location, char *string)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -584,7 +586,7 @@ GPAtomicExp *newString (YYLTYPE location, char *str)
 
      atom->exp_type = STRING_CONSTANT;
      atom->location = location;
-     atom->value.str = str;
+     atom->value.string = string;
 
      return atom;
 }
