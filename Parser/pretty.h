@@ -21,7 +21,6 @@ void print_atom(GPAtomicExp * const atom);
 void print_procedure(GPProcedure * const proc);
 void print_rule(GPRule * const rule);
 void print_graph(GPGraph * const graph);
-void print_node_pair(GPNodePair * const node_pair);
 void print_node(GPNode * const node);
 void print_edge(GPEdge * const edge);
 void print_label(GPLabel * const label);

@@ -11,6 +11,7 @@
 //////////////////////////////////////////////////////////////////////////// */
 
 #include <glib.h> /* hashtable and linked list functions */
+#include <stdbool.h>
 
 extern GHashTable *gp_symbol_table;
 
@@ -24,6 +25,13 @@ typedef struct Symbol {
   char *scope; /* the procedure in which the symbol is visible. 
 		* "Global" scope is seen by all procedures. */   
   char *containing_rule; /* for variables, nodes and edges */
+  /* bit field for variable context flags */
+  struct { 
+    unsigned int is_var : 1;	  
+    unsigned int int_exp : 1;
+    unsigned int string_exp : 1;
+    unsigned int right_label : 1; 
+  } context;
 } Symbol;
 
 void declaration_scan(const List *ast, GHashTable *table, char *current_scope);

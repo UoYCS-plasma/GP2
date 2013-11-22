@@ -230,8 +230,8 @@ void print_list(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d Global \\n Declarations\"]\n",
-                     list->node_id, list->node_id);
+	     fprintf(dot_file,"node%d[shape=box,label=\"%d Global \\n " 
+		     "Declarations\"]\n", list->node_id, list->node_id);
 
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
@@ -247,8 +247,8 @@ void print_list(List * const list)
 	     list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d Local \\n Declarations\"]\n",
-                     list->node_id, list->node_id);
+	     fprintf(dot_file,"node%d[shape=box,label=\"%d Local \\n " 
+	             "Declarations\"]\n", list->node_id, list->node_id);
 
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  		
@@ -282,11 +282,12 @@ void print_list(List * const list)
              next_node_id += 1;
 
 	     if(list->value.rule_name != NULL)
-                fprintf(dot_file,"node%d[shape=box,label=\"%d Rule \\n Name: %s\"]\n",
-                        list->node_id, list->node_id, list->value.rule_name);
+                fprintf(dot_file,"node%d[shape=box,label=\"%d Rule \\n " 
+		        "Name: %s\"]\n",  list->node_id, list->node_id,
+		        list->value.rule_name);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"Rule \\n Name: UNDEFINED\"]\n",
-                        list->node_id);
+                fprintf(dot_file,"node%d[shape=box,label=\"Rule \\n " 
+		        "Name: UNDEFINED\"]\n", list->node_id);
                 fprintf(stderr,"Error: Undefined rule name at AST node %d", 
                         list->node_id);
              }
@@ -301,8 +302,8 @@ void print_list(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d Integer \\n Declarations\"]\n",
-                     list->node_id, list->node_id);
+	     fprintf(dot_file,"node%d[shape=box,label=\"%d Integer \\n " 
+		     "Declarations\"]\n", list->node_id, list->node_id);
 
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
@@ -318,8 +319,8 @@ void print_list(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d String \\n Declarations\"]\n",
-                     list->node_id, list->node_id);
+	     fprintf(dot_file,"node%d[shape=box,label=\"%d String \\n " 
+	             "Declarations\"]\n", list->node_id, list->node_id);
 
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
@@ -335,8 +336,8 @@ void print_list(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d Atom \\n Declarations\"]\n",
-                     list->node_id, list->node_id);
+	     fprintf(dot_file,"node%d[shape=box,label=\"%d Atom \\n " 
+		     "Declarations\"]\n", list->node_id, list->node_id);
 
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
@@ -352,8 +353,8 @@ void print_list(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d List \\n Declarations\"]\n",
-                     list->node_id, list->node_id);
+	     fprintf(dot_file,"node%d[shape=box,label=\"%d List \\n " 
+		     "Declarations\"]\n", list->node_id, list->node_id);
 
              fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
@@ -370,8 +371,9 @@ void print_list(List * const list)
              next_node_id += 1;
 
 	     if(list->value.variable_name != NULL)
-                fprintf(dot_file,"node%d[shape=box,label=\"%d Variable \\n Name: %s\"]\n",
-                        list->node_id, list->node_id, list->value.variable_name);
+                fprintf(dot_file,"node%d[shape=box,label=\"%d Variable \\n " 
+		        "Name: %s\"]\n", list->node_id, list->node_id, 
+			list->value.variable_name);
              else fprintf(stderr,"Error: Undefined variable name at AST node %d", 
                           list->node_id);
 
@@ -385,13 +387,17 @@ void print_list(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1; 
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d Interface\"]\n", 
-                     list->node_id, list->node_id);
+	     if(list->value.node_id != NULL)
+                fprintf(dot_file,"node%d[shape=box,label=\"%d Interface \\n " 
+			"Node: %s\"]\n", list->node_id, list->node_id, 
+			list->value.node_id);
+             else {
+                fprintf(dot_file,"node%d[shape=box,label=\"Rule \\n " 
+			"Name: UNDEFINED\"]\n", list->node_id);
+                fprintf(stderr,"Error: Undefined rule name at AST node %d", 
+                        list->node_id);
+             }
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id);  
-
-	     pretty_print(list->value.node_pair, node_pair);
              pretty_print_list(list->next,list,next);
 
 	     break;
@@ -1386,35 +1392,6 @@ void print_graph(GPGraph * const graph)
      pretty_print_list(graph->nodes, graph, nodes);
 
      pretty_print_list(graph->edges, graph, edges);
-}
-
-
-
-void print_node_pair(GPNodePair * const node_pair)
-{
-     node_pair->node_id = next_node_id;
-     next_node_id += 1;
-
-     /* print_location(node_pair->location); */
- 
-     fprintf(dot_file,"node%d[label=\"%d Node Pair \\n ", 
-             node_pair->node_id, node_pair->node_id);     
-
-     if(node_pair->left_node != NULL)
-        fprintf(dot_file,"Left: %s \\n ", node_pair->left_node);
-     else {
-        fprintf(stderr,"Error: Undefined node ID at AST node %d", 
-                node_pair->node_id);
-        fprintf(dot_file,"Left: UNDEFINED \\n ");
-     }
-
-     if(node_pair->right_node != NULL)
-        fprintf(dot_file,"Right: %s\"]\n", node_pair->right_node);
-     else {
-        fprintf(stderr,"Error: Undefined node ID at AST node %d", 
-                node_pair->node_id);
-        fprintf(dot_file,"Right: UNDEFINED\"]\n");
-     }
 }
 
 

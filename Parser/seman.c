@@ -17,35 +17,41 @@
 #include <stdbool.h> 
 #include <glib.h> /* GHashTable and GSList */
 
-/*
- * GLib is used for hashtables. GP2 identifiers are the keys. The values
- * are lists of struct Symbols, defined in seman.h. Lists are used as in some 
- * cases we want to store more than one occurrence of the same identifier. 
- * We further take advantage of GLib by using GLib's singly-linked lists (GSLists).
+/* GLib is used for hashtables. GP2 identifiers are the keys. The values
+ * are lists of struct Symbols, defined in seman.h. We further take advantage
+ * of GLib by using GLib's singly-linked lists (GSList).
  *
- * add_symbol places the symbol object pointed to by SYMBOL in the bucket
- * of the symbol table with index hash(KEY).
+ * The following glib function calls are used extensively in this file.
  *
- * The first line creates a pointer to a GSList by calling g_hash_table_lookup.
- * This function looks up a name in the symbol table and returns a pointer to the 
- * identifier list if the name is already present, otherwise it returns NULL.
+ *
+ * GSList *list = g_hash_table_lookup(table, key);
+ *
+ * Creates a pointer to a GSList by calling g_hash_table_lookup. This function 
+ * looks up a name in the symbol table and returns a pointer to the identifier
+ * list if the name is already present, otherwise it returns NULL. 
  * Note that g_hash_table_lookup returns a void pointer.
  *
- * The second line appends SYMBOL to the start of the created list symbol_list.
- * If symbol_list is NULL then a new list is created with the single element
- * SYMBOL.
  *
- * The third line adds the updated symbol_list into the symbol table. 
+ * list = g_slist_prepend(list, symbol);     
+ *
+ * Adds the symbol given by the second argument to the start of the GSList
+ * list. If list is NULL then a new list is created with the single element
+ * symbol.
+ *
+ *
+ * g_hash_table_insert(table, key, list); 
+ *
+ * Inserts the GSList list to the symbol table. If the key already exists 
+ * then the old value for that key is freed with <value_destroy_func> and 
+ * replaced with the new value. This means that only one symbol list will 
+ * exist for a particular key.
+ *
+ *
+ * These three function calls are made in succession to ensure that the
+ * symbol list for a particular identifier always contains all the identifiers
+ * encountered during the semantic analysis.
  */
 
-
-#define add_symbol(KEY, SYMBOL)                                      \
-  do {	  						             \
-       GSList *symbol_list = g_hash_table_lookup(table, KEY);        \
-       symbol_list = g_slist_prepend(symbol_list, SYMBOL);           \
-       g_hash_table_insert(table, KEY, symbol_list);                 \
-     }							             \
-  while(0)
 
 
 
@@ -59,15 +65,16 @@
  * declaration lists. It adds all procedure declarations and rule declarations
  * to the symbol table.
  * 
- * Argument 1: The head of a declaration list in the AST
- * Argument 2: The symbol table
+ * Argument 1: The root of the AST which is the head of the global declaration
+ *             list.
+ * Argument 2: The global symbol table.
  * Argument 3: The scope of the declaration list the function is traversing.
- *    This is either "Main" (initial value) or the name of a procedure.
+ *             This is either "Main" (initial value) or a procedure name.
  *
- * The function keeps track of the amount of Main declarations for error 
+ * The function keeps track of the number of Main declarations seen for error 
  * reporting. It recurses over declaration lists. The code after the
  * while loop is executed only when in global scope. That is, when the end
- * of the global declaration list is reached. This prevents the error messages
+ * of the global declaration list is reached. This prevents error messages
  * being printed more than once when exiting recursive calls. 
  *
  * The function also checks for multiple occurrences of a single procedure 
@@ -105,21 +112,23 @@ void declaration_scan(const List *ast, GHashTable *table, char *scope)
 	         exit(0);
 	      }
 
-	      proc_symbol->type = strdup("Procedure");
-	      proc_symbol->scope = strdup(scope);
+	      proc_symbol->type = "Procedure";
+	      proc_symbol->scope = scope;
 	      proc_symbol->containing_rule = NULL;
 
 	      /* Get the name of the procedure */
 	      proc_name = ast->value.declaration->value.procedure->name;
 	      
+
               GSList *symbol_list = g_hash_table_lookup(table, proc_name);
 
-	      /* Report an error if the name already exiss in the table. */
+	      /* Report an error if the name already exists in the table. */
               if(symbol_list != NULL)  
                  fprintf(stderr,"Error: Procedure \"%s\" declared more than " 
                          "once.\n\n", proc_name);
+	      
+              symbol_list = g_slist_prepend(symbol_list, proc_symbol);      
 
-              symbol_list = g_slist_prepend(symbol_list, proc_symbol);           
               g_hash_table_insert(table, proc_name, symbol_list);        
 
               /* Scan for any local declarations with a new local scope. */
@@ -140,8 +149,8 @@ void declaration_scan(const List *ast, GHashTable *table, char *scope)
 	         exit(0);
 	      }
 
-	      rule_symbol->type = strdup("Rule");
-	      rule_symbol->scope = strdup(scope);
+	      rule_symbol->type = "Rule";
+	      rule_symbol->scope = scope;
 	      rule_symbol->containing_rule = NULL;
 
 	      /* Get the name of the rule */
@@ -200,23 +209,22 @@ void declaration_scan(const List *ast, GHashTable *table, char *scope)
 }
 
 
-/* This function performs semantic analysis on a GP program post-parsing. It
- * also reverses lists in the AST as Bison constructs these lists in reverse
+/* This function performs semantic analysis on a GP program after parsing. It
+ * also reverses lists in the AST: Bison constructs these lists in reverse
  * order due to its left-recursive rules. 
  *
- * The first argument is a pointer to the abstract syntax tree of the input 
- * program.
- * The second argument is the symbol table. When semantic_check is called it 
- * only contains rule and procedure identifiers added by declaration_scan.
- * semantic_check will added other symbols to the symbol table and use
- * them for semantic analysis.
- * The third argument is the current scope. It is initially called with 
- * scope "Global".
+ * Argument 1: A pointer to the abstract syntax tree of the input 
+ *             program.
+ * Argument 2: The symbol table. When called for the first time, it contains
+ *             only rule and procedure identifiers added by declaration_scan.
+ *             semantic_check will added other symbols to the symbol table and 
+ *             use them for semantic analysis. This argument is passed to all
+ *             subfunctions.
+ * Argument 3: The current scope. semantic_check is initially called with 
+ *             scope "Global". 
  *
  * The main body recurses over declaration lists, handling each of the three 
- * declaration types with the help of subprocedures. table and scope are passed
- * to each of these subprocedures.scope is changed whenever a procedure 
- * declaration is encountered.
+ * declaration types with the help of subprocedures.
  */
 
 int semantic_check(List *ast, GHashTable *table, char *scope)
@@ -238,7 +246,7 @@ int semantic_check(List *ast, GHashTable *table, char *scope)
 
          case PROCEDURE_DECLARATION: 
 	 {
-              /* Set scope to procedure name in case of local declarations */
+              /* Set scope to procedure name for scanning local declarations */
               char *new_scope = current_declaration->value.procedure->name;
 
               if(current_declaration->value.procedure->cmd_seq != NULL)
@@ -273,135 +281,6 @@ int semantic_check(List *ast, GHashTable *table, char *scope)
    return 0;
 }   
 
-void rule_scan(GPRule *rule, GHashTable *table, char *scope)
-{   
-   char *rule_name = rule->name;
-   List *current_var_list = rule->variables;
-
-   /* enter variable declarations into symbol table */
-   while(current_var_list != NULL) {
-
-      switch(current_var_list->list_type) {
-	   
-         case INT_DECLARATIONS:
-
-              enter_variables("Integer", current_var_list->value.variables,
-			      table, scope, rule_name);
-
-	      break;
-
-         case STRING_DECLARATIONS:
-
-      	      enter_variables("String", current_var_list->value.variables,
-			      table, scope, rule_name);
-
-              break;
-   	
-         case ATOM_DECLARATIONS:
-
-	      enter_variables("Atom", current_var_list->value.variables,
-			      table, scope, rule_name);
-
-	      break; 
-
-	 case LIST_DECLARATIONS:
-
-	      enter_variables("List", current_var_list->value.variables,
-			      table, scope, rule_name);
-
-	      break;  	 
-
-	 default:
-	      fprintf(stderr,"Error: Unexpected list type %d\n",
-		      (int)current_var_list->list_type);
-      }
-      current_var_list = current_var_list->next;
-   }
-
-   // graph_scan(rule->lhs);
-   // graph_scan(rule->rhs);
-   
-   List *interface_list = rule->interface;
-
-   while(interface_list != NULL) {
-	/* perform semantic checking on each NODE_PAIR AST node.
-	 * This includes checking to see if the nodes are declared
-	 * and checking for injective properties if the rule is 
-	 * injective (if (rule->injective == true))
-	 */
-      interface_list = interface_list->next;   
-   }
-
-   // condition_scan(rule->condition);
-}   
-
-void enter_variables(char *type, List *variables, GHashTable *table, 
-		     char *scope, char *rule)
-{
-   while(variables != NULL) {
- 
-      char *variable_name = variables->value.variable_name;	   
-
-      /* Create a symbol for the variable name */
-
-      Symbol *var_symbol = malloc(sizeof(Symbol));
-
-      if(var_symbol==NULL) {
-         fprintf(stderr,"Insufficient space.\n");
-         exit(0);
-      }
-
-      var_symbol->type = strdup(type);
-      var_symbol->scope = strdup(scope);
-      var_symbol->containing_rule = strdup(rule);
-
-      GSList *symbol_list = g_hash_table_lookup(table, variable_name);
-      symbol_list = g_slist_prepend(symbol_list, var_symbol);
-      g_hash_table_insert(table, variable_name, symbol_list);
-
-      variables = variables->next;
-   }
-}  
-
-
-/* validate_call is called when a RULE_CALL or PROCEDURE_CALL AST node
- * is reached. The function will check the rule/procedure name to see if it
- * exists in the symbol table with an appropriate scope. If not,
- * an error is reported. 
- */
-
-void validate_call(char *name, GHashTable *table, char *scope) {
-
-   GSList *symbol_list = g_hash_table_lookup(table, name);
-
-      if(symbol_list == NULL) fprintf(stderr, "Error: %s has not been "
-                                           "declared.\n", name);
-      else {
-         char *symbol_scope = ((Symbol*)symbol_list->data)->scope;
-                
-         /* A rule call is valid if a rule is declared in global scope
-          * or in the current scope of execution, specified by the
-          * parameter 'scope'.
-          * The while loop proceeds through the symbol list if the 
-          * current symbol does not have a valid scope. If the end of the 
-          * symbol list is reached, an error is reported.
-          */
-         while( strcmp(symbol_scope,scope) &&
-                strcmp(symbol_scope,"Global") ) {
-
-            symbol_list = symbol_list->next;
-
-            if(symbol_list == NULL) {
-               fprintf(stderr, "Error: %s called but not declared in a "
-                       "visible scope.\n", name);     
-               break;
-            }
-            else symbol_scope = ((Symbol*)symbol_list->data)->scope;             
-          }
-      }
-}
-
-   
 /* statement_scan is called whenever a GPStatement node is reached in the AST.
  * The first argument is a pointer to the GPStatement node.
  * The second and third arguments are passed from semantic_check.
@@ -446,13 +325,13 @@ void statement_scan(GPStatement *statement, GHashTable *table, char *scope)
 
          case RULE_CALL:
 
-              validate_call(statement->value.rule_name, table, scope); 
+              validate_call(statement->value.rule_name, table, scope, "rule"); 
                               
               break;
 
          case PROCEDURE_CALL:   
 
-              validate_call(statement->value.proc_name, table, scope);
+              validate_call(statement->value.proc_name, table, scope, "procedure");
 
               break;
 
@@ -483,7 +362,7 @@ void statement_scan(GPStatement *statement, GHashTable *table, char *scope)
 	      List *temp_list = *rule_list;
   
               while(temp_list != NULL) {
-                 validate_call(temp_list->value.rule_name, table, scope);
+                 validate_call(temp_list->value.rule_name, table, scope, "rule");
                  temp_list = temp_list->next;
               }
     
@@ -542,5 +421,790 @@ void statement_scan(GPStatement *statement, GHashTable *table, char *scope)
 
         }
 }             
+
+
+/* validate_call searches the symbol list with key <name> for a symbol with
+ * the same type whose scope is either Global or <scope>.
+ *
+ * Argument 1: The name of the rule or procedure in question. Used to hash
+ *             into the symbol table.
+ * Argument 2: The symbol table.
+ * Argument 3: The current scope.
+ * Argument 4: The type of call, either "rule" or "procedure". This argument
+ *             is passed by statement_scan.
+ */
+
+void validate_call(char *name, GHashTable *table, char *scope, char *call_type) {
+
+   GSList *symbol_list = g_hash_table_lookup(table, name);
+
+      if(symbol_list == NULL) fprintf(stderr, "Error: %s %s has not been "
+                                              "declared.\n", call_type, name);
+      else {
+
+	 /* Keep track of the symbol currently being looked at */
+         Symbol *cur_sym = (Symbol*)(symbol_list->data);
+                
+         /* Iterate through the symbol list while the current symbol does not
+	  * have type <call_type> or does not have an appropriate scope. 
+	  *
+	  * If the end of the list is reached, then no such symbol exists.
+	  * We must print an error and exit the loop.
+	  *
+	  * Otherwise, an appropriate symbol does exist. Thus the loop will 
+	  * break when this symbol is reached, before the end of the list.
+	  * Nothing else needs to be done as the call is valid.
+	  */
+
+         while( strcmp(cur_sym->type,call_type) ||
+	      ( strcmp(cur_sym->scope,scope) && strcmp(cur_sym->scope,"Global") ) 
+	      ) 
+	 {
+            /* Check if the end of the list has been reached */
+            if(symbol_list->next == NULL) {
+               fprintf(stderr, "Error: %s %s called but not declared in a "
+                               "visible scope.\n", call_type, name);     
+               break;
+            }
+            /* Update current_symbol to point to the next symbol */
+            else current_symbol = (Symbol*)(symbol_list->next->data);             
+          }
+      }
+}
+
+
+void rule_scan(GPRule *rule, GHashTable *table, char *scope)
+{   
+   char *rule_name = rule->name;
+   List *current_var_list = rule->variables;
+
+   /* enter variable declarations into symbol table */
+   while(current_var_list != NULL) {
+
+      switch(current_var_list->list_type) {
+	   
+         case INT_DECLARATIONS:
+
+              enter_variables("integer", current_var_list->value.variables,
+			      table, scope, rule_name);
+
+	      break;
+
+         case STRING_DECLARATIONS:
+
+      	      enter_variables("string", current_var_list->value.variables,
+			      table, scope, rule_name);
+
+              break;
+   	
+         case ATOM_DECLARATIONS:
+
+	      enter_variables("atom", current_var_list->value.variables,
+			      table, scope, rule_name);
+
+	      break; 
+
+	 case LIST_DECLARATIONS:
+
+	      enter_variables("list", current_var_list->value.variables,
+			      table, scope, rule_name);
+
+	      break;  	 
+
+	 default:
+	      fprintf(stderr,"Error: Unexpected list type %d\n",
+		      (int)current_var_list->list_type);
+	      break;
+      }
+      current_var_list = current_var_list->next;
+   }
+
+   // graph_scan(rule->lhs);
+   /* When scanning the LHS graph, all variables must be tagged with an in_lhs flag
+    * so that RHS variables can be checked for consistency. This flag must
+    * exist in the struct Symbol of the variable.
+    */
+   // graph_scan(rule->rhs);
+   
+   interface_scan(rule->interface, table, scope, rule_name);
+
+
+   // condition_scan(rule->condition);
+}   
+
+/* enter_variables adds variable declarations from a rule's parameter list
+ * into the symbol table. It also checks that each variable name in the
+ * parameter list is unique. Variables are added to the symbol table
+ * regardless of uniqueness as later semantic checking may be useful to
+ * the user.
+ *
+ * Argument 1: Variable type, passed from rule_scan. It is one of "integer",
+ *             "string", "atom", "list".
+ * Argument 2: Pointer to the list of variables declared with a specific type
+ *             in the AST.
+ * Argument 3: The symbol table.
+ * Argument 4: The current scope.
+ * Argument 5: The current rule being processed. This extra information
+ *             is required for variable symbols.
+ */
+
+void enter_variables(char *type, List *variables, GHashTable *table, 
+		     char *scope, char *rule)
+{
+   while(variables != NULL) {
+ 
+      char *variable_name = variables->value.variable_name;	   
+      GSList *symbol_list = g_hash_table_lookup(table, variable_name);
+      /* symbol_list is preserved as a new symbol will be prepended to it */
+      GSList *iterator = symbol_list;
+
+      while(iterator != NULL) {
+         
+         Symbol *cur_var = (Symbol*)(iterator->data);
+
+	 /* Print an error if there already exists a variable in the same rule
+	  * and scope. */
+         if(cur_var->context.is_var == 1 && cur_var->scope = scope &&
+	    cur_var->containing_rule = rule)	
+	       fprintf(stderr,"Error: Variable %s declared twice in rule %s.\n",
+	               variable_name, rule);
+
+         iterator = iterator->next;
+      
+      }
+
+      /* Create a symbol for the variable */
+      Symbol *var_symbol = malloc(sizeof(Symbol));
+
+      if(var_symbol==NULL) {
+         fprintf(stderr,"Insufficient space.\n");
+         exit(0);
+      }
+
+      var_symbol->type = type;
+      var_symbol->scope = scope;
+      var_symbol->containing_rule = rule;
+
+      /* Move to the next symbol in the list */
+      variables = variables->next;
+   }
+}  
+
+
+
+void graph_scan(GPGraph *graph, GHashTable *table, char *scope, 
+                char *rule_name)
+{
+    /* Ignore position, add nodes to symbol table, add edges
+     * to symbol table, context check source/targets of edges,
+     * call label scan on all labels, need a way to check variables
+     * and augment their symbols with an in_lhs = true if necessary.
+     * this suggests another function argument. Yay.
+     */
+}
+
+void gp_list_scan(List *gp_list, GHashTable *table, char *scope,
+                  char *rule_name, char *context)
+{
+   while(gp_list != NULL) {
+       atomic_exp_scan(gp_list->value.atom, table, scope, rule_name, context);
+       gp_list = gp_list->next;
+   }
+}
+
+/* validate_call is called when a RULE_CALL or PROCEDURE_CALL AST node
+ * is reached. The function will check the rule/procedure name to see if it
+ * exists in the symbol table with an appropriate scope. If not,
+ * an error is reported. 
+ */
+
+
+
+variable_check(char *name, GHashTable *table, char *scope, char *rule_name,
+               char *context)
+{
+   GSList *var_list = g_hash_table_lookup(table,atom_exp->value.name);
+   Symbol *current_var = (Symbol*)var_list->data;
+
+   bool in_rule = false;
+
+   /* if the variable is in a RHS label, need to check that the 
+    * variable has been declared and that it is also present in the LHS.
+    */
+
+   /* Contexts that require semantic checking beyond the standard 
+    * 'check if the variable has been declared' are right_label,
+    * int_exp, string_exp and atom_exp.
+    */
+
+   switch(context) {
+
+      /* Nothing out of the ordinary for these two - just check the variable
+       * has been declared in the rule! 
+       */
+      case "left_label":
+
+      case "condition":
+
+           while(var_list != NULL) {
+
+              if(!strcmp(current_var->scope,scope) &&
+                 !strcmp(current_var->containing_rule,rule_name)) 
+                 {
+                    in_rule = true;
+                    break;
+                 }
+           
+           var_list = var_list->next;
+     
+           }
+ 
+           if(!in_rule) fprintf(stderr,"Error: Variable %s in rule %s, "
+                         "procedure %s not declared.\n", 
+                          condition->value.var, rule_name, scope);
+
+      break;
+   
+      /* Additional check to see if the variable exists in a left label. */
+  
+      case "right_label":   
+   
+      { 
+ 
+         bool in_lhs = false;
+  
+         while(var_list != NULL) {
+
+         if(!strcmp(current_var->scope,scope) &&
+            !strcmp(current_var->containing_rule,rule_name))
+
+            in_rule = true;
+
+            if(current_var->in_lhs == TRUE)
+            {
+               in_lhs = true;
+                break;
+            }
+                    
+            node_list = node_list->next;
+         }
+
+         if(!in_rule) fprintf(stderr,"Error: Variable %s in rule %s, "
+                              "procedure %s not declared.\n",         
+                              condition->value.var, rule_name, scope);
+         else {
+            if(!in_lhs) fprintf(stderr,"Error: Variable %s is in RHS of "
+                           "rule %s, procedure %s, but not in the LHS.\n",         
+                           condition->value.var, rule_name, scope);
+         }
+
+         break;
+      }
+
+      case "int_exp":
+
+      { 
+ 
+         bool is_int = false;
+  
+         while(var_list != NULL) {
+
+         if(!strcmp(current_var->scope,scope) &&
+            !strcmp(current_var->containing_rule,rule_name))
+
+            in_rule = true;
+
+            if(!strcmp(current_var->type,"integer"))
+            {
+            /* Assuming that a variable with this name in this rule and this 
+             * scope exists only once.
+             */
+               is_int = true;
+               break;
+            }
+                    
+            node_list = node_list->next;
+         }
+
+         if(!in_rule) fprintf(stderr,"Error: Variable %s in rule %s, "
+                              "procedure %s not declared.\n",         
+                              condition->value.var, rule_name, scope);
+         else {
+            if(!is_int) fprintf(stderr,"Error: Variable %s expected to be "
+                           "integer in rule %s, procedure %s.\n",         
+                           condition->value.var, rule_name, scope);
+         }
+
+         break;
+      }
+
+      case "string_exp":
+
+      { 
+ 
+         bool is_string = false;
+  
+         while(var_list != NULL) {
+
+         if(!strcmp(current_var->scope,scope) &&
+            !strcmp(current_var->containing_rule,rule_name))
+
+            in_rule = true;
+
+            if(!strcmp(current_var->type,"string"))
+            {
+            /* Assuming that a variable with this name in this rule and this 
+             * scope exists only once.
+             */
+               is_string = true;
+               break;
+            }
+                    
+            node_list = node_list->next;
+         }
+
+         if(!in_rule) fprintf(stderr,"Error: Variable %s in rule %s, "
+                              "procedure %s not declared.\n",         
+                              condition->value.var, rule_name, scope);
+         else {
+            if(!is_string) fprintf(stderr,"Error: Variable %s expected to be "
+                           "string in rule %s, procedure %s.\n",         
+                           condition->value.var, rule_name, scope);
+         }
+
+         break;
+      }
+
+      case "atom_exp":
+
+      { 
+ 
+         bool is_atom = false;
+  
+         while(var_list != NULL) {
+
+         if(!strcmp(current_var->scope,scope) &&
+            !strcmp(current_var->containing_rule,rule_name))
+
+            in_rule = true;
+
+            if(!strcmp(current_var->type,"integer") ||
+               !strcmp(current_var->type,"string"))
+            {
+            /* Assuming that a variable with this name in this rule and this 
+             * scope exists only once.
+             */
+               is_atom = true;
+               break;
+            }
+                    
+            node_list = node_list->next;
+         }
+
+         if(!in_rule) fprintf(stderr,"Error: Variable %s in rule %s, "
+                              "procedure %s not declared.\n",         
+                              condition->value.var, rule_name, scope);
+         else {
+            if(!is_atom) fprintf(stderr,"Error: Variable %s expected to be "
+                           "atom in rule %s, procedure %s.\n",         
+                           condition->value.var, rule_name, scope);
+         }
+
+         break;
+      }
+
+      default: fprintf(stderr,"Error: Unexpected context %s in call to "
+                       "variable_check.\n", context);
+
+               break;
+}
+
+
+void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
+                     char *rule_name, char *context)
+{
+   switch(atom_exp->exp_type) {
+
+      case EMPTY_LIST:
+
+      case INT_CONSTANT:
+  
+      case STRING_CONSTANT:
+
+           break;
+
+      case VARIABLE:
+
+      {
+           variable_check(atom_exp->value.name, table, scope, rule_name, context);
+ 
+           break;
+      }
+       
+      case INDEGREE:
+
+      case OUTDEGREE:
+
+      {
+ 
+           bool in_lhs = false;
+
+           GSList *node_list = g_hash_table_lookup(table,
+                               atom_exp->value.node_id);
+           Symbol *current_node_id = (Symbol*)node_list->data;      
+
+           while(node_list != NULL) {
+
+         	if(!strcmp(current_node->type,"LHS Node") &&
+                   !strcmp(current_node_id->scope,scope) && 
+	           !strcmp(current_node_id->containing_rule,rule_name))  
+                {
+                   in_lhs = true;
+                   break;
+                }
+
+                node_list = node_list->next;
+           }
+
+           if(!in_lhs) fprintf(stderr,"Error: Node %s in degree operator not "
+                        "in LHS of %s.\n", condition->value.edge_pred.source, 
+                        rule_name);
+
+           break;
+         
+       }
+
+       case LIST_LENGTH: 
+
+            gp_list_scan(condition->value.list_arg, table, scope, rule_name,
+                         location);
+
+            break;
+
+       case STRING_LENGTH:
+
+            variable_check(atom_exp->value.str_arg, table, scope, rule_name, "string");
+
+            break;           
+            
+       /* Need to work out the context for these, as variables in these expressions
+        * may have more than one context i.e. int_exp and right_label.
+        * Write down all the possible context for variables.
+        */l
+
+       case NEG:
+
+            if(!strcmp(context,"left_label")) 
+              fprintf(stderr,"Error: Arithmetic expressions not allowed in "
+                      "left-hand side labels, rule, procedure.\n");
+
+            else atomic_exp_scan(atom_exp->value.exp, table, scope, rule_name,
+                                 "integer");
+
+            break;
+
+       case ADD:
+
+            if(!strcmp(context,"left_label")) 
+              fprintf(stderr,"Error: Arithmetic expressions not allowed in "
+                      "left-hand side labels, rule, procedure.\n");
+
+            else {
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);
+            }
+
+            break;
+
+       case SUBTRACT:
+
+            if(!strcmp(context,"left_label")) 
+              fprintf(stderr,"Error: Arithmetic expressions not allowed in "
+                      "left-hand side labels, rule, procedure.\n");
+
+            else {
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);
+            }
+
+            break;
+
+
+       case MULTIPLY:
+
+            if(!strcmp(context,"left_label")) 
+              fprintf(stderr,"Error: Arithmetic expressions not allowed in "
+                      "left-hand side labels, rule, procedure.\n");
+l
+
+            else {
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);cl
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);
+            }
+
+            break;
+
+       case DIVIDE:
+
+            if(!strcmp(context,"left_label")) 
+              fprintf(stderr,"Error: Arithmetic expressions not allowed in "
+                      "left-hand side labels, rule, procedure.\n");
+
+            else {
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);
+            }
+
+            break;
+
+       case CONCAT:
+
+            if(!strcmp(context,"left_label")) 
+              fprintf(stderr,"Error: Arithmetic expressions not allowed in "
+                      "left-hand side labels, rule, procedure.\n");
+
+            else {
+              atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
+                              rule_name, context);
+              atomic_exp_scan(atom_exp->value.bin_op.leftcl_exp, table, scope,
+                              rule_name, context);
+            }
+
+            break;
+
+       default: fprintf(stderr,"Error: Unexpected atomic expression type %d\n",
+		        (int)atom_exp->exp_type);
+                
+       }
+
+}
+
+	    
+
+
+void interface_scan(List *interface, GHashTable *table, char *scope, 
+                    char *rule_name)
+{	
+   bool in_lhs, in_rhs;
+
+   while(interface != NULL) {
+      
+      /* Reset the flags */
+      in_lhs = false, in_rhs = false;
+
+      GPNodePair *current_pair = interface->value.node_id;
+
+      GSList *node_list = g_hash_table_lookup(table,current_pair->left_node);
+      Symbol* current_node_id = (Symbol*)node_list->data;      
+
+      while(node_list != NULL) {
+ 	 if(!strcmp(current_node_id->scope,scope) && 
+	    !strcmp(current_node_id->containing_rule,rule_name))  
+         {
+            if(!strcmp(current_node->type,"LHS Node")) in_lhs = true;
+	    if(!strcmp(current_node->type,"RHS Node")) in_rhs = true;
+         }
+
+	 /* If both the LHS node and RHS node have been found, no need to look
+          * further down the symbol list of this name.
+          */         
+         if(in_lhs && in_rhs) break;
+         node_list = node_list->next;
+
+      }
+
+      if(!in_lhs) fprintf(stderr,"Error: Interface node %s not in the LHS of "
+                          "rule %s.\n", current_node_id, rule_name);
+      if(!in_rhs) fprintf(stderr,"Error: Interface node %s not in the RHS of "
+                          "rule %s.\n", current_node, rule_name);
+
+      interface = interface->next;   
+   }
+
+}
+           
+
+void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
+                    char *rule_name)
+{
+   switch(condition->exp_type) {
+
+      /* The three AST nodes for the type checking predicates point to
+       * a single variable name, so they are handled in the sclame way.
+       */
+      case INT_CHECK:
+
+      case STRING_CHECK:
+
+      case ATOM_CHECK: 
+
+      {
+           bool in_rule = false, is_var = false;
+
+           GSList *var_list = g_hash_table_lookup(table, condition->value.var);
+
+	   /* Go through the list of symbols with the name in question
+            * to check if any variables exist in this rule.
+            */
+           while(var_list != NULL) {cl
+ 
+ 	      Symbol *current_var = (Symbol*)var_list->data;
+
+	      is_var = !strcmp(current_var->type,"Integer") ||
+                       !strcmp(current_var->type,"String") ||
+                       !strcmp(current_var->type,"Atom") ||
+                       !strcmp(current_var->type,"List") 
+            
+              if(is_var && !strcmp(current_var->scope,scope) && 
+	         !strcmp(current_var->containing_rule,rule_name)) 
+              {
+                 in_rule = true;
+                 break;
+              }
+                 
+              var_list = var_list->next;            
+           }
+           
+           /* I print a warning as I am assuming if a variable in a condition
+            * doesn't exist then the condition evaluates to false.
+            * Works for type checks but maybe not for other coclnditions.
+            */
+           if(!in_rule) fprintf(stderr,"Warning: Variable %s in condition"
+                                " of rule %s in procedure %s not declared.\n",
+                                condition->value.var, rule_name, scope);
+           break;
+      }
+
+      case EDGE_PRED:
+
+      {
+           bool in_lhs = false;
+
+           GSList *node_list = g_hash_table_lookup(table,
+                               condition->value.edge_pred.source);
+           Symbol* current_node_id = (Symbol*)node_list->data;      
+
+           while(node_list != NULL) {
+
+         	 if(!strcmp(current_node->type,"LHS Node") &&
+                    !strcmp(current_node_id->scope,scope) && 
+	            !strcmp(current_node_id->containing_rule,rule_name))  
+                 {
+                    in_lhs = true;
+                    break;
+                 }
+
+                 node_list = node_list->next;
+           }
+
+           if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
+                        "in LHS of %s.\n", condition->value.edge_pred.source, 
+                        rule_name);cl
+
+           in_lhs = false;
+
+           /* Same again, but for the target node. This pattern occurs
+            * so much that I shall modularise it somehow. */
+
+           node_list = g_hash_table_lookup(table, 
+                       condition->value.edge_pred.target);
+           Symbol* current_node_id = (Symbol*)node_list->data;      
+
+           while(node_list != NULL) {
+
+         	 if(!strcmp(current_node->type,"LHS Node") &&
+                    !strcmp(current_node_id->scope,scope) && 
+	            !strcmp(current_node_id->containing_rule,rule_name))  
+                 {
+                    in_lhs = true;
+                    break;
+                 }
+
+                 node_list = node_list->next;
+           }
+
+           if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
+                        "in LHS of.\n", condition->value.edge_pred.source,
+                        rule_name);
+
+           in_lhs = false;
+
+           if(condition->value.edge_pred.label != NULL)
+           gp_list_scan(condition->value.edge_pred.label->gp_list, table, 
+                        scope, rule_name, "condition");
+
+           break;
+
+      }
+
+      case EQUAL:
+
+      case NOT_EQUAL:
+
+           gp_list_scan(condition->value.list_cmp.left_list, table, scope,
+                        rule_name, "condition");
+
+           gp_list_scan(condition->value.list_cmp.right_list, table, scope,
+			rule_name, "condition");
+
+           break;
+
+      case GREATER:
+
+      case GREATER_EQUAL:
+
+      case LESS:
+ 
+      case LESS_EQUAL:
+
+           atomic_exp_scan(condition->value.atom_cmp.left_exp, table, scope,
+                           rule_name, "condition");
+
+           atomic_exp_scan(condition->value.atom_cmp.right_exp, table, scope,
+                           rule_name, "condition");
+
+           break;
+
+      case BOOL_NOT:
+
+           condition_scan(condition->value.not_exp, table, scope, rule_name,
+                          "condition");
+
+           break;
+
+      case BOOL_OR:
+  
+      case BOOL_AND:
+
+           condition_scan(condition->value.bin_exp.left_exp, table, scope, 
+			  rule_name, "condition");
+
+           condition_scan(condition->value.bin_exp.right_exp, table, scope, 
+			  rule_name, "condition");
+
+           break;
+
+      default:
+	      fprintf(stderr,"Error: Unexpected condition type %d\n",
+		      (int)condition->exp_type);
+	      break;
+
+      }
+}
+
+
+
+
+
+   
+
    
                                            
