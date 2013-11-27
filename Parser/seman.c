@@ -115,6 +115,10 @@ void declaration_scan(const List *ast, GHashTable *table, char *scope)
 	      proc_symbol->type = "Procedure";
 	      proc_symbol->scope = scope;
 	      proc_symbol->containing_rule = NULL;
+              proc_symbol->context.is_var = 0;
+              proc_symbol->context.int_exp = 0;
+              proc_symbol->context.string_exp = 0; 
+              proc_symbol->context.in_lhs = 0;
 
 	      /* Get the name of the procedure */
 	      proc_name = ast->value.declaration->value.procedure->name;
@@ -152,6 +156,10 @@ void declaration_scan(const List *ast, GHashTable *table, char *scope)
 	      rule_symbol->type = "Rule";
 	      rule_symbol->scope = scope;
 	      rule_symbol->containing_rule = NULL;
+              rule_symbol->context.is_var = 0;
+              rule_symbol->context.int_exp = 0;
+              rule_symbol->context.string_exp = 0; 
+              rule_symbol->context.in_lhs = 0;
 
 	      /* Get the name of the rule */
   	      rule_name = ast->value.declaration->value.rule->name;	
@@ -467,8 +475,8 @@ void validate_call(char *name, GHashTable *table, char *scope, char *call_type) 
                break;
             }
             /* Update current_symbol to point to the next symbol */
-            else current_symbol = (Symbol*)(symbol_list->next->data);             
-          }
+            else cur_sym = (Symbol*)(symbol_list->next->data);             
+         }
       }
 }
 
@@ -536,7 +544,7 @@ void rule_scan(GPRule *rule, GHashTable *table, char *scope)
  * into the symbol table. It also checks that each variable name in the
  * parameter list is unique. Variables are added to the symbol table
  * regardless of uniqueness as later semantic checking may be useful to
- * the user.
+ * the user. This function is called only by rule_scan.
  *
  * Argument 1: Variable type, passed from rule_scan. It is one of "integer",
  *             "string", "atom", "list".
@@ -563,7 +571,7 @@ void enter_variables(char *type, List *variables, GHashTable *table,
          Symbol *cur_var = (Symbol*)(iterator->data);
 
 	 /* Print an error if there already exists a variable in the same rule
-	  * and scope. */
+	  * and scope with the same name. */
          if(cur_var->context.is_var == 1 && cur_var->scope = scope &&
 	    cur_var->containing_rule = rule)	
 	       fprintf(stderr,"Error: Variable %s declared twice in rule %s.\n",
@@ -584,27 +592,442 @@ void enter_variables(char *type, List *variables, GHashTable *table,
       var_symbol->type = type;
       var_symbol->scope = scope;
       var_symbol->containing_rule = rule;
+      var_symbol->context.is_var = 1;
+
+      /* list and atom variables are allowed in both string and integer 
+       * expressions */
+      if(!strcmp(type,"list") || !strcmp(type,"atom")) {
+	 var_symbol->context.int_exp = 1;
+	 var_symbol->context.string_exp = 1;
+      }
+      else if (!strcmp(type,"integer")) { 
+	 var_symbol->context.int_exp = 1;
+	 var_symbol->context.string_exp = 0;
+      }
+      else if (!strcmp(type,"string")) {
+	 var_symbol->context.int_exp = 0;
+	 var_symbol->context.string_exp = 1;
+      }
+      
+      /* This flag is set in gp_list_scan if called with side "l" */
+      var_symbol->context.in_lhs = 0;
+
+      symbol_list = g_slist_prepend(symbol_list, var_symbol);           
+      g_hash_table_insert(table, variable_name, symbol_list);   
+
 
       /* Move to the next symbol in the list */
       variables = variables->next;
    }
 }  
 
-
+/* graph_scan is responsible for adding nodes and edges to the symbol table.
+ * It also performs some semantic analysis: source and target nodes of edges
+ * must exist, the union of node IDs and edge IDs in the graph must not contain 
+ * duplicates, node labels cannot have the "dashed" mark, and edge labels
+ * cannot have the "grey" mark. This function is called only by rule_scan.
+ *
+ * Argument 1: A pointer to a struct GPGraph.
+ * Argument 2: The symbol table.
+ * Argument 3: The current scope.
+ * Argument 4: The current rule being processed.
+ * Argument 5: "l" or "r" depending on which graph in the rule is being
+ *             processed.
+ */
 
 void graph_scan(GPGraph *graph, GHashTable *table, char *scope, 
-                char *rule_name)
+                char *rule_name, char *side)
 {
-    /* Ignore position, add nodes to symbol table, add edges
-     * to symbol table, context check source/targets of edges,
-     * call label scan on all labels, need a way to check variables
-     * and augment their symbols with an in_lhs = true if necessary.
-     * this suggests another function argument. Yay.
-     */
+   /* strings to store the symbol type and the graph for error messages */
+   char *node_type = NULL, edge_type = NULL, graph = NULL;
+
+   if(!strcmp(side,"l")) {
+      node_type = "left_node";
+      edge_type = "left_edge";
+      graph = "LHS";
+   }
+   else if(!strcmp(side,"r")) {
+      node_type = "right_node";
+      edge_type = "right_edge";
+      graph = "RHS";
+   }   
+
+   List *node_list = graph->nodes;
+
+   while(node_list != NULL) {
+
+      char *node_id = node_list->value.node->name;
+      GSList *symbol_list = g_hash_table_lookup(table, node_id);
+      /* symbol_list is preserved as a new symbol will be prepended to it */
+      GSList *iterator = symbol_list;
+
+      while(iterator != NULL) {
+         
+         Symbol *cur_node = (Symbol*)(iterator->data);
+
+	 /* Print an error if there already exists a node in the same rule
+	  * and scope with the same name. */
+
+         if( !strcmp(cur_node->type,node_type) && 
+	     cur_node->scope = scope           && 
+	     cur_node->containing_rule = rule)	
+	      fprintf(stderr,"Error: Node ID %s not unique in %s of rule %s.\n",
+	              variable_name, graph, rule);  
+
+         iterator = iterator->next;
+      
+      }
+
+      Symbol *node_symbol = malloc(sizeof(Symbol));
+
+      if(node_symbol==NULL) {
+         fprintf(stderr,"Insufficient space.\n");
+         exit(0);
+      }
+
+      node_symbol->type = node_type;      
+      node_symbol->scope = scope;
+      node_symbol->containing_rule = rule;
+      node_symbol->context.is_var = 0;
+      node_symbol->context.int_exp = 0;
+      node_symbol->context.string_exp = 0;
+      node_symbol->context.in_lhs = 0;             
+ 
+      symbol_list = g_slist_prepend(symbol_list, node_symbol);           
+      g_hash_table_insert(table, node_id, symbol_list);          
+
+      if(node_list->value.node->label->mark == DASHED)
+	 fprintf(stderr,"Error: Node %s in LHS of rule %s has illegal mark " 
+	         "\"dashed\".\n", node_id, rule_name);
+
+      gp_list_scan(node_list->value.node->label->list, table, scope, 
+		   rule_name, side);
+
+      node_list = node_list->next;
+   }
+
+
+   List *edge_list = graph->edges;
+
+   while(edge_list != NULL) {
+
+      char *edge_id = edge_list->value.edge->name;
+      char *source_id = edge_list->value.edge->source;
+      char *target_id = edge_list->value.edge->target;
+
+      GSList *symbol_list = g_hash_table_lookup(table, edge_id);
+      /* symbol_list is preserved as a new symbol will be prepended to it */
+      GSList *iterator = symbol_list;
+
+      while(iterator != NULL) {
+         
+         Symbol *cur_edge = (Symbol*)(iterator->data);
+
+	 /* Print an error if there already exists a node in the same rule
+	  * and scope with the same name. */
+
+         if( ( !strcmp(cur_edge->type,node_type) ||
+	       !strcmp(cur_edge->type,edge_type) ) && 
+               cur_node->scope = scope  && 
+	       cur_node->containing_rule = rule)
+
+	         fprintf(stderr,"Error: Edge ID %s not unique in %s of rule %s.\n",
+	                 variable_name, graph, rule);
+
+         iterator = iterator->next; 
+
+      }
+
+      Symbol *edge_symbol = malloc(sizeof(Symbol));
+
+      if(edge_symbol==NULL) {
+         fprintf(stderr,"Insufficient space.\n");
+         exit(0);
+      }
+
+      edge_symbol->type = edge_type;      
+      edge_symbol->scope = scope;
+      edge_symbol->containing_rule = rule;
+      edge_symbol->context.is_var = 0;
+      edge_symbol->context.int_exp = 0;
+      edge_symbol->context.string_exp = 0;
+      edge_symbol->context.in_lhs = 0;             
+ 
+      symbol_list = g_slist_prepend(symbol_list, edge_symbol);           
+      g_hash_table_insert(table, edge_id, symbol_list);          
+
+      if(edge_list->value.edge->label->mark == GREY)
+	 fprintf(stderr,"Error: Node %s in LHS of rule %s has illegal mark " 
+	         "\"grey\".\n", edge_id, rule_name);
+
+      /* Verify source and target nodes exist in the graph. */
+
+      /* First, source */
+      symbol_list = g_hash_table_lookup(table, source_id);
+
+      /* Keep track of the symbol currently being looked at. */
+      Symbol *cur_sym = (Symbol*)(symbol_list->data);
+                
+      while(  strcmp(cur_sym->type,node_type) ||
+            ( strcmp(cur_sym->scope,scope) &&
+              strcmp(cur_sym->containing_rule,rule_name) ) )
+      {   
+        /* Check if the end of the list has been reached */
+        if(symbol_list->next == NULL) {
+           fprintf(stderr, "Error: Source node %s of edge %s does not exist "
+                           "in %s graph.\n", source_id, edge_id, graph);     
+           break;
+        }
+         /* Update current_symbol to point to the next symbol */
+         else cur_sym = (Symbol*)(symbol_list->next->data);             
+      }
+
+      /* ...repeat for target */
+      symbol_list = g_hash_table_lookup(table, target_id);     
+
+      /* Keep track of the symbol currently being looked at. */
+      Symbol *cur_sym = (Symbol*)(symbol_list->data);
+                
+      while(  strcmp(cur_sym->type,node_type) ||
+            ( strcmp(cur_sym->scope,scope) &&
+              strcmp(cur_sym->containing_rule,rule_name) ) )
+      {
+   
+        /* Check if the end of the list has been reached */
+        if(symbol_list->next == NULL) {
+           fprintf(stderr, "Error: Target node %s of edge %s does not exist "
+                           "in %s graph.\n", target_id, edge_id, graph);     
+           break;
+        }
+         /* Update current_symbol to point to the next symbol */
+         else cur_sym = (Symbol*)(symbol_list->next->data);             
+      }
+
+      gp_list_scan(node_list->value.edge->label->list, table, scope, 
+		   rule_name, side);
+
+      edge_list = edge_list->next;
+
+   }
+ 
 }
 
+          
+
+void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
+                    char *rule_name)
+{
+   switch(condition->exp_type) {
+
+      /* The three AST nodes for the type checking predicates point to
+       * a single variable name, so they are handled in the sclame way.
+       */
+      case INT_CHECK:
+
+      case STRING_CHECK:
+
+      case ATOM_CHECK: 
+
+      {
+           bool in_rule = false, is_var = false;
+
+           GSList *var_list = g_hash_table_lookup(table, condition->value.var);
+
+	   /* Go through the list of symbols with the name in question
+            * to check if any variables exist in this rule.
+            */
+           while(var_list != NULL) {cl
+ 
+ 	      Symbol *current_var = (Symbol*)var_list->data;
+
+	      is_var = !strcmp(current_var->type,"Integer") ||
+                       !strcmp(current_var->type,"String") ||
+                       !strcmp(current_var->type,"Atom") ||
+                       !strcmp(current_var->type,"List") 
+            
+              if(is_var && !strcmp(current_var->scope,scope) && 
+	         !strcmp(current_var->containing_rule,rule_name)) 
+              {
+                 in_rule = true;
+                 break;
+              }
+                 
+              var_list = var_list->next;            
+           }
+           
+           /* I print a warning as I am assuming if a variable in a condition
+            * doesn't exist then the condition evaluates to false.
+            * Works for type checks but maybe not for other coclnditions.
+            */
+           if(!in_rule) fprintf(stderr,"Warning: Variable %s in condition"
+                                " of rule %s in procedure %s not declared.\n",
+                                condition->value.var, rule_name, scope);
+           break;
+      }
+
+      case EDGE_PRED:
+
+      {
+           bool in_lhs = false;
+
+           GSList *node_list = g_hash_table_lookup(table,
+                               condition->value.edge_pred.source);
+           Symbol* current_node_id = (Symbol*)node_list->data;      
+
+           while(node_list != NULL) {
+
+         	 if(!strcmp(current_node->type,"LHS Node") &&
+                    !strcmp(current_node_id->scope,scope) && 
+	            !strcmp(current_node_id->containing_rule,rule_name))  
+                 {
+                    in_lhs = true;
+                    break;
+                 }
+
+                 node_list = node_list->next;
+           }
+
+           if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
+                        "in LHS of %s.\n", condition->value.edge_pred.source, 
+                        rule_name);cl
+
+           in_lhs = false;
+
+           /* Same again, but for the target node. This pattern occurs
+            * so much that I shall modularise it somehow. */
+
+           node_list = g_hash_table_lookup(table, 
+                       condition->value.edge_pred.target);
+           Symbol* current_node_id = (Symbol*)node_list->data;      
+
+           while(node_list != NULL) {
+
+         	 if(!strcmp(current_node->type,"LHS Node") &&
+                    !strcmp(current_node_id->scope,scope) && 
+	            !strcmp(current_node_id->containing_rule,rule_name))  
+                 {
+                    in_lhs = true;
+                    break;
+                 }
+
+                 node_list = node_list->next;
+           }
+
+           if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
+                        "in LHS of.\n", condition->value.edge_pred.source,
+                        rule_name);
+
+           in_lhs = false;
+
+           if(condition->value.edge_pred.label != NULL)
+           gp_list_scan(condition->value.edge_pred.label->gp_list, table, 
+                        scope, rule_name, "condition");
+
+           break;
+
+      }
+
+      case EQUAL:
+
+      case NOT_EQUAL:
+
+           gp_list_scan(condition->value.list_cmp.left_list, table, scope,
+                        rule_name, "condition");
+
+           gp_list_scan(condition->value.list_cmp.right_list, table, scope,
+			rule_name, "condition");
+
+           break;
+
+      case GREATER:
+
+      case GREATER_EQUAL:
+
+      case LESS:
+ 
+      case LESS_EQUAL:
+
+           atomic_exp_scan(condition->value.atom_cmp.left_exp, table, scope,
+                           rule_name, "condition");
+
+           atomic_exp_scan(condition->value.atom_cmp.right_exp, table, scope,
+                           rule_name, "condition");
+
+           break;
+
+      case BOOL_NOT:
+
+           condition_scan(condition->value.not_exp, table, scope, rule_name,
+                          "condition");
+
+           break;
+
+      case BOOL_OR:
+  
+      case BOOL_AND:
+
+           condition_scan(condition->value.bin_exp.left_exp, table, scope, 
+			  rule_name, "condition");
+
+           condition_scan(condition->value.bin_exp.right_exp, table, scope, 
+			  rule_name, "condition");
+
+           break;
+
+      default:
+	      fprintf(stderr,"Error: Unexpected condition type %d\n",
+		      (int)condition->exp_type);
+	      break;
+
+      }
+}
+
+
+void interface_scan(List *interface, GHashTable *table, char *scope, 
+                    char *rule_name)
+{	
+   bool in_lhs, in_rhs;
+
+   while(interface != NULL) {
+      
+      /* Reset the flags */
+      in_lhs = false, in_rhs = false;
+
+      GPNodePair *current_pair = interface->value.node_id;
+
+      GSList *node_list = g_hash_table_lookup(table,current_pair->left_node);
+      Symbol* current_node_id = (Symbol*)node_list->data;      
+
+      while(node_list != NULL) {
+ 	 if(!strcmp(current_node_id->scope,scope) && 
+	    !strcmp(current_node_id->containing_rule,rule_name))  
+         {
+            if(!strcmp(current_node->type,"LHS Node")) in_lhs = true;
+	    if(!strcmp(current_node->type,"RHS Node")) in_rhs = true;
+         }
+
+	 /* If both the LHS node and RHS node have been found, no need to look
+          * further down the symbol list of this name.
+          */         
+         if(in_lhs && in_rhs) break;
+         node_list = node_list->next;
+
+      }
+
+      if(!in_lhs) fprintf(stderr,"Error: Interface node %s not in the LHS of "
+                          "rule %s.\n", current_node_id, rule_name);
+      if(!in_rhs) fprintf(stderr,"Error: Interface node %s not in the RHS of "
+                          "rule %s.\n", current_node, rule_name);
+
+      interface = interface->next;   
+   }
+
+}
+
+
+
 void gp_list_scan(List *gp_list, GHashTable *table, char *scope,
-                  char *rule_name, char *context)
+                  char *rule_name, char *side)
 {
    while(gp_list != NULL) {
        atomic_exp_scan(gp_list->value.atom, table, scope, rule_name, context);
@@ -988,220 +1411,6 @@ l
 }
 
 	    
-
-
-void interface_scan(List *interface, GHashTable *table, char *scope, 
-                    char *rule_name)
-{	
-   bool in_lhs, in_rhs;
-
-   while(interface != NULL) {
-      
-      /* Reset the flags */
-      in_lhs = false, in_rhs = false;
-
-      GPNodePair *current_pair = interface->value.node_id;
-
-      GSList *node_list = g_hash_table_lookup(table,current_pair->left_node);
-      Symbol* current_node_id = (Symbol*)node_list->data;      
-
-      while(node_list != NULL) {
- 	 if(!strcmp(current_node_id->scope,scope) && 
-	    !strcmp(current_node_id->containing_rule,rule_name))  
-         {
-            if(!strcmp(current_node->type,"LHS Node")) in_lhs = true;
-	    if(!strcmp(current_node->type,"RHS Node")) in_rhs = true;
-         }
-
-	 /* If both the LHS node and RHS node have been found, no need to look
-          * further down the symbol list of this name.
-          */         
-         if(in_lhs && in_rhs) break;
-         node_list = node_list->next;
-
-      }
-
-      if(!in_lhs) fprintf(stderr,"Error: Interface node %s not in the LHS of "
-                          "rule %s.\n", current_node_id, rule_name);
-      if(!in_rhs) fprintf(stderr,"Error: Interface node %s not in the RHS of "
-                          "rule %s.\n", current_node, rule_name);
-
-      interface = interface->next;   
-   }
-
-}
-           
-
-void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
-                    char *rule_name)
-{
-   switch(condition->exp_type) {
-
-      /* The three AST nodes for the type checking predicates point to
-       * a single variable name, so they are handled in the sclame way.
-       */
-      case INT_CHECK:
-
-      case STRING_CHECK:
-
-      case ATOM_CHECK: 
-
-      {
-           bool in_rule = false, is_var = false;
-
-           GSList *var_list = g_hash_table_lookup(table, condition->value.var);
-
-	   /* Go through the list of symbols with the name in question
-            * to check if any variables exist in this rule.
-            */
-           while(var_list != NULL) {cl
- 
- 	      Symbol *current_var = (Symbol*)var_list->data;
-
-	      is_var = !strcmp(current_var->type,"Integer") ||
-                       !strcmp(current_var->type,"String") ||
-                       !strcmp(current_var->type,"Atom") ||
-                       !strcmp(current_var->type,"List") 
-            
-              if(is_var && !strcmp(current_var->scope,scope) && 
-	         !strcmp(current_var->containing_rule,rule_name)) 
-              {
-                 in_rule = true;
-                 break;
-              }
-                 
-              var_list = var_list->next;            
-           }
-           
-           /* I print a warning as I am assuming if a variable in a condition
-            * doesn't exist then the condition evaluates to false.
-            * Works for type checks but maybe not for other coclnditions.
-            */
-           if(!in_rule) fprintf(stderr,"Warning: Variable %s in condition"
-                                " of rule %s in procedure %s not declared.\n",
-                                condition->value.var, rule_name, scope);
-           break;
-      }
-
-      case EDGE_PRED:
-
-      {
-           bool in_lhs = false;
-
-           GSList *node_list = g_hash_table_lookup(table,
-                               condition->value.edge_pred.source);
-           Symbol* current_node_id = (Symbol*)node_list->data;      
-
-           while(node_list != NULL) {
-
-         	 if(!strcmp(current_node->type,"LHS Node") &&
-                    !strcmp(current_node_id->scope,scope) && 
-	            !strcmp(current_node_id->containing_rule,rule_name))  
-                 {
-                    in_lhs = true;
-                    break;
-                 }
-
-                 node_list = node_list->next;
-           }
-
-           if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
-                        "in LHS of %s.\n", condition->value.edge_pred.source, 
-                        rule_name);cl
-
-           in_lhs = false;
-
-           /* Same again, but for the target node. This pattern occurs
-            * so much that I shall modularise it somehow. */
-
-           node_list = g_hash_table_lookup(table, 
-                       condition->value.edge_pred.target);
-           Symbol* current_node_id = (Symbol*)node_list->data;      
-
-           while(node_list != NULL) {
-
-         	 if(!strcmp(current_node->type,"LHS Node") &&
-                    !strcmp(current_node_id->scope,scope) && 
-	            !strcmp(current_node_id->containing_rule,rule_name))  
-                 {
-                    in_lhs = true;
-                    break;
-                 }
-
-                 node_list = node_list->next;
-           }
-
-           if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
-                        "in LHS of.\n", condition->value.edge_pred.source,
-                        rule_name);
-
-           in_lhs = false;
-
-           if(condition->value.edge_pred.label != NULL)
-           gp_list_scan(condition->value.edge_pred.label->gp_list, table, 
-                        scope, rule_name, "condition");
-
-           break;
-
-      }
-
-      case EQUAL:
-
-      case NOT_EQUAL:
-
-           gp_list_scan(condition->value.list_cmp.left_list, table, scope,
-                        rule_name, "condition");
-
-           gp_list_scan(condition->value.list_cmp.right_list, table, scope,
-			rule_name, "condition");
-
-           break;
-
-      case GREATER:
-
-      case GREATER_EQUAL:
-
-      case LESS:
- 
-      case LESS_EQUAL:
-
-           atomic_exp_scan(condition->value.atom_cmp.left_exp, table, scope,
-                           rule_name, "condition");
-
-           atomic_exp_scan(condition->value.atom_cmp.right_exp, table, scope,
-                           rule_name, "condition");
-
-           break;
-
-      case BOOL_NOT:
-
-           condition_scan(condition->value.not_exp, table, scope, rule_name,
-                          "condition");
-
-           break;
-
-      case BOOL_OR:
-  
-      case BOOL_AND:
-
-           condition_scan(condition->value.bin_exp.left_exp, table, scope, 
-			  rule_name, "condition");
-
-           condition_scan(condition->value.bin_exp.right_exp, table, scope, 
-			  rule_name, "condition");
-
-           break;
-
-      default:
-	      fprintf(stderr,"Error: Unexpected condition type %d\n",
-		      (int)condition->exp_type);
-	      break;
-
-      }
-}
-
-
-
 
 
    

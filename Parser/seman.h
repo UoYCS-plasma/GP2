@@ -21,16 +21,17 @@ typedef enum {PROC_SYMBOL=0, RULE_SYMBOL, VAR_SYMBOL, LEFT_NODE_SYMBOL,
  LEFT_EDGE_SYMBOL, RIGHT_NODE_SYMBOL, RIGHT_EDGE_SYMBOL} symbol_type_t;
 
 typedef struct Symbol {
-  char *type;
+  char *type; /* rule, procedure, int, string, atom, list, left_node, left_edge,
+	       * right_node, right_edge */
   char *scope; /* the procedure in which the symbol is visible. 
 		* "Global" scope is seen by all procedures. */   
   char *containing_rule; /* for variables, nodes and edges */
   /* bit field for variable context flags */
   struct { 
-    unsigned int is_var : 1;	  
+    unsigned int is_var : 1; 	  
     unsigned int int_exp : 1;
     unsigned int string_exp : 1;
-    unsigned int right_label : 1; 
+    unsigned int in_lhs : 1; 
   } context;
 } Symbol;
 
