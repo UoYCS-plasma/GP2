@@ -64,7 +64,6 @@ char *file_name = NULL;
   struct GPStatement *stmt;
   struct GPProcedure *proc;
   struct GPRule *rule;
-  struct GPNodePair *node_pair;
   struct GPGraph *graph;
   struct GPNode *node;
   struct GPEdge *edge;
@@ -78,12 +77,11 @@ char *file_name = NULL;
 } 
 
 %type <list> GPProgram Program LocalDecls ComSeq RuleSetCall IDList VarDecls
-             VarList Inter NodePairList NodeList EdgeList List
+             VarList Inter NodeIDList NodeList EdgeList List
 %type <decl> Declaration
 %type <stmt> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
 %type <rule> RuleDecl
-%type <node_pair> NodePair
 %type <graph> Graph
 %type <node> Node
 %type <edge> Edge
@@ -174,13 +172,11 @@ VarDecls: VarList ':' Type		{ $$ = addVariableDecl($3, yylloc, $1, NULL); }
 VarList: Variable 			{ $$ = addVariable(yylloc, $1, NULL); }
        | VarList ',' Variable          	{ $$ = addVariable(yylloc, $3, $1); }
 
-Inter: INTERFACE '{' '}'   		{ $$ = NULL; }
-     | INTERFACE '{' NodePairList '}'   { $$ = $3; }
+Inter: INTERFACE '=' '{' '}'   		{ $$ = NULL; }
+     | INTERFACE '=' '{' NodeIDList '}' { $$ = $4; }
 
-NodePairList: NodePair			{ $$ = addNodePair(yylloc, $1, NULL); }
-            | NodePairList ',' NodePair { $$ = addNodePair(yylloc, $3, $1);   }
-
-NodePair: '(' NodeID ',' NodeID ')'   	{ $$ = newNodePair(yylloc, $2, $4); }
+NodeIDList: NodeID			{ $$ = addNodeID(yylloc, $1, NULL); }
+          | NodeIDList ',' NodeID 	{ $$ = addNodeID(yylloc, $3, $1);   }
 
 Bool: TRUE 				{ is_injective = true; }
     | FALSE				{ is_injective = false; }

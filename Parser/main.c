@@ -62,6 +62,12 @@ int main(int argc, char** argv) {
     /* Create a new GHashTable with strings as keys. g_str_equal is a string
      * hashing function provided by glib.
      */   
+
+    /* This should be created with g_hash_table_new_full to destroy
+     * symbol lists that are often replaced when appending values
+     * to lists. One alos needs to write a value destroy function
+     * and maybe a key destroy function.
+     */
     gp_symbol_table = g_hash_table_new(g_str_hash, g_str_equal);
     
     declaration_scan(gp_program, gp_symbol_table, "Global"); /* seman.c */

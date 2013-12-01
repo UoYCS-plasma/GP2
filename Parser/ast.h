@@ -65,18 +65,18 @@ typedef struct List {
   list_t list_type;  
   YYLTYPE location;  /* location of symbol in the source file */
   union {
-    struct GPDeclaration *declaration;
-    struct GPStatement *command;
-    char *rule_name;
+    struct GPDeclaration *declaration; /* GLOBAL_DECLARATIONS, 
+					* LOCAL_DECLARATIONS */
+    struct GPStatement *command;       /* COMMANDS */
+    char *rule_name; 		       /* RULES */
     struct List *variables; 
-      /* multiple variables declared with the same type: INT_DECLARATIONS, 
-       * STRING_DECLARATIONS, ATOM_DECLARATIONS
-       */ 
-    char *variable_name; 	  
-    struct GPNodePair *node_pair; /* pair of nodes specified in the interface of a rule */	   
-    struct GPNode *node;    
-    struct GPEdge *edge;    
-    struct GPAtomicExp *atom;
+     				       /* INT_DECLARATIONS, STRING_DECLARATIONS,
+					* ATOM_DECLARATIONS */ 
+    char *variable_name; 	       /* VARIABLE_LIST */	  
+    char *node_id; 		       /* INTERFACE_LIST */	   
+    struct GPNode *node; 	       /* NODE_LIST */   
+    struct GPEdge *edge; 	       /* EDGE_LIST */   
+    struct GPAtomicExp *atom;          /* GP_LIST */
   } value;
   struct List *next;
 } List;
@@ -89,8 +89,7 @@ List *addRule (YYLTYPE location, char *rule_name, struct List *next);
 List *addVariableDecl (list_t list_type, YYLTYPE location, 
 	struct List *variables, struct List *next);
 List *addVariable (YYLTYPE location, char *variable_name, struct List *next);
-List *addNodePair (YYLTYPE location, struct GPNodePair *node_pair,
-	struct List *next);
+List *addNodeID (YYLTYPE location, char *node_id, struct List *next);
 List *addNode (YYLTYPE location, struct GPNode *node, struct List *next);
 List *addEdge (YYLTYPE location, struct GPEdge *edge, struct List *next);
 List *addAtom (YYLTYPE location, struct GPAtomicExp *atom, struct List *next);
@@ -105,9 +104,9 @@ typedef struct GPDeclaration {
   decl_t decl_type;
   YYLTYPE location;
   union {
-    struct GPStatement *main_program;
-    struct GPProcedure *procedure;
-    struct GPRule *rule;
+    struct GPStatement *main_program; 	/* MAIN_DECLARATION */
+    struct GPProcedure *procedure; 	/* PROCEDURE_DECLARATION */
+    struct GPRule *rule; 		/* RULE_DECLARATION */
   } value;
 } GPDeclaration;
 
@@ -127,15 +126,23 @@ typedef struct GPStatement {
   stmt_t statement_type;
   YYLTYPE location;
   union {    
-    struct List *cmd_seq;
-    char *rule_name;
-    struct List *rule_set;
-    char *proc_name;
-    struct { struct GPStatement *condition; struct GPStatement *then_stmt; 
-	     struct GPStatement *else_stmt; } cond_branch;
-             /* IF_STATEMENT, TRY_STATEMENT */
-    struct GPStatement *loop_stmt;
-    struct { struct GPStatement *left_stmt; struct GPStatement *right_stmt; } or_stmt;
+    struct List *cmd_seq; 		/* COMMAND_SEQUENCE */
+    char *rule_name; 			/* RULE_CALL */
+    struct List *rule_set; 		/* RULE_SET_CALL */
+    char *proc_name;			/* PROCEDURE_CALL */
+
+    struct {  
+      struct GPStatement *condition;
+      struct GPStatement *then_stmt; 
+      struct GPStatement *else_stmt; 
+    } cond_branch; 			/* IF_STATEMENT, TRY_STATEMENT */
+
+    struct GPStatement *loop_stmt; 	/* ALAP_STATEMENT */
+
+    struct { 
+      struct GPStatement *left_stmt; 
+      struct GPStatement *right_stmt; 
+    } or_stmt;			        /* PROGRAM_OR */
     /* skip and fail are predefined GP rules represented by a struct GPStatement
      * containing only a statement_type and location */
   } value;
@@ -157,22 +164,38 @@ GPStatement *newFail(YYLTYPE location);
 
 /* Definition of AST nodes representing conditional expressions.*/
 
-typedef enum {INT_CHECK=0, STRING_CHECK, ATOM_CHECK, EDGE_PRED, REL_EXP, 
-              BOOL_NOT, BOOL_OR, BOOL_AND, EQUAL, NOT_EQUAL, GREATER, 
-	      GREATER_EQUAL, LESS, LESS_EQUAL} condexp_t;
+typedef enum {INT_CHECK=0, STRING_CHECK, ATOM_CHECK, EDGE_PRED, EQUAL, 
+              NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BOOL_NOT, 
+	      BOOL_OR, BOOL_AND } condexp_t;
 
 typedef struct GPCondExp {
   int node_id;
   condexp_t exp_type;
   YYLTYPE location;
   union {
-    char *var; /* type checking predicates: INT_CHECK, STRING_CHECK, ATOM_CHECK */
-    struct { char *source; char *target; struct GPLabel *label; } edge_pred;
-    struct { struct List *left_list; struct List *right_list; } list_cmp; /* EQUAL, NOT_EQUAL */
-    struct { struct GPAtomicExp *left_exp; struct GPAtomicExp *right_exp; } atom_cmp;
-            /* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
-    struct GPCondExp *not_exp;
-    struct { struct GPCondExp *left_exp; struct GPCondExp *right_exp; } bin_exp; /* OR, AND */
+    char *var; 			/* INT_CHECK, STRING_CHECK, ATOM_CHECK */
+    struct {
+      char *source; 
+      char *target; 
+      struct GPLabel *label;
+    } edge_pred; 		/* EDGE_PRED */
+
+    struct { 
+      struct List *left_list;
+      struct List *right_list; 
+    } list_cmp; 		/* EQUAL, NOT_EQUAL */
+
+    struct { 
+      struct GPAtomicExp *left_exp; 
+      struct GPAtomicExp *right_exp; 
+    } atom_cmp; 		/* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
+
+    struct GPCondExp *not_exp;  /* BOOL_NOT */
+
+    struct { 
+      struct GPCondExp *left_exp; 
+      struct GPCondExp *right_exp; 
+    } bin_exp; 			/* BOOL_OR, BOOL_AND */
   } value;
 } GPCondExp;
 
@@ -199,15 +222,18 @@ typedef struct GPAtomicExp {
   atomexp_t exp_type;
   YYLTYPE location;
   union {
-    char *name;
-    int number;
-    char *string;
-    char *node_id; /* The indegree and outdegree operators take a node as their argument. */
-    struct List *list_arg; /* Query for the length of a list. */
-    struct GPAtomicExp *str_arg; /* Query for the length of a string. */
-    struct GPAtomicExp *exp; /* Negated expression  */
-    struct { struct GPAtomicExp *left_exp; struct GPAtomicExp *right_exp; } bin_op; 
-            /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
+    char *name;			 /* VARIABLE */
+    int number; 	 	 /* INT_CONSTANT */
+    char *string;		 /* STRING_CONSTANT */
+    char *node_id; 		 /* INDEGREE, OUTDEGREE */
+    struct List *list_arg; 	 /* LIST_LENGTH */
+    struct GPAtomicExp *str_arg; /* STRING_LENGTH */
+    struct GPAtomicExp *exp; 	 /* NEG */
+
+    struct { 
+      struct GPAtomicExp *left_exp;
+      struct GPAtomicExp *right_exp;
+    } bin_op; 		   	 /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
   } value;
 } GPAtomicExp;
 
@@ -260,17 +286,6 @@ typedef struct GPRule {
 GPRule *newRule(YYLTYPE location, bool injective, char *name, 
 	 struct List *variables, struct GPGraph *lhs, struct GPGraph *rhs, 
 	 struct List *interface, struct GPCondExp *condition);
-
-
-typedef struct GPNodePair {
-  int node_id;
-  ast_node_t node_type; 
-  YYLTYPE location;
-  char *left_node;
-  char *right_node;
-} GPNodePair;
-
-GPNodePair *newNodePair (YYLTYPE location, char *left_node, char *right_node);
 
 
 typedef struct GPGraph {

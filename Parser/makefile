@@ -1,22 +1,20 @@
 # F must be declared with no extension on the command line e.g. make F=test 
 
+P = gpparse
+OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
 CC = gcc
-CFLAGS = -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
+CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 
 # builds gpparse, runs it on an extensionless file and generates an AST image.
-default: gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
-	 $(CC) -o gpparse $(CFLAGS) gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
+default: $(OBJECTS)
+	 $(CC) $(CFLAGS) $(OBJECTS) -o $(P)
 	 gpparse $(F) 
 	 dot -Tjpeg $(F).dot -o $(F).jpeg 
 	 dot -Tjpeg $(F)_F.dot -o $(F)_F.jpeg
 
 # only builds executable gpparse.
-gpparse: gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
-	 $(CC) -o gpparse $(CFLAGS) gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
-
-# builds executable gpparse for debugging with gdb.
-gpdebug: gpparser.tab.c lex.yy.c ast.c pretty.c seman.c main.c
-	 $(CC) $(CFLAGS) -o gpparse $(CFLAGS) -g gpparser.tab.c lex.yy.c ast.c pretty.c seman.c main.c
+$(P):	$(OBJECTS)
+	$(CC) $(CFLAGS) $(OBJECTS) -o $(P)
 
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
 		$(CC) $(CFLAGS) -c gpparser.tab.c

@@ -138,7 +138,7 @@ List *addVariable (YYLTYPE location, char *variable_name, List *next)
     return new_var;
 }
 
-List *addNodePair (YYLTYPE location, GPNodePair *node_pair, List *next)
+List *addNodeID (YYLTYPE location, char *node_id, List *next)
 { 
     List *new_pair = malloc(sizeof(List));
     
@@ -149,7 +149,7 @@ List *addNodePair (YYLTYPE location, GPNodePair *node_pair, List *next)
 
     new_pair->list_type = INTERFACE_LIST;
     new_pair->location = location;
-    new_pair->value.node_pair = node_pair;
+    new_pair->value.node_id = node_id;
     new_pair->next = next;
 
     return new_pair;
@@ -716,23 +716,6 @@ GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables, G
 
     return rule;
 }    
-
-GPNodePair *newNodePair (YYLTYPE location, char *left_node, char *right_node)
-{
-    GPNodePair *node_pair = malloc(sizeof(GPEdge));
-    
-    if(node_pair == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
-      exit(0);
-    }
-
-    node_pair->node_type = NODE_PAIR;
-    node_pair->location = location;
-    node_pair->left_node = left_node;
-    node_pair->right_node = right_node;
-
-    return node_pair;
-}
 
 
 GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes, List *edges)
