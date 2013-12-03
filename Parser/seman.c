@@ -817,7 +817,7 @@ void interface_scan(List *interface, GHashTable *table, char *scope,
       * order of its elements with use of the function strcmp.
       */
      interface_ids = g_slist_insert_sorted(interface_ids, current_node_id,
-		                           strcmp);
+		                           (GCompareFunc)strcmp);
 
      GSList *node_list = g_hash_table_lookup(table,current_node_id);     
 
@@ -854,7 +854,7 @@ void interface_scan(List *interface, GHashTable *table, char *scope,
       iterator = iterator->next) {
         if(!strcmp(iterator->data,iterator->next->data))
            fprintf(stderr,"Error: Node %s occurs twice in interface list.\n",
-		   iterator->data);
+		   (char*)(iterator->data));
   }
 
 }
@@ -974,7 +974,7 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
            }
 
            if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
-                        "in LHS of %s.\n", condition->value.edge_pred.source,
+                        "in LHS of %s.\n", condition->value.edge_pred.target,
                         rule_name);
 
            in_lhs = false;
@@ -1008,10 +1008,10 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
       case LESS_EQUAL:
 
            atomic_exp_scan(condition->value.atom_cmp.left_exp, table, scope,
-                           rule_name, 'c');
+                           rule_name, 'c', false, false);
 
            atomic_exp_scan(condition->value.atom_cmp.right_exp, table, scope,
-                           rule_name, 'c');
+                           rule_name, 'c', false, false);
 
            break;
 
@@ -1062,10 +1062,15 @@ void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
 {
    *gp_list = reverse(*gp_list);
 
-   while(*gp_list != NULL) {
-       atomic_exp_scan((*gp_list)->value.atom, table, scope, rule_name, 
-		       location);
-       *gp_list = (*gp_list)->next;
+   /* Make a copy of *gp_list so as not to modify the original pointer when
+    * traversing the list.
+    */
+   List *iterator = *gp_list;
+
+   while(iterator != NULL) {
+       atomic_exp_scan(iterator->value.atom, table, scope, rule_name, 
+		       location, false, false);
+       iterator = iterator->next;
    }
 }
 
@@ -1087,14 +1092,14 @@ void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
  */
 
 void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
-                     char *rule_name, char location)
+                     char *rule_name, char location, bool int_exp,
+		     bool string_exp)
 {
    /* static flags to determine if variables should be type-checked or not.
     * check_int is set to true whenever an arithmetic operator is encountered.
     * check_string is set to true whenever the concanenation operator is
     * encountered.
     */
-   static bool int_exp = false, string_exp = false;	
 
    switch(atom_exp->exp_type) {
 
@@ -1160,22 +1165,24 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 	      var_list = var_list->next;
 	   }
 
-           if(!in_rule) fprintf(stderr,"Error: Variable %s in expression but "
+           if(!in_rule) fprintf(stderr, "Error: Variable %s in expression but "
                          "not declared.\n", atom_exp->value.name);
+	   /* No need to report other errors if the variable is not present. */
+           else {
+              if(location == 'r' && !in_lhs)
+                 fprintf(stderr,"Error: Variable %s in RHS but not in LHS.\n",
+                         atom_exp->value.name);
 
-           if(location == 'r' && !in_lhs)
-              fprintf(stderr,"Error: Variable %s in RHS but not in LHS.\n",
-                      atom_exp->value.name);
+              if(int_exp && !is_int)
+                 fprintf(stderr,"Error: Variable %s occurs in an integer "
+                         "expression but declared as a string.\n",
+                         atom_exp->value.name);
 
-           if(int_exp && !is_int)
-              fprintf(stderr,"Error: Variable %s occurs in an integer "
-                      "expression but declared as a string.\n",
-                      atom_exp->value.name);
-
-           if(string_exp && !is_string)
-              fprintf(stderr,"Error: Variable %s occurs in a string "
-                      "expression but declared as an integer.\n",
-                      atom_exp->value.name);
+              if(string_exp && !is_string)
+                 fprintf(stderr,"Error: Variable %s occurs in a string "
+                         "expression but declared as an integer.\n",
+                         atom_exp->value.name);
+	   }
 
            break;
       }
@@ -1231,50 +1238,10 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
             if(string_exp) fprintf(stderr,"Error: length operator appears "
                                    "in string expression.\n");
 
-            /* Same as case VARIABLE except the is_int check is not required. */
-	    GSList *var_list = g_hash_table_lookup(table,atom_exp->value.str_arg);           
-           
-            bool in_rule = false, in_lhs = false, is_string = false;
-
-            while(var_list != NULL) {
-
-               Symbol *current_var = (Symbol*)(var_list->data);
-         
-               if(current_var->is_var &&
-                  !strcmp(current_var->scope,scope) &&
-	          !strcmp(current_var->containing_rule,rule_name)) 
-               {
-                  in_rule = true;
- 
-                  if(location == 'r') 
-                    if(current_var->in_lhs) in_lhs = true;
-
-                  /* atoms, lists and string can match a string variable. */
-                  if(strcmp(current_var->type,"integer")) is_string = true;                    
-
- 	          /* Found the variable in the rule with the appropriate name.
-                   * enter_variables ensures there is only one such variable 
-                   * in the symbol list. No need to look further.
-                   */          
-                   break;
-               }
-	       var_list = var_list->next;
-	    }
-
-            if(!in_rule) fprintf(stderr,"Error: Variable %s in expression but "
-                                 "not declared.\n", atom_exp->value.name);
-
-            if(location == 'r' && !in_lhs)
-               fprintf(stderr,"Error: Variable %s in RHS but not in LHS.\n",
-                       atom_exp->value.name);
-
-            if(string_exp && !is_string)
-               fprintf(stderr,"Error: Variable %s occurs in a string length "
-                       "expression but declared as an integer.\n",
-                       atom_exp->value.name);
-
+	    atomic_exp_scan(atom_exp->value.str_arg, table, scope, rule_name, 
+			    location, false, true);
+		    
             break;
-
        }         
             
 
@@ -1282,14 +1249,13 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
             if(string_exp) fprintf(stderr,"Error: arithmetic operator appears "
                                    "in string expression.\n");
-            else int_exp = true;
 
             if(location == 'l')
               fprintf(stderr,"Error: Arithmetic expressions forbidden in "
                       "left-hand side labels, rule, procedure.\n");
 
             atomic_exp_scan(atom_exp->value.exp, table, scope, rule_name,
-                            location);
+                            location, true, false);
             break;
 
 
@@ -1297,16 +1263,15 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
             if(string_exp) fprintf(stderr,"Error: arithmetic operator appears "
                                    "in string expression.\n");
-            else int_exp = true;
 
             if(location == 'l') 
               fprintf(stderr,"Error: Arithmetic expressions forbidden in "
                       "left-hand side labels, rule, procedure.\n");
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                              rule_name, location);
-            atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                              rule_name, location);
+                            rule_name, location, true, false);
+            atomic_exp_scan(atom_exp->value.bin_op.right_exp, table, scope,
+                            rule_name, location, true, false);
             break;
 
 
@@ -1314,16 +1279,15 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
             if(string_exp) fprintf(stderr,"Error: arithmetic operator appears "
                                    "in string expression.\n");
-            else int_exp = true;
 
             if(location == 'l') 
               fprintf(stderr,"Error: Arithmetic expressions forbidden in "
                       "left-hand side labels, rule, procedure.\n");
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                              rule_name, location);
-            atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                              rule_name, location);
+                              rule_name, location, true, false);
+            atomic_exp_scan(atom_exp->value.bin_op.right_exp, table, scope,
+                              rule_name, location, true, false);
             break;
 
 
@@ -1331,16 +1295,15 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
             if(string_exp) fprintf(stderr,"Error: arithmetic operator appears "
                                    "in string expression.\n");
-            else int_exp = true;
 
             if(location == 'l') 
               fprintf(stderr,"Error: Arithmetic expressions forbidden in "
                       "left-hand side labels, rule, procedure.\n");
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                              rule_name, location);
-            atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                              rule_name, location);    
+                              rule_name, location, true, false);
+            atomic_exp_scan(atom_exp->value.bin_op.right_exp, table, scope,
+                              rule_name, location, true, false);    
             break;
 
 
@@ -1348,16 +1311,15 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
             if(string_exp) fprintf(stderr,"Error: arithmetic operator appears "
                                    "in string expression.\n");
-            else int_exp = true;
 
             if(location == 'l') 
               fprintf(stderr,"Error: Arithmetic expressions forbidden in "
                       "left-hand side labels, rule, procedure.\n");
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                              rule_name, location);
-            atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                              rule_name, location);       
+                              rule_name, location, true, false);
+            atomic_exp_scan(atom_exp->value.bin_op.right_exp, table, scope,
+                              rule_name, location, true, false);       
             break;
 
 
@@ -1366,12 +1328,10 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
             if(int_exp) fprintf(stderr,"Error: string operator appears in "
                                 "integer expression.\n");
 
-            else string_exp = true;
-
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                            rule_name, location);
-            atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
-                            rule_name, location); 
+                            rule_name, location, false, true);
+            atomic_exp_scan(atom_exp->value.bin_op.right_exp, table, scope,
+                            rule_name, location, false, true); 
             break;
 
        default: fprintf(stderr,"Error: Unexpected atomic expression type %d\n",

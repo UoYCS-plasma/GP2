@@ -43,4 +43,5 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
 void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
                   char *rule_name, char location);
 void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
-                    char *rule_name, char location);
+                    char *rule_name, char location, bool int_check,
+		    bool string_check);
