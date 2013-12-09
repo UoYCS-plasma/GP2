@@ -164,8 +164,6 @@ RuleDecl: RuleID '(' VarDecls ')' '[' Graph ']' ARROW '[' Graph ']' Inter
           INJECTIVE '=' Bool	 	{ $$ = newRule(yylloc, is_injective,
  					       $1, NULL, $5, $9, $11, $12); }
 
-
-					  
 VarDecls: VarList ':' Type		{ $$ = addVariableDecl($3, yylloc, $1, NULL); }  
 	| VarDecls ';' VarList ':' Type { $$ = addVariableDecl($5, yylloc, $3, $1); }
 

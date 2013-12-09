@@ -1,20 +1,20 @@
-# F must be declared with no extension on the command line e.g. make F=test 
-
 P = gpparse
 OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 
-# builds gpparse, runs it on an extensionless file and generates an AST image.
-default: $(OBJECTS)
-	 $(CC) $(CFLAGS) $(OBJECTS) -o $(P)
-	 gpparse $(F) 
-	 dot -Tjpeg $(F).dot -o $(F).jpeg 
-	 dot -Tjpeg $(F)_F.dot -o $(F)_F.jpeg
+# Builds executable gpparse, runs it on an extensionless file and generates AST images.
+# Usage: make F=<filename>
+default:        $(OBJECTS)
+		$(CC) $(CFLAGS) $(OBJECTS) -o $(P) 	
+		gpparse $(F)	       	
+		dot -Tjpeg $(F).dot -o $(F).jpeg 	
+		dot -Tjpeg $(F)_F.dot -o $(F)_F.jpeg
 
-# only builds executable gpparse.
-$(P):	$(OBJECTS)
-	$(CC) $(CFLAGS) $(OBJECTS) -o $(P)
+# Builds executable gpparse.
+# Usage: make gpparse
+$(P):		$(OBJECTS)
+		$(CC) $(CFLAGS) $(OBJECTS) -o $(P)
 
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
 		$(CC) $(CFLAGS) -c gpparser.tab.c

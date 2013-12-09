@@ -26,8 +26,8 @@ typedef struct Symbol {
                 * in the LHS of a rule */
 } Symbol;
 
-void declaration_scan(const List *ast, GHashTable *table, char *scope);
-int semantic_check(List *ast, GHashTable *table, char *scope);
+int declaration_scan(const List *ast, GHashTable *table, char *scope);
+int semantic_check(List *declarations, GHashTable *table, char *scope);
 void statement_scan(GPStatement *statement, GHashTable *table, char *scope);
 void validate_call(char *name, GHashTable *table, char *scope, 
                    char *call_type);

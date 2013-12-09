@@ -70,24 +70,34 @@ int main(int argc, char** argv) {
      */
     gp_symbol_table = g_hash_table_new(g_str_hash, g_str_equal);
     
-    declaration_scan(gp_program, gp_symbol_table, "Global"); /* seman.c */
+    /* declaration_scan returns 1 if there is a name clash among the 
+     * rule and procedure declarations.
+     */
+    int abort_scan = declaration_scan(gp_program, gp_symbol_table, "Global");
+                     /* seman.c */
     #ifdef DRAW_ORIGINAL_TREE
        print_dot_ast(gp_program, file_name); /* pretty.c */ 
     #endif
-    semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
-    #ifdef DRAW_FINAL_TREE
-       /* create the string <file_name>_F as an argument to print_dot_ast */
-       int length = strlen(file_name)+2;
-       char alt_name[length];
-       strcpy(alt_name,file_name);
-       strcat(alt_name,"_F"); 
-       print_dot_ast(gp_program, alt_name); /* pretty.c */ 
-    #endif
+
+    if(abort_scan) fprintf(stderr,"Build aborted. Please fix declaration clashes.\n");
+    else {
+       semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
+       #ifdef DRAW_FINAL_TREE
+          /* create the string <file_name>_F as an argument to print_dot_ast */
+          int length = strlen(file_name)+2;
+          char alt_name[length];
+          strcpy(alt_name,file_name);
+          strcat(alt_name,"_F"); 
+          print_dot_ast(gp_program, alt_name); /* pretty.c */ 
+       #endif
+    }  
+
     #ifdef DRAW_TABLE
        print_symbol_table(gp_symbol_table); /* pretty.c */
     #endif
+
   }
-  else printf("GP2 parse failed\n");
+  else fprintf(stderr,"GP2 parse failed.\n");
  
   fclose(yyin);  
 
