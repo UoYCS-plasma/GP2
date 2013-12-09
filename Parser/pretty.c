@@ -33,20 +33,27 @@ void print_symbol(gpointer key, gpointer value, gpointer user_data)
      * data field is a gpointer, equivalent to a void pointer.
      */
     for(current_name = value; current_name!=NULL; 
-	current_name = current_name->next)
+	current_name = current_name->next) {
+
+        Symbol *current_sym = (Symbol*)(current_name->data);
 	
 	/* Not all symbols have a containing rule */    
-	if(((Symbol*)current_name->data)->containing_rule == NULL) {
-	   printf("Name: %s\nType: %s\nScope: %s\n\n", (char*)key, 
-	          ((Symbol*)current_name->data)->type, 
-	          ((Symbol*)current_name->data)->scope);
+	if(current_sym->containing_rule == NULL) {
+	   printf("Name: %s\nType: %s\nScope: %s\n", (char*)key, 
+	          current_sym->type, current_sym->scope);
+	   if(current_sym->is_var) printf("Variable\n");
+	   if(current_sym->in_lhs) printf("In LHS\n");
+	   printf("\n");
 	}	
 	else {	
-           printf("Name: %s\nType: %s\nScope: %s\nContaining Rule: %s\n\n", 
-		  (char*)key, ((Symbol*)current_name->data)->type, 
-	          ((Symbol*)current_name->data)->scope,
-	          ((Symbol*)current_name->data)->containing_rule);
-	}   
+           printf("Name: %s\nType: %s\nScope: %s\nContaining Rule: %s\n", 
+		  (char*)key, current_sym->type, current_sym->scope,
+	           current_sym->containing_rule);
+       	   if(current_sym->is_var) printf("Variable\n");
+	   if(current_sym->in_lhs) printf("In LHS\n");
+	   printf("\n");
+	}
+    }
 }
        
 /* print_symbol_table uses glib's hash table iterator to print the table.

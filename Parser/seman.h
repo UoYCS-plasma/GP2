@@ -26,8 +26,8 @@ typedef struct Symbol {
                 * in the LHS of a rule */
 } Symbol;
 
-void declaration_scan(const List *ast, GHashTable *table, char *scope);
-int semantic_check(List *ast, GHashTable *table, char *scope);
+int declaration_scan(const List *ast, GHashTable *table, char *scope);
+int semantic_check(List *declarations, GHashTable *table, char *scope);
 void statement_scan(GPStatement *statement, GHashTable *table, char *scope);
 void validate_call(char *name, GHashTable *table, char *scope, 
                    char *call_type);
@@ -43,4 +43,5 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
 void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
                   char *rule_name, char location);
 void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
-                    char *rule_name, char location);
+                    char *rule_name, char location, bool int_check,
+		    bool string_check);
