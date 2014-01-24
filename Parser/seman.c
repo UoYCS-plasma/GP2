@@ -9,13 +9,45 @@
 
 //////////////////////////////////////////////////////////////////////////// */
 
-#include "ast.h" /* reverse */
-#include "seman.h" /* struct Symbol */
+#include "seman.h" 
 #include <stdlib.h> /* malloc, free */
 #include <stdio.h> /* fprintf */
 #include <string.h> /* strdup, strcmp */
 #include <stdbool.h> 
 #include <glib.h> /* GHashTable and GSList */
+
+/* Function to reverse a sequence of List nodes in the AST. Given a
+ * pointer to a List node representing the head of an AST list, it
+ * reverses the list and returns a pointer to the new head. 
+ *
+ * This function is required as Bison generates lists in reverse order
+ * due to left-recursive grammar rules. 
+ */
+
+List *reverse (List * listHead) 
+{
+     List *currentNode = listHead;
+     List *tempNode = NULL;
+     List *previousNode = NULL;
+
+     /* invariant: currentNode points to the node being worked on and
+      * previousNode points to the original parent of currentNode.
+      */
+
+     while(currentNode != NULL) {
+        tempNode = currentNode->next; /* keeping a pointer to currentNode->next before
+                                         reassignment. */
+	currentNode->next = previousNode; /* reversing the 'next' pointer of currentNode. */
+
+	/* setting the invariant for the next iteration */
+	previousNode = currentNode;
+	currentNode = tempNode;
+     }
+
+     return previousNode; /* The tail of the original list and the head of the 
+                            * reversed list. */
+}     
+
 
 /* GLib is used for hashtables. GP2 identifiers are the keys. The values
  * are lists of struct Symbols, defined in seman.h. We further take advantage
@@ -80,9 +112,9 @@
  * The function also checks for name clashes: multiple occurrences of a single 
  * procedure or multiple occurrences of the same rule name in the same scope.
  * These are both errors that should be reported, and further semantic analysis
- * may produce confusing error messages. Hence the function generates a value
- * that is passed to main to control if further semantic analysis should be 
- * conducted.
+ * may produce confusing error messages. Hence the function returns a value
+ * that is passed to main.c to control the execution of further semantic 
+ * analysis.
  */
 
 int declaration_scan(const List *ast, GHashTable *table, char *scope)
@@ -146,8 +178,8 @@ int declaration_scan(const List *ast, GHashTable *table, char *scope)
                  Symbol *proc_symbol = malloc(sizeof(Symbol));
 
 	         if(proc_symbol==NULL) {
-                 fprintf(stderr,"Insufficient space.\n");
-                 exit(0); 
+                    fprintf(stderr,"Memory exhausted during symbol management.\n");
+                    exit(0); 
                  }
 
                  proc_symbol->type = "Procedure";
@@ -200,11 +232,15 @@ int declaration_scan(const List *ast, GHashTable *table, char *scope)
                  if(!strcmp(((Symbol*)iterator->data)->type,"Rule") &&
 		    !strcmp(scope,symbol_scope))
 		 {
-                    fprintf(stderr,"Error: Rule %s declared twice within " 
-                            "the scope %s.\n", rule_name, scope);
+                    if(!strcmp(scope,"Global")) 
+                         fprintf(stderr,"Error: Rule %s declared twice in " 
+                                 "global scope %s.\n", rule_name, scope);
+                    else fprintf(stderr,"Error: Rule %s declared twice in " 
+                                 "procedure %s.\n", rule_name, scope);
+
 		    add_rule = false;
                     name_clash = 1;
-		    /* Report the error only once for this dec*laration. */
+		    /* Report the error only once for this declaration. */
                     break; 
                  }                 
 		 iterator = iterator->next;
@@ -217,7 +253,7 @@ int declaration_scan(const List *ast, GHashTable *table, char *scope)
 	         Symbol *rule_symbol = malloc(sizeof(Symbol));
  
 	         if(rule_symbol==NULL) {
-                    fprintf(stderr,"Insufficient space.\n");
+                    fprintf(stderr,"Memory exhausted during symbol management.\n");
 	            exit(0);
 	         }
 
@@ -235,7 +271,7 @@ int declaration_scan(const List *ast, GHashTable *table, char *scope)
          }
 
          default: 
-             fprintf(stderr, "Error: Unexpected node type %d at node %d\n\n", 
+             fprintf(log_file, "Error: Unexpected node type %d at AST node %d\n\n", 
                      ast->value.declaration->decl_type, 
 		     ast->value.declaration->node_id);
 
@@ -297,7 +333,8 @@ int semantic_check(List *declarations, GHashTable *table, char *scope)
 	       * hence the Bison parser should catch it and report a syntax error,
 	       * but there's no harm in checking here as well.
 	       */
-	      else fprintf(stderr,"Error: Main program is empty.\n");
+	      else fprintf(log_file,"Error: Main procedure has no program, "
+                           "not caught by parser. \n");
 
               break;
 
@@ -309,8 +346,9 @@ int semantic_check(List *declarations, GHashTable *table, char *scope)
               if(current_declaration->value.procedure->cmd_seq != NULL)
                   statement_scan(current_declaration->value.procedure->cmd_seq,
                                  table, new_scope);
-	      else fprintf(stderr,"Error: %s program is empty.\n",
-			   current_declaration->value.procedure->name);
+	      else fprintf(stderr,"Error: Procedure %s has no program, "
+                           "not caught by parser. \n",
+                           current_declaration->value.procedure->name);
 
 	      if(current_declaration->value.procedure->local_decls != NULL)
                   semantic_check(current_declaration->value.procedure->
@@ -325,8 +363,9 @@ int semantic_check(List *declarations, GHashTable *table, char *scope)
 
               break;  
 
-         default: fprintf(stderr,"Error: Unexpected declaration type %d\n", 
-                          (int)current_declaration->decl_type);
+         default: fprintf(log_file,"Error: Unexpected declaration type %d at AST node %d\n", 
+                          current_declaration->decl_type,
+                          current_declaration->node_id);
               break;
       } 
 
@@ -442,8 +481,8 @@ void statement_scan(GPStatement *statement, GHashTable *table, char *scope)
    
          case FAIL_STATEMENT: /* do nothing */ break;
 
-         default: fprintf(stderr,"Error: Unexpected statement type %d\n", 
-                          (int)statement->statement_type);
+         default: fprintf(log_file,"Error: Unexpected statement type %d at AST node %d\n", 
+                          statement->statement_type, statement->node_id);
                  break;   
 
         }
@@ -467,8 +506,8 @@ void validate_call(char *name, GHashTable *table, char *scope,
 
    GSList *symbol_list = g_hash_table_lookup(table, name);
 
-      if(symbol_list == NULL) fprintf(stderr, "Error: %s %s has not been "
-                                              "declared.\n", call_type, name);
+      if(symbol_list == NULL) fprintf(stderr, "Error: %s %s called but not "
+                                      "declared.\n", call_type, name);
       else {
 
 	 /* Keep track of the symbol currently being looked at */
@@ -547,8 +586,8 @@ void rule_scan(GPRule *rule, GHashTable *table, char *scope)
 	      break;  	 
 
 	 default:
-	      fprintf(stderr,"Error: Unexpected list type %d\n",
-		      (int)variable_list->list_type);
+	      fprintf(log_file,"Error: Unexpected list type %d in AST node %d\n",
+		      variable_list->list_type, variable_list->node_id);
 	      break;
       }
       variable_list = variable_list->next;
@@ -600,8 +639,8 @@ void enter_variables(char *type, List *variables, GHashTable *table,
             !strcmp(current_var->scope,scope) &&
 	    !strcmp(current_var->containing_rule,rule_name))
 	 {	 
-	    fprintf(stderr,"Error: Variable %s declared twice in rule %s.\n",
-	            variable_name, rule_name);
+	    fprintf(stderr,"Error (%s.%s): Variable %s declared twice.\n",
+	            scope, rule_name, variable_name);
 	    add_variable = false;
             break;
 	 }
@@ -614,7 +653,7 @@ void enter_variables(char *type, List *variables, GHashTable *table,
          Symbol *var_symbol = malloc(sizeof(Symbol));
 
          if(var_symbol==NULL) {
-            fprintf(stderr,"Insufficient space.\n");
+            fprintf(log_file,"Memory exhausted during symbol management.\n");
             exit(0);
          }
 
@@ -695,8 +734,8 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 	    !strcmp(current_node->scope,scope)    && 
 	    !strcmp(current_node->containing_rule,rule_name))	
 	 {
-	     fprintf(stderr,"Error: Node ID %s not unique in %s of rule %s.\n",
-	             node_id, graph_type, rule_name);  
+	     fprintf(stderr,"Error (%s.%s): Node ID %s not unique in the %s graph.\n",
+	             scope, rule_name, node_id, graph_type);  
 	     add_node = false;
 	     break;
 	 }
@@ -709,7 +748,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
          Symbol *node_symbol = malloc(sizeof(Symbol));
 
          if(node_symbol==NULL) {
-            fprintf(stderr,"Insufficient space.\n");
+            fprintf(stderr,"Memory exhausted during symbol management.\n");
             exit(0);
          }
 
@@ -725,8 +764,8 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
       }	 
 
       if(node_list->value.node->label->mark == DASHED)
-          fprintf(stderr,"Error: Node %s in LHS of rule %s has illegal mark " 
-	          "\"dashed\".\n", node_id, rule_name);
+          fprintf(stderr,"Error (%s.%s): Node %s in %s graph has invalid mark " 
+	          "\"dashed\".\n", scope, rule_name, node_id, graph_type);
 
       gp_list_scan(&(node_list->value.node->label->gp_list), table, scope, 
 		   rule_name, side);
@@ -764,8 +803,8 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 	     !strcmp(current_edge->scope,scope)    && 
 	     !strcmp(current_edge->containing_rule,rule_name))	
          {
-	      fprintf(stderr,"Error: Edge ID %s not unique in %s of rule %s.\n",
-	              edge_id, graph_type, rule_name);
+	      fprintf(stderr,"Error (%s.%s): Edge ID %s not unique in the %s graph.\n",
+	              scope, rule_name, edge_id, graph_type);
 	      add_edge = false;
 	      break;
 	 }
@@ -778,7 +817,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
          Symbol *edge_symbol = malloc(sizeof(Symbol));
 
          if(edge_symbol==NULL) {
-            fprintf(stderr,"Insufficient space.\n");
+            fprintf(log_file,"Memory exhausted during symbol management.\n");
             exit(0);
          }
 
@@ -794,17 +833,18 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
       }
 
        if(edge_list->value.edge->label->mark == GREY)
-            fprintf(stderr,"Error: Edge %s in LHS of rule %s has illegal mark " 
-	            "\"grey\".\n", edge_id, rule_name);
+            fprintf(stderr,"Error (%s.%s): Edge %s in the %s graph has invalid mark " 
+	            "\"grey\".\n", scope, rule_name, edge_id, graph_type);
 
       /* Verify source and target nodes exist in the graph. */
 
-      /* First, source */
+      /* First, source */ 
       symbol_list = g_hash_table_lookup(table, source_id);
 
       if(symbol_list == NULL)
-	 fprintf(stderr, "Error: Source node %s of edge %s does not exist "
-                 "in %s graph.\n", source_id, edge_id, graph_type);     
+	 fprintf(stderr, "Error (%s.%s): Source node %s of edge %s does not "
+                 "exist in %s graph.\n", scope, rule_name, source_id, 
+                 edge_id, graph_type);     
 
       else {
          /* Keep track of the symbol currently being looked at. */
@@ -816,8 +856,9 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
          {   
            /* Check if the end of the list has been reached */
            if(symbol_list->next == NULL) {
-              fprintf(stderr, "Error: Source node %s of edge %s does not exist "
-                              "in %s graph.\n", source_id, edge_id, graph_type);     
+              fprintf(stderr, "Error (%s.%s): Source node %s of edge %s does "
+                      "not exist in %s graph.\n", scope, rule_name, source_id,
+                      edge_id, graph_type);     
               break;
            }
            /* Update current_symbol to point to the next symbol */
@@ -829,8 +870,9 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
       symbol_list = g_hash_table_lookup(table, target_id);    
  
       if(symbol_list == NULL)
-	 fprintf(stderr, "Error: Target node %s of edge %s does not exist "
-                 "in %s graph.\n", target_id, edge_id, graph_type);     
+	 fprintf(stderr, "Error (%s.%s): Target node %s of edge %s does not "
+                 "exist in %s graph.\n", scope, rule_name, target_id, edge_id, 
+                 graph_type);     
 
       else {
          /* Keep track of the symbol currently being looked at. */
@@ -843,8 +885,9 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
    
            /* Check if the end of the list has been reached */
            if(symbol_list->next == NULL) {
-              fprintf(stderr, "Error: Target node %s of edge %s does not exist "
-                              "in %s graph.\n", target_id, edge_id, graph_type);     
+              fprintf(stderr, "Error (%s.%s): Target node %s of edge %s does "
+                      "not exist in %s graph.\n", scope, rule_name, target_id,
+                      edge_id, graph_type);     
               break;
            }
             /* Update current_symbol to point to the next symbol */
@@ -869,8 +912,6 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
  * Argument 2: The symbol table.
  * Argument 3: The current scope.
  * Argument 4: The current rule being processed.
- *
- * Check for node ID uniqueness? Yes.
  */
 
 void interface_scan(List *interface, GHashTable *table, char *scope, 
@@ -907,16 +948,16 @@ void interface_scan(List *interface, GHashTable *table, char *scope,
 	}
 
 	/* If both the LHS node and RHS node have been found, no need to look
-	 * further down the symbol list.
+	 * further down the symbol list.  
 	 */         
 	if(in_lhs && in_rhs) break;
 	node_list = node_list->next;
      }
 
-     if(!in_lhs) fprintf(stderr,"Error: Interface node %s not in the LHS of "
-			 "rule %s.\n", current_node_id, rule_name);
-     if(!in_rhs) fprintf(stderr,"Error: Interface node %s not in the RHS of "
-			 "rule %s.\n", current_node_id, rule_name);
+     if(!in_lhs) fprintf(stderr,"Error (%s.%s): Interface node %s not in the "
+			 "LHS graph.\n", scope, rule_name, current_node_id);
+     if(!in_rhs) fprintf(stderr,"Error (%s.%s): Interface node %s not in the "
+			 "RHS graph.\n", scope, rule_name, current_node_id);
 
      interface = interface->next;   
   }
@@ -927,8 +968,8 @@ void interface_scan(List *interface, GHashTable *table, char *scope,
   for(iterator = interface_ids; iterator->next != NULL;
       iterator = iterator->next) {
         if(!strcmp(iterator->data,iterator->next->data))
-           fprintf(stderr,"Error: Node %s occurs twice in interface list.\n",
-		   (char*)(iterator->data));
+           fprintf(stderr,"Error (%s.%s): Node %s occurs twice in interface list.\n",
+		   scope, rule_name, (char*)(iterator->data));
   }
 
 }
@@ -986,9 +1027,9 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
             * doesn't exist then the condition evaluates to false.
             * Works for type checks but maybe not for other conditions.
             */
-           if(!in_rule) fprintf(stderr,"Warning: Variable %s in condition"
-                                " of rule %s in procedure %s not declared.\n",
-                                condition->value.var, rule_name, scope);
+           if(!in_rule) fprintf(stderr,"Warning (%s.%s): Variable %s in condition"
+                                " not declared.\n", scope, rule_name,
+                                condition->value.var);
            break;
       }
 
@@ -1020,9 +1061,9 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
                  node_list = node_list->next;
            }
 
-           if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
-                        "in LHS of %s.\n", condition->value.edge_pred.source, 
-                        rule_name);
+           if(!in_lhs) fprintf(stderr,"Error (%s.%s): Node %s in edge "
+                               "predicate not in LHS.\n", scope, rule_name, 
+                               condition->value.edge_pred.source);
 
            in_lhs = false;
 
@@ -1047,9 +1088,9 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
                  node_list = node_list->next;
            }
 
-           if(!in_lhs) fprintf(stderr,"Error: Node %s in edge predicate not "
-                        "in LHS of %s.\n", condition->value.edge_pred.target,
-                        rule_name);
+           if(!in_lhs) fprintf(stderr,"Error (%s.%s): Node %s in edge "
+                               "predicate not in LHS.\n", scope,
+                               rule_name, condition->value.edge_pred.target);
 
            in_lhs = false;
 
@@ -1109,8 +1150,8 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
            break;
 
       default:
-	      fprintf(stderr,"Error: Unexpected condition type %d\n",
-		      (int)condition->exp_type);
+	      fprintf(log_file,"Error: Unexpected condition type %d at AST node %d\n",
+		      condition->exp_type, condition->node_id);
 	      break;
 
       }
@@ -1135,6 +1176,11 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
  * Hence, if an EMPTY_LIST node occurs in the list but not in the above
  * scenario, they are removed by first redirecting pointers and then
  * freeing the memory.
+ *
+ * The global variable list_var_count is used by gp_list_scan and 
+ * atomic_exp_scan to keep track of the number of list variables encountered 
+ * in a single list expression. At most one list variable is allowed in a LHS
+ * label.
  * 
  * Argument 1: Pointer to the head of a list in the AST, passed by reference.
  *             If called from graph_scan or case EDGE_PRED in condition_scan,
@@ -1152,6 +1198,8 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
  *             passed to the graph_scan call. If called from condition_scan,
  *             this is 'c'.
  */
+
+int list_var_count = 0;
 
 void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
                   char *rule_name, char location)
@@ -1192,6 +1240,7 @@ void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
 	* is required.
 	*/
        List **next_node = &(iterator->next);
+
        /* Discard any intermediate EMPTY_LIST nodes */
        /* The while loop terminates when the end of the list has been reached
 	* or when the next node is not an EMPTY_LIST node.
@@ -1200,13 +1249,19 @@ void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
 	      (*next_node)->value.atom->exp_type == EMPTY_LIST)
        {
 	       List *temp = *next_node;
-	       /* Redirect the point to the node after the EMPTY_LIST
+	       /* Redirect the pointer to the node after the EMPTY_LIST
 	        * node. */
 	       *next_node = (*next_node)->next;
 	       free(temp->value.atom);
 	       free(temp);
        }
        iterator = iterator->next;
+   } 
+
+   if(list_var_count > 1) {
+      fprintf(stderr,"Error (%s.%s): More than one list variable in LHS "
+	      "label.\n", scope, rule_name);
+      list_var_count = 0;
    }
 }
 
@@ -1237,6 +1292,10 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
                      char *rule_name, char location, bool int_exp,
 		     bool string_exp)
 {
+
+   
+   static int string_var_count;
+
    switch(atom_exp->exp_type) {
 
       case EMPTY_LIST: 
@@ -1245,15 +1304,16 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
       case INT_CONSTANT:
 
-           if(string_exp) fprintf(stderr,"Error: Integer constant appears in "
-                                  "a string expression.\n");
+           if(string_exp) fprintf(stderr,"Error (%s.%s): Integer constant "
+                                  "appears in a string expression.\n", scope,
+                                  rule_name);
 
            break;
   
       case STRING_CONSTANT:
 
-           if(int_exp) fprintf(stderr,"Error: String constant appears in "
-                               "an integer expression.\n");
+           if(int_exp) fprintf(stderr,"Error (%s.%s): String constant appears "
+                               "in an integer expression.\n", scope, rule_name);
 
            break;
 
@@ -1278,18 +1338,25 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
               {
                  in_rule = true;
 
-                 if(location == 'l') current_var->in_lhs = true;   
+                 if(location == 'l') {
+		    current_var->in_lhs = true;   
+		    if(!strcmp(current_var->type,"list")) list_var_count++;
+		 }
  
                  if(location == 'r') 
                    if(current_var->in_lhs) in_lhs = true;
 
                  if(int_exp) {
                    /* atoms, lists and integers can match an int variable. */
-                   if(strcmp(current_var->type,"string")) is_int = true;
+                   if(!strcmp(current_var->type,"integer")) is_int = true;
                  }
+
                  if(string_exp) {
                    /* atoms, lists and string can match a string variable. */
-                   if(strcmp(current_var->type,"integer")) is_string = true;         
+                   if(!strcmp(current_var->type,"string")) {
+	              is_string = true;    
+		      string_var_count++;
+                   }		      
 	         }	   
 
  	         /* Found the variable in the rule with the appropriate name.
@@ -1300,24 +1367,25 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
               }
 	      var_list = var_list->next;
 	   }
-
-           if(!in_rule) fprintf(stderr, "Error: Variable %s in expression but "
-                         "not declared.\n", atom_exp->value.name);
+             
+           if(!in_rule) fprintf(stderr, "Error (%s.%s): Variable %s in "
+                                "expression but not declared.\n", scope, 
+                                rule_name, atom_exp->value.name);
 	   /* No need to report other errors if the variable is not present. */
            else {
               if(location == 'r' && !in_lhs)
-                 fprintf(stderr,"Error: Variable %s in RHS but not in LHS.\n",
-                         atom_exp->value.name);
+                 fprintf(stderr,"Error (%s.%s): Variable %s in RHS but not in "
+                         "LHS.\n", scope, rule_name, atom_exp->value.name);
 
               if(int_exp && !is_int)
-                 fprintf(stderr,"Error: Variable %s occurs in an integer "
-                         "expression but declared as a string.\n",
-                         atom_exp->value.name);
+                 fprintf(stderr,"Error(%s.%s): Variable %s occurs in an "
+                         "integer expression but declared as a string.\n",
+                         scope, rule_name, atom_exp->value.name);
 
               if(string_exp && !is_string)
-                 fprintf(stderr,"Error: Variable %s occurs in a string "
-                         "expression but declared as an integer.\n",
-                         atom_exp->value.name);
+                 fprintf(stderr,"Error(%s.%s): Variable %s occurs in a "
+                         "string expression but declared as an integer.\n",
+                         scope, rule_name, atom_exp->value.name);
 	   }
 
            break;
@@ -1328,8 +1396,9 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
       case OUTDEGREE:
 
       {
-           if(string_exp) fprintf(stderr,"Error: Degree operator appears "
-                                  "in string expression.\n");
+           if(string_exp) fprintf(stderr,"Error (%s.%s): Degree operator "
+                                  "appears in string expression.\n", scope, 
+                                  rule_name);
 
            bool in_lhs = false;
 
@@ -1351,17 +1420,18 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
               node_list = node_list->next;
            }
 
-           if(!in_lhs) fprintf(stderr,"Error: Node %s in degree operator "
-                               "not in LHS of %s.\n", atom_exp->value.node_id,
-                               rule_name);
+           if(!in_lhs) fprintf(stderr,"Error (%s.%s): Node %s in degree "
+                               "operator is not in the LHS.\n", scope, 
+                               rule_name,atom_exp->value.node_id);
            break;
          
        }
 
        case LIST_LENGTH: 
 
-            if(string_exp) fprintf(stderr,"Error: Length operator appears "
-                                   "in string expression.\n");
+            if(string_exp) fprintf(stderr,"Error (%s.%s): Length operator "
+                                   "appears in string expression.\n", scope, 
+                                   rule_name);
 
             gp_list_scan(&(atom_exp->value.list_arg), table, scope, rule_name,
                          location);
@@ -1370,25 +1440,24 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
        case STRING_LENGTH:
 
-       {
-            if(string_exp) fprintf(stderr,"Error: Length operator appears "
-                                   "in string expression.\n");
+            if(string_exp) fprintf(stderr,"Error (%s.%s): Length operator "
+                                   "appears in string expression.\n", scope,
+				   rule_name);
 
 	    atomic_exp_scan(atom_exp->value.str_arg, table, scope, rule_name, 
 			    location, false, true);
 		    
             break;
-       }         
-            
 
        case NEG:
 
-            if(string_exp) fprintf(stderr,"Error: Arithmetic operator appears "
-                                   "in string expression.\n");
+            if(string_exp) fprintf(stderr,"Error (%s.%s): Arithmetic operator "
+                                   "appears in string expression.\n", scope, 
+				   rule_name);
 
             if(location == 'l')
-              fprintf(stderr,"Error: Arithmetic expressions forbidden in "
-                      "left-hand side labels, rule, procedure.\n");
+              fprintf(stderr,"Error (%s.%s): Arithmetic expression appears "
+                      "in LHS label.\n", scope, rule_name);
 
             atomic_exp_scan(atom_exp->value.exp, table, scope, rule_name,
                             location, true, false);
@@ -1397,12 +1466,13 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
        case ADD:
 
-            if(string_exp) fprintf(stderr,"Error: Arithmetic operator appears "
-                                   "in string expression.\n");
+            if(string_exp) fprintf(stderr,"Error (%s.%s): Arithmetic operator "
+                                   "appears in string expression.\n", scope, 
+				   rule_name);
 
             if(location == 'l') 
-              fprintf(stderr,"Error: Arithmetic expressions forbidden in "
-                      "left-hand side labels, rule, procedure.\n");
+              fprintf(stderr,"Error (%s.%s): Arithmetic expression appears "
+                      "in LHS label.\n", scope, rule_name);
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
                             rule_name, location, true, false);
@@ -1413,12 +1483,13 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
        case SUBTRACT:
 
-            if(string_exp) fprintf(stderr,"Error: Arithmetic operator appears "
-                                   "in string expression.\n");
+            if(string_exp) fprintf(stderr,"Error (%s.%s): Arithmetic operator "
+                                   "appears in string expression.\n", scope, 
+				   rule_name);
 
             if(location == 'l') 
-              fprintf(stderr,"Error: Arithmetic expressions forbidden in "
-                      "left-hand side labels, rule, procedure.\n");
+              fprintf(stderr,"Error (%s.%s): Arithmetic expression appears "
+                      "in LHS label.\n", scope, rule_name);
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
                               rule_name, location, true, false);
@@ -1429,12 +1500,13 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
        case MULTIPLY:
 
-            if(string_exp) fprintf(stderr,"Error: Arithmetic operator appears "
-                                   "in string expression.\n");
+            if(string_exp) fprintf(stderr,"Error (%s.%s): Arithmetic operator "
+                                   "appears in string expression.\n", scope, 
+				   rule_name);
 
             if(location == 'l') 
-              fprintf(stderr,"Error: Arithmetic expressions forbidden in "
-                      "left-hand side labels, rule, procedure.\n");
+              fprintf(stderr,"Error (%s.%s): Arithmetic expression appears "
+                      "in LHS label.\n", scope, rule_name);
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
                               rule_name, location, true, false);
@@ -1445,12 +1517,13 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 
        case DIVIDE:
 
-            if(string_exp) fprintf(stderr,"Error: Arithmetic operator appears "
-                                   "in string expression.\n");
+            if(string_exp) fprintf(stderr,"Error (%s.%s): Arithmetic operator "
+                                   "appears in string expression.\n", scope, 
+				   rule_name);
 
             if(location == 'l') 
-              fprintf(stderr,"Error: Arithmetic expressions forbidden in "
-                      "left-hand side labels, rule, procedure.\n");
+              fprintf(stderr,"Error (%s.%s): Arithmetic expression appears "
+                      "in LHS label.\n", scope, rule_name);
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
                               rule_name, location, true, false);
@@ -1459,19 +1532,28 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
             break;
 
 
-       case CONCAT:
+       case CONCAT:     
 
-            if(int_exp) fprintf(stderr,"Error: String operator appears in "
-                                "integer expression.\n");
+            if(int_exp) fprintf(stderr,"Error (%s.%s): String operator appears "
+                                "in integer expression.\n", scope, rule_name);
 
             atomic_exp_scan(atom_exp->value.bin_op.left_exp, table, scope,
                             rule_name, location, false, true);
             atomic_exp_scan(atom_exp->value.bin_op.right_exp, table, scope,
                             rule_name, location, false, true); 
+
+	    if(string_var_count > 1) {
+	       fprintf(stderr,"Error (%s.%s): More than one string variable "
+		       "in LHS string expression.\n", scope, rule_name);
+	       string_var_count = 0;
+            }
+
             break;
 
-       default: fprintf(stderr,"Error: Unexpected atomic expression type %d\n",
-		        (int)atom_exp->exp_type);
+
+       default: fprintf(log_file,"Error: Unexpected atomic expression type %d "
+		        "at AST node %d.\n", atom_exp->exp_type,
+		         atom_exp->node_id);
                 
        }
 

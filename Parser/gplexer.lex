@@ -12,23 +12,30 @@
 
 %option noyywrap nodefault yylineno
 
-/* yywrap is an old flex library routine to manage multiple input files. This is done manually here.
-   nodefault removes default action if the input rules don't cover all possible input.
-   yylineno is a flex-maintained integer variable storing the current line number of input. */
-
-
+/* yywrap is an old flex library routine to manage multiple input files. 
+ * This is done manually here.
+ * nodefault removes default action if the input rules don't cover all 
+ * possible input.
+ * yylineno is a flex-maintained integer variable storing the current line 
+ * number of input. 
+ */
 
 %{
 
-#include <string.h> /* strdup */
-#include "ast.h"
 #include "gpparser.tab.h" /* Token definitions */
-
+#include <string.h> /* strdup */
 
 int yycolumn = 1;
 
-/* macro YY_USER_ACTION invoked for each token recognised by yylex before calling action
-   code. Here it is defined to track line and column numbers for bison locations. */
+extern int abort_scan; /* Defined in main.c */
+extern FILE *log_file; /* Defined in main.c */
+typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
+
+/* The macro YY_USER_ACTION is invoked for each token recognised by yylex
+ * before calling action code. Here it is defined to track line and column
+ * numbers for bison locations. yylloc is a variable of type struct YYLTYPE,
+ * a type used by Bison and defined in ast.h. 
+ */
 
 #define YY_USER_ACTION  \
    yylloc.first_line = yylloc.last_line = yylineno; \
@@ -49,18 +56,41 @@ int yycolumn = 1;
 <IN_COMMENT>"*/"      		 BEGIN(INITIAL);
 <IN_COMMENT>([^*\n])+|.  	 /* ignore all characters except '*' */
 <IN_COMMENT>(\n)	  	 { yycolumn = 1; } /* reset yycolumn on newline */
-<IN_COMMENT><<EOF>>  		 { printf("%s:%d: Unterminated comment\n",
-                                    file_name, yylineno); return 0; }
+<IN_COMMENT><<EOF>>  		 { fprintf(stderr,"Error: Unterminated comment.\n");
+			           fprintf(log_file,"Line %d: Unterminated "
+          				   "comment.\n", yylineno); }
 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
 <IN_STRING>[a-zA-Z0-9_-]*   	 { yylval.str = strdup(yytext); return STR; }
-<IN_STRING>[^\"a-zA-Z0-9_-] 	 { printf("%s:%d: Invalid character in string: %c\n",
-                                    file_name, yylineno, yytext[0]); return 0; }
-<IN_STRING><<EOF>>   		 { printf("%s:%d: Unterminated string\n", 
-                                    file_name, yylineno); return 0; }     
+<IN_STRING>[^\"a-zA-Z0-9_-]      { fprintf(stderr,"Error: Invalid character in "
+                                           "string: '%c'\n", yytext[0]); 
+			           fprintf(log_file,"%d.%d-%d.%d: Invalid "
+          				"character '%c'.\n", yylloc.first_line,
+				        yylloc.first_column, yylloc.last_line,
+					yylloc.last_column, yytext[0]);	}
+<IN_STRING><<EOF>>   		 { fprintf(stderr,"Error: Unterminated string."
+                                           "\n");
+			           fprintf(log_file,"Line %d: Unterminated "
+          				   "string.\n", yylineno); }   
+  
+ /* This rule catches an invalid identifier: a sequence of digits followed
+  * by one valid non-numeric identifier character followed by any valid 
+  * identifier character. In this case, token ID is returned to continue
+  * the parse and potentially catch more invalid identifiers. abort_scan is 
+  * also set to prevent semantic checking from starting. 
+  */
 
-[0-9]+             { yylval.num = atoi(yytext); return NUM; } 
+[0-9]+[a-zA-Z_-][a-zA-Z0-9_-]*  { fprintf(stderr,"Error (%s): Identifiers must "
+     			              	"start with a letter.\n", yytext); 
+		                  fprintf(log_file, "%d.%d-%d.%d: Invalid "
+				        "identifier %s.\n",
+			                yylloc.first_line, yylloc.first_column,
+			                yylloc.last_line, yylloc.last_column,
+					yytext);
+				  abort_scan = 1;
+				  return ID; }
+[0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
  /* GP2 keywords */ 
 
@@ -138,7 +168,7 @@ list		    return LIST;
 [a-z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return ID; }
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1; }  /* reset yycolumn on newline */
-.                     printf("%s:%d: Invalid symbol '%s'\n", file_name, yylineno, yytext);
+.                     printf("Error: Invalid symbol '%c'\n", yytext[0]);
 
 %%
 

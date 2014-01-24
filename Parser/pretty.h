@@ -6,13 +6,15 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#include <glib.h> /* GHashTable, gpointer */
+#ifndef INC_PRETTY_H
+#define INC_PRETTY_H
+
 #include "ast.h" /* AST structure declarations */
+#include <glib.h> /* GHashTable, gpointer */
 
 void print_symbol(gpointer key, gpointer value, gpointer user_data);
 void print_symbol_table(GHashTable *table);
 int print_dot_ast(List *const gp_ast, char* file_name);
-void print_location(YYLTYPE const loc);
 void print_list(List * const list);
 void print_declaration(GPDeclaration * const decl);
 void print_statement(GPStatement * const stmt);
@@ -25,3 +27,5 @@ void print_node(GPNode * const node);
 void print_edge(GPEdge * const edge);
 void print_label(GPLabel * const label);
 void print_position(GPPos * const pos);
+
+#endif /* INC_PRETTY_H */

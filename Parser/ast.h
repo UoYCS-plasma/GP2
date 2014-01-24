@@ -11,10 +11,14 @@
 //////////////////////////////////////////////////////////////////////////// */
 
 
-/* Bison uses a global variable yylloc of type YYLTYPE to keep track of the locations of 
- * tokens and nonterminals. The scanner will set these values upon reading each token. 
- * This is the standard YYLTYPE definition but I define it here so it is seen by every file.
+/* Bison uses a global variable yylloc of type YYLTYPE to keep track of the 
+ * locations of tokens and nonterminals. The scanner will set these values upon
+ * reading each token. This is the standard YYLTYPE definition but I define it
+ * here so it is seen by every file.
  */
+
+#ifndef INC_AST_H
+#define INC_AST_H 
 
 #include <stdio.h> /* FILE type */
 #include <stdbool.h>
@@ -29,6 +33,7 @@ typedef struct YYLTYPE {
 # define YYLTYPE_IS_DECLARED 1 /* tells the parser that YYLTYPE is defined here */
 
 extern FILE *yyin; /* Created by Bison. */
+extern FILE *log_file; /* Created in main.c */
 
 
 /* Declarations for functions and variables defined in gplexer.l */
@@ -37,18 +42,13 @@ extern char *yytext;
 
 
 /* Declarations for functions and variables defined in gpparser.y */
-int yyerror(char *s);
+int yyerror(const char *error_message);
+int report_error(const char *error_message);
 int yyparse(void);
-void print_error(YYLTYPE loc, char *errormsg, ...);
 extern struct List *gp_program; 
-extern char *file_name; 
-extern bool is_injective;
-extern bool is_root;
 extern int yydebug;
 
-struct List *reverse (struct List * listHead); /* defined in ast.c */
-
-/* enum used by the lexer for mark keywords */
+/* enum used by the parser for mark keywords */
 
 typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
 
@@ -352,5 +352,5 @@ typedef struct GPLabel {
 
 GPLabel *newLabel (YYLTYPE location, mark_t mark, struct List *gp_list);
 
-
+#endif /* INC_AST_H */
 

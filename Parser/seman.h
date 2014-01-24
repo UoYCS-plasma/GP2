@@ -10,7 +10,11 @@
 
 //////////////////////////////////////////////////////////////////////////// */
 
-#include <glib.h> /* hashtable and linked list functions */
+#ifndef INC_SEMAN_H
+#define INC_SEMAN_H
+
+#include "ast.h" /* struct List */
+#include <glib.h> /* hashtable */
 #include <stdbool.h>
 
 extern GHashTable *gp_symbol_table;
@@ -25,6 +29,8 @@ typedef struct Symbol {
   bool in_lhs; /* set to true if a variable matching the symbol is found
                 * in the LHS of a rule */
 } Symbol;
+
+struct List *reverse (struct List * listHead); /* defined in seman.c */
 
 int declaration_scan(const List *ast, GHashTable *table, char *scope);
 int semantic_check(List *declarations, GHashTable *table, char *scope);
@@ -45,3 +51,5 @@ void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
 void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
                     char *rule_name, char location, bool int_check,
 		    bool string_check);
+
+#endif /* INC_SEMAN_H */

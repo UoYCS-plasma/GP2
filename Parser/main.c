@@ -18,13 +18,22 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
-#include <stdio.h>  /* printf, fprintf, fopen */
-#include <string.h> /* strcmp */
+#include "ast.h" /* struct List */
 #include "pretty.h" /* pretty printer function declarations */
 #include "seman.h" /* semantic analysis functions */
+#include <stdio.h>  /* printf, fprintf, fopen */
+#include <string.h> /* strcmp */
+
 #define DRAW_ORIGINAL_TREE /* print_dot_ast before semantic_check */
 #define DRAW_FINAL_TREE /* print_dot_ast after semantic_check */
 #define DRAW_TABLE
+
+FILE *log_file;
+char *file_name = NULL; 
+int abort_scan = 0;
+
+/* The parser points this to the root of the AST. */
+struct List *gp_program = NULL; 
 
 int main(int argc, char** argv) {
 
@@ -44,14 +53,25 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if(!(yyin = fopen(argv[1], "r"))) {  /* The lexer reads from yyin. */
+  /* FILE *yyin is created by Bison, and points to the file to be read
+   * by the lexer.
+   */
+
+  if(!(yyin = fopen(argv[1], "r"))) {  
      perror(argv[1]);
      yylineno = 1;	
      return 1;
   }
 
-  file_name = argv[1];
-  printf("Processing %s...\n\n", file_name);
+  /* Open the file gp.log for writing. */
+
+  if(!(log_file = fopen("gp.log", "w"))) { 
+     perror(argv[1]);
+     return 1;
+  }
+
+  char *file_name = argv[1];
+  printf("\nProcessing %s...\n\n", file_name);
 
   if(!yyparse()) {
     printf("GP2 parse succeeded\n\n");
@@ -73,14 +93,18 @@ int main(int argc, char** argv) {
     /* declaration_scan returns 1 if there is a name clash among the 
      * rule and procedure declarations.
      */
-    int abort_scan = declaration_scan(gp_program, gp_symbol_table, "Global");
-                     /* seman.c */
-    #ifdef DRAW_ORIGINAL_TREE
-       print_dot_ast(gp_program, file_name); /* pretty.c */ 
-    #endif
 
-    if(abort_scan) fprintf(stderr,"Build aborted. Please fix declaration clashes.\n");
-    else {
+    /* The lexer and parser can set the abort_scan flag */
+
+    if(!abort_scan) {
+      abort_scan = declaration_scan(gp_program, gp_symbol_table, "Global");
+                     /* seman.c */
+      #ifdef DRAW_ORIGINAL_TREE
+         print_dot_ast(gp_program, file_name); /* pretty.c */ 
+      #endif
+    }
+
+    if(!abort_scan) {
        semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
        #ifdef DRAW_FINAL_TREE
           /* create the string <file_name>_F as an argument to print_dot_ast */
@@ -90,16 +114,18 @@ int main(int argc, char** argv) {
           strcat(alt_name,"_F"); 
           print_dot_ast(gp_program, alt_name); /* pretty.c */ 
        #endif
-    }  
+     
 
     #ifdef DRAW_TABLE
        print_symbol_table(gp_symbol_table); /* pretty.c */
     #endif
+    }
 
   }
-  else fprintf(stderr,"GP2 parse failed.\n");
+  else fprintf(stderr,"GP2 parse failed.\n\n");
  
   fclose(yyin);  
+  fclose(log_file);
 
   return 0;
 }
