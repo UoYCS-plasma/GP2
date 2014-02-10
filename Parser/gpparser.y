@@ -147,11 +147,17 @@ extern int abort_scan; /* Defined in main.c */
   * structure (procedure, rule, node, edge), whose locations are the location
   * of the structure's name in the text file.
   *
-  * A few locations are assigned explicitly, but most are 
-  * specified with Bison's location tokens (@N), which point to the location
-  * structure of the Nth RHS symbol of rule. The special token @$ is
-  * the location whose first (last) character is the first (last) character of
-  * the first (last) RHS symbol.
+  * A few locations are assigned explicitly, but most are specified with 
+  * Bison's location tokens (@N), which point to the location structure of the
+  * Nth RHS symbol of rule. The special token @$ is the location whose 
+  * first (last) character is the first (last) character of the first (last)
+  * RHS symbol.
+  *
+  * Identifiers (symbols ProcID, RuleID, NodeID, EdgeID and Variable) and
+  * string constant (token STR) are assigned to yylval with strdup. Hence
+  * the action code of any rules with these symbols on the RHS must free
+  * the appropriate semantic value after the call to the constructor, otherwise
+  * the pointer will be lost when yylval is updated.
   */
 
  /* Grammar for GP2 Program Text. */
@@ -176,10 +182,17 @@ Declaration: MainDecl 			{ $$ = newMainDecl(@$, $1); }
 MainDecl: MAIN '=' ComSeq 		{ $$ = newCommandSequence(@1, $3); }
 
 ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(@1, $1, NULL, 
-                                               newCommandSequence(@3 ,$3)); }
+                                               newCommandSequence(@3 ,$3));
+					  free($1); }
         | ProcID '=' '[' LocalDecls ']' ComSeq 
 					{ $$ = newProcedure(@1, $1, $4, 
-                                               newCommandSequence(@6, $6)); }
+                                               newCommandSequence(@6, $6));
+				          free($1); }
+        /* Error-catching production */
+	| RuleID '=' '[' LocalDecls ']' ComSeq
+				        { report_error("Procedure names must "
+ 					   "start with an upper-case letter."); 
+					  free($1); }
 
 LocalDecls: /* empty */			{ $$ = NULL; }
         | LocalDecls RuleDecl           { $$ = addDecl(LOCAL_DECLARATIONS, @2, 
@@ -225,36 +238,53 @@ Block: '(' ComSeq ')' 	                { $$ = newCommandSequence(@$,$2); }
      | FAIL				{ $$ = newFail(@$); }
 
 SimpleCommand: RuleSetCall 	        { $$ = newRuleSetCall(@$, $1); }
-             | RuleID                   { $$ = newRuleCall(@$, $1); }
-	     | ProcID	 		{ $$ = newProcCall(@$, $1); }
+             | RuleID                   { $$ = newRuleCall(@$, $1); free($1); }
+	     | ProcID	 		{ $$ = newProcCall(@$, $1); free($1); }
 
 RuleSetCall: '{' IDList '}'		{ $$ = $2; }
            /* If an error is found in an rule set call, continue parsing after
             * the rule set. */
            | '{' error '}' 		{ $$ = NULL; }
 
-IDList: RuleID				{ $$ = addRule(@1, $1, NULL); }
-      | IDList ',' RuleID 		{ $$ = addRule(@3, $3, $1); } 
-      /* Error-catching production */
+IDList: RuleID				{ $$ = addRule(@1, $1, NULL);
+					  free($1); }
+      | IDList ',' RuleID 		{ $$ = addRule(@3, $3, $1); 
+					  free($1);} 
+      /* Error-catching productions */
+      | ProcID	 			{ report_error("Procedure name used in "
+					   "a rule set. Rule names must start "
+					   "with a lower-case letter.");
+				          free($1); }
       | IDList ';' RuleID		{ report_error("Semicolon used in a "
 					   "rule set. Perhaps you meant to "
-					   "use a comma?"); }
+					   "use a comma?"); 
+					  free($1); }
 
 
  /* Grammar for GP2 Rule Definitions. */
 
 RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl INJECTIVE 
           '=' Bool			{ $$ = newRule(@1, is_injective,
- 					       $1, $3, $5, $7, $8, $9); }
+ 					       $1, $3, $5, $7, $8, $9); 
+					  free($1); }
+        | RuleID '(' ')' Graph ARROW Graph Inter CondDecl INJECTIVE '=' Bool	 
+      					{ $$ = newRule(@1, is_injective,
+ 					       $1, NULL, $4, $6, $7, $8); 
+					  free($1); }
+        /* Error-catching productions */
+	| ProcID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl INJECTIVE 
+          '=' Bool		        { report_error("Rule names must "
+ 					   "start with a lower-case letter."
+				 	   "letter.");
+					  free($1); }
 	/* This production catches a potentially likely syntax error in which
          * the user terminates the variable declaration list with a semicolon.
          */
         | RuleID '(' VarDecls ';' ')' Graph ARROW Graph Inter CondDecl INJECTIVE 
           '=' Bool			{ report_error("Semicolon at the end "
-					    "of a rule's variable list"); }	
-        | RuleID '(' ')' Graph ARROW Graph Inter CondDecl INJECTIVE '=' Bool	 
-      					{ $$ = newRule(@1, is_injective,
- 					       $1, NULL, $4, $6, $7, $8); }
+					    "of a rule's variable list");
+					  free($1); }	
+
 
 VarDecls: VarList ':' Type		{ $$ = addVariableDecl($3, @$, $1, NULL); }  
 	/* The location of VarDecls on the LHS is manually set to the location
@@ -267,8 +297,10 @@ VarDecls: VarList ':' Type		{ $$ = addVariableDecl($3, @$, $1, NULL); }
 				          @$.last_column = @5.last_column;
 					  $$ = addVariableDecl($5, @$, $3, $1); }
 
-VarList: Variable 			{ $$ = addVariable(@1, $1, NULL); }
-       | VarList ',' Variable          	{ $$ = addVariable(@3, $3, $1); }
+VarList: Variable 			{ $$ = addVariable(@1, $1, NULL); 
+					  free($1); }
+       | VarList ',' Variable          	{ $$ = addVariable(@3, $3, $1); 
+		 	                  free($3); }
 
 Inter: INTERFACE '=' '{' '}'   		{ $$ = NULL; }
      | INTERFACE '=' '{' NodeIDList '}' { $$ = $4; }
@@ -276,8 +308,10 @@ Inter: INTERFACE '=' '{' '}'   		{ $$ = NULL; }
       * interface list. */
      | '{' error '}'			{ $$ = NULL; }
 
-NodeIDList: NodeID			{ $$ = addNodeID(@1, $1, NULL); }
-          | NodeIDList ',' NodeID 	{ $$ = addNodeID(@3, $3, $1);   }
+NodeIDList: NodeID			{ $$ = addNodeID(@1, $1, NULL); 
+					  free($1); }
+          | NodeIDList ',' NodeID 	{ $$ = addNodeID(@3, $3, $1);
+					  free($3); }
 
 Bool: TRUE 				{ is_injective = true; }
     | FALSE				{ is_injective = false; }
@@ -300,13 +334,15 @@ NodeList: Node				{ $$ = addNode(@1, $1, NULL); }
 
 Node: '(' NodeID RootNode ',' Label ',' Position ')'
     					{ $$ = newNode(@2, is_root, $2, $5, $7); 
- 					  is_root = false; } 
+ 					  is_root = false; 	
+					  free($2); } 
 
 EdgeList: Edge				{ $$ = addEdge(@1, $1, NULL); }
         | EdgeList ',' Edge		{ $$ = addEdge(@3, $3, $1); }
 
 Edge: '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
-					{ $$ = newEdge(@2, $2, $4, $6, $8); }
+					{ $$ = newEdge(@2, $2, $4, $6, $8);
+					  free($2); free($4); free($6); }
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
@@ -319,9 +355,11 @@ Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(@$, $2, $4); }
 CondDecl: /* empty */                   { $$ = NULL; }
         | WHERE Condition		{ $$ = $2; }
 
-Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, @$, $3); }
+Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, @$, $3); 
+					  free($3); }
          | EDGETEST '(' NodeID ',' NodeID LabelArg ')' 
-					{ $$ = newEdgePred(@$, $3, $5, $6); }
+					{ $$ = newEdgePred(@$, $3, $5, $6); 
+					  free($3); free($5); }
 	 | List '=' List		{ $$ = newListComparison(EQUAL, @$, $1, $3); }
 	 | List NEQ List		{ $$ = newListComparison(NOT_EQUAL, @$, $1, $3); }
 	 | AtomExp '>' AtomExp          { $$ = newAtomComparison(GREATER, @$, $1, $3); }    
@@ -354,11 +392,13 @@ List: AtomExp				{ $$ = addAtom(@1, $1, NULL); }
     | error '#' 			{ $$ = NULL; }
 
 AtomExp: EMPTY				{ $$ = newEmpty(@$); }
-       | Variable			{ $$ = newVariable(@$, $1); }
+       | Variable			{ $$ = newVariable(@$, $1); free($1); }
        | NUM 				{ $$ = newNumber(@$, $1); }
-       | STR 				{ $$ = newString(@$, $1); }
-       | INDEG '(' NodeID ')' 		{ $$ = newDegreeOp(INDEGREE, @$, $3); }
-       | OUTDEG '(' NodeID ')' 		{ $$ = newDegreeOp(OUTDEGREE, @$, $3); }
+       | STR 				{ $$ = newString(@$, $1); free($1); }
+       | INDEG '(' NodeID ')' 		{ $$ = newDegreeOp(INDEGREE, @$, $3); 
+					  free($3); }
+       | OUTDEG '(' NodeID ')' 		{ $$ = newDegreeOp(OUTDEGREE, @$, $3); 
+				 	  free($3); }
        | LLEN '(' List ')' 		{ $$ = newListLength(@$, $3); }
        | SLEN '(' AtomExp ')' 		{ $$ = newStringLength(@$, $3); }
        | '-' AtomExp %prec UMINUS 	{ $$ = newNegExp(@$, $2); } 

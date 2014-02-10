@@ -229,7 +229,6 @@ typedef struct GPAtomicExp {
     struct List *list_arg; 	 /* LIST_LENGTH */
     struct GPAtomicExp *str_arg; /* STRING_LENGTH */
     struct GPAtomicExp *exp; 	 /* NEG */
-
     struct { 
       struct GPAtomicExp *left_exp;
       struct GPAtomicExp *right_exp;
@@ -351,6 +350,20 @@ typedef struct GPLabel {
 } GPLabel;
 
 GPLabel *newLabel (YYLTYPE location, mark_t mark, struct List *gp_list);
+
+/* Prototypes for deallocation functions */
+
+void free_ast(List *ast);
+void free_declaration(GPDeclaration *decl);
+void free_statement(GPStatement *stmt);
+void free_condition(GPCondExp *cond);
+void free_atomic_exp(GPAtomicExp *atom);
+void free_procedure(GPProcedure *proc);
+void free_rule(GPRule *rule);
+void free_graph(GPGraph *graph);
+void free_node(GPNode *node);
+void free_edge(GPEdge *edge);
+void free_label(GPLabel *label);
 
 #endif /* INC_AST_H */
 

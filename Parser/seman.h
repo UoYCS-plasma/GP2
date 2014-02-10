@@ -17,21 +17,21 @@
 #include <glib.h> /* hashtable */
 #include <stdbool.h>
 
-extern GHashTable *gp_symbol_table;
+extern GHashTable *gp_symbol_table; /* Defined in main.c */
 
 typedef struct Symbol {
   char *type; /* rule, procedure, int, string, atom, list, left_node, left_edge,
 	       * right_node, right_edge */
-  char *scope; /* the procedure in which the symbol is visible. 
+  char *scope; /* The procedure in which the symbol is visible. 
 		* "Global" scope is seen by all procedures. */   
   char *containing_rule; /* for variables, nodes and edges */
-  bool is_var; /* set to true whenever a variable symbol is created */
+  bool is_var; /* set to true if this symbol represents a GP variable. */
   bool in_lhs; /* set to true if a variable matching the symbol is found
                 * in the LHS of a rule */
 } Symbol;
 
-struct List *reverse (struct List * listHead); /* defined in seman.c */
-
+struct List *reverse (struct List * listHead); 
+void free_symbol_list(GSList *symbol_list);
 int declaration_scan(const List *ast, GHashTable *table, char *scope);
 int semantic_check(List *declarations, GHashTable *table, char *scope);
 void statement_scan(GPStatement *statement, GHashTable *table, char *scope);

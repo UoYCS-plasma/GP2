@@ -2,7 +2,8 @@
 
                                   ast.c              
                          
-                   Contains AST constructor definitions. 
+              Contains AST constructor definitions and functions to
+                                free the AST.
 
                      Created on 22/7/2013 by Chris Bak 
 
@@ -11,6 +12,17 @@
 #include "ast.h" /* AST struct definitions */
 #include <stdio.h> /* printf */
 #include <stdlib.h> /* malloc */
+#include <string.h> /* strdup */
+
+/* Most of the functions in this file create new AST nodes. They are called
+ * from the Bison parser (gpparser.y) which provides the appropriate arguments
+ * from the semantic values of rules it reduces. The functions just assign
+ * the pointers to the corresponding structure fields. 
+ *
+ * Strings, such as rule names and variable names, are dynamically allocated 
+ * with strdup. This is because the pointer passed to the function is freed in 
+ * gpparser.y immediately after the constructor call, hence a new allocation is 
+ * required to prevent a double free. 
 
 /* The constructor functions for AST nodes of type struct List. */
 
@@ -61,7 +73,7 @@ List *addRule (YYLTYPE location, char *rule_name, List *next)
 
     new_rule->list_type = RULES;
     new_rule->location = location;
-    new_rule->value.rule_name = rule_name;
+    new_rule->value.rule_name = strdup(rule_name);
     new_rule->next = next;
 
     return new_rule;
@@ -98,7 +110,7 @@ List *addVariable (YYLTYPE location, char *variable_name, List *next)
 
     new_var->list_type = VARIABLE_LIST;
     new_var->location = location;
-    new_var->value.variable_name = variable_name;
+    new_var->value.variable_name = strdup(variable_name);
     new_var->next = next;
 
     return new_var;
@@ -115,7 +127,7 @@ List *addNodeID (YYLTYPE location, char *node_id, List *next)
 
     new_pair->list_type = INTERFACE_LIST;
     new_pair->location = location;
-    new_pair->value.node_id = node_id;
+    new_pair->value.node_id = strdup(node_id);
     new_pair->next = next;
 
     return new_pair;
@@ -253,7 +265,7 @@ GPStatement *newRuleCall(YYLTYPE location, char *rule_name)
 
     stmt->statement_type = RULE_CALL;
     stmt->location = location;
-    stmt->value.rule_name = rule_name;
+    stmt->value.rule_name = strdup(rule_name);
 
     return stmt;
 }
@@ -285,7 +297,7 @@ GPStatement *newProcCall(YYLTYPE location, char *proc_name)
 
     stmt->statement_type = PROCEDURE_CALL;
     stmt->location = location;
-    stmt->value.proc_name = proc_name;
+    stmt->value.proc_name = strdup(proc_name);
 
     return stmt;
 }
@@ -389,7 +401,7 @@ GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var)
      cond->exp_type = exp_type; 
      /* exp_type: INT_CHECK, STRING_CHECK, ATOM_CHECK */
      cond->location = location;
-     cond->value.var = var;
+     cond->value.var = strdup(var);
 
      return cond;
 }
@@ -406,8 +418,8 @@ GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target,
 
      cond->exp_type = EDGE_PRED;
      cond->location = location;
-     cond->value.edge_pred.source = source;
-     cond->value.edge_pred.target = target;
+     cond->value.edge_pred.source = strdup(source);
+     cond->value.edge_pred.target = strdup(target);
      cond->value.edge_pred.label = label;
 
      return cond;
@@ -519,7 +531,7 @@ GPAtomicExp *newVariable (YYLTYPE location, char *name)
 
      atom->exp_type = VARIABLE;
      atom->location = location;
-     atom->value.name = name;
+     atom->value.name = strdup(name);
 
      return atom;
 }
@@ -552,7 +564,7 @@ GPAtomicExp *newString (YYLTYPE location, char *string)
 
      atom->exp_type = STRING_CONSTANT;
      atom->location = location;
-     atom->value.string = string;
+     atom->value.string = strdup(string);
 
      return atom;
 }
@@ -569,7 +581,7 @@ GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id)
      atom->exp_type = exp_type; 
      /* exp_type: INDEGREE, OUTDEGREE */
      atom->location = location;
-     atom->value.node_id = node_id;
+     atom->value.node_id = strdup(node_id);
 
      return atom;
 }
@@ -606,7 +618,7 @@ GPAtomicExp *newStringLength (YYLTYPE location, GPAtomicExp *str_arg)
      return atom;
 }
 
-GPAtomicExp *newNegExp (YYLTYPE location, struct GPAtomicExp *exp)
+GPAtomicExp *newNegExp (YYLTYPE location, GPAtomicExp *exp)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -654,14 +666,16 @@ GPProcedure *newProcedure(YYLTYPE location, char *name, List *local_decls, GPSta
 
     proc->node_type = PROCEDURE;
     proc->location = location;
-    proc->name = name;
+    proc->name = strdup(name);
     proc->local_decls = local_decls;
     proc->cmd_seq = cmd_seq;
 
     return proc;
 }
  
-GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables, GPGraph *lhs, GPGraph *rhs, List *interface, GPCondExp *condition)
+GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables,
+	        GPGraph *lhs, GPGraph *rhs, List *interface, 
+		GPCondExp *condition)
 {
     GPRule *rule = malloc(sizeof(GPRule));
     
@@ -673,7 +687,7 @@ GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables, G
     rule->node_type = RULE;
     rule->location = location;
     rule->injective = injective;
-    rule->name = name;
+    rule->name = strdup(name);
     rule->variables = variables;
     rule->lhs = lhs;
     rule->rhs = rhs;
@@ -715,7 +729,7 @@ GPNode *newNode (YYLTYPE location, bool root, char *name, GPLabel *label, GPPos 
     node->node_type = NODE;
     node->location = location;
     node->root = root;
-    node->name = name;
+    node->name = strdup(name);
     node->label = label;
     node->position = position;
 
@@ -733,9 +747,9 @@ GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target, GPLab
 
     edge->node_type = EDGE;
     edge->location = location;
-    edge->name = name;
-    edge->source = source;
-    edge->target = target;
+    edge->name = strdup(name);
+    edge->source = strdup(source);
+    edge->target = strdup(target);
     edge->label = label;
 
     return edge;
@@ -774,4 +788,411 @@ GPLabel *newLabel (YYLTYPE location, mark_t mark, List *gp_list)
 
     return label;
 }
+
+/* These functions perform a depth-first walk of the AST. They take a pointer
+ * to an AST node as their argument. They first free any malloc'd strings 
+ * (identifiers and string constants) if present, then they free any
+ * substructures, and finally they free themselves. 
+ */
+
+void free_ast(List *ast) 
+{
+   switch(ast->list_type) {
+
+	case GLOBAL_DECLARATIONS:
+
+        case LOCAL_DECLARATIONS:
+
+	     free_declaration(ast->value.declaration);
+
+	     break;	
+
+
+	case COMMANDS:
+
+             free_statement(ast->value.command);
+
+	     break;	
+
+
+	case RULES:
+
+             free(ast->value.rule_name);
+
+	     break;
+	
+
+	case INT_DECLARATIONS:
+              
+	case STRING_DECLARATIONS:
+
+	case ATOM_DECLARATIONS:
+
+	case LIST_DECLARATIONS:
+
+             free_ast(ast->value.variables);
+
+	     break;
+	
+
+	case VARIABLE_LIST:
+
+             free(ast->value.variable_name);
+
+	     break;
+	
+
+	case INTERFACE_LIST:
+
+             free(ast->value.node_id);
+
+	     break;
+	
+
+	case NODE_LIST:
+
+             free_node(ast->value.node);
+
+	     break;
+	
+
+	case EDGE_LIST:
+
+             free_edge(ast->value.edge);
+
+	     break;
+
+
+	case GP_LIST:
+
+             free_atomic_exp(ast->value.atom);
+
+	     break;
+	
+
+	default: fprintf(log_file,"Unexpected List Type: %d\n",
+                         (int)ast->list_type); 
+                 break;	 
+
+	}
+
+   if(ast->next != NULL) free_ast(ast->next);
+   free(ast);
+}
+
+void free_declaration(GPDeclaration *decl)
+{
+     switch(decl->decl_type) {
+
+	case MAIN_DECLARATION:
+
+             free_statement(decl->value.main_program);
+
+	     break;
+
+
+	case PROCEDURE_DECLARATION:
+
+             free_procedure(decl->value.procedure);
+
+	     break;
+
+
+	case RULE_DECLARATION:
+
+             free_rule(decl->value.rule);
+
+	     break;
+
+
+	default: fprintf(log_file,"Unexpected Declaration Type: %d\n",
+                         (int)decl->decl_type); 
+                 break;
+
+	}
+
+   free(decl);
+}
+
+void free_statement(GPStatement *stmt)
+{
+     switch(stmt->statement_type) {
+
+	case COMMAND_SEQUENCE:	
+
+             free_ast(stmt->value.cmd_seq);
+
+	     break;
+
+
+	case RULE_CALL:
+
+             free(stmt->value.rule_name);
+
+	     break;
+
+
+	case RULE_SET_CALL:
+
+             free_ast(stmt->value.rule_set);
+
+	     break;
+
+
+	case PROCEDURE_CALL:
+
+             free(stmt->value.proc_name);
+
+	     break;
+
+
+	case IF_STATEMENT:
+
+        case TRY_STATEMENT:
+
+             free_statement(stmt->value.cond_branch.condition);
+             free_statement(stmt->value.cond_branch.then_stmt);
+	     free_statement(stmt->value.cond_branch.else_stmt);
+
+	     break;
+
+
+	case ALAP_STATEMENT:
+
+	     free_statement(stmt->value.loop_stmt);
+             
+	     break;
+
+
+	case PROGRAM_OR:
+
+             free_statement(stmt->value.or_stmt.left_stmt);
+             free_statement(stmt->value.or_stmt.right_stmt);
+
+	     break;
+
+
+	case SKIP_STATEMENT:
+
+ 	case FAIL_STATEMENT:
+
+	     break;
+
+	
+	default: fprintf(log_file,"Unexpected Statement Type: %d\n",
+                         (int)stmt->statement_type); 
+                 break;
+
+	}
+
+   free(stmt);
+}
+
+void free_condition(GPCondExp *cond)
+{
+     switch(cond->exp_type) {
+
+	case INT_CHECK:
+
+	case STRING_CHECK:
+
+	case ATOM_CHECK:
+
+             free(cond->value.var);
+
+             break;
+
+
+	case EDGE_PRED:
+
+	     free(cond->value.edge_pred.source);
+	     free(cond->value.edge_pred.target);
+	     free_label(cond->value.edge_pred.label);
+                                         
+             break;
+
+
+	case EQUAL:
+
+	case NOT_EQUAL:
+
+             free_ast(cond->value.list_cmp.left_list);
+             free_ast(cond->value.list_cmp.right_list);
+
+	     break;
+	
+
+	case GREATER:
+
+	case GREATER_EQUAL:
+
+	case LESS:
+
+	case LESS_EQUAL:
+
+             free_atomic_exp(cond->value.atom_cmp.left_exp);
+             free_atomic_exp(cond->value.atom_cmp.right_exp);
+
+	     break;	  
+
+
+	case BOOL_NOT:
+
+	     free_condition(cond->value.not_exp);
+
+	     break;
+
+
+	case BOOL_OR:
+
+	case BOOL_AND:
+
+	     free_condition(cond->value.bin_exp.left_exp);
+	     free_condition(cond->value.bin_exp.right_exp);
+
+	     break;
+
+
+	default: fprintf(log_file,"Unexpected Condition Type: %d\n",
+                         (int)cond->exp_type); 
+                 break;
+
+	}
+   free(cond);
+}
+
+void free_atomic_exp(GPAtomicExp *atom)
+{
+     switch(atom->exp_type) {
+
+	case EMPTY_LIST:
+
+             break;
+
+
+	case VARIABLE:
+
+	     free(atom->value.name);
+
+             break;
+
+
+	case INT_CONSTANT:
+
+             break;
+
+          
+	case STRING_CONSTANT:
+
+	     free(atom->value.string);
+
+             break;
+
+
+	case INDEGREE:
+ 
+        case OUTDEGREE:
+
+	     free(atom->value.node_id);
+
+             break;
+
+
+	case LIST_LENGTH:
+
+	     free_ast(atom->value.list_arg);
+		
+             break;
+
+
+	case STRING_LENGTH:
+
+	     free_atomic_exp(atom->value.str_arg);
+
+             break;
+
+
+	case NEG:
+
+	     free_atomic_exp(atom->value.exp);
+
+             break;
+
+
+	case ADD:
+
+	case SUBTRACT:
+
+	case MULTIPLY:
+
+	case DIVIDE:
+
+	case CONCAT:
+
+	     free_atomic_exp(atom->value.bin_op.left_exp);
+	     free_atomic_exp(atom->value.bin_op.right_exp);
+
+             break;
+
+
+	default: fprintf(log_file,"Unexpected Atomic Expression Type: %d\n",
+                         (int)atom->exp_type); 
+                 break;
+
+	}
+
+   free(atom);
+}
+
+void free_procedure(GPProcedure *proc)
+{
+   free(proc->name);
+   free_ast(proc->local_decls);
+   free_statement(proc->cmd_seq);
+   free(proc);
+}
+
+void free_rule(GPRule *rule)
+{
+   free(rule->name);
+   free_ast(rule->variables);
+   free_graph(rule->lhs);  
+   free_graph(rule->rhs);
+   free_ast(rule->interface);
+   free_condition(rule->condition);
+   free(rule);
+}
+
+void free_graph(GPGraph *graph)
+{
+   free(graph->position);
+   free_ast(graph->nodes);
+   free_ast(graph->edges);
+   free(graph);
+}
+
+void free_node(GPNode *node)
+{
+   free(node->name);
+   free_label(node->label);
+   free(node->position);
+   free(node);
+}
+
+void free_edge(GPEdge *edge)
+{
+   free(edge->name);
+   free(edge->source);
+   free(edge->target);
+   free_label(edge->label);
+   free(edge);
+}
+
+void free_label(GPLabel *label)
+{
+   free_ast(label->gp_list);
+   free(label);
+}
+   
+
 

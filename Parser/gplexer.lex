@@ -58,7 +58,8 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t;
 <IN_COMMENT>(\n)	  	 { yycolumn = 1; } /* reset yycolumn on newline */
 <IN_COMMENT><<EOF>>  		 { fprintf(stderr,"Error: Unterminated comment.\n");
 			           fprintf(log_file,"Line %d: Unterminated "
-          				   "comment.\n", yylineno); }
+          				   "comment.\n", yylineno); 
+				   yy_delete_buffer(YY_CURRENT_BUFFER); }
 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
@@ -72,7 +73,8 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t;
 <IN_STRING><<EOF>>   		 { fprintf(stderr,"Error: Unterminated string."
                                            "\n");
 			           fprintf(log_file,"Line %d: Unterminated "
-          				   "string.\n", yylineno); }   
+          				   "string.\n", yylineno); 
+				   }   
   
  /* This rule catches an invalid identifier: a sequence of digits followed
   * by one valid non-numeric identifier character followed by any valid 
@@ -168,9 +170,9 @@ list		    return LIST;
 [a-z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return ID; }
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1; }  /* reset yycolumn on newline */
+<<EOF>>		      { yyterminate(); }
 .                     printf("Error: Invalid symbol '%c'\n", yytext[0]);
 
+
 %%
-
-
 

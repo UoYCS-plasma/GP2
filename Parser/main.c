@@ -22,6 +22,7 @@
 #include "pretty.h" /* pretty printer function declarations */
 #include "seman.h" /* semantic analysis functions */
 #include <stdio.h>  /* printf, fprintf, fopen */
+#include <stdlib.h> /* free */
 #include <string.h> /* strcmp */
 
 #define DRAW_ORIGINAL_TREE /* print_dot_ast before semantic_check */
@@ -53,8 +54,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  /* FILE *yyin is created by Bison, and points to the file to be read
-   * by the lexer.
+  /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
+   * pointed to the file to be read by the parser.
    */
 
   if(!(yyin = fopen(argv[1], "r"))) {  
@@ -79,20 +80,18 @@ int main(int argc, char** argv) {
     /* Reverse the global declaration list at the top of the generated AST. */
     gp_program = reverse(gp_program);
 
-    /* Create a new GHashTable with strings as keys. g_str_equal is a string
-     * hashing function provided by glib.
-     */   
+    /* Create a new GHashTable with strings as keys.
+     * g_str_hash is glib's default string hashing function.
+     * g_str_equal is glib's default function for comparing strings for hash
+     * lookups.
+     * free is the function called by glib to free keys during hash table
+     * insertions and in the g_hash_table_destroy function.
+     * free_symbol_list is defined in seman.c. This is called by glib to
+     * free hash table values during insertions and in the destroy function.
+     */
 
-    /* This should be created with g_hash_table_new_full to destroy
-     * symbol lists that are often replaced when appending values
-     * to lists. One alos needs to write a value destroy function
-     * and maybe a key destroy function.
-     */
-    gp_symbol_table = g_hash_table_new(g_str_hash, g_str_equal);
-    
-    /* declaration_scan returns 1 if there is a name clash among the 
-     * rule and procedure declarations.
-     */
+    gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free,
+					    (GDestroyNotify)free_symbol_list);    
 
     /* The lexer and parser can set the abort_scan flag */
 
@@ -103,6 +102,10 @@ int main(int argc, char** argv) {
          print_dot_ast(gp_program, file_name); /* pretty.c */ 
       #endif
     }
+
+    /* declaration_scan returns 1 if there is a name clash among the 
+     * rule and procedure declarations.
+     */
 
     if(!abort_scan) {
        semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
@@ -124,6 +127,13 @@ int main(int argc, char** argv) {
   }
   else fprintf(stderr,"GP2 parse failed.\n\n");
  
+  /* Garbage collection */
+  free_ast(gp_program); /* defined in ast.c */
+  /* g_hash_table_destroy uses free and free_symbol_list, passed to 
+   * g_hash_table_new_full, to free the dynamically allocated keys and values
+   * respectively.
+   */
+  g_hash_table_destroy(gp_symbol_table); 
   fclose(yyin);  
   fclose(log_file);
 
