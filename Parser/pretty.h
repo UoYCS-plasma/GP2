@@ -92,9 +92,10 @@
 #include "ast.h" /* AST structure declarations */
 #include <glib.h> /* GHashTable, gpointer */
 
+int print_symbol_table(GHashTable *table, char *file_name);
 void print_symbol(gpointer key, gpointer value, gpointer user_data);
-void print_symbol_table(GHashTable *table);
 int print_dot_ast(List *const gp_ast, char* file_name);
+int print_dot_host_graph(GPGraph *const host_graph_ast, char* file_name);
 void print_list(List * const list);
 void print_declaration(GPDeclaration * const decl);
 void print_statement(GPStatement * const stmt);

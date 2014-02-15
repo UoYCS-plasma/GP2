@@ -30,10 +30,11 @@ typedef struct Symbol {
                 * in the LHS of a rule */
 } Symbol;
 
-struct List *reverse (struct List * listHead); 
+struct List *reverse (struct List * listHead);
+void reverse_graph_ast (GPGraph *graph); 
 void free_symbol_list(GSList *symbol_list);
-int declaration_scan(const List *ast, GHashTable *table, char *scope);
-int semantic_check(List *declarations, GHashTable *table, char *scope);
+bool declaration_scan(const List *ast, GHashTable *table, char *scope);
+bool semantic_check(List *declarations, GHashTable *table, char *scope);
 void statement_scan(GPStatement *statement, GHashTable *table, char *scope);
 void validate_call(char *name, GHashTable *table, char *scope, 
                    char *call_type);

@@ -214,21 +214,21 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location,
 /* Definition of AST nodes representing integer or string expressions. */
 
 typedef enum {EMPTY_LIST=0, VARIABLE, INT_CONSTANT, STRING_CONSTANT, INDEGREE, 
-              OUTDEGREE, LIST_LENGTH, STRING_LENGTH, NEG, ADD, SUBTRACT, 
-              MULTIPLY, DIVIDE, CONCAT} atomexp_t;
+              OUTDEGREE, LIST_LENGTH, STRING_LENGTH, HEAD_OP, TAIL_OP, NEG, 
+              ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} atomexp_t;
 
 typedef struct GPAtomicExp {
   int node_id;
   atomexp_t exp_type;
   YYLTYPE location;
   union {
-    char *name;			 /* VARIABLE */
-    int number; 	 	 /* INT_CONSTANT */
-    char *string;		 /* STRING_CONSTANT */
-    char *node_id; 		 /* INDEGREE, OUTDEGREE */
-    struct List *list_arg; 	 /* LIST_LENGTH */
-    struct GPAtomicExp *str_arg; /* STRING_LENGTH */
-    struct GPAtomicExp *exp; 	 /* NEG */
+    char *name;			  /* VARIABLE */
+    int number; 	 	  /* INT_CONSTANT */
+    char *string;		  /* STRING_CONSTANT */
+    char *node_id; 		  /* INDEGREE, OUTDEGREE */
+    struct List *list_arg; 	  /* LIST_LENGTH */
+    struct GPAtomicExp *str_arg;  /* STRING_LENGTH, HEAD_OP, TAIL_OP */
+    struct GPAtomicExp *exp; 	  /* NEG */
     struct { 
       struct GPAtomicExp *left_exp;
       struct GPAtomicExp *right_exp;
@@ -242,7 +242,8 @@ GPAtomicExp *newNumber (YYLTYPE location, int number);
 GPAtomicExp *newString (YYLTYPE location, char *string);
 GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id);
 GPAtomicExp *newListLength (YYLTYPE location, struct List *list_arg);
-GPAtomicExp *newStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);
+GPAtomicExp *newStringOp (atomexp_t exp_type, YYLTYPE location, 
+              struct GPAtomicExp *str_arg);
 GPAtomicExp *newNegExp (YYLTYPE location, struct GPAtomicExp *exp);
 GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, 
 	      struct GPAtomicExp *left_exp, struct GPAtomicExp *right_exp);

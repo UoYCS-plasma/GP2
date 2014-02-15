@@ -22,8 +22,10 @@
   bool is_root = false;
   bool is_injective = false;
 
-extern List *gp_program; /* This will point to the root of the AST.
+extern List *gp_program; /* This will point to the root of the program AST.
 			  * Defined in main.c. */
+extern GPGraph *host_graph; /* This will point to the root of the host graph AST.
+			     * Defined in main.c */
 extern int abort_scan; /* Defined in main.c */
 
 
@@ -44,7 +46,7 @@ extern int abort_scan; /* Defined in main.c */
 
 %token MAIN IF TRY THEN ELSE SKIP FAIL                          
 %token WHERE EDGETEST TRUE FALSE 		               
-%token INDEG OUTDEG LLEN SLEN					
+%token INDEG OUTDEG LLEN SLEN HEAD TAIL					
 %token INT STRING ATOM LIST 	                               
 %token INTERFACE EMPTY INJECTIVE 	
 %token <mark> MARK			                        
@@ -53,7 +55,8 @@ extern int abort_scan; /* Defined in main.c */
 %token <num> NUM 
 %token <str> STR 
 %token <id> PROCID ID           				
-%token ROOT							
+%token ROOT	
+%token GP_PROGRAM GP_GRAPH						
 
 
 %left '+' '-' AND	/* lowest precedence level, left associative */
@@ -80,19 +83,20 @@ extern int abort_scan; /* Defined in main.c */
   int check_type; /* enum cond_exp_t */
 } 
 
-%type <list> GPProgram Program LocalDecls ComSeq RuleSetCall IDList VarDecls
-             VarList Inter NodeIDList NodeList EdgeList List
+%type <list> Program LocalDecls ComSeq RuleSetCall IDList VarDecls
+             VarList Inter NodeIDList NodeList CNodeList EdgeList CEdgeList
+	     List CList
 %type <decl> Declaration
 %type <stmt> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
 %type <rule> RuleDecl
-%type <graph> Graph
-%type <node> Node
-%type <edge> Edge
+%type <graph> Graph HostGraph
+%type <node> Node CNode
+%type <edge> Edge CEdge
 %type <pos> Position
 %type <cond_exp> CondDecl Condition 
-%type <label> LabelArg Label
-%type <atom_exp> AtomExp
+%type <label> LabelArg Label CLabel
+%type <atom_exp> AtomExp CExp
 %type <list_type> Type  
 %type <check_type> Subtype
 %type <id> NodeID EdgeID ProcID RuleID Variable
@@ -105,7 +109,7 @@ extern int abort_scan; /* Defined in main.c */
  /* This probably needs to be done for the AST structs as well */
 %error-verbose
 
-%start GPProgram 
+%start Initialise
 
 %%
 
@@ -160,9 +164,11 @@ extern int abort_scan; /* Defined in main.c */
   * the pointer will be lost when yylval is updated.
   */
 
- /* Grammar for GP2 Program Text. */
 
-GPProgram: Program			{ gp_program = $1; }
+Initialise: GP_PROGRAM Program		{ gp_program = $2; }
+          | GP_GRAPH HostGraph          { host_graph = $2; }
+
+ /* Grammar for GP2 Program Text. */
 
 Program: Declaration	      		{ $$ = addDecl(GLOBAL_DECLARATIONS, 
                                                @1, $1, NULL); }  
@@ -258,7 +264,7 @@ IDList: RuleID				{ $$ = addRule(@1, $1, NULL);
       | IDList ';' RuleID		{ report_error("Semicolon used in a "
 					   "rule set. Perhaps you meant to "
 					   "use a comma?"); 
-					  free($1); }
+					  free($3); }
 
 
  /* Grammar for GP2 Rule Definitions. */
@@ -400,7 +406,9 @@ AtomExp: EMPTY				{ $$ = newEmpty(@$); }
        | OUTDEG '(' NodeID ')' 		{ $$ = newDegreeOp(OUTDEGREE, @$, $3); 
 				 	  free($3); }
        | LLEN '(' List ')' 		{ $$ = newListLength(@$, $3); }
-       | SLEN '(' AtomExp ')' 		{ $$ = newStringLength(@$, $3); }
+       | SLEN '(' AtomExp ')' 		{ $$ = newStringOp(STRING_LENGTH, @$, $3); }
+       | HEAD '(' AtomExp ')'           { $$ = newStringOp(HEAD_OP, @$, $3); }
+       | TAIL '(' AtomExp ')' 		{ $$ = newStringOp(TAIL_OP, @$, $3); }
        | '-' AtomExp %prec UMINUS 	{ $$ = newNegExp(@$, $2); } 
        | '(' AtomExp ')' 		{ $$ = $2; }
        /* Ambiguity resolved by explicit precedences */
@@ -418,6 +426,49 @@ NodeID: ID				/* default $$ = $1 */
 EdgeID: ID				/* default $$ = $1 */ 
 Variable: ID		  		/* default $$ = $1 */ 
 
+/* Grammar for host graphs. This is identical in structure to the grammar for
+ * graphs in the main syntax, but host graphs come with a name and their labels
+ * must only contain constant values. The 'C' before various nonterminal 
+ * symbols stands for 'Constant'. The Position and RootNode rules from above
+ * are used.
+ */
+
+HostGraph: '[' Position '|' '|' ']'  	{ $$ = newGraph(@$, $2, NULL, NULL); }
+         | '[' Position '|' CNodeList '|' ']'  
+					{ $$ = newGraph(@$, $2, $4, NULL); }
+         | '[' Position '|' CNodeList '|' CEdgeList ']' 
+     					{ $$ = newGraph(@$, $2, $4, $6); }
+
+CNodeList: CNode			{ $$ = addNode(@1, $1, NULL); }
+         | CNodeList ',' CNode		{ $$ = addNode(@3, $3, $1); }
+
+CNode: '(' NodeID RootNode ',' CLabel ',' Position ')'
+    					{ $$ = newNode(@2, is_root, $2, $5, $7); 
+ 					  is_root = false; 	
+					  free($2); } 
+
+CEdgeList: CEdge			{ $$ = addEdge(@1, $1, NULL); }
+         | CEdgeList ',' CEdge	 	{ $$ = addEdge(@3, $3, $1); } 
+
+CEdge: '(' EdgeID ',' NodeID ',' NodeID ',' CLabel ')'
+					{ $$ = newEdge(@2, $2, $4, $6, $8);
+					  free($2); free($4); free($6); }
+
+CLabel: CList 				{ $$ = newLabel(@$, NONE, $1); }
+      | CList '#' MARK			{ $$ = newLabel(@$, $3, $1); } 
+
+CList: CExp				{ $$ = addAtom(@1, $1, NULL); } 
+     | CList ':' CExp			{ $$ = addAtom(@3, $3, $1); }
+     /* If an error occurs while processing a constant list, discard input text
+      * until the next ':' or '#'. The erroneous ConstExp is hence discarded 
+      * parsing may continue. */
+     | error ':' 			{ $$ = NULL; }	
+     | error '#' 			{ $$ = NULL; }
+
+CExp: EMPTY				{ $$ = newEmpty(@$); }
+    | NUM 				{ $$ = newNumber(@$, $1); }
+    | STR 				{ $$ = newString(@$, $1); free($1); }
+
 %%
 
 /* Bison calls yyerror whenever it encounters an error. It prints error
@@ -432,13 +483,13 @@ int yyerror(const char *error_message)
      fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n", 
              yylloc.first_line, yylloc.first_column, yylloc.last_line, 
              yylloc.last_column, yytext, error_message);
-     abort_scan = 1;
+     abort_scan = true;
    return 0;
 }
 
 /* gperror is identical to yyerror except that it doesn't refer to yytext.
  * This is called in the action code of error-catching Bison rules, where
- * the value of yytext can be misleading.
+ * the value of yytext may be misleading.
  */
 
 int report_error(const char *error_message)
@@ -448,7 +499,7 @@ int report_error(const char *error_message)
      fprintf(log_file, "%d.%d-%d.%d: Error: %s\n", 
              yylloc.first_line, yylloc.first_column, yylloc.last_line, 
              yylloc.last_column, error_message);
-     abort_scan = 1;
+     abort_scan = true;
    return 0;
 }
         

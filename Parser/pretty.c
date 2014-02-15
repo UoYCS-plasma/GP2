@@ -14,6 +14,41 @@
 #include <string.h> /* strlen, strcpy, strcat */
 #include <glib.h> /* GHashTable and GSList */ 
 
+/* print_symbol_table uses glib's hash table iterator to print the table.
+ * table is the hash table to print.
+ * print_symbol is the function called for each value (GSList) encountered.
+ * The third argument is passed to the print_symbol, but this is not needed here.
+ */
+
+static FILE *symbol_table_file;
+
+int print_symbol_table(GHashTable *table, char *file_name) 
+{
+   /* Assumes input file has no extension, but will be .gpp in the future. */
+
+   /* The length of the new file name is the length of the old file name
+    * plus 4 for ".dot" plus 1 for the terminating null character.  
+    */
+
+   int length = strlen(file_name) + 4; 
+   char symbol_table_file_name[length];
+   strcpy(symbol_table_file_name, file_name);
+   strncat(symbol_table_file_name, ".tab", 4);
+   symbol_table_file = fopen(symbol_table_file_name, "w");
+     
+   if(symbol_table_file == NULL) {
+      perror(symbol_table_file_name);
+      return 1;
+   }
+
+   fprintf(symbol_table_file,"Symbol Table\n\n");	
+   g_hash_table_foreach(table, print_symbol, NULL);
+
+   fclose(symbol_table_file);
+
+   return 0;
+}
+
 /* Auxiliary function used by print_symbol_table. It takes a key and
  * value provided by g_hash_table_foreach 
  * user_data is a pointer from the caller, not necessary in this case.
@@ -34,36 +69,23 @@ void print_symbol(gpointer key, gpointer value, gpointer user_data)
 	
 	/* Not all symbols have a containing rule */    
 	if(current_sym->containing_rule == NULL) {
-	   fprintf(log_file,"Name: %s\nType: %s\nScope: %s\n", (char*)key, 
-	           current_sym->type, current_sym->scope);
-	   if(current_sym->is_var) fprintf(log_file,"Variable\n");
-	   if(current_sym->in_lhs) fprintf(log_file,"In LHS\n");
-	   fprintf(log_file,"\n");
+	   fprintf(symbol_table_file,"Name: %s\nType: %s\nScope: %s\n",
+	           (char*)key, current_sym->type, current_sym->scope);
+	   if(current_sym->is_var) fprintf(symbol_table_file,"Variable\n");
+	   if(current_sym->in_lhs) fprintf(symbol_table_file,"In LHS\n");
+	   fprintf(symbol_table_file,"\n");
 	}	
 	else {	
-           fprintf(log_file,"Name: %s\nType: %s\nScope: %s\n"
+           fprintf(symbol_table_file,"Name: %s\nType: %s\nScope: %s\n"
                    "Containing Rule: %s\n", (char*)key, current_sym->type, 
                    current_sym->scope, current_sym->containing_rule);
-       	   if(current_sym->is_var) fprintf(log_file,"Variable\n");
-	   if(current_sym->in_lhs) fprintf(log_file,"In LHS\n");
-	   fprintf(log_file,"\n");
+       	   if(current_sym->is_var) fprintf(symbol_table_file,"Variable\n");
+	   if(current_sym->in_lhs) fprintf(symbol_table_file,"In LHS\n");
+	   fprintf(symbol_table_file,"\n");
 	}
     }
 }
        
-/* print_symbol_table uses glib's hash table iterator to print the table.
- * table is the hash table to print.
- * print_symbol is the function called for each value (GSList) encountered.
- * The third argument is passed to the print_symbol, but this is not needed here.
- */
-
-void print_symbol_table(GHashTable *table) 
-{
-   fprintf(log_file,"\n\n# Symbol Table #\n\n");	
-   g_hash_table_foreach(table, print_symbol, NULL);
-}
-
-
 
 /* print_dot_ast takes as arguments a pointer to the root of the AST and the 
  * name of the GP source file. It creates a new file <source_name>.dot,
@@ -90,18 +112,19 @@ void print_symbol_table(GHashTable *table)
 
 
 static unsigned int next_node_id = 1;
-FILE *dot_file; 
+static FILE *dot_file; 
 
 int print_dot_ast(List *const gp_ast, char* file_name)
 {
  
-     /* Assumes input file has no extension, but will be .gpx in the future. */
+     /* Assumes input file has no extension, but will be .gpp in the future. */
 
      /* The length of the new file name is the length of the old file name
-      * plus 4 for ".dot" plus 1 for the terminating null character.         */
+      * plus 4 for ".dot" plus 1 for the terminating null character.  
+      */
 
-     int dot_length = strlen(file_name) + 5; 
-     char dot_file_name[dot_length];
+     int length = strlen(file_name) + 5; 
+     char dot_file_name[length];
      strcpy(dot_file_name, file_name);
      strncat(dot_file_name, ".dot", 4);
      dot_file = fopen(dot_file_name, "w");
@@ -126,7 +149,45 @@ int print_dot_ast(List *const gp_ast, char* file_name)
 
      fclose(dot_file);
 
-     return 1;
+     return 0;
+}
+
+int print_dot_host_graph(GPGraph *const host_graph_ast, char* file_name)
+{
+ 
+     /* Assumes input file has no extension, but will be .gpg in the future. */
+
+     /* The length of the new file name is the length of the old file name
+      * plus 4 for ".dot" plus 1 for the terminating null character.      
+      */
+
+     int dot_length = strlen(file_name) + 5; 
+     char dot_file_name[dot_length];
+     strcpy(dot_file_name, file_name);
+     strncat(dot_file_name, ".dot", 4);
+     dot_file = fopen(dot_file_name, "w");
+     
+     if(dot_file == NULL) {
+	perror(dot_file_name);
+	return 1;
+     }	
+
+     fprintf(dot_file,"digraph g { \n");
+
+     /* Print the entry point of the AST. node1 will be the first 
+      * node created by print_list. */
+
+     fprintf(dot_file,"node0[shape=plaintext,label=\"ROOT\"]\n");
+     fprintf(dot_file,"node0->node1\n");
+
+     next_node_id = 1;
+     print_graph(host_graph_ast);
+
+     fprintf(dot_file,"}\n\n");
+
+     fclose(dot_file);
+
+     return 0;
 }
 
 
@@ -1166,6 +1227,57 @@ void print_atom(GPAtomicExp * const atom)
 
              break;
 
+	case HEAD_OP:
+
+	     atom->node_id = next_node_id;
+             next_node_id += 1;
+
+	     /* print_location(atom->location); */
+
+             if(atom->value.str_arg) {
+                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                        "Head\"]\n", atom->node_id, atom->node_id,
+                        LOCATION_ARGS(atom->location));
+                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n", 
+                        atom->node_id, next_node_id);
+	        pretty_print(atom->value.str_arg, atom);
+             }
+             else {
+                fprintf(dot_file,"node%d[shape=plaintext,label=\"%dNULL\"]\n", 
+                        next_node_id, next_node_id);  
+                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n",          
+                        atom->node_id, next_node_id);                     
+                next_node_id += 1;       
+             }
+
+             break;
+
+	case TAIL_OP:
+
+	     atom->node_id = next_node_id;
+             next_node_id += 1;
+
+	     /* print_location(atom->location); */
+
+             if(atom->value.str_arg) {
+                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                        "Tail\"]\n", atom->node_id, atom->node_id,
+                        LOCATION_ARGS(atom->location));
+                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n", 
+                        atom->node_id, next_node_id);
+	        pretty_print(atom->value.str_arg, atom);
+             }
+             else {
+                fprintf(dot_file,"node%d[shape=plaintext,label=\"%dNULL\"]\n", 
+                        next_node_id, next_node_id);  
+                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n",          
+                        atom->node_id, next_node_id);                     
+                next_node_id += 1;       
+             }
+
+             break;
+
+
 	case NEG:
 
 	     atom->node_id = next_node_id;
@@ -1386,14 +1498,12 @@ void print_graph(GPGraph * const graph)
      graph->node_id = next_node_id;
      next_node_id += 1;
 
-     /* print_location(graph->location); */
-
-     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-             "Graph\"]\n", graph->node_id, graph->node_id,
-             LOCATION_ARGS(graph->location));
+     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n Graph\"]\n",
+             graph->node_id, graph->node_id, LOCATION_ARGS(graph->location));
 
      fprintf(dot_file,"node%d->node%d[label=\"position\"]\n", 
              graph->node_id, next_node_id); 
+
      pretty_print(graph->position, position);
 
      pretty_print_list(graph->nodes, graph, nodes);

@@ -21,36 +21,50 @@
 #include "ast.h" /* struct List */
 #include "pretty.h" /* pretty printer function declarations */
 #include "seman.h" /* semantic analysis functions */
+#include <stdbool.h>
 #include <stdio.h>  /* printf, fprintf, fopen */
 #include <stdlib.h> /* free */
 #include <string.h> /* strcmp */
 
-#define DRAW_ORIGINAL_TREE /* print_dot_ast before semantic_check */
-#define DRAW_FINAL_TREE /* print_dot_ast after semantic_check */
-#define DRAW_TABLE
 
-FILE *log_file;
-char *file_name = NULL; 
-int abort_scan = 0;
+/* These macros control various debugging features. */
+#undef PARSER_TRACE 		/* Assign yydebug to 1 */
+#define DRAW_ORIGINAL_AST 	/* Call print_dot_ast before semantic_check. */
+#define DRAW_FINAL_AST 		/* Call print_dot_ast after semantic_check. */
+#define PRINT_SYMBOL_TABLE 	/* Call print_symbol_table after semantic_check. */
+#define DRAW_HOST_GRAPH_AST 	/* Call print_graph after second yyparse. */
 
-/* The parser points this to the root of the AST. */
+/* These macros are required to control which parser is used. */
+#define GP_PROGRAM 1 		
+#define GP_GRAPH 2	
+	
+int parse_target = 0; /* Assigned GP_PROGRAM or GP_GRAPH. This variable is 
+		       * passed to the lexer to trigger parsing of the GP 
+                       * program grammar or the host graph grammar. 
+                       */
+
+FILE *log_file;  /* File to contain verbose errors for developers */
+char *file_name = NULL; /* The name of the file being parsed */
+bool abort_scan = false; /* If set to true, semantic checking does not occur. */
+
+/* The parser points this to the root of the program AST. */
 struct List *gp_program = NULL; 
 
-int main(int argc, char** argv) {
+/* The parser points this to the root of the host graph's AST. */
+struct GPGraph *host_graph = NULL; 
 
-  /* Creates a new hashtable with strings as keys. g_str_equal is a string
-   * hashing function built into GLib. 
-   */	
+
+
+/* Usage: gpparse [-dg] <program_file> <host_graph_file> */
+int main(int argc, char** argv) {
 
   GHashTable *gp_symbol_table = NULL;	
 
-  if(argc > 1 && !strcmp(argv[1], "-d")) { 
-    yydebug = 1; 	/* yydebug controls generation of the debugging file gpparser.output. */
-    argc--; argv++;	/* Effectively removing "-d" from the command line call. */
-  }
+  /* If abort_compilation is set to true, code generation does not occur. */
+  bool abort_compilation = false;
 
-  if(argc != 2) {
-    fprintf(stderr, "Usage: gpparse [-dg] <filename>\n");
+  if(argc != 3) {
+    fprintf(stderr, "Usage: gpparse <program_file> <host_graph_file>\n");
     return 1;
   }
 
@@ -64,18 +78,30 @@ int main(int argc, char** argv) {
      return 1;
   }
 
-  /* Open the file gp.log for writing. */
+  char *file_name = argv[1];
 
-  if(!(log_file = fopen("gp.log", "w"))) { 
-     perror(argv[1]);
+  /* Open the log file for writing. */
+  int length = strlen(file_name) + 4; 
+  char log_file_name[length];
+  strcpy(log_file_name, file_name);
+  strncat(log_file_name, ".log", 4);
+  log_file = fopen(log_file_name, "w");
+  if(!(log_file = fopen(log_file_name, "w"))) { 
+     perror(log_file_name);
      return 1;
   }
 
-  char *file_name = argv[1];
   printf("\nProcessing %s...\n\n", file_name);
 
+  parse_target = GP_PROGRAM;
+ 
+  #ifdef PARSER_TRACE
+     yydebug = 1; /* When yydebug is set to 1, Bison generates a trace of its 
+                   * parse to stderr. */
+  #endif
+
   if(!yyparse()) {
-    printf("GP2 parse succeeded\n\n");
+    fprintf(log_file,"GP2 program parse succeeded\n\n");
 
     /* Reverse the global declaration list at the top of the generated AST. */
     gp_program = reverse(gp_program);
@@ -97,44 +123,76 @@ int main(int argc, char** argv) {
 
     if(!abort_scan) {
       abort_scan = declaration_scan(gp_program, gp_symbol_table, "Global");
-                     /* seman.c */
-      #ifdef DRAW_ORIGINAL_TREE
-         print_dot_ast(gp_program, file_name); /* pretty.c */ 
+                     /* Defined in seman.c */
+      #ifdef DRAW_ORIGINAL_AST
+         print_dot_ast(gp_program, file_name); /* Defined in pretty.c */ 
       #endif
     }
+    else abort_compilation = true;
 
     /* declaration_scan returns 1 if there is a name clash among the 
      * rule and procedure declarations.
      */
 
     if(!abort_scan) {
-       semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
-       #ifdef DRAW_FINAL_TREE
+       abort_compilation = semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
+       #ifdef DRAW_FINAL_AST
           /* create the string <file_name>_F as an argument to print_dot_ast */
           int length = strlen(file_name)+2;
           char alt_name[length];
           strcpy(alt_name,file_name);
           strcat(alt_name,"_F"); 
-          print_dot_ast(gp_program, alt_name); /* pretty.c */ 
+          print_dot_ast(gp_program, alt_name); /* Defined in pretty.c */ 
        #endif
      
+    /* Global bool variable abort_compilation in case of horrible semantic errors.
+     * Change abort_scan to bool!!!!!!!!!!!!!!!
+     */
 
-    #ifdef DRAW_TABLE
-       print_symbol_table(gp_symbol_table); /* pretty.c */
+    #ifdef PRINT_SYMBOL_TABLE
+       print_symbol_table(gp_symbol_table, file_name); /* Defined in pretty.c */
     #endif
     }
+    else abort_compilation = true;
 
   }
-  else fprintf(stderr,"GP2 parse failed.\n\n");
+  else fprintf(log_file,"GP2 program parse failed.\n\n");
+
+  if(!abort_compilation) {
+     parse_target = GP_GRAPH;
+    
+     if(!(yyin = fopen(argv[2], "r"))) {  
+        perror(argv[1]);
+        yylineno = 1;	
+        return 1;
+     }
+
+     file_name = argv[2];
+     printf("\nProcessing %s...\n\n", file_name);
+ 
+     if(!yyparse()) {
+        fprintf(log_file,"GP2 graph parse succeeded\n\n");    
+  
+        reverse_graph_ast(host_graph); /* Defined in seman.c */
+
+        #ifdef DRAW_HOST_GRAPH_AST
+           print_dot_host_graph(host_graph, file_name); /* Defined in pretty.c */
+        #endif
+     }
+     else fprintf(log_file,"GP2 program parse failed.\n\n");     
+  }
+  else fprintf(stderr,"\nBuild aborted. Please consult the file gp.log for "
+               "a detailed error report.\n");   
  
   /* Garbage collection */
-  free_ast(gp_program); /* defined in ast.c */
+  fclose(yyin);
+  free_ast(gp_program); /* Defined in ast.c */
+  if(abort_compilation == false) free_graph(host_graph); /* Defined in ast.c */
   /* g_hash_table_destroy uses free and free_symbol_list, passed to 
    * g_hash_table_new_full, to free the dynamically allocated keys and values
    * respectively.
    */
   g_hash_table_destroy(gp_symbol_table); 
-  fclose(yyin);  
   fclose(log_file);
 
   return 0;

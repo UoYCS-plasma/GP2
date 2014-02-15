@@ -23,6 +23,7 @@
 %{
 
 #include "gpparser.tab.h" /* Token definitions */
+#include <stdbool.h>
 #include <string.h> /* strdup */
 
 int yycolumn = 1;
@@ -30,6 +31,8 @@ int yycolumn = 1;
 extern int abort_scan; /* Defined in main.c */
 extern FILE *log_file; /* Defined in main.c */
 typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
+
+extern int parse_target;
 
 /* The macro YY_USER_ACTION is invoked for each token recognised by yylex
  * before calling action code. Here it is defined to track line and column
@@ -52,6 +55,18 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t;
 
 %%
 
+%{
+  if(parse_target == 1) {
+     parse_target = 0; 
+     return GP_PROGRAM;
+  }
+  if(parse_target == 2) {
+     parse_target = 0; 
+     return GP_GRAPH;  
+  }
+%}
+
+
 "/*"		  		 BEGIN(IN_COMMENT);
 <IN_COMMENT>"*/"      		 BEGIN(INITIAL);
 <IN_COMMENT>([^*\n])+|.  	 /* ignore all characters except '*' */
@@ -63,7 +78,7 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t;
 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
-<IN_STRING>[a-zA-Z0-9_-]*   	 { yylval.str = strdup(yytext); return STR; }
+<IN_STRING>[a-zA-Z0-9_-]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
 <IN_STRING>[^\"a-zA-Z0-9_-]      { fprintf(stderr,"Error: Invalid character in "
                                            "string: '%c'\n", yytext[0]); 
 			           fprintf(log_file,"%d.%d-%d.%d: Invalid "
@@ -90,7 +105,7 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t;
 			                yylloc.first_line, yylloc.first_column,
 			                yylloc.last_line, yylloc.last_column,
 					yytext);
-				  abort_scan = 1;
+				  abort_scan = true;
 				  return ID; }
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
@@ -117,6 +132,8 @@ empty		    return EMPTY;
 injective           return INJECTIVE;
 llength		    return LLEN;
 slength	            return SLEN;
+head		    return HEAD;
+tail		    return TAIL;
 
  /* keywords for node and edge marks */
 
@@ -128,7 +145,7 @@ dashed		    { yylval.mark = DASHED; return MARK; }
 
  /* keywords for GP2 types */
 
-int		    return INT;  
+int		  return INT;  
 string		    return STRING;  
 atom     	    return ATOM;  
 list		    return LIST;  
@@ -166,8 +183,8 @@ list		    return LIST;
   * Identifier names are retained with strdup which itself calls malloc,
   * so these strings need to be explicitly freed. 
   */  
-[A-Z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
-[a-z][a-zA-Z0-9_-]*   { yylval.id = strdup(yytext); return ID; }
+[A-Z][a-zA-Z0-9_-]{0,63}  { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
+[a-z][a-zA-Z0-9_-]{0,63}  { yylval.id = strdup(yytext); return ID; }
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1; }  /* reset yycolumn on newline */
 <<EOF>>		      { yyterminate(); }
