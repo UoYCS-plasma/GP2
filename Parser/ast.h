@@ -42,8 +42,6 @@ extern char *yytext;
 
 
 /* Declarations for functions and variables defined in gpparser.y */
-int yyerror(const char *error_message);
-int report_error(const char *error_message);
 int yyparse(void);
 extern struct List *gp_program; 
 extern int yydebug;
@@ -164,16 +162,17 @@ GPStatement *newFail(YYLTYPE location);
 
 /* Definition of AST nodes representing conditional expressions.*/
 
-typedef enum {INT_CHECK=0, STRING_CHECK, ATOM_CHECK, EDGE_PRED, EQUAL, 
-              NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BOOL_NOT, 
-	      BOOL_OR, BOOL_AND } condexp_t;
+typedef enum {INT_CHECK=0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
+              EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
+	      BOOL_NOT, BOOL_OR, BOOL_AND } condexp_t;
 
 typedef struct GPCondExp {
   int node_id;
   condexp_t exp_type;
   YYLTYPE location;
   union {
-    char *var; 			/* INT_CHECK, STRING_CHECK, ATOM_CHECK */
+    char *var; 			/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
+				 * ATOM_CHECK */
     struct {
       char *source; 
       char *target; 
@@ -213,9 +212,9 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location,
 
 /* Definition of AST nodes representing integer or string expressions. */
 
-typedef enum {EMPTY_LIST=0, VARIABLE, INT_CONSTANT, STRING_CONSTANT, INDEGREE, 
-              OUTDEGREE, LIST_LENGTH, STRING_LENGTH, HEAD_OP, TAIL_OP, NEG, 
-              ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} atomexp_t;
+typedef enum {EMPTY_LIST=0, VARIABLE, INT_CONSTANT, CHARACTER_CONSTANT,
+              STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
+              NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} atomexp_t;
 
 typedef struct GPAtomicExp {
   int node_id;
@@ -224,10 +223,10 @@ typedef struct GPAtomicExp {
   union {
     char *name;			  /* VARIABLE */
     int number; 	 	  /* INT_CONSTANT */
-    char *string;		  /* STRING_CONSTANT */
+    char *string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
     char *node_id; 		  /* INDEGREE, OUTDEGREE */
     struct List *list_arg; 	  /* LIST_LENGTH */
-    struct GPAtomicExp *str_arg;  /* STRING_LENGTH, HEAD_OP, TAIL_OP */
+    struct GPAtomicExp *str_arg;  /* STRING_LENGTH */
     struct GPAtomicExp *exp; 	  /* NEG */
     struct { 
       struct GPAtomicExp *left_exp;
@@ -239,11 +238,11 @@ typedef struct GPAtomicExp {
 GPAtomicExp *newEmpty (YYLTYPE location);
 GPAtomicExp *newVariable (YYLTYPE location, char *name);
 GPAtomicExp *newNumber (YYLTYPE location, int number);
+GPAtomicExp *newCharacter (YYLTYPE location, char *character);
 GPAtomicExp *newString (YYLTYPE location, char *string);
 GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id);
 GPAtomicExp *newListLength (YYLTYPE location, struct List *list_arg);
-GPAtomicExp *newStringOp (atomexp_t exp_type, YYLTYPE location, 
-              struct GPAtomicExp *str_arg);
+GPAtomicExp *newStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);
 GPAtomicExp *newNegExp (YYLTYPE location, struct GPAtomicExp *exp);
 GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, 
 	      struct GPAtomicExp *left_exp, struct GPAtomicExp *right_exp);

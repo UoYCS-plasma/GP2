@@ -53,12 +53,13 @@ struct List *gp_program = NULL;
 /* The parser points this to the root of the host graph's AST. */
 struct GPGraph *host_graph = NULL; 
 
+/* The symbol table is created inside main */
+GHashTable *gp_symbol_table = NULL;	
+
 
 
 /* Usage: gpparse [-dg] <program_file> <host_graph_file> */
 int main(int argc, char** argv) {
-
-  GHashTable *gp_symbol_table = NULL;	
 
   /* If abort_compilation is set to true, code generation does not occur. */
   bool abort_compilation = false;
@@ -116,8 +117,7 @@ int main(int argc, char** argv) {
      * free hash table values during insertions and in the destroy function.
      */
 
-    gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free,
-					    (GDestroyNotify)free_symbol_list);    
+    gp_symbol_table = g_hash_table_new(g_str_hash, g_str_equal);    
 
     /* The lexer and parser can set the abort_scan flag */
 
@@ -145,10 +145,6 @@ int main(int argc, char** argv) {
           print_dot_ast(gp_program, alt_name); /* Defined in pretty.c */ 
        #endif
      
-    /* Global bool variable abort_compilation in case of horrible semantic errors.
-     * Change abort_scan to bool!!!!!!!!!!!!!!!
-     */
-
     #ifdef PRINT_SYMBOL_TABLE
        print_symbol_table(gp_symbol_table, file_name); /* Defined in pretty.c */
     #endif
@@ -181,18 +177,22 @@ int main(int argc, char** argv) {
      }
      else fprintf(log_file,"GP2 program parse failed.\n\n");     
   }
-  else fprintf(stderr,"\nBuild aborted. Please consult the file gp.log for "
-               "a detailed error report.\n");   
+  else fprintf(stderr,"\nBuild aborted. Please consult the file %s.log for "
+               "a detailed error report.\n", argv[1]);   
  
   /* Garbage collection */
   fclose(yyin);
-  free_ast(gp_program); /* Defined in ast.c */
-  if(abort_compilation == false) free_graph(host_graph); /* Defined in ast.c */
+  if(gp_program) free_ast(gp_program); /* Defined in ast.c */
+  if(host_graph) free_graph(host_graph); /* Defined in ast.c */
+
   /* g_hash_table_destroy uses free and free_symbol_list, passed to 
    * g_hash_table_new_full, to free the dynamically allocated keys and values
    * respectively.
    */
-  g_hash_table_destroy(gp_symbol_table); 
+  if(gp_symbol_table) {
+    g_hash_table_foreach(gp_symbol_table, free_symbol_list, free);
+    g_hash_table_destroy(gp_symbol_table); 
+  }
   fclose(log_file);
 
   return 0;

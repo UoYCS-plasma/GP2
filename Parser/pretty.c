@@ -782,6 +782,31 @@ void print_condition(GPCondExp * const cond)
 
              break;
 
+
+	case CHAR_CHECK:
+
+             cond->node_id = next_node_id;
+             next_node_id += 1;
+
+	     /* print_location(cond->location); */
+
+	     if(cond->value.var != NULL)
+                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                        "char check \\n Variable: %s\"]\n",
+                        cond->node_id, cond->node_id, 
+                        LOCATION_ARGS(cond->location), cond->value.var);
+             else {
+                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                        "Variable: \\n UNDEFINED\"]\n",
+                        cond->node_id, cond->node_id,
+                        LOCATION_ARGS(cond->location));
+                fprintf(log_file,"Error: Undefined variable name at AST node %d", 
+                        cond->node_id);
+             }
+
+             break;
+
+
 	case STRING_CHECK:
 
              cond->node_id = next_node_id;
@@ -1110,6 +1135,29 @@ void print_atom(GPAtomicExp * const atom)
                      LOCATION_ARGS(atom->location), atom->value.number);
 
              break;
+
+
+	case CHARACTER_CONSTANT:
+
+	     atom->node_id = next_node_id;
+             next_node_id += 1;
+
+	     /* print_location(atom->location); */
+
+             if(atom->value.name != NULL)
+                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                        "Character: %s\"]\n", atom->node_id, atom->node_id,
+                        LOCATION_ARGS(atom->location), atom->value.string);
+             else {
+                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                        "Character: UNDEFINED\"]\n", atom->node_id, 
+                        atom->node_id, LOCATION_ARGS(atom->location));
+                fprintf(log_file,"Error: Undefined string at AST node %d", 
+                          atom->node_id);
+             }
+
+             break;
+
           
 	case STRING_CONSTANT:
 
@@ -1213,56 +1261,6 @@ void print_atom(GPAtomicExp * const atom)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "String \\n Length\"]\n", atom->node_id, 
                         atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n", 
-                        atom->node_id, next_node_id);
-	        pretty_print(atom->value.str_arg, atom);
-             }
-             else {
-                fprintf(dot_file,"node%d[shape=plaintext,label=\"%dNULL\"]\n", 
-                        next_node_id, next_node_id);  
-                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n",          
-                        atom->node_id, next_node_id);                     
-                next_node_id += 1;       
-             }
-
-             break;
-
-	case HEAD_OP:
-
-	     atom->node_id = next_node_id;
-             next_node_id += 1;
-
-	     /* print_location(atom->location); */
-
-             if(atom->value.str_arg) {
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Head\"]\n", atom->node_id, atom->node_id,
-                        LOCATION_ARGS(atom->location));
-                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n", 
-                        atom->node_id, next_node_id);
-	        pretty_print(atom->value.str_arg, atom);
-             }
-             else {
-                fprintf(dot_file,"node%d[shape=plaintext,label=\"%dNULL\"]\n", 
-                        next_node_id, next_node_id);  
-                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n",          
-                        atom->node_id, next_node_id);                     
-                next_node_id += 1;       
-             }
-
-             break;
-
-	case TAIL_OP:
-
-	     atom->node_id = next_node_id;
-             next_node_id += 1;
-
-	     /* print_location(atom->location); */
-
-             if(atom->value.str_arg) {
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Tail\"]\n", atom->node_id, atom->node_id,
-                        LOCATION_ARGS(atom->location));
                 fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n", 
                         atom->node_id, next_node_id);
 	        pretty_print(atom->value.str_arg, atom);

@@ -32,7 +32,7 @@ typedef struct Symbol {
 
 struct List *reverse (struct List * listHead);
 void reverse_graph_ast (GPGraph *graph); 
-void free_symbol_list(GSList *symbol_list);
+void free_symbol_list(gpointer key, gpointer value, gpointer data);
 bool declaration_scan(const List *ast, GHashTable *table, char *scope);
 bool semantic_check(List *declarations, GHashTable *table, char *scope);
 void statement_scan(GPStatement *statement, GHashTable *table, char *scope);

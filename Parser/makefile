@@ -10,9 +10,10 @@ LFLAGS = -lglib-2.0
 # Usage: make F=<filename>
 default:        $(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
-		./gpparse $(F)	       	
-		dot -Tjpeg $(F).dot -o $(F).jpeg 	
-		dot -Tjpeg $(F)_F.dot -o $(F)_F.jpeg
+		./gpparse $(F1)	$(F2)       	
+		dot -Tjpeg $(F1).dot -o $(F1).jpeg 	
+		dot -Tjpeg $(F1)_F.dot -o $(F1)_F.jpeg
+		dot -Tjpeg $(F2).dot -o $(F2).jpeg
 
 # Builds executable gpparse.
 # Usage: make gpparse

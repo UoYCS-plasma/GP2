@@ -60,23 +60,28 @@ List *reverse (List * listHead)
 
 void reverse_graph_ast (GPGraph *graph)
 {
-   graph->nodes = reverse(graph->nodes);
-   graph->edges = reverse(graph->edges);
+   if(graph->nodes) {
+      graph->nodes = reverse(graph->nodes);  
 
-   List *iterator = graph->nodes;
+      List *iterator = graph->nodes;
 
-   while(iterator) {
-        iterator->value.node->label->gp_list = 
-          reverse(iterator->value.node->label->gp_list);
-        iterator = iterator->next;
+      while(iterator) {
+           iterator->value.node->label->gp_list = 
+             reverse(iterator->value.node->label->gp_list);
+           iterator = iterator->next;
+      }
    }
   
-   iterator = graph->edges;
+   if(graph->edges) {
+      graph->edges = reverse(graph->edges);
 
-   while(iterator) {
-        iterator->value.edge->label->gp_list = 
-          reverse(iterator->value.edge->label->gp_list);
-        iterator = iterator->next;
+      List *iterator = graph->edges;
+
+      while(iterator) {
+           iterator->value.edge->label->gp_list = 
+             reverse(iterator->value.edge->label->gp_list);
+           iterator = iterator->next;
+      }
    }
 }
 
@@ -120,28 +125,35 @@ void reverse_graph_ast (GPGraph *graph)
  * a hash table value needs to be freed.
  * The function calls glib's linked list freeing function, g_slist_free, but
  * first it frees any dynamically allocated strings in the fields of the
- * symbol structures. These are non-"Global" strings in the scope field, and
+ * symbol structures and freeing the symbol structures themselves.
+ * String fields to be freed are non-"Global" strings in the scope field, and
  * any non-NULL strings in the containing_rule field.
- * Note that every symbol has a scope, so Symbol->scope should never be NULL.
  */
 
-void free_symbol_list(GSList *symbol_list) 
+void free_symbol_list(gpointer key, gpointer value, gpointer data) 
 {
-   /* Traverse the symbol list, freeing any dynamically allocated strings 
-    * occurring in the individual symbols.
-    */
-   GSList *iterator = symbol_list;
+   /* iterator keeps a pointer to the current GSList node */
+   GSList *iterator = (GSList*)value;
 
    while(iterator != NULL) {
-      char *symbol_scope = ((Symbol*)iterator->data)->scope;
-      char *symbol_rule = ((Symbol*)iterator->data)->containing_rule;
-      if(strcmp(symbol_scope,"Global") != 0) free(symbol_scope); 
-      if(symbol_rule != NULL) free(symbol_rule); 
-     
+
+      Symbol *symbol_to_free = (Symbol*)iterator->data;
+
+      char *symbol_scope = symbol_to_free->scope;
+      char *symbol_rule = symbol_to_free->containing_rule;
+
+      /* A symbol's scope should only be freed if it has been dynamically
+       * allocated. Symbols with global scope have the string literal
+       * "Global" as their scope value.
+       */
+      if(symbol_scope) free(symbol_scope); 
+      if(symbol_rule) free(symbol_rule); 
+      if(symbol_to_free) free(symbol_to_free);
+
       iterator = iterator->next;
    }
    /* After freeing all memory in the struct Symbols, free the linked list. */
-   g_slist_free(symbol_list);
+   g_slist_free((GSList*)value);
 }
 
 
@@ -178,6 +190,8 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
    /* The return value. Set to 1 if a clash is detected. */
    static bool name_clash = false;
 
+   GSList *symbol_list = NULL;
+
    while(ast!=NULL) {     
 
       switch(ast->value.declaration->decl_type) {
@@ -197,7 +211,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 	      /* Get the name of the procedure */
 	      proc_name = strdup(ast->value.declaration->value.procedure->name);	      
 
-              GSList *symbol_list = g_hash_table_lookup(table, proc_name);
+              symbol_list = g_hash_table_lookup(table, proc_name);
 	      
 	      /* Make a copy of symbol_list for list traversal as symbol_list
 	       * needs to point to the head of the list in case the new symbol
@@ -245,16 +259,21 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 
                  symbol_list = g_slist_prepend(symbol_list, proc_symbol);      
 
-                 g_hash_table_insert(table, proc_name, symbol_list);       
+                 g_hash_table_insert(table, proc_name, symbol_list); 
+
 	      }
+              free(proc_name); 
 
-	      /* Reverse local declaration list */
-              ast->value.declaration->value.procedure->local_decls = 
-	      reverse(ast->value.declaration->value.procedure->local_decls);
+	      if(ast->value.declaration->value.procedure->local_decls) {
 
-              /* Scan for any local declarations with a new local scope. */
-              declaration_scan(ast->value.declaration->value.procedure->
-			       local_decls, table, proc_name);
+	         /* Reverse local declaration list */
+                 ast->value.declaration->value.procedure->local_decls = 
+	            reverse(ast->value.declaration->value.procedure->local_decls);
+
+                 /* Scan for any local declarations with a new local scope. */
+                 declaration_scan(ast->value.declaration->value.procedure->
+			          local_decls, table, proc_name);
+              }
 
               break;
          }
@@ -264,7 +283,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 	      /* Get the name of the rule */
   	      rule_name = strdup(ast->value.declaration->value.rule->name);	
  
-              GSList *symbol_list = g_hash_table_lookup(table, rule_name);      
+              symbol_list = g_hash_table_lookup(table, rule_name);      
 
 	      /* Make a copy of symbol_list for list traversal as symbol_list
 	       * needs to point to the head of the list in case the new symbol
@@ -329,8 +348,10 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 
                  symbol_list = g_slist_prepend(symbol_list, rule_symbol);       
     
-                 g_hash_table_insert(table, rule_name, symbol_list);   
+                 g_hash_table_insert(table, rule_name, symbol_list);  
+ 
 	      }
+              free(rule_name); 
 
               break;
          }
@@ -400,7 +421,7 @@ bool semantic_check(List *declarations, GHashTable *table, char *scope)
 
          case MAIN_DECLARATION:
 
-              if(current_declaration->value.main_program != NULL)
+              if(current_declaration->value.main_program)
 		 statement_scan(current_declaration->value.main_program,
                                 table, scope);
 	      /* An empty main program is does not comform to the grammar,
@@ -417,14 +438,14 @@ bool semantic_check(List *declarations, GHashTable *table, char *scope)
               /* Set scope to procedure name for scanning local declarations */
               char *new_scope = current_declaration->value.procedure->name;
 
-              if(current_declaration->value.procedure->cmd_seq != NULL)
+              if(current_declaration->value.procedure->cmd_seq)
                   statement_scan(current_declaration->value.procedure->cmd_seq,
                                  table, new_scope);
 	      else fprintf(log_file,"Error: Procedure %s has no program, "
                            "not caught by parser. \n",
                            current_declaration->value.procedure->name);
 
-	      if(current_declaration->value.procedure->local_decls != NULL)
+	      if(current_declaration->value.procedure->local_decls)
                   semantic_check(current_declaration->value.procedure->
 				 local_decls, table, new_scope);
 
@@ -464,7 +485,6 @@ void statement_scan(GPStatement *statement, GHashTable *table, char *scope)
 
          case COMMAND_SEQUENCE: 
          {
-
 	      /* A COMMAND_SEQUENCE node always points to a list of COMMAND
 	       * nodes. This list needs to be reversed. 
 	       */   
@@ -595,8 +615,9 @@ void validate_call(char *name, GHashTable *table, char *scope,
          /* Iterate through the symbol list while the current symbol does not
 	  * have type <call_type> or does not have an appropriate scope. 
 	  *
-	  * If the end of the list is reached, then no such symbol exists.
-	  * We must print an error and exit the loop.
+	  * If the end of the list is reached, then no symbol exists with
+          * the appropriate scope and call type. We must print an error and 
+          * exit the loop.
 	  *
 	  * Otherwise, an appropriate symbol does exist. Thus the loop will 
 	  * break when this symbol is reached, before the end of the list.
@@ -628,8 +649,9 @@ void rule_scan(GPRule *rule, GHashTable *table, char *scope)
 {   
    char *rule_name = rule->name;
 
-   /* Reverse the list of declaration types */
-   rule->variables = reverse(rule->variables);
+   /* Reverse the list of declaration types and the interface list. */
+   if(rule->variables) rule->variables = reverse(rule->variables);
+   if(rule->interface) rule->interface = reverse(rule->interface);
 
    List *variable_list = rule->variables;
 
@@ -700,9 +722,9 @@ void rule_scan(GPRule *rule, GHashTable *table, char *scope)
 
    graph_scan(rule->rhs, table, scope, rule_name, 'r');
    
-   interface_scan(rule->interface, table, scope, rule_name);
+   if(rule->interface) interface_scan(rule->interface, table, scope, rule_name);
 
-   condition_scan(rule->condition, table, scope, rule_name);
+   if(rule->condition) condition_scan(rule->condition, table, scope, rule_name);
 }   
 
 /* enter_variables adds variable declarations from a rule's parameter list
@@ -771,9 +793,14 @@ void enter_variables(char *type, List *variables, GHashTable *table,
 
          symbol_list = g_slist_prepend(symbol_list, var_symbol);  
          
-         g_hash_table_insert(table, variable_name, symbol_list); 
-      }
-   
+         g_hash_table_insert(table, variable_name, symbol_list);
+     }
+     /* As far as I'm aware, glib creates a copy of the passed key in its
+      * internal structure. Hence the passed key, variable_name, needs to
+      * be manually freed here, even if it isn't inserted into the table.
+      */
+     free(variable_name);
+  
       /* Move to the next variable in the declaration list. */
       variables = variables->next;
    }
@@ -803,6 +830,14 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
     */
    char *node_type = NULL, *edge_type = NULL, *graph_type = NULL;
 
+   /* symbol_list is used to store symbol lists from the symbol table.
+    * It is assigned the existing symbol list for a particular key.
+    * If a new symbol needs to be added to the list, symbol_list is assigned
+    * the new list after a call to g_slist_prepend. symbol_list is then
+    * passed to g_hash_table_insert.
+    */
+   GSList *symbol_list = NULL;
+ 
    if(side == 'l') {
       node_type = "left_node";
       edge_type = "left_edge";
@@ -821,8 +856,11 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 
    while(node_list != NULL) {
 
+      /* node_id is used as a key, so it is duplicated as node_id will be freed
+       * by g_hash_table_insert, and we don't want to free the node->name in
+       * the AST as well. */
       char *node_id = strdup(node_list->value.node->name);
-      GSList *symbol_list = g_hash_table_lookup(table, node_id);
+      symbol_list = g_hash_table_lookup(table, node_id);
       /* symbol_list is preserved as a new symbol will be prepended to it */
       GSList *iterator = symbol_list;
 
@@ -866,9 +904,11 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
  
          symbol_list = g_slist_prepend(symbol_list, node_symbol);         
   
-         g_hash_table_insert(table, node_id, symbol_list);          
+         g_hash_table_insert(table, node_id, symbol_list);         
+      }
+      
+      free(node_id);
 
-      }	 
 
       if(node_list->value.node->label->mark == DASHED) {
           fprintf(log_file,"Error (%s.%s): Node %s in %s graph has invalid mark " 
@@ -890,7 +930,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
    bool add_edge = true;
 
    while(edge_list != NULL) {
- 
+
       /* edge_id is used as a key, so it is duplicated as edge_id will be freed
        * by g_hash_table_insert, and we don't want to free the edge->name in
        * the AST as well. */
@@ -898,7 +938,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
       char *source_id = edge_list->value.edge->source;
       char *target_id = edge_list->value.edge->target;
 
-      GSList *symbol_list = g_hash_table_lookup(table, edge_id);
+      symbol_list = g_hash_table_lookup(table, edge_id);
       /* symbol_list is preserved as a new symbol will be prepended to it */
       GSList *iterator = symbol_list;
 
@@ -941,9 +981,11 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
  
          symbol_list = g_slist_prepend(symbol_list, edge_symbol);   
         
-         g_hash_table_insert(table, edge_id, symbol_list);          
-
+         g_hash_table_insert(table, edge_id, symbol_list);
+  
       }
+
+      free(edge_id);
 
       if(edge_list->value.edge->label->mark == GREY) {
             fprintf(log_file,"Error (%s.%s): Edge %s in the %s graph has invalid mark " 
@@ -1123,6 +1165,8 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
        * a single variable name, so they are handled in the same way.
        */
       case INT_CHECK:
+
+      case CHAR_CHECK:
 
       case STRING_CHECK:
 
@@ -1490,7 +1534,21 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
            }             
 
            break;
-  
+
+
+      case CHARACTER_CONSTANT:
+
+           if(int_exp) {
+              fprintf(stderr,"Error (%s.%s): Character constant appears in an "
+                      "integer expression.\n", scope, rule_name);
+              fprintf(log_file,"Error (%s.%s): Character constant appears in "
+                      "an integer expression.\n", scope, rule_name);
+	      abort_compilation = true;
+           }
+
+           break;
+
+
       case STRING_CONSTANT:
 
            if(int_exp) {
@@ -1499,7 +1557,6 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
               fprintf(log_file,"Error (%s.%s): String constant appears in an "
                       "integer expression.\n", scope, rule_name);
 	      abort_compilation = true;
-
            }
 
            break;
@@ -1667,36 +1724,6 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
                        "string expression.\n", scope, rule_name);
                fprintf(log_file,"Error (%s.%s): Length operator appears in "
                        "string expression.\n", scope, rule_name);
-               abort_compilation = true; 
-            }
-
-	    atomic_exp_scan(atom_exp->value.str_arg, table, scope, rule_name, 
-			    location, false, true);
-		    
-            break;
-
-       case HEAD_OP:
-
-            if(int_exp) {
-               fprintf(stderr,"Error (%s.%s): Head operator appears in "
-                       "integer expression.\n", scope, rule_name);
-               fprintf(log_file,"Error (%s.%s): Head operator appears in "
-                       "integer expression.\n", scope, rule_name);
-               abort_compilation = true; 
-            }
-
-	    atomic_exp_scan(atom_exp->value.str_arg, table, scope, rule_name, 
-			    location, false, true);
-		    
-            break;
-
-       case TAIL_OP:
-
-            if(int_exp) {
-               fprintf(stderr,"Error (%s.%s): Tail operator appears in "
-                       "integer expression.\n", scope, rule_name);
-               fprintf(log_file,"Error (%s.%s): Tail operator appears in "
-                       "integer expression.\n", scope, rule_name);
                abort_compilation = true; 
             }
 

@@ -17,6 +17,8 @@
 #include <stdlib.h> /* malloc, free */
 #include <stdarg.h> /* va_start, va_list, va_end */
 
+int yyerror(const char *error_message);
+int report_error(const char *error_message);
 
 /* Flags used in the AST construction. */
   bool is_root = false;
@@ -46,14 +48,14 @@ extern int abort_scan; /* Defined in main.c */
 
 %token MAIN IF TRY THEN ELSE SKIP FAIL                          
 %token WHERE EDGETEST TRUE FALSE 		               
-%token INDEG OUTDEG LLEN SLEN HEAD TAIL					
+%token INDEG OUTDEG LLEN SLEN					
 %token INT STRING ATOM LIST 	                               
 %token INTERFACE EMPTY INJECTIVE 	
 %token <mark> MARK			                        
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
 %token <num> NUM 
-%token <str> STR 
+%token <str> STR CHAR
 %token <id> PROCID ID           				
 %token ROOT	
 %token GP_PROGRAM GP_GRAPH						
@@ -255,7 +257,7 @@ RuleSetCall: '{' IDList '}'		{ $$ = $2; }
 IDList: RuleID				{ $$ = addRule(@1, $1, NULL);
 					  free($1); }
       | IDList ',' RuleID 		{ $$ = addRule(@3, $3, $1); 
-					  free($1);} 
+					  free($3);} 
       /* Error-catching productions */
       | ProcID	 			{ report_error("Procedure name used in "
 					   "a rule set. Rule names must start "
@@ -264,7 +266,7 @@ IDList: RuleID				{ $$ = addRule(@1, $1, NULL);
       | IDList ';' RuleID		{ report_error("Semicolon used in a "
 					   "rule set. Perhaps you meant to "
 					   "use a comma?"); 
-					  free($3); }
+					  free($1); }
 
 
  /* Grammar for GP2 Rule Definitions. */
@@ -378,6 +380,7 @@ Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, @$, $3);
 	 | '(' Condition ')' 		{ $$ = $2; }
 
 Subtype: INT				{ $$ = INT_CHECK; } 
+       | CHAR				{ $$ = CHAR_CHECK; }
        | STRING                         { $$ = STRING_CHECK; }
        | ATOM 	                        { $$ = ATOM_CHECK; }
 
@@ -400,15 +403,14 @@ List: AtomExp				{ $$ = addAtom(@1, $1, NULL); }
 AtomExp: EMPTY				{ $$ = newEmpty(@$); }
        | Variable			{ $$ = newVariable(@$, $1); free($1); }
        | NUM 				{ $$ = newNumber(@$, $1); }
+       | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
        | STR 				{ $$ = newString(@$, $1); free($1); }
        | INDEG '(' NodeID ')' 		{ $$ = newDegreeOp(INDEGREE, @$, $3); 
 					  free($3); }
        | OUTDEG '(' NodeID ')' 		{ $$ = newDegreeOp(OUTDEGREE, @$, $3); 
 				 	  free($3); }
        | LLEN '(' List ')' 		{ $$ = newListLength(@$, $3); }
-       | SLEN '(' AtomExp ')' 		{ $$ = newStringOp(STRING_LENGTH, @$, $3); }
-       | HEAD '(' AtomExp ')'           { $$ = newStringOp(HEAD_OP, @$, $3); }
-       | TAIL '(' AtomExp ')' 		{ $$ = newStringOp(TAIL_OP, @$, $3); }
+       | SLEN '(' AtomExp ')' 		{ $$ = newStringLength(@$, $3); }
        | '-' AtomExp %prec UMINUS 	{ $$ = newNegExp(@$, $2); } 
        | '(' AtomExp ')' 		{ $$ = $2; }
        /* Ambiguity resolved by explicit precedences */
@@ -467,6 +469,7 @@ CList: CExp				{ $$ = addAtom(@1, $1, NULL); }
 
 CExp: EMPTY				{ $$ = newEmpty(@$); }
     | NUM 				{ $$ = newNumber(@$, $1); }
+    | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
     | STR 				{ $$ = newString(@$, $1); free($1); }
 
 %%

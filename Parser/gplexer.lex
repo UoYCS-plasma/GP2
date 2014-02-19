@@ -47,11 +47,14 @@ extern int parse_target;
 
 %}
 
- /* exclusive start state for ignoring GP2 comments */
+ /* Exclusive start state for ignoring GP2 comments. */
 %x IN_COMMENT	
 
- /* exclusive start state for discarding double quotes in strings */
+ /* Exclusive start state for discarding double quotes in string constants. */
 %x IN_STRING    
+
+ /* Exclusive start state for discarding single quotes in character constants. */
+%x IN_CHAR 
 
 %%
 
@@ -71,25 +74,49 @@ extern int parse_target;
 <IN_COMMENT>"*/"      		 BEGIN(INITIAL);
 <IN_COMMENT>([^*\n])+|.  	 /* ignore all characters except '*' */
 <IN_COMMENT>(\n)	  	 { yycolumn = 1; } /* reset yycolumn on newline */
-<IN_COMMENT><<EOF>>  		 { fprintf(stderr,"Error: Unterminated comment.\n");
+<IN_COMMENT><<EOF>>  		 { fprintf(stderr,"Warning: Unterminated comment.\n");
 			           fprintf(log_file,"Line %d: Unterminated "
-          				   "comment.\n", yylineno); 
-				   yy_delete_buffer(YY_CURRENT_BUFFER); }
+          				   "comment.\n", yylineno); }
 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
 <IN_STRING>[a-zA-Z0-9_-]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
-<IN_STRING>[^\"a-zA-Z0-9_-]      { fprintf(stderr,"Error: Invalid character in "
-                                           "string: '%c'\n", yytext[0]); 
+<IN_STRING>[^\"a-zA-Z0-9_-]      { fprintf(stderr,"Warning: Invalid character in "
+                                           "string: '%c'.\n", yytext[0]); 
 			           fprintf(log_file,"%d.%d-%d.%d: Invalid "
           				"character '%c'.\n", yylloc.first_line,
 				        yylloc.first_column, yylloc.last_line,
-					yylloc.last_column, yytext[0]);	}
-<IN_STRING><<EOF>>   		 { fprintf(stderr,"Error: Unterminated string."
-                                           "\n");
-			           fprintf(log_file,"Line %d: Unterminated "
+					yylloc.last_column, yytext[0]);	
+				   yylval.str = strdup(yytext); return STR; }
+<IN_STRING><<EOF>>   		 { fprintf(log_file,"Line %d: Unterminated "
           				   "string.\n", yylineno); 
-				   }   
+				   abort_scan = true; }   
+
+'				BEGIN(IN_CHAR);
+<IN_CHAR>'			BEGIN(INITIAL);
+<IN_CHAR>[a-zA-Z0-9_-]		{ yylval.str = strdup(yytext); return CHAR; }
+<IN_CHAR>[a-zA-Z0-0_-]{2,}      { fprintf(stderr,"Error: Invalid character "
+					  "expression: '%s'.\n", yytext); 
+				  fprintf(log_file,"%d.%d-%d.%d: Invalid "
+          				  "character expression: '%s'.\n", 
+					  yylloc.first_line, yylloc.first_column, 
+                                          yylloc.last_line, yylloc.last_column,
+                                          yytext); 
+		                  abort_scan = true;
+				  yylval.str = strdup(yytext); return CHAR; }
+<IN_CHAR>[^'a-zA-Z0-0_-]        { fprintf(stderr,"Error: Invalid character: "
+					  "'%c'.\n", yytext[0]); 
+				  fprintf(log_file,"%d.%d-%d.%d: Invalid "
+          				  "character: '%c'.\n", 
+					  yylloc.first_line, yylloc.first_column, 
+                                          yylloc.last_line, yylloc.last_column,
+                                          yytext[0]); 
+		                  abort_scan = true;
+				  yylval.str = strdup(yytext); return CHAR; }
+<IN_CHAR><<EOF>>   	        { fprintf(log_file,"Line %d: Unterminated "
+          		                  "character.\n", yylineno); 
+				  abort_scan = true;}   
+
   
  /* This rule catches an invalid identifier: a sequence of digits followed
   * by one valid non-numeric identifier character followed by any valid 
@@ -132,8 +159,6 @@ empty		    return EMPTY;
 injective           return INJECTIVE;
 llength		    return LLEN;
 slength	            return SLEN;
-head		    return HEAD;
-tail		    return TAIL;
 
  /* keywords for node and edge marks */
 
@@ -145,7 +170,8 @@ dashed		    { yylval.mark = DASHED; return MARK; }
 
  /* keywords for GP2 types */
 
-int		  return INT;  
+int		    return INT;  
+char		    return CHAR;
 string		    return STRING;  
 atom     	    return ATOM;  
 list		    return LIST;  
@@ -188,7 +214,8 @@ list		    return LIST;
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1; }  /* reset yycolumn on newline */
 <<EOF>>		      { yyterminate(); }
-.                     printf("Error: Invalid symbol '%c'\n", yytext[0]);
+.                     { printf("Error: Invalid symbol '%c'\n", yytext[0]);
+			abort_scan = true; }
 
 
 %%

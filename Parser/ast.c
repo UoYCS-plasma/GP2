@@ -554,6 +554,24 @@ GPAtomicExp *newNumber (YYLTYPE location, int number)
 }
 
 
+GPAtomicExp *newCharacter (YYLTYPE location, char *character)
+{
+     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+
+     if(atom == NULL) {
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       exit(0);
+     }
+
+     atom->exp_type = CHARACTER_CONSTANT;
+     atom->location = location;
+     atom->value.string = strdup(character);
+
+     return atom;
+}
+
+
+
 GPAtomicExp *newString (YYLTYPE location, char *string)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
@@ -603,8 +621,7 @@ GPAtomicExp *newListLength (YYLTYPE location, List *list_arg)
      return atom;
 }
 
-GPAtomicExp *newStringOp (atomexp_t exp_type, YYLTYPE location,
-                          GPAtomicExp *str_arg)
+GPAtomicExp *newStringLength (YYLTYPE location, GPAtomicExp *str_arg)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -613,7 +630,7 @@ GPAtomicExp *newStringOp (atomexp_t exp_type, YYLTYPE location,
        exit(0);
      }
 
-     atom->exp_type = exp_type; /* STRING_LENGTH, HEAD_OP, TAIL_OP */
+     atom->exp_type = STRING_LENGTH;
      atom->location = location;
      atom->value.str_arg = str_arg;
 
@@ -1101,6 +1118,8 @@ void free_atomic_exp(GPAtomicExp *atom)
 
              break;
 
+
+        case CHARACTER_CONSTANT:
           
 	case STRING_CONSTANT:
 
@@ -1129,10 +1148,6 @@ void free_atomic_exp(GPAtomicExp *atom)
 
 
 	case STRING_LENGTH:
-
-	case HEAD_OP:
-
-	case TAIL_OP:
 
 	     if(atom->value.str_arg)
                free_atomic_exp(atom->value.str_arg);
