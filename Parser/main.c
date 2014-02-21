@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
      * free hash table values during insertions and in the destroy function.
      */
 
-    gp_symbol_table = g_hash_table_new(g_str_hash, g_str_equal);    
+    gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);    
 
     /* The lexer and parser can set the abort_scan flag */
 
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
     /* declaration_scan returns 1 if there is a name clash among the 
      * rule and procedure declarations.
      */
-
+              else free(proc_name);             
     if(!abort_scan) {
        abort_compilation = semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
        #ifdef DRAW_FINAL_AST
@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
    * respectively.
    */
   if(gp_symbol_table) {
-    g_hash_table_foreach(gp_symbol_table, free_symbol_list, free);
+    g_hash_table_foreach(gp_symbol_table, free_symbol_list, NULL);
     g_hash_table_destroy(gp_symbol_table); 
   }
   fclose(log_file);

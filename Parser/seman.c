@@ -259,10 +259,9 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 
                  symbol_list = g_slist_prepend(symbol_list, proc_symbol);      
 
-                 g_hash_table_insert(table, proc_name, symbol_list); 
+                 g_hash_table_replace(table, proc_name, symbol_list); 
 
 	      }
-              free(proc_name); 
 
 	      if(ast->value.declaration->value.procedure->local_decls) {
 
@@ -275,6 +274,8 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 			          local_decls, table, proc_name);
               }
 
+              if(!add_procedure) free(proc_name);
+ 
               break;
          }
   
@@ -348,10 +349,10 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 
                  symbol_list = g_slist_prepend(symbol_list, rule_symbol);       
     
-                 g_hash_table_insert(table, rule_name, symbol_list);  
+                 g_hash_table_replace(table, rule_name, symbol_list);  
  
 	      }
-              free(rule_name); 
+              else free(rule_name); 
 
               break;
          }
@@ -793,16 +794,16 @@ void enter_variables(char *type, List *variables, GHashTable *table,
 
          symbol_list = g_slist_prepend(symbol_list, var_symbol);  
          
-         g_hash_table_insert(table, variable_name, symbol_list);
+         g_hash_table_replace(table, variable_name, symbol_list);
      }
-     /* As far as I'm aware, glib creates a copy of the passed key in its
-      * internal structure. Hence the passed key, variable_name, needs to
-      * be manually freed here, even if it isn't inserted into the table.
+     /* The malloc'd string variable_name is not used as a key to the symbol
+      * table in the else case, hence it needs to be freed before the loop
+      * breaks.
       */
-     free(variable_name);
+     else free(variable_name);
   
-      /* Move to the next variable in the declaration list. */
-      variables = variables->next;
+     /* Move to the next variable in the declaration list. */
+     variables = variables->next;
    }
 }  
 
@@ -904,11 +905,8 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
  
          symbol_list = g_slist_prepend(symbol_list, node_symbol);         
   
-         g_hash_table_insert(table, node_id, symbol_list);         
-      }
-      
-      free(node_id);
-
+         g_hash_table_replace(table, node_id, symbol_list);         
+      }      
 
       if(node_list->value.node->label->mark == DASHED) {
           fprintf(log_file,"Error (%s.%s): Node %s in %s graph has invalid mark " 
@@ -916,10 +914,14 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
           abort_compilation = true; 
       }
 
+
       gp_list_scan(&(node_list->value.node->label->gp_list), table, scope, 
 		   rule_name, side);
 
-      node_list = node_list->next;     
+      node_list = node_list->next;   
+ 
+      if(!add_node) free(node_id);  
+
    }   
 
    /* Reverse the edge list */
@@ -981,11 +983,9 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
  
          symbol_list = g_slist_prepend(symbol_list, edge_symbol);   
         
-         g_hash_table_insert(table, edge_id, symbol_list);
+         g_hash_table_replace(table, edge_id, symbol_list);
   
       }
-
-      free(edge_id);
 
       if(edge_list->value.edge->label->mark == GREY) {
             fprintf(log_file,"Error (%s.%s): Edge %s in the %s graph has invalid mark " 
@@ -1062,6 +1062,8 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 		   rule_name, side);
 
       edge_list = edge_list->next;
+
+      if(!add_edge) free(edge_id);
 
    }
  
