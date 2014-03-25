@@ -39,7 +39,7 @@ extern int abort_scan; /* Defined in main.c */
 
 %union {  
   int num;   /* value of NUM token. */
-  char *str; /* value of STRING tokens. */
+  char *str; /* value of STRING and CHAR tokens. */
   char *id;  /* value of PROCID and ID tokens. */
   int mark;  /* enum mark_t, value of MARK token. */
 }
@@ -390,21 +390,23 @@ LabelArg: /* empty */ 			{ $$ = NULL; }
  /* Grammar for GP2 Labels */
 
 Label: List 				{ $$ = newLabel(@$, NONE, $1); }
-     | List '#' MARK			{ $$ = newLabel(@$, $3, $1); } 
+     | List '#' MARK			{ $$ = newLabel(@$, $3, $1); }
 
 List: AtomExp				{ $$ = addAtom(@1, $1, NULL); } 
     | List ':' AtomExp			{ $$ = addAtom(@3, $3, $1); }
+    | EMPTY				{ $$ = addEmptyList(@$); } 
     /* If an error occurs while processing a GP list, discard input text until
      * the next ':' or '#'. The erroneous AtomExp is hence discarded and
      * parsing may continue. */
     | error ':' 			{ $$ = NULL; }	
     | error '#' 			{ $$ = NULL; }
 
-AtomExp: EMPTY				{ $$ = newEmpty(@$); }
-       | Variable			{ $$ = newVariable(@$, $1); free($1); }
+AtomExp: Variable			{ $$ = newVariable(@$, $1); free($1); }
        | NUM 				{ $$ = newNumber(@$, $1); }
-       | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
-       | STR 				{ $$ = newString(@$, $1); free($1); }
+       | CHAR				{ $$ = newCharacter(@$, $1); 
+   					  if($1) free($1); }
+       | STR 				{ $$ = newString(@$, $1); 
+					  if($1) free($1); }
        | INDEG '(' NodeID ')' 		{ $$ = newDegreeOp(INDEGREE, @$, $3); 
 					  free($3); }
        | OUTDEG '(' NodeID ')' 		{ $$ = newDegreeOp(OUTDEGREE, @$, $3); 
@@ -457,7 +459,9 @@ CEdge: '(' EdgeID ',' NodeID ',' NodeID ',' CLabel ')'
 					  free($2); free($4); free($6); }
 
 CLabel: CList 				{ $$ = newLabel(@$, NONE, $1); }
-      | CList '#' MARK			{ $$ = newLabel(@$, $3, $1); } 
+      | CList '#' MARK			{ $$ = newLabel(@$, $3, $1); }
+      | EMPTY 				{ $$ = addEmptyList(@$); }
+
 
 CList: CExp				{ $$ = addAtom(@1, $1, NULL); } 
      | CList ':' CExp			{ $$ = addAtom(@3, $3, $1); }
@@ -467,8 +471,7 @@ CList: CExp				{ $$ = addAtom(@1, $1, NULL); }
      | error ':' 			{ $$ = NULL; }	
      | error '#' 			{ $$ = NULL; }
 
-CExp: EMPTY				{ $$ = newEmpty(@$); }
-    | NUM 				{ $$ = newNumber(@$, $1); }
+CExp: NUM 				{ $$ = newNumber(@$, $1); }
     | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
     | STR 				{ $$ = newString(@$, $1); free($1); }
 

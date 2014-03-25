@@ -62,9 +62,8 @@ void print_symbol(gpointer key, gpointer value, gpointer user_data)
      * typecasting is required to access the Symbol structs as a GSList's
      * data field is a gpointer, equivalent to a void pointer.
      */
-    for(current_name = value; current_name!=NULL; 
-	current_name = current_name->next) {
-
+    for(current_name = value; current_name; current_name = current_name->next)
+    {
         Symbol *current_sym = (Symbol*)(current_name->data);
 	
 	/* Not all symbols have a containing rule */    
@@ -457,6 +456,19 @@ void print_list(List * const list)
 
 	     break;
 	
+	case EMPTY_LIST:
+		
+	     list->node_id = next_node_id;
+             next_node_id += 1;
+
+             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n" 
+                     "Empty List\"]\n", list->node_id, list->node_id,
+                     LOCATION_ARGS(list->location));
+
+             pretty_print_list(list->next,list,next);
+
+             break;
+
 
 	default: fprintf(log_file,"Unexpected List Type: %d\n",
                          (int)list->list_type); 
@@ -476,8 +488,6 @@ void print_declaration(GPDeclaration * const decl)
              decl->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(decl->location); */
-
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "Main\"]\n", decl->node_id, decl->node_id,
                      LOCATION_ARGS(decl->location));
@@ -494,8 +504,6 @@ void print_declaration(GPDeclaration * const decl)
              decl->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(decl->location); */
-
              fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "Procedure \\n Declaration\"]\n", decl->node_id, 
                      decl->node_id, LOCATION_ARGS(decl->location));
@@ -511,8 +519,6 @@ void print_declaration(GPDeclaration * const decl)
 
              decl->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(decl->location); */
 
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "Rule \\n Declaration\"]\n", decl->node_id, 
@@ -543,8 +549,6 @@ void print_statement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(stmt->location); */
-
              fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "Command \\n Sequence\"]\n", stmt->node_id,  
                      stmt->node_id, LOCATION_ARGS(stmt->location));
@@ -560,8 +564,6 @@ void print_statement(GPStatement * const stmt)
 
              stmt->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(stmt->location); */
 
 	     if(stmt->value.rule_name != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -583,8 +585,6 @@ void print_statement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(stmt->location); */
-
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                     "Rule Set Call\"]\n", stmt->node_id, stmt->node_id,
                      LOCATION_ARGS(stmt->location));
@@ -600,8 +600,6 @@ void print_statement(GPStatement * const stmt)
 
              stmt->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(stmt->location); */
 
 	     if(stmt->value.proc_name != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -623,8 +621,6 @@ void print_statement(GPStatement * const stmt)
 
              stmt->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(stmt->location); */
 
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "If Statement\"]\n", stmt->node_id, stmt->node_id,
@@ -654,8 +650,6 @@ void print_statement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(stmt->location); */
-
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "Try Statement\"]\n", stmt->node_id, stmt->node_id,
                      LOCATION_ARGS(stmt->location));
@@ -684,8 +678,6 @@ void print_statement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(stmt->location); */
-
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "ALAP Statement\"]\n", stmt->node_id, stmt->node_id,
                      LOCATION_ARGS(stmt->location));
@@ -701,8 +693,6 @@ void print_statement(GPStatement * const stmt)
 
              stmt->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(stmt->location); */
 
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "OR Statement\"]\n", stmt->node_id, stmt->node_id,
@@ -725,8 +715,6 @@ void print_statement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(stmt->location); */
-
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n skip\"]\n", 
                      stmt->node_id, stmt->node_id,
                      LOCATION_ARGS(stmt->location));
@@ -737,8 +725,6 @@ void print_statement(GPStatement * const stmt)
 
              stmt->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(stmt->location); */
 
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n fail\"]\n", 
                      stmt->node_id, stmt->node_id, 
@@ -764,8 +750,6 @@ void print_condition(GPCondExp * const cond)
              cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(cond->location); */
-
              if(cond->value.var != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "int check \\n Variable: %s\"]\n", cond->node_id, 
@@ -787,8 +771,6 @@ void print_condition(GPCondExp * const cond)
 
              cond->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(cond->location); */
 
 	     if(cond->value.var != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -812,8 +794,6 @@ void print_condition(GPCondExp * const cond)
              cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(cond->location); */
-
 	     if(cond->value.var != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "string check \\n Variable: %s\"]\n",
@@ -834,8 +814,6 @@ void print_condition(GPCondExp * const cond)
 
 	     cond->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(cond->location); */
 
 	     if(cond->value.var != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -858,8 +836,6 @@ void print_condition(GPCondExp * const cond)
 	     cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(cond->location); */
-        
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "Edge Test \\n ", cond->node_id, cond->node_id,
                      LOCATION_ARGS(cond->location));
@@ -1021,8 +997,6 @@ void print_condition(GPCondExp * const cond)
 	     cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(cond->location); */
-
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "NOT\"]\n", cond->node_id, cond->node_id,
                      LOCATION_ARGS(cond->location));
@@ -1038,8 +1012,6 @@ void print_condition(GPCondExp * const cond)
 
 	     cond->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(cond->location); */
 
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "OR\"]\n", cond->node_id, cond->node_id,
@@ -1059,8 +1031,6 @@ void print_condition(GPCondExp * const cond)
 
 	     cond->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(cond->location); */
 
 	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "AND\"]\n", cond->node_id, cond->node_id,
@@ -1089,25 +1059,10 @@ void print_atom(GPAtomicExp * const atom)
 {
      switch(atom->exp_type) {
 
-	case EMPTY_LIST:
-		
-	     atom->node_id = next_node_id;
-             next_node_id += 1;
-
-	     /* print_location(atom->location); */	
-
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n" 
-                     "EMPTY\"]\n", atom->node_id, atom->node_id,
-                     LOCATION_ARGS(atom->location));
-
-             break;
-
 	case VARIABLE:
 
 	     atom->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(atom->location); */	
 
              if(atom->value.name != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -1128,8 +1083,6 @@ void print_atom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(atom->location); */
-
              fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "Number: %d\"]\n", atom->node_id, atom->node_id, 
                      LOCATION_ARGS(atom->location), atom->value.number);
@@ -1142,17 +1095,15 @@ void print_atom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(atom->location); */
-
-             if(atom->value.name != NULL)
+             if(atom->value.string != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "Character: %s\"]\n", atom->node_id, atom->node_id,
                         LOCATION_ARGS(atom->location), atom->value.string);
              else {
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Character: UNDEFINED\"]\n", atom->node_id, 
+                        "UNDEFINED\"]\n", atom->node_id, 
                         atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(log_file,"Error: Undefined string at AST node %d", 
+                fprintf(log_file,"Error: Empty character at AST node %d\n", 
                           atom->node_id);
              }
 
@@ -1164,19 +1115,15 @@ void print_atom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(atom->location); */
-
-             if(atom->value.name != NULL)
+             if(atom->value.string != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "String: %s\"]\n", atom->node_id, atom->node_id,
                         LOCATION_ARGS(atom->location), atom->value.string);
              else {
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "String: UNDEFINED\"]\n", atom->node_id, 
+                        "Empty String\"]\n", atom->node_id, 
                         atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(log_file,"Error: Undefined string at AST node %d", 
-                          atom->node_id);
-             }
+                }
 
              break;
 
@@ -1184,8 +1131,6 @@ void print_atom(GPAtomicExp * const atom)
 	
 	     atom->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(atom->location); */
 
              if(atom->value.name != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -1207,8 +1152,6 @@ void print_atom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(atom->location); */
-
              if(atom->value.name != NULL)
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "outdegree(%s)\"]\n", atom->node_id, atom->node_id, 
@@ -1229,8 +1172,6 @@ void print_atom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(atom->location); */
- 
              if(atom->value.list_arg) {
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "List \\n Length\"]\n", atom->node_id, 
@@ -1254,8 +1195,6 @@ void print_atom(GPAtomicExp * const atom)
 
 	     atom->node_id = next_node_id;
              next_node_id += 1;
-
-	     /* print_location(atom->location); */
 
              if(atom->value.str_arg) {
                 fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -1296,8 +1235,6 @@ void print_atom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-	     /* print_location(atom->location); */
-
              fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "+\"]\n", atom->node_id, atom->node_id,
                      LOCATION_ARGS(atom->location));
@@ -1316,8 +1253,6 @@ void print_atom(GPAtomicExp * const atom)
 
 	     atom->node_id = next_node_id;
              next_node_id += 1;
-
-             /* print_location(atom->location); */
 
              fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "-\"]\n", atom->node_id, atom->node_id,
@@ -1339,8 +1274,6 @@ void print_atom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
  
-             /* print_location(atom->location); */
-
              fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "*\"]\n", atom->node_id, atom->node_id,
 		     LOCATION_ARGS(atom->location));
@@ -1360,8 +1293,6 @@ void print_atom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
  
-             /* print_location(atom->location); */
-
              fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      "/\"]\n", atom->node_id, atom->node_id,
 		     LOCATION_ARGS(atom->location));
@@ -1380,8 +1311,6 @@ void print_atom(GPAtomicExp * const atom)
 
 	     atom->node_id = next_node_id;
              next_node_id += 1;
-
-             /* print_location(atom->location); */
 
              fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                      ".\"]\n", atom->node_id, atom->node_id,
@@ -1411,8 +1340,6 @@ void print_procedure(GPProcedure * const proc)
      proc->node_id = next_node_id;
      next_node_id += 1;
 
-     /* print_location(proc->location); */
-
      if(proc->name != NULL)
         fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                "Procedure \\n Name: %s\"]\n",
@@ -1440,8 +1367,6 @@ void print_rule(GPRule * const rule)
 {
      rule->node_id = next_node_id;
      next_node_id += 1;
-
-     /* print_location(rule->location); */
 
      if(rule->name != NULL)
         fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -1516,8 +1441,6 @@ void print_node(GPNode * const node)
      node->node_id = next_node_id;
      next_node_id += 1;
 
-     /* print_location(node->location); */
-
      if(node->name != NULL)
         fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                "Node \\n Name: %s", node->node_id, node->node_id, 
@@ -1550,8 +1473,6 @@ void print_edge(GPEdge * const edge)
 {
      edge->node_id = next_node_id;
      next_node_id += 1;
-
-     /* print_location(edge->location); */
 
      if(edge->name != NULL)
         fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -1593,8 +1514,6 @@ void print_position(GPPos * const pos)
      pos->node_id = next_node_id;
      next_node_id += 1;
 
-     /* print_location(pos->location); */
-
      fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
              "Position \\n x: %d \\n y: %d\"]\n", pos->node_id, pos->node_id,
              LOCATION_ARGS(pos->location), pos->x, pos->y);
@@ -1605,8 +1524,6 @@ void print_label(GPLabel * const label)
 {
      label->node_id = next_node_id;
      next_node_id += 1;
-
-     /* print_location(label->location); */
 
      fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n Label \\n Mark: ", 
              label->node_id, label->node_id, LOCATION_ARGS(label->location));

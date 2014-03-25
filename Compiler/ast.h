@@ -56,7 +56,7 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t;
 typedef enum {GLOBAL_DECLARATIONS=0, LOCAL_DECLARATIONS, COMMANDS, RULES, 
               INT_DECLARATIONS, STRING_DECLARATIONS, ATOM_DECLARATIONS, 
               LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, NODE_LIST, 
-              EDGE_LIST, GP_LIST} list_t;
+              EDGE_LIST, GP_LIST, EMPTY_LIST} list_t;
 
 typedef struct List {
   int node_id;
@@ -91,6 +91,7 @@ List *addNodeID (YYLTYPE location, char *node_id, struct List *next);
 List *addNode (YYLTYPE location, struct GPNode *node, struct List *next);
 List *addEdge (YYLTYPE location, struct GPEdge *edge, struct List *next);
 List *addAtom (YYLTYPE location, struct GPAtomicExp *atom, struct List *next);
+List *addEmptyList (YYLTYPE location);
 
 
 /* Definition of AST nodes representing declarations */
@@ -212,7 +213,7 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location,
 
 /* Definition of AST nodes representing integer or string expressions. */
 
-typedef enum {EMPTY_LIST=0, VARIABLE, INT_CONSTANT, CHARACTER_CONSTANT,
+typedef enum {VARIABLE=0, INT_CONSTANT, CHARACTER_CONSTANT,
               STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
               NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} atomexp_t;
 
@@ -235,7 +236,7 @@ typedef struct GPAtomicExp {
   } value;
 } GPAtomicExp;
 
-GPAtomicExp *newEmpty (YYLTYPE location);
+
 GPAtomicExp *newVariable (YYLTYPE location, char *name);
 GPAtomicExp *newNumber (YYLTYPE location, int number);
 GPAtomicExp *newCharacter (YYLTYPE location, char *character);

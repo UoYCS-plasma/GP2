@@ -14,6 +14,7 @@ default:        $(OBJECTS)
 		dot -Tjpeg $(F1).dot -o $(F1).jpeg 	
 		dot -Tjpeg $(F1)_F.dot -o $(F1)_F.jpeg
 		dot -Tjpeg $(F2).dot -o $(F2).jpeg
+		rm $(F1).dot $(F1)_F.dot $(F2).dot
 
 # Builds executable gpparse.
 # Usage: make gpparse
