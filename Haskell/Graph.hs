@@ -1,7 +1,7 @@
 -- a simple impelmentation of labelled graphs using sparse arrays for node and edge sets
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
 
-module Graph (Graph, NodeId, EdgeId,
+module Graph (Graph, NodeId, EdgeId, pretty,
                emptyGraph, newNode, newEdge,
                allNodes, outEdges, inEdges,
                source, target, nLabel, eLabel,
@@ -9,6 +9,23 @@ module Graph (Graph, NodeId, EdgeId,
 
 import Prelude hiding (lookup)
 import ExAr
+import Data.Maybe
+
+class Pretty a
+instance Pretty (Graph a) where
+pretty :: Show a => Graph a -> String
+pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
+    where
+        gvHeader = "digraph {\n"
+        gvFooter = "}\n"
+        prettyNodes g = concatMap prettyNode $ allNodes g
+        prettyEdges g = concatMap prettyEdge $ allEdges g
+        prettyNode n@(N id) = "\tnode_" ++ show id ++ "\t{ label=\"" ++ show ( fromJust (nLabel g n) ) ++ "\" }\n"
+        prettyEdge e@(E id) = "\tnode_" ++ getNodeIdAsInt ( fromJust (source g e) )
+                         ++ " -> node_" ++ getNodeIdAsInt ( fromJust (target g e) )
+                         ++ "\t{ label=\"" ++ show ( fromJust (eLabel g e) ) ++ "\" }\n"
+        getNodeIdAsInt (N id) = show id
+
 
 -- labelled graphs
 data Graph a = Graph (ExAr (Node a)) (ExAr (Edge a)) deriving Show
@@ -41,6 +58,9 @@ newEdge (Graph ns es) n1 n2 x  =  (Graph ns es', E i)
 
 allNodes :: Graph a -> [NodeId]
 allNodes (Graph ns _)  =  map N (domain ns)
+
+allEdges :: Graph a -> [EdgeId]
+allEdges (Graph _ es) = map E (domain es)
 
 outEdges :: Graph a -> NodeId -> [EdgeId]
 outEdges (Graph _ es) n  =  map E $ findAll (\(Edge n1 _ _) -> n1 == n) es
