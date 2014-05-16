@@ -23,36 +23,49 @@ gpColours = [
 testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
 testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 
---gpGraph :: Parser GP2Graph
+--gpGraph :: Parser GP2HostGraph
 --gpGraph = keyword "[" |> gpHostGraph <| keyword "]"
 
---gpNodeList :: Parser GP2Graph
+--gpNodeList :: Parser GP2HostGraph
 --gpHostGraph = gpNodeList <*> gpEdgeList
 
 
 
-gpEdgeList :: Parser [((String, String), GP2Label)]
+gpEdgeList :: Parser [((String, String), GP2HostLabel)]
 gpEdgeList = keyword "|" |> maybeSome gpEdge
 
 
-gpEdge :: Parser ((String, String), GP2Label)
-gpEdge = keyword "(" |> pure (,) <*> endPoints <*> gp2Label <| keyword ")"
+
+
+value :: Parser HostAtom
+value = intLit
+    <|> strLit
+    <|> charLit
+
+-- TODO: this allows leading ":" char, which is not permitted by GP2 syntax!
+nodeValue :: Parser HostAtom
+nodeValue = value 
+    <|> keyword ":" |> value 
+
+gpEdge :: Parser ((String, String), GP2HostLabel)
+gpEdge = keyword "(" |> pure (,) <*> endPoints <*> gp2HostLabel <| keyword ")"
 
 
 endPoints :: Parser (String, String)
 endPoints = label |> keyword "," |> pure (,) <*> ( label <| keyword "," ) <*> label
 
-gpNodeList :: Parser [GP2Label]
+gpNodeList :: Parser [GP2HostLabel]
 gpNodeList = atLeastOne gpNode
 
-gpNode :: Parser GP2Label
+gpNode :: Parser GP2HostLabel
 gpNode = keyword "(" |> nodeBody <| keyword ")"
 
-nodeBody :: Parser GP2Label
-nodeBody = label |> keyword "," |> gp2Label
+nodeBody :: Parser GP2HostLabel
+nodeBody = pure GP2HostLabel <*> maybeSome nodeValue <*> nodeColour
 
-gp2Label :: Parser GP2Label
-gp2Label = pure GP2Label <*> maybeSome nodeValue <*> nodeColour
+gp2HostLabel :: Parser GP2HostLabel
+gp2HostLabel = pure GP2HostLabel <*> maybeSome nodeValue <*> nodeColour
+
 
 nodeColour :: Parser Colour
 nodeColour = keyword "#" |> pure col <*> label
@@ -60,31 +73,20 @@ nodeColour = keyword "#" |> pure col <*> label
     where
         col c = fromJust $ lookup c gpColours
 
--- TODO: this allows leading ":" char, which is not permitted by GP2 syntax!
-nodeValue :: Parser IntOrStr
-nodeValue = intOrStr 
-    <|> keyword ":" |> intOrStr 
-
-
-
-intOrStr :: Parser IntOrStr
-intOrStr  = intLit
-        <|> strLit
-
 numChar :: Parser Char
 numChar = satisfy (`elem` gpNumChars)
 
-charLit :: Parser String
-charLit = char '\'' |> exactlyOne gpChar <| char '\'' <| optSpaces
+charLit :: Parser HostAtom
+charLit = char '\'' |> pure Chr <*> gpChar <| char '\'' <| optSpaces
 
-strLit :: Parser IntOrStr
+strLit :: Parser HostAtom
 strLit = char '"' |> pure Str <*> maybeSome gpChar <| keyword "\""
     <|>  char '\'' |> pure Str <*> exactlyOne gpChar <| keyword "'"
 
 gpChar :: Parser Char
 gpChar = satisfy (`elem` gpChars)
 
-intLit :: Parser IntOrStr
+intLit :: Parser HostAtom
 intLit = pure Int <*> ( pure read <*> atLeastOne numChar <| optSpaces )
 
 label :: Parser String

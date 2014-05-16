@@ -185,6 +185,22 @@ List *addAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
     return new_atom;
 }
 
+List *addEmptyList (YYLTYPE location)
+{
+     List *new_empty = malloc(sizeof(List));
+
+     if(new_empty == NULL) {
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       exit(0);
+     }
+
+     new_empty->list_type = EMPTY_LIST;
+     new_empty->location = location;
+     new_empty->next = NULL;
+
+     return new_empty;
+}
+
 
 /* The constructor functions for AST nodes of type struct GPDeclaration. */
 
@@ -505,21 +521,6 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location,
 
 /* The constructor functions for AST nodes of type struct GPAtomicExp. */
 
-GPAtomicExp *newEmpty (YYLTYPE location)
-{
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
-
-     if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
-       exit(0);
-     }
-
-     atom->exp_type = EMPTY_LIST;
-     atom->location = location;
-
-     return atom;
-}
-
 
 GPAtomicExp *newVariable (YYLTYPE location, char *name)
 {
@@ -565,7 +566,7 @@ GPAtomicExp *newCharacter (YYLTYPE location, char *character)
 
      atom->exp_type = CHARACTER_CONSTANT;
      atom->location = location;
-     atom->value.string = strdup(character);
+     if(character) atom->value.string = strdup(character);
 
      return atom;
 }
@@ -583,7 +584,7 @@ GPAtomicExp *newString (YYLTYPE location, char *string)
 
      atom->exp_type = STRING_CONSTANT;
      atom->location = location;
-     atom->value.string = strdup(string);
+     if(string) atom->value.string = strdup(string);
 
      return atom;
 }
@@ -889,7 +890,12 @@ void free_ast(List *ast)
              if(ast->value.atom) free_atomic_exp(ast->value.atom);
 
 	     break;
+
 	
+	case EMPTY_LIST:
+
+             break;
+
 
 	default: fprintf(log_file,"Unexpected List Type: %d\n",
                          (int)ast->list_type); 
@@ -1100,10 +1106,6 @@ void free_condition(GPCondExp *cond)
 void free_atomic_exp(GPAtomicExp *atom)
 {
      switch(atom->exp_type) {
-
-	case EMPTY_LIST:
-
-             break;
 
 
 	case VARIABLE:

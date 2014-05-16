@@ -78,10 +78,13 @@ extern int parse_target;
 			           fprintf(log_file,"Line %d: Unterminated "
           				   "comment.\n", yylineno); }
 
+ /* empty string */
+"\"\""				 { yylval.str = NULL; return STR; } 
+
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
-<IN_STRING>[a-zA-Z0-9_-]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
-<IN_STRING>[^\"a-zA-Z0-9_-]      { fprintf(stderr,"Warning: Invalid character in "
+<IN_STRING>[a-zA-Z0-9_]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
+<IN_STRING>[^\"a-zA-Z0-9_]       { fprintf(stderr,"Warning: Invalid character in "
                                            "string: '%c'.\n", yytext[0]); 
 			           fprintf(log_file,"%d.%d-%d.%d: Invalid "
           				"character '%c'.\n", yylloc.first_line,
@@ -92,10 +95,19 @@ extern int parse_target;
           				   "string.\n", yylineno); 
 				   abort_scan = true; }   
 
+"''"				 { fprintf(stderr,"Error: Empty character "
+					  "expression.\n"); 
+				   fprintf(log_file,"%d.%d-%d.%d: Empty "
+          				  "character expression.\n", 
+					  yylloc.first_line, yylloc.first_column, 
+                                          yylloc.last_line, yylloc.last_column); 
+		                    abort_scan = true;
+				    yylval.str = NULL; return CHAR; }
+
 '				BEGIN(IN_CHAR);
 <IN_CHAR>'			BEGIN(INITIAL);
-<IN_CHAR>[a-zA-Z0-9_-]		{ yylval.str = strdup(yytext); return CHAR; }
-<IN_CHAR>[a-zA-Z0-0_-]{2,}      { fprintf(stderr,"Error: Invalid character "
+<IN_CHAR>[a-zA-Z0-9_]		{ yylval.str = strdup(yytext); return CHAR; }
+<IN_CHAR>[a-zA-Z0-0_]{2,}       { fprintf(stderr,"Error: Invalid character "
 					  "expression: '%s'.\n", yytext); 
 				  fprintf(log_file,"%d.%d-%d.%d: Invalid "
           				  "character expression: '%s'.\n", 
@@ -104,8 +116,8 @@ extern int parse_target;
                                           yytext); 
 		                  abort_scan = true;
 				  yylval.str = strdup(yytext); return CHAR; }
-<IN_CHAR>[^'a-zA-Z0-0_-]        { fprintf(stderr,"Error: Invalid character: "
-					  "'%c'.\n", yytext[0]); 
+<IN_CHAR>[^'a-zA-Z0-9_]         { fprintf(stderr,"Error: Invalid character: "
+			 		  "'%c'.\n", yytext[0]); 
 				  fprintf(log_file,"%d.%d-%d.%d: Invalid "
           				  "character: '%c'.\n", 
 					  yylloc.first_line, yylloc.first_column, 
@@ -117,23 +129,6 @@ extern int parse_target;
           		                  "character.\n", yylineno); 
 				  abort_scan = true;}   
 
-  
- /* This rule catches an invalid identifier: a sequence of digits followed
-  * by one valid non-numeric identifier character followed by any valid 
-  * identifier character. In this case, token ID is returned to continue
-  * the parse and potentially catch more invalid identifiers. abort_scan is 
-  * also set to prevent semantic checking from starting. 
-  */
-
-[0-9]+[a-zA-Z_-][a-zA-Z0-9_-]*  { fprintf(stderr,"Error (%s): Identifiers must "
-     			              	"start with a letter.\n", yytext); 
-		                  fprintf(log_file, "%d.%d-%d.%d: Invalid "
-				        "identifier %s.\n",
-			                yylloc.first_line, yylloc.first_column,
-			                yylloc.last_line, yylloc.last_column,
-					yytext);
-				  abort_scan = true;
-				  return ID; }
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
  /* GP2 keywords */ 
@@ -204,13 +199,34 @@ list		    return LIST;
 ">="	         return GTEQ; 
 "<="	         return LTEQ; 
 
+
  /* Procedure identifiers must start with a capital letter.
   * All other identifiers start with a lowercase letter.
   * Identifier names are retained with strdup which itself calls malloc,
   * so these strings need to be explicitly freed. 
   */  
-[A-Z][a-zA-Z0-9_-]{0,63}  { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
-[a-z][a-zA-Z0-9_-]{0,63}  { yylval.id = strdup(yytext); return ID; }
+
+[A-Z][a-zA-Z0-9_]{0,63}  { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
+[a-z][a-zA-Z0-9_]{0,63}  { yylval.id = strdup(yytext); return ID; }
+
+ /* This rule catches an invalid identifier: a sequence of digits followed
+  * by one valid non-numeric identifier character followed by any valid 
+  * identifier character. In this case, token ID is returned to continue
+  * the parse and potentially catch more invalid identifiers. abort_scan is 
+  * also set to prevent semantic checking from starting. 
+  */
+
+[0-9]+[a-zA-Z_][a-zA-Z0-9_]*  { fprintf(stderr,"Error (%s): Identifiers must "
+     			              	"start with a letter.\n", yytext); 
+		                fprintf(log_file, "%d.%d-%d.%d: Invalid "
+				        "identifier %s.\n",
+			                yylloc.first_line, yylloc.first_column,
+			                yylloc.last_line, yylloc.last_column,
+					yytext);
+			        abort_scan = true;
+			        yylval.id = strdup(yytext);
+			        return ID; }
+
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1; }  /* reset yycolumn on newline */
 <<EOF>>		      { yyterminate(); }

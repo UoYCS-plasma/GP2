@@ -72,6 +72,11 @@ exactlyOne :: Parser a -> Parser [a]
 exactlyOne p = pure (:) <*> p <*> pure []
 
 
+lower :: Parser Char
+lower = satisfy isLower
+
+upper :: Parser Char
+upper = satisfy isUpper
 
 alphanum :: Parser Char
 alphanum = satisfy isAlphaNum

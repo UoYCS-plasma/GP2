@@ -135,7 +135,7 @@ void free_symbol_list(gpointer key, gpointer value, gpointer data)
    /* iterator keeps a pointer to the current GSList node */
    GSList *iterator = (GSList*)value;
 
-   while(iterator != NULL) {
+   while(iterator) {
 
       Symbol *symbol_to_free = (Symbol*)iterator->data;
 
@@ -192,7 +192,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 
    GSList *symbol_list = NULL;
 
-   while(ast!=NULL) {     
+   while(ast) {     
 
       switch(ast->value.declaration->decl_type) {
 
@@ -227,7 +227,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 	      /* Report an error if a procedure with that name already exists
 	       * in the table. 
 	       */
-              while(iterator != NULL) {
+              while(iterator) {
 		 if(!strcmp(((Symbol*)iterator->data)->type,"Procedure"))
                  {
 		    fprintf(stderr,"Error: Procedure %s declared more " 
@@ -246,7 +246,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
                  /* Create a symbol for the procedure name */
                  Symbol *proc_symbol = malloc(sizeof(Symbol));
 
-	         if(proc_symbol==NULL) {
+	         if(proc_symbol == NULL) {
                     fprintf(log_file,"Memory exhausted during symbol management.\n");
                     exit(0); 
                  }
@@ -274,7 +274,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 			          local_decls, table, proc_name);
               }
 
-              if(!add_procedure) free(proc_name);
+              if(!add_procedure && proc_name) free(proc_name);
  
               break;
          }
@@ -300,7 +300,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
               /* Report an error if two rules with the same name are declared
                * in the same scope.
                */
-              while(iterator != NULL) {
+              while(iterator) {
 
                  char *symbol_scope = ((Symbol*)iterator->data)->scope;
    
@@ -335,7 +335,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 
 	         Symbol *rule_symbol = malloc(sizeof(Symbol));
  
-	         if(rule_symbol==NULL) {
+	         if(rule_symbol == NULL) {
 
                     fprintf(log_file,"Memory exhausted during symbol management.\n");
 	            exit(0);
@@ -352,7 +352,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
                  g_hash_table_replace(table, rule_name, symbol_list);  
  
 	      }
-              else free(rule_name); 
+              else if(rule_name) free(rule_name); 
 
               break;
          }
@@ -409,12 +409,15 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
  * The main body recurses over declaration lists, handling each of the three 
  * declaration types with the help of subprocedures.
  */
- 
+
+
+
+
 static bool abort_compilation;
 
 bool semantic_check(List *declarations, GHashTable *table, char *scope)
 {
-   while(declarations!=NULL) {
+   while(declarations) {
 
       GPDeclaration *current_declaration = declarations->value.declaration;
    
@@ -493,7 +496,7 @@ void statement_scan(GPStatement *statement, GHashTable *table, char *scope)
 
 	      List *command_list = statement->value.cmd_seq;
 
-              while(command_list != NULL) {
+              while(command_list) {
                  statement_scan(command_list->value.command, table, scope);
 		 command_list = command_list->next;   
               }           
@@ -522,7 +525,7 @@ void statement_scan(GPStatement *statement, GHashTable *table, char *scope)
 
 	      List *rule_list = statement->value.rule_set;
 
-              while(rule_list != NULL) {
+              while(rule_list) {
                  validate_call(rule_list->value.rule_name, table, scope, "Rule");
 		 rule_list = rule_list->next;   
               }           
@@ -659,7 +662,7 @@ void rule_scan(GPRule *rule, GHashTable *table, char *scope)
    /* Variables to count how many times each type is encountered. */
    int integer_count = 0, string_count = 0, atom_count = 0, list_count = 0;
 
-   while(variable_list != NULL) {
+   while(variable_list) {
  
       /* Reverse the list of variables */
       variable_list->value.variables = reverse(variable_list->value.variables);	   
@@ -728,6 +731,7 @@ void rule_scan(GPRule *rule, GHashTable *table, char *scope)
    if(rule->condition) condition_scan(rule->condition, table, scope, rule_name);
 }   
 
+
 /* enter_variables adds variable declarations from a rule's parameter list
  * into the symbol table. It also checks that each variable name in the
  * parameter list is unique. Variable names are not added to the symbol
@@ -746,7 +750,7 @@ void rule_scan(GPRule *rule, GHashTable *table, char *scope)
 void enter_variables(char *type, List *variables, GHashTable *table, 
 		     char *scope, char *rule_name)
 {
-   while(variables != NULL) {
+   while(variables) {
  
       char *variable_name = strdup(variables->value.variable_name);	   
       GSList *symbol_list = g_hash_table_lookup(table, variable_name);
@@ -755,7 +759,7 @@ void enter_variables(char *type, List *variables, GHashTable *table,
 
       bool add_variable = true;
 
-      while(iterator != NULL) {
+      while(iterator) {
          
          Symbol *current_var = (Symbol*)(iterator->data);
 
@@ -780,7 +784,7 @@ void enter_variables(char *type, List *variables, GHashTable *table,
          /* Create a symbol for the variable */
          Symbol *var_symbol = malloc(sizeof(Symbol));
 
-         if(var_symbol==NULL) {
+         if(var_symbol == NULL) {
             fprintf(log_file,"Memory exhausted during symbol management.\n");
             exit(0);
          }
@@ -855,7 +859,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
    
    List *node_list = graph->nodes;
 
-   while(node_list != NULL) {
+   while(node_list) {
 
       /* node_id is used as a key, so it is duplicated as node_id will be freed
        * by g_hash_table_insert, and we don't want to free the node->name in
@@ -867,7 +871,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 
       bool add_node = true;
 
-      while(iterator != NULL) {
+      while(iterator) {
          
          Symbol *current_node = (Symbol*)(iterator->data);
 
@@ -892,7 +896,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 
          Symbol *node_symbol = malloc(sizeof(Symbol));
 
-         if(node_symbol==NULL) {
+         if(node_symbol == NULL) {
             fprintf(log_file,"Memory exhausted during symbol management.\n");
             exit(0);
          }
@@ -920,7 +924,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 
       node_list = node_list->next;   
  
-      if(!add_node) free(node_id);  
+      if(!add_node && node_id) free(node_id);  
 
    }   
 
@@ -931,7 +935,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 
    bool add_edge = true;
 
-   while(edge_list != NULL) {
+   while(edge_list) {
 
       /* edge_id is used as a key, so it is duplicated as edge_id will be freed
        * by g_hash_table_insert, and we don't want to free the edge->name in
@@ -944,7 +948,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
       /* symbol_list is preserved as a new symbol will be prepended to it */
       GSList *iterator = symbol_list;
 
-      while(iterator != NULL) {
+      while(iterator) {
          
          Symbol *current_edge = (Symbol*)(iterator->data);
 
@@ -970,7 +974,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 
          Symbol *edge_symbol = malloc(sizeof(Symbol));
 
-         if(edge_symbol==NULL) {
+         if(edge_symbol == NULL) {
             fprintf(log_file,"Memory exhausted during symbol management.\n");
             exit(0);
          }
@@ -985,12 +989,6 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
         
          g_hash_table_replace(table, edge_id, symbol_list);
   
-      }
-
-      if(edge_list->value.edge->label->mark == GREY) {
-            fprintf(log_file,"Error (%s.%s): Edge %s in the %s graph has invalid mark " 
-	            "\"grey\".\n", scope, rule_name, edge_id, graph_type);
-            abort_compilation = true; 
       }
 
       /* Verify source and target nodes exist in the graph. */
@@ -1063,7 +1061,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 
       edge_list = edge_list->next;
 
-      if(!add_edge) free(edge_id);
+      if(!add_edge && edge_id) free(edge_id);
 
    }
  
@@ -1086,7 +1084,7 @@ void interface_scan(List *interface, GHashTable *table, char *scope,
   GSList *interface_ids = NULL, *iterator = NULL;
   bool in_lhs, in_rhs;
 
-  while(interface != NULL) {
+  while(interface) {
      
      /* Reset the flags on iteration. */
      in_lhs = false, in_rhs = false;
@@ -1101,7 +1099,7 @@ void interface_scan(List *interface, GHashTable *table, char *scope,
 
      GSList *node_list = g_hash_table_lookup(table,current_node_id);     
 
-     while(node_list != NULL) {
+     while(node_list) {
 
         Symbol *current_node = (Symbol*)node_list->data;     
 
@@ -1137,8 +1135,7 @@ void interface_scan(List *interface, GHashTable *table, char *scope,
   /* Since interface_ids is sorted, each element in the list only needs to be 
    * compared to its successor. 
    */
-  for(iterator = interface_ids; iterator->next != NULL;
-      iterator = iterator->next) {
+  for(iterator = interface_ids; iterator->next; iterator = iterator->next) {
         if(!strcmp(iterator->data,iterator->next->data))
            fprintf(log_file,"Warning (%s.%s): Node %s occurs twice in interface list.\n",
 		   scope, rule_name, (char*)(iterator->data));
@@ -1182,7 +1179,7 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
 	   /* Go through the list of symbols with the name in question
             * to check if any variables exist in this rule.
             */
-           while(var_list != NULL) {
+           while(var_list) {
  
  	      Symbol *current_var = (Symbol*)var_list->data;
 
@@ -1224,7 +1221,7 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
            GSList *node_list = g_hash_table_lookup(table,
                                condition->value.edge_pred.source);
 
-           while(node_list != NULL) {
+           while(node_list) {
 
                  Symbol* current_node = (Symbol*)node_list->data;      
 
@@ -1257,7 +1254,7 @@ void condition_scan(GPCondExp *condition, GHashTable *table, char *scope,
            node_list = g_hash_table_lookup(table, 
                        condition->value.edge_pred.target);
 
-           while(node_list != NULL) {
+           while(node_list) {
                  
 		 Symbol* current_node = (Symbol*)node_list->data;      
 
@@ -1405,58 +1402,69 @@ static bool lhs_arithmetic_exp = false;
 void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
                   char *rule_name, char location)
 {
+   if((*gp_list)->list_type == EMPTY_LIST) return;
+
    *gp_list = reverse(*gp_list);
 
-   /* Discard any EMPTY_LIST nodes at the start of the list provided
-    * the next node is non-empty.
-    */ 
+   /* This code is no longer relevant as EMPTY_LIST can only occur as a 
+    * single struct List. 
+
+    * Discard any EMPTY_LIST nodes at the start of the list provided
+    * the next node is non-empty. 
+    
    while((*gp_list)->value.atom->exp_type == EMPTY_LIST) {
       if( (*gp_list)->next != NULL ) {
-          /* Keep track of the AST List node to free */ 
+          * Keep track of the AST List node to free 
           List *temp = *gp_list;
-	  /* Redirect gp_list to point to the next (non-empty) node */
+	  * Redirect gp_list to point to the next (non-empty) node 
           *gp_list = (*gp_list)->next;
-	  /* Free the EMPTY_LIST node */
+	  * Free the EMPTY_LIST node 
 	  free(temp->value.atom); 
-	  /* Free the struct List that pointed to the EMPTY_LIST
-	   * node. */ 
+	  * Free the struct List that pointed to the EMPTY_LIST
+	   * node. *
 	  free(temp);
       }
-      /* The EMPTY_LIST node is the only element in the list. 
-       * Nothing to be done. */
+       * The EMPTY_LIST node is the only element in the list. 
+       * Nothing to be done. 
       else break;
    }
+   */
 
    /* Make a copy of *gp_list in order to not modify the original pointer when
     * traversing the list.
     */
    List *iterator = *gp_list;
 
-   while(iterator != NULL) {
+   while(iterator) {
        atomic_exp_scan(iterator->value.atom, table, scope, rule_name, 
 		       location, false, false);
 
-       /* Removing the EMPTY_LIST nodes affects the global AST. Hence
+       /* ### This code is no longer relevant as EMPTY_LIST can only occur as a 
+        * single struct List. ###
+
+        * Removing the EMPTY_LIST nodes affects the global AST. Hence
 	* the address of iterator->next, the pointer which may be redirected,
 	* is required.
-	*/
+	
        List **next_node = &(iterator->next);
 
-       /* Discard any intermediate EMPTY_LIST nodes */
-       /* The while loop terminates when the end of the list has been reached
+
+        * Discard any intermediate EMPTY_LIST nodes 
+        * The while loop terminates when the end of the list has been reached
 	* or when the next node is not an EMPTY_LIST node.
-	*/
+	
        while( *next_node != NULL &&
 	      (*next_node)->value.atom->exp_type == EMPTY_LIST)
        {
 	       List *temp = *next_node;
-	       /* Redirect the pointer to the node after the EMPTY_LIST
-	        * node. */
+	       * Redirect the pointer to the node after the EMPTY_LIST
+	        * node. 
 	       *next_node = (*next_node)->next;
 	       free(temp->value.atom);
 	       free(temp);
-       }
-       iterator = iterator->next;
+       } */
+
+       iterator = iterator->next; 
    } 
 
    if(list_var_count > 1) { 
@@ -1521,10 +1529,6 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
 {
    switch(atom_exp->exp_type) {
 
-      case EMPTY_LIST: 
-
-           break;
-
       case INT_CONSTANT:
 
            if(string_exp) {
@@ -1573,7 +1577,7 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
            
            bool in_rule = false;
 
-           while(var_list != NULL) {
+           while(var_list) {
 
               Symbol *current_var = (Symbol*)(var_list->data);
               

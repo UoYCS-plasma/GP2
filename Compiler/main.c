@@ -69,19 +69,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
-   * pointed to the file to be read by the parser.
-   */
-
-  if(!(yyin = fopen(argv[1], "r"))) {  
-     perror(argv[1]);
-     yylineno = 1;	
-     return 1;
-  }
-
-  char *file_name = argv[1];
-
   /* Open the log file for writing. */
+  char *file_name = argv[1]; 
   int length = strlen(file_name) + 4; 
   char log_file_name[length];
   strcpy(log_file_name, file_name);
@@ -92,17 +81,66 @@ int main(int argc, char** argv) {
      return 1;
   }
 
-  printf("\nProcessing %s...\n\n", file_name);
+  /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
+   * pointed to the file to be read by the parser. argv[1] is the file 
+   * containing the GP program text file.
+   */
 
-  parse_target = GP_PROGRAM;
- 
+  if(!(yyin = fopen(argv[1], "r"))) {  
+     perror(argv[1]);
+     yylineno = 1;	
+     return 1;
+  }
+
   #ifdef PARSER_TRACE
      yydebug = 1; /* When yydebug is set to 1, Bison generates a trace of its 
                    * parse to stderr. */
   #endif
 
+  /* Tell Bison to parse with the GP Program Grammar */
+  parse_target = GP_PROGRAM;
+
+  printf("\nProcessing %s...\n\n", file_name);
+
   if(!yyparse()) {
-    fprintf(log_file,"GP2 program parse succeeded\n\n");
+     fprintf(log_file,"GP2 program parse succeeded\n\n");
+     #ifdef DRAW_ORIGINAL_AST
+        print_dot_ast(gp_program, file_name); /* Defined in pretty.c */ 
+     #endif
+  }
+
+  else fprintf(log_file,"GP2 program parse failed.\n\n");
+
+  /* Point yyin to the file containing the host graph. */
+
+  if(!(yyin = fopen(argv[2], "r"))) {  
+     perror(argv[1]);
+     yylineno = 1;	
+     return 1;
+  }
+
+  file_name = argv[2];
+
+  /* Tell Bison to parse with the Host Graph Grammar */
+  parse_target = GP_GRAPH;
+
+  printf("\nProcessing %s...\n\n", file_name);
+ 
+  if(!yyparse()) {
+     fprintf(log_file,"GP2 graph parse succeeded\n\n");    
+  
+     reverse_graph_ast(host_graph); /* Defined in seman.c */
+
+     #ifdef DRAW_HOST_GRAPH_AST
+        print_dot_host_graph(host_graph, file_name); /* Defined in pretty.c */
+     #endif
+  }
+  else fprintf(log_file,"GP2 program parse failed.\n\n");     
+
+  /* The lexer and parser set the abort_scan flag if they encounter a syntax
+   * error. */
+
+  if(!abort_scan) {
 
     /* Reverse the global declaration list at the top of the generated AST. */
     gp_program = reverse(gp_program);
@@ -119,69 +157,41 @@ int main(int argc, char** argv) {
 
     gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);    
 
-    /* The lexer and parser can set the abort_scan flag */
-
-    if(!abort_scan) {
-      abort_scan = declaration_scan(gp_program, gp_symbol_table, "Global");
-                     /* Defined in seman.c */
-      #ifdef DRAW_ORIGINAL_AST
-         print_dot_ast(gp_program, file_name); /* Defined in pretty.c */ 
-      #endif
-    }
-    else abort_compilation = true;
-
-    /* declaration_scan returns 1 if there is a name clash among the 
-     * rule and procedure declarations.
+    /* declaration_scan is defined in seman.c. It returns true if there is a
+     * name clash among the rule and procedure declarations.
      */
-              else free(proc_name);             
-    if(!abort_scan) {
-       abort_compilation = semantic_check(gp_program, gp_symbol_table, "Global"); /* seman.c */
-       #ifdef DRAW_FINAL_AST
-          /* create the string <file_name>_F as an argument to print_dot_ast */
-          int length = strlen(file_name)+2;
-          char alt_name[length];
-          strcpy(alt_name,file_name);
-          strcat(alt_name,"_F"); 
-          print_dot_ast(gp_program, alt_name); /* Defined in pretty.c */ 
-       #endif
-     
-    #ifdef PRINT_SYMBOL_TABLE
-       print_symbol_table(gp_symbol_table, file_name); /* Defined in pretty.c */
-    #endif
-    }
-    else abort_compilation = true;
-
+    abort_scan = declaration_scan(gp_program, gp_symbol_table, "Global");
   }
-  else fprintf(log_file,"GP2 program parse failed.\n\n");
-
-  if(!abort_compilation) {
-     parse_target = GP_GRAPH;
+  else abort_compilation = true;
     
-     if(!(yyin = fopen(argv[2], "r"))) {  
-        perror(argv[1]);
-        yylineno = 1;	
-        return 1;
-     }
+  if(!abort_scan) {
+     /* semantic_check is defined in seman.c. It returns true if there is a
+      * semantic error.
+      */
+     abort_compilation = semantic_check(gp_program, gp_symbol_table, "Global"); 
 
-     file_name = argv[2];
-     printf("\nProcessing %s...\n\n", file_name);
- 
-     if(!yyparse()) {
-        fprintf(log_file,"GP2 graph parse succeeded\n\n");    
-  
-        reverse_graph_ast(host_graph); /* Defined in seman.c */
-
-        #ifdef DRAW_HOST_GRAPH_AST
-           print_dot_host_graph(host_graph, file_name); /* Defined in pretty.c */
-        #endif
-     }
-     else fprintf(log_file,"GP2 program parse failed.\n\n");     
+     #ifdef DRAW_FINAL_AST
+        /* create the string <file_name>_F as an argument to print_dot_ast */
+        int length = strlen(argv[1])+2;
+        char alt_name[length];
+        strcpy(alt_name,argv[1]);
+        strcat(alt_name,"_F"); 
+        print_dot_ast(gp_program, alt_name); /* Defined in pretty.c */ 
+     #endif
+     
+     #ifdef PRINT_SYMBOL_TABLE
+        print_symbol_table(gp_symbol_table, argv[1]); /* Defined in pretty.c */
+     #endif
   }
+  else abort_compilation = true;
+
+  if(!abort_compilation) fprintf(stderr,"Proceed with code generation.\n"); 
   else fprintf(stderr,"\nBuild aborted. Please consult the file %s.log for "
                "a detailed error report.\n", argv[1]);   
  
   /* Garbage collection */
   fclose(yyin);
+  fclose(log_file);
   if(gp_program) free_ast(gp_program); /* Defined in ast.c */
   if(host_graph) free_graph(host_graph); /* Defined in ast.c */
 
@@ -193,7 +203,6 @@ int main(int argc, char** argv) {
     g_hash_table_foreach(gp_symbol_table, free_symbol_list, NULL);
     g_hash_table_destroy(gp_symbol_table); 
   }
-  fclose(log_file);
 
   return 0;
 }
