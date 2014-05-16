@@ -5,18 +5,23 @@ import Data.Maybe
 import ParseLib
 import GP2Graph
 
+gpNumChars, gpChars :: [Char]
 gpNumChars = ['0'..'9']
 gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , gpNumChars , ['_'] ]
+
+gpColours :: [ (String, Colour) ]
 gpColours = [
     ("uncoloured", Uncoloured),
     ("red", Red),
     ("green", Green),
     ("blue", Blue), 
     ("grey", Grey),
+--    ("cyan", Cyan),
     ("dashed", Dashed) ]
 
 
-
+testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
+testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 
 --gpGraph :: Parser GP2Graph
 --gpGraph = keyword "[" |> gpHostGraph <| keyword "]"
@@ -24,29 +29,48 @@ gpColours = [
 --gpNodeList :: Parser GP2Graph
 --gpHostGraph = gpNodeList <*> gpEdgeList
 
-gpNodeList = atLeastOne gpNode
 
+
+gpEdgeList :: Parser [((String, String), GP2Label)]
 gpEdgeList = keyword "|" |> maybeSome gpEdge
 
+
+gpEdge :: Parser ((String, String), GP2Label)
+gpEdge = keyword "(" |> pure (,) <*> endPoints <*> gp2Label <| keyword ")"
+
+
+endPoints :: Parser (String, String)
+endPoints = label |> keyword "," |> pure (,) <*> ( label <| keyword "," ) <*> label
+
+gpNodeList :: Parser [GP2Label]
+gpNodeList = atLeastOne gpNode
+
+gpNode :: Parser GP2Label
 gpNode = keyword "(" |> nodeBody <| keyword ")"
 
-nodeBody = pure GP2Label <*> nodeValue <*> nodeColour
+nodeBody :: Parser GP2Label
+nodeBody = label |> keyword "," |> gp2Label
 
-intOrStr  = pure Int <*> intLit
-        <|> pure Str <*> strLit
+gp2Label :: Parser GP2Label
+gp2Label = pure GP2Label <*> maybeSome nodeValue <*> nodeColour
 
-nodeValue = pure (:[]) <*> intOrStr
-        <|> pure (:) <*> intOrStr 
-
+nodeColour :: Parser Colour
 nodeColour = keyword "#" |> pure col <*> label
         <|> pure Uncoloured
     where
         col c = fromJust $ lookup c gpColours
 
-gpEdge = pure ""
 
-gpChar :: Parser Char
-gpChar = satisfy (`elem` gpChars)
+nodeValue :: Parser IntOrStr
+nodeValue = intOrStr {- pure (:[]) <*> intOrStr
+        <|> pure (:) <*> intOrStr  -}
+
+
+
+
+intOrStr :: Parser IntOrStr
+intOrStr  = intLit
+        <|> strLit
 
 numChar :: Parser Char
 numChar = satisfy (`elem` gpNumChars)
@@ -54,18 +78,26 @@ numChar = satisfy (`elem` gpNumChars)
 charLit :: Parser String
 charLit = char '\'' |> exactlyOne gpChar <| char '\'' <| optSpaces
 
-strLit :: Parser String
-strLit = char '"' |> maybeSome gpChar <| char '"'
+strLit :: Parser IntOrStr
+strLit = char '"' |> pure Str <*> maybeSome gpChar <| keyword "\""
+    <|>  char '\'' |> pure Str <*> exactlyOne gpChar <| keyword "'"
 
-intLit :: Parser Int
-intLit = pure read <*> atLeastOne numChar <| optSpaces
+gpChar :: Parser Char
+gpChar = satisfy (`elem` gpChars)
+
+intLit :: Parser IntOrStr
+intLit = pure Int <*> ( pure read <*> atLeastOne numChar <| optSpaces )
 
 label :: Parser String
-label = token ( atLeastOne gpChar )
+label = token ( atLeastOne gpChar ) <| optSpaces
 
+root :: Parser String
 root = keyword "(R)"
 
+empty :: Parser String
 empty = keyword "empty"
+
+
 
 --colour :: Parser [String]
 --colour = satisfy (`elem` gpColours)
