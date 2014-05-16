@@ -1,7 +1,6 @@
 import ParseLib
 import ParseGraph
-import Data.List
-import Data.String
+
 
 gpKeywords :: [String]
 gpKeywords = map fst gpColours ++
@@ -27,11 +26,44 @@ upperIdent = identifier upper
 ruleDecl :: Parser RuleDecl
 ruleDecl = lowerIdent <| char '(' <*>  
 
-factor :: Parser Factor
-factor = lowerIdent <|> 
+type Variable = String
+type NodeId = String
 
-label :: Parser GP2Label
-label = list <*> maybeOne (char '#' <| colour)
+data GP2Label = GP2Label GPList Colour 
+type GPList = [Atom]
+
+-- Not sure what the standard practice is for implementing arithmetic 
+-- operator precedence in this framework.
+data Atom = | Var Id 
+            | Val Constant
+	    | Indeg NodeId
+	    | Outdeg NodeId
+            | Llength GPList
+            | Slength GPList
+            | Neg Atom
+	    | Plus Atom Atom
+	    | Minus Atom Atom
+	    | Times Atom Atom
+	    | Div Atom Atom
+	    | Concat Atom Atom
+            		
+
+atom :: Parser Atom
+atom = pure Var <*> lowerIdent
+   <|> pure Val <*> value
+   -- if this does not typecheck, try replacing char 'x' with keyword "x"
+   <|> keyword "indeg" |> char '(' |> pure Indeg <*> lowerIdent <| char ')'
+   <|> keyword "outdeg" |> char '(' |> pure Indeg <*> lowerIdent <| char ')'
+   <|> keyword "llength" |> char '(' |> pure Llength <*> 
+
+	 
+
+intConst :: Parser Int
+intConst = pure read <*> atLeastOne numChar <| optSpaces
+	 
+
+gp2Label :: Parser GP2Label
+gp2Label = pure GP2Label <*> maybeSome nodeValue <*> nodeColour
 
 
 

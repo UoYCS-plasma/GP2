@@ -2,17 +2,17 @@ module GP2Graph (GP2Graph, GP2Label(..), IntOrStr(..), Colour(..), unlabelled, k
 
 import Graph
 
-data GP2Label = GP2Label [IntOrStr] Colour deriving (Eq, Show)
+data GP2HostLabel = GP2HostLabel [HostAtom] Colour deriving (Eq, Show)
 
-data IntOrStr = Int Int | Str String deriving (Eq, Show)
+data HostAtom = Int Int | Str String | Chr Char deriving (Eq, Show)
 
 {- Colours have yet to be formalised. Currently working on the assumption that only one can be applied to a given edge or node -}
 data Colour   = Uncoloured | Red | Green | Blue | Grey | Dashed deriving (Eq, Show)
 
-type GP2Graph = Graph GP2Label
+type GP2HostGraph = Graph GP2HostLabel
 
-unlabelled :: GP2Label
-unlabelled  =  GP2Label [] Uncoloured
+unlabelled :: GP2HostLabel
+unlabelled  =  GP2HostLabel [] Uncoloured
 
 -- the unlabelled graph K_n
 k :: Int -> GP2Graph

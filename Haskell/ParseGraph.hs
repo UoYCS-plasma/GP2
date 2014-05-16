@@ -30,13 +30,16 @@ gpEdgeList = keyword "|" |> maybeSome gpEdge
 
 gpNode = keyword "(" |> nodeBody <| keyword ")"
 
-nodeBody = pure GP2Label <*> nodeValue <*> nodeColour
+nodeBody = pure GP2HostLabel <*> nodeValue <*> nodeColour
 
-intOrStr  = pure Int <*> intLit
-        <|> pure Str <*> strLit
 
-nodeValue = pure (:[]) <*> intOrStr
-        <|> pure (:) <*> intOrStr 
+value :: Parser HostAtom
+value = pure Int <*> intLit
+    <|> pure Str <*> strLit
+    <|> pure Chr <*> charLit
+
+nodeValue = pure (:[]) <*> value
+        <|> pure (:) <*> value 
 
 nodeColour = keyword "#" |> pure col <*> label
         <|> pure Uncoloured
