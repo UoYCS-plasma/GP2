@@ -24,9 +24,14 @@ searchFor = makeRuleGraph 2
 
 type GP2RuleGraph = GP2Graph
 type GP2RuleLabel = GP2Label
-type GraphMorphism = ([NodeId], [EdgeId])
+
 type RuleMatch = (NodeId, [NodeId])
 
+type GraphMorphism = ( NodeMatches, EdgeMatches ) 
+type NodeMatches = [ NodeMatch ]
+type EdgeMatches = [ EdgeMatch ]
+type NodeMatch = (NodeId, NodeId)
+type EdgeMatch = (EdgeId, EdgeId)
 
 
 -- two nodes are equal if their labels are equal
@@ -39,29 +44,29 @@ edgesAreEqual g r ge re = ( eLabel g ge == eLabel r re )
                        && ( nodesAreEqual g r (fromJust $ source g ge) (fromJust $ source r re) )
                        && ( nodesAreEqual g r (fromJust $ target g ge) (fromJust $ target r re) )
        
-
-matchRuleNode :: GP2Graph -> GP2RuleGraph -> NodeId -> RuleMatch
+matchRuleNode :: GP2Graph -> GP2RuleGraph -> NodeId -> NodeMatches
 matchRuleNode g r rn =
-    ( rn, [ n | n <- allNodes g , nodesAreEqual g r n rn ] )
+    [ (rn, n) | n <- allNodes g , nodesAreEqual g r n rn ]
 
-matchNodes :: GP2Graph -> GP2RuleGraph -> [RuleMatch]
-matchNodes g r = map ( matchRuleNode g r ) $ allNodes r
+matchRuleEdge :: GP2Graph -> GP2RuleGraph -> EdgeId -> EdgeMatches
+matchRuleEdge g r re =
+    [ (re, e) | e <- allEdges g , edgesAreEqual g r e re ]
 
-matchEdges :: GP2Graph -> GP2RuleGraph -> RuleMatch -> [EdgeId]
-matchEdges g r (rn, gns) = union ins outs
+matchNodes :: GP2Graph -> GP2RuleGraph -> NodeMatches
+matchNodes g r = concatMap ( matchRuleNode g r ) $ allNodes r
+
+matchEdges :: GP2Graph -> GP2RuleGraph -> EdgeMatches
+matchEdges g r = concatMap ( matchRuleEdge g r ) $ allEdges r
+{-matchEdges g r (rn, gn) = union ins outs
     where
-        ins  = intersectBy (edgesAreEqual g r)
-                    [ e | e <- concatMap (inEdges g) gns ]
-                    [ re | re <- inEdges r rn ]
-        outs = intersectBy (edgesAreEqual g r)
-                    [ e | e <- concatMap (outEdges g) gns ]
-                    [ re | re <- outEdges r rn ]
+        ins  = filter (uncurry $ edgesAreEqual g r)
+                    [ (re, e) | e <- inEdges g gn, re <- inEdges r rn ]
+        outs = filter (uncurry $ edgesAreEqual g r)
+                    [ (re, e) | e <- outEdges g gn, re <- outEdges r rn ] -}
 
 matchGraph :: GP2Graph -> GP2RuleGraph -> [GraphMorphism]
-matchGraph g r = zip (map snd node_matches) edge_matches
-    where
-        node_matches = matchNodes g r
-        edge_matches = map (matchEdges g r) node_matches
+matchGraph g r = [ (nm, em) | nm <- matchNodes g r , em <- matchEdges g r ]
+
                 
 
 

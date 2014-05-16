@@ -3,7 +3,7 @@
 
 module Graph (Graph, NodeId, EdgeId, pretty,
                emptyGraph, newNode, newEdge,
-               allNodes, outEdges, inEdges,
+               allNodes, outEdges, inEdges, allEdges,
                source, target, nLabel, eLabel,
                rmNode, rmEdge, eReLabel, nReLabel) where
 
