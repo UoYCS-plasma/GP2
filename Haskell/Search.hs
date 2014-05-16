@@ -13,6 +13,7 @@ makeTestGraph n = nReLabel gr id (GP2Label [] Green)
         gr = k n
         id = head $ allNodes gr
 
+-- This function is the same as the previous!
 makeRuleGraph n = nReLabel gr id (GP2Label [] Green)
     where
         gr = k n
