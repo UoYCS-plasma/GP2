@@ -2,49 +2,28 @@
 
                                   ast.c              
                          
-                   Contains AST constructor definitions. 
+              Contains AST constructor definitions and functions to
+                                free the AST.
 
                      Created on 22/7/2013 by Chris Bak 
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
+#include "ast.h" /* AST struct definitions */
 #include <stdio.h> /* printf */
 #include <stdlib.h> /* malloc */
+#include <string.h> /* strdup */
 
-#include "ast.h" /* AST struct definitions */
-
-/* Function to reverse a sequence of List nodes in the AST. Given a
- * pointer to a List node representing the head of an AST list, it
- * reverses the list and returns a pointer to the new head. 
+/* Most of the functions in this file create new AST nodes. They are called
+ * from the Bison parser (gpparser.y) which provides the appropriate arguments
+ * from the semantic values of rules it reduces. The functions just assign
+ * the pointers to the corresponding structure fields. 
  *
- * This function is required as Bison generates lists in reverse order
- * due to left-recursive grammar rules. 
- */
-
-List *reverse (List * listHead) 
-{
-     List *currentNode = listHead;
-     List *tempNode = NULL;
-     List *previousNode = NULL;
-
-     /* invariant: currentNode points to the node being worked on and
-      * previousNode points to the original parent of currentNode.
-      */
-
-     while(currentNode != NULL) {
-        tempNode = currentNode->next; /* keeping a pointer to currentNode->next before
-                                         reassignment. */
-	currentNode->next = previousNode; /* reversing the 'next' pointer of currentNode. */
-
-	/* setting the invariant for the next iteration */
-	previousNode = currentNode;
-	currentNode = tempNode;
-     }
-
-     return previousNode; /* The tail of the original list and the head of the reversed list. */
-}     
-
-
+ * Strings, such as rule names and variable names, are dynamically allocated 
+ * with strdup. This is because the pointer passed to the function is freed in 
+ * gpparser.y immediately after the constructor call, hence a new allocation is 
+ * required to prevent a double free.
+ */ 
 
 /* The constructor functions for AST nodes of type struct List. */
 
@@ -54,7 +33,7 @@ List *addDecl (list_t list_type, YYLTYPE location, GPDeclaration *declaration,
     List *new_decl = malloc(sizeof(List));
     
     if(new_decl == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -72,7 +51,7 @@ List *addCommand (YYLTYPE location, GPStatement *command, List *next)
     List *new_command = malloc(sizeof(List));
     
     if(new_command == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -89,13 +68,13 @@ List *addRule (YYLTYPE location, char *rule_name, List *next)
     List *new_rule = malloc(sizeof(List));
     
     if(new_rule == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     new_rule->list_type = RULES;
     new_rule->location = location;
-    new_rule->value.rule_name = rule_name;
+    new_rule->value.rule_name = strdup(rule_name);
     new_rule->next = next;
 
     return new_rule;
@@ -107,7 +86,7 @@ List *addVariableDecl (list_t list_type, YYLTYPE location, List *variables,
     List *new_var_decl = malloc(sizeof(List));
     
     if(new_var_decl == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -126,13 +105,13 @@ List *addVariable (YYLTYPE location, char *variable_name, List *next)
     List *new_var = malloc(sizeof(List));
     
     if(new_var == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     new_var->list_type = VARIABLE_LIST;
     new_var->location = location;
-    new_var->value.variable_name = variable_name;
+    new_var->value.variable_name = strdup(variable_name);
     new_var->next = next;
 
     return new_var;
@@ -143,13 +122,13 @@ List *addNodeID (YYLTYPE location, char *node_id, List *next)
     List *new_pair = malloc(sizeof(List));
     
     if(new_pair == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     new_pair->list_type = INTERFACE_LIST;
     new_pair->location = location;
-    new_pair->value.node_id = node_id;
+    new_pair->value.node_id = strdup(node_id);
     new_pair->next = next;
 
     return new_pair;
@@ -160,7 +139,7 @@ List *addNode (YYLTYPE location, GPNode *node, List *next)
      List *new_node = malloc(sizeof(List));
      
      if(new_node == NULL) {
-	fprintf(stderr,"Insufficient space.\n");
+	fprintf(log_file,"Memory exhausted during AST construction.\n");
         exit(0);
      }
 
@@ -177,7 +156,7 @@ List *addEdge (YYLTYPE location, GPEdge *edge, List *next)
      List *new_edge = malloc(sizeof(List));
      
      if(new_edge == NULL) {
-	fprintf(stderr,"Insufficient space.\n");
+	fprintf(log_file,"Memory exhausted during AST construction.\n");
         exit(0);
      }
 
@@ -194,7 +173,7 @@ List *addAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
     List *new_atom = malloc(sizeof(List));
    
     if(new_atom == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -206,6 +185,22 @@ List *addAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
     return new_atom;
 }
 
+List *addEmptyList (YYLTYPE location)
+{
+     List *new_empty = malloc(sizeof(List));
+
+     if(new_empty == NULL) {
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       exit(0);
+     }
+
+     new_empty->list_type = EMPTY_LIST;
+     new_empty->location = location;
+     new_empty->next = NULL;
+
+     return new_empty;
+}
+
 
 /* The constructor functions for AST nodes of type struct GPDeclaration. */
 
@@ -214,7 +209,7 @@ GPDeclaration *newMainDecl (YYLTYPE location, GPStatement *main_program)
     GPDeclaration *new_main = malloc(sizeof(GPDeclaration));
    
     if(new_main == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -230,7 +225,7 @@ GPDeclaration *newProcedureDecl (YYLTYPE location, GPProcedure *procedure)
     GPDeclaration *new_proc = malloc(sizeof(GPDeclaration));
    
     if(new_proc == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -246,7 +241,7 @@ GPDeclaration *newRuleDecl (YYLTYPE location, GPRule *rule)
     GPDeclaration *new_rule = malloc(sizeof(GPDeclaration));
    
     if(new_rule == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -265,7 +260,7 @@ GPStatement *newCommandSequence(YYLTYPE location, List *cmd_seq)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -281,13 +276,13 @@ GPStatement *newRuleCall(YYLTYPE location, char *rule_name)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     stmt->statement_type = RULE_CALL;
     stmt->location = location;
-    stmt->value.rule_name = rule_name;
+    stmt->value.rule_name = strdup(rule_name);
 
     return stmt;
 }
@@ -297,7 +292,7 @@ GPStatement *newRuleSetCall(YYLTYPE location, List *rule_set)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -313,13 +308,13 @@ GPStatement *newProcCall(YYLTYPE location, char *proc_name)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     stmt->statement_type = PROCEDURE_CALL;
     stmt->location = location;
-    stmt->value.proc_name = proc_name;
+    stmt->value.proc_name = strdup(proc_name);
 
     return stmt;
 }
@@ -330,7 +325,7 @@ GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location,
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -349,7 +344,7 @@ GPStatement *newAlap(YYLTYPE location, GPStatement *loop_stmt)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -366,7 +361,7 @@ GPStatement *newOrStmt(YYLTYPE location, GPStatement *left_stmt,
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -383,7 +378,7 @@ GPStatement *newSkip(YYLTYPE location)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -398,7 +393,7 @@ GPStatement *newFail(YYLTYPE location)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -416,14 +411,14 @@ GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var)
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
      cond->exp_type = exp_type; 
      /* exp_type: INT_CHECK, STRING_CHECK, ATOM_CHECK */
      cond->location = location;
-     cond->value.var = var;
+     cond->value.var = strdup(var);
 
      return cond;
 }
@@ -434,14 +429,14 @@ GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target,
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
      cond->exp_type = EDGE_PRED;
      cond->location = location;
-     cond->value.edge_pred.source = source;
-     cond->value.edge_pred.target = target;
+     cond->value.edge_pred.source = strdup(source);
+     cond->value.edge_pred.target = strdup(target);
      cond->value.edge_pred.label = label;
 
      return cond;
@@ -453,7 +448,7 @@ GPCondExp *newListComparison (condexp_t exp_type, YYLTYPE location,
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -473,7 +468,7 @@ GPCondExp *newAtomComparison (condexp_t exp_type, YYLTYPE location,
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -492,7 +487,7 @@ GPCondExp *newNotExp (YYLTYPE location, GPCondExp *not_exp)
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -509,7 +504,7 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location,
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -526,34 +521,19 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location,
 
 /* The constructor functions for AST nodes of type struct GPAtomicExp. */
 
-GPAtomicExp *newEmpty (YYLTYPE location)
-{
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
-
-     if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
-       exit(0);
-     }
-
-     atom->exp_type = EMPTY_LIST;
-     atom->location = location;
-
-     return atom;
-}
-
 
 GPAtomicExp *newVariable (YYLTYPE location, char *name)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
      atom->exp_type = VARIABLE;
      atom->location = location;
-     atom->value.name = name;
+     atom->value.name = strdup(name);
 
      return atom;
 }
@@ -563,7 +543,7 @@ GPAtomicExp *newNumber (YYLTYPE location, int number)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -575,18 +555,36 @@ GPAtomicExp *newNumber (YYLTYPE location, int number)
 }
 
 
+GPAtomicExp *newCharacter (YYLTYPE location, char *character)
+{
+     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+
+     if(atom == NULL) {
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       exit(0);
+     }
+
+     atom->exp_type = CHARACTER_CONSTANT;
+     atom->location = location;
+     if(character) atom->value.string = strdup(character);
+
+     return atom;
+}
+
+
+
 GPAtomicExp *newString (YYLTYPE location, char *string)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
      atom->exp_type = STRING_CONSTANT;
      atom->location = location;
-     atom->value.string = string;
+     if(string) atom->value.string = strdup(string);
 
      return atom;
 }
@@ -596,14 +594,14 @@ GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
      atom->exp_type = exp_type; 
      /* exp_type: INDEGREE, OUTDEGREE */
      atom->location = location;
-     atom->value.node_id = node_id;
+     atom->value.node_id = strdup(node_id);
 
      return atom;
 }
@@ -613,7 +611,7 @@ GPAtomicExp *newListLength (YYLTYPE location, List *list_arg)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -629,23 +627,23 @@ GPAtomicExp *newStringLength (YYLTYPE location, GPAtomicExp *str_arg)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
-     atom->exp_type = STRING_LENGTH; 
+     atom->exp_type = STRING_LENGTH;
      atom->location = location;
      atom->value.str_arg = str_arg;
 
      return atom;
 }
 
-GPAtomicExp *newNegExp (YYLTYPE location, struct GPAtomicExp *exp)
+GPAtomicExp *newNegExp (YYLTYPE location, GPAtomicExp *exp)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -661,7 +659,7 @@ GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, GPAtomicExp *lef
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(stderr,"Insufficient space.\n");
+       fprintf(log_file,"Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -682,32 +680,34 @@ GPProcedure *newProcedure(YYLTYPE location, char *name, List *local_decls, GPSta
     GPProcedure *proc = malloc(sizeof(GPProcedure));
     
     if(proc == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     proc->node_type = PROCEDURE;
     proc->location = location;
-    proc->name = name;
+    proc->name = strdup(name);
     proc->local_decls = local_decls;
     proc->cmd_seq = cmd_seq;
 
     return proc;
 }
  
-GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables, GPGraph *lhs, GPGraph *rhs, List *interface, GPCondExp *condition)
+GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables,
+	        GPGraph *lhs, GPGraph *rhs, List *interface, 
+		GPCondExp *condition)
 {
     GPRule *rule = malloc(sizeof(GPRule));
     
     if(rule == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     rule->node_type = RULE;
     rule->location = location;
     rule->injective = injective;
-    rule->name = name;
+    rule->name = strdup(name);
     rule->variables = variables;
     rule->lhs = lhs;
     rule->rhs = rhs;
@@ -718,12 +718,13 @@ GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables, G
 }    
 
 
-GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes, List *edges)
+GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes, 
+                   List *edges)
 {
     GPGraph *graph = malloc(sizeof(GPGraph));
     
     if(graph == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -742,14 +743,14 @@ GPNode *newNode (YYLTYPE location, bool root, char *name, GPLabel *label, GPPos 
     GPNode *node = malloc(sizeof(GPNode));
     
     if(node == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     node->node_type = NODE;
     node->location = location;
     node->root = root;
-    node->name = name;
+    node->name = strdup(name);
     node->label = label;
     node->position = position;
 
@@ -761,15 +762,15 @@ GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target, GPLab
     GPEdge *edge = malloc(sizeof(GPEdge));
     
     if(edge == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
     edge->node_type = EDGE;
     edge->location = location;
-    edge->name = name;
-    edge->source = source;
-    edge->target = target;
+    edge->name = strdup(name);
+    edge->source = strdup(source);
+    edge->target = strdup(target);
     edge->label = label;
 
     return edge;
@@ -780,7 +781,7 @@ GPPos *newPosition (YYLTYPE location, int x, int y)
     GPPos *pos = malloc(sizeof(GPPos));
     
     if(pos == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -797,7 +798,7 @@ GPLabel *newLabel (YYLTYPE location, mark_t mark, List *gp_list)
     GPLabel *label = malloc(sizeof(GPLabel));
     
     if(label == NULL) {
-      fprintf(stderr,"Insufficient space.\n");
+      fprintf(log_file,"Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -808,4 +809,436 @@ GPLabel *newLabel (YYLTYPE location, mark_t mark, List *gp_list)
 
     return label;
 }
+
+/* These functions perform a depth-first walk of the AST. They take a pointer
+ * to an AST node as their argument. They first free any malloc'd strings 
+ * (identifiers and string constants) if present, then they free any
+ * substructures, and finally they free themselves. 
+ */
+
+void free_ast(List *ast) 
+{
+   switch(ast->list_type) {
+
+	case GLOBAL_DECLARATIONS:
+
+        case LOCAL_DECLARATIONS:
+
+	     if(ast->value.declaration) 
+               free_declaration(ast->value.declaration);
+
+	     break;	
+
+
+	case COMMANDS:
+
+             if(ast->value.command) free_statement(ast->value.command);
+
+	     break;	
+
+
+	case RULES:
+
+             if(ast->value.rule_name) free(ast->value.rule_name);
+
+	     break;
+	
+
+	case INT_DECLARATIONS:
+              
+	case STRING_DECLARATIONS:
+
+	case ATOM_DECLARATIONS:
+
+	case LIST_DECLARATIONS:
+
+             if(ast->value.variables) free_ast(ast->value.variables);
+
+	     break;
+	
+
+	case VARIABLE_LIST:
+
+             if(ast->value.variable_name) free(ast->value.variable_name);
+
+	     break;
+	
+
+	case INTERFACE_LIST:
+
+             if(ast->value.node_id) free(ast->value.node_id);
+
+	     break;
+	
+
+	case NODE_LIST:
+
+             if(ast->value.node) free_node(ast->value.node);
+
+	     break;
+	
+
+	case EDGE_LIST:
+
+             if(ast->value.edge) free_edge(ast->value.edge);
+
+	     break;
+
+
+	case GP_LIST:
+
+             if(ast->value.atom) free_atomic_exp(ast->value.atom);
+
+	     break;
+
+	
+	case EMPTY_LIST:
+
+             break;
+
+
+	default: fprintf(log_file,"Unexpected List Type: %d\n",
+                         (int)ast->list_type); 
+                 break;	 
+
+	}
+
+   if(ast->next) free_ast(ast->next);
+   free(ast);
+}
+
+void free_declaration(GPDeclaration *decl)
+{
+     switch(decl->decl_type) {
+
+	case MAIN_DECLARATION:
+
+             if(decl->value.main_program) 
+               free_statement(decl->value.main_program);
+
+	     break;
+
+
+	case PROCEDURE_DECLARATION:
+
+             if(decl->value.procedure) free_procedure(decl->value.procedure);
+
+	     break;
+
+
+	case RULE_DECLARATION:
+
+             if(decl->value.rule) free_rule(decl->value.rule);
+
+	     break;
+
+
+	default: fprintf(log_file,"Unexpected Declaration Type: %d\n",
+                         (int)decl->decl_type); 
+                 break;
+
+	}
+
+   free(decl);
+}
+
+void free_statement(GPStatement *stmt)
+{
+     switch(stmt->statement_type) {
+
+	case COMMAND_SEQUENCE:	
+
+             if(stmt->value.cmd_seq) free_ast(stmt->value.cmd_seq);
+
+	     break;
+
+
+	case RULE_CALL:
+
+             if(stmt->value.rule_name) free(stmt->value.rule_name);
+
+	     break;
+
+
+	case RULE_SET_CALL:
+
+             if(stmt->value.rule_set) free_ast(stmt->value.rule_set);
+
+	     break;
+
+
+	case PROCEDURE_CALL:
+
+             if(stmt->value.proc_name) free(stmt->value.proc_name);
+
+	     break;
+
+
+	case IF_STATEMENT:
+
+        case TRY_STATEMENT:
+
+             if(stmt->value.cond_branch.condition) 
+               free_statement(stmt->value.cond_branch.condition);
+             if(stmt->value.cond_branch.then_stmt) 
+               free_statement(stmt->value.cond_branch.then_stmt);
+	     if(stmt->value.cond_branch.else_stmt) 
+               free_statement(stmt->value.cond_branch.else_stmt);
+
+	     break;
+
+
+	case ALAP_STATEMENT:
+
+	     if(stmt->value.loop_stmt) free_statement(stmt->value.loop_stmt);
+             
+	     break;
+
+
+	case PROGRAM_OR:
+
+             if(stmt->value.or_stmt.left_stmt) 
+               free_statement(stmt->value.or_stmt.left_stmt);
+             if(stmt->value.or_stmt.right_stmt) 
+               free_statement(stmt->value.or_stmt.right_stmt);
+
+	     break;
+
+
+	case SKIP_STATEMENT:
+
+ 	case FAIL_STATEMENT:
+
+	     break;
+
+	
+	default: fprintf(log_file,"Unexpected Statement Type: %d\n",
+                         (int)stmt->statement_type); 
+                 break;
+
+	}
+
+   free(stmt);
+}
+
+void free_condition(GPCondExp *cond)
+{
+     switch(cond->exp_type) {
+
+	case INT_CHECK:
+
+	case STRING_CHECK:
+
+	case ATOM_CHECK:
+
+             if(cond->value.var) free(cond->value.var);
+
+             break;
+
+
+	case EDGE_PRED:
+
+	     if(cond->value.edge_pred.source)
+               free(cond->value.edge_pred.source);
+	     if(cond->value.edge_pred.target)
+               free(cond->value.edge_pred.target);
+	     if(cond->value.edge_pred.label)
+               free_label(cond->value.edge_pred.label);
+                                         
+             break;
+
+
+	case EQUAL:
+
+	case NOT_EQUAL:
+
+             if(cond->value.list_cmp.left_list) 
+               free_ast(cond->value.list_cmp.left_list);
+             if(cond->value.list_cmp.right_list)  
+               free_ast(cond->value.list_cmp.right_list);
+
+	     break;
+	
+
+	case GREATER:
+
+	case GREATER_EQUAL:
+
+	case LESS:
+
+	case LESS_EQUAL:
+
+             if(cond->value.atom_cmp.left_exp)
+               free_atomic_exp(cond->value.atom_cmp.left_exp);
+             if(cond->value.atom_cmp.right_exp) 
+               free_atomic_exp(cond->value.atom_cmp.right_exp);
+
+	     break;	  
+
+
+	case BOOL_NOT:
+
+	     if(cond->value.not_exp) free_condition(cond->value.not_exp);
+
+	     break;
+
+
+	case BOOL_OR:
+
+	case BOOL_AND:
+
+	     if(cond->value.bin_exp.left_exp)
+               free_condition(cond->value.bin_exp.left_exp);
+	     if(cond->value.bin_exp.right_exp) 
+               free_condition(cond->value.bin_exp.right_exp);
+
+	     break;
+
+
+	default: fprintf(log_file,"Unexpected Condition Type: %d\n",
+                         (int)cond->exp_type); 
+                 break;
+
+	}
+   free(cond);
+}
+
+void free_atomic_exp(GPAtomicExp *atom)
+{
+     switch(atom->exp_type) {
+
+
+	case VARIABLE:
+
+	     if(atom->value.name)
+               free(atom->value.name);
+
+             break;
+
+
+	case INT_CONSTANT:
+
+             break;
+
+
+        case CHARACTER_CONSTANT:
+          
+	case STRING_CONSTANT:
+
+	     if(atom->value.string)
+               free(atom->value.string);
+
+             break;
+
+
+	case INDEGREE:
+ 
+        case OUTDEGREE:
+
+	     if(atom->value.node_id) 
+               free(atom->value.node_id);
+
+             break;
+
+
+	case LIST_LENGTH:
+
+	     if(atom->value.list_arg)
+               free_ast(atom->value.list_arg);
+		
+             break;
+
+
+	case STRING_LENGTH:
+
+	     if(atom->value.str_arg)
+               free_atomic_exp(atom->value.str_arg);
+
+             break;
+
+	case NEG:
+
+	     if(atom->value.exp) free_atomic_exp(atom->value.exp);
+
+             break;
+
+
+	case ADD:
+
+	case SUBTRACT:
+
+	case MULTIPLY:
+
+	case DIVIDE:
+
+	case CONCAT:
+
+	     if(atom->value.bin_op.left_exp)
+                free_atomic_exp(atom->value.bin_op.left_exp);
+	     if(atom->value.bin_op.right_exp)  
+                free_atomic_exp(atom->value.bin_op.right_exp);
+
+             break;
+
+
+	default: fprintf(log_file,"Unexpected Atomic Expression Type: %d\n",
+                         (int)atom->exp_type); 
+                 break;
+
+	}
+
+   free(atom);
+}
+
+void free_procedure(GPProcedure *proc)
+{
+   if(proc->name) free(proc->name);
+   if(proc->local_decls) free_ast(proc->local_decls);
+   if(proc->cmd_seq) free_statement(proc->cmd_seq);
+   free(proc);
+}
+
+void free_rule(GPRule *rule)
+{
+   if(rule->name) free(rule->name);
+   if(rule->variables) free_ast(rule->variables);
+   if(rule->lhs) free_graph(rule->lhs);  
+   if(rule->rhs) free_graph(rule->rhs);
+   if(rule->interface) free_ast(rule->interface);
+   if(rule->condition) free_condition(rule->condition);
+   free(rule);
+}
+
+void free_graph(GPGraph *graph)
+{
+   if(graph->position) free(graph->position);
+   if(graph->nodes) free_ast(graph->nodes);
+   if(graph->edges) free_ast(graph->edges);
+   free(graph);
+}
+
+void free_node(GPNode *node)
+{
+   if(node->name) free(node->name);
+   if(node->label) free_label(node->label);
+   if(node->position) free(node->position);
+   free(node);
+}
+
+void free_edge(GPEdge *edge)
+{
+   if(edge->name) free(edge->name);
+   if(edge->source) free(edge->source);
+   if(edge->target) free(edge->target);
+   if(edge->label) free_label(edge->label);
+   free(edge);
+}
+
+void free_label(GPLabel *label)
+{
+   if(label->gp_list) free_ast(label->gp_list);
+   free(label);
+}
+   
+
 

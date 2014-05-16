@@ -11,10 +11,14 @@
 //////////////////////////////////////////////////////////////////////////// */
 
 
-/* Bison uses a global variable yylloc of type YYLTYPE to keep track of the locations of 
- * tokens and nonterminals. The scanner will set these values upon reading each token. 
- * This is the standard YYLTYPE definition but I define it here so it is seen by every file.
+/* Bison uses a global variable yylloc of type YYLTYPE to keep track of the 
+ * locations of tokens and nonterminals. The scanner will set these values upon
+ * reading each token. This is the standard YYLTYPE definition but I define it
+ * here so it is seen by every file.
  */
+
+#ifndef INC_AST_H
+#define INC_AST_H 
 
 #include <stdio.h> /* FILE type */
 #include <stdbool.h>
@@ -29,6 +33,7 @@ typedef struct YYLTYPE {
 # define YYLTYPE_IS_DECLARED 1 /* tells the parser that YYLTYPE is defined here */
 
 extern FILE *yyin; /* Created by Bison. */
+extern FILE *log_file; /* Created in main.c */
 
 
 /* Declarations for functions and variables defined in gplexer.l */
@@ -37,18 +42,11 @@ extern char *yytext;
 
 
 /* Declarations for functions and variables defined in gpparser.y */
-int yyerror(char *s);
 int yyparse(void);
-void print_error(YYLTYPE loc, char *errormsg, ...);
 extern struct List *gp_program; 
-extern char *file_name; 
-extern bool is_injective;
-extern bool is_root;
 extern int yydebug;
 
-struct List *reverse (struct List * listHead); /* defined in ast.c */
-
-/* enum used by the lexer for mark keywords */
+/* enum used by the parser for mark keywords */
 
 typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
 
@@ -58,7 +56,7 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t;
 typedef enum {GLOBAL_DECLARATIONS=0, LOCAL_DECLARATIONS, COMMANDS, RULES, 
               INT_DECLARATIONS, STRING_DECLARATIONS, ATOM_DECLARATIONS, 
               LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, NODE_LIST, 
-              EDGE_LIST, GP_LIST} list_t;
+              EDGE_LIST, GP_LIST, EMPTY_LIST} list_t;
 
 typedef struct List {
   int node_id;
@@ -93,6 +91,7 @@ List *addNodeID (YYLTYPE location, char *node_id, struct List *next);
 List *addNode (YYLTYPE location, struct GPNode *node, struct List *next);
 List *addEdge (YYLTYPE location, struct GPEdge *edge, struct List *next);
 List *addAtom (YYLTYPE location, struct GPAtomicExp *atom, struct List *next);
+List *addEmptyList (YYLTYPE location);
 
 
 /* Definition of AST nodes representing declarations */
@@ -164,16 +163,17 @@ GPStatement *newFail(YYLTYPE location);
 
 /* Definition of AST nodes representing conditional expressions.*/
 
-typedef enum {INT_CHECK=0, STRING_CHECK, ATOM_CHECK, EDGE_PRED, EQUAL, 
-              NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BOOL_NOT, 
-	      BOOL_OR, BOOL_AND } condexp_t;
+typedef enum {INT_CHECK=0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
+              EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
+	      BOOL_NOT, BOOL_OR, BOOL_AND } condexp_t;
 
 typedef struct GPCondExp {
   int node_id;
   condexp_t exp_type;
   YYLTYPE location;
   union {
-    char *var; 			/* INT_CHECK, STRING_CHECK, ATOM_CHECK */
+    char *var; 			/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
+				 * ATOM_CHECK */
     struct {
       char *source; 
       char *target; 
@@ -213,23 +213,22 @@ GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location,
 
 /* Definition of AST nodes representing integer or string expressions. */
 
-typedef enum {EMPTY_LIST=0, VARIABLE, INT_CONSTANT, STRING_CONSTANT, INDEGREE, 
-              OUTDEGREE, LIST_LENGTH, STRING_LENGTH, NEG, ADD, SUBTRACT, 
-              MULTIPLY, DIVIDE, CONCAT} atomexp_t;
+typedef enum {VARIABLE=0, INT_CONSTANT, CHARACTER_CONSTANT,
+              STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
+              NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} atomexp_t;
 
 typedef struct GPAtomicExp {
   int node_id;
   atomexp_t exp_type;
   YYLTYPE location;
   union {
-    char *name;			 /* VARIABLE */
-    int number; 	 	 /* INT_CONSTANT */
-    char *string;		 /* STRING_CONSTANT */
-    char *node_id; 		 /* INDEGREE, OUTDEGREE */
-    struct List *list_arg; 	 /* LIST_LENGTH */
-    struct GPAtomicExp *str_arg; /* STRING_LENGTH */
-    struct GPAtomicExp *exp; 	 /* NEG */
-
+    char *name;			  /* VARIABLE */
+    int number; 	 	  /* INT_CONSTANT */
+    char *string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
+    char *node_id; 		  /* INDEGREE, OUTDEGREE */
+    struct List *list_arg; 	  /* LIST_LENGTH */
+    struct GPAtomicExp *str_arg;  /* STRING_LENGTH */
+    struct GPAtomicExp *exp; 	  /* NEG */
     struct { 
       struct GPAtomicExp *left_exp;
       struct GPAtomicExp *right_exp;
@@ -237,9 +236,10 @@ typedef struct GPAtomicExp {
   } value;
 } GPAtomicExp;
 
-GPAtomicExp *newEmpty (YYLTYPE location);
+
 GPAtomicExp *newVariable (YYLTYPE location, char *name);
 GPAtomicExp *newNumber (YYLTYPE location, int number);
+GPAtomicExp *newCharacter (YYLTYPE location, char *character);
 GPAtomicExp *newString (YYLTYPE location, char *string);
 GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id);
 GPAtomicExp *newListLength (YYLTYPE location, struct List *list_arg);
@@ -352,5 +352,19 @@ typedef struct GPLabel {
 
 GPLabel *newLabel (YYLTYPE location, mark_t mark, struct List *gp_list);
 
+/* Prototypes for deallocation functions */
 
+void free_ast(List *ast);
+void free_declaration(GPDeclaration *decl);
+void free_statement(GPStatement *stmt);
+void free_condition(GPCondExp *cond);
+void free_atomic_exp(GPAtomicExp *atom);
+void free_procedure(GPProcedure *proc);
+void free_rule(GPRule *rule);
+void free_graph(GPGraph *graph);
+void free_node(GPNode *node);
+void free_edge(GPEdge *edge);
+void free_label(GPLabel *label);
+
+#endif /* INC_AST_H */
 
