@@ -60,11 +60,10 @@ nodeColour = keyword "#" |> pure col <*> label
     where
         col c = fromJust $ lookup c gpColours
 
-
+-- TODO: this allows leading ":" char, which is not permitted by GP2 syntax!
 nodeValue :: Parser IntOrStr
-nodeValue = intOrStr {- pure (:[]) <*> intOrStr
-        <|> pure (:) <*> intOrStr  -}
-
+nodeValue = intOrStr 
+    <|> keyword ":" |> intOrStr 
 
 
 
