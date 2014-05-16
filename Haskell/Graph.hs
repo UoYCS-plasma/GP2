@@ -1,4 +1,4 @@
--- a simple impelmentation of labelled graphs using sparse arrays for node and edge sets
+-- a simple implementation of labelled graphs using sparse arrays for node and edge sets
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
 
 module Graph (Graph, NodeId, EdgeId, pretty,

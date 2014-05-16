@@ -3,102 +3,56 @@ module ParseGraph where
 import Data.Maybe
 
 import ParseLib
-import GP2Graph
-
-gpNumChars, gpChars :: [Char]
-gpNumChars = ['0'..'9']
-gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , gpNumChars , ['_'] ]
-
-gpColours :: [ (String, Colour) ]
-gpColours = [
-    ("uncoloured", Uncoloured),
-    ("red", Red),
-    ("green", Green),
-    ("blue", Blue), 
-    ("grey", Grey),
---    ("cyan", Cyan),
-    ("dashed", Dashed) ]
+import GPSyntax
 
 
 testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
 testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 
---gpGraph :: Parser GP2HostGraph
---gpGraph = keyword "[" |> gpHostGraph <| keyword "]"
+--gpHostGraph :: Parser GPHostGraph
+--gpHostGraph = keyword "[" |> gpHostNodeList <*> gpHostEdgeList <| keyword "]"
 
---gpNodeList :: Parser GP2HostGraph
---gpHostGraph = gpNodeList <*> gpEdgeList
+gpHostNodeList :: Parser [(String, String, GPHostLabel)]
+gpHostNodeList = atLeastOne gpHostNode
 
+-- Old rule does not keep NodeID
+-- gpNode :: Parser GP2HostLabel
+-- gpNode = keyword "(" |> nodeBody <| keyword ")"
 
+-- A node is a triple (Node ID, Root Node, Node Label)
+-- The second component is "(R)" if root node, [] otherwise.
+gpHostNode :: Parser (String, String, GPHostLabel)
+gpHostNode = keyword "(" |> pure (,,) <*> (label <| keyword ",") <*>
+             (pure concat <*> maybeOne root) <*> 
+             gpHostLabel <| keyword ")"
 
-gpEdgeList :: Parser [((String, String), GP2HostLabel)]
-gpEdgeList = keyword "|" |> maybeSome gpEdge
+gpHostEdgeList :: Parser [((String, String), GPHostLabel)]
+gpHostEdgeList = keyword "|" |> maybeSome gpHostEdge
 
+gpHostEdge :: Parser ((String, String), GPHostLabel)
+gpHostEdge = keyword "(" |> pure (,) <*> endPoints <*> gpHostLabel <| keyword ")"
 
-
-
-value :: Parser HostAtom
-value = intLit
-    <|> strLit
-    <|> charLit
+gpHostLabel :: Parser GPHostLabel
+gpHostLabel = pure GPHostLabel <*> maybeSome gpHostAtom <*> hostColour
 
 -- TODO: this allows leading ":" char, which is not permitted by GP2 syntax!
-nodeValue :: Parser HostAtom
-nodeValue = value 
+gpHostAtom :: Parser HostAtom
+gpHostAtom = value 
     <|> keyword ":" |> value 
 
-gpEdge :: Parser ((String, String), GP2HostLabel)
-gpEdge = keyword "(" |> pure (,) <*> endPoints <*> gp2HostLabel <| keyword ")"
+-- This feels like an awful hack, but otherwise I do not know how
+-- to write a parser that generates the empty list upon reading
+-- the string "empty".
+gpHostList :: Parser GPHostList
+gpHostList = pure f <*> empty <|> maybeSome gpHostAtom
+  where f "empty" = []
 
 
-endPoints :: Parser (String, String)
-endPoints = label |> keyword "," |> pure (,) <*> ( label <| keyword "," ) <*> label
-
-gpNodeList :: Parser [GP2HostLabel]
-gpNodeList = atLeastOne gpNode
-
-gpNode :: Parser GP2HostLabel
-gpNode = keyword "(" |> nodeBody <| keyword ")"
-
-nodeBody :: Parser GP2HostLabel
-nodeBody = pure GP2HostLabel <*> maybeSome nodeValue <*> nodeColour
-
-gp2HostLabel :: Parser GP2HostLabel
-gp2HostLabel = pure GP2HostLabel <*> maybeSome nodeValue <*> nodeColour
-
-
-nodeColour :: Parser Colour
-nodeColour = keyword "#" |> pure col <*> label
+hostColour :: Parser Colour
+hostColour = keyword "#" |> pure col <*> label
         <|> pure Uncoloured
     where
-        col c = fromJust $ lookup c gpColours
-
-numChar :: Parser Char
-numChar = satisfy (`elem` gpNumChars)
-
-charLit :: Parser HostAtom
-charLit = char '\'' |> pure Chr <*> gpChar <| char '\'' <| optSpaces
-
-strLit :: Parser HostAtom
-strLit = char '"' |> pure Str <*> maybeSome gpChar <| keyword "\""
-    <|>  char '\'' |> pure Str <*> exactlyOne gpChar <| keyword "'"
-
-gpChar :: Parser Char
-gpChar = satisfy (`elem` gpChars)
-
-intLit :: Parser HostAtom
-intLit = pure Int <*> ( pure read <*> atLeastOne numChar <| optSpaces )
-
-label :: Parser String
-label = token ( atLeastOne gpChar ) <| optSpaces
-
-root :: Parser String
-root = keyword "(R)"
-
-empty :: Parser String
-empty = keyword "empty"
-
-
+        col c = fromJust $ lookup c gpHostColours
 
 --colour :: Parser [String]
 --colour = satisfy (`elem` gpColours)

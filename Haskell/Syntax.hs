@@ -1,6 +1,6 @@
 module Syntax where
 
-import GP2Graph
+import GPSyntax
 
 data Exp =  Seqn [Exp]
           | Alap Exp
@@ -11,5 +11,5 @@ data Exp =  Seqn [Exp]
           | Fail
     deriving (Show, Eq)
 
-type Config = (Exp, GP2Graph)
+type Config = (Exp, GPHostGraph)
 

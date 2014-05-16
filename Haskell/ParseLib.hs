@@ -2,6 +2,8 @@ module ParseLib where
 
 import Data.Char
 
+import GPSyntax
+
 infixr 3 <|>
 infixl 4 <*>
 infixl 5 <|
@@ -112,6 +114,49 @@ token p = p <| optSpaces
 
 keyword :: String -> Parser String
 keyword = token . string
+
+endPoints :: Parser (String, String)
+endPoints = label |> keyword "," |> pure (,) <*> ( label <| keyword "," ) <*> label
+
+value :: Parser HostAtom
+value = intLit
+    <|> strLit
+    <|> charLit
+
+numChar :: Parser Char
+numChar = satisfy (`elem` gpNumChars)
+
+charLit :: Parser HostAtom
+charLit = char '\'' |> pure Chr <*> gpChar <| char '\'' <| optSpaces
+
+strLit :: Parser HostAtom
+strLit = char '"' |> pure Str <*> maybeSome gpChar <| keyword "\""
+    <|>  char '\'' |> pure Str <*> exactlyOne gpChar <| keyword "'"
+
+gpChar :: Parser Char
+gpChar = satisfy (`elem` gpChars)
+
+intLit :: Parser HostAtom
+intLit = pure Int <*> ( pure read <*> atLeastOne numChar <| optSpaces )
+
+label :: Parser String
+label = token ( atLeastOne gpChar ) <| optSpaces
+
+identifier :: Parser Char -> Parser String
+identifier first = guarded g (pure (:) <*> first <*> maybeSome gpChar)
+  where g s = s `notElem` gpKeywords
+
+lowerIdent :: Parser String
+lowerIdent = identifier lower
+
+upperIdent :: Parser String
+upperIdent = identifier upper
+
+root :: Parser String
+root = keyword "(R)"
+
+empty :: Parser String
+empty = keyword "empty"
 
 parse :: Parser a -> String -> a
 parse p s =
