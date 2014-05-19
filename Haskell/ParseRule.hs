@@ -6,8 +6,31 @@ import ParseLib
 import GPSyntax
 
 --ruleDecl :: Parser RuleDecl
---ruleDecl = lowerIdent <| keyword "(" <*>  
+--ruleDecl = lowerIdent <*> keyword "(" |> maybeSome varList <| keyword ")" <*> graphs 
+--           <*> interface <*> maybeOne condition <*> keyword "injective" |> keyword "=" 
+--           |> keyword "true" <|> keyword "false"
+           
 
+-- In a rule parameter declaration, multiple variables can be declared
+-- with a single type. The type is represented as a String.
+varList :: Parser ([Variable], String)
+varList = pure (,) <*> atLeastOne lowerIdent <| keyword ":" <*> gptype <| maybeOne (keyword ";")
+
+gptype :: Parser String
+gptype = keyword "int" <|> keyword "char" <|> keyword "string" <|>
+         keyword "atom" <|> keyword "list"
+
+
+--graphs :: Parser (Graph, Graph)
+--graphs = gpGraph <*> keyword "=>" |> gpGraph
+
+interface :: Parser [RuleNodeId]
+interface = keyword "interface" |> keyword "=" |> keyword "{" 
+         |> pure (:) <*> lowerIdent <*> maybeSome interfaceNodes 
+         <| keyword "}"
+
+interfaceNodes :: Parser RuleNodeId
+interfaceNodes = keyword "," |> lowerIdent 
 
 --gpGraph :: Parser GPRuleGraph
 --gpGraph = keyword "[" |> gpNodeList <*> gpEdgeList <| keyword "]"
@@ -69,7 +92,8 @@ condition = keyword "int" |> pure TestInt <*> lowerIdent
         <|> keyword "char" |> pure TestStr <*> lowerIdent
         <|> keyword "str" |> pure TestChar <*> lowerIdent
         <|> keyword "atom" |> pure TestAtom <*> lowerIdent
-        <|> keyword "edge" |> keyword "(" |> pure Edge <*> (lowerIdent <| keyword ",") <*> lowerIdent <*> (pure concat <*> maybeOne (keyword "," |> gpLabel))
+        <|> keyword "edge" |> keyword "(" |> pure Edge 
+            <*> (lowerIdent <| keyword ",") <*> lowerIdent <*> (pure concat <*> maybeOne (keyword "," |> gpLabel))
         <|> pure Eq <*> gpList <| keyword "=" |> gpList
 	<|> pure NEq <*> gpList <| keyword "!=" |> gpList
         <|> pure Greater <*> atom <| keyword ">" |> atom

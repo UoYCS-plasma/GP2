@@ -33,12 +33,17 @@ gpHostEdge :: Parser ((String, String), GPHostLabel)
 gpHostEdge = keyword "(" |> pure (,) <*> endPoints <*> gpHostLabel <| keyword ")"
 
 gpHostLabel :: Parser GPHostLabel
-gpHostLabel = pure GPHostLabel <*> maybeSome gpHostAtom <*> hostColour
+gpHostLabel = pure GPHostLabel <*> (pure (:) <*> value <*> maybeSome gpHostAtom) <*> hostColour
 
 -- TODO: this allows leading ":" char, which is not permitted by GP2 syntax!
+-- gpHostAtom :: Parser HostAtom
+-- gpHostAtom = value 
+--    <|> keyword ":" |> value 
+-- Leading ":" issue solved below (?)
+-- This generates ': value' so value <*> maybeSome gpHostAtom above should
+-- parse strings of the form value [: value]
 gpHostAtom :: Parser HostAtom
-gpHostAtom = value 
-    <|> keyword ":" |> value 
+gpHostAtom = keyword ":" |> value
 
 -- This feels like an awful hack, but otherwise I do not know how
 -- to write a parser that generates the empty list upon reading
