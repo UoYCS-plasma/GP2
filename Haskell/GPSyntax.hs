@@ -35,8 +35,8 @@ type GPHostGraph = Graph GPHostLabel
 data GPHostLabel = GPHostLabel GPHostList Colour deriving (Eq, Show)
 type GPHostList = [HostAtom]
 data HostAtom = Int Int
-	       | Str String 
-	       | Chr Char deriving (Eq, Show)
+	      | Str String 
+	      | Chr Char deriving (Eq, Show)
 
 -- Rule graph labels are lists of expressions.
 type GPRuleGraph = Graph GPLabel

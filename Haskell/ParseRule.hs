@@ -93,16 +93,17 @@ condition = keyword "int" |> pure TestInt <*> lowerIdent
         <|> keyword "str" |> pure TestChar <*> lowerIdent
         <|> keyword "atom" |> pure TestAtom <*> lowerIdent
         <|> keyword "edge" |> keyword "(" |> pure Edge 
-            <*> (lowerIdent <| keyword ",") <*> lowerIdent <*> (pure concat <*> maybeOne (keyword "," |> gpLabel))
-        <|> pure Eq <*> gpList <| keyword "=" |> gpList
-	<|> pure NEq <*> gpList <| keyword "!=" |> gpList
-        <|> pure Greater <*> atom <| keyword ">" |> atom
-        <|> pure GreaterEq <*> atom <| keyword ">=" |> atom
-        <|> pure Less <*> atom <| keyword "<" |> atom
-        <|> pure LessEq <*> atom <| keyword "<=" |> atom
-        <|> keyword "not" <| pure Not <*> condition
-        <|> pure Or <*> condition <| keyword "or" |> condition
-        <|> pure And <*> condition <| keyword "and" |> condition 
+            <*> (lowerIdent <| keyword ",") <*> lowerIdent 
+            <*> (pure head <*> maybeOne (keyword "," |> gpLabel))
+        <|> pure Eq <*> gpList <| keyword "=" <*> gpList
+	<|> pure NEq <*> gpList <| keyword "!=" <*> gpList
+        <|> pure Greater <*> atom <| keyword ">" <*> atom
+        <|> pure GreaterEq <*> atom <| keyword ">=" <*> atom
+        <|> pure Less <*> atom <| keyword "<" <*> atom
+        <|> pure LessEq <*> atom <| keyword "<=" <*> atom
+        <|> keyword "not" |> pure Not <*> condition
+        <|> pure Or <*> condition <| keyword "or" <*> condition
+        <|> pure And <*> condition <| keyword "and" <*> condition 
 
 
 
