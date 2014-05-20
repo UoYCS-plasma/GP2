@@ -301,7 +301,23 @@ void print_list(List * const list)
              pretty_print_list(list->next,list,next);
 
 	     break;
-	
+
+	case CHAR_DECLARATIONS:
+ 
+             list->node_id = next_node_id;
+             next_node_id += 1;
+
+	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                     "Character \\n Declarations\"]\n", list->node_id, 
+                     list->node_id, LOCATION_ARGS(list->location));
+
+             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
+                     list->node_id, next_node_id);  
+
+	     pretty_print(list->value.variables, list);
+             pretty_print_list(list->next,list,next);
+
+	     break;
 
 	case STRING_DECLARATIONS:
 
@@ -1535,6 +1551,7 @@ void print_label(GPLabel * const label)
         case (BLUE): 	 fprintf(dot_file,"Blue\"]\n"); break;
         case (GREY): 	 fprintf(dot_file,"Grey\"]\n"); break;
         case (DASHED): 	 fprintf(dot_file,"Dashed\"]\n"); break;
+        case (CYAN):	 fprintf(dot_file,"Cyan\"]\n"); break;
         case (NONE): 	 fprintf(dot_file,"No mark\"]\n"); break;
 
         default: fprintf(log_file,"Error: Unexpected \\n GPLabel mark: %d\"]\n", 

@@ -256,6 +256,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 	         proc_symbol->containing_rule = NULL;
 		 proc_symbol->is_var = false;
 		 proc_symbol->in_lhs = false;
+                 proc_symbol->wildcard = false;
 
                  symbol_list = g_slist_prepend(symbol_list, proc_symbol);      
 
@@ -346,6 +347,7 @@ bool declaration_scan(const List *ast, GHashTable *table, char *scope)
 	         rule_symbol->containing_rule = NULL;
                  rule_symbol->is_var = false;
                  rule_symbol->in_lhs = false;
+                 rule_symbol->wildcard = false;
 
                  symbol_list = g_slist_prepend(symbol_list, rule_symbol);       
     
@@ -680,6 +682,18 @@ void rule_scan(GPRule *rule, GHashTable *table, char *scope)
 
 	      break;
 
+         case CHAR_DECLARATIONS:
+
+              if(++integer_count > 1) {
+                 fprintf(log_file,"Warning (%s.%s): More than one character list "
+                         "in variable declaration section.", scope, rule_name);
+              }
+              else enter_variables("character", variable_list->value.variables,
+			           table, scope, rule_name);
+
+	      break;
+
+
          case STRING_DECLARATIONS:
 
               if(++string_count > 1) {
@@ -795,6 +809,7 @@ void enter_variables(char *type, List *variables, GHashTable *table,
          var_symbol->is_var = true;      
          /* This flag is set in gp_list_scan if called with side 'l' */
          var_symbol->in_lhs = false;
+         var_symbol->wildcard = false;
 
          symbol_list = g_slist_prepend(symbol_list, var_symbol);  
          
@@ -813,9 +828,8 @@ void enter_variables(char *type, List *variables, GHashTable *table,
 
 /* graph_scan is responsible for adding nodes and edges to the symbol table.
  * It also performs some semantic analysis: source and target nodes of edges
- * must exist, the union of node IDs and edge IDs in the graph must not contain 
- * duplicates, node labels cannot have the "dashed" mark, and edge labels
- * cannot have the "grey" mark. This function is called only by rule_scan.
+ * must exist and the union of node IDs and edge IDs in the graph must not 
+ * contain duplicates.
  *
  * Argument 1: A pointer to a struct GPGraph.
  * Argument 2: The symbol table.
@@ -892,6 +906,14 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
          iterator = iterator->next;      
       }
 
+
+      if(node_list->value.node->label->mark == DASHED) {
+          fprintf(log_file,"Error (%s.%s): Node %s in %s graph has invalid mark " 
+	          "\"dashed\".\n", scope, rule_name, node_id, graph_type);
+          abort_compilation = true; 
+      }
+
+
       if(add_node) {
 
          Symbol *node_symbol = malloc(sizeof(Symbol));
@@ -905,19 +927,53 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
          node_symbol->scope = strdup(scope);
          node_symbol->containing_rule = strdup(rule_name);
          node_symbol->is_var = false;
-         node_symbol->in_lhs = false;             
+         node_symbol->in_lhs = false;       
+         node_symbol->wildcard = (node_list->value.node->label->mark == CYAN);      
  
          symbol_list = g_slist_prepend(symbol_list, node_symbol);         
   
          g_hash_table_replace(table, node_id, symbol_list);         
       }      
 
-      if(node_list->value.node->label->mark == DASHED) {
-          fprintf(log_file,"Error (%s.%s): Node %s in %s graph has invalid mark " 
-	          "\"dashed\".\n", scope, rule_name, node_id, graph_type);
-          abort_compilation = true; 
-      }
+      /* If the node is in the RHS and has a cyan mark, the corresponding LHS node
+       * must also have a cyan mark. */
 
+      if(!strcmp(node_type,"right_node") && 
+         node_list->value.node->label->mark == CYAN) {
+ 
+         /* The LHS node to be found has the same node ID as the current node.
+          * Thus symbol_list already points to the correct hash table entry.
+          */
+         iterator = symbol_list;
+
+         while(iterator) {
+         
+            Symbol *current_node = (Symbol*)(iterator->data);
+
+	    /* Find a node in the same rule. If that node is in the LHS
+             * and is not a wildcard (cyan mark) then report an error.
+             * Note there is only one such LHS node because for each scope,
+             * rule, and graph (LHS/RHS), only one node with a particular
+             * ID is entered into the symbol table. 
+             */
+
+            if(!strcmp(current_node->scope,scope) && 
+	       !strcmp(current_node->containing_rule,rule_name))	
+  	    {
+                if(!strcmp(current_node->type,"left_node") &&
+                   !current_node->wildcard)
+	              fprintf(log_file,"Error (%s.%s): RHS wildcard node %s "
+                              "has no matching LHS wildcard.", 
+                              scope, rule_name, node_id);  
+  
+                /* Regardless of the outcome of the if statement, exit
+                 * the loop as the single appropriate node has been located.
+                 */ 
+                break;   
+	    }
+            iterator = iterator->next;      
+         }
+      }
 
       gp_list_scan(&(node_list->value.node->label->gp_list), table, scope, 
 		   rule_name, side);
@@ -984,12 +1040,52 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
          edge_symbol->containing_rule = strdup(rule_name);
          edge_symbol->is_var = false;
          edge_symbol->in_lhs = false;             
- 
+         edge_symbol->wildcard = (edge_list->value.edge->label->mark == CYAN); 
+
          symbol_list = g_slist_prepend(symbol_list, edge_symbol);   
         
          g_hash_table_replace(table, edge_id, symbol_list);
   
       }
+
+
+      if(!strcmp(edge_type,"right_edge")
+         && edge_list->value.edge->label->mark == CYAN) {
+ 
+         /* The LHS edge to be found has the same edge ID as the current edge.
+          * Thus symbol_list already points to the correct hash table entry.
+          */
+         iterator = symbol_list;
+
+         while(iterator) {
+         
+            Symbol *current_edge = (Symbol*)(iterator->data);
+
+	    /* Find an edge in the same rule. If that edge is in the LHS
+             * and is not a wildcard (cyan mark) then report an error.
+             * Note there is only one such LHS edge because for each scope,
+             * rule, and graph (LHS/RHS), only one edge with a particular
+             * ID is entered into the symbol table. 
+             */
+
+            if(!strcmp(current_edge->scope,scope) && 
+	       !strcmp(current_edge->containing_rule,rule_name))	
+  	    {
+                if(!strcmp(current_edge->type,"left_edge") &&
+                   !current_edge->wildcard) 
+	              fprintf(log_file,"Error (%s.%s): RHS wildcard edge %s "
+                              "has no matching LHS wildcard.", 
+                              scope, rule_name, edge_id);  
+  
+                /* Regardless of the outcome of the if statement, exit
+                 * the loop as the single appropriate edge has been located.
+                 */ 
+                break;   
+	    }
+            iterator = iterator->next;      
+         }
+      }
+
 
       /* Verify source and target nodes exist in the graph. */
 
@@ -1068,8 +1164,8 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 }
 
 /* interface_scan performs semantic checking on the interface list of a rule.
- * All nodes in the list are checked to see if they appear in both graph of the
- * rule. This function is called only by rule_scan.
+ * All nodes in the list are checked to see if they appear in both graphs of
+ * the rule. This function is called only by rule_scan.
  *
  * Argument 1: Pointer to the head of an AST interface list.
  * Argument 2: The symbol table.
@@ -1407,7 +1503,8 @@ void gp_list_scan(List **gp_list, GHashTable *table, char *scope,
    *gp_list = reverse(*gp_list);
 
    /* This code is no longer relevant as EMPTY_LIST can only occur as a 
-    * single struct List. 
+    * single struct List. It will probably be useful after rule 
+    * applications when lists with 'empty's could be created. 
 
     * Discard any EMPTY_LIST nodes at the start of the list provided
     * the next node is non-empty. 
@@ -1637,13 +1734,16 @@ void atomic_exp_scan(GPAtomicExp *atom_exp, GHashTable *table, char *scope,
                        abort_compilation = true;
 		    }
 
-                    if(string_exp && strcmp(current_var->type,"string")) {
+                    if(string_exp && strcmp(current_var->type,"string")
+                                  && strcmp(current_var->type,"character") ) {
                        fprintf(stderr,"Error(%s.%s): Variable %s occurs in a "
-                               "string expression but not declared as a string."
-                               "\n",scope, rule_name, atom_exp->value.name);
+                               "string expression but not declared as a string "
+                               "or character. \n",
+                               scope, rule_name, atom_exp->value.name);
                        fprintf(log_file,"Error(%s.%s): Variable %s occurs in a "
                                "string expression but not declared as a string."
-                               "\n",scope, rule_name, atom_exp->value.name);
+                               "or character. \n",
+                               scope, rule_name, atom_exp->value.name);
                        abort_compilation = true;
                     }
 	         }

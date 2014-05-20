@@ -20,14 +20,15 @@
 extern GHashTable *gp_symbol_table; /* Defined in main.c */
 
 typedef struct Symbol {
-  char *type; /* rule, procedure, int, string, atom, list, left_node, left_edge,
-	       * right_node, right_edge */
+  char *type; /* rule, procedure, integer, character, string, atom, list,
+               * left_node, left_edge, right_node, right_edge */
   char *scope; /* The procedure in which the symbol is visible. 
 		* "Global" scope is seen by all procedures. */   
   char *containing_rule; /* for variables, nodes and edges */
   bool is_var; /* set to true if this symbol represents a GP variable. */
   bool in_lhs; /* set to true if a variable matching the symbol is found
                 * in the LHS of a rule */
+  bool wildcard; /* set to true if a node or edge has the cyan mark. */
 } Symbol;
 
 struct List *reverse (struct List * listHead);

@@ -48,15 +48,16 @@ extern int yydebug;
 
 /* enum used by the parser for mark keywords */
 
-typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
+typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} mark_t; 
 
 
 /* Definition of AST nodes representing lists. */
 
-typedef enum {GLOBAL_DECLARATIONS=0, LOCAL_DECLARATIONS, COMMANDS, RULES, 
-              INT_DECLARATIONS, STRING_DECLARATIONS, ATOM_DECLARATIONS, 
-              LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, NODE_LIST, 
-              EDGE_LIST, GP_LIST, EMPTY_LIST} list_t;
+typedef enum {GLOBAL_DECLARATIONS=0, LOCAL_DECLARATIONS, COMMANDS, 
+              RULES, INT_DECLARATIONS, CHAR_DECLARATIONS, 
+              STRING_DECLARATIONS, ATOM_DECLARATIONS,  
+              LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, 
+              NODE_LIST, EDGE_LIST, GP_LIST, EMPTY_LIST} list_t;
 
 typedef struct List {
   int node_id;

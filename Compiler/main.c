@@ -28,7 +28,7 @@
 
 
 /* These macros control various debugging features. */
-#undef PARSER_TRACE 		/* Assign yydebug to 1 */
+#define PARSER_TRACE 		/* Assign yydebug to 1 */
 #define DRAW_ORIGINAL_AST 	/* Call print_dot_ast before semantic_check. */
 #define DRAW_FINAL_AST 		/* Call print_dot_ast after semantic_check. */
 #define PRINT_SYMBOL_TABLE 	/* Call print_symbol_table after semantic_check. */

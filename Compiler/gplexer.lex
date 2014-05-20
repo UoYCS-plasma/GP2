@@ -7,7 +7,7 @@
 
                      Created on 10/5/2013 by Chris Bak 
 
-////////////////////////////////////////////////////////////////////////////*/ 
+/////////////////////////////////////////////////////////////////////////// */ 
 
 
 %option noyywrap nodefault yylineno
@@ -30,7 +30,7 @@ int yycolumn = 1;
 
 extern int abort_scan; /* Defined in main.c */
 extern FILE *log_file; /* Defined in main.c */
-typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
+typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} mark_t; 
 
 extern int parse_target;
 
@@ -161,7 +161,10 @@ red		    { yylval.mark = RED; return MARK; }
 green		    { yylval.mark = GREEN; return MARK; } 
 blue		    { yylval.mark = BLUE; return MARK; } 
 grey		    { yylval.mark = GREY; return MARK; } 
-dashed		    { yylval.mark = DASHED; return MARK; } 
+dashed		    { yylval.mark = DASHED; return MARK; }
+ /* Cyan has a distinct token since it cannot appear in the host graph and
+    therefore must be distinguished from the other marks. */
+cyan		    { yylval.mark = CYAN; return CYAN; } 
 
  /* keywords for GP2 types */
 

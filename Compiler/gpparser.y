@@ -51,7 +51,7 @@ extern int abort_scan; /* Defined in main.c */
 %token INDEG OUTDEG LLEN SLEN					
 %token INT STRING ATOM LIST 	                               
 %token INTERFACE EMPTY INJECTIVE 	
-%token <mark> MARK			                        
+%token <mark> MARK CYAN_MARK			                        
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
 %token <num> NUM 
@@ -227,18 +227,18 @@ Command: Block 				/* default $$ = $1 */
                                                $2, newSkip(@$), newSkip(@$)); }
        | TRY Block THEN Block		{ $$ = newCondBranch(TRY_STATEMENT, @$,
                                                $2, $4, newSkip(@$)); }
+       | TRY Block ELSE	Block	   	{ $$ = newCondBranch(TRY_STATEMENT, @$,
+                                               $2, newSkip(@$), $4); }
        | TRY Block THEN Block ELSE Block { $$ = newCondBranch(TRY_STATEMENT, @$,
                                                 $2, $4, $6); }
-       /* Error-catching production */
-       | TRY Block ELSE	Block	   	{ report_error("No 'then' clause in try "
-						       "statement."); }
+
 
 Block: '(' ComSeq ')' 	                { $$ = newCommandSequence(@$,$2); }
      | '(' ComSeq ')' '!' 		{ $$ = newAlap(@$, 
                                                newCommandSequence(@2, $2)); } 
      /* If an error is found in a code block, continue parsing after the right
       * parenthesis. */
-     | '(' error ')'  			{ $$ = NULL; }
+     | error ')'  			{ $$ = NULL; }
      | SimpleCommand 			/* default $$ = $1 */ 
      | SimpleCommand '!'		{ $$ = newAlap(@$, $1); }
      | Block OR Block 			{ $$ = newOrStmt(@$, $1, $3); }
@@ -252,7 +252,7 @@ SimpleCommand: RuleSetCall 	        { $$ = newRuleSetCall(@$, $1); }
 RuleSetCall: '{' IDList '}'		{ $$ = $2; }
            /* If an error is found in an rule set call, continue parsing after
             * the rule set. */
-           | '{' error '}' 		{ $$ = NULL; }
+           | error '}' 			{ $$ = NULL; }
 
 IDList: RuleID				{ $$ = addRule(@1, $1, NULL);
 					  free($1); }
@@ -314,7 +314,7 @@ Inter: INTERFACE '=' '{' '}'   		{ $$ = NULL; }
      | INTERFACE '=' '{' NodeIDList '}' { $$ = $4; }
      /* If an error is found in an interface list, continue parsing after the 
       * interface list. */
-     | '{' error '}'			{ $$ = NULL; }
+     | error '}'			{ report_error("Error in an interface list."); $$ = NULL; }
 
 NodeIDList: NodeID			{ $$ = addNodeID(@1, $1, NULL); 
 					  free($1); }
@@ -325,6 +325,7 @@ Bool: TRUE 				{ is_injective = true; }
     | FALSE				{ is_injective = false; }
 
 Type: INT				{ $$ = INT_DECLARATIONS; } 
+    | CHAR				{ $$ = CHAR_DECLARATIONS; }
     | STRING                            { $$ = STRING_DECLARATIONS; }
     | ATOM 	                        { $$ = ATOM_DECLARATIONS; }
     | LIST				{ $$ = LIST_DECLARATIONS; }
@@ -391,15 +392,19 @@ LabelArg: /* empty */ 			{ $$ = NULL; }
 
 Label: List 				{ $$ = newLabel(@$, NONE, $1); }
      | List '#' MARK			{ $$ = newLabel(@$, $3, $1); }
+     /* Cyan has a distinct token since it cannot occur in the host graph. */
+     | List '#' CYAN_MARK		{ $$ = newLabel(@$, $3, $1); }
 
-List: AtomExp				{ $$ = addAtom(@1, $1, NULL); } 
+List: AtomExp 				{ $$ = addAtom(@1, $1, NULL); } 
     | List ':' AtomExp			{ $$ = addAtom(@3, $3, $1); }
     | EMPTY				{ $$ = addEmptyList(@$); } 
     /* If an error occurs while processing a GP list, discard input text until
-     * the next ':' or '#'. The erroneous AtomExp is hence discarded and
-     * parsing may continue. */
-    | error ':' 			{ $$ = NULL; }	
-    | error '#' 			{ $$ = NULL; }
+     * the next ':' or ','. Note that '#' is not used since a List is not
+     * required to terminate with a '#'. The erroneous AtomExp is discarded
+     * without affecting the parsing of the remainder of the list.
+     */
+    | error ':' 			{ report_error("Error in a list"); $$ = NULL; }	
+    | error ',' 			{ report_error("Error in a list"); $$ = NULL; }
 
 AtomExp: Variable			{ $$ = newVariable(@$, $1); free($1); }
        | NUM 				{ $$ = newNumber(@$, $1); }
@@ -460,16 +465,17 @@ CEdge: '(' EdgeID ',' NodeID ',' NodeID ',' CLabel ')'
 
 CLabel: CList 				{ $$ = newLabel(@$, NONE, $1); }
       | CList '#' MARK			{ $$ = newLabel(@$, $3, $1); }
-      | EMPTY 				{ $$ = addEmptyList(@$); }
+
 
 
 CList: CExp				{ $$ = addAtom(@1, $1, NULL); } 
      | CList ':' CExp			{ $$ = addAtom(@3, $3, $1); }
      /* If an error occurs while processing a constant list, discard input text
       * until the next ':' or '#'. The erroneous ConstExp is hence discarded 
-      * parsing may continue. */
-     | error ':' 			{ $$ = NULL; }	
-     | error '#' 			{ $$ = NULL; }
+      * parsing may continue. */     
+     | EMPTY 				{ $$ = addEmptyList(@$); }
+     | error ':' 			{ report_error("Error in a host list"); $$ = NULL; }	
+     | error '#' 			{ report_error("Error in a host list"); $$ = NULL; }
 
 CExp: NUM 				{ $$ = newNumber(@$, $1); }
     | CHAR				{ $$ = newCharacter(@$, $1); free($1); }

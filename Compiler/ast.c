@@ -91,8 +91,8 @@ List *addVariableDecl (list_t list_type, YYLTYPE location, List *variables,
     }
 
     new_var_decl->list_type = list_type; 
-    /* list_type: INT_DECLARATIONS, STRING_DECLARATIONS, ATOM_DECLARATIONS,
-     * LIST_DECLARATIONS */
+    /* list_type: INT_DECLARATIONS, CHAR_DECLARATIONS, STRING_DECLARATIONS, 
+     * ATOM_DECLARATIONS, LIST_DECLARATIONS */
     new_var_decl->location = location;
     new_var_decl->value.variables = variables;
     new_var_decl->next = next;
