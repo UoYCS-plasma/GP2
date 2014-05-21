@@ -72,6 +72,7 @@ void print_symbol(gpointer key, gpointer value, gpointer user_data)
 	           (char*)key, current_sym->type, current_sym->scope);
 	   if(current_sym->is_var) fprintf(symbol_table_file,"Variable\n");
 	   if(current_sym->in_lhs) fprintf(symbol_table_file,"In LHS\n");
+           if(current_sym->wildcard) fprintf(symbol_table_file,"Wildcard\n");
 	   fprintf(symbol_table_file,"\n");
 	}	
 	else {	
@@ -80,6 +81,7 @@ void print_symbol(gpointer key, gpointer value, gpointer user_data)
                    current_sym->scope, current_sym->containing_rule);
        	   if(current_sym->is_var) fprintf(symbol_table_file,"Variable\n");
 	   if(current_sym->in_lhs) fprintf(symbol_table_file,"In LHS\n");
+           if(current_sym->wildcard) fprintf(symbol_table_file,"Wildcard\n");
 	   fprintf(symbol_table_file,"\n");
 	}
     }

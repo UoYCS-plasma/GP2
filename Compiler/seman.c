@@ -927,7 +927,7 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
          node_symbol->scope = strdup(scope);
          node_symbol->containing_rule = strdup(rule_name);
          node_symbol->is_var = false;
-         node_symbol->in_lhs = false;       
+         node_symbol->in_lhs = false;      
          node_symbol->wildcard = (node_list->value.node->label->mark == CYAN);      
  
          symbol_list = g_slist_prepend(symbol_list, node_symbol);         
@@ -941,10 +941,12 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
       if(!strcmp(node_type,"right_node") && 
          node_list->value.node->label->mark == CYAN) {
  
-         /* The LHS node to be found has the same node ID as the current node.
-          * Thus symbol_list already points to the correct hash table entry.
+         /* The current node has just been prepended to the symbol list.
+          * Hence the first entry in the symbol list is this RHS node. 
+          * The corresponding LHS node is to be located, hence search
+          * might as well start at the second element in the symbol list.
           */
-         iterator = symbol_list;
+         iterator = symbol_list->next;
 
          while(iterator) {
          
@@ -961,14 +963,15 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 	       !strcmp(current_node->containing_rule,rule_name))	
   	    {
                 if(!strcmp(current_node->type,"left_node") &&
-                   !current_node->wildcard)
+                   !current_node->wildcard) {
 	              fprintf(log_file,"Error (%s.%s): RHS wildcard node %s "
                               "has no matching LHS wildcard.", 
                               scope, rule_name, node_id);  
-  
-                /* Regardless of the outcome of the if statement, exit
+                      abort_compilation = true; 
+                }
+                /* Regardless of the outcome of the inner if statement, exit
                  * the loop as the single appropriate node has been located.
-                 */ 
+                 */
                 break;   
 	    }
             iterator = iterator->next;      
@@ -1052,10 +1055,12 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
       if(!strcmp(edge_type,"right_edge")
          && edge_list->value.edge->label->mark == CYAN) {
  
-         /* The LHS edge to be found has the same edge ID as the current edge.
-          * Thus symbol_list already points to the correct hash table entry.
+         /* The current edge has just been prepended to the symbol list.
+          * Hence the first entry in the symbol list is this RHS edge. 
+          * The corresponding LHS edge is to be located, hence search
+          * might as well start at the second element in the symbol list.
           */
-         iterator = symbol_list;
+         iterator = symbol_list->next;
 
          while(iterator) {
          
@@ -1072,11 +1077,12 @@ void graph_scan(GPGraph *graph, GHashTable *table, char *scope,
 	       !strcmp(current_edge->containing_rule,rule_name))	
   	    {
                 if(!strcmp(current_edge->type,"left_edge") &&
-                   !current_edge->wildcard) 
+                   !current_edge->wildcard) {
 	              fprintf(log_file,"Error (%s.%s): RHS wildcard edge %s "
                               "has no matching LHS wildcard.", 
                               scope, rule_name, edge_id);  
-  
+                      abort_compilation = true;
+                }
                 /* Regardless of the outcome of the if statement, exit
                  * the loop as the single appropriate edge has been located.
                  */ 

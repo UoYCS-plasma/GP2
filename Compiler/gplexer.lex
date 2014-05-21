@@ -164,7 +164,7 @@ grey		    { yylval.mark = GREY; return MARK; }
 dashed		    { yylval.mark = DASHED; return MARK; }
  /* Cyan has a distinct token since it cannot appear in the host graph and
     therefore must be distinguished from the other marks. */
-cyan		    { yylval.mark = CYAN; return CYAN; } 
+cyan		    { yylval.mark = CYAN; return CYAN_MARK; } 
 
  /* keywords for GP2 types */
 
