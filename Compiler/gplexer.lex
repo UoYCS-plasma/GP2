@@ -30,7 +30,7 @@ int yycolumn = 1;
 
 extern int abort_scan; /* Defined in main.c */
 extern FILE *log_file; /* Defined in main.c */
-typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} mark_t; 
+typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkTypes; 
 
 extern int parse_target;
 

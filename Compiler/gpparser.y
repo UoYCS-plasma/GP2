@@ -12,7 +12,7 @@
 
 %{
 
-#include "ast.h" /* mark_t, list_t, cond_exp_t, AST constructors */
+#include "ast.h" /* MarkTypes, ListTypes, cond_exp_t, AST constructors */
 #include <stdio.h>  /* printf, fprintf, fopen */
 #include <stdlib.h> /* malloc, free */
 #include <stdarg.h> /* va_start, va_list, va_end */
@@ -41,7 +41,7 @@ extern int abort_scan; /* Defined in main.c */
   int num;   /* value of NUM token. */
   char *str; /* value of STRING and CHAR tokens. */
   char *id;  /* value of PROCID and ID tokens. */
-  int mark;  /* enum mark_t, value of MARK token. */
+  int mark;  /* enum MarkTypes, value of MARK token. */
 }
 
 /* Single-character tokens do not need to be explicitly declared. */
@@ -81,7 +81,7 @@ extern int abort_scan; /* Defined in main.c */
   struct GPLabel *label;  
   struct GPAtomicExp *atom_exp;
 
-  int list_type; /* enum list_t */
+  int list_type; /* enum ListTypes */
   int check_type; /* enum cond_exp_t */
 } 
 

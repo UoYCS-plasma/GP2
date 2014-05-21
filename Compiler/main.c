@@ -29,10 +29,10 @@
 
 /* These macros control various debugging features. */
 #undef PARSER_TRACE 		/* Assign yydebug to 1 */
-#define DRAW_ORIGINAL_AST 	/* Call print_dot_ast before semantic_check. */
-#define DRAW_FINAL_AST 		/* Call print_dot_ast after semantic_check. */
-#define PRINT_SYMBOL_TABLE 	/* Call print_symbol_table after semantic_check. */
-#define DRAW_HOST_GRAPH_AST 	/* Call print_graph after second yyparse. */
+#define DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
+#define DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
+#define PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
+#define DRAW_HOST_GRAPH_AST 	/* Call printGraph after second yyparse. */
 
 /* These macros are required to control which parser is used. */
 #define GP_PROGRAM 1 		
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
   if(!yyparse()) {
      fprintf(log_file,"GP2 program parse succeeded\n\n");
      #ifdef DRAW_ORIGINAL_AST
-        print_dot_ast(gp_program, file_name); /* Defined in pretty.c */ 
+        printDotAST(gp_program, file_name); /* Defined in pretty.c */ 
      #endif
   }
 
@@ -129,10 +129,10 @@ int main(int argc, char** argv) {
   if(!yyparse()) {
      fprintf(log_file,"GP2 graph parse succeeded\n\n");    
   
-     reverse_graph_ast(host_graph); /* Defined in seman.c */
+     reverseGraphAST(host_graph); /* Defined in seman.c */
 
      #ifdef DRAW_HOST_GRAPH_AST
-        print_dot_host_graph(host_graph, file_name); /* Defined in pretty.c */
+        printDotHostGraph(host_graph, file_name); /* Defined in pretty.c */
      #endif
   }
   else fprintf(log_file,"GP2 program parse failed.\n\n");     
@@ -151,36 +151,36 @@ int main(int argc, char** argv) {
      * lookups.
      * free is the function called by glib to free keys during hash table
      * insertions and in the g_hash_table_destroy function.
-     * free_symbol_list is defined in seman.c. This is called by glib to
+     * freeSymbolList is defined in seman.c. This is called by glib to
      * free hash table values during insertions and in the destroy function.
      */
 
     gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);    
 
-    /* declaration_scan is defined in seman.c. It returns true if there is a
+    /* declarationScan is defined in seman.c. It returns true if there is a
      * name clash among the rule and procedure declarations.
      */
-    abort_scan = declaration_scan(gp_program, gp_symbol_table, "Global");
+    abort_scan = declarationScan(gp_program, gp_symbol_table, "Global");
   }
   else abort_compilation = true;
     
   if(!abort_scan) {
-     /* semantic_check is defined in seman.c. It returns true if there is a
+     /* semanticCheck is defined in seman.c. It returns true if there is a
       * semantic error.
       */
-     abort_compilation = semantic_check(gp_program, gp_symbol_table, "Global"); 
+     abort_compilation = semanticCheck(gp_program, gp_symbol_table, "Global"); 
 
      #ifdef DRAW_FINAL_AST
-        /* create the string <file_name>_F as an argument to print_dot_ast */
+        /* create the string <file_name>_F as an argument to printDotAST */
         int length = strlen(argv[1])+2;
         char alt_name[length];
         strcpy(alt_name,argv[1]);
         strcat(alt_name,"_F"); 
-        print_dot_ast(gp_program, alt_name); /* Defined in pretty.c */ 
+        printDotAST(gp_program, alt_name); /* Defined in pretty.c */ 
      #endif
      
      #ifdef PRINT_SYMBOL_TABLE
-        print_symbol_table(gp_symbol_table, argv[1]); /* Defined in pretty.c */
+        printSymbolTable(gp_symbol_table, argv[1]); /* Defined in pretty.c */
      #endif
   }
   else abort_compilation = true;
@@ -192,15 +192,15 @@ int main(int argc, char** argv) {
   /* Garbage collection */
   fclose(yyin);
   fclose(log_file);
-  if(gp_program) free_ast(gp_program); /* Defined in ast.c */
-  if(host_graph) free_graph(host_graph); /* Defined in ast.c */
+  if(gp_program) freeAst(gp_program); /* Defined in ast.c */
+  if(host_graph) freeGraph(host_graph); /* Defined in ast.c */
 
-  /* g_hash_table_destroy uses free and free_symbol_list, passed to 
+  /* g_hash_table_destroy uses free and freeSymbolList, passed to 
    * g_hash_table_new_full, to free the dynamically allocated keys and values
    * respectively.
    */
   if(gp_symbol_table) {
-    g_hash_table_foreach(gp_symbol_table, free_symbol_list, NULL);
+    g_hash_table_foreach(gp_symbol_table, freeSymbolList, NULL);
     g_hash_table_destroy(gp_symbol_table); 
   }
 

@@ -27,7 +27,7 @@
 
 /* The constructor functions for AST nodes of type struct List. */
 
-List *addDecl (list_t list_type, YYLTYPE location, GPDeclaration *declaration,
+List *addDecl (ListTypes list_type, YYLTYPE location, GPDeclaration *declaration,
 	       List *next)
 { 
     List *new_decl = malloc(sizeof(List));
@@ -80,7 +80,7 @@ List *addRule (YYLTYPE location, char *rule_name, List *next)
     return new_rule;
 }
 
-List *addVariableDecl (list_t list_type, YYLTYPE location, List *variables,
+List *addVariableDecl (ListTypes list_type, YYLTYPE location, List *variables,
 	               List *next)
 { 
     List *new_var_decl = malloc(sizeof(List));
@@ -406,7 +406,7 @@ GPStatement *newFail(YYLTYPE location)
 
 /* The constructor functions for AST nodes of type struct GPCondExp. */
 
-GPCondExp *newSubtypePred (condexp_t exp_type, YYLTYPE location, char *var)
+GPCondExp *newSubtypePred (CondExpTypes exp_type, YYLTYPE location, char *var)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -442,7 +442,7 @@ GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target,
      return cond;
 }
 
-GPCondExp *newListComparison (condexp_t exp_type, YYLTYPE location,
+GPCondExp *newListComparison (CondExpTypes exp_type, YYLTYPE location,
 	    List *left_list, List *right_list)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
@@ -462,7 +462,7 @@ GPCondExp *newListComparison (condexp_t exp_type, YYLTYPE location,
 }
 
 
-GPCondExp *newAtomComparison (condexp_t exp_type, YYLTYPE location,
+GPCondExp *newAtomComparison (CondExpTypes exp_type, YYLTYPE location,
 	    GPAtomicExp *left_exp, GPAtomicExp *right_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
@@ -498,7 +498,7 @@ GPCondExp *newNotExp (YYLTYPE location, GPCondExp *not_exp)
      return cond;
 }
 
-GPCondExp *newBinaryExp (condexp_t exp_type, YYLTYPE location, 
+GPCondExp *newBinaryExp (CondExpTypes exp_type, YYLTYPE location, 
 	    GPCondExp *left_exp, GPCondExp *right_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
@@ -589,7 +589,7 @@ GPAtomicExp *newString (YYLTYPE location, char *string)
      return atom;
 }
 
-GPAtomicExp *newDegreeOp (atomexp_t exp_type, YYLTYPE location, char *node_id)
+GPAtomicExp *newDegreeOp (AtomExpTypes exp_type, YYLTYPE location, char *node_id)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -654,7 +654,7 @@ GPAtomicExp *newNegExp (YYLTYPE location, GPAtomicExp *exp)
      return atom;
 }
 
-GPAtomicExp *newBinaryOp (atomexp_t exp_type, YYLTYPE location, GPAtomicExp *left_exp, GPAtomicExp *right_exp)
+GPAtomicExp *newBinaryOp (AtomExpTypes exp_type, YYLTYPE location, GPAtomicExp *left_exp, GPAtomicExp *right_exp)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -793,7 +793,7 @@ GPPos *newPosition (YYLTYPE location, int x, int y)
     return pos;
 }
 
-GPLabel *newLabel (YYLTYPE location, mark_t mark, List *gp_list)
+GPLabel *newLabel (YYLTYPE location, MarkTypes mark, List *gp_list)
 {
     GPLabel *label = malloc(sizeof(GPLabel));
     
@@ -816,7 +816,7 @@ GPLabel *newLabel (YYLTYPE location, mark_t mark, List *gp_list)
  * substructures, and finally they free themselves. 
  */
 
-void free_ast(List *ast) 
+void freeAst(List *ast) 
 {
    switch(ast->list_type) {
 
@@ -825,14 +825,14 @@ void free_ast(List *ast)
         case LOCAL_DECLARATIONS:
 
 	     if(ast->value.declaration) 
-               free_declaration(ast->value.declaration);
+               freeDeclaration(ast->value.declaration);
 
 	     break;	
 
 
 	case COMMANDS:
 
-             if(ast->value.command) free_statement(ast->value.command);
+             if(ast->value.command) freeStatement(ast->value.command);
 
 	     break;	
 
@@ -852,7 +852,7 @@ void free_ast(List *ast)
 
 	case LIST_DECLARATIONS:
 
-             if(ast->value.variables) free_ast(ast->value.variables);
+             if(ast->value.variables) freeAst(ast->value.variables);
 
 	     break;
 	
@@ -873,21 +873,21 @@ void free_ast(List *ast)
 
 	case NODE_LIST:
 
-             if(ast->value.node) free_node(ast->value.node);
+             if(ast->value.node) freeNode(ast->value.node);
 
 	     break;
 	
 
 	case EDGE_LIST:
 
-             if(ast->value.edge) free_edge(ast->value.edge);
+             if(ast->value.edge) freeEdge(ast->value.edge);
 
 	     break;
 
 
 	case GP_LIST:
 
-             if(ast->value.atom) free_atomic_exp(ast->value.atom);
+             if(ast->value.atom) freeAtomicExp(ast->value.atom);
 
 	     break;
 
@@ -903,32 +903,32 @@ void free_ast(List *ast)
 
 	}
 
-   if(ast->next) free_ast(ast->next);
+   if(ast->next) freeAst(ast->next);
    free(ast);
 }
 
-void free_declaration(GPDeclaration *decl)
+void freeDeclaration(GPDeclaration *decl)
 {
      switch(decl->decl_type) {
 
 	case MAIN_DECLARATION:
 
              if(decl->value.main_program) 
-               free_statement(decl->value.main_program);
+               freeStatement(decl->value.main_program);
 
 	     break;
 
 
 	case PROCEDURE_DECLARATION:
 
-             if(decl->value.procedure) free_procedure(decl->value.procedure);
+             if(decl->value.procedure) freeProcedure(decl->value.procedure);
 
 	     break;
 
 
 	case RULE_DECLARATION:
 
-             if(decl->value.rule) free_rule(decl->value.rule);
+             if(decl->value.rule) freeRule(decl->value.rule);
 
 	     break;
 
@@ -942,13 +942,13 @@ void free_declaration(GPDeclaration *decl)
    free(decl);
 }
 
-void free_statement(GPStatement *stmt)
+void freeStatement(GPStatement *stmt)
 {
      switch(stmt->statement_type) {
 
 	case COMMAND_SEQUENCE:	
 
-             if(stmt->value.cmd_seq) free_ast(stmt->value.cmd_seq);
+             if(stmt->value.cmd_seq) freeAst(stmt->value.cmd_seq);
 
 	     break;
 
@@ -962,7 +962,7 @@ void free_statement(GPStatement *stmt)
 
 	case RULE_SET_CALL:
 
-             if(stmt->value.rule_set) free_ast(stmt->value.rule_set);
+             if(stmt->value.rule_set) freeAst(stmt->value.rule_set);
 
 	     break;
 
@@ -979,18 +979,18 @@ void free_statement(GPStatement *stmt)
         case TRY_STATEMENT:
 
              if(stmt->value.cond_branch.condition) 
-               free_statement(stmt->value.cond_branch.condition);
+               freeStatement(stmt->value.cond_branch.condition);
              if(stmt->value.cond_branch.then_stmt) 
-               free_statement(stmt->value.cond_branch.then_stmt);
+               freeStatement(stmt->value.cond_branch.then_stmt);
 	     if(stmt->value.cond_branch.else_stmt) 
-               free_statement(stmt->value.cond_branch.else_stmt);
+               freeStatement(stmt->value.cond_branch.else_stmt);
 
 	     break;
 
 
 	case ALAP_STATEMENT:
 
-	     if(stmt->value.loop_stmt) free_statement(stmt->value.loop_stmt);
+	     if(stmt->value.loop_stmt) freeStatement(stmt->value.loop_stmt);
              
 	     break;
 
@@ -998,9 +998,9 @@ void free_statement(GPStatement *stmt)
 	case PROGRAM_OR:
 
              if(stmt->value.or_stmt.left_stmt) 
-               free_statement(stmt->value.or_stmt.left_stmt);
+               freeStatement(stmt->value.or_stmt.left_stmt);
              if(stmt->value.or_stmt.right_stmt) 
-               free_statement(stmt->value.or_stmt.right_stmt);
+               freeStatement(stmt->value.or_stmt.right_stmt);
 
 	     break;
 
@@ -1021,7 +1021,7 @@ void free_statement(GPStatement *stmt)
    free(stmt);
 }
 
-void free_condition(GPCondExp *cond)
+void freeCondition(GPCondExp *cond)
 {
      switch(cond->exp_type) {
 
@@ -1043,7 +1043,7 @@ void free_condition(GPCondExp *cond)
 	     if(cond->value.edge_pred.target)
                free(cond->value.edge_pred.target);
 	     if(cond->value.edge_pred.label)
-               free_label(cond->value.edge_pred.label);
+               freeLabel(cond->value.edge_pred.label);
                                          
              break;
 
@@ -1053,9 +1053,9 @@ void free_condition(GPCondExp *cond)
 	case NOT_EQUAL:
 
              if(cond->value.list_cmp.left_list) 
-               free_ast(cond->value.list_cmp.left_list);
+               freeAst(cond->value.list_cmp.left_list);
              if(cond->value.list_cmp.right_list)  
-               free_ast(cond->value.list_cmp.right_list);
+               freeAst(cond->value.list_cmp.right_list);
 
 	     break;
 	
@@ -1069,16 +1069,16 @@ void free_condition(GPCondExp *cond)
 	case LESS_EQUAL:
 
              if(cond->value.atom_cmp.left_exp)
-               free_atomic_exp(cond->value.atom_cmp.left_exp);
+               freeAtomicExp(cond->value.atom_cmp.left_exp);
              if(cond->value.atom_cmp.right_exp) 
-               free_atomic_exp(cond->value.atom_cmp.right_exp);
+               freeAtomicExp(cond->value.atom_cmp.right_exp);
 
 	     break;	  
 
 
 	case BOOL_NOT:
 
-	     if(cond->value.not_exp) free_condition(cond->value.not_exp);
+	     if(cond->value.not_exp) freeCondition(cond->value.not_exp);
 
 	     break;
 
@@ -1088,9 +1088,9 @@ void free_condition(GPCondExp *cond)
 	case BOOL_AND:
 
 	     if(cond->value.bin_exp.left_exp)
-               free_condition(cond->value.bin_exp.left_exp);
+               freeCondition(cond->value.bin_exp.left_exp);
 	     if(cond->value.bin_exp.right_exp) 
-               free_condition(cond->value.bin_exp.right_exp);
+               freeCondition(cond->value.bin_exp.right_exp);
 
 	     break;
 
@@ -1103,7 +1103,7 @@ void free_condition(GPCondExp *cond)
    free(cond);
 }
 
-void free_atomic_exp(GPAtomicExp *atom)
+void freeAtomicExp(GPAtomicExp *atom)
 {
      switch(atom->exp_type) {
 
@@ -1144,7 +1144,7 @@ void free_atomic_exp(GPAtomicExp *atom)
 	case LIST_LENGTH:
 
 	     if(atom->value.list_arg)
-               free_ast(atom->value.list_arg);
+               freeAst(atom->value.list_arg);
 		
              break;
 
@@ -1152,13 +1152,13 @@ void free_atomic_exp(GPAtomicExp *atom)
 	case STRING_LENGTH:
 
 	     if(atom->value.str_arg)
-               free_atomic_exp(atom->value.str_arg);
+               freeAtomicExp(atom->value.str_arg);
 
              break;
 
 	case NEG:
 
-	     if(atom->value.exp) free_atomic_exp(atom->value.exp);
+	     if(atom->value.exp) freeAtomicExp(atom->value.exp);
 
              break;
 
@@ -1174,9 +1174,9 @@ void free_atomic_exp(GPAtomicExp *atom)
 	case CONCAT:
 
 	     if(atom->value.bin_op.left_exp)
-                free_atomic_exp(atom->value.bin_op.left_exp);
+                freeAtomicExp(atom->value.bin_op.left_exp);
 	     if(atom->value.bin_op.right_exp)  
-                free_atomic_exp(atom->value.bin_op.right_exp);
+                freeAtomicExp(atom->value.bin_op.right_exp);
 
              break;
 
@@ -1190,53 +1190,53 @@ void free_atomic_exp(GPAtomicExp *atom)
    free(atom);
 }
 
-void free_procedure(GPProcedure *proc)
+void freeProcedure(GPProcedure *proc)
 {
    if(proc->name) free(proc->name);
-   if(proc->local_decls) free_ast(proc->local_decls);
-   if(proc->cmd_seq) free_statement(proc->cmd_seq);
+   if(proc->local_decls) freeAst(proc->local_decls);
+   if(proc->cmd_seq) freeStatement(proc->cmd_seq);
    free(proc);
 }
 
-void free_rule(GPRule *rule)
+void freeRule(GPRule *rule)
 {
    if(rule->name) free(rule->name);
-   if(rule->variables) free_ast(rule->variables);
-   if(rule->lhs) free_graph(rule->lhs);  
-   if(rule->rhs) free_graph(rule->rhs);
-   if(rule->interface) free_ast(rule->interface);
-   if(rule->condition) free_condition(rule->condition);
+   if(rule->variables) freeAst(rule->variables);
+   if(rule->lhs) freeGraph(rule->lhs);  
+   if(rule->rhs) freeGraph(rule->rhs);
+   if(rule->interface) freeAst(rule->interface);
+   if(rule->condition) freeCondition(rule->condition);
    free(rule);
 }
 
-void free_graph(GPGraph *graph)
+void freeGraph(GPGraph *graph)
 {
    if(graph->position) free(graph->position);
-   if(graph->nodes) free_ast(graph->nodes);
-   if(graph->edges) free_ast(graph->edges);
+   if(graph->nodes) freeAst(graph->nodes);
+   if(graph->edges) freeAst(graph->edges);
    free(graph);
 }
 
-void free_node(GPNode *node)
+void freeNode(GPNode *node)
 {
    if(node->name) free(node->name);
-   if(node->label) free_label(node->label);
+   if(node->label) freeLabel(node->label);
    if(node->position) free(node->position);
    free(node);
 }
 
-void free_edge(GPEdge *edge)
+void freeEdge(GPEdge *edge)
 {
    if(edge->name) free(edge->name);
    if(edge->source) free(edge->source);
    if(edge->target) free(edge->target);
-   if(edge->label) free_label(edge->label);
+   if(edge->label) freeLabel(edge->label);
    free(edge);
 }
 
-void free_label(GPLabel *label)
+void freeLabel(GPLabel *label)
 {
-   if(label->gp_list) free_ast(label->gp_list);
+   if(label->gp_list) freeAst(label->gp_list);
    free(label);
 }
    
