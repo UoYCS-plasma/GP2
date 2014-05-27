@@ -28,7 +28,7 @@ extern List *gp_program; /* This will point to the root of the program AST.
 			  * Defined in main.c. */
 extern GPGraph *host_graph; /* This will point to the root of the host graph AST.
 			     * Defined in main.c */
-extern int abort_scan; /* Defined in main.c */
+extern bool abort_scan; /* Defined in main.c */
 
 
 %}
@@ -143,7 +143,7 @@ extern int abort_scan; /* Defined in main.c */
   * to each AST node. 
   *
   * The rule of thumb used here is that AST nodes are assigned the location of the 
-  * entire syntactic string they represent. For example, an AST node 
+  * entire syntactic char *they represent. For example, an AST node 
   * representing a variable name will contain the location of that name in the 
   * text file, whereas an AST node representing a graph will contain the 
   * location from the opening '[' to the closing ']' of the graph in the text 
@@ -160,7 +160,7 @@ extern int abort_scan; /* Defined in main.c */
   * RHS symbol.
   *
   * Identifiers (symbols ProcID, RuleID, NodeID, EdgeID and Variable) and
-  * string constant (token STR) are assigned to yylval with strdup. Hence
+  * char *constant (token STR) are assigned to yylval with strdup. Hence
   * the action code of any rules with these symbols on the RHS must free
   * the appropriate semantic value after the call to the constructor, otherwise
   * the pointer will be lost when yylval is updated.

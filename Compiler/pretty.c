@@ -14,15 +14,15 @@
 #include <string.h> /* strlen, strcpy, strcat */
 #include <glib.h> /* GHashTable and GSList */ 
 
-/* printSymbolTable uses glib's hash table iterator to print the table.
- * table is the hash table to print.
- * printSymbol is the function called for each value (GSList) encountered.
- * The third argument is passed to the printSymbol, but this is not needed here.
+/* printSymbolTable uses g_hash_table_foreach to print the symbol table.
+ * g_hash_table_for_each iterates over every key and value in the
+ * table, calling the function passed to it (printSymbolList) on
+ * each value.
  */
 
 static FILE *symbol_table_file;
 
-int printSymbolTable(GHashTable *table, char *file_name) 
+int printSymbolTable(GHashTable *table, string const file_name) 
 {
    /* Assumes input file has no extension, but will be .gpp in the future. */
 
@@ -41,25 +41,21 @@ int printSymbolTable(GHashTable *table, char *file_name)
       return 1;
    }
 
-   fprintf(symbol_table_file,"Symbol Table\n\n");	
-   g_hash_table_foreach(table, printSymbol, NULL);
+   print_to_symtab_file("Symbol Table\n\n");	
+   g_hash_table_foreach(table, printSymbolList, NULL);
 
    fclose(symbol_table_file);
 
    return 0;
 }
 
-/* Auxiliary function used by printSymbolTable. It takes a key and
- * value provided by g_hash_table_foreach 
- * user_data is a pointer from the caller, not necessary in this case.
- */
 
-void printSymbol(gpointer key, gpointer value, gpointer user_data)
+void printSymbolList(gpointer key, gpointer value, gpointer user_data)
 {
     GSList *current_name = NULL;
 
-    /* iterates over value, which is a GSList of Symbols 
-     * typecasting is required to access the Symbol structs as a GSList's
+    /* The for loop iterates over value, which is a GSList of Symbols. 
+     * Typecasting is required to access the Symbol structs because a GSList's
      * data field is a gpointer, equivalent to a void pointer.
      */
     for(current_name = value; current_name; current_name = current_name->next)
@@ -68,30 +64,28 @@ void printSymbol(gpointer key, gpointer value, gpointer user_data)
 	
 	/* Not all symbols have a containing rule */    
 	if(current_sym->containing_rule == NULL) {
-	   fprintf(symbol_table_file,"Name: %s\nType: %s\nScope: %s\n",
-	           (char*)key, current_sym->type, current_sym->scope);
-	   if(current_sym->is_var) fprintf(symbol_table_file,"Variable\n");
-	   if(current_sym->in_lhs) fprintf(symbol_table_file,"In LHS\n");
-           if(current_sym->wildcard) fprintf(symbol_table_file,"Wildcard\n");
-	   fprintf(symbol_table_file,"\n");
+	   print_to_symtab_file("Name: %s\nType: %s\nScope: %s\n",
+	           (string)key, current_sym->type, current_sym->scope);
+	   if(current_sym->is_var) print_to_symtab_file("Variable\n");
+	   if(current_sym->in_lhs) print_to_symtab_file("In LHS\n");
+           if(current_sym->wildcard) print_to_symtab_file("Wildcard\n");
+	   print_to_symtab_file("\n");
 	}	
 	else {	
-           fprintf(symbol_table_file,"Name: %s\nType: %s\nScope: %s\n"
-                   "Containing Rule: %s\n", (char*)key, current_sym->type, 
+           print_to_symtab_file("Name: %s\nType: %s\nScope: %s\n"
+                   "Containing Rule: %s\n", (string)key, current_sym->type, 
                    current_sym->scope, current_sym->containing_rule);
-       	   if(current_sym->is_var) fprintf(symbol_table_file,"Variable\n");
-	   if(current_sym->in_lhs) fprintf(symbol_table_file,"In LHS\n");
-           if(current_sym->wildcard) fprintf(symbol_table_file,"Wildcard\n");
-	   fprintf(symbol_table_file,"\n");
+       	   if(current_sym->is_var) print_to_symtab_file("Variable\n");
+	   if(current_sym->in_lhs) print_to_symtab_file("In LHS\n");
+           if(current_sym->wildcard) print_to_symtab_file("Wildcard\n");
+	   print_to_symtab_file("\n");
 	}
     }
 }
        
 
-/* printDotAST takes as arguments a pointer to the root of the AST and the 
- * name of the GP source file. It creates a new file <source_name>.dot,
- * writes to it a graph declaration in the dot syntax for graph specification, 
- * and calls printList to write the node and edge declarations.
+/* Creates the output file, prints some preliminary output, and
+ * calls printList to trigger the AST walk.
  *
  * Dot syntax for nodes:
  * <node_id>[shape=<node_shape>,label=<node_label>]
@@ -112,10 +106,8 @@ void printSymbol(gpointer key, gpointer value, gpointer user_data)
  */ 
 
 
-static unsigned int next_node_id = 1;
-static FILE *dot_file; 
 
-int printDotAST(List *const gp_ast, char* file_name)
+int printDotAST(List *const gp_ast, string file_name)
 {
  
      /* Assumes input file has no extension, but will be .gpp in the future. */
@@ -128,32 +120,33 @@ int printDotAST(List *const gp_ast, char* file_name)
      char dot_file_name[length];
      strcpy(dot_file_name, file_name);
      strncat(dot_file_name, ".dot", 4);
-     dot_file = fopen(dot_file_name, "w");
+     FILE *dot_file = fopen(dot_file_name, "w");
      
      if(dot_file == NULL) {
 	perror(dot_file_name);
 	return 1;
      }	
 
-     fprintf(dot_file,"digraph g { \n");
+     print_to_dot_file("digraph g { \n");
 
      /* Print the entry point of the AST. node1 will be the first 
       * node created by printList. */
 
-     fprintf(dot_file,"node0[shape=plaintext,label=\"ROOT\"]\n");
-     fprintf(dot_file,"node0->node1\n");
+     print_to_dot_file("node0[shape=plaintext,label=\"ROOT\"]\n");
+     print_to_dot_file("node0->node1\n");
 
-     next_node_id = 1;
-     printList(gp_ast);
+     printList(gp_ast,dot_file,1);
 
-     fprintf(dot_file,"}\n\n");
+     print_to_dot_file("}\n\n");
 
      fclose(dot_file);
 
      return 0;
 }
 
-int printDotHostGraph(GPGraph *const host_graph_ast, char* file_name)
+
+
+int printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
 {
  
      /* Assumes input file has no extension, but will be .gpg in the future. */
@@ -166,25 +159,24 @@ int printDotHostGraph(GPGraph *const host_graph_ast, char* file_name)
      char dot_file_name[dot_length];
      strcpy(dot_file_name, file_name);
      strncat(dot_file_name, ".dot", 4);
-     dot_file = fopen(dot_file_name, "w");
+     FILE *dot_file = fopen(dot_file_name, "w");
      
      if(dot_file == NULL) {
 	perror(dot_file_name);
 	return 1;
      }	
 
-     fprintf(dot_file,"digraph g { \n");
+     print_to_dot_file("digraph g { \n");
 
      /* Print the entry point of the AST. node1 will be the first 
       * node created by printList. */
 
-     fprintf(dot_file,"node0[shape=plaintext,label=\"ROOT\"]\n");
-     fprintf(dot_file,"node0->node1\n");
+     print_to_dot_file("node0[shape=plaintext,label=\"ROOT\"]\n");
+     print_to_dot_file("node0->node1\n");
 
-     next_node_id = 1;
-     printGraph(host_graph_ast);
+     printGraph(host_graph_ast,dot_file,1);
 
-     fprintf(dot_file,"}\n\n");
+     print_to_dot_file("}\n\n");
 
      fclose(dot_file);
 
@@ -196,7 +188,9 @@ int printDotHostGraph(GPGraph *const host_graph_ast, char* file_name)
 /* printList is a recursive function that prints the nodes and edges
  * of its AST argument to the .dot file created by printDotAST.
  *
- * Unique node names are generated with the global variable next_node_id. 
+ * Unique node names are generated with the variable next_node_id. 
+ * On the initial call, printList (or printGraph when printing host graphs)
+ * is called with next_node_id 1. 
  * A new AST node is reached whenever a printX function is called through the 
  * prettyPrint macros. Hence each printX function will assign next_node_id
  * to the node_id of the current AST node and increment next_node_id.
@@ -206,7 +200,7 @@ int printDotHostGraph(GPGraph *const host_graph_ast, char* file_name)
  * header file.
  */
 
-void printList(List * const list)
+void printList(List * const list, FILE *dot_file, unsigned int next_node_id)
 {
 
      switch(list->list_type) {
@@ -216,11 +210,12 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Global \\n Declarations\"]\n", list->node_id, 
-                     list->node_id, LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Global \\n Declarations\"]\n", 
+                               list->node_id, list->node_id, 
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.declaration, Declaration);
@@ -234,11 +229,12 @@ void printList(List * const list)
 	     list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Local \\n Declarations\"]\n", list->node_id, 
-                     list->node_id, LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Local \\n Declarations\"]\n", 
+                               list->node_id, list->node_id, 
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  		
 
 	     prettyPrint(list->value.declaration, Declaration);
@@ -252,12 +248,13 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Commands\"]\n", list->node_id, list->node_id,
-                     LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Commands\"]\n", 
+                               list->node_id, list->node_id,
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
+                               list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.command, Statement);
              prettyPrintList(list->next,list,next);
@@ -271,15 +268,18 @@ void printList(List * const list)
              next_node_id += 1;
 
 	     if(list->value.rule_name != NULL)
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Rule \\n Name: %s\"]\n", list->node_id, list->node_id,
-		        LOCATION_ARGS(list->location), list->value.rule_name);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Rule \\n Name: %s\"]\n", 
+                                  list->node_id, list->node_id,
+		                  LOCATION_ARGS(list->location),
+                                  list->value.rule_name);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Rule \\n Name: UNDEFINED\"]\n", list->node_id,
-                        list->node_id, LOCATION_ARGS(list->location));
-                fprintf(log_file,"Error: Undefined rule name at AST node %d", 
-                        list->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Rule \\n Name: UNDEFINED\"]\n", 
+                                  list->node_id, list->node_id, 
+                                  LOCATION_ARGS(list->location));
+                print_to_log("Error: Undefined rule name at AST node %d", 
+                             list->node_id);
              }
 
              prettyPrintList(list->next,list,next);
@@ -292,11 +292,12 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Integer \\n Declarations\"]\n", list->node_id, 
-                     list->node_id, LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Integer \\n Declarations\"]\n", 
+                               list->node_id, list->node_id, 
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
                      list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.variables, List);
@@ -309,12 +310,13 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Character \\n Declarations\"]\n", list->node_id, 
-                     list->node_id, LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Character \\n Declarations\"]\n", 
+                               list->node_id, list->node_id, 
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
+                               list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.variables, List);
              prettyPrintList(list->next,list,next);
@@ -326,12 +328,13 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "String \\n Declarations\"]\n", list->node_id, 
-                     list->node_id, LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "String \\n Declarations\"]\n", 
+                               list->node_id, list->node_id, 
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
+                               list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.variables, List);
              prettyPrintList(list->next,list,next);
@@ -344,12 +347,13 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Atom \\n Declarations\"]\n", list->node_id, 
-                     list->node_id, LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Atom \\n Declarations\"]\n", 
+                               list->node_id, list->node_id, 
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
+                               list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.variables, List);
              prettyPrintList(list->next,list,next);
@@ -362,12 +366,13 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "List \\n Declarations\"]\n", list->node_id,
-                     list->node_id, LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "List \\n Declarations\"]\n", 
+                               list->node_id, list->node_id, 
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
+                               list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.variables, List);
              prettyPrintList(list->next,list,next);
@@ -381,16 +386,18 @@ void printList(List * const list)
              next_node_id += 1;
 
 	     if(list->value.variable_name != NULL)
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Variable \\n Name: %s\"]\n", list->node_id, 
-                        list->node_id, LOCATION_ARGS(list->location),
-			list->value.variable_name);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Variable \\n Name: %s\"]\n", 
+                                  list->node_id, list->node_id, 
+                                  LOCATION_ARGS(list->location),
+			          list->value.variable_name);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Variable \\n Name: UNDEFINED\"]\n", list->node_id,
-                        list->node_id, LOCATION_ARGS(list->location)); 
-                fprintf(log_file,"Error: Undefined variable name at AST node %d", 
-                        list->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Variable \\n Name: UNDEFINED\"]\n",
+                                  list->node_id, list->node_id, 
+                                  LOCATION_ARGS(list->location)); 
+                print_to_log("Error: Undefined variable name at AST node %d", 
+                             list->node_id);
              }
 
              prettyPrintList(list->next,list,next);
@@ -404,16 +411,18 @@ void printList(List * const list)
              next_node_id += 1; 
 
 	     if(list->value.node_id != NULL)
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Interface \\n Node: %s\"]\n", list->node_id, 
-                        list->node_id, LOCATION_ARGS(list->location),
-			list->value.node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Interface \\n Node: %s\"]\n", 
+                                  list->node_id, list->node_id, 
+                                  LOCATION_ARGS(list->location),
+			          list->value.node_id);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Node \\n Name: UNDEFINED\"]\n", list->node_id,
-                        list->node_id, LOCATION_ARGS(list->location));
-                fprintf(log_file,"Error: Undefined node name at AST node %d", 
-                        list->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Node \\n Name: UNDEFINED\"]\n", 
+                                  list->node_id, list->node_id, 
+                                  LOCATION_ARGS(list->location));
+                print_to_log("Error: Undefined node name at AST node %d", 
+                             list->node_id);
              }
 
              prettyPrintList(list->next,list,next);
@@ -426,12 +435,13 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Nodes\"]\n", list->node_id, list->node_id,
-                     LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Nodes\"]\n", 
+                               list->node_id, list->node_id,
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
+                               list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.node, Node);
              prettyPrintList(list->next,list,next);
@@ -444,12 +454,13 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Edges\"]\n", list->node_id, list->node_id,
-                     LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Edges\"]\n",  
+                               list->node_id, list->node_id,
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
+                               list->node_id, next_node_id);  
 
 	     prettyPrint(list->value.edge, Edge);
              prettyPrintList(list->next,list,next);
@@ -462,12 +473,13 @@ void printList(List * const list)
              list->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "GP List\"]\n", list->node_id, list->node_id,
-                     LOCATION_ARGS(list->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "GP List\"]\n",
+                               list->node_id, list->node_id,
+                               LOCATION_ARGS(list->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"value\"]\n",  
-                     list->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"value\"]\n",  
+                               list->node_id, next_node_id); 
 
 	     prettyPrint(list->value.atom, Atom);
              prettyPrintList(list->next,list,next);
@@ -479,17 +491,18 @@ void printList(List * const list)
 	     list->node_id = next_node_id;
              next_node_id += 1;
 
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n" 
-                     "Empty List\"]\n", list->node_id, list->node_id,
-                     LOCATION_ARGS(list->location));
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n" 
+                               "Empty List\"]\n", 
+                               list->node_id, list->node_id,
+                               LOCATION_ARGS(list->location));
 
              prettyPrintList(list->next,list,next);
 
              break;
 
 
-	default: fprintf(log_file,"Unexpected List Type: %d\n",
-                         (int)list->list_type); 
+	default: print_to_log("Unexpected List Type: %d\n",
+                              (int)list->list_type); 
                  break;	 
 
 	}
@@ -497,7 +510,7 @@ void printList(List * const list)
 
 
 
-void printDeclaration(GPDeclaration * const decl)
+void printDeclaration(GPDeclaration * const decl, FILE *dot_file, unsigned int next_node_id)
 {
      switch(decl->decl_type) {
 
@@ -506,12 +519,12 @@ void printDeclaration(GPDeclaration * const decl)
              decl->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Main\"]\n", decl->node_id, decl->node_id,
-                     LOCATION_ARGS(decl->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nMain\"]\n",
+                               decl->node_id, decl->node_id,
+                               LOCATION_ARGS(decl->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"main \\n program\"]\n",  
-                     decl->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"main \\n program\"]\n",  
+                               decl->node_id, next_node_id); 
 
 	     prettyPrint(decl->value.main_program, Statement);
 
@@ -522,12 +535,13 @@ void printDeclaration(GPDeclaration * const decl)
              decl->node_id = next_node_id;
              next_node_id += 1;
 
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Procedure \\n Declaration\"]\n", decl->node_id, 
-                     decl->node_id, LOCATION_ARGS(decl->location));
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Procedure \\n Declaration\"]\n", 
+                               decl->node_id, decl->node_id, 
+                               LOCATION_ARGS(decl->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"proc\"]\n",  
-                     decl->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"proc\"]\n",  
+                               decl->node_id, next_node_id); 
 
 	     prettyPrint(decl->value.procedure, Procedure);
 
@@ -538,19 +552,20 @@ void printDeclaration(GPDeclaration * const decl)
              decl->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Rule \\n Declaration\"]\n", decl->node_id, 
-                     decl->node_id, LOCATION_ARGS(decl->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Rule \\n Declaration\"]\n",
+                               decl->node_id, decl->node_id, 
+                               LOCATION_ARGS(decl->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"rule\"]\n",  
-                     decl->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"rule\"]\n",  
+                               decl->node_id, next_node_id); 
 
 	     prettyPrint(decl->value.rule, Rule);
 
 	     break;
 
-	default: fprintf(log_file,"Unexpected Declaration Type: %d\n",
-                         (int)decl->decl_type); 
+	default: print_to_log("Unexpected Declaration Type: %d\n",
+                              (int)decl->decl_type); 
                  break;
 
 	}
@@ -558,7 +573,7 @@ void printDeclaration(GPDeclaration * const decl)
 
 
 
-void printStatement(GPStatement * const stmt)
+void printStatement(GPStatement * const stmt, FILE *dot_file, unsigned int next_node_id)
 {
      switch(stmt->statement_type) {
 
@@ -567,12 +582,13 @@ void printStatement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Command \\n Sequence\"]\n", stmt->node_id,  
-                     stmt->node_id, LOCATION_ARGS(stmt->location));
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Command \\n Sequence\"]\n", 
+                               stmt->node_id, stmt->node_id, 
+                               LOCATION_ARGS(stmt->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"cmd_seq\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"cmd_seq\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.cmd_seq, List);
 
@@ -584,15 +600,17 @@ void printStatement(GPStatement * const stmt)
              next_node_id += 1;
 
 	     if(stmt->value.rule_name != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Rule Call \\n Name: %s\"]\n",
-                        stmt->node_id, stmt->node_id, 
-                        LOCATION_ARGS(stmt->location), stmt->value.rule_name);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Rule Call \\n Name: %s\"]\n",
+                                  stmt->node_id, stmt->node_id, 
+                                  LOCATION_ARGS(stmt->location), 
+                                  stmt->value.rule_name);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Rule \\n Name: UNDEFINED\"]\n", stmt->node_id, 
-                        stmt->node_id, LOCATION_ARGS(stmt->location));
-                fprintf(log_file,"Error: Undefined rule name at AST node %d", 
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Rule \\n Name: UNDEFINED\"]\n",  
+                                  stmt->node_id, stmt->node_id, 
+                                  LOCATION_ARGS(stmt->location));
+                print_to_log("Error: Undefined rule name at AST node %d", 
                         stmt->node_id);
              }
 
@@ -603,12 +621,13 @@ void printStatement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                    "Rule Set Call\"]\n", stmt->node_id, stmt->node_id,
-                     LOCATION_ARGS(stmt->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Rule Set Call\"]\n", 
+                               stmt->node_id, stmt->node_id,
+                               LOCATION_ARGS(stmt->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"rule set\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"rule set\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.rule_set, List);
 
@@ -620,17 +639,18 @@ void printStatement(GPStatement * const stmt)
              next_node_id += 1;
 
 	     if(stmt->value.proc_name != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Procedure Call \\n Name: %s\"]\n",
-                        stmt->node_id, stmt->node_id,
-                        LOCATION_ARGS(stmt->location), stmt->value.proc_name);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Procedure Call \\n Name: %s\"]\n",
+                                  stmt->node_id, stmt->node_id,
+                                  LOCATION_ARGS(stmt->location), 
+                                  stmt->value.proc_name);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Procedure \\n Name: UNDEFINED\"]\n",
-                        stmt->node_id, stmt->node_id,
-                        LOCATION_ARGS(stmt->location));
-                fprintf(log_file,"Error: Undefined procedure name at AST node %d", 
-                        stmt->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Procedure \\n Name: UNDEFINED\"]\n",
+                                  stmt->node_id, stmt->node_id,
+                                  LOCATION_ARGS(stmt->location));
+                print_to_log("Error: Undefined procedure name at AST node %d", 
+                             stmt->node_id);
              }
 
 	     break;
@@ -640,24 +660,25 @@ void printStatement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "If Statement\"]\n", stmt->node_id, stmt->node_id,
-                     LOCATION_ARGS(stmt->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "If Statement\"]\n", 
+                               stmt->node_id, stmt->node_id,
+                               LOCATION_ARGS(stmt->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"condition\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"condition\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.cond_branch.condition, Statement);
 
 	    
-             fprintf(dot_file,"node%d->node%d[label=\"then\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"then\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.cond_branch.then_stmt, Statement);
 
              
-             fprintf(dot_file,"node%d->node%d[label=\"else\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"else\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.cond_branch.else_stmt, Statement);
              
@@ -668,24 +689,25 @@ void printStatement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Try Statement\"]\n", stmt->node_id, stmt->node_id,
-                     LOCATION_ARGS(stmt->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Try Statement\"]\n", 
+                               stmt->node_id, stmt->node_id,
+                               LOCATION_ARGS(stmt->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"condition\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"condition\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.cond_branch.condition, Statement);
 
 	    
-             fprintf(dot_file,"node%d->node%d[label=\"then\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"then\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.cond_branch.then_stmt, Statement);
 
              
-             fprintf(dot_file,"node%d->node%d[label=\"else\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"else\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.cond_branch.else_stmt, Statement);
 	    
@@ -696,12 +718,13 @@ void printStatement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "ALAP Statement\"]\n", stmt->node_id, stmt->node_id,
-                     LOCATION_ARGS(stmt->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "ALAP Statement\"]\n", 
+                               stmt->node_id, stmt->node_id,
+                               LOCATION_ARGS(stmt->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"loop \\n statement\"]\n",  
-                     stmt->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"loop \\n statement\"]\n",  
+                               stmt->node_id, next_node_id); 
 
 	     prettyPrint(stmt->value.loop_stmt, Statement);
              
@@ -712,17 +735,18 @@ void printStatement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "OR Statement\"]\n", stmt->node_id, stmt->node_id,
-                     LOCATION_ARGS(stmt->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "OR Statement\"]\n", 
+                               stmt->node_id, stmt->node_id,
+                               LOCATION_ARGS(stmt->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left \\n statement\"]\n",  
-                     stmt->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"left \\n statement\"]\n",  
+                                stmt->node_id, next_node_id);  
 
 	     prettyPrint(stmt->value.or_stmt.left_stmt, Statement);             
  
-             fprintf(dot_file,"node%d->node%d[label=\"right \\n statement\"]\n",  
-                     stmt->node_id, next_node_id);  
+             print_to_dot_file("node%d->node%d[label=\"right \\n statement\"]\n",  
+                               stmt->node_id, next_node_id);  
 
 	     prettyPrint(stmt->value.or_stmt.right_stmt, Statement);
 
@@ -733,9 +757,9 @@ void printStatement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n skip\"]\n", 
-                     stmt->node_id, stmt->node_id,
-                     LOCATION_ARGS(stmt->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n skip\"]\n", 
+                               stmt->node_id, stmt->node_id,
+                               LOCATION_ARGS(stmt->location));
 
 	     break;
 
@@ -744,14 +768,14 @@ void printStatement(GPStatement * const stmt)
              stmt->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n fail\"]\n", 
-                     stmt->node_id, stmt->node_id, 
-                     LOCATION_ARGS(stmt->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n fail\"]\n", 
+                               stmt->node_id, stmt->node_id, 
+                               LOCATION_ARGS(stmt->location));
 
 	     break;
 	
-	default: fprintf(log_file,"Unexpected Statement Type: %d\n",
-                         (int)stmt->statement_type); 
+	default: print_to_log("Unexpected Statement Type: %d\n",
+                              (int)stmt->statement_type); 
                  break;
 
 	}
@@ -759,7 +783,7 @@ void printStatement(GPStatement * const stmt)
 
 
 
-void printCondition(GPCondExp * const cond)
+void printCondition(GPCondExp * const cond, FILE *dot_file, unsigned int next_node_id)
 {
      switch(cond->exp_type) {
 
@@ -769,17 +793,18 @@ void printCondition(GPCondExp * const cond)
              next_node_id += 1;
 
              if(cond->value.var != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "int check \\n Variable: %s\"]\n", cond->node_id, 
-                        cond->node_id, LOCATION_ARGS(cond->location),
-                        cond->value.var);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "int check \\n Variable: %s\"]\n", 
+                                  cond->node_id, cond->node_id, 
+                                  LOCATION_ARGS(cond->location),
+                                  cond->value.var);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Variable: \\n UNDEFINED\"]\n",
-                        cond->node_id, cond->node_id,
-                        LOCATION_ARGS(cond->location));
-                fprintf(log_file,"Error: Undefined variable name at AST node %d", 
-                        cond->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Variable: \\n UNDEFINED\"]\n",
+                                  cond->node_id, cond->node_id,
+                                  LOCATION_ARGS(cond->location));
+                print_to_log("Error: Undefined variable name at AST node %d", 
+                             cond->node_id);
              }
 
              break;
@@ -791,17 +816,18 @@ void printCondition(GPCondExp * const cond)
              next_node_id += 1;
 
 	     if(cond->value.var != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "char check \\n Variable: %s\"]\n",
-                        cond->node_id, cond->node_id, 
-                        LOCATION_ARGS(cond->location), cond->value.var);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "char check \\n Variable: %s\"]\n",
+                                  cond->node_id, cond->node_id, 
+                                  LOCATION_ARGS(cond->location),
+                                  cond->value.var);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Variable: \\n UNDEFINED\"]\n",
-                        cond->node_id, cond->node_id,
-                        LOCATION_ARGS(cond->location));
-                fprintf(log_file,"Error: Undefined variable name at AST node %d", 
-                        cond->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Variable: \\n UNDEFINED\"]\n",
+                                   cond->node_id, cond->node_id,
+                                   LOCATION_ARGS(cond->location));
+                print_to_log("Error: Undefined variable name at AST node %d", 
+                             cond->node_id);
              }
 
              break;
@@ -813,17 +839,18 @@ void printCondition(GPCondExp * const cond)
              next_node_id += 1;
 
 	     if(cond->value.var != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "string check \\n Variable: %s\"]\n",
-                        cond->node_id, cond->node_id, 
-                        LOCATION_ARGS(cond->location), cond->value.var);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "string check \\n Variable: %s\"]\n",
+                                   cond->node_id, cond->node_id, 
+                                   LOCATION_ARGS(cond->location), 
+                                   cond->value.var);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Variable: \\n UNDEFINED\"]\n",
-                        cond->node_id, cond->node_id,
-                        LOCATION_ARGS(cond->location));
-                fprintf(log_file,"Error: Undefined variable name at AST node %d", 
-                        cond->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Variable: \\n UNDEFINED\"]\n",
+                                  cond->node_id, cond->node_id,
+                                  LOCATION_ARGS(cond->location));
+                print_to_log("Error: Undefined variable name at AST node %d", 
+                             cond->node_id);
              }
 
              break;
@@ -834,17 +861,18 @@ void printCondition(GPCondExp * const cond)
              next_node_id += 1;
 
 	     if(cond->value.var != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "atom check \\n Variable: %s\"]\n",
-                        cond->node_id, cond->node_id, 
-                        LOCATION_ARGS(cond->location), cond->value.var);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "atom check \\n Variable: %s\"]\n",
+                                  cond->node_id, cond->node_id, 
+                                  LOCATION_ARGS(cond->location), 
+                                  cond->value.var);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Variable: \\n UNDEFINED\"]\n",
-                        cond->node_id, cond->node_id,
-                        LOCATION_ARGS(cond->location));
-                fprintf(log_file,"Error: Undefined variable name at AST node %d", 
-                        cond->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Variable: \\n UNDEFINED\"]\n",
+                                  cond->node_id, cond->node_id,
+                                  LOCATION_ARGS(cond->location));
+                print_to_log("Error: Undefined variable name at AST node %d", 
+                             cond->node_id);
              }
 
              break;
@@ -854,36 +882,39 @@ void printCondition(GPCondExp * const cond)
 	     cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Edge Test \\n ", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Edge Test \\n ", 
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
              if(cond->value.edge_pred.source != NULL)
-                 fprintf(dot_file,"Source: %s \\n ", cond->value.edge_pred.source);
+                 print_to_dot_file("Source: %s \\n ", 
+                                   cond->value.edge_pred.source);
              else {
-                 fprintf(log_file,"Error: Undefined node at AST node %d", 
-                         cond->node_id);
-                 fprintf(dot_file,"Source: ERROR \\n ");
+                 print_to_log("Error: Undefined node at AST node %d", 
+                              cond->node_id);
+                 print_to_dot_file("Source: ERROR \\n ");
              }
 
              if(cond->value.edge_pred.target != NULL)
-                 fprintf(dot_file,"Target: %s\"]\n ", cond->value.edge_pred.target);
+                 print_to_dot_file("Target: %s\"]\n ", 
+                                   cond->value.edge_pred.target);
              else {
-                 fprintf(log_file,"Error: Undefined node at AST node %d", 
-                         cond->node_id);
-                 fprintf(dot_file,"Target: ERROR \"]\n");
+                 print_to_log("Error: Undefined node at AST node %d", 
+                              cond->node_id);
+                 print_to_dot_file("Target: ERROR \"]\n");
              }
 
              if(cond->value.edge_pred.label) {
-                fprintf(dot_file,"node%d->node%d[label=\"label \\n argument\"]\n",  
-                        cond->node_id, next_node_id);
+                print_to_dot_file("node%d->node%d[label=\"label \\n argument\"]\n",  
+                                  cond->node_id, next_node_id);
 	        prettyPrint(cond->value.edge_pred.label, Label);
              }
              else {
-                fprintf(dot_file,"node%d[shape=plaintext,label=\"%d NULL\"]\n", 
-                        next_node_id, next_node_id);  
-                fprintf(dot_file,"node%d->node%d[label=\"label \\n argument\"]"          
-                        "\n", cond->node_id, next_node_id);                     
+                print_to_dot_file("node%d[shape=plaintext,label=\"%d NULL\"]\n", 
+                                  next_node_id, next_node_id);  
+                print_to_dot_file("node%d->node%d[label=\"label \\n argument\"]"          
+                                  "\n", cond->node_id, next_node_id);                     
                 next_node_id += 1;       
              }
                                          
@@ -895,16 +926,17 @@ void printCondition(GPCondExp * const cond)
              cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "=\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "=\"]\n", 
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left list\"]\n",          
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"left list\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.list_cmp.left_list, List);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right list\"]\n",          
-                     cond->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right list\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.list_cmp.right_list, List);
 	
 	     break;	
@@ -915,16 +947,17 @@ void printCondition(GPCondExp * const cond)
              cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "!=\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "!=\"]\n",
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left list\"]\n",          
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"left list\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.list_cmp.left_list, List);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right list\"]\n",          
-                     cond->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right list\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.list_cmp.right_list, List);
 	
 	     break;
@@ -935,16 +968,17 @@ void printCondition(GPCondExp * const cond)
              cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     ">\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               ">\"]\n", 
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.atom_cmp.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
-                     cond->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.atom_cmp.right_exp, Atom);
 
 	     break;
@@ -955,16 +989,17 @@ void printCondition(GPCondExp * const cond)
              cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     ">=\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               ">=\"]\n",
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.atom_cmp.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
-                     cond->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.atom_cmp.right_exp, Atom);
 
 	     break;
@@ -975,16 +1010,17 @@ void printCondition(GPCondExp * const cond)
              cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "<\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "<\"]\n", 
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.atom_cmp.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
-                     cond->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.atom_cmp.right_exp, Atom);
 
 	     break;
@@ -995,16 +1031,17 @@ void printCondition(GPCondExp * const cond)
              cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                     "<=\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
+                               "<=\"]\n", 
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.atom_cmp.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
-                     cond->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.atom_cmp.right_exp, Atom);
 
 	     break;	  
@@ -1015,12 +1052,12 @@ void printCondition(GPCondExp * const cond)
 	     cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "NOT\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nNOT\"]\n", 
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"not exp\"]\n",  
-                     cond->node_id, next_node_id);
+             print_to_dot_file("node%d->node%d[label=\"not exp\"]\n",  
+                               cond->node_id, next_node_id);
 
 	     prettyPrint(cond->value.not_exp, Condition);
 
@@ -1031,16 +1068,16 @@ void printCondition(GPCondExp * const cond)
 	     cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "OR\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nOR\"]\n", 
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",  
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",  
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.bin_exp.left_exp, Condition);
 
-             fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",  
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",  
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.bin_exp.right_exp, Condition);
 
 	     break;
@@ -1050,21 +1087,21 @@ void printCondition(GPCondExp * const cond)
 	     cond->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "AND\"]\n", cond->node_id, cond->node_id,
-                     LOCATION_ARGS(cond->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nAND\"]\n", 
+                               cond->node_id, cond->node_id,
+                               LOCATION_ARGS(cond->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",  
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",  
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.bin_exp.left_exp, Condition);
 
-             fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",  
-                     cond->node_id, next_node_id); 
+             print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",  
+                               cond->node_id, next_node_id); 
 	     prettyPrint(cond->value.bin_exp.right_exp, Condition);
 
 	     break;
 
-	default: fprintf(log_file,"Unexpected Condition Type: %d\n",
+	default: print_to_log("Unexpected Condition Type: %d\n",
                          (int)cond->exp_type); 
                  break;
 
@@ -1073,7 +1110,7 @@ void printCondition(GPCondExp * const cond)
 
 
 
-void printAtom(GPAtomicExp * const atom)
+void printAtom(GPAtomicExp * const atom, FILE *dot_file, unsigned int next_node_id)
 {
      switch(atom->exp_type) {
 
@@ -1083,15 +1120,18 @@ void printAtom(GPAtomicExp * const atom)
              next_node_id += 1;
 
              if(atom->value.name != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Variable: %s\"]\n", atom->node_id, atom->node_id, 
-                        LOCATION_ARGS(atom->location), atom->value.name);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Variable: %s\"]\n", 
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location),
+                                  atom->value.name);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Variable: \\n UNDEFINED\"]\n", atom->node_id, 
-                         atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(log_file,"Error: Undefined variable name at AST node %d", 
-                        atom->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d"
+                                  "\\nVariable: \\n UNDEFINED\"]\n",
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location));
+                print_to_log("Error: Undefined variable name at AST node %d", 
+                             atom->node_id);
              }
 
              break;
@@ -1101,9 +1141,11 @@ void printAtom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "Number: %d\"]\n", atom->node_id, atom->node_id, 
-                     LOCATION_ARGS(atom->location), atom->value.number);
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                               "Number: %d\"]\n", 
+                               atom->node_id, atom->node_id, 
+                               LOCATION_ARGS(atom->location), 
+                               atom->value.number);
 
              break;
 
@@ -1114,15 +1156,18 @@ void printAtom(GPAtomicExp * const atom)
              next_node_id += 1;
 
              if(atom->value.string != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Character: %s\"]\n", atom->node_id, atom->node_id,
-                        LOCATION_ARGS(atom->location), atom->value.string);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Character: %s\"]\n", 
+                                  atom->node_id, atom->node_id,
+                                  LOCATION_ARGS(atom->location), 
+                                  atom->value.string);
              else {
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "UNDEFINED\"]\n", atom->node_id, 
-                        atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(log_file,"Error: Empty character at AST node %d\n", 
-                          atom->node_id);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "UNDEFINED\"]\n",
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location));
+                print_to_log("Error: Empty character at AST node %d\n", 
+                             atom->node_id);
              }
 
              break;
@@ -1134,13 +1179,16 @@ void printAtom(GPAtomicExp * const atom)
              next_node_id += 1;
 
              if(atom->value.string != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "String: %s\"]\n", atom->node_id, atom->node_id,
-                        LOCATION_ARGS(atom->location), atom->value.string);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "String: %s\"]\n",  
+                                  atom->node_id, atom->node_id,
+                                  LOCATION_ARGS(atom->location), 
+                                  atom->value.string);
              else {
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Empty String\"]\n", atom->node_id, 
-                        atom->node_id, LOCATION_ARGS(atom->location));
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "Empty String\"]\n", 
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location));
                 }
 
              break;
@@ -1151,15 +1199,18 @@ void printAtom(GPAtomicExp * const atom)
              next_node_id += 1;
 
              if(atom->value.name != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "indegree(%s)\"]\n", atom->node_id, atom->node_id, 
-                        LOCATION_ARGS(atom->location), atom->value.node_id);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "indegree(%s)\"]\n", 
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location), 
+                                  atom->value.node_id);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "indegree: \\n UNDEFINED\"]\n", atom->node_id, 
-                        atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(log_file,"Error: Undefined node name at AST node %d", 
-                        atom->node_id);
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d"
+                                  "\\nindegree: \\n UNDEFINED\"]\n", 
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location));
+                print_to_log("Error: Undefined node name at AST node %d", 
+                             atom->node_id);
              }
 
 
@@ -1171,14 +1222,17 @@ void printAtom(GPAtomicExp * const atom)
              next_node_id += 1;
 
              if(atom->value.name != NULL)
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "outdegree(%s)\"]\n", atom->node_id, atom->node_id, 
-                        LOCATION_ARGS(atom->location), atom->value.node_id);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "outdegree(%s)\"]\n", 
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location), 
+                                  atom->value.node_id);
              else {
-                fprintf(dot_file,"node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                        "outdegree: \\n UNDEFINED\"]\n", atom->node_id, 
-                        atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(log_file,"Error: Undefined node name at AST node %d", 
+                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d"
+                                  "\\noutdegree: \\n UNDEFINED\"]\n", 
+                                  atom->node_id, atom->node_id,
+                                  LOCATION_ARGS(atom->location));
+                print_to_log("Error: Undefined node name at AST node %d", 
                         atom->node_id);
              }
 
@@ -1191,18 +1245,19 @@ void printAtom(GPAtomicExp * const atom)
              next_node_id += 1;
 
              if(atom->value.list_arg) {
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "List \\n Length\"]\n", atom->node_id, 
-                        atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n", 
-                        atom->node_id, next_node_id);
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "List \\n Length\"]\n", 
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location));
+                print_to_dot_file("node%d->node%d[label=\"arg\"]\n", 
+                                  atom->node_id, next_node_id);
 	        prettyPrint(atom->value.list_arg, List);
              }
              else {
-                fprintf(dot_file,"node%d[shape=plaintext,label=\"%dNULL\"]\n", 
-                        next_node_id, next_node_id);  
-                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n",          
-                        atom->node_id, next_node_id);                     
+                print_to_dot_file("node%d[shape=plaintext,label=\"%dNULL\"]\n",
+                                  next_node_id, next_node_id);  
+                print_to_dot_file("node%d->node%d[label=\"arg\"]\n",          
+                                  atom->node_id, next_node_id);                     
                 next_node_id += 1;       
              }
 
@@ -1215,18 +1270,19 @@ void printAtom(GPAtomicExp * const atom)
              next_node_id += 1;
 
              if(atom->value.str_arg) {
-                fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "String \\n Length\"]\n", atom->node_id, 
-                        atom->node_id, LOCATION_ARGS(atom->location));
-                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n", 
+                print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                                  "String \\n Length\"]\n", 
+                                  atom->node_id, atom->node_id, 
+                                  LOCATION_ARGS(atom->location));
+                print_to_dot_file("node%d->node%d[label=\"arg\"]\n", 
                         atom->node_id, next_node_id);
 	        prettyPrint(atom->value.str_arg, Atom);
              }
              else {
-                fprintf(dot_file,"node%d[shape=plaintext,label=\"%dNULL\"]\n", 
-                        next_node_id, next_node_id);  
-                fprintf(dot_file,"node%d->node%d[label=\"arg\"]\n",          
-                        atom->node_id, next_node_id);                     
+                print_to_dot_file("node%d[shape=plaintext,label=\"%dNULL\"]\n", 
+                                  next_node_id, next_node_id);  
+                print_to_dot_file("node%d->node%d[label=\"arg\"]\n",          
+                                  atom->node_id, next_node_id);                     
                 next_node_id += 1;       
              }
 
@@ -1238,11 +1294,11 @@ void printAtom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-	     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "MINUS\"]\n", atom->node_id, atom->node_id,
-                     LOCATION_ARGS(atom->location));
+	     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nMINUS\"]\n", 
+                               atom->node_id, atom->node_id,
+                               LOCATION_ARGS(atom->location));
 
-             fprintf(dot_file,"node%d->node%d[label=\"exp\"]\n",          
+             print_to_dot_file("node%d->node%d[label=\"exp\"]\n",          
                         atom->node_id, next_node_id);   
 	     prettyPrint(atom->value.exp, Atom);
 
@@ -1253,15 +1309,15 @@ void printAtom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "+\"]\n", atom->node_id, atom->node_id,
-                     LOCATION_ARGS(atom->location));
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n+\"]\n", 
+                               atom->node_id, atom->node_id,
+                               LOCATION_ARGS(atom->location));
 
-	     fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
+	     print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
                      atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
                      atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.right_exp, Atom);
 
@@ -1272,16 +1328,16 @@ void printAtom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "-\"]\n", atom->node_id, atom->node_id,
-		     LOCATION_ARGS(atom->location));
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n-\"]\n",
+                               atom->node_id, atom->node_id,
+		               LOCATION_ARGS(atom->location));
 
-	     fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
-                     atom->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
+                               atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
-                     atom->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
+                               atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.right_exp, Atom);
 
              break;
@@ -1292,16 +1348,16 @@ void printAtom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
  
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "*\"]\n", atom->node_id, atom->node_id,
-		     LOCATION_ARGS(atom->location));
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n*\"]\n", 
+                               atom->node_id, atom->node_id,
+		               LOCATION_ARGS(atom->location));
 
-	     fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
-                     atom->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
+                               atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
-                     atom->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
+                               atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.right_exp, Atom);
 
              break;
@@ -1311,16 +1367,16 @@ void printAtom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
  
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     "/\"]\n", atom->node_id, atom->node_id,
-		     LOCATION_ARGS(atom->location));
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n/\"]\n",
+                               atom->node_id, atom->node_id,
+		               LOCATION_ARGS(atom->location));
 
-	     fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
-                     atom->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
+                               atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
-                     atom->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
+                               atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.right_exp, Atom);
 
              break;
@@ -1330,21 +1386,21 @@ void printAtom(GPAtomicExp * const atom)
 	     atom->node_id = next_node_id;
              next_node_id += 1;
 
-             fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                     ".\"]\n", atom->node_id, atom->node_id,
-                     LOCATION_ARGS(atom->location));
+             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n.\"]\n", 
+                               atom->node_id, atom->node_id,
+                               LOCATION_ARGS(atom->location));
 
-	     fprintf(dot_file,"node%d->node%d[label=\"left exp\"]\n",          
-                     atom->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",          
+                               atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.left_exp, Atom);
 
-	     fprintf(dot_file,"node%d->node%d[label=\"right exp\"]\n",          
-                     atom->node_id, next_node_id); 
+	     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",          
+                               atom->node_id, next_node_id); 
 	     prettyPrint(atom->value.bin_op.right_exp, Atom);
 
              break;
 
-	default: fprintf(log_file,"Unexpected Atomic Expression Type: %d\n",
+	default: print_to_log("Unexpected Atomic Expression Type: %d\n",
                          (int)atom->exp_type); 
                  break;
 
@@ -1353,63 +1409,66 @@ void printAtom(GPAtomicExp * const atom)
 
 
 
-void printProcedure(GPProcedure * const proc)
+void printProcedure(GPProcedure * const proc, FILE *dot_file, unsigned int next_node_id)
 {
      proc->node_id = next_node_id;
      next_node_id += 1;
 
      if(proc->name != NULL)
-        fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-               "Procedure \\n Name: %s\"]\n",
-               proc->node_id, proc->node_id, 
-               LOCATION_ARGS(proc->location), proc->name);
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                          "Procedure \\n Name: %s\"]\n",
+                          proc->node_id, proc->node_id, 
+                          LOCATION_ARGS(proc->location), proc->name);
      else {
-        fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                "Procedure \\n Name: UNDEFINED\"]\n",
-                proc->node_id, proc->node_id, LOCATION_ARGS(proc->location));
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                          "Procedure \\n Name: UNDEFINED\"]\n",
+                          proc->node_id, proc->node_id, 
+                          LOCATION_ARGS(proc->location));
 
-        fprintf(log_file,"Error: Undefined procedure name at AST node %d", 
+        print_to_log("Error: Undefined procedure name at AST node %d", 
                   proc->node_id);
      }
 
      prettyPrintList(proc->local_decls, proc, decls);
    
-     fprintf(dot_file,"node%d->node%d[label=\"cmd seq\"]\n", proc->node_id,
-             next_node_id); 
+     print_to_dot_file("node%d->node%d[label=\"cmd seq\"]\n", 
+                       proc->node_id, next_node_id); 
      prettyPrint(proc->cmd_seq, Statement);
 }
 
 
 
-void printRule(GPRule * const rule)
+void printRule(GPRule * const rule, FILE *dot_file, unsigned int next_node_id)
 {
      rule->node_id = next_node_id;
      next_node_id += 1;
 
      if(rule->name != NULL)
-        fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                "Rule \\n Name: %s \\n ", rule->node_id, rule->node_id,
-                LOCATION_ARGS(rule->location), rule->name);
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                          "Rule \\n Name: %s \\n ", 
+                          rule->node_id, rule->node_id,
+                          LOCATION_ARGS(rule->location), rule->name);
      else {
-        fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                "Rule \\n Name: UNDEFINED\"]\n", rule->node_id, 
-                rule->node_id, LOCATION_ARGS(rule->location));
-        fprintf(log_file,"Error: Undefined rule name at AST node %d", 
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                          "Rule \\n Name: UNDEFINED\"]\n", 
+                          rule->node_id, rule->node_id, 
+                          LOCATION_ARGS(rule->location));
+        print_to_log("Error: Undefined rule name at AST node %d", 
                 rule->node_id);       
      }
 
      if(rule->injective == true) 
-          fprintf(dot_file,"Injective\"]\n"); 
-     else fprintf(dot_file,"Non-injective\"]\n");	
+          print_to_dot_file("Injective\"]\n"); 
+     else print_to_dot_file("Non-injective\"]\n");	
 
      prettyPrintList(rule->variables, rule, variables);
 
-     fprintf(dot_file,"node%d->node%d[label=\"lhs\"]\n", 
-             rule->node_id, next_node_id); 
+     print_to_dot_file("node%d->node%d[label=\"lhs\"]\n", 
+                       rule->node_id, next_node_id); 
      prettyPrint(rule->lhs, Graph);
 
-     fprintf(dot_file,"node%d->node%d[label=\"rhs\"]\n", 
-             rule->node_id, next_node_id); 
+     print_to_dot_file("node%d->node%d[label=\"rhs\"]\n", 
+                       rule->node_id, next_node_id); 
      prettyPrint(rule->rhs, Graph);
 
      prettyPrintList(rule->interface, rule, interface);
@@ -1419,31 +1478,33 @@ void printRule(GPRule * const rule)
       * call printCondition instead of printList.
       */
      if(rule->condition == NULL) {                                         
-        fprintf(dot_file,"node%d[shape=plaintext,label=\"%d NULL\"]\n", 
-                next_node_id, next_node_id);                            
-        fprintf(dot_file,"node%d->node%d[label=\"condition\"]\n",            
-                rule->node_id, next_node_id);                           
+        print_to_dot_file("node%d[shape=plaintext,label=\"%d NULL\"]\n", 
+                          next_node_id, next_node_id);                            
+        print_to_dot_file("node%d->node%d[label=\"condition\"]\n",            
+                          rule->node_id, next_node_id);                           
         next_node_id += 1;                                              
      }							          
      else {                                                            
-        fprintf(dot_file,"node%d->node%d[label=\"condition\"]\n",            
-                rule->node_id, next_node_id);                           
-        printCondition(rule->condition);                                        
+        print_to_dot_file("node%d->node%d[label=\"condition\"]\n",            
+                          rule->node_id, next_node_id);                           
+        printCondition(rule->condition, dot_file, next_node_id);                                        
      }  
 }
 
 
 
-void printGraph(GPGraph * const graph)
+void printGraph(GPGraph * const graph, FILE *dot_file, 
+                unsigned int next_node_id)
 {
      graph->node_id = next_node_id;
      next_node_id += 1;
 
-     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n Graph\"]\n",
-             graph->node_id, graph->node_id, LOCATION_ARGS(graph->location));
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n Graph\"]\n",
+                       graph->node_id, graph->node_id, 
+                       LOCATION_ARGS(graph->location));
 
-     fprintf(dot_file,"node%d->node%d[label=\"position\"]\n", 
-             graph->node_id, next_node_id); 
+     print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
+                       graph->node_id, next_node_id); 
 
      prettyPrint(graph->position, Position);
 
@@ -1454,115 +1515,123 @@ void printGraph(GPGraph * const graph)
 
 
 
-void printNode(GPNode * const node)
+void printNode(GPNode * const node, FILE *dot_file, unsigned int next_node_id)
 {
      node->node_id = next_node_id;
      next_node_id += 1;
 
      if(node->name != NULL)
-        fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-               "Node \\n Name: %s", node->node_id, node->node_id, 
-                LOCATION_ARGS(node->location), node->name);
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                          "Node \\n Name: %s", 
+                          node->node_id, node->node_id, 
+                          LOCATION_ARGS(node->location), node->name);
      else {
-        fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                "Node \\n Name: UNDEFINED \\n", node->node_id,
-                node->node_id, LOCATION_ARGS(node->location));
-        fprintf(log_file,"Error: Undefined node name at AST node %d", 
-                node->node_id);
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                          "Node \\n Name: UNDEFINED \\n", 
+                          node->node_id, node->node_id, 
+                          LOCATION_ARGS(node->location));
+        print_to_log("Error: Undefined node name at AST node %d", 
+                     node->node_id);
 
      }
 
      if(node->root == true) 
-          fprintf(dot_file," \\n Root\"]\n"); 
-     else fprintf(dot_file,"\"]\n");	
+          print_to_dot_file(" \\n Root\"]\n"); 
+     else print_to_dot_file("\"]\n");	
      
-     fprintf(dot_file,"node%d->node%d[label=\"label\"]\n", 
-             node->node_id, next_node_id); 
+     print_to_dot_file("node%d->node%d[label=\"label\"]\n", 
+                       node->node_id, next_node_id); 
      prettyPrint(node->label, Label);
 
-     fprintf(dot_file,"node%d->node%d[label=\"position\"]\n", 
-             node->node_id, next_node_id); 
+     print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
+                       node->node_id, next_node_id); 
      prettyPrint(node->position, Position);
 }
 
 
 
-void printEdge(GPEdge * const edge)
+void printEdge(GPEdge * const edge, FILE *dot_file, unsigned int next_node_id)
 {
      edge->node_id = next_node_id;
      next_node_id += 1;
 
      if(edge->name != NULL)
-        fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                "Edge \\n Name: %s \\n ", edge->node_id, edge->node_id, 
-                LOCATION_ARGS(edge->location), edge->name);
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                          "Edge \\n Name: %s \\n ", 
+                          edge->node_id, edge->node_id, 
+                          LOCATION_ARGS(edge->location), edge->name);
      else {
-        fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                "Edge \\n Name: UNDEFINED \\n ", edge->node_id,
-                edge->node_id, LOCATION_ARGS(edge->location));
-        fprintf(log_file,"Error: Undefined edge name at AST node %d", 
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                          "Edge \\n Name: UNDEFINED \\n ", 
+                          edge->node_id, edge->node_id, 
+                          LOCATION_ARGS(edge->location));
+        print_to_log("Error: Undefined edge name at AST node %d", 
                 edge->node_id);
 
      }
 
      if(edge->source != NULL)
-        fprintf(dot_file,"Source: %s \\n ", edge->source);
+        print_to_dot_file("Source: %s \\n ", 
+                          edge->source);
      else {
-        fprintf(log_file,"Error: Undefined edge source at AST node %d", 
-                edge->node_id);
-        fprintf(dot_file,"Source: UNDEFINED \\n ");
+        print_to_log("Error: Undefined edge source at AST node %d", 
+                     edge->node_id);
+        print_to_dot_file("Source: UNDEFINED \\n ");
      }
 
      if(edge->target != NULL)
-        fprintf(dot_file,"Target: %s\"]\n", edge->target);
+        print_to_dot_file("Target: %s\"]\n", 
+                          edge->target);
      else {
-        fprintf(log_file,"Error: Undefined edge target at AST node %d", 
-                edge->node_id);
-        fprintf(dot_file,"Target: UNDEFINED \"]\n");
+        print_to_log("Error: Undefined edge target at AST node %d", 
+                     edge->node_id);
+        print_to_dot_file("Target: UNDEFINED \"]\n");
      }
 
-     fprintf(dot_file,"node%d->node%d[label=\"label\"]\n", edge->node_id, 
-             next_node_id); 
+     print_to_dot_file("node%d->node%d[label=\"label\"]\n", 
+                       edge->node_id, next_node_id); 
      prettyPrint(edge->label, Label);
 }
 
 
-void printPosition(GPPos * const pos)
+void printPosition(GPPos * const pos, FILE *dot_file, unsigned int next_node_id)
 {
      pos->node_id = next_node_id;
      next_node_id += 1;
 
-     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-             "Position \\n x: %d \\n y: %d\"]\n", pos->node_id, pos->node_id,
-             LOCATION_ARGS(pos->location), pos->x, pos->y);
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
+                       "Position \\n x: %d \\n y: %d\"]\n", 
+                       pos->node_id, pos->node_id,
+                       LOCATION_ARGS(pos->location), pos->x, pos->y);
 }
 
 
-void printLabel(GPLabel * const label)
+void printLabel(GPLabel * const label, FILE *dot_file, unsigned int next_node_id)
 {
      label->node_id = next_node_id;
      next_node_id += 1;
 
-     fprintf(dot_file,"node%d[label=\"%d\\n%d.%d-%d.%d\\n Label \\n Mark: ", 
-             label->node_id, label->node_id, LOCATION_ARGS(label->location));
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n Label \\n Mark: ", 
+                       label->node_id, label->node_id, 
+                       LOCATION_ARGS(label->location));
 
      switch (label->mark) {
 
-        case (RED):	 fprintf(dot_file,"Red\"]\n"); break;
-        case (GREEN): 	 fprintf(dot_file,"Green\"]\n"); break;
-        case (BLUE): 	 fprintf(dot_file,"Blue\"]\n"); break;
-        case (GREY): 	 fprintf(dot_file,"Grey\"]\n"); break;
-        case (DASHED): 	 fprintf(dot_file,"Dashed\"]\n"); break;
-        case (CYAN):	 fprintf(dot_file,"Cyan\"]\n"); break;
-        case (NONE): 	 fprintf(dot_file,"No mark\"]\n"); break;
+        case (RED):	 print_to_dot_file("Red\"]\n"); break;
+        case (GREEN): 	 print_to_dot_file("Green\"]\n"); break;
+        case (BLUE): 	 print_to_dot_file("Blue\"]\n"); break;
+        case (GREY): 	 print_to_dot_file("Grey\"]\n"); break;
+        case (DASHED): 	 print_to_dot_file("Dashed\"]\n"); break;
+        case (CYAN):	 print_to_dot_file("Cyan\"]\n"); break;
+        case (NONE): 	 print_to_dot_file("No mark\"]\n"); break;
 
-        default: fprintf(log_file,"Error: Unexpected \\n GPLabel mark: %d\"]\n", 
+        default: print_to_log("Error: Unexpected \\n GPLabel mark: %d\"]\n", 
                          (int)label->mark); 
                  break;
      }
 
-     fprintf(dot_file,"node%d->node%d[label=\"gp list\"]\n", label->node_id,
-             next_node_id); 
+     print_to_dot_file("node%d->node%d[label=\"gp list\"]\n",  
+                       label->node_id, next_node_id); 
      prettyPrint(label->gp_list, List);
 }
 

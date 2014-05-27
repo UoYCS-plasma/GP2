@@ -14,26 +14,13 @@
 #include <stdlib.h> /* malloc */
 #include <string.h> /* strdup */
 
-/* Most of the functions in this file create new AST nodes. They are called
- * from the Bison parser (gpparser.y) which provides the appropriate arguments
- * from the semantic values of rules it reduces. The functions just assign
- * the pointers to the corresponding structure fields. 
- *
- * Strings, such as rule names and variable names, are dynamically allocated 
- * with strdup. This is because the pointer passed to the function is freed in 
- * gpparser.y immediately after the constructor call, hence a new allocation is 
- * required to prevent a double free.
- */ 
-
-/* The constructor functions for AST nodes of type struct List. */
-
 List *addDecl (ListTypes list_type, YYLTYPE location, GPDeclaration *declaration,
 	       List *next)
 { 
     List *new_decl = malloc(sizeof(List));
     
     if(new_decl == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -51,7 +38,7 @@ List *addCommand (YYLTYPE location, GPStatement *command, List *next)
     List *new_command = malloc(sizeof(List));
     
     if(new_command == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -63,12 +50,12 @@ List *addCommand (YYLTYPE location, GPStatement *command, List *next)
     return new_command;
 }
 
-List *addRule (YYLTYPE location, char *rule_name, List *next)
+List *addRule (YYLTYPE location, string rule_name, List *next)
 { 
     List *new_rule = malloc(sizeof(List));
     
     if(new_rule == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -86,7 +73,7 @@ List *addVariableDecl (ListTypes list_type, YYLTYPE location, List *variables,
     List *new_var_decl = malloc(sizeof(List));
     
     if(new_var_decl == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -100,12 +87,12 @@ List *addVariableDecl (ListTypes list_type, YYLTYPE location, List *variables,
     return new_var_decl;
 }
 
-List *addVariable (YYLTYPE location, char *variable_name, List *next)
+List *addVariable (YYLTYPE location, string variable_name, List *next)
 { 
     List *new_var = malloc(sizeof(List));
     
     if(new_var == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -117,12 +104,12 @@ List *addVariable (YYLTYPE location, char *variable_name, List *next)
     return new_var;
 }
 
-List *addNodeID (YYLTYPE location, char *node_id, List *next)
+List *addNodeID (YYLTYPE location, string node_id, List *next)
 { 
     List *new_pair = malloc(sizeof(List));
     
     if(new_pair == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -139,7 +126,7 @@ List *addNode (YYLTYPE location, GPNode *node, List *next)
      List *new_node = malloc(sizeof(List));
      
      if(new_node == NULL) {
-	fprintf(log_file,"Memory exhausted during AST construction.\n");
+	print_to_log("Memory exhausted during AST construction.\n");
         exit(0);
      }
 
@@ -156,7 +143,7 @@ List *addEdge (YYLTYPE location, GPEdge *edge, List *next)
      List *new_edge = malloc(sizeof(List));
      
      if(new_edge == NULL) {
-	fprintf(log_file,"Memory exhausted during AST construction.\n");
+	print_to_log("Memory exhausted during AST construction.\n");
         exit(0);
      }
 
@@ -173,7 +160,7 @@ List *addAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
     List *new_atom = malloc(sizeof(List));
    
     if(new_atom == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -190,7 +177,7 @@ List *addEmptyList (YYLTYPE location)
      List *new_empty = malloc(sizeof(List));
 
      if(new_empty == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -202,14 +189,13 @@ List *addEmptyList (YYLTYPE location)
 }
 
 
-/* The constructor functions for AST nodes of type struct GPDeclaration. */
 
 GPDeclaration *newMainDecl (YYLTYPE location, GPStatement *main_program)
 {
     GPDeclaration *new_main = malloc(sizeof(GPDeclaration));
    
     if(new_main == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -225,7 +211,7 @@ GPDeclaration *newProcedureDecl (YYLTYPE location, GPProcedure *procedure)
     GPDeclaration *new_proc = malloc(sizeof(GPDeclaration));
    
     if(new_proc == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -241,7 +227,7 @@ GPDeclaration *newRuleDecl (YYLTYPE location, GPRule *rule)
     GPDeclaration *new_rule = malloc(sizeof(GPDeclaration));
    
     if(new_rule == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -253,14 +239,13 @@ GPDeclaration *newRuleDecl (YYLTYPE location, GPRule *rule)
 }
 
 
-/* The constructor functions for AST nodes of type struct GPStatement. */
 
 GPStatement *newCommandSequence(YYLTYPE location, List *cmd_seq)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -271,12 +256,12 @@ GPStatement *newCommandSequence(YYLTYPE location, List *cmd_seq)
     return stmt;
 }
 
-GPStatement *newRuleCall(YYLTYPE location, char *rule_name)
+GPStatement *newRuleCall(YYLTYPE location, string rule_name)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -292,7 +277,7 @@ GPStatement *newRuleSetCall(YYLTYPE location, List *rule_set)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -303,12 +288,12 @@ GPStatement *newRuleSetCall(YYLTYPE location, List *rule_set)
     return stmt;
 }
 
-GPStatement *newProcCall(YYLTYPE location, char *proc_name)
+GPStatement *newProcCall(YYLTYPE location, string proc_name)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -325,7 +310,7 @@ GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location,
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -344,7 +329,7 @@ GPStatement *newAlap(YYLTYPE location, GPStatement *loop_stmt)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -361,7 +346,7 @@ GPStatement *newOrStmt(YYLTYPE location, GPStatement *left_stmt,
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -378,7 +363,7 @@ GPStatement *newSkip(YYLTYPE location)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -393,7 +378,7 @@ GPStatement *newFail(YYLTYPE location)
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
     if(stmt == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -404,14 +389,13 @@ GPStatement *newFail(YYLTYPE location)
 }
 
 
-/* The constructor functions for AST nodes of type struct GPCondExp. */
 
-GPCondExp *newSubtypePred (CondExpTypes exp_type, YYLTYPE location, char *var)
+GPCondExp *newSubtypePred (CondExpTypes exp_type, YYLTYPE location, string var)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -423,13 +407,13 @@ GPCondExp *newSubtypePred (CondExpTypes exp_type, YYLTYPE location, char *var)
      return cond;
 }
 
-GPCondExp *newEdgePred (YYLTYPE location, char *source, char *target, 
+GPCondExp *newEdgePred (YYLTYPE location, string source, string target, 
 	    GPLabel *label)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -448,7 +432,7 @@ GPCondExp *newListComparison (CondExpTypes exp_type, YYLTYPE location,
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -468,7 +452,7 @@ GPCondExp *newAtomComparison (CondExpTypes exp_type, YYLTYPE location,
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -487,7 +471,7 @@ GPCondExp *newNotExp (YYLTYPE location, GPCondExp *not_exp)
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -504,7 +488,7 @@ GPCondExp *newBinaryExp (CondExpTypes exp_type, YYLTYPE location,
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
      if(cond == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -519,15 +503,14 @@ GPCondExp *newBinaryExp (CondExpTypes exp_type, YYLTYPE location,
 
 
 
-/* The constructor functions for AST nodes of type struct GPAtomicExp. */
 
 
-GPAtomicExp *newVariable (YYLTYPE location, char *name)
+GPAtomicExp *newVariable (YYLTYPE location, string name)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -543,7 +526,7 @@ GPAtomicExp *newNumber (YYLTYPE location, int number)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -555,12 +538,12 @@ GPAtomicExp *newNumber (YYLTYPE location, int number)
 }
 
 
-GPAtomicExp *newCharacter (YYLTYPE location, char *character)
+GPAtomicExp *newCharacter (YYLTYPE location, string character)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
 
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -573,12 +556,12 @@ GPAtomicExp *newCharacter (YYLTYPE location, char *character)
 
 
 
-GPAtomicExp *newString (YYLTYPE location, char *string)
+GPAtomicExp *newString (YYLTYPE location, string string)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -589,12 +572,12 @@ GPAtomicExp *newString (YYLTYPE location, char *string)
      return atom;
 }
 
-GPAtomicExp *newDegreeOp (AtomExpTypes exp_type, YYLTYPE location, char *node_id)
+GPAtomicExp *newDegreeOp (AtomExpTypes exp_type, YYLTYPE location, string node_id)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -611,7 +594,7 @@ GPAtomicExp *newListLength (YYLTYPE location, List *list_arg)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -627,7 +610,7 @@ GPAtomicExp *newStringLength (YYLTYPE location, GPAtomicExp *str_arg)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -643,7 +626,7 @@ GPAtomicExp *newNegExp (YYLTYPE location, GPAtomicExp *exp)
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -659,7 +642,7 @@ GPAtomicExp *newBinaryOp (AtomExpTypes exp_type, YYLTYPE location, GPAtomicExp *
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
      if(atom == NULL) {
-       fprintf(log_file,"Memory exhausted during AST construction.\n");
+       print_to_log("Memory exhausted during AST construction.\n");
        exit(0);
      }
 
@@ -673,14 +656,13 @@ GPAtomicExp *newBinaryOp (AtomExpTypes exp_type, YYLTYPE location, GPAtomicExp *
 }
 
 
-/* The constructor functions for the remaining AST node types. */
 
-GPProcedure *newProcedure(YYLTYPE location, char *name, List *local_decls, GPStatement *cmd_seq)
+GPProcedure *newProcedure(YYLTYPE location, string name, List *local_decls, GPStatement *cmd_seq)
 {
     GPProcedure *proc = malloc(sizeof(GPProcedure));
     
     if(proc == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -693,14 +675,14 @@ GPProcedure *newProcedure(YYLTYPE location, char *name, List *local_decls, GPSta
     return proc;
 }
  
-GPRule *newRule(YYLTYPE location, bool injective, char *name, List *variables,
+GPRule *newRule(YYLTYPE location, bool injective, string name, List *variables,
 	        GPGraph *lhs, GPGraph *rhs, List *interface, 
 		GPCondExp *condition)
 {
     GPRule *rule = malloc(sizeof(GPRule));
     
     if(rule == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -724,7 +706,7 @@ GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes,
     GPGraph *graph = malloc(sizeof(GPGraph));
     
     if(graph == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -738,12 +720,12 @@ GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes,
 }
 
 
-GPNode *newNode (YYLTYPE location, bool root, char *name, GPLabel *label, GPPos *position)
+GPNode *newNode (YYLTYPE location, bool root, string name, GPLabel *label, GPPos *position)
 {
     GPNode *node = malloc(sizeof(GPNode));
     
     if(node == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -757,12 +739,12 @@ GPNode *newNode (YYLTYPE location, bool root, char *name, GPLabel *label, GPPos 
     return node;
 }
 
-GPEdge *newEdge (YYLTYPE location, char *name, char *source, char *target, GPLabel *label)
+GPEdge *newEdge (YYLTYPE location, string name, string source, string target, GPLabel *label)
 {
     GPEdge *edge = malloc(sizeof(GPEdge));
     
     if(edge == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -781,7 +763,7 @@ GPPos *newPosition (YYLTYPE location, int x, int y)
     GPPos *pos = malloc(sizeof(GPPos));
     
     if(pos == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -798,7 +780,7 @@ GPLabel *newLabel (YYLTYPE location, MarkTypes mark, List *gp_list)
     GPLabel *label = malloc(sizeof(GPLabel));
     
     if(label == NULL) {
-      fprintf(log_file,"Memory exhausted during AST construction.\n");
+      print_to_log("Memory exhausted during AST construction.\n");
       exit(0);
     }
 
@@ -813,7 +795,7 @@ GPLabel *newLabel (YYLTYPE location, MarkTypes mark, List *gp_list)
 /* These functions perform a depth-first walk of the AST. They take a pointer
  * to an AST node as their argument. They first free any malloc'd strings 
  * (identifiers and string constants) if present, then they free any
- * substructures, and finally they free themselves. 
+ * substructures. Finally they free themselves. 
  */
 
 void freeAst(List *ast) 
@@ -897,8 +879,8 @@ void freeAst(List *ast)
              break;
 
 
-	default: fprintf(log_file,"Unexpected List Type: %d\n",
-                         (int)ast->list_type); 
+	default: print_to_log("Unexpected List Type: %d\n",
+                              (int)ast->list_type); 
                  break;	 
 
 	}
@@ -933,8 +915,8 @@ void freeDeclaration(GPDeclaration *decl)
 	     break;
 
 
-	default: fprintf(log_file,"Unexpected Declaration Type: %d\n",
-                         (int)decl->decl_type); 
+	default: print_to_log("Unexpected Declaration Type: %d\n",
+                              (int)decl->decl_type); 
                  break;
 
 	}
@@ -1012,8 +994,8 @@ void freeStatement(GPStatement *stmt)
 	     break;
 
 	
-	default: fprintf(log_file,"Unexpected Statement Type: %d\n",
-                         (int)stmt->statement_type); 
+	default: print_to_log("Unexpected Statement Type: %d\n",
+                              (int)stmt->statement_type); 
                  break;
 
 	}
@@ -1095,8 +1077,8 @@ void freeCondition(GPCondExp *cond)
 	     break;
 
 
-	default: fprintf(log_file,"Unexpected Condition Type: %d\n",
-                         (int)cond->exp_type); 
+	default: print_to_log("Unexpected Condition Type: %d\n",
+                              (int)cond->exp_type); 
                  break;
 
 	}
@@ -1181,8 +1163,8 @@ void freeAtomicExp(GPAtomicExp *atom)
              break;
 
 
-	default: fprintf(log_file,"Unexpected Atomic Expression Type: %d\n",
-                         (int)atom->exp_type); 
+	default: print_to_log("Unexpected Atomic Expression Type: %d\n",
+                             (int)atom->exp_type); 
                  break;
 
 	}

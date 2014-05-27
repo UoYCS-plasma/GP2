@@ -32,6 +32,7 @@ extern int abort_scan; /* Defined in main.c */
 extern FILE *log_file; /* Defined in main.c */
 typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkTypes; 
 
+/* Defined in main.c according to which parser should be invoked. */
 extern int parse_target;
 
 /* The macro YY_USER_ACTION is invoked for each token recognised by yylex
@@ -59,6 +60,10 @@ extern int parse_target;
 %%
 
 %{
+  /* Bison token GP_PROGRAM triggers parsing with the program grammar.
+   * Bison token GP_GRAPH triggers parsing with the host graph grammar.
+   */  
+  
   if(parse_target == 1) {
      parse_target = 0; 
      return GP_PROGRAM;

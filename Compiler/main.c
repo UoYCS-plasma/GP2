@@ -18,7 +18,7 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
-#include "ast.h" /* struct List */
+#include "ast.h" /* struct List, struct GPGraph */
 #include "pretty.h" /* pretty printer function declarations */
 #include "seman.h" /* semantic analysis functions */
 #include <stdbool.h>
@@ -27,14 +27,14 @@
 #include <string.h> /* strcmp */
 
 
-/* These macros control various debugging features. */
+/* Macros to control debugging features. */
 #undef PARSER_TRACE 		/* Assign yydebug to 1 */
 #define DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
 #define DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
 #define PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
 #define DRAW_HOST_GRAPH_AST 	/* Call printGraph after second yyparse. */
 
-/* These macros are required to control which parser is used. */
+/* Macros to control which parser is used. */
 #define GP_PROGRAM 1 		
 #define GP_GRAPH 2	
 	
@@ -44,8 +44,9 @@ int parse_target = 0; /* Assigned GP_PROGRAM or GP_GRAPH. This variable is
                        */
 
 FILE *log_file;  /* File to contain verbose errors for developers */
-char *file_name = NULL; /* The name of the file being parsed */
+string file_name = NULL; /* The name of the file being parsed */
 bool abort_scan = false; /* If set to true, semantic checking does not occur. */
+bool abort_compilation = false; /* If set to true, code generation does not occur. */
 
 /* The parser points this to the root of the program AST. */
 struct List *gp_program = NULL; 
@@ -61,25 +62,22 @@ GHashTable *gp_symbol_table = NULL;
 /* Usage: gpparse [-dg] <program_file> <host_graph_file> */
 int main(int argc, char** argv) {
 
-  /* If abort_compilation is set to true, code generation does not occur. */
-  bool abort_compilation = false;
-
   if(argc != 3) {
-    fprintf(stderr, "Usage: gpparse <program_file> <host_graph_file>\n");
+    print_to_console( "Usage: gpparse <program_file> <host_graph_file>\n");
     return 1;
   }
 
   /* Open the log file for writing. */
-  char *file_name = argv[1]; 
+  file_name = argv[1]; 
   int length = strlen(file_name) + 4; 
   char log_file_name[length];
   strcpy(log_file_name, file_name);
   strncat(log_file_name, ".log", 4);
-  log_file = fopen(log_file_name, "w");
   if(!(log_file = fopen(log_file_name, "w"))) { 
      perror(log_file_name);
      return 1;
   }
+  print_to_log("%s\n\n",log_file_name);
 
   /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
    * pointed to the file to be read by the parser. argv[1] is the file 
@@ -103,13 +101,13 @@ int main(int argc, char** argv) {
   printf("\nProcessing %s...\n\n", file_name);
 
   if(!yyparse()) {
-     fprintf(log_file,"GP2 program parse succeeded\n\n");
+     print_to_log("GP2 program parse succeeded\n\n");
      #ifdef DRAW_ORIGINAL_AST
         printDotAST(gp_program, file_name); /* Defined in pretty.c */ 
      #endif
   }
 
-  else fprintf(log_file,"GP2 program parse failed.\n\n");
+  else print_to_log("GP2 program parse failed.\n\n");
 
   /* Point yyin to the file containing the host graph. */
 
@@ -127,7 +125,7 @@ int main(int argc, char** argv) {
   printf("\nProcessing %s...\n\n", file_name);
  
   if(!yyparse()) {
-     fprintf(log_file,"GP2 graph parse succeeded\n\n");    
+     print_to_log("GP2 graph parse succeeded\n\n");    
   
      reverseGraphAST(host_graph); /* Defined in seman.c */
 
@@ -135,10 +133,10 @@ int main(int argc, char** argv) {
         printDotHostGraph(host_graph, file_name); /* Defined in pretty.c */
      #endif
   }
-  else fprintf(log_file,"GP2 program parse failed.\n\n");     
+  else print_to_log("GP2 program parse failed.\n\n");     
 
-  /* The lexer and parser set the abort_scan flag if they encounter a syntax
-   * error. */
+  /* The lexer and parser set the abort_scan flag if a syntax error is
+   * encountered. */
 
   if(!abort_scan) {
 
@@ -151,10 +149,10 @@ int main(int argc, char** argv) {
      * lookups.
      * free is the function called by glib to free keys during hash table
      * insertions and in the g_hash_table_destroy function.
-     * freeSymbolList is defined in seman.c. This is called by glib to
-     * free hash table values during insertions and in the destroy function.
+     * The fourth argument is a function to free values. I do this manually
+     * with the function freeSymbolList defined in seman.c.
+     * Thus I do not pass a value-freeing function to g_hash_table_new_full.
      */
-
     gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);    
 
     /* declarationScan is defined in seman.c. It returns true if there is a
@@ -185,9 +183,9 @@ int main(int argc, char** argv) {
   }
   else abort_compilation = true;
 
-  if(!abort_compilation) fprintf(stderr,"Proceed with code generation.\n"); 
-  else fprintf(stderr,"\nBuild aborted. Please consult the file %s.log for "
-               "a detailed error report.\n", argv[1]);   
+  if(!abort_compilation) print_to_console("Proceed with code generation.\n"); 
+  else print_to_console("\nBuild aborted. Please consult the file %s.log for "
+                        "a detailed error report.\n", argv[1]);   
  
   /* Garbage collection */
   fclose(yyin);
@@ -195,14 +193,15 @@ int main(int argc, char** argv) {
   if(gp_program) freeAst(gp_program); /* Defined in ast.c */
   if(host_graph) freeGraph(host_graph); /* Defined in ast.c */
 
-  /* g_hash_table_destroy uses free and freeSymbolList, passed to 
-   * g_hash_table_new_full, to free the dynamically allocated keys and values
-   * respectively.
+  /* The call to g_hash_table_foreeach frees all the hash table values,
+   * linked lists of struct Symbols, with the function freeSymbolList 
+   * defined in seman.c.
+   * g_hash_table_destroy uses the key-freeing function passed to 
+   * g_hash_table_full (free) to free the dynamically allocated keys.
    */
   if(gp_symbol_table) {
     g_hash_table_foreach(gp_symbol_table, freeSymbolList, NULL);
     g_hash_table_destroy(gp_symbol_table); 
   }
 
-  return 0;
 }
