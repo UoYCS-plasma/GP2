@@ -6,15 +6,11 @@ CFLAGS = -g -Wall -Wextra -I/local/d0p6/chrisbak/root/include/glib-2.0 -I/local/
 LFLAGS = -lglib-2.0
 
 
-# Builds executable gpparse, runs it on an extensionless file and generates AST images.
-# Usage: make F=<filename>
+# Builds executable gpparse, runs it on extensionless files and generates AST images.
+# Usage: make F1=<program_filename> F2=<graph_filename>
 default:        $(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
-		./gpparse $(F1)	$(F2)       	
-		dot -Tjpeg $(F1).dot -o $(F1).jpeg 	
-		dot -Tjpeg $(F1)_F.dot -o $(F1)_F.jpeg
-		dot -Tjpeg $(F2).dot -o $(F2).jpeg
-		rm $(F1).dot $(F1)_F.dot $(F2).dot
+		./$(P) $(F1) $(F2)       	
 
 # Builds executable gpparse.
 # Usage: make gpparse

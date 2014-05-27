@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
   /* Garbage collection */
   fclose(yyin);
   fclose(log_file);
-  if(gp_program) freeAst(gp_program); /* Defined in ast.c */
+  if(gp_program) freeAST(gp_program); /* Defined in ast.c */
   if(host_graph) freeGraph(host_graph); /* Defined in ast.c */
 
   /* The call to g_hash_table_foreeach frees all the hash table values,

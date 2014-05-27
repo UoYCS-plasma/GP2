@@ -798,7 +798,7 @@ GPLabel *newLabel (YYLTYPE location, MarkTypes mark, List *gp_list)
  * substructures. Finally they free themselves. 
  */
 
-void freeAst(List *ast) 
+void freeAST(List *ast) 
 {
    switch(ast->list_type) {
 
@@ -834,7 +834,7 @@ void freeAst(List *ast)
 
 	case LIST_DECLARATIONS:
 
-             if(ast->value.variables) freeAst(ast->value.variables);
+             if(ast->value.variables) freeAST(ast->value.variables);
 
 	     break;
 	
@@ -885,7 +885,7 @@ void freeAst(List *ast)
 
 	}
 
-   if(ast->next) freeAst(ast->next);
+   if(ast->next) freeAST(ast->next);
    free(ast);
 }
 
@@ -930,7 +930,7 @@ void freeStatement(GPStatement *stmt)
 
 	case COMMAND_SEQUENCE:	
 
-             if(stmt->value.cmd_seq) freeAst(stmt->value.cmd_seq);
+             if(stmt->value.cmd_seq) freeAST(stmt->value.cmd_seq);
 
 	     break;
 
@@ -944,7 +944,7 @@ void freeStatement(GPStatement *stmt)
 
 	case RULE_SET_CALL:
 
-             if(stmt->value.rule_set) freeAst(stmt->value.rule_set);
+             if(stmt->value.rule_set) freeAST(stmt->value.rule_set);
 
 	     break;
 
@@ -1035,9 +1035,9 @@ void freeCondition(GPCondExp *cond)
 	case NOT_EQUAL:
 
              if(cond->value.list_cmp.left_list) 
-               freeAst(cond->value.list_cmp.left_list);
+               freeAST(cond->value.list_cmp.left_list);
              if(cond->value.list_cmp.right_list)  
-               freeAst(cond->value.list_cmp.right_list);
+               freeAST(cond->value.list_cmp.right_list);
 
 	     break;
 	
@@ -1126,7 +1126,7 @@ void freeAtomicExp(GPAtomicExp *atom)
 	case LIST_LENGTH:
 
 	     if(atom->value.list_arg)
-               freeAst(atom->value.list_arg);
+               freeAST(atom->value.list_arg);
 		
              break;
 
@@ -1175,7 +1175,7 @@ void freeAtomicExp(GPAtomicExp *atom)
 void freeProcedure(GPProcedure *proc)
 {
    if(proc->name) free(proc->name);
-   if(proc->local_decls) freeAst(proc->local_decls);
+   if(proc->local_decls) freeAST(proc->local_decls);
    if(proc->cmd_seq) freeStatement(proc->cmd_seq);
    free(proc);
 }
@@ -1183,10 +1183,10 @@ void freeProcedure(GPProcedure *proc)
 void freeRule(GPRule *rule)
 {
    if(rule->name) free(rule->name);
-   if(rule->variables) freeAst(rule->variables);
+   if(rule->variables) freeAST(rule->variables);
    if(rule->lhs) freeGraph(rule->lhs);  
    if(rule->rhs) freeGraph(rule->rhs);
-   if(rule->interface) freeAst(rule->interface);
+   if(rule->interface) freeAST(rule->interface);
    if(rule->condition) freeCondition(rule->condition);
    free(rule);
 }
@@ -1194,8 +1194,8 @@ void freeRule(GPRule *rule)
 void freeGraph(GPGraph *graph)
 {
    if(graph->position) free(graph->position);
-   if(graph->nodes) freeAst(graph->nodes);
-   if(graph->edges) freeAst(graph->edges);
+   if(graph->nodes) freeAST(graph->nodes);
+   if(graph->edges) freeAST(graph->edges);
    free(graph);
 }
 
@@ -1218,7 +1218,7 @@ void freeEdge(GPEdge *edge)
 
 void freeLabel(GPLabel *label)
 {
-   if(label->gp_list) freeAst(label->gp_list);
+   if(label->gp_list) freeAST(label->gp_list);
    free(label);
 }
    

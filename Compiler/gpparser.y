@@ -86,19 +86,19 @@ extern bool abort_scan; /* Defined in main.c */
 } 
 
 %type <list> Program LocalDecls ComSeq RuleSetCall IDList VarDecls
-             VarList Inter NodeIDList NodeList CNodeList EdgeList CEdgeList
-	     List CList
+             VarList Inter NodeIDList NodeList HostNodeList EdgeList 
+             HostEdgeList List HostList
 %type <decl> Declaration
 %type <stmt> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
 %type <rule> RuleDecl
 %type <graph> Graph HostGraph
-%type <node> Node CNode
-%type <edge> Edge CEdge
+%type <node> Node HostNode
+%type <edge> Edge HostEdge
 %type <pos> Position
 %type <cond_exp> CondDecl Condition 
-%type <label> LabelArg Label CLabel
-%type <atom_exp> AtomExp CExp
+%type <label> LabelArg Label HostLabel
+%type <atom_exp> AtomExp HostExp
 %type <list_type> Type  
 %type <check_type> Subtype
 %type <id> NodeID EdgeID ProcID RuleID Variable
@@ -366,11 +366,11 @@ CondDecl: /* empty */                   { $$ = NULL; }
 
 Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, @$, $3); 
 					  free($3); }
-         | EDGETEST '(' NodeID ',' NodeID LabelArg ')' 
+         | EDGETEST '(' NodeID ',' NodeID  LabelArg ')' 
 					{ $$ = newEdgePred(@$, $3, $5, $6); 
 					  free($3); free($5); }
-	 | List '=' List		{ $$ = newListComparison(EQUAL, @$, $1, $3); }
-	 | List NEQ List		{ $$ = newListComparison(NOT_EQUAL, @$, $1, $3); }
+	 | List '=' List 		{ $$ = newListComparison(EQUAL, @$, $1, $3); }
+	 | List NEQ List 		{ $$ = newListComparison(NOT_EQUAL, @$, $1, $3); }
 	 | AtomExp '>' AtomExp          { $$ = newAtomComparison(GREATER, @$, $1, $3); }    
 	 | AtomExp GTEQ AtomExp         { $$ = newAtomComparison(GREATER_EQUAL, @$, $1, $3); }    
 	 | AtomExp '<' AtomExp          { $$ = newAtomComparison(LESS, @$, $1, $3); }    
@@ -386,25 +386,23 @@ Subtype: INT				{ $$ = INT_CHECK; }
        | ATOM 	                        { $$ = ATOM_CHECK; }
 
 LabelArg: /* empty */ 			{ $$ = NULL; }
- 	| ',' Label			{ $$ = $2; }
+ 	| ',' Label 			{ $$ = $2; }
 
  /* Grammar for GP2 Labels */
 
-Label: List 				{ $$ = newLabel(@$, NONE, $1); }
-     | List '#' MARK			{ $$ = newLabel(@$, $3, $1); }
+Label: List				{ $$ = newLabel(@$, NONE, $1); }
+     | List '#' MARK	  		{ $$ = newLabel(@$, $3, $1); }
      /* Cyan has a distinct token since it cannot occur in the host graph. */
      | List '#' CYAN_MARK		{ $$ = newLabel(@$, $3, $1); }
 
-List: AtomExp 				{ $$ = addAtom(@1, $1, NULL); } 
-    | List ':' AtomExp			{ $$ = addAtom(@3, $3, $1); }
-    | EMPTY				{ $$ = addEmptyList(@$); } 
-    /* If an error occurs while processing a GP list, discard input text until
-     * the next ':' or ','. Note that '#' is not used since a List is not
-     * required to terminate with a '#'. The erroneous AtomExp is discarded
-     * without affecting the parsing of the remainder of the list.
-     */
-    | error ':' 			{ report_error("Error in a list"); $$ = NULL; }	
-    | error ',' 			{ report_error("Error in a list"); $$ = NULL; }
+
+List: AtomExp ':'			{ $$ = addAtom(@1, $1, NULL); } 
+    | List AtomExp ':'			{ $$ = addAtom(@3, $2, $1); }
+    /* If a syntax error occurs while processing a list, discard input text
+     * until the end of the erroneous AtomExp, marked by ':'. That AtomExp
+     * is discarded and parsing may continue. */       
+    | EMPTY				{ $$ = addEmptyList(@$); }
+    | error ':' 			{ report_error("Error in a list"); $$ = NULL; }
 
 AtomExp: Variable			{ $$ = newVariable(@$, $1); free($1); }
        | NUM 				{ $$ = newNumber(@$, $1); }
@@ -443,43 +441,40 @@ Variable: ID		  		/* default $$ = $1 */
  */
 
 HostGraph: '[' Position '|' '|' ']'  	{ $$ = newGraph(@$, $2, NULL, NULL); }
-         | '[' Position '|' CNodeList '|' ']'  
+         | '[' Position '|' HostNodeList '|' ']'  
 					{ $$ = newGraph(@$, $2, $4, NULL); }
-         | '[' Position '|' CNodeList '|' CEdgeList ']' 
+         | '[' Position '|' HostNodeList '|' HostEdgeList ']' 
      					{ $$ = newGraph(@$, $2, $4, $6); }
 
-CNodeList: CNode			{ $$ = addNode(@1, $1, NULL); }
-         | CNodeList ',' CNode		{ $$ = addNode(@3, $3, $1); }
+HostNodeList: HostNode			{ $$ = addNode(@1, $1, NULL); }
+            | HostNodeList ',' HostNode	{ $$ = addNode(@3, $3, $1); }
 
-CNode: '(' NodeID RootNode ',' CLabel ',' Position ')'
+HostNode: '(' NodeID RootNode ',' HostLabel ',' Position ')'
     					{ $$ = newNode(@2, is_root, $2, $5, $7); 
  					  is_root = false; 	
 					  free($2); } 
 
-CEdgeList: CEdge			{ $$ = addEdge(@1, $1, NULL); }
-         | CEdgeList ',' CEdge	 	{ $$ = addEdge(@3, $3, $1); } 
+HostEdgeList: HostEdge			{ $$ = addEdge(@1, $1, NULL); }
+            | HostEdgeList ',' HostEdge	{ $$ = addEdge(@3, $3, $1); } 
 
-CEdge: '(' EdgeID ',' NodeID ',' NodeID ',' CLabel ')'
+HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
 					{ $$ = newEdge(@2, $2, $4, $6, $8);
 					  free($2); free($4); free($6); }
 
-CLabel: CList 				{ $$ = newLabel(@$, NONE, $1); }
-      | CList '#' MARK			{ $$ = newLabel(@$, $3, $1); }
+HostLabel: HostList			{ $$ = newLabel(@$, NONE, $1); }
+         | HostList '#' MARK	  	{ $$ = newLabel(@$, $3, $1); }
 
+HostList: HostExp ':'			{ $$ = addAtom(@1, $1, NULL); } 
+        | HostList HostExp ':'		{ $$ = addAtom(@3, $2, $1); }
+        /* If a syntax error occurs while processing a constant list, discard 
+         * input text until the end of the erroneous HostExp, marked by ':'.
+         * That HostExp is discarded and parsing may continue. */      
+        | EMPTY				{ $$ = addEmptyList(@$); }
+        | error ':' 			{ report_error("Error in a host list"); $$ = NULL; }
 
-
-CList: CExp				{ $$ = addAtom(@1, $1, NULL); } 
-     | CList ':' CExp			{ $$ = addAtom(@3, $3, $1); }
-     /* If an error occurs while processing a constant list, discard input text
-      * until the next ':' or '#'. The erroneous ConstExp is hence discarded 
-      * parsing may continue. */     
-     | EMPTY 				{ $$ = addEmptyList(@$); }
-     | error ':' 			{ report_error("Error in a host list"); $$ = NULL; }	
-     | error '#' 			{ report_error("Error in a host list"); $$ = NULL; }
-
-CExp: NUM 				{ $$ = newNumber(@$, $1); }
-    | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
-    | STR 				{ $$ = newString(@$, $1); free($1); }
+HostExp: NUM 				{ $$ = newNumber(@$, $1); }
+       | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
+       | STR 				{ $$ = newString(@$, $1); free($1); }
 
 %%
 

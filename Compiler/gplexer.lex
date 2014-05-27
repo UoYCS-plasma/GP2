@@ -81,7 +81,9 @@ extern int parse_target;
 <IN_COMMENT>(\n)	  	 { yycolumn = 1; } /* reset yycolumn on newline */
 <IN_COMMENT><<EOF>>  		 { fprintf(stderr,"Warning: Unterminated comment.\n");
 			           fprintf(log_file,"Line %d: Unterminated "
-          				   "comment.\n", yylineno); }
+          				   "comment.\n", yylineno); 
+				   abort_scan = true;
+				   yyterminate(); }
 
  /* empty string */
 "\"\""				 { yylval.str = NULL; return STR; } 
@@ -89,6 +91,12 @@ extern int parse_target;
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
 <IN_STRING>[a-zA-Z0-9_]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
+<IN_STRING>(\n)                  { fprintf(log_file,"%d.%d-%d.%d: String "
+          				"continues on new line.\n", 
+                                        yylloc.first_line, yylloc.first_column, 
+                                        yylloc.last_line, yylloc.last_column); 	
+				   abort_scan = true;
+                                   yyterminate(); }
 <IN_STRING>[^\"a-zA-Z0-9_]       { fprintf(stderr,"Warning: Invalid character in "
                                            "string: '%c'.\n", yytext[0]); 
 			           fprintf(log_file,"%d.%d-%d.%d: Invalid "
@@ -97,8 +105,9 @@ extern int parse_target;
 					yylloc.last_column, yytext[0]);	
 				   yylval.str = strdup(yytext); return STR; }
 <IN_STRING><<EOF>>   		 { fprintf(log_file,"Line %d: Unterminated "
-          				   "string.\n", yylineno); 
-				   abort_scan = true; }   
+          				   "string.\n", yylineno);                   
+				   abort_scan = true; 
+                                   yyterminate(); }  
 
 "''"				 { fprintf(stderr,"Error: Empty character "
 					  "expression.\n"); 
@@ -121,6 +130,12 @@ extern int parse_target;
                                           yytext); 
 		                  abort_scan = true;
 				  yylval.str = strdup(yytext); return CHAR; }
+<IN_CHAR>(\n)                   { fprintf(log_file,"%d.%d-%d.%d: Character "
+          				"expression continues on new line.\n", 
+                                        yylloc.first_line, yylloc.first_column, 
+                                        yylloc.last_line, yylloc.last_column);	
+				   abort_scan = true;
+                                   yyterminate(); }
 <IN_CHAR>[^'a-zA-Z0-9_]         { fprintf(stderr,"Error: Invalid character: "
 			 		  "'%c'.\n", yytext[0]); 
 				  fprintf(log_file,"%d.%d-%d.%d: Invalid "
@@ -132,7 +147,8 @@ extern int parse_target;
 				  yylval.str = strdup(yytext); return CHAR; }
 <IN_CHAR><<EOF>>   	        { fprintf(log_file,"Line %d: Unterminated "
           		                  "character.\n", yylineno); 
-				  abort_scan = true;}   
+				  abort_scan = true;
+				  yyterminate(); }   
 
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
