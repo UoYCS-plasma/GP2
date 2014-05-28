@@ -1,18 +1,12 @@
-/*//////////////////////////////////////////////////////////////////////////// 
+/* ///////////////////////////////////////////////////////////////////////////
 
-                           pretty.c       
-                              
-              Pretty printers for AST and symbol table
+  =================================
+  pretty.c - Chris Bak (18/09/2013)
+  =================================
 
-                  Created on 18/9/2013 by Chris Bak 
+/////////////////////////////////////////////////////////////////////////// */
 
-/////////////////////////////////////////////////////////////////////////// */ 
-
-#include "pretty.h" /* function prototypes */
-#include "seman.h" /* struct Symbol */
-#include <stdio.h> /* fprintf, fopen, fclose */
-#include <string.h> /* strlen, strcpy, strcat */
-#include <glib.h> /* GHashTable and GSList */ 
+#include "pretty.h" 
 
 /* printSymbolTable uses g_hash_table_foreach to print the symbol table.
  * g_hash_table_for_each iterates over every key and value in the
@@ -65,7 +59,8 @@ void printSymbolList(gpointer key, gpointer value, gpointer user_data)
 	/* Not all symbols have a containing rule */    
 	if(current_sym->containing_rule == NULL) {
 	   print_to_symtab_file("Name: %s\nType: %s\nScope: %s\n",
-	           (string)key, current_sym->type, current_sym->scope);
+	           (string)key, symbolTypeToString(current_sym->type), 
+                   current_sym->scope);
 	   if(current_sym->is_var) print_to_symtab_file("Variable\n");
 	   if(current_sym->in_lhs) print_to_symtab_file("In LHS\n");
            if(current_sym->wildcard) print_to_symtab_file("Wildcard\n");
@@ -73,7 +68,8 @@ void printSymbolList(gpointer key, gpointer value, gpointer user_data)
 	}	
 	else {	
            print_to_symtab_file("Name: %s\nType: %s\nScope: %s\n"
-                   "Containing Rule: %s\n", (string)key, current_sym->type, 
+                   "Containing Rule: %s\n", (string)key, 
+                   symbolTypeToString(current_sym->type), 
                    current_sym->scope, current_sym->containing_rule);
        	   if(current_sym->is_var) print_to_symtab_file("Variable\n");
 	   if(current_sym->in_lhs) print_to_symtab_file("In LHS\n");
@@ -83,6 +79,41 @@ void printSymbolList(gpointer key, gpointer value, gpointer user_data)
     }
 }
        
+string symbolTypeToString(SymbolType type)
+{
+    switch(type) {
+
+         case (PROCEDURE_S): return "Procedure";
+
+         case (RULE_S): return "Rule";
+
+         case (INT_S): return "Integer";
+
+         case (CHAR_S): return "Character";
+
+         case (STRING_S): return "String";
+
+         case (ATOM_S): return "Atom";
+
+         case (LIST_S): return "List";
+
+         case (LEFT_NODE_S): return "Left Node";
+
+         case (RIGHT_NODE_S): return "Right Node";
+
+         case (LEFT_EDGE_S): return "Left Edge";
+
+         case (RIGHT_EDGE_S): return "Right Edge";
+
+         default: 
+               print_to_log("Error: Invalid symbol type encountered while "
+                            "printing symbol list.\n");
+               return "ERROR";
+    }
+}
+         
+             
+   
 
 /* Creates the output file, prints some preliminary output, and
  * calls printList to trigger the AST walk.

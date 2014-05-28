@@ -1,12 +1,11 @@
 /* ////////////////////////////////////////////////////////////////////////////
 
-                                seman.h                               
+  ================================
+  seman.h - Chris Bak (24/10/2013)      
+  ================================                        
  
-  This contains the interface for the symbol table and the declarations of
+  Contains the interface for the symbol table and the declarations of
   the semantic analysis functions.
- 
-
-                   Created on 24/10/13 by Chris Bak 
 
 //////////////////////////////////////////////////////////////////////////// */
 
@@ -14,8 +13,61 @@
 #define INC_SEMAN_H
 
 #include "ast.h" /* struct List */
-#include <glib.h> /* hashtable */
+#include <glib.h>
 #include <stdbool.h>
+#include <stdlib.h> /* malloc, free */
+#include <string.h> /* strdup, strcmp */
+#include <stdio.h> /* fprintf */
+
+
+/* GP2 symbols are stored in struct Symbol. These are values of the
+ * symbol table; the symbol's identifier, namely the identifier in GP2,
+ * is the symbol's hash key.
+ *
+ * GP2's symbols are as follows:
+ * - Procedures
+ * - Rules
+ * - Variables
+ * - Nodes
+ * - Edges
+ *
+ * The Symbol structure contains the following:
+ *
+ * Type: A variable's type is its GP2 type according to its declaration in a
+ *       rule. The type of a node or edge is determined by which side of the
+ *       rule it occurs in. This is required for semantic analysis.
+ *
+ * Scope: The procedure in which the symbol is visible. Either "Global" or the
+ *        name of a procedure in the program. All symbols have a scope.
+ *
+ * Containing Rule: The rule in which the symbol is visible. NULL for symbols
+ *                  for symbols of type 'rule' and 'procedure'. This field is
+ *                  used to uniquely identify variables, nodes and edges as 
+ *                  they can have the same name in different rules.
+ * 
+ * Flags: is_var is set to true if the symbol represents a GP variable. This
+ *        is for more concise code: better to compare to a single bool than to
+ *        compare with each of the variable types.
+ *
+ *        in_lhs is set to true if the symbol has type variable and occurs in
+ *        the LHS of a rule. Set to false in all other cases. 
+ * 
+ *        wildcard is set to true if the symbol is a node or edge with the cyan
+ *        mark. Set to false in all other cases.
+ */
+ 
+typedef enum {PROCEDURE_S=0, RULE_S, INT_S, CHAR_S, STRING_S, ATOM_S,
+               LIST_S, LEFT_NODE_S, RIGHT_NODE_S, LEFT_EDGE_S, RIGHT_EDGE_S} 
+               SymbolType;
+
+typedef struct Symbol {
+  SymbolType type;
+  string scope; 
+  string containing_rule; 
+  bool is_var;
+  bool in_lhs; 
+  bool wildcard; 
+} Symbol;
 
 extern bool abort_compilation; /* Defined in main.c */
 
@@ -27,22 +79,27 @@ extern bool abort_compilation; /* Defined in main.c */
  * The following glib function calls are used extensively in the function
  * definitions.
  *
+ * ===============================================
  * GSList *list = g_hash_table_lookup(table, key);
+ * ===============================================
  *
  * Creates a pointer to a GSList by calling g_hash_table_lookup. This function 
  * looks up a name in the symbol table and returns a pointer to the identifier
  * list if the name is already present, otherwise it returns NULL. 
  * Note that g_hash_table_lookup returns a void pointer.
  *
- *
+ * =====================================
  * list = g_slist_prepend(list, symbol);     
+ * =====================================    
  *
  * Adds the symbol given by the second argument to the start of the GSList
  * list. If list is NULL then a new list is created with the single element
  * symbol.
  *
  *
+ * ======================================
  * g_hash_table_insert(table, key, list); 
+ * ======================================
  *
  * Inserts the GSList list to the symbol table. If the key already exists 
  * then the old value for that key is freed with <value_destroy_func> and 
@@ -57,17 +114,6 @@ extern bool abort_compilation; /* Defined in main.c */
 
 extern GHashTable *gp_symbol_table; /* Defined in main.c */
 
-typedef struct Symbol {
-  string type; /* rule, procedure, integer, character, string, atom, list,
-               * left_node, left_edge, right_node, right_edge */
-  string scope; /* The procedure in which the symbol is visible. 
-		* "Global" scope is seen by all procedures. */   
-  string containing_rule; /* for variables, nodes and edges */
-  bool is_var; /* set to true if this symbol represents a GP variable. */
-  bool in_lhs; /* set to true if a variable matching the symbol is found
-                * in the LHS of a rule */
-  bool wildcard; /* set to true if a node or edge has the cyan mark. */
-} Symbol;
 
 
 /* Function to reverse a sequence of List nodes in the AST. Given a
@@ -77,7 +123,10 @@ typedef struct Symbol {
  * This function is required as Bison generates lists in reverse order
  * due to left-recursive grammar rules. 
  */
+
 struct List *reverse (struct List * listHead);
+
+
 
 /* The host graph AST contains lists that need to be reversed.
  * First the node list and the edge list are reversed, then the function
@@ -87,6 +136,8 @@ struct List *reverse (struct List * listHead);
 
 void reverseGraphAST (GPGraph *graph); 
 
+
+
 /* glib requires the user to provide functions to free hash table values.
  * freeSymbolList frees a list of struct Symbols. This function is passed
  * to the glib through g_hash_table_new_full, called in main.c. 
@@ -94,6 +145,8 @@ void reverseGraphAST (GPGraph *graph);
  */
 
 void freeSymbolList(gpointer key, gpointer value, gpointer data);
+
+
 
 /* declarationScan traverses the global declaration list and any local 
  * declaration lists. It adds all procedure declarations and rule declarations
@@ -114,6 +167,7 @@ void freeSymbolList(gpointer key, gpointer value, gpointer data);
  */
 
 bool declarationScan(List * ast, GHashTable *table, string const scope);
+
 
 
 /* semanticCheck performs semantic analysis on a GP program after parsing. 
@@ -144,6 +198,7 @@ bool semanticCheck(List * declarations, GHashTable *table, string const scope);
  *
  */
 
+
 void statementScan(GPStatement * const statement, GHashTable *table, string const scope);
 
 /* validateCall searches the symbol list with key <name> for a symbol with
@@ -154,12 +209,14 @@ void statementScan(GPStatement * const statement, GHashTable *table, string cons
  *             into the symbol table.
  * Argument 2: The symbol table.
  * Argument 3: The current scope.
- * Argument 4: The type of call, either "rule" or "procedure". This argument
+ * Argument 4: The type of call, either RULE_S or PROCEDURE_S. This argument
  *             is passed by statementScan.
  */
 
 void validateCall(string const name, GHashTable *table, string const scope, 
-                   string const call_type);
+                  SymbolType const type);
+
+
 
 /* ruleScan processes a struct GPRule. First it reverses the rule's parameter
  * list and interface list. Then it iterates down the variable list and enters
@@ -174,13 +231,15 @@ void validateCall(string const name, GHashTable *table, string const scope,
 
 void ruleScan(GPRule * const rule, GHashTable *table, string const scope);
 
+
+
 /* enterVariables adds variable declarations from a rule's parameter list
  * into the symbol table. It also checks that each variable name in the
  * parameter list is unique. Variable names are not added to the symbol
  * table if a clash is found. This function is called only by ruleScan.
  *
- * Argument 1: Variable type, passed from ruleScan. It is one of "integer",
- *             "string", "atom", "list".
+ * Argument 1: Variable type, passed from ruleScan. It is one of INT_S,
+ *             CHAR_S, STRING_S, ATOM_S, LIST_S.
  * Argument 2: Pointer to the list of variables declared with a specific type
  *             in the AST.
  * Argument 3: The symbol table.
@@ -189,9 +248,10 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope);
  *             is required for variable symbols.
  */
 
-
-void enterVariables(string const type, List * variables, GHashTable *table, 
+void enterVariables(SymbolType const type, List * variables, GHashTable *table, 
 		     string const scope, string const rule_name);
+
+
 
 /* graphScan is responsible for adding nodes and edges to the symbol table.
  * It also performs some semantic analysis: source and target nodes of edges
@@ -209,6 +269,8 @@ void enterVariables(string const type, List * variables, GHashTable *table,
 void graphScan(GPGraph *graph, GHashTable *table, string const scope, 
                 string const rule_name, char const side);
 
+
+
 /* interfaceScan performs semantic checking on the interface list of a rule.
  * All nodes in the list are checked to see if they appear in both graphs of
  * the rule. This function is called only by ruleScan.
@@ -222,6 +284,8 @@ void graphScan(GPGraph *graph, GHashTable *table, string const scope,
 void interfaceScan(List * interface, GHashTable *table, string const scope,
                     string const rule_name);
 
+
+
 /* conditionScan navigates a subtree of the AST with a GPCondExp node
  * as its root. It performs semantic checking on all possible types
  * of GP2 conditions, usually calling auxiliary functions. This function
@@ -233,8 +297,11 @@ void interfaceScan(List * interface, GHashTable *table, string const scope,
  * Argument 4: The current rule being processed.
  */   
 
+
 void conditionScan(GPCondExp * const condition, GHashTable *table, string const scope,
                     string const rule_name);
+
+
 
 /* gpListScan takes as input the head of a GP2 list expression in the AST.
  * It first reverses the list to place it in the correct order according
@@ -286,9 +353,10 @@ void conditionScan(GPCondExp * const condition, GHashTable *table, string const 
  *             this is 'c'.
  */
 
-
 void gpListScan(List **gp_list, GHashTable *table, string const scope,
                   string const rule_name, char const location);
+
+
 
 /* atomicExpScan checks variables and nodes in expressions to see if they 
  * have been declared in the rule. If the function is called with location

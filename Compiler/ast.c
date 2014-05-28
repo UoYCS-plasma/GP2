@@ -1,20 +1,14 @@
-/*////////////////////////////////////////////////////////////////////////////
+/* ///////////////////////////////////////////////////////////////////////////
 
-                                  ast.c              
-                         
-              Contains AST constructor definitions and functions to
-                                free the AST.
+  ==============================
+  ast.c - Chris Bak (22/07/2013)
+  ==============================
 
-                     Created on 22/7/2013 by Chris Bak 
-
-/////////////////////////////////////////////////////////////////////////// */ 
+/////////////////////////////////////////////////////////////////////////// */
 
 #include "ast.h" /* AST struct definitions */
-#include <stdio.h> /* printf */
-#include <stdlib.h> /* malloc */
-#include <string.h> /* strdup */
 
-List *addDecl (ListTypes list_type, YYLTYPE location, GPDeclaration *declaration,
+List *addDecl (ListType list_type, YYLTYPE location, GPDeclaration *declaration,
 	       List *next)
 { 
     List *new_decl = malloc(sizeof(List));
@@ -67,7 +61,7 @@ List *addRule (YYLTYPE location, string rule_name, List *next)
     return new_rule;
 }
 
-List *addVariableDecl (ListTypes list_type, YYLTYPE location, List *variables,
+List *addVariableDecl (ListType list_type, YYLTYPE location, List *variables,
 	               List *next)
 { 
     List *new_var_decl = malloc(sizeof(List));
@@ -304,7 +298,7 @@ GPStatement *newProcCall(YYLTYPE location, string proc_name)
     return stmt;
 }
 
-GPStatement *newCondBranch(stmt_t statement_type, YYLTYPE location, 
+GPStatement *newCondBranch(StatementType statement_type, YYLTYPE location, 
 	      GPStatement *condition, GPStatement *then_stmt, GPStatement *else_stmt)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
@@ -390,7 +384,7 @@ GPStatement *newFail(YYLTYPE location)
 
 
 
-GPCondExp *newSubtypePred (CondExpTypes exp_type, YYLTYPE location, string var)
+GPCondExp *newSubtypePred (CondExpType exp_type, YYLTYPE location, string var)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -426,7 +420,7 @@ GPCondExp *newEdgePred (YYLTYPE location, string source, string target,
      return cond;
 }
 
-GPCondExp *newListComparison (CondExpTypes exp_type, YYLTYPE location,
+GPCondExp *newListComparison (CondExpType exp_type, YYLTYPE location,
 	    List *left_list, List *right_list)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
@@ -446,7 +440,7 @@ GPCondExp *newListComparison (CondExpTypes exp_type, YYLTYPE location,
 }
 
 
-GPCondExp *newAtomComparison (CondExpTypes exp_type, YYLTYPE location,
+GPCondExp *newAtomComparison (CondExpType exp_type, YYLTYPE location,
 	    GPAtomicExp *left_exp, GPAtomicExp *right_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
@@ -482,7 +476,7 @@ GPCondExp *newNotExp (YYLTYPE location, GPCondExp *not_exp)
      return cond;
 }
 
-GPCondExp *newBinaryExp (CondExpTypes exp_type, YYLTYPE location, 
+GPCondExp *newBinaryExp (CondExpType exp_type, YYLTYPE location, 
 	    GPCondExp *left_exp, GPCondExp *right_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
@@ -572,7 +566,7 @@ GPAtomicExp *newString (YYLTYPE location, string string)
      return atom;
 }
 
-GPAtomicExp *newDegreeOp (AtomExpTypes exp_type, YYLTYPE location, string node_id)
+GPAtomicExp *newDegreeOp (AtomExpType exp_type, YYLTYPE location, string node_id)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -637,7 +631,7 @@ GPAtomicExp *newNegExp (YYLTYPE location, GPAtomicExp *exp)
      return atom;
 }
 
-GPAtomicExp *newBinaryOp (AtomExpTypes exp_type, YYLTYPE location, GPAtomicExp *left_exp, GPAtomicExp *right_exp)
+GPAtomicExp *newBinaryOp (AtomExpType exp_type, YYLTYPE location, GPAtomicExp *left_exp, GPAtomicExp *right_exp)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -775,7 +769,7 @@ GPPos *newPosition (YYLTYPE location, int x, int y)
     return pos;
 }
 
-GPLabel *newLabel (YYLTYPE location, MarkTypes mark, List *gp_list)
+GPLabel *newLabel (YYLTYPE location, MarkType mark, List *gp_list)
 {
     GPLabel *label = malloc(sizeof(GPLabel));
     

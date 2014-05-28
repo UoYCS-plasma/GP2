@@ -1,10 +1,21 @@
-/*////////////////////////////////////////////////////////////////////////////
+/* ///////////////////////////////////////////////////////////////////////////
 
-                                pretty.h                               
+  =================================
+  pretty.h - Chris Bak (18/09/2013)
+  =================================
 
-                      Created on 18/9/13 by Chris Bak 
+  Module for pretty printing the abstract syntax tree and the symbol table.
 
+  Contains several macros to free the source file from clutter and prototypes
+  for printing functions.                         
+                      
 /////////////////////////////////////////////////////////////////////////// */
+
+#include "ast.h" /* AST structures */
+#include "seman.h" /* Symbol structure */
+#include <stdio.h> 
+#include <string.h> 
+#include <glib.h> 
 
 #ifndef INC_PRETTY_H
 #define INC_PRETTY_H
@@ -99,10 +110,6 @@
 #define LOCATION_ARGS(LOC)    \
    LOC.first_line, LOC.first_column, LOC.last_line, LOC.last_column
 
-#include "ast.h" /* AST structure declarations */
-#include <glib.h> /* GHashTable, gpointer */
-
-
 /* printSymbolTable creates the file <program>.tab, where <program> is the
  * name of the GP2 program file, and pretty prints the symbol table to that 
  * file. 
@@ -119,6 +126,14 @@ int printSymbolTable(GHashTable *table, string const file_name);
 
 void printSymbolList(gpointer key, gpointer value, gpointer user_data);
 
+
+/* Auxiliary function called by printSymbolList. It returns a string
+ * corresponding to its argument.
+ */
+
+string symbolTypeToString(SymbolType type);
+
+
 /* printDotAST creates a new file <source_name>.dot. It generates
  * a DOT text file that can be used to draw a picture of the AST via
  * graphviz. 
@@ -128,6 +143,7 @@ void printSymbolList(gpointer key, gpointer value, gpointer user_data);
  */
 
 int printDotAST(List * const gp_ast, string file_name);
+
 
 /* Identical to printDotAST, except it calls printGraph instead of
  * printList.

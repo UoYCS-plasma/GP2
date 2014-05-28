@@ -396,13 +396,10 @@ Label: List				{ $$ = newLabel(@$, NONE, $1); }
      | List '#' CYAN_MARK		{ $$ = newLabel(@$, $3, $1); }
 
 
-List: AtomExp ':'			{ $$ = addAtom(@1, $1, NULL); } 
-    | List AtomExp ':'			{ $$ = addAtom(@3, $2, $1); }
-    /* If a syntax error occurs while processing a list, discard input text
-     * until the end of the erroneous AtomExp, marked by ':'. That AtomExp
-     * is discarded and parsing may continue. */       
+List: AtomExp				{ $$ = addAtom(@1, $1, NULL); } 
+    | List ':' AtomExp 			{ $$ = addAtom(@3, $3, $1); }
     | EMPTY				{ $$ = addEmptyList(@$); }
-    | error ':' 			{ report_error("Error in a list"); $$ = NULL; }
+
 
 AtomExp: Variable			{ $$ = newVariable(@$, $1); free($1); }
        | NUM 				{ $$ = newNumber(@$, $1); }
@@ -464,13 +461,10 @@ HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
 HostLabel: HostList			{ $$ = newLabel(@$, NONE, $1); }
          | HostList '#' MARK	  	{ $$ = newLabel(@$, $3, $1); }
 
-HostList: HostExp ':'			{ $$ = addAtom(@1, $1, NULL); } 
-        | HostList HostExp ':'		{ $$ = addAtom(@3, $2, $1); }
-        /* If a syntax error occurs while processing a constant list, discard 
-         * input text until the end of the erroneous HostExp, marked by ':'.
-         * That HostExp is discarded and parsing may continue. */      
+HostList: HostExp 			{ $$ = addAtom(@1, $1, NULL); } 
+        | HostList ':' HostExp 		{ $$ = addAtom(@3, $3, $1); }
         | EMPTY				{ $$ = addEmptyList(@$); }
-        | error ':' 			{ report_error("Error in a host list"); $$ = NULL; }
+
 
 HostExp: NUM 				{ $$ = newNumber(@$, $1); }
        | CHAR				{ $$ = newCharacter(@$, $1); free($1); }

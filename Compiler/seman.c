@@ -1,22 +1,12 @@
 /* ////////////////////////////////////////////////////////////////////////////
 
-                                seman.c                              
- 
-       Defines the semantic analysis function and its subprocedures.
- 
-
-                     Created on 24/10/13 by Chris Bak 
+  ================================
+  seman.c - Chris Bak (24/10/2013) 
+  ================================
 
 //////////////////////////////////////////////////////////////////////////// */
 
 #include "seman.h" 
-#include <stdlib.h> /* malloc, free */
-#include <stdio.h> /* fprintf */
-#include <string.h> /* strdup, strcmp */
-#include <stdbool.h> 
-#include <glib.h> /* GHashTable and GSList */
-
-
 
 List *reverse (List * listHead) 
 {
@@ -161,7 +151,7 @@ bool declarationScan(List * ast, GHashTable *table,
 	       * in the table. 
 	       */
               while(iterator) {
-		 if(!strcmp(((Symbol*)iterator->data)->type,"Procedure"))
+		 if( ((Symbol*)iterator->data)->type == PROCEDURE_S)
                  {
 		    print_to_console("Error: Procedure %s declared more " 
                                      "than once.\n", 
@@ -188,7 +178,7 @@ bool declarationScan(List * ast, GHashTable *table,
                     exit(0); 
                  }
 
-                 proc_symbol->type = "Procedure";
+                 proc_symbol->type = PROCEDURE_S;
                  proc_symbol->scope = strdup(scope);
 	         proc_symbol->containing_rule = NULL;
 		 proc_symbol->is_var = false;
@@ -242,8 +232,8 @@ bool declarationScan(List * ast, GHashTable *table,
 
                  string symbol_scope = ((Symbol*)iterator->data)->scope;
    
-                 if(!strcmp(((Symbol*)iterator->data)->type,"Rule") &&
-		    !strcmp(scope,symbol_scope))
+                 if( ((Symbol*)iterator->data)->type == RULE_S &&
+		     !strcmp(scope,symbol_scope))
 		 {
                     if(!strcmp(scope,"Global")) {
                        print_to_console("Error: Rule %s declared twice in " 
@@ -284,7 +274,7 @@ bool declarationScan(List * ast, GHashTable *table,
 	            exit(0);
 	         }
 
-	         rule_symbol->type = "Rule";
+	         rule_symbol->type = RULE_S;
 	         rule_symbol->scope = strdup(scope);
 	         rule_symbol->containing_rule = NULL;
                  rule_symbol->is_var = false;
@@ -433,14 +423,13 @@ void statementScan(GPStatement * const statement, GHashTable *table,
 
          case RULE_CALL:
 
-              validateCall(statement->value.rule_name, table, scope, "Rule"); 
+              validateCall(statement->value.rule_name, table, scope, RULE_S); 
                               
               break;
 
          case PROCEDURE_CALL:   
 
-              validateCall(statement->value.proc_name, table, scope, 
-                           "Procedure");
+              validateCall(statement->value.proc_name, table, scope, PROCEDURE_S);
 
               break;
 
@@ -454,8 +443,7 @@ void statementScan(GPStatement * const statement, GHashTable *table,
 	      List *rule_list = statement->value.rule_set;
 
               while(rule_list) {
-                 validateCall(rule_list->value.rule_name, table, scope, 
-                              "Rule");
+                 validateCall(rule_list->value.rule_name, table, scope, RULE_S);                               
 		 rule_list = rule_list->next;   
               }           
      
@@ -521,9 +509,13 @@ void statementScan(GPStatement * const statement, GHashTable *table,
 
 
 void validateCall(string const name, GHashTable *table, string const scope,
-                  string const call_type) {
+                  SymbolType const type) {
 
    GSList *symbol_list = g_hash_table_lookup(table, name);
+
+      string call_type = NULL;
+      if(type == PROCEDURE_S) call_type = "Procedure";
+         else call_type = "Rule";
 
       if(symbol_list == NULL) {
 	 print_to_console("Error: %s %s called but not declared.\n",
@@ -537,7 +529,7 @@ void validateCall(string const name, GHashTable *table, string const scope,
          Symbol *current_sym = (Symbol*)(symbol_list->data);
                 
          /* Iterate through the symbol list while the current symbol does not
-	  * have type <call_type> or does not have an appropriate scope. 
+	  * have type <type> or does not have an appropriate scope. 
 	  *
 	  * If the end of the list is reached, then no symbol exists with
           * the appropriate scope and call type. We must print an error and 
@@ -548,7 +540,7 @@ void validateCall(string const name, GHashTable *table, string const scope,
 	  * Nothing else needs to be done as the call is valid.
 	  */
 
-         while( strcmp(current_sym->type,call_type) ||
+         while( current_sym->type != type ||
 	        ( strcmp(current_sym->scope,scope) && 
                   strcmp(current_sym->scope,"Global") ) )	       
 	 {
@@ -598,7 +590,7 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
                               "in variable declaration section.",
                               scope, rule_name);
               }
-              else enterVariables("integer", variable_list->value.variables,
+              else enterVariables(INT_S, variable_list->value.variables,
 			           table, scope, rule_name);
 
 	      break;
@@ -610,7 +602,7 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
                               "in variable declaration section.",
                               scope, rule_name);
               }
-              else enterVariables("character", variable_list->value.variables,
+              else enterVariables(CHAR_S, variable_list->value.variables,
 			           table, scope, rule_name);
 
 	      break;
@@ -623,7 +615,7 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
                               "in variable declaration section.", 
                               scope, rule_name);
               }
-              else enterVariables("string", variable_list->value.variables,
+              else enterVariables(STRING_S, variable_list->value.variables,
 			           table, scope, rule_name);
 
               break;
@@ -635,7 +627,7 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
                               "in variable declaration section.",
                               scope, rule_name);
               }
-              else enterVariables("atom", variable_list->value.variables,
+              else enterVariables(ATOM_S, variable_list->value.variables,
 			           table, scope, rule_name);
 
 	      break; 
@@ -647,7 +639,7 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
                               "in variable declaration section.", 
                               scope, rule_name);
               }
-              else enterVariables("list", variable_list->value.variables,
+              else enterVariables(LIST_S, variable_list->value.variables,
 			           table, scope, rule_name);
 
 	      break;  	 
@@ -672,7 +664,7 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
 
 
-void enterVariables(string const type, List * variables, 
+void enterVariables(SymbolType const type, List * variables, 
                     GHashTable *table, string const scope, 
                     string const rule_name)
 {
@@ -743,10 +735,10 @@ void enterVariables(string const type, List * variables,
 void graphScan(GPGraph *const graph, GHashTable *table, string const scope, 
                 string const rule_name, char const side)
 {
-   /* Strings to store the symbol types and the graph. These are used
-    * in string comparisons and in the error messages.
+   /* Variables to store the symbol types and the graph for semantic checking.
     */
-   string node_type = NULL, edge_type = NULL, graph_type = NULL;
+   SymbolType node_type, edge_type;
+   string graph_type = NULL;
 
    /* symbol_list is used to store symbol lists from the symbol table.
     * It is assigned the existing symbol list for a particular key.
@@ -757,13 +749,13 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
    GSList *symbol_list = NULL;
  
    if(side == 'l') {
-      node_type = "left_node";
-      edge_type = "left_edge";
+      node_type = LEFT_NODE_S;
+      edge_type = LEFT_EDGE_S;
       graph_type = "LHS";
    }
    else if(side == 'r') {
-      node_type = "right_node";
-      edge_type = "right_edge";
+      node_type = RIGHT_NODE_S;
+      edge_type = RIGHT_EDGE_S;
       graph_type = "RHS";
    }   
 
@@ -792,9 +784,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 	  * rule and scope with the same name.
 	  */
 
-         if(!strcmp(current_node->type,node_type) && 
-	    !strcmp(current_node->scope,scope)    && 
-	    !strcmp(current_node->containing_rule,rule_name))	
+         if( current_node->type == node_type && 
+	     !strcmp(current_node->scope,scope) && 
+	     !strcmp(current_node->containing_rule,rule_name) )	
 	 {
 	     print_to_log("Warning (%s.%s): Node ID %s not unique in the "
                           "%s.\n", 
@@ -839,7 +831,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
       /* If the node is in the RHS and has a cyan mark, the corresponding LHS node
        * must also have a cyan mark. */
 
-      if(!strcmp(node_type,"right_node") && 
+      if(node_type == RIGHT_NODE_S && 
          node_list->value.node->label->mark == CYAN) {
  
          /* The current node has just been prepended to the symbol list.
@@ -863,12 +855,13 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
             if(!strcmp(current_node->scope,scope) && 
 	       !strcmp(current_node->containing_rule,rule_name))	
   	    {
-                if(!strcmp(current_node->type,"left_node") &&
-                   !current_node->wildcard) {
-	              print_to_log("Error (%s.%s): RHS wildcard node %s "
-                                   "has no matching LHS wildcard.", 
-                                   scope, rule_name, node_id);  
-                      abort_compilation = true; 
+                if(current_node->type == LEFT_NODE_S &&
+                   !current_node->wildcard) 
+                {
+	           print_to_log("Error (%s.%s): RHS wildcard node %s has no "
+                                "matching LHS wildcard.", 
+                                scope, rule_name, node_id);  
+                   abort_compilation = true; 
                 }
                 /* Regardless of the outcome of the inner if statement, exit
                  * the loop as the single appropriate node has been located.
@@ -916,10 +909,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 	  * rule and scope with the same name. 
 	  */
 
-         if( ( !strcmp(current_edge->type,node_type) ||
-	       !strcmp(current_edge->type,edge_type) ) && 
-	     !strcmp(current_edge->scope,scope)    && 
-	     !strcmp(current_edge->containing_rule,rule_name))	
+         if( current_edge->type == edge_type && 
+	     !strcmp(current_edge->scope,scope) && 
+	     !strcmp(current_edge->containing_rule,rule_name) )	
          {
 	      print_to_log("Warning (%s.%s): Edge ID %s not unique in the %s "
                            "graph.\n", 
@@ -954,7 +946,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
       }
 
 
-      if(!strcmp(edge_type,"right_edge")
+      if(edge_type == RIGHT_EDGE_S
          && edge_list->value.edge->label->mark == CYAN) {
  
          /* The current edge has just been prepended to the symbol list.
@@ -978,12 +970,13 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
             if(!strcmp(current_edge->scope,scope) && 
 	       !strcmp(current_edge->containing_rule,rule_name))	
   	    {
-                if(!strcmp(current_edge->type,"left_edge") &&
-                   !current_edge->wildcard) {
-	              print_to_log("Error (%s.%s): RHS wildcard edge %s "
-                                   "has no matching LHS wildcard.", 
-                                   scope, rule_name, edge_id);  
-                      abort_compilation = true;
+                if(current_edge->type == LEFT_EDGE_S &&
+                   !current_edge->wildcard) 
+                {
+	           print_to_log("Error (%s.%s): RHS wildcard edge %s has no "
+                                "matching LHS wildcard.", 
+                                scope, rule_name, edge_id);  
+                   abort_compilation = true;
                 }
                 /* Regardless of the outcome of the if statement, exit
                  * the loop as the single appropriate edge has been located.
@@ -1011,11 +1004,17 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          /* Keep track of the symbol currently being looked at. */
          Symbol *current_sym = (Symbol*)(symbol_list->data);
                 
-         while(strcmp(current_sym->type,node_type) ||
-               strcmp(current_sym->scope,scope)    ||
+         /* The while loop condition is true if the current symbol is not
+          * the node in the same rule and graph as the current edge.
+          * Hence the loop breaks if the appropriate node is found.
+          * At each pass a check is made to see if the end of the list
+          * has been reached. If not, check the next symbol in the symbol
+          * list. Otherwise, print an error and break.
+          */
+         while(current_sym->type != node_type   ||
+               strcmp(current_sym->scope,scope) ||
                strcmp(current_sym->containing_rule,rule_name))
          {   
-           /* Check if the end of the list has been reached */
            if(symbol_list->next == NULL) {
               print_to_log("Error (%s.%s): Source node %s of edge %s does "
                            "not exist in %s graph.\n", 
@@ -1023,7 +1022,6 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
               abort_compilation = true; 
               break;
            }
-           /* Update current_symbol to point to the next symbol */
            else current_sym = (Symbol*)(symbol_list->next->data);             
          } 
       }
@@ -1041,13 +1039,19 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
       else {
          /* Keep track of the symbol currently being looked at. */
          Symbol *current_sym = (Symbol*)(symbol_list->data);
-                
-         while(strcmp(current_sym->type,node_type) ||
-               strcmp(current_sym->scope,scope)    ||
+
+         /* The while loop condition is true if the current symbol is not
+          * the node in the same rule and graph as the current edge.
+          * Hence the loop breaks if the appropriate node is found.
+          * At each pass a check is made to see if the end of the list
+          * has been reached. If not, check the next symbol in the symbol
+          * list. Otherwise, print an error and break.
+          */               
+         while(current_sym->type != node_type   ||
+               strcmp(current_sym->scope,scope) ||
                strcmp(current_sym->containing_rule,rule_name))
          {
    
-           /* Check if the end of the list has been reached */
            if(symbol_list->next == NULL) {
               print_to_log("Error (%s.%s): Target node %s of edge %s does "
                            "not exist in %s graph.\n", 
@@ -1055,7 +1059,6 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
               abort_compilation = true; 
               break;
            }
-            /* Update current_symbol to point to the next symbol */
             else current_sym = (Symbol*)(symbol_list->next->data);             
          }
       }	 
@@ -1102,8 +1105,8 @@ void interfaceScan(List * interface, GHashTable *table,
 	if(!strcmp(current_node->scope,scope) && 
 	   !strcmp(current_node->containing_rule,rule_name))  
 	{
-	   if(!strcmp(current_node->type,"left_node")) in_lhs = true;
-	   if(!strcmp(current_node->type,"right_node")) in_rhs = true;
+	   if(current_node->type == LEFT_NODE_S) in_lhs = true;
+	   if(current_node->type == RIGHT_NODE_S) in_rhs = true;
 	}
 
 	/* If both the LHS node and RHS node have been found, no need to look
@@ -1217,7 +1220,7 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
 
                  Symbol* current_node = (Symbol*)node_list->data;      
 
-         	 if(!strcmp(current_node->type,"left_node") &&
+         	 if(current_node->type == LEFT_NODE_S &&
                     !strcmp(current_node->scope,scope) && 
 	            !strcmp(current_node->containing_rule,rule_name))  
                  {
@@ -1252,7 +1255,7 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
                  
 		 Symbol* current_node = (Symbol*)node_list->data;      
 
-         	 if(!strcmp(current_node->type,"LHS Node") &&
+         	 if(current_node->type == LEFT_NODE_S &&
                     !strcmp(current_node->scope,scope) && 
 	            !strcmp(current_node->containing_rule,rule_name))  
                  {
@@ -1531,8 +1534,8 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
                      * variables in the LHS to verify that all expressions are
 		     * simple.
 	             */
-		    if(!strcmp(current_var->type,"list")) list_var_count++;
-		    if(!strcmp(current_var->type,"string")) string_var_count++;
+		    if(current_var->type == LIST_S) list_var_count++;
+		    if(current_var->type == STRING_S) string_var_count++;
 		 }
 
 	         if(!in_rule) {
@@ -1562,7 +1565,7 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
                     }
 
 	            /* Type checking */
-                    if(int_exp && strcmp(current_var->type,"integer")) {
+                    if(int_exp && current_var->type != INT_S) {
                        print_to_console("Error(%s.%s): Variable %s occurs in "
                                         "an integer expression but not declared "
                                         "as an integer.\n",
@@ -1574,8 +1577,8 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
                        abort_compilation = true;
 		    }
 
-                    if(string_exp && strcmp(current_var->type,"string")
-                                  && strcmp(current_var->type,"character") ) {
+                    if(string_exp && current_var->type != CHAR_S
+                                  && current_var->type != STRING_S ) {
                        print_to_console("Error(%s.%s): Variable %s occurs in a "
                                "string expression but not declared as a string "
                                "or character. \n",
@@ -1625,7 +1628,7 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
               Symbol *current_node = (Symbol*)node_list->data;     
 
-              if(!strcmp(current_node->type,"left_node") &&
+              if(current_node->type == LEFT_NODE_S &&
                  !strcmp(current_node->scope,scope) && 
 	         !strcmp(current_node->containing_rule,rule_name))  
               {
@@ -1771,3 +1774,4 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
    
                                            
+

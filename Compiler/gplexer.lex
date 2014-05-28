@@ -1,11 +1,11 @@
 /*////////////////////////////////////////////////////////////////////////////
 
-                             gplexer.lex                                          
+  ====================================
+  gplexer.lex - Chris Bak (10/05/2013)
+  ====================================                                  
 
-  This is a Flex lexican analyser for the textual program format of GP2. 
-  It scans the input file and sends a token to the Bison parser when required.
-
-                     Created on 10/5/2013 by Chris Bak 
+  The Flex lexical analyser for GP2. It scans the input files, sending tokens 
+  to the Bison parser when required.
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
@@ -30,7 +30,7 @@ int yycolumn = 1;
 
 extern int abort_scan; /* Defined in main.c */
 extern FILE *log_file; /* Defined in main.c */
-typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkTypes; 
+typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkType; 
 
 /* Defined in main.c according to which parser should be invoked. */
 extern int parse_target;

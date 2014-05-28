@@ -1,30 +1,30 @@
-/*////////////////////////////////////////////////////////////////////////////
+/* ////////////////////////////////////////////////////////////////////////////
 
-                                       main.c       
+  ===============================
+  main.c - Chris Bak (02/10/2013)
+  ===============================     
                                
   This is the compiler for GP2, a graph programming language. It takes as input
   two text files. One contains a GP2 graph program and the second contains a 
-  host graph. The program parses the files with a Bison/Flex parser, creates
-  an abstract syntax tree and prints the tree.
+  host graph. The program parses the files with a Bison parser, creates an
+  abstract syntax tree and a symbol table, and performs some semantic analysis.
+  Pretty printing of the AST and the symbol table is possible by defining the
+  appropriate macros.
 
   The makefile for the project is in the same directory as this file. Build
-  with the command 'make'.
+  with the command 'make gpparse.'
 
-  Compiled with GCC 4.7.1, GNU Bison 2.5.1 and Flex 2.5.35.
- 
-    
-
-                           Created on 2/10/2013 by Chris Bak 
+  Compiled with GCC 4.6.4, GNU Bison 2.5 and Flex 2.5.35.
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
 #include "ast.h" /* struct List, struct GPGraph */
-#include "pretty.h" /* pretty printer function declarations */
-#include "seman.h" /* semantic analysis functions */
+#include "pretty.h" /* Pretty printer functions */
+#include "seman.h" /* Semantic analysis functions */
 #include <stdbool.h>
-#include <stdio.h>  /* printf, fprintf, fopen */
-#include <stdlib.h> /* free */
-#include <string.h> /* strcmp */
+#include <stdio.h> 
+#include <stdlib.h>
+#include <string.h>
 
 
 /* Macros to control debugging features. */
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
         printDotHostGraph(host_graph, file_name); /* Defined in pretty.c */
      #endif
   }
-  else print_to_log("GP2 program parse failed.\n\n");     
+  else print_to_log("GP2 graph parse failed.\n\n");     
 
   /* The lexer and parser set the abort_scan flag if a syntax error is
    * encountered. */
