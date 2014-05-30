@@ -14,6 +14,8 @@
 #ifndef INC_AST_H
 #define INC_AST_H 
 
+/* Wrappers for frequently occurring calls to fprintf. */
+
 #define print_to_log(error_message, ...)                    \
   do { fprintf(log_file, error_message, ##__VA_ARGS__); }   \
   while(0)
@@ -202,7 +204,7 @@ typedef struct GPCondExp {
   CondExpType exp_type;
   YYLTYPE location;
   union {
-    string var; 			/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
+    string var; 		/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
 				 * ATOM_CHECK */
     struct {
       string source; 
@@ -254,7 +256,7 @@ typedef struct GPAtomicExp {
   AtomExpType exp_type;
   YYLTYPE location;
   union {
-    string name;			  /* VARIABLE */
+    string name;		  /* VARIABLE */
     int number; 	 	  /* INT_CONSTANT */
     string string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */

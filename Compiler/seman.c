@@ -67,7 +67,7 @@ void reverseGraphAST (GPGraph *graph)
 
 /* freeSymbolList iterates through the symbol list, freeing each symbol
  * individually. struct Symbol contains some string fields which
- * are dynamically allocated. These need to be explicitly freed.
+ * are dynamically allocated. These are explicitly freed.
  */
 void freeSymbolList(gpointer key, gpointer value, gpointer data) 
 {
@@ -197,7 +197,8 @@ bool declarationScan(List * ast, GHashTable *table,
                  ast->value.declaration->value.procedure->local_decls = 
 	            reverse(ast->value.declaration->value.procedure->local_decls);
 
-                 /* Scan for any local declarations with a new local scope. */
+                 /* Scan for any local declarations. proc_name is passed
+                  * as the scope argument. */
                  declarationScan(ast->value.declaration->value.procedure->
 			          local_decls, table, proc_name);
               }
@@ -226,7 +227,8 @@ bool declarationScan(List * ast, GHashTable *table,
               bool add_rule = true;	      
 
               /* Report an error if two rules with the same name are declared
-               * in the same scope.
+               * in the same scope. iterator points to the start of the symbol
+               * list whose key is rule_name.
                */
               while(iterator) {
 
@@ -300,7 +302,6 @@ bool declarationScan(List * ast, GHashTable *table,
 
       }     
 
-   /* Proceed down the declaration list */
    ast = ast->next;  	
 
    }
@@ -345,13 +346,13 @@ bool semanticCheck(List * declarations, GHashTable *table,
 
          case MAIN_DECLARATION:
 
+	      /* An empty main program does not comform to the grammar. The
+	       * parser should catch it and report a syntax error, but there is
+	       * no harm in checking here as well.
+	       */
               if(current_declaration->value.main_program)
 		 statementScan(current_declaration->value.main_program,
                                table, scope);
-	      /* An empty main program is does not comform to the grammar,
-	       * hence the Bison parser should catch it and report a syntax error,
-	       * but there's no harm in checking here as well.
-	       */
 	      else print_to_log("Error: Main procedure has no program, "
                                 "not caught by parser. \n");
 
@@ -362,6 +363,10 @@ bool semanticCheck(List * declarations, GHashTable *table,
               /* Set scope to procedure name for scanning local declarations */
               string new_scope = current_declaration->value.procedure->name;
 
+	      /* An empty main program does not comform to the grammar. The
+	       * parser should catch it and report a syntax error, but there is
+	       * no harm in checking here as well.
+	       */
               if(current_declaration->value.procedure->cmd_seq)
                   statementScan(current_declaration->value.procedure->cmd_seq,
                                  table, new_scope);
@@ -389,7 +394,6 @@ bool semanticCheck(List * declarations, GHashTable *table,
               break;
       } 
 
-   /* Proceed down the declaration list */
    declarations = declarations->next;  
 
    }
@@ -406,8 +410,8 @@ void statementScan(GPStatement * const statement, GHashTable *table,
 
          case COMMAND_SEQUENCE: 
          {
-	      /* A COMMAND_SEQUENCE node always points to a list of COMMAND
-	       * nodes. This list needs to be reversed. 
+	      /* A COMMAND_SEQUENCE node points to a list of COMMAND nodes.
+	       * This list is reversed. 
 	       */   
               statement->value.cmd_seq = reverse(statement->value.cmd_seq);
 
@@ -435,8 +439,7 @@ void statementScan(GPStatement * const statement, GHashTable *table,
 
          case RULE_SET_CALL: 
          {
-              /* Reverse the list of RULE_CALL nodes pointed to by a 
-	       * RULE_SET_CALL node.
+              /* Reverse the list of RULE_CALL nodes.
 	       */ 
               statement->value.rule_set = reverse(statement->value.rule_set);
 
@@ -514,8 +517,11 @@ void validateCall(string const name, GHashTable *table, string const scope,
    GSList *symbol_list = g_hash_table_lookup(table, name);
 
       string call_type = NULL;
+
+      /* validateCall is called with type PROCEDURE_S or RULE_S. 
+       */
       if(type == PROCEDURE_S) call_type = "Procedure";
-         else call_type = "Rule";
+      if(type == RULE_S) call_type = "Rule";
 
       if(symbol_list == NULL) {
 	 print_to_console("Error: %s %s called but not declared.\n",
@@ -525,24 +531,23 @@ void validateCall(string const name, GHashTable *table, string const scope,
          abort_compilation = true;
       }
       else {
-	 /* Keep track of the symbol currently being looked at */
+	 /* Point to the first symbol in symbol_list. */
          Symbol *current_sym = (Symbol*)(symbol_list->data);
                 
          /* Iterate through the symbol list while the current symbol does not
-	  * have type <type> or does not have an appropriate scope. 
+	  * have type <type> or does not have appropriate scope. 
 	  *
-	  * If the end of the list is reached, then no symbol exists with
-          * the appropriate scope and call type. We must print an error and 
-          * exit the loop.
+	  * If the end of the list is reached, then no symbol exists with the
+          * appropriate scope and call type. Print an error and exit the loop.
 	  *
-	  * Otherwise, an appropriate symbol does exist. Thus the loop will 
-	  * break when this symbol is reached, before the end of the list.
-	  * Nothing else needs to be done as the call is valid.
+	  * Otherwise, an appropriate symbol does exist. The loop breaks when
+          * this symbol is reached, before the end of the list. Nothing more
+	  * needs to be done as the call is valid.
 	  */
 
-         while( current_sym->type != type ||
-	        ( strcmp(current_sym->scope,scope) && 
-                  strcmp(current_sym->scope,"Global") ) )	       
+         while( current_sym->type != type 
+	        || ( strcmp(current_sym->scope,scope) && 
+                     strcmp(current_sym->scope,"Global") ) )	       
 	 {
             /* Check if the end of the list has been reached */
             if(symbol_list->next == NULL) {
@@ -556,7 +561,7 @@ void validateCall(string const name, GHashTable *table, string const scope,
 
                break;
             }
-            /* Update current_symbol to point to the next symbol */
+            /* Update current_symbol to point to the next symbol. */
             else current_sym = (Symbol*)(symbol_list->next->data);             
          }
       }
@@ -573,7 +578,10 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
    List *variable_list = rule->variables;
 
-   /* Variables to count how many times each type is encountered. */
+   /* Variables to count how many times each type is encountered. Only the 
+    * variables in the first declaration list for a type are added to the
+    * symbol table. Subsequent declaration lists for the same type are 
+    * ignored and a warning is printed to the log file. */
    int integer_count = 0, string_count = 0, atom_count = 0, list_count = 0;
 
    while(variable_list) {
@@ -672,7 +680,7 @@ void enterVariables(SymbolType const type, List * variables,
  
       string variable_name = strdup(variables->value.variable_name);	   
       GSList *symbol_list = g_hash_table_lookup(table, variable_name);
-      /* symbol_list is preserved as a new symbol will be prepended to it */
+      /* symbol_list is preserved as a new symbol is prepended to it */
       GSList *iterator = symbol_list;
 
       bool add_variable = true;
@@ -711,7 +719,6 @@ void enterVariables(SymbolType const type, List * variables,
          var_symbol->scope = strdup(scope);
          var_symbol->containing_rule = strdup(rule_name);
          var_symbol->is_var = true;      
-         /* This flag is set in gpListScan if called with side 'l' */
          var_symbol->in_lhs = false;
          var_symbol->wildcard = false;
 
@@ -740,12 +747,6 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
    SymbolType node_type, edge_type;
    string graph_type = NULL;
 
-   /* symbol_list is used to store symbol lists from the symbol table.
-    * It is assigned the existing symbol list for a particular key.
-    * If a new symbol needs to be added to the list, symbol_list is assigned
-    * the new list after a call to g_slist_prepend. symbol_list is then
-    * passed to g_hash_table_insert.
-    */
    GSList *symbol_list = NULL;
  
    if(side == 'l') {
@@ -767,8 +768,8 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
    while(node_list) {
 
       /* node_id is used as a key, so it is duplicated as node_id will be freed
-       * by g_hash_table_insert, and we don't want to free the node->name in
-       * the AST as well. */
+       * by g_hash_table_insert. I do not want to also free the node->name in
+       * the AST. */
       string node_id = strdup(node_list->value.node->name);
       symbol_list = g_hash_table_lookup(table, node_id);
       /* symbol_list is preserved as a new symbol will be prepended to it */
@@ -835,9 +836,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          node_list->value.node->label->mark == CYAN) {
  
          /* The current node has just been prepended to the symbol list.
-          * Hence the first entry in the symbol list is this RHS node. 
-          * The corresponding LHS node is to be located, hence search
-          * might as well start at the second element in the symbol list.
+          * Hence the first entry in the symbol list is an RHS node. 
+          * The corresponding LHS node is to be located. Therefore I start
+          * the saerch at the second element in the symbol list.
           */
          iterator = symbol_list->next;
 
@@ -891,8 +892,8 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
    while(edge_list) {
 
       /* edge_id is used as a key, so it is duplicated as edge_id will be freed
-       * by g_hash_table_insert, and we don't want to free the edge->name in
-       * the AST as well. */
+       * by g_hash_table_insert. I do not also want to free the edge->name in
+       * the AST. */
       string edge_id = strdup(edge_list->value.edge->name);
       string source_id = edge_list->value.edge->source;
       string target_id = edge_list->value.edge->target;
@@ -1091,7 +1092,8 @@ void interfaceScan(List * interface, GHashTable *table,
      string current_node_id = interface->value.node_id;
 
      /* g_slist_insert_sorted inserts elements and maintains lexicographic
-      * order of its elements with use of the function strcmp.
+      * order of its elements with use of the function strcmp. This makes
+      * checking for duplicate nodes easier.
       */
      interface_ids = g_slist_insert_sorted(interface_ids, current_node_id,
 		                           (GCompareFunc)strcmp);
@@ -1204,8 +1206,7 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
       }
 
       /* For an edge predicate, the source and target node IDs must be present
-       * in the LHS of the rule, and the optional label argument is also 
-       * scanned.
+       * in the LHS of the rule. The optional label argument is also scanned.
        */
 
       case EDGE_PRED:
@@ -1245,8 +1246,7 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
 
            in_lhs = false;
 
-           /* Same again, but for the target node. This pattern occurs
-            * so much that I shall modularise it somehow. */
+
 
            node_list = g_hash_table_lookup(table, 
                        condition->value.edge_pred.target);
@@ -1343,7 +1343,7 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
       }
 }
 
-
+/* Variables used by gpListScan and AtomicExpScan. */
 static int list_var_count = 0;
 static int string_var_count = 0;
 static bool lhs_arithmetic_exp = false;
@@ -1507,8 +1507,8 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
       case VARIABLE:
 
       {
-           /* var_list is pointed to the start of the symbol list whose key
-            * is equal to the name of the variable in question.
+           /* var_list is pointed to the symbol_list of symbols with the same
+            * identifier as the variable.
             */
 	   GSList *var_list = g_hash_table_lookup(table,atom_exp->value.name);           
            
@@ -1520,7 +1520,7 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
               
               /* Locate the variable with the appropriate scope and rule 
                * name. If it exists, there is only one, as duplicates are 
-               * erroneous and are not entered into the symbol table.
+               * erroneous and not entered into the symbol table.
                */
               if(current_var->is_var &&
                  !strcmp(current_var->scope,scope) &&

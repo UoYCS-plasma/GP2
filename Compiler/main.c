@@ -32,16 +32,21 @@
 #define DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
 #define DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
 #define PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
-#define DRAW_HOST_GRAPH_AST 	/* Call printGraph after second yyparse. */
+#define DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
+                                   yyparse. */
 
-/* Macros to control which parser is used. */
+
+/* The Bison parser has two separate grammars. The grammar that is parsed is 
+ * determined by the first token it receives. If Bison receives GP_PROGRAM
+ * then it will parse using the grammar for GP2 programs. If Bison receives
+ * GP_GRAPH then it will parse using the grammar for GP2 host graphs.
+ * The variable parse_target is passed to the lexer which in turn sends
+ * the appropriate token to the parser. 
+ */ 
+
 #define GP_PROGRAM 1 		
 #define GP_GRAPH 2	
-	
-int parse_target = 0; /* Assigned GP_PROGRAM or GP_GRAPH. This variable is 
-		       * passed to the lexer to trigger parsing of the GP 
-                       * program grammar or the host graph grammar. 
-                       */
+int parse_target = 0; 
 
 FILE *log_file;  /* File to contain verbose errors for developers */
 string file_name = NULL; /* The name of the file being parsed */
@@ -91,11 +96,11 @@ int main(int argc, char** argv) {
   }
 
   #ifdef PARSER_TRACE
-     yydebug = 1; /* When yydebug is set to 1, Bison generates a trace of its 
-                   * parse to stderr. */
+  yydebug = 1; /* When yydebug is set to 1, Bison outputs a trace of its 
+                * parse to stderr. */
   #endif
 
-  /* Tell Bison to parse with the GP Program Grammar */
+  /* Bison parses with the GP2 program grammar */
   parse_target = GP_PROGRAM;
 
   printf("\nProcessing %s...\n\n", file_name);
@@ -119,7 +124,7 @@ int main(int argc, char** argv) {
 
   file_name = argv[2];
 
-  /* Tell Bison to parse with the Host Graph Grammar */
+  /* Bison parses with the host graph grammar */
   parse_target = GP_GRAPH;
 
   printf("\nProcessing %s...\n\n", file_name);
@@ -138,8 +143,8 @@ int main(int argc, char** argv) {
   /* The lexer and parser set the abort_scan flag if a syntax error is
    * encountered. */
 
-  if(!abort_scan) {
-
+  if(abort_scan) abort_compilation = true; 
+  else {
     /* Reverse the global declaration list at the top of the generated AST. */
     gp_program = reverse(gp_program);
 
@@ -150,8 +155,8 @@ int main(int argc, char** argv) {
      * free is the function called by glib to free keys during hash table
      * insertions and in the g_hash_table_destroy function.
      * The fourth argument is a function to free values. I do this manually
-     * with the function freeSymbolList defined in seman.c.
-     * Thus I do not pass a value-freeing function to g_hash_table_new_full.
+     * with the function freeSymbolList defined in seman.c: I do not pass a 
+     * value-freeing function to g_hash_table_new_full.
      */
     gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);    
 
@@ -160,9 +165,9 @@ int main(int argc, char** argv) {
      */
     abort_scan = declarationScan(gp_program, gp_symbol_table, "Global");
   }
-  else abort_compilation = true;
     
-  if(!abort_scan) {
+  if(abort_scan) abort_compilation = true;
+  else {
      /* semanticCheck is defined in seman.c. It returns true if there is a
       * semantic error.
       */
@@ -181,7 +186,6 @@ int main(int argc, char** argv) {
         printSymbolTable(gp_symbol_table, argv[1]); /* Defined in pretty.c */
      #endif
   }
-  else abort_compilation = true;
 
   if(!abort_compilation) print_to_console("Proceed with code generation.\n"); 
   else print_to_console("\nBuild aborted. Please consult the file %s.log for "

@@ -6,7 +6,7 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#include "ast.h" /* AST struct definitions */
+#include "ast.h" 
 
 List *addDecl (ListType list_type, YYLTYPE location, GPDeclaration *declaration,
 	       List *next)
@@ -18,8 +18,8 @@ List *addDecl (ListType list_type, YYLTYPE location, GPDeclaration *declaration,
       exit(0);
     }
 
-    new_decl->list_type = list_type; 
     /* list_type: GLOBAL_DECLARATIONS, LOCAL_DECLARATIONS */
+    new_decl->list_type = list_type; 
     new_decl->location = location;
     new_decl->value.declaration = declaration;
     new_decl->next = next;
@@ -71,9 +71,9 @@ List *addVariableDecl (ListType list_type, YYLTYPE location, List *variables,
       exit(0);
     }
 
-    new_var_decl->list_type = list_type; 
     /* list_type: INT_DECLARATIONS, CHAR_DECLARATIONS, STRING_DECLARATIONS, 
      * ATOM_DECLARATIONS, LIST_DECLARATIONS */
+    new_var_decl->list_type = list_type; 
     new_var_decl->location = location;
     new_var_decl->value.variables = variables;
     new_var_decl->next = next;
@@ -308,8 +308,8 @@ GPStatement *newCondBranch(StatementType statement_type, YYLTYPE location,
       exit(0);
     }
 
-    stmt->statement_type = statement_type; 
     /* statement_type: IF_STATEMENT, TRY_STATEMENT */
+    stmt->statement_type = statement_type; 
     stmt->location = location;
     stmt->value.cond_branch.condition = condition;
     stmt->value.cond_branch.then_stmt = then_stmt;
@@ -393,8 +393,8 @@ GPCondExp *newSubtypePred (CondExpType exp_type, YYLTYPE location, string var)
        exit(0);
      }
 
-     cond->exp_type = exp_type; 
      /* exp_type: INT_CHECK, STRING_CHECK, ATOM_CHECK */
+     cond->exp_type = exp_type; 
      cond->location = location;
      cond->value.var = strdup(var);
 
@@ -430,8 +430,8 @@ GPCondExp *newListComparison (CondExpType exp_type, YYLTYPE location,
        exit(0);
      }
 
-     cond->exp_type = exp_type; 
      /* exp_type: EQUAL, NOT_EQUAL */
+     cond->exp_type = exp_type; 
      cond->location = location;
      cond->value.list_cmp.left_list = left_list;
      cond->value.list_cmp.right_list = right_list;
@@ -450,8 +450,8 @@ GPCondExp *newAtomComparison (CondExpType exp_type, YYLTYPE location,
        exit(0);
      }
 
-     cond->exp_type = exp_type; 
      /* exp_type: GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
+     cond->exp_type = exp_type; 
      cond->location = location;
      cond->value.atom_cmp.left_exp = left_exp;
      cond->value.atom_cmp.right_exp = right_exp;
@@ -486,8 +486,8 @@ GPCondExp *newBinaryExp (CondExpType exp_type, YYLTYPE location,
        exit(0);
      }
 
-     cond->exp_type = exp_type; 
      /* exp_type: OR, AND */
+     cond->exp_type = exp_type; 
      cond->location = location;
      cond->value.bin_exp.left_exp = left_exp;
      cond->value.bin_exp.right_exp = right_exp;
@@ -575,8 +575,8 @@ GPAtomicExp *newDegreeOp (AtomExpType exp_type, YYLTYPE location, string node_id
        exit(0);
      }
 
-     atom->exp_type = exp_type; 
      /* exp_type: INDEGREE, OUTDEGREE */
+     atom->exp_type = exp_type; 
      atom->location = location;
      atom->value.node_id = strdup(node_id);
 
@@ -640,8 +640,8 @@ GPAtomicExp *newBinaryOp (AtomExpType exp_type, YYLTYPE location, GPAtomicExp *l
        exit(0);
      }
 
-     atom->exp_type = exp_type; 
      /* exp_type: ADD, SUBTRACT, MULTIPLE, DIVIDE, CONCAT */
+     atom->exp_type = exp_type; 
      atom->location = location;
      atom->value.bin_op.left_exp = left_exp;
      atom->value.bin_op.right_exp = right_exp;

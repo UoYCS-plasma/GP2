@@ -21,7 +21,7 @@
 
 
 /* GP2 symbols are stored in struct Symbol. These are values of the
- * symbol table; the symbol's identifier, namely the identifier in GP2,
+ * symbol table. The symbol's identifier, namely the identifier in GP2,
  * is the symbol's hash key.
  *
  * GP2's symbols are as follows:
@@ -33,9 +33,10 @@
  *
  * The Symbol structure contains the following:
  *
- * Type: A variable's type is its GP2 type according to its declaration in a
- *       rule. The type of a node or edge is determined by which side of the
- *       rule it occurs in. This is required for semantic analysis.
+ * Type: A variable symbol's type is the variable's GP2 type according to its 
+ *       declaration in a rule. The type of a node or edge is determined by 
+ *       which side of the rule it occurs in. This is required for semantic
+ *       analysis.
  *
  * Scope: The procedure in which the symbol is visible. Either "Global" or the
  *        name of a procedure in the program. All symbols have a scope.
@@ -47,7 +48,7 @@
  * 
  * Flags: is_var is set to true if the symbol represents a GP variable. This
  *        is for more concise code: better to compare to a single bool than to
- *        compare with each of the variable types.
+ *        compare with each of the individual variable types.
  *
  *        in_lhs is set to true if the symbol has type variable and occurs in
  *        the LHS of a rule. Set to false in all other cases. 
@@ -158,12 +159,11 @@ void freeSymbolList(gpointer key, gpointer value, gpointer data);
  * Argument 3: The scope of the declaration list the function is traversing.
  *             This is either "Main" (initial value) or a procedure name.
  *
- * declarationScan performs semantic checking. It searches for name 
- * clashes: two procedures declared with the same name, or two rules
- * declared with the same name in the same scope. If a name clash
- * is found, the function reports an error and returns true. This
- * informs main.c to terminate semantic checking. It also checks
- * that there is exactly one Main declaration.
+ * declarationScan performs semantic checking. It searches for name clashes:
+ * two procedures declared with the same name, or two rules declared with the
+ * same name in the same scope. If a name clash is found, the function reports
+ * error and returns true. This informs main.c to terminate semantic checking. 
+ * It also checks that there is exactly one Main declaration.
  */
 
 bool declarationScan(List * ast, GHashTable *table, string const scope);
@@ -199,7 +199,10 @@ bool semanticCheck(List * declarations, GHashTable *table, string const scope);
  */
 
 
-void statementScan(GPStatement * const statement, GHashTable *table, string const scope);
+void statementScan(GPStatement * const statement, GHashTable *table, 
+                   string const scope);
+
+
 
 /* validateCall searches the symbol list with key <name> for a symbol with
  * the same type whose scope is either Global or <scope>. Called by 

@@ -6,7 +6,7 @@ CFLAGS = -g -Wall -Wextra -I/local/d0p6/chrisbak/root/include/glib-2.0 -I/local/
 LFLAGS = -lglib-2.0
 
 
-# Builds executable gpparse, runs it on extensionless files and generates AST images.
+# Builds executable gpparse and uns it on extensionless files.
 # Usage: make F1=<program_filename> F2=<graph_filename>
 default:        $(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
@@ -26,7 +26,7 @@ gpparser.tab.c gpparser.tab.h: gpparser.y ast.h
 lex.yy.o: 	lex.yy.c 
 		$(CC) $(CFLAGS) -c lex.yy.c
 
-lex.yy.c:	gplexer.lex gpparser.tab.h 
+lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
 		flex gplexer.lex
 
 main.o:         main.c pretty.h ast.h seman.h

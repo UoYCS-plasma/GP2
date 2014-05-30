@@ -136,7 +136,7 @@ string symbolTypeToString(SymbolType type)
  * edges labelled 'value' and 'next'. 
  */ 
 
-
+static unsigned int next_node_id = 1;
 
 int printDotAST(List *const gp_ast, string file_name)
 {
@@ -166,7 +166,8 @@ int printDotAST(List *const gp_ast, string file_name)
      print_to_dot_file("node0[shape=plaintext,label=\"ROOT\"]\n");
      print_to_dot_file("node0->node1\n");
 
-     printList(gp_ast,dot_file,1);
+     next_node_id = 1;   
+     printList(gp_ast,dot_file);
 
      print_to_dot_file("}\n\n");
 
@@ -200,12 +201,13 @@ int printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
      print_to_dot_file("digraph g { \n");
 
      /* Print the entry point of the AST. node1 will be the first 
-      * node created by printList. */
+      * node created by printGraph. */
 
      print_to_dot_file("node0[shape=plaintext,label=\"ROOT\"]\n");
      print_to_dot_file("node0->node1\n");
 
-     printGraph(host_graph_ast,dot_file,1);
+     next_node_id = 1;
+     printGraph(host_graph_ast,dot_file);
 
      print_to_dot_file("}\n\n");
 
@@ -219,19 +221,19 @@ int printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
 /* printList is a recursive function that prints the nodes and edges
  * of its AST argument to the .dot file created by printDotAST.
  *
- * Unique node names are generated with the variable next_node_id. 
- * On the initial call, printList (or printGraph when printing host graphs)
- * is called with next_node_id 1. 
- * A new AST node is reached whenever a printX function is called through the 
- * prettyPrint macros. Hence each printX function will assign next_node_id
- * to the node_id of the current AST node and increment next_node_id.
+ * Unique node names are generated with the global variable next_node_id. 
+ * A new AST node is reached whenever a printing function is called through the 
+ * prettyPrint macros. Hence the first operation of each printing function is 
+ * the assignment of next_node_id to the node_id of the AST node being examined.
+ * next_node_id is then incremented in preparation for printing a new node in
+ * the .dot file.
  *
  * These functions make frequent use of the macros prettyPrint,
- * prettyPrintList and LOCATION_ARGS. They are defined and described in the 
- * header file.
+ * prettyPrintList and LOCATION_ARGS. They are defined in the header file. 
  */
 
-void printList(List * const list, FILE *dot_file, unsigned int next_node_id)
+
+void printList(List * const list, FILE *dot_file)
 {
 
      switch(list->list_type) {
@@ -541,7 +543,7 @@ void printList(List * const list, FILE *dot_file, unsigned int next_node_id)
 
 
 
-void printDeclaration(GPDeclaration * const decl, FILE *dot_file, unsigned int next_node_id)
+void printDeclaration(GPDeclaration * const decl, FILE *dot_file)
 {
      switch(decl->decl_type) {
 
@@ -604,7 +606,7 @@ void printDeclaration(GPDeclaration * const decl, FILE *dot_file, unsigned int n
 
 
 
-void printStatement(GPStatement * const stmt, FILE *dot_file, unsigned int next_node_id)
+void printStatement(GPStatement * const stmt, FILE *dot_file)
 {
      switch(stmt->statement_type) {
 
@@ -814,7 +816,7 @@ void printStatement(GPStatement * const stmt, FILE *dot_file, unsigned int next_
 
 
 
-void printCondition(GPCondExp * const cond, FILE *dot_file, unsigned int next_node_id)
+void printCondition(GPCondExp * const cond, FILE *dot_file)
 {
      switch(cond->exp_type) {
 
@@ -1141,7 +1143,7 @@ void printCondition(GPCondExp * const cond, FILE *dot_file, unsigned int next_no
 
 
 
-void printAtom(GPAtomicExp * const atom, FILE *dot_file, unsigned int next_node_id)
+void printAtom(GPAtomicExp * const atom, FILE *dot_file)
 {
      switch(atom->exp_type) {
 
@@ -1440,7 +1442,7 @@ void printAtom(GPAtomicExp * const atom, FILE *dot_file, unsigned int next_node_
 
 
 
-void printProcedure(GPProcedure * const proc, FILE *dot_file, unsigned int next_node_id)
+void printProcedure(GPProcedure * const proc, FILE *dot_file)
 {
      proc->node_id = next_node_id;
      next_node_id += 1;
@@ -1469,7 +1471,7 @@ void printProcedure(GPProcedure * const proc, FILE *dot_file, unsigned int next_
 
 
 
-void printRule(GPRule * const rule, FILE *dot_file, unsigned int next_node_id)
+void printRule(GPRule * const rule, FILE *dot_file)
 {
      rule->node_id = next_node_id;
      next_node_id += 1;
@@ -1518,14 +1520,13 @@ void printRule(GPRule * const rule, FILE *dot_file, unsigned int next_node_id)
      else {                                                            
         print_to_dot_file("node%d->node%d[label=\"condition\"]\n",            
                           rule->node_id, next_node_id);                           
-        printCondition(rule->condition, dot_file, next_node_id);                                        
+        printCondition(rule->condition, dot_file);                                        
      }  
 }
 
 
 
-void printGraph(GPGraph * const graph, FILE *dot_file, 
-                unsigned int next_node_id)
+void printGraph(GPGraph * const graph, FILE *dot_file)
 {
      graph->node_id = next_node_id;
      next_node_id += 1;
@@ -1546,7 +1547,7 @@ void printGraph(GPGraph * const graph, FILE *dot_file,
 
 
 
-void printNode(GPNode * const node, FILE *dot_file, unsigned int next_node_id)
+void printNode(GPNode * const node, FILE *dot_file)
 {
      node->node_id = next_node_id;
      next_node_id += 1;
@@ -1581,7 +1582,7 @@ void printNode(GPNode * const node, FILE *dot_file, unsigned int next_node_id)
 
 
 
-void printEdge(GPEdge * const edge, FILE *dot_file, unsigned int next_node_id)
+void printEdge(GPEdge * const edge, FILE *dot_file)
 {
      edge->node_id = next_node_id;
      next_node_id += 1;
@@ -1625,7 +1626,7 @@ void printEdge(GPEdge * const edge, FILE *dot_file, unsigned int next_node_id)
 }
 
 
-void printPosition(GPPos * const pos, FILE *dot_file, unsigned int next_node_id)
+void printPosition(GPPos * const pos, FILE *dot_file)
 {
      pos->node_id = next_node_id;
      next_node_id += 1;
@@ -1637,7 +1638,7 @@ void printPosition(GPPos * const pos, FILE *dot_file, unsigned int next_node_id)
 }
 
 
-void printLabel(GPLabel * const label, FILE *dot_file, unsigned int next_node_id)
+void printLabel(GPLabel * const label, FILE *dot_file)
 {
      label->node_id = next_node_id;
      next_node_id += 1;
