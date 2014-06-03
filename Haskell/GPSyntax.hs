@@ -16,67 +16,67 @@ gpHostColours = [
     ("green", Green),
     ("blue", Blue), 
     ("grey", Grey),
---  ("cyan", Cyan),
     ("dashed", Dashed) ]
 
-gpColours :: [ (String, Colour) ]
-gpColours = ("cyan", Cyan) : gpHostColours
+gpRuleColours :: [ (String, Colour) ]
+gpRuleColours = ("cyan", Cyan) : gpHostColours
 
 gpKeywords :: [String]
-gpKeywords = map fst gpColours ++
+gpKeywords = map fst gpHostColours ++
              ["main", "if", "try", "then", "else", "or", "skip", 
-	      "fail", "int", "char", "string", "atom", "list",
+              "fail", "int", "char", "string", "atom", "list",
               "interface", "where", "injective", "true", "false",
               "and", "not", "edge", "empty", "indeg", "outdeg",
               "slength", "llength"]
 
-data GPNode = GPHostNode Boolean String GPHostLabel
-            | GPRuleNode Boolean String GPLabel
+-- Identifier for nodes
+type Id = String
+
+-- Top-leve node type
+data HostNode = HostNode Id Bool HostLabel
+data RuleNode = RuleNode Id Bool RuleLabel
 
 -- Host graph labels are lists of constants.
-type GPHostGraph = Graph GPHostLabel
-data GPHostLabel = GPHostLabel GPHostList Colour HostNodeId Boolean deriving (Eq, Show)
-type GPHostList = [HostAtom]
+type HostGraph = Graph HostNode HostLabel
+data HostLabel = HostLabel [HostAtom] Colour deriving (Eq, Show)
 data HostAtom = Int Int
-	      | Str String 
-	      | Chr Char deriving (Eq, Show)
+              | Str String 
+              | Chr Char deriving (Eq, Show)
 
 -- Rule graph labels are lists of expressions.
-type GPRuleGraph = ( [Condition], Graph GPLabel)
-data GPLabel = GPLabel GPList Colour 
-type GPList = [Atom]
+data RuleGraph = RuleGraph (Graph RuleNode RuleLabel) [Condition]
+data RuleLabel = RuleLabel [RuleAtom] Colour 
+
+data RuleAtom = Var Variable 
+              | Val HostAtom
+              | Indeg Id
+              | Outdeg Id
+              | Llength [RuleAtom]
+              | Slength [RuleAtom]
+              | Neg RuleAtom
+              | Plus RuleAtom RuleAtom
+              | Minus RuleAtom RuleAtom
+              | Times RuleAtom RuleAtom
+              | Div RuleAtom RuleAtom
+              | Concat RuleAtom RuleAtom
 
 type Variable = String
-type HostNodeId = String
-type RuleNodeId = String
 
 -- TODO: precedence of infix binary operators
 -- Is it possible to do BinOp Atom Atom and
 -- data BinOp = Plus | Min | ... ?
-data Atom = Var Variable 
-          | Val HostAtom
-	  | Indeg RuleNodeId
-	  | Outdeg RuleNodeId
-          | Llength GPList
-          | Slength GPList
-          | Neg Atom
-	  | Plus Atom Atom
-	  | Minus Atom Atom
-	  | Times Atom Atom
-	  | Div Atom Atom
-	  | Concat Atom Atom
 
 data Condition = TestInt Variable
                | TestChar Variable
                | TestStr Variable
                | TestAtom Variable
-	       | Edge RuleNodeId RuleNodeId GPLabel
-               | Eq GPList GPList
-               | NEq GPList GPList
-               | Greater Atom Atom
-               | GreaterEq Atom Atom
-               | Less Atom Atom
-               | LessEq Atom Atom
+               | Edge Id Id RuleLabel
+               | Eq [RuleAtom] [RuleAtom]
+               | NEq [RuleAtom] [RuleAtom]
+               | Greater RuleAtom RuleAtom
+               | GreaterEq RuleAtom RuleAtom
+               | Less RuleAtom RuleAtom
+               | LessEq RuleAtom RuleAtom
                | Not Condition
                | Or Condition Condition
                | And Condition Condition

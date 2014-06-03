@@ -24,48 +24,48 @@ gptype = keyword "int" <|> keyword "char" <|> keyword "string" <|>
 --graphs :: Parser (Graph, Graph)
 --graphs = gpGraph <*> keyword "=>" |> gpGraph
 
-interface :: Parser [RuleNodeId]
+interface :: Parser [Id]
 interface = keyword "interface" |> keyword "=" |> keyword "{" 
          |> pure (:) <*> lowerIdent <*> maybeSome interfaceNodes 
          <| keyword "}"
 
-interfaceNodes :: Parser RuleNodeId
+interfaceNodes :: Parser Id
 interfaceNodes = keyword "," |> lowerIdent 
 
 --gpGraph :: Parser GPRuleGraph
 --gpGraph = keyword "[" |> gpNodeList <*> gpEdgeList <| keyword "]"
 
-gpNodeList :: Parser [(String, String, GPLabel)]
+gpNodeList :: Parser [(String, String, RuleLabel)]
 gpNodeList = atLeastOne gpNode
 
 -- A node is a triple (Node ID, Root Node, Node Label)
 -- The second component is "(R)" if root node, [] otherwise.
-gpNode :: Parser (String, String, GPLabel)
+gpNode :: Parser (String, String, RuleLabel)
 gpNode = keyword "(" |> pure (,,) <*> (label <| keyword ",") <*> (pure concat <*> maybeOne root) <*> gpLabel <| keyword ")"
 
-gpEdgeList :: Parser [((String, String), GPLabel)]
+gpEdgeList :: Parser [((String, String), RuleLabel)]
 gpEdgeList = keyword "|" |> maybeSome gpEdge
 
-gpEdge :: Parser ((String, String), GPLabel)
+gpEdge :: Parser ((String, String), RuleLabel)
 gpEdge = keyword "(" |> pure (,) <*> endPoints <*> gpLabel <| keyword ")"
 
 
-gpLabel :: Parser GPLabel
-gpLabel = pure GPLabel <*> gpList <*> ruleColour
+gpLabel :: Parser RuleLabel
+gpLabel = pure RuleLabel <*> gpList <*> ruleColour
 
 -- This feels like an awful hack, but otherwise I do not know how
 -- to write a parser that generates the empty list upon reading
 -- the string "empty".
-gpList :: Parser GPList
+gpList :: Parser [RuleAtom]
 gpList = pure f <*> empty <|> atLeastOne gpAtom
   where f "empty" = []
 
-gpAtom :: Parser Atom
+gpAtom :: Parser RuleAtom
 gpAtom = atom
      <|> keyword ":" |> atom
 	 
 
-atom :: Parser Atom
+atom :: Parser RuleAtom
 atom = pure Var <*> lowerIdent
    <|> pure Val <*> value
    <|> keyword "indeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
@@ -84,7 +84,7 @@ ruleColour :: Parser Colour
 ruleColour = keyword "#" |> pure col <*> label
      <|> pure Uncoloured
  where
-     col c = fromJust $ lookup c gpColours
+     col c = fromJust $ lookup c gpRuleColours
 
 -- edge rule not working because of the maybeOne.
 condition :: Parser Condition

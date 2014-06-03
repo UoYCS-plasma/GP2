@@ -12,13 +12,13 @@ testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 -- gpHostGraph :: Parser GPHostGraph
 -- gpHostGraph = keyword "[" |> gpHostNodeList <*> gpHostEdgeList <| keyword "]"
 
-gpHostGraph str = 
+{-gpHostGraph str = 
     where
         ( str', nodes ) = gpHostNodeList str
-        edges = snd $ gpHostEdgeList str'
+        edges = snd $ gpHostEdgeList str' -}
 
 
-gpHostNodeList :: Parser [(String, String, GPHostLabel)]
+gpHostNodeList :: Parser [HostNode]
 gpHostNodeList = atLeastOne gpHostNode
 
 -- Old rule does not keep NodeID
@@ -27,19 +27,19 @@ gpHostNodeList = atLeastOne gpHostNode
 
 -- A node is a triple (Node ID, Root Node, Node Label)
 -- The second component is "(R)" if root node, [] otherwise.
-gpHostNode :: Parser (String, String, GPHostLabel)
-gpHostNode = keyword "(" |> pure (,,) <*> (label <| keyword ",") <*>
-             (pure concat <*> maybeOne root) <*> 
+gpHostNode :: Parser HostNode
+gpHostNode = keyword "(" |> pure HostNode <*> (label <| keyword ",") <*>
+             (pure (not.null) <*> maybeOne root) <*> 
              gpHostLabel <| keyword ")"
 
-gpHostEdgeList :: Parser [((String, String), GPHostLabel)]
+gpHostEdgeList :: Parser [((String, String), HostLabel)]
 gpHostEdgeList = keyword "|" |> maybeSome gpHostEdge
 
-gpHostEdge :: Parser ((String, String), GPHostLabel)
+gpHostEdge :: Parser ((String, String), HostLabel)
 gpHostEdge = keyword "(" |> pure (,) <*> endPoints <*> gpHostLabel <| keyword ")"
 
-gpHostLabel :: Parser GPHostLabel
-gpHostLabel = pure GPHostLabel <*> (pure (:) <*> value <*> maybeSome gpHostAtom) <*> hostColour
+gpHostLabel :: Parser HostLabel
+gpHostLabel = pure HostLabel <*> (pure (:) <*> value <*> maybeSome gpHostAtom) <*> hostColour
 
 -- TODO: this allows leading ":" char, which is not permitted by GP2 syntax!
 -- gpHostAtom :: Parser HostAtom
@@ -54,7 +54,7 @@ gpHostAtom = keyword ":" |> value
 -- This feels like an awful hack, but otherwise I do not know how
 -- to write a parser that generates the empty list upon reading
 -- the string "empty".
-gpHostList :: Parser GPHostList
+gpHostList :: Parser [HostAtom]
 gpHostList = pure f <*> empty <|> maybeSome gpHostAtom
   where f "empty" = []
 
