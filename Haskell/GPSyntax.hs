@@ -30,16 +30,19 @@ gpKeywords = map fst gpColours ++
               "and", "not", "edge", "empty", "indeg", "outdeg",
               "slength", "llength"]
 
+data GPNode = GPHostNode Boolean String GPHostLabel
+            | GPRuleNode Boolean String GPLabel
+
 -- Host graph labels are lists of constants.
 type GPHostGraph = Graph GPHostLabel
-data GPHostLabel = GPHostLabel GPHostList Colour deriving (Eq, Show)
+data GPHostLabel = GPHostLabel GPHostList Colour HostNodeId Boolean deriving (Eq, Show)
 type GPHostList = [HostAtom]
 data HostAtom = Int Int
 	      | Str String 
 	      | Chr Char deriving (Eq, Show)
 
 -- Rule graph labels are lists of expressions.
-type GPRuleGraph = Graph GPLabel
+type GPRuleGraph = ( [Condition], Graph GPLabel)
 data GPLabel = GPLabel GPList Colour 
 type GPList = [Atom]
 

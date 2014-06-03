@@ -12,8 +12,8 @@ import ExAr
 import Data.Maybe
 
 class Pretty a
-instance Pretty (Graph a) where
-pretty :: Show a => Graph a -> String
+instance Pretty (Graph a b) where
+pretty :: (Show a, Show b) => Graph a b -> String
 pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
     where
         gvHeader = "digraph {\n"
@@ -28,10 +28,10 @@ pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
 
 
 -- labelled graphs
-data Graph a = Graph (ExAr (Node a)) (ExAr (Edge a)) deriving Show
+data Graph a b = Graph (ExAr (Node a)) (ExAr (Edge b))
 
 -- intended data invariant for Graph values
-invGraph :: Graph a -> Bool
+invGraph :: Graph a b -> Bool
 invGraph (Graph ns es)  =  null $ findAll invalidEdge es
   where
   d  =  domain ns
@@ -43,65 +43,65 @@ newtype EdgeId = E Int deriving (Eq, Show)
 data Node a = Node a               deriving Show
 data Edge a = Edge NodeId NodeId a deriving Show
  
-emptyGraph :: Graph a
+emptyGraph :: Graph a b
 emptyGraph  =  Graph empty empty
 
-newNode :: Graph a -> a -> (Graph a, NodeId)
+newNode :: Graph a b -> a -> (Graph a b, NodeId)
 newNode (Graph ns es) x  =  (Graph ns' es, N i)
   where
   (ns', i)  =  extend ns (Node x)
 
-newEdge :: Graph a -> NodeId -> NodeId -> a -> (Graph a, EdgeId)
+newEdge :: Graph a b -> NodeId -> NodeId -> b -> (Graph a b, EdgeId)
 newEdge (Graph ns es) n1 n2 x  =  (Graph ns es', E i)
   where
   (es', i)  =  extend es (Edge n1 n2 x)
 
-allNodes :: Graph a -> [NodeId]
+allNodes :: Graph a b -> [NodeId]
 allNodes (Graph ns _)  =  map N (domain ns)
 
-allEdges :: Graph a -> [EdgeId]
+allEdges :: Graph a b -> [EdgeId]
 allEdges (Graph _ es) = map E (domain es)
 
-outEdges :: Graph a -> NodeId -> [EdgeId]
+outEdges :: Graph a b -> NodeId -> [EdgeId]
 outEdges (Graph _ es) n  =  map E $ findAll (\(Edge n1 _ _) -> n1 == n) es
 
-inEdges :: Graph a -> NodeId -> [EdgeId]
+inEdges :: Graph a b -> NodeId -> [EdgeId]
 inEdges (Graph _ es) n  =  map E $ findAll (\(Edge _ n2 _) -> n2 == n) es
 
-source :: Graph a -> EdgeId -> Maybe NodeId
+source :: Graph a b -> EdgeId -> Maybe NodeId
 source (Graph _ es) (E i)  =
   maybe Nothing (\(Edge n1 _ _) -> Just n1) (lookup es i)
 
-target :: Graph a -> EdgeId -> Maybe NodeId
+target :: Graph a b -> EdgeId -> Maybe NodeId
 target (Graph _ es) (E i)  =
   maybe Nothing (\(Edge _ n2 _) -> Just n2) (lookup es i)
 
-nLabel :: Graph a -> NodeId -> Maybe a
+nLabel :: Graph a b -> NodeId -> Maybe a
 nLabel (Graph ns _) (N i)  =
   maybe Nothing (\(Node x) -> Just x) (lookup ns i)
 
-eLabel :: Graph a -> EdgeId -> Maybe a
+eLabel :: Graph a b -> EdgeId -> Maybe b
 eLabel (Graph _ es) (E i)  =
   maybe Nothing (\(Edge _ _ x) -> Just x) (lookup es i)
 
 -- removing a node also removes all edges with the node as source or target
-rmNode :: Graph a -> NodeId -> Graph a
+rmNode :: Graph a b -> NodeId -> Graph a b
 rmNode (Graph ns es) n@(N i)  =  Graph ns' es'
   where
   ns'  =  remove ns i
   es'  =  removeAll (\(Edge n1 n2 _) -> n1 == n || n2 == n) es
 
-rmEdge :: Graph a -> EdgeId -> Graph a
+rmEdge :: Graph a b -> EdgeId -> Graph a b
 rmEdge (Graph ns es) (E i)  =  Graph ns es'
   where
   es'  =  remove es i
 
-eReLabel :: Graph a -> EdgeId -> a -> Graph a
+eReLabel :: Graph a b -> EdgeId -> b -> Graph a b
 eReLabel (Graph ns es) (E i) x  =  Graph ns es'
   where
   es'  =  update (\(Edge n1 n2 _) -> Edge n1 n2 x) es i
 
-nReLabel :: Graph a -> NodeId -> a -> Graph a
+nReLabel :: Graph a b -> NodeId -> a -> Graph a b
 nReLabel (Graph ns es) (N i) x  =  Graph ns' es
   where
   ns'  =  update (\(Node _) -> Node x) ns i

@@ -9,8 +9,14 @@ import GPSyntax
 testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
 testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 
---gpHostGraph :: Parser GPHostGraph
---gpHostGraph = keyword "[" |> gpHostNodeList <*> gpHostEdgeList <| keyword "]"
+-- gpHostGraph :: Parser GPHostGraph
+-- gpHostGraph = keyword "[" |> gpHostNodeList <*> gpHostEdgeList <| keyword "]"
+
+gpHostGraph str = 
+    where
+        ( str', nodes ) = gpHostNodeList str
+        edges = snd $ gpHostEdgeList str'
+
 
 gpHostNodeList :: Parser [(String, String, GPHostLabel)]
 gpHostNodeList = atLeastOne gpHostNode

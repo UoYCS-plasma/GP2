@@ -45,7 +45,7 @@ type EdgeMatch = (GraphRuleEdgeId, GraphHostEdgeId)
 
 
 -- two nodes are equal if their labels are equal
-nodesMatch :: GPHostGraph -> GPRuleGraph -> HostNodeId -> RuleNodeId -> Bool
+nodesMatch :: GPHostGraph -> GPRuleGraph -> GraphHostNodeId -> GraphRuleNodeId -> Bool
 nodesMatch g r gn rn = nLabel g gn == nLabel r rn
 
 -- two edges are equal if their labels are equal AND the nodes on either end are equal
