@@ -144,7 +144,7 @@ label = token ( atLeastOne gpChar ) <| optSpaces
 
 identifier :: Parser Char -> Parser String
 identifier first = guarded g (pure (:) <*> first <*> maybeSome gpChar)
-  where g s = s `notElem` gpKeywords
+  where g s = s `notElem` keywords
 
 lowerIdent :: Parser String
 lowerIdent = identifier lower
@@ -154,9 +154,6 @@ upperIdent = identifier upper
 
 root :: Parser String
 root = keyword "(R)"
-
-empty :: Parser String
-empty = keyword "empty"
 
 parse :: Parser a -> String -> a
 parse p s =
