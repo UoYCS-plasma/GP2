@@ -6,6 +6,41 @@ gpNumChars, gpChars :: [Char]
 gpNumChars = ['0'..'9']
 gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , gpNumChars , ['_'] ]
 
+
+data GPProgram = Program [Declaration]
+
+data Declaration = MainDecl Main
+                 | ProcDecl Procedure
+                 | RuleDecl Rule
+
+data Main = Main CommandSequence
+
+data Procedure = Procedure String [LocalDecl] CommandSequence
+
+data LocalDecl = LocalRule Rule
+               | LocalProcedure Procedure
+
+data CommandSequence = ComSeq [Command]
+
+data Command = Block Block
+             | IfThen Block Block
+             | IfThenElse Block Block Block
+             | Try Block
+             | TryThen Block Block
+             | TryElse Block Block
+             | TryThenElse Block Block Block
+
+data Block = LoopedComSeq CommandSequence
+           | SimpleCommand SimpleCommand
+           | ProgramOr Block Block             
+
+data SimpleCommand = RuleSetCall [String]
+                   | LoopedRuleSetCall [String] 
+                   | ProcedureCall String
+                   | LoopedProcedureCall String
+                   | SkipStatement
+                   | FailStatement
+
 {- Colours have yet to be formalised. Currently working on the assumption that only one can be applied to a given edge or node -}
 data Colour   = Uncoloured | Red | Green | Blue | Grey | Cyan | Dashed deriving (Eq, Show)
 
