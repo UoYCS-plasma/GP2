@@ -4,6 +4,7 @@ import Data.Maybe
 
 import ParseLib
 import GPSyntax
+import Graph
 
 
 testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
@@ -12,10 +13,21 @@ testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 -- gpHostGraph :: Parser GPHostGraph
 -- gpHostGraph = keyword "[" |> gpHostNodeList <*> gpHostEdgeList <| keyword "]"
 
-{-gpHostGraph str = 
+
+idMapping :: String -> NodeID
+idMapping id = 
+
+
+gpHostGraph :: String -> HostGraph
+gpHostGraph str =
+    foldr (\(n1,n2,label) g -> fst $ newEdge g n1 n2 label) isolated edgeEnds
     where
-        ( str', nodes ) = gpHostNodeList str
-        edges = snd $ gpHostEdgeList str' -}
+        ( str', nodes ) = head $ gpHostNodeList str
+        edges = snd $ head $ gpHostEdgeList str'
+        isolated :: HostGraph
+        isolated  =  foldr (\n g -> fst $ newNode g n) emptyGraph nodes
+        edgeEnds :: [(NodeId,NodeId)]
+        edgeEnds  =  [(n1,n2) | n1 <- d, n2 <- d, n1 /= n2]
 
 
 gpHostNodeList :: Parser [HostNode]
@@ -32,7 +44,7 @@ gpHostNode = keyword "(" |> pure HostNode <*> (label <| keyword ",") <*>
              (pure (not.null) <*> maybeOne root) <*> 
              gpHostLabel <| keyword ")"
 
-gpHostEdgeList :: Parser [((String, String), HostLabel)]
+gpHostEdgeList :: Parser [(String, String, HostLabel)]
 gpHostEdgeList = keyword "|" |> maybeSome gpHostEdge
 
 gpHostEdge :: Parser ((String, String), HostLabel)
