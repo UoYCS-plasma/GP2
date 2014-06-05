@@ -78,18 +78,19 @@ data SimpleCommand = RuleSetCall [String]
 type Variables = ([Variable], String)
 type Interface = [ID]
 type ID = String
-type Source = String
-type Target = String
+type Source = ID
+type Target = ID
 
 data Rule = Rule ID [Variables] (RuleGraph, RuleGraph) Interface Condition String
+    deriving Show
 
 -- Rule graph labels are lists of expressions.
-data RuleGraph = RuleGraph [RuleNode] [RuleEdge]
-data RuleNode = RuleNode ID String RuleLabel
-data RuleEdge = RuleEdge Source Target RuleLabel
+data RuleGraph = RuleGraph [RuleNode] [RuleEdge] deriving (Show)
+data RuleNode = RuleNode ID Bool RuleLabel deriving (Show)
+data RuleEdge = RuleEdge Source Target RuleLabel deriving (Show)
 
 type GPList = [RuleAtom]
-data RuleLabel = RuleLabel GPList Colour 
+data RuleLabel = RuleLabel GPList Colour  deriving (Show)
 
 data RuleAtom = Var Variable 
               | Val HostAtom
@@ -103,6 +104,7 @@ data RuleAtom = Var Variable
               | Times RuleAtom RuleAtom
               | Div RuleAtom RuleAtom
               | Concat RuleAtom RuleAtom
+    deriving (Show)
 
 type Variable = String
 
@@ -125,13 +127,14 @@ data Condition = Nothing
                | Not Condition
                | Or Condition Condition
                | And Condition Condition
+    deriving (Show)
 
 
-data HostNode = HostNode ID String HostLabel
-data HostEdge = HostEdge Source Target HostLabel
+data HostNode = HostNode ID Bool HostLabel deriving (Show)
+data HostEdge = HostEdge Source Target HostLabel deriving (Show)
 
 -- Host Graph ADTs
-data HostGraph = HostGraph [HostNode] [HostEdge]
+data HostGraph = HostGraph [HostNode] [HostEdge] deriving (Show)
 data HostLabel = HostLabel [HostAtom] Colour deriving (Eq, Show)
 data HostAtom = Int Int
               | Str String 

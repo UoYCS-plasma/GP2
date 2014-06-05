@@ -147,13 +147,13 @@ identifier first = guarded g (pure (:) <*> first <*> maybeSome gpChar)
   where g s = s `notElem` keywords
 
 lowerIdent :: Parser String
-lowerIdent = identifier lower
+lowerIdent = identifier lower <| optSpaces
 
 upperIdent :: Parser String
-upperIdent = identifier upper
+upperIdent = identifier upper <| optSpaces
 
-root :: Parser String
-root = keyword "(R)"
+root :: Parser Bool
+root = pure (not . null) <*> (maybeOne $ keyword "(R)")
 
 parse :: Parser a -> String -> a
 parse p s =

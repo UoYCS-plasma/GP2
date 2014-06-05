@@ -13,6 +13,7 @@ testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 hostGraph :: Parser HostGraph
 hostGraph = keyword "[" |> pure HostGraph <*> hostNodeList <*> hostEdgeList <| keyword "]"
 
+{-
 idMapping :: String -> NodeID
 idMapping id = 
 
@@ -28,24 +29,25 @@ gpHostGraph str =
         edgeEnds :: [(NodeId,NodeId)]
         edgeEnds  =  [(n1,n2) | n1 <- d, n2 <- d, n1 /= n2]
 
-
+-}
 hostNodeList :: Parser [HostNode]
-hostNodeList = atLeastOne hostNode
+hostNodeList = pure (++) <*> maybeOne hostNode <*> maybeSome (keyword "," |> hostNode)
 
 -- A node is a triple (Node ID, Root Node, Node Label)
 -- The second component is "(R)" if root node, [] otherwise.
 hostNode :: Parser HostNode
 hostNode = keyword "(" |> pure HostNode
-       <*> (label <| keyword ",") 
-   --  <*> (pure (not.null) <*> maybeOne root) 
-       <*> (pure (concat) <*> maybeOne root) 
+       <*> label
+       <*> (root <| keyword ",") 
        <*> (hostLabel <| keyword ")")
 
 hostEdgeList :: Parser [HostEdge]
-hostEdgeList = keyword "|" |> maybeSome hostEdge
+hostEdgeList = keyword "|" |> ( pure (++) <*> maybeOne hostEdge <*> maybeSome (keyword "," |> hostEdge) )
+
 
 hostEdge :: Parser HostEdge
 hostEdge = keyword "(" |> pure HostEdge
+       <| ( (lowerIdent <| keyword ",") )
        <*> (lowerIdent <| keyword ",")
        <*> (lowerIdent <| keyword ",")
        <*> (hostLabel <| keyword ")")

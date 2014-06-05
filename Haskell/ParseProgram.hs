@@ -2,6 +2,7 @@ module ParseProgram where
 
 import ParseLib
 import GPSyntax
+import ParseRule
 
 
 program :: Parser GPProgram
