@@ -3,6 +3,7 @@ module Search where
 import Prelude hiding (lookup)
 import Data.List
 import Data.Maybe
+import Control.Monad (guard)
 
 import ExAr
 import GPGraph
@@ -23,6 +24,9 @@ type EdgeMatch = (RuleEdgeId, HostEdgeId, Subst [HostAtom])
 
 notImplemented = error "Not implemented"
 
+substExtend :: Subst [HostAtom] -> ID -> [HostAtom] -> Maybe ( Subst [HostAtom] )
+substExtend s id atoms = Just $ (id, atoms):s
+
 -- indeg and outdeg not yet implemented
 -- due to requirement for graph context and
 -- ids of other nodes?
@@ -33,10 +37,21 @@ atomsMatch = atomsMatchWith []
 -- implemented
 atomsMatchWith :: Subst [HostAtom] -> [HostAtom] -> [RuleAtom] -> Maybe (Subst [HostAtom])
 atomsMatchWith s [] [] = Just s
-atomsMatchWith s (ha:has) (ra:ras) =
+atomsMatchWith s hall@(ha:has) (ra:ras) =
     case (ha, ra) of
-        ( _    , Var (var, ListVar) ) -> do
-            -- TODO
+        ( _    , Var (var, ListVar) ) ->
+            case compare hl rl of
+                LT -> Nothing
+                EQ -> do 
+                    s' <- substExtend s var []
+                    atomsMatchWith s' hall ras
+                GT -> do
+                    s' <- substExtend s var $ take n hall
+                    atomsMatchWith s' (drop n hall) ras
+            where
+                hl = length hall
+                rl = length ras
+                n  = hl - rl                
         ( Int i, Val (Int j) ) -> do
             guard $ i == j
             atomsMatchWith s has ras
@@ -56,9 +71,8 @@ atomsMatchWith s (ha:has) (ra:ras) =
             atomsMatchWith s has ras
         ( Str str, Var (var, vt) ) -> do
             guard $ StrVar <= vt
-            s' <- substExtend str var [ha]
+            s' <- substExtend s var [ha]
             atomsMatchWith s' has ras
-atomsMatchWith has ras =
 
 colourMatch :: Colour -> Colour -> Bool
 colourMatch _  Cyan = True
@@ -68,19 +82,22 @@ doLabelsMatch :: HostLabel -> RuleLabel -> Maybe (Subst [HostAtom])
 doLabelsMatch (HostLabel has hc) (RuleLabel ras rc) = if colourMatch hc rc then atomsMatch has ras else Nothing
 
 doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe (Subst [HostAtom])
-doNodesMatch h r hid rid = doLabelsMatch (nLabel h hid) (nLabel r rid)
+doNodesMatch h r hid rid = doLabelsMatch hlab rlab
+    where  -- todo: add error checking!
+        HostNode _ _ hlab = fromJust (nLabel h hid)
+        RuleNode _ _ rlab = fromJust (nLabel r rid)
 
--- Also check for matching source and target?
+-- Also check for matching source and target? TODO: add error checking
 doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe (Subst [HostAtom])
-doEdgesMatch h r hid rid = doLabelsMatch (eLabel h hid) (eLabel r rid)
+doEdgesMatch h r hid rid = doLabelsMatch (fromJust $ eLabel h hid) (fromJust $ eLabel r rid)
 
 matchRuleNode :: HostGraph -> RuleGraph -> RuleNodeId -> [NodeMatch]
 matchRuleNode h r rn =
-    [ (rn, n) | n <- allNodes h , doNodesMatch h r n rn ]
+    [ (rn, n, fromJust $ doNodesMatch h r n rn) | n <- allNodes h , isJust $ doNodesMatch h r n rn ]
 
 matchRuleEdge :: HostGraph -> RuleGraph -> RuleEdgeId -> [EdgeMatch]
-matchRuleEdge h r re =
-    [ (re, e) | e <- allEdges h , doEdgesMatch h r e re ]
+matchRuleEdge h r re = notImplemented
+--    [ (re, e) | e <- allEdges h , doEdgesMatch h r e re ]
 
 matchNodes :: HostGraph -> RuleGraph -> [NodeMatch]
 matchNodes h r = concatMap ( matchRuleNode h r ) $ allNodes r

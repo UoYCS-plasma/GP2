@@ -115,7 +115,7 @@ data RuleAtom = Var Variable
 
 type Variable = (ID, VarType)
 data VarType  = IntVar
-              | CharVar
+              | ChrVar
               | StrVar
               | AtomVar
               | ListVar
@@ -132,7 +132,7 @@ instance Ord VarType where
 -- Is it possible to do BinOp Atom Atom and
 -- data BinOp = Plus | Min | ... ?
 
-data Condition = Nothing
+data Condition = NoCondition
                | TestInt Variable
                | TestChar Variable
                | TestStr Variable
