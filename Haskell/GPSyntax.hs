@@ -98,10 +98,11 @@ data RuleEdge = RuleEdge Source Target RuleLabel deriving (Show)
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour  deriving (Show)
 
-data RuleAtom = Var Variable 
+data RuleAtom = Var Variable
               | Val HostAtom
               | Indeg ID
               | Outdeg ID
+              -- RHS only
               | Llength GPList
               | Slength GPList
               | Neg RuleAtom
@@ -112,7 +113,20 @@ data RuleAtom = Var Variable
               | Concat RuleAtom RuleAtom
     deriving (Show)
 
-type Variable = String
+type Variable = (ID, VarType)
+data VarType  = IntVar
+              | CharVar
+              | StrVar
+              | AtomVar
+              | ListVar
+    deriving (Eq, Show)
+
+instance Ord VarType where
+    ListVar < vt = False
+    AtomVar < vt = vt == ListVar
+    IntVar  < vt = vt `elem` [ListVar, AtomVar]
+    StrVar  < vt = vt `elem` [ListVar, AtomVar]
+    ChrVar  < vt = vt `elem` [ListVar, AtomVar, StrVar] 
 
 -- TODO: precedence of infix binary operators
 -- Is it possible to do BinOp Atom Atom and
