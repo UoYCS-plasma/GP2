@@ -28,7 +28,7 @@ pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
 
 
 -- labelled graphs
-data Graph a b = Graph (ExAr (Node a)) (ExAr (Edge b))
+data Graph a b = Graph (ExAr (Node a)) (ExAr (Edge b)) deriving Show
 
 -- intended data invariant for Graph values
 invGraph :: Graph a b -> Bool

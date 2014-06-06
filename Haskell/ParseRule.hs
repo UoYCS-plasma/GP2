@@ -28,7 +28,7 @@ gpType = keyword "int" <|> keyword "char" <|> keyword "string" <|>
 
 
 
-ruleGraphs :: Parser (RuleGraph, RuleGraph)
+ruleGraphs :: Parser (AstRuleGraph, AstRuleGraph)
 ruleGraphs = pure (,) <*> ruleGraph <*> ( keyword "=>" |> ruleGraph )
 
 interface :: Parser Interface
@@ -39,8 +39,8 @@ interface = keyword "interface" |> keyword "=" |> keyword "{"
 interfaceNodes :: Parser ID
 interfaceNodes = keyword "," |> lowerIdent 
 
-ruleGraph :: Parser RuleGraph
-ruleGraph = keyword "[" |> pure RuleGraph <*> nodeList <*> edgeList <| keyword "]"
+ruleGraph :: Parser AstRuleGraph
+ruleGraph = keyword "[" |> pure AstRuleGraph <*> nodeList <*> edgeList <| keyword "]"
 
 nodeList :: Parser [RuleNode]
 nodeList = pure (++) <*> maybeOne node <*> maybeSome (keyword "," |> node)

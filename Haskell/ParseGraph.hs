@@ -10,26 +10,26 @@ import Graph
 testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
 testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 
-hostGraph :: Parser HostGraph
-hostGraph = keyword "[" |> pure HostGraph <*> hostNodeList <*> hostEdgeList <| keyword "]"
+hostGraph :: Parser AstHostGraph
+hostGraph = keyword "[" |> pure AstHostGraph <*> hostNodeList <*> hostEdgeList <| keyword "]"
 
 {-
 idMapping :: String -> NodeID
 idMapping id = 
 
 
-gpHostGraph :: String -> HostGraph
+gpHostGraph :: String -> AstHostGraph
 gpHostGraph str =
     foldr (\(n1,n2,label) g -> fst $ newEdge g n1 n2 label) isolated edgeEnds
     where
         ( str', nodes ) = head $ gpHostNodeList str
         edges = snd $ head $ gpHostEdgeList str'
-        isolated :: HostGraph
+        isolated :: AstHostGraph
         isolated  =  foldr (\n g -> fst $ newNode g n) emptyGraph nodes
         edgeEnds :: [(NodeId,NodeId)]
         edgeEnds  =  [(n1,n2) | n1 <- d, n2 <- d, n1 /= n2]
-
 -}
+
 hostNodeList :: Parser [HostNode]
 hostNodeList = pure (++) <*> maybeOne hostNode <*> maybeSome (keyword "," |> hostNode)
 

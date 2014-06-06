@@ -1,6 +1,5 @@
 module Search where
 
-
 import Prelude hiding (lookup)
 import Data.List
 import Data.Maybe
@@ -10,7 +9,43 @@ import GPGraph
 import Graph
 import GPSyntax
 
+type RuleNodeId = NodeId
+type HostNodeId = NodeId
+type RuleEdgeId = EdgeId
+type HostEdgeId = EdgeId
 
+type GraphMorphism = ( [NodeMatch], [EdgeMatch] ) 
+type NodeMatch = (RuleNodeId, HostNodeId)
+type EdgeMatch = (RuleEdgeId, HostEdgeId)
+
+
+notImplemented = error "Not implemented"
+
+
+doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Bool
+doNodesMatch = notImplemented
+
+doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Bool
+doEdgesMatch = notImplemented
+
+matchRuleNode :: HostGraph -> RuleGraph -> RuleNodeId -> [NodeMatch]
+matchRuleNode h r rn =
+    [ (rn, n) | n <- allNodes h , doNodesMatch h r n rn ]
+
+matchRuleEdge :: HostGraph -> RuleGraph -> RuleEdgeId -> [EdgeMatch]
+matchRuleEdge h r re =
+    [ (re, e) | e <- allEdges h , doEdgesMatch h r e re ]
+
+matchNodes :: HostGraph -> RuleGraph -> [NodeMatch]
+matchNodes h r = concatMap ( matchRuleNode h r ) $ allNodes r
+
+matchEdges :: HostGraph -> RuleGraph -> [EdgeMatch]
+matchEdges h r = concatMap ( matchRuleEdge h r ) $ allEdges r
+
+matchGraph :: HostGraph -> RuleGraph -> [GraphMorphism]
+matchGraph = notImplemented
+
+{-
 makeTestGraph n = nReLabel gr id (HostLabel [] Green)
     where
         gr = k n
@@ -21,20 +56,8 @@ makeTestGraph n = nReLabel gr id (HostLabel [] Green)
 testGraph = makeTestGraph 3
 --searchFor = makeRuleGraph 2
 
-type RuleNodeId = NodeId
-type HostNodeId = NodeId
-type RuleEdgeId = EdgeId
-type HostEdgeId = EdgeId
-
-type GraphMorphism = ( NodeMatches, EdgeMatches ) 
-type NodeMatches = [ NodeMatch ]
-type EdgeMatches = [ EdgeMatch ]
-type NodeMatch = (RuleNodeId, HostNodeId)
-type EdgeMatch = (RuleEdgeId, HostEdgeId)
-
 
 -- two nodes are equal if their labels are equal
-nodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Bool
 nodesMatch g r gn rn = nLabel g gn == nLabel r rn
 
 -- two edges are equal if their labels are equal AND the nodes on either end are equal
@@ -66,6 +89,6 @@ matchEdges g r = concatMap ( matchRuleEdge g r ) $ allEdges r
 matchGraph :: HostGraph -> RuleGraph -> [GraphMorphism]
 matchGraph g r = [ (nm, em) | nm <- matchNodes g r , em <- matchEdges g r ]
 
-                
+-}                
 
 

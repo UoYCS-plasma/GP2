@@ -90,7 +90,8 @@ data Rule = Rule ID [Variables] (RuleGraph, RuleGraph) Interface Condition Strin
     deriving (Show)
 
 -- Rule graph labels are lists of expressions.
-data RuleGraph = RuleGraph [RuleNode] [RuleEdge] deriving (Show)
+type RuleGraph = Graph RuleNode RuleLabel
+data AstRuleGraph = AstRuleGraph [RuleNode] [RuleEdge] deriving (Show)
 data RuleNode = RuleNode ID Bool RuleLabel deriving (Show)
 data RuleEdge = RuleEdge Source Target RuleLabel deriving (Show)
 
@@ -139,7 +140,8 @@ data HostNode = HostNode ID Bool HostLabel deriving (Show)
 data HostEdge = HostEdge Source Target HostLabel deriving (Show)
 
 -- Host Graph ADTs
-data HostGraph = HostGraph [HostNode] [HostEdge] deriving (Show)
+type HostGraph = Graph HostNode HostLabel
+data AstHostGraph = AstHostGraph [HostNode] [HostEdge] deriving (Show)
 data HostLabel = HostLabel [HostAtom] Colour deriving (Eq, Show)
 data HostAtom = Int Int
               | Str String 
