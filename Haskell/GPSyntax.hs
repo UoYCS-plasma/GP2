@@ -16,9 +16,13 @@ keywords = map fst hostColours ++
 
 
 {- Colours have yet to be formalised. Currently working on the assumption that only one can be applied to a given edge or node -}
-data Colour = Uncoloured | Red | Green | Blue | Grey | Cyan | Dashed deriving (Eq, Show)
-
-type ID = String
+data Colour = Uncoloured
+            | Red 
+            | Green 
+            | Blue
+            | Grey 
+            | Dashed 
+            | Cyan deriving (Eq, Show)
 
 hostColours :: [ (String, Colour) ]
 hostColours = [
@@ -32,6 +36,23 @@ hostColours = [
 ruleColours :: [ (String, Colour) ]
 ruleColours = ("cyan", Cyan) : hostColours
 
+
+data VarType = IntVar
+             | ChrVar
+             | StrVar
+             | AtomVar
+             | ListVar
+   deriving (Eq, Show)
+
+gpTypes :: [ (String, VarType) ]
+gpTypes = [
+    ("int", IntVar),
+    ("char", ChrVar),
+    ("string", StrVar),
+    ("atom", AtomVar),
+    ("list", ListVar) ]
+
+type ID = String
 
 
 -- GP Program ADTs
@@ -50,19 +71,16 @@ data LocalDecl = LocalRule Rule
                | LocalProcedure Procedure
      deriving (Show)
 
-data CommandSequence = ComSeq [Command] deriving (Show) 
+data CommandSequence = Sequence [Command] deriving (Show) 
 
 data Command = Block Block
-             | IfThen Block Block
-             | IfThenElse Block Block Block
-             | Try Block
-             | TryThen Block Block
-             | TryElse Block Block
-             | TryThenElse Block Block Block
+             | IfStatement Block Block Block 
+             | TryStatement Block Block Block
     deriving (Show)
 
 
-data Block = LoopedComSeq CommandSequence
+data Block = ComSeq CommandSequence
+           | LoopedComSeq CommandSequence
            | SimpleCommand SimpleCommand
            | ProgramOr Block Block      
     deriving (Show)
@@ -74,19 +92,20 @@ data SimpleCommand = RuleCall ID
                    | LoopedRuleSetCall [ID] 
                    | ProcedureCall ID
                    | LoopedProcedureCall ID
-                   | SkipStatement
-                   | FailStatement
+                   | Skip
+                   | Fail
     deriving (Show)
 
 
 
 -- GP Rule ADTs
-type Variables = ([Variable], String)
+type Variables = ([ID], VarType)
+type Variable = (ID, VarType)
 type Interface = [ID]
 type Source = ID
 type Target = ID
 
-data Rule = Rule ID [Variables] (RuleGraph, RuleGraph) Interface Condition String
+data Rule = Rule ID [Variables] (AstRuleGraph, AstRuleGraph) Interface Condition String
     deriving (Show)
 
 -- Rule graph labels are lists of expressions.
@@ -98,7 +117,7 @@ data RuleEdge = RuleEdge Source Target RuleLabel deriving (Show)
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour  deriving (Show)
 
-data RuleAtom = Var Variable
+data RuleAtom = Var ID
               | Val HostAtom
               | Indeg ID
               | Outdeg ID
@@ -113,13 +132,6 @@ data RuleAtom = Var Variable
               | Concat RuleAtom RuleAtom
     deriving (Show)
 
-type Variable = (ID, VarType)
-data VarType  = IntVar
-              | ChrVar
-              | StrVar
-              | AtomVar
-              | ListVar
-    deriving (Eq, Show)
 
 instance Ord VarType where
     ListVar < vt = False
@@ -133,10 +145,10 @@ instance Ord VarType where
 -- data BinOp = Plus | Min | ... ?
 
 data Condition = NoCondition
-               | TestInt Variable
-               | TestChar Variable
-               | TestStr Variable
-               | TestAtom Variable
+               | TestInt ID
+               | TestChar ID
+               | TestStr ID
+               | TestAtom ID
                | Edge ID ID RuleLabel
                | Eq GPList GPList
                | NEq GPList GPList

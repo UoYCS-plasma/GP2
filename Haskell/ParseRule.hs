@@ -16,17 +16,16 @@ rule = pure Rule
            
 
 -- In a rule parameter declaration, multiple variables can be declared
--- with a single type. The type is represented as a String.
+-- with a single type. 
 varList :: Parser Variables
 varList = pure (,)
     <*> ( pure (:) <*> lowerIdent <*> maybeSome ( keyword "," |> lowerIdent ) ) <| keyword ":"
     <*> gpType  
 
-gpType :: Parser String
-gpType = keyword "int" <|> keyword "char" <|> keyword "string" <|>
-         keyword "atom" <|> keyword "list"
 
-
+gpType :: Parser VarType
+gpType = pure gptype <*> label
+   where gptype t = fromJust $ lookup t gpTypes
 
 ruleGraphs :: Parser (AstRuleGraph, AstRuleGraph)
 ruleGraphs = pure (,) <*> ruleGraph <*> ( keyword "=>" |> ruleGraph )
