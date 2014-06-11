@@ -714,7 +714,8 @@ GPGraph *newGraph (YYLTYPE location, GPPos *position, List *nodes,
 }
 
 
-GPNode *newNode (YYLTYPE location, bool root, string name, GPLabel *label, GPPos *position)
+GPNode *newNode (YYLTYPE location, bool root, string name, GPLabel *label, 
+                 GPPos *position)
 {
     GPNode *node = malloc(sizeof(GPNode));
     
@@ -733,7 +734,8 @@ GPNode *newNode (YYLTYPE location, bool root, string name, GPLabel *label, GPPos
     return node;
 }
 
-GPEdge *newEdge (YYLTYPE location, string name, string source, string target, GPLabel *label)
+GPEdge *newEdge (YYLTYPE location, bool bidirectional, string name, 
+                 string source, string target, GPLabel *label)
 {
     GPEdge *edge = malloc(sizeof(GPEdge));
     
@@ -744,6 +746,7 @@ GPEdge *newEdge (YYLTYPE location, string name, string source, string target, GP
 
     edge->node_type = EDGE;
     edge->location = location;
+    edge->bidirectional = bidirectional;
     edge->name = strdup(name);
     edge->source = strdup(source);
     edge->target = strdup(target);
@@ -880,7 +883,7 @@ void freeAST(List *ast)
 	}
 
    if(ast->next) freeAST(ast->next);
-   free(ast);
+   if(ast) free(ast);
 }
 
 void freeDeclaration(GPDeclaration *decl)
@@ -915,7 +918,7 @@ void freeDeclaration(GPDeclaration *decl)
 
 	}
 
-   free(decl);
+   if(decl) free(decl);
 }
 
 void freeStatement(GPStatement *stmt)
@@ -994,7 +997,7 @@ void freeStatement(GPStatement *stmt)
 
 	}
 
-   free(stmt);
+   if(stmt) free(stmt);
 }
 
 void freeCondition(GPCondExp *cond)
@@ -1076,7 +1079,8 @@ void freeCondition(GPCondExp *cond)
                  break;
 
 	}
-   free(cond);
+
+   if(cond) free(cond);
 }
 
 void freeAtomicExp(GPAtomicExp *atom)
@@ -1163,7 +1167,7 @@ void freeAtomicExp(GPAtomicExp *atom)
 
 	}
 
-   free(atom);
+   if(atom) free(atom);
 }
 
 void freeProcedure(GPProcedure *proc)
@@ -1171,7 +1175,7 @@ void freeProcedure(GPProcedure *proc)
    if(proc->name) free(proc->name);
    if(proc->local_decls) freeAST(proc->local_decls);
    if(proc->cmd_seq) freeStatement(proc->cmd_seq);
-   free(proc);
+   if(proc) free(proc);
 }
 
 void freeRule(GPRule *rule)
@@ -1182,7 +1186,7 @@ void freeRule(GPRule *rule)
    if(rule->rhs) freeGraph(rule->rhs);
    if(rule->interface) freeAST(rule->interface);
    if(rule->condition) freeCondition(rule->condition);
-   free(rule);
+   if(rule) free(rule);
 }
 
 void freeGraph(GPGraph *graph)
@@ -1190,7 +1194,7 @@ void freeGraph(GPGraph *graph)
    if(graph->position) free(graph->position);
    if(graph->nodes) freeAST(graph->nodes);
    if(graph->edges) freeAST(graph->edges);
-   free(graph);
+   if(graph) free(graph);
 }
 
 void freeNode(GPNode *node)
@@ -1198,7 +1202,7 @@ void freeNode(GPNode *node)
    if(node->name) free(node->name);
    if(node->label) freeLabel(node->label);
    if(node->position) free(node->position);
-   free(node);
+   if(node) free(node);
 }
 
 void freeEdge(GPEdge *edge)
@@ -1207,13 +1211,13 @@ void freeEdge(GPEdge *edge)
    if(edge->source) free(edge->source);
    if(edge->target) free(edge->target);
    if(edge->label) freeLabel(edge->label);
-   free(edge);
+   if(edge) free(edge);
 }
 
 void freeLabel(GPLabel *label)
 {
    if(label->gp_list) freeAST(label->gp_list);
-   free(label);
+   if(label) free(label);
 }
    
 

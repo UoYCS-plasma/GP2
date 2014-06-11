@@ -222,6 +222,7 @@ list		    return LIST;
 
 "=>"             return ARROW;
 "(R)"	 	 return ROOT;
+"(B)"            return BIDIRECTIONAL;
 "!="		 return NEQ; 
 ">="	         return GTEQ; 
 "<="	         return LTEQ; 

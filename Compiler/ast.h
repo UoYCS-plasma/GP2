@@ -348,7 +348,7 @@ typedef struct GPNode {
   int node_id;
   ASTNodeType node_type;	
   YYLTYPE location; 
-  bool root; /* Integer flag to mark whether the node is a root node or not. */
+  bool root;
   string name; 
   struct GPLabel *label; 
   struct GPPos *position; 
@@ -356,14 +356,15 @@ typedef struct GPNode {
 
 /* Constructs a struct GPNode. */
 
-GPNode *newNode (YYLTYPE location, bool root, string name, struct GPLabel *label,
-	 struct GPPos *position);
+GPNode *newNode (YYLTYPE location, bool root, string name, 
+                 struct GPLabel *label, struct GPPos *position);
 
 
 typedef struct GPEdge {
   int node_id;
   ASTNodeType node_type;	
   YYLTYPE location; 
+  bool bidirectional; 
   string name; 
   string source; 
   string target; 
@@ -372,8 +373,8 @@ typedef struct GPEdge {
 
 /* Constructs a struct GPEdge. */
 
-GPEdge *newEdge (YYLTYPE location, string name, string source, string target,
-	 struct GPLabel *label);
+GPEdge *newEdge (YYLTYPE location, bool bidirectional, string name, 
+                 string source, string target, struct GPLabel *label);
 
 
 /* AST node for specifying locations in the graphical editor. */

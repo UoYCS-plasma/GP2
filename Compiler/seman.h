@@ -55,6 +55,9 @@
  * 
  *        wildcard is set to true if the symbol is a node or edge with the cyan
  *        mark. Set to false in all other cases.
+ *
+ *        bidirectional is set to true if the symbol is a bidirectional edge.
+ *        Set to false in all other cases.
  */
  
 typedef enum {PROCEDURE_S=0, RULE_S, INT_S, CHAR_S, STRING_S, ATOM_S,
@@ -68,7 +71,32 @@ typedef struct Symbol {
   bool is_var;
   bool in_lhs; 
   bool wildcard; 
+  bool bidirectional;
 } Symbol;
+
+
+/* BiEdge is used to store the necessary information for semantic checking of
+ * bidirectional edges. We need to check for parallel bidirectional edges,
+ * which requires the scope, the type of the graph (LHS or RHS) and the
+ * source and target IDs of the edge's incident nodes. All non-parallel
+ * bidirectional edges in a rule are stored in a linked list of BiEdges.
+ */
+
+typedef struct BiEdge {
+  string scope;
+  string containing_rule;
+  char graph;
+  string source;
+  string target;
+} BiEdge;
+
+typedef struct BiEdgeList {
+  struct BiEdge value;
+  struct BiEdgeList *next;
+} BiEdgeList;
+
+/* Always points to the start of BiEdgeList. Defined in seman.c */
+extern BiEdgeList *bidirectional_edges;
 
 extern bool abort_compilation; /* Defined in main.c */
 
@@ -186,6 +214,12 @@ bool declarationScan(List * ast, GHashTable *table, string const scope);
  */
 
 bool semanticCheck(List * declarations, GHashTable *table, string const scope);
+
+/* Called by semanticCheck, to free the list of struct BiEdges. */
+
+void freeBiEdgeList(BiEdgeList *edge_list); 
+
+
 
 /* statementScan is called whenever a GPStatement node is reached in the AST.
  * Called only by semanticCheck and itself. It searches for rule and 

@@ -64,6 +64,7 @@ void printSymbolList(gpointer key, gpointer value, gpointer user_data)
 	   if(current_sym->is_var) print_to_symtab_file("Variable\n");
 	   if(current_sym->in_lhs) print_to_symtab_file("In LHS\n");
            if(current_sym->wildcard) print_to_symtab_file("Wildcard\n");
+           if(current_sym->bidirectional) print_to_symtab_file("Bidirectional\n");
 	   print_to_symtab_file("\n");
 	}	
 	else {	
@@ -74,6 +75,7 @@ void printSymbolList(gpointer key, gpointer value, gpointer user_data)
        	   if(current_sym->is_var) print_to_symtab_file("Variable\n");
 	   if(current_sym->in_lhs) print_to_symtab_file("In LHS\n");
            if(current_sym->wildcard) print_to_symtab_file("Wildcard\n");
+           if(current_sym->bidirectional) print_to_symtab_file("Bidirectional\n");
 	   print_to_symtab_file("\n");
 	}
     }
@@ -1559,7 +1561,7 @@ void printNode(GPNode * const node, FILE *dot_file)
                           LOCATION_ARGS(node->location), node->name);
      else {
         print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                          "Node \\n Name: UNDEFINED \\n", 
+                          "Node \\n Name: UNDEFINED", 
                           node->node_id, node->node_id, 
                           LOCATION_ARGS(node->location));
         print_to_log("Error: Undefined node name at AST node %d", 
@@ -1594,13 +1596,17 @@ void printEdge(GPEdge * const edge, FILE *dot_file)
                           LOCATION_ARGS(edge->location), edge->name);
      else {
         print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                          "Edge \\n Name: UNDEFINED \\n ", 
+                          "Edge \\n Name: UNDEFINED", 
                           edge->node_id, edge->node_id, 
                           LOCATION_ARGS(edge->location));
         print_to_log("Error: Undefined edge name at AST node %d", 
                 edge->node_id);
 
      }
+
+     if(edge->bidirectional == true) 
+          print_to_dot_file(" \\n Bidirectional\"]\n"); 
+     else print_to_dot_file("\"]\n");	
 
      if(edge->source != NULL)
         print_to_dot_file("Source: %s \\n ", 

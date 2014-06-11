@@ -23,6 +23,7 @@ int report_error(const char *error_message);
 
 /* Flags used in the AST construction. */
   bool is_root = false;
+  bool is_bidir = false;
   bool is_injective = false;
 
 extern List *gp_program; /* This will point to the root of the program AST.
@@ -56,7 +57,7 @@ extern bool abort_scan; /* Defined in main.c */
 %token <num> NUM 
 %token <str> STR CHAR
 %token <id> PROCID ID           				
-%token ROOT	
+%token ROOT BIDIRECTIONAL	
 %token GP_PROGRAM GP_GRAPH						
 
 
@@ -367,12 +368,16 @@ Node: '(' NodeID RootNode ',' Label ',' Position ')'
 EdgeList: Edge				{ $$ = addEdge(@1, $1, NULL); }
         | EdgeList ',' Edge		{ $$ = addEdge(@3, $3, $1); }
 
-Edge: '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
-					{ $$ = newEdge(@2, $2, $4, $6, $8);
-					  free($2); free($4); free($6); }
+Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
+					{ $$ = newEdge(@2, is_bidir, $2, $5, $7, $9);
+                                          is_bidir = false;
+					  free($2); free($5); free($7); }
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
+
+Bidirection: /* empty */ 
+	   | BIDIRECTIONAL		{ is_bidir = true; }
 
 Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(@$, $2, $4); }
 
@@ -472,7 +477,7 @@ HostEdgeList: HostEdge			{ $$ = addEdge(@1, $1, NULL); }
             | HostEdgeList ',' HostEdge	{ $$ = addEdge(@3, $3, $1); } 
 
 HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
-					{ $$ = newEdge(@2, $2, $4, $6, $8);
+					{ $$ = newEdge(@2, false, $2, $4, $6, $8);
 					  free($2); free($4); free($6); }
 
 HostLabel: HostList			{ $$ = newLabel(@$, NONE, $1); }

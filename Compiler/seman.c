@@ -184,6 +184,7 @@ bool declarationScan(List * ast, GHashTable *table,
 		 proc_symbol->is_var = false;
 		 proc_symbol->in_lhs = false;
                  proc_symbol->wildcard = false; 
+                 proc_symbol->bidirectional = false; 
 
                  symbol_list = g_slist_prepend(symbol_list, proc_symbol);      
 
@@ -271,7 +272,6 @@ bool declarationScan(List * ast, GHashTable *table,
 	         Symbol *rule_symbol = malloc(sizeof(Symbol));
  
 	         if(rule_symbol == NULL) {
-
                     print_to_log("Memory exhausted during symbol management.\n");
 	            exit(0);
 	         }
@@ -282,6 +282,7 @@ bool declarationScan(List * ast, GHashTable *table,
                  rule_symbol->is_var = false;
                  rule_symbol->in_lhs = false;
                  rule_symbol->wildcard = false;
+                 rule_symbol->bidirectional = false;
 
                  symbol_list = g_slist_prepend(symbol_list, rule_symbol);       
     
@@ -310,8 +311,8 @@ bool declarationScan(List * ast, GHashTable *table,
     * reaching the end of the global declaration list. 
     * As declarationScan is a recursive function, I must check if the current 
     * invocation of declarationScan is in global scope. If so, then I know
-    * the end of the global declaration list has been reached and that
-    * this is not a recursive call.
+    * the end of the global declaration list has been reached and I can return
+    * knowing the whole AST has been scanned.
     */
    if(!strcmp(scope,"Global")) {
 
@@ -330,10 +331,17 @@ bool declarationScan(List * ast, GHashTable *table,
 }
 
 
+/* bidirectional_edges is a linked list of the bidirectional edges encountered
+ * in the program. This is to ensure that there are no parallel bidirectional
+ * edges. The list stores items of type struct BidirectionalEdge. It is used
+ * in graph_scan and freed in semanticCheck.
+ */
 
 /* The main body recurses over declaration lists, handling each of the three 
  * declaration types with the help of subprocedures.
  */
+
+BiEdgeList *bidirectional_edges = NULL; 
 
 bool semanticCheck(List * declarations, GHashTable *table,
                    string const scope)
@@ -397,10 +405,33 @@ bool semanticCheck(List * declarations, GHashTable *table,
    declarations = declarations->next;  
 
    }
- 
-   return abort_compilation;
+
+   /* The code following the if statement should only be executed upon
+    * reaching the end of the global declaration list. 
+    * As semanticCheck is a recursive function, I must check if the current 
+    * invocation of semanticCheck is in global scope. If so, then I know
+    * the end of the global declaration list has been reached and I can
+    * return knowing the whole AST has been scanned.
+    */
+   if(!strcmp(scope,"Global")) {
+      freeBiEdgeList(bidirectional_edges);
+      return abort_compilation;
+   }
 }   
 
+void freeBiEdgeList(BiEdgeList *edge_list) 
+{
+    BiEdge bi_edge = edge_list->value;
+
+    if(bi_edge.scope) free(bi_edge.scope);
+    if(bi_edge.containing_rule) free(bi_edge.containing_rule);
+    if(bi_edge.source) free(bi_edge.source);
+    if(bi_edge.target) free(bi_edge.target);
+      
+    if(edge_list->next) freeBiEdgeList(edge_list->next);             
+
+    if(edge_list) free(edge_list);
+}
 
 
 void statementScan(GPStatement * const statement, GHashTable *table,
@@ -721,6 +752,7 @@ void enterVariables(SymbolType const type, List * variables,
          var_symbol->is_var = true;      
          var_symbol->in_lhs = false;
          var_symbol->wildcard = false;
+         var_symbol->bidirectional = false;
 
          symbol_list = g_slist_prepend(symbol_list, var_symbol);  
          
@@ -742,7 +774,8 @@ void enterVariables(SymbolType const type, List * variables,
 void graphScan(GPGraph *const graph, GHashTable *table, string const scope, 
                 string const rule_name, char const side)
 {
-   /* Variables to store the symbol types and the graph for semantic checking.
+   /* Variables to store the symbol types and the graph for semantic checking
+    * and error reporting.
     */
    SymbolType node_type, edge_type;
    string graph_type = NULL;
@@ -822,7 +855,8 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          node_symbol->containing_rule = strdup(rule_name);
          node_symbol->is_var = false;
          node_symbol->in_lhs = false;      
-         node_symbol->wildcard = (node_list->value.node->label->mark == CYAN);      
+         node_symbol->wildcard = (node_list->value.node->label->mark == CYAN);    
+         node_symbol->bidirectional = false;      
  
          symbol_list = g_slist_prepend(symbol_list, node_symbol);         
   
@@ -832,8 +866,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
       /* If the node is in the RHS and has a cyan mark, the corresponding LHS node
        * must also have a cyan mark. */
 
-      if(node_type == RIGHT_NODE_S && 
-         node_list->value.node->label->mark == CYAN) {
+      if(side == 'r' && node_list->value.node->label->mark == CYAN) {
  
          /* The current node has just been prepended to the symbol list.
           * Hence the first entry in the symbol list is an RHS node. 
@@ -939,6 +972,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          edge_symbol->is_var = false;
          edge_symbol->in_lhs = false;             
          edge_symbol->wildcard = (edge_list->value.edge->label->mark == CYAN); 
+         edge_symbol->bidirectional = (edge_list->value.edge->bidirectional); 
 
          symbol_list = g_slist_prepend(symbol_list, edge_symbol);   
         
@@ -946,9 +980,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
   
       }
 
-
-      if(edge_type == RIGHT_EDGE_S
-         && edge_list->value.edge->label->mark == CYAN) {
+      if(side == 'r' && edge_list->value.edge->label->mark == CYAN) {
  
          /* The current edge has just been prepended to the symbol list.
           * Hence the first entry in the symbol list is this RHS edge. 
@@ -975,7 +1007,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
                    !current_edge->wildcard) 
                 {
 	           print_to_log("Error (%s.%s): RHS wildcard edge %s has no "
-                                "matching LHS wildcard.", 
+                                "matching LHS wildcard.\n", 
                                 scope, rule_name, edge_id);  
                    abort_compilation = true;
                 }
@@ -988,6 +1020,99 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          }
       }
 
+
+
+      /* Two semantic checks are made for bidirectional edges (BEs):
+       * (1) A BE in the RHS must have a corresponding BE in the LHS.
+       * (2) At most one BE is allowed between a pair of nodes. 
+       *
+       * Items of type struct BidirectionalEdge, defined in the header,
+       * are placed in GSList *bidirectional_edges to keep track of all
+       * the bidirectional edges encountered.
+       */
+
+      if(edge_list->value.edge->bidirectional) {
+    
+         /* bidirectional_edges may be written to later, hence a copy is made
+          * of the root pointer.
+          */
+         BiEdgeList *iterator = bidirectional_edges;
+
+         bool add_bi_edge = true;
+         bool matching_bi_edge = false;
+ 
+         while(iterator) {
+
+             BiEdge list_edge = iterator->value;
+
+             /* Find edges in the list with the same scope, rule, source node and
+              * target node as the current edge.
+              */
+             if(!strcmp(list_edge.scope,scope) &&
+                !strcmp(list_edge.containing_rule,rule_name) &&
+                !strcmp(list_edge.source,source_id) &&
+                !strcmp(list_edge.target,target_id) ) 
+             {
+                /* Semantic check (1) */
+                if(side == 'r' && list_edge.graph == 'l') 
+                   matching_bi_edge = true;
+
+                /* Semantic check (2) */
+                else {
+                   if(list_edge.graph == side) {
+                      print_to_log("Error (%s.%s): Parallel bidirectional edges "
+                                   "in %s.\n", scope, rule_name, graph_type);
+                      abort_compilation = true;
+                      add_bi_edge = false;
+                   }
+                }
+             }
+             iterator = iterator->next;       
+         }
+
+         if(side == 'r' && !matching_bi_edge) {
+	    print_to_log("Error (%s.%s): RHS bidirectional edge %s has no "
+                         "matching LHS bidirectional edge.\n", 
+                         scope, rule_name, edge_id); 
+            abort_compilation = true; 
+         }
+
+         /* Only add an edge to the BE list if it is not a parallel edge.
+          */
+         if(add_bi_edge) {
+
+            BiEdge bi_edge =
+                  {.scope = strdup(scope),
+                   .containing_rule = strdup(rule_name),
+                   .graph = side,
+                   .source = strdup(source_id),
+                   .target = strdup(target_id) };
+
+            BiEdgeList *new_edge = malloc(sizeof(BiEdgeList));
+
+            if(new_edge == NULL) {
+               print_to_log("Memory exhausted during creation of BiEdgeList.\n");
+               exit(0);
+            }
+            new_edge->value = bi_edge;
+            new_edge->next = NULL;
+
+            /* Append new_edge to bidirectional_edges. There are two cases:
+             * bidirectional_edges is empty, in which case new_edge is directly
+             * assigned to it; or it is not empty, in which case an iterator
+             * walks through bidirectional_edges until the last node N is
+             * reached, at which point new_edge is assigned to N->next.
+             */
+           
+            if(bidirectional_edges == NULL) bidirectional_edges = new_edge;
+
+            else { /* Walk to the last node of bidirectional_edges */ 
+               BiEdgeList *iterator = bidirectional_edges;
+               while(iterator->next) iterator = iterator->next; 
+               iterator->next = new_edge;
+            }
+         }
+      }
 
       /* Verify source and target nodes exist in the graph. */
 
