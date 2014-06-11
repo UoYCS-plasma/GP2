@@ -3,16 +3,19 @@ module GPGraph (unlabelled, k) where
 import GPSyntax
 import Graph
 
-unlabelled :: GPHostLabel
-unlabelled  =  GPHostLabel [] Uncoloured
+unlabelled :: HostLabel
+unlabelled  =  HostLabel [] Uncoloured
+
+blankNode :: HostNode
+blankNode = HostNode [] False unlabelled
 
 -- the unlabelled graph K_n
-k :: Int -> GPHostGraph
+k :: Int -> HostGraph
 k n  =
   foldr (\(n1,n2) g -> fst $ newEdge g n1 n2 unlabelled) isolated edgeEnds
   where
-  isolated :: GPHostGraph
-  isolated  =  foldr (\i g -> fst $ newNode g unlabelled) emptyGraph [1..n]
+  isolated :: HostGraph
+  isolated  =  foldr (\i g -> fst $ newNode g blankNode) emptyGraph [1..n]
   d        :: [NodeId]
   d         =  allNodes isolated
   edgeEnds :: [(NodeId,NodeId)]

@@ -5,74 +5,79 @@ import Data.Maybe
 import ParseLib
 import GPSyntax
 
---ruleDecl :: Parser RuleDecl
---ruleDecl = lowerIdent <*> keyword "(" |> maybeSome varList <| keyword ")" <*> graphs 
---           <*> interface <*> maybeOne condition <*> keyword "injective" |> keyword "=" 
---           |> keyword "true" <|> keyword "false"
+rule :: Parser Rule
+rule = pure Rule 
+       <*> lowerIdent 
+       <*> keyword "(" |> (pure (:) <*> varList <*> maybeSome (keyword ";" |> varList)) <| keyword ")" 
+       <*> ruleGraphs
+       <*> interface
+       <*> ( pure head <*> maybeOne ( keyword "where" |> condition ) )
+       <*> keyword "injective" |> keyword "=" |> (keyword "true" <|> keyword "false")
            
 
 -- In a rule parameter declaration, multiple variables can be declared
--- with a single type. The type is represented as a String.
-varList :: Parser ([Variable], String)
-varList = pure (,) <*> atLeastOne lowerIdent <| keyword ":" <*> gptype <| maybeOne (keyword ";")
-
-gptype :: Parser String
-gptype = keyword "int" <|> keyword "char" <|> keyword "string" <|>
-         keyword "atom" <|> keyword "list"
+-- with a single type. 
+varList :: Parser Variables
+varList = pure (,)
+    <*> ( pure (:) <*> lowerIdent <*> maybeSome ( keyword "," |> lowerIdent ) ) <| keyword ":"
+    <*> gpType  
 
 
---graphs :: Parser (Graph, Graph)
---graphs = gpGraph <*> keyword "=>" |> gpGraph
+gpType :: Parser VarType
+gpType = pure gptype <*> label
+   where gptype t = fromJust $ lookup t gpTypes
 
-interface :: Parser [RuleNodeId]
+ruleGraphs :: Parser (AstRuleGraph, AstRuleGraph)
+ruleGraphs = pure (,) <*> ruleGraph <*> ( keyword "=>" |> ruleGraph )
+
+interface :: Parser Interface
 interface = keyword "interface" |> keyword "=" |> keyword "{" 
-         |> pure (:) <*> lowerIdent <*> maybeSome interfaceNodes 
+         |> ( pure (:) <*> lowerIdent <*> maybeSome interfaceNodes )
          <| keyword "}"
 
-interfaceNodes :: Parser RuleNodeId
+interfaceNodes :: Parser ID
 interfaceNodes = keyword "," |> lowerIdent 
 
---gpGraph :: Parser GPRuleGraph
---gpGraph = keyword "[" |> gpNodeList <*> gpEdgeList <| keyword "]"
+ruleGraph :: Parser AstRuleGraph
+ruleGraph = keyword "[" |> pure AstRuleGraph <*> nodeList <*> edgeList <| keyword "]"
 
-gpNodeList :: Parser [(String, String, GPLabel)]
-gpNodeList = atLeastOne gpNode
-
+nodeList :: Parser [RuleNode]
+nodeList = pure (++) <*> maybeOne node <*> maybeSome (keyword "," |> node)
 -- A node is a triple (Node ID, Root Node, Node Label)
 -- The second component is "(R)" if root node, [] otherwise.
-gpNode :: Parser (String, String, GPLabel)
-gpNode = keyword "(" |> pure (,,) <*> (label <| keyword ",") <*> (pure concat <*> maybeOne root) <*> gpLabel <| keyword ")"
+node :: Parser RuleNode
+node = keyword "(" |> pure RuleNode 
+  <*> lowerIdent
+  <*> (root <| keyword ",") 
+  <*> gpLabel <| keyword ")"
 
-gpEdgeList :: Parser [((String, String), GPLabel)]
-gpEdgeList = keyword "|" |> maybeSome gpEdge
+edgeList :: Parser [RuleEdge]
+edgeList = keyword "|" |> ( pure (++) <*> maybeOne edge <*> maybeSome (keyword "," |> edge) )
 
-gpEdge :: Parser ((String, String), GPLabel)
-gpEdge = keyword "(" |> pure (,) <*> endPoints <*> gpLabel <| keyword ")"
+                                                                           
+edge :: Parser RuleEdge
+edge = keyword "(" |> pure RuleEdge 
+   <| (lowerIdent <| keyword ",") 
+   <*> (lowerIdent <| keyword ",") 
+   <*> (lowerIdent <| keyword ",") 
+   <*> (gpLabel <| keyword ")")
+
+gpLabel :: Parser RuleLabel
+gpLabel = pure RuleLabel <*> list <*> ruleColour
 
 
-gpLabel :: Parser GPLabel
-gpLabel = pure GPLabel <*> gpList <*> ruleColour
-
--- This feels like an awful hack, but otherwise I do not know how
--- to write a parser that generates the empty list upon reading
--- the string "empty".
-gpList :: Parser GPList
-gpList = pure f <*> empty <|> atLeastOne gpAtom
+list :: Parser GPList
+list = pure f <*> keyword "empty" <|> pure (:) <*> atom <*> maybeSome (keyword ":" |> atom)
   where f "empty" = []
 
-gpAtom :: Parser Atom
-gpAtom = atom
-     <|> keyword ":" |> atom
-	 
-
-atom :: Parser Atom
+atom :: Parser RuleAtom
 atom = pure Var <*> lowerIdent
    <|> pure Val <*> value
    <|> keyword "indeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
    <|> keyword "outdeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
-   <|> keyword "llength" |> keyword "(" |> pure Llength <*> gpList <| keyword ")"
-   <|> keyword "slength" |> keyword "(" |> pure Slength <*> gpList <| keyword ")"
-   <|> keyword "-" |> pure Neg <*> atom
+   <|> keyword "llength" |> keyword "(" |> pure Llength <*> list <| keyword ")"
+   <|> keyword "slength" |> keyword "(" |> pure Slength <*> list <| keyword ")"
+   <|> keyword "~" |> pure Neg <*> atom
    <|> keyword "+" |> pure Plus <*> atom <*> atom
    <|> keyword "-" |> pure Minus <*> atom <*> atom
    <|> keyword "*" |> pure Times <*> atom <*> atom
@@ -84,26 +89,26 @@ ruleColour :: Parser Colour
 ruleColour = keyword "#" |> pure col <*> label
      <|> pure Uncoloured
  where
-     col c = fromJust $ lookup c gpColours
+     col c = fromJust $ lookup c ruleColours
 
--- edge rule not working because of the maybeOne.
 condition :: Parser Condition
 condition = keyword "int" |> pure TestInt <*> lowerIdent
         <|> keyword "char" |> pure TestStr <*> lowerIdent
         <|> keyword "str" |> pure TestChar <*> lowerIdent
         <|> keyword "atom" |> pure TestAtom <*> lowerIdent
-        <|> keyword "edge" |> keyword "(" |> pure Edge 
-            <*> (lowerIdent <| keyword ",") <*> lowerIdent 
-            <*> (pure head <*> maybeOne (keyword "," |> gpLabel))
-        <|> pure Eq <*> gpList <| keyword "=" <*> gpList
-	<|> pure NEq <*> gpList <| keyword "!=" <*> gpList
+        <|> keyword "edge" |> keyword "(" |> 
+            pure Edge <*> (lowerIdent <| keyword ",") 
+                      <*> lowerIdent 
+                      <*> (pure head <*> maybeOne (keyword "," |> gpLabel))
+        <|> pure Eq <*> list <| keyword "=" <*> list
+        <|> pure NEq <*> list <| keyword "!=" <*> list
         <|> pure Greater <*> atom <| keyword ">" <*> atom
         <|> pure GreaterEq <*> atom <| keyword ">=" <*> atom
         <|> pure Less <*> atom <| keyword "<" <*> atom
         <|> pure LessEq <*> atom <| keyword "<=" <*> atom
         <|> keyword "not" |> pure Not <*> condition
-        <|> pure Or <*> condition <| keyword "or" <*> condition
-        <|> pure And <*> condition <| keyword "and" <*> condition 
+        <|> keyword "or"  |> pure Or  <*> condition <*> condition
+        <|> keyword "and" |> pure And <*> condition <*> condition 
 
 
 

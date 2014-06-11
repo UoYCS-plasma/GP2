@@ -4,52 +4,59 @@ import Data.Maybe
 
 import ParseLib
 import GPSyntax
+import Graph
 
 
 testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
 testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 
---gpHostGraph :: Parser GPHostGraph
---gpHostGraph = keyword "[" |> gpHostNodeList <*> gpHostEdgeList <| keyword "]"
+hostGraph :: Parser AstHostGraph
+hostGraph = keyword "[" |> pure AstHostGraph <*> hostNodeList <*> hostEdgeList <| keyword "]"
 
-gpHostNodeList :: Parser [(String, String, GPHostLabel)]
-gpHostNodeList = atLeastOne gpHostNode
+{-
+idMapping :: String -> NodeID
+idMapping id = 
 
--- Old rule does not keep NodeID
--- gpNode :: Parser GP2HostLabel
--- gpNode = keyword "(" |> nodeBody <| keyword ")"
+
+gpHostGraph :: String -> AstHostGraph
+gpHostGraph str =
+    foldr (\(n1,n2,label) g -> fst $ newEdge g n1 n2 label) isolated edgeEnds
+    where
+        ( str', nodes ) = head $ gpHostNodeList str
+        edges = snd $ head $ gpHostEdgeList str'
+        isolated :: AstHostGraph
+        isolated  =  foldr (\n g -> fst $ newNode g n) emptyGraph nodes
+        edgeEnds :: [(NodeId,NodeId)]
+        edgeEnds  =  [(n1,n2) | n1 <- d, n2 <- d, n1 /= n2]
+-}
+
+hostNodeList :: Parser [HostNode]
+hostNodeList = pure (++) <*> maybeOne hostNode <*> maybeSome (keyword "," |> hostNode)
 
 -- A node is a triple (Node ID, Root Node, Node Label)
 -- The second component is "(R)" if root node, [] otherwise.
-gpHostNode :: Parser (String, String, GPHostLabel)
-gpHostNode = keyword "(" |> pure (,,) <*> (label <| keyword ",") <*>
-             (pure concat <*> maybeOne root) <*> 
-             gpHostLabel <| keyword ")"
+hostNode :: Parser HostNode
+hostNode = keyword "(" |> pure HostNode
+       <*> label
+       <*> (root <| keyword ",") 
+       <*> (hostLabel <| keyword ")")
 
-gpHostEdgeList :: Parser [((String, String), GPHostLabel)]
-gpHostEdgeList = keyword "|" |> maybeSome gpHostEdge
+hostEdgeList :: Parser [HostEdge]
+hostEdgeList = keyword "|" |> ( pure (++) <*> maybeOne hostEdge <*> maybeSome (keyword "," |> hostEdge) )
 
-gpHostEdge :: Parser ((String, String), GPHostLabel)
-gpHostEdge = keyword "(" |> pure (,) <*> endPoints <*> gpHostLabel <| keyword ")"
 
-gpHostLabel :: Parser GPHostLabel
-gpHostLabel = pure GPHostLabel <*> (pure (:) <*> value <*> maybeSome gpHostAtom) <*> hostColour
+hostEdge :: Parser HostEdge
+hostEdge = keyword "(" |> pure HostEdge
+       <| ( (lowerIdent <| keyword ",") )
+       <*> (lowerIdent <| keyword ",")
+       <*> (lowerIdent <| keyword ",")
+       <*> (hostLabel <| keyword ")")
 
--- TODO: this allows leading ":" char, which is not permitted by GP2 syntax!
--- gpHostAtom :: Parser HostAtom
--- gpHostAtom = value 
---    <|> keyword ":" |> value 
--- Leading ":" issue solved below (?)
--- This generates ': value' so value <*> maybeSome gpHostAtom above should
--- parse strings of the form value [: value]
-gpHostAtom :: Parser HostAtom
-gpHostAtom = keyword ":" |> value
+hostLabel :: Parser HostLabel
+hostLabel = pure HostLabel <*> hostList <*> hostColour
 
--- This feels like an awful hack, but otherwise I do not know how
--- to write a parser that generates the empty list upon reading
--- the string "empty".
-gpHostList :: Parser GPHostList
-gpHostList = pure f <*> empty <|> maybeSome gpHostAtom
+hostList :: Parser [HostAtom]
+hostList = pure f <*> keyword "empty" <|> pure (:) <*> value <*> maybeSome (keyword ":" |> value)
   where f "empty" = []
 
 
@@ -57,8 +64,5 @@ hostColour :: Parser Colour
 hostColour = keyword "#" |> pure col <*> label
         <|> pure Uncoloured
     where
-        col c = fromJust $ lookup c gpHostColours
-
---colour :: Parser [String]
---colour = satisfy (`elem` gpColours)
+        col c = fromJust $ lookup c hostColours
 
