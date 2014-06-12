@@ -8,15 +8,19 @@ import GPSyntax
 rule :: Parser Rule
 rule = pure Rule 
        <*> lowerIdent 
-       <*> keyword "(" |> (pure (:) <*> varList <*> maybeSome (keyword ";" |> varList)) <| keyword ")" 
+       <*> (pure concat <*> maybeOne parameters)
        <*> ruleGraphs
        <*> interface
-       <*> ( pure head <*> maybeOne ( keyword "where" |> condition ) )
+       <*> (pure head <*> exactlyOne ( keyword "where" |> condition ) <|> pure NoCondition)
        <*> keyword "injective" |> keyword "=" |> (keyword "true" <|> keyword "false")
            
 
 -- In a rule parameter declaration, multiple variables can be declared
 -- with a single type. 
+
+parameters :: Parser [Variables]
+parameters = keyword "(" |> (pure (:) <*> varList <*> maybeSome (keyword ";" |> varList)) <| keyword ")" 
+
 varList :: Parser Variables
 varList = pure (,)
     <*> ( pure (:) <*> lowerIdent <*> maybeSome ( keyword "," |> lowerIdent ) ) <| keyword ":"
@@ -30,16 +34,16 @@ gpType = pure gptype <*> label
 ruleGraphs :: Parser (AstRuleGraph, AstRuleGraph)
 ruleGraphs = pure (,) <*> ruleGraph <*> ( keyword "=>" |> ruleGraph )
 
+ruleGraph :: Parser AstRuleGraph
+ruleGraph = keyword "[" |> pure AstRuleGraph <*> nodeList <*> edgeList <| keyword "]"
+
 interface :: Parser Interface
 interface = keyword "interface" |> keyword "=" |> keyword "{" 
-         |> ( pure (:) <*> lowerIdent <*> maybeSome interfaceNodes )
+         |> (pure concat <*> maybeOne ( pure (:) <*> lowerIdent <*> maybeSome interfaceNodes ) )
          <| keyword "}"
 
 interfaceNodes :: Parser ID
 interfaceNodes = keyword "," |> lowerIdent 
-
-ruleGraph :: Parser AstRuleGraph
-ruleGraph = keyword "[" |> pure AstRuleGraph <*> nodeList <*> edgeList <| keyword "]"
 
 nodeList :: Parser [RuleNode]
 nodeList = pure (++) <*> maybeOne node <*> maybeSome (keyword "," |> node)
@@ -57,10 +61,14 @@ edgeList = keyword "|" |> ( pure (++) <*> maybeOne edge <*> maybeSome (keyword "
                                                                            
 edge :: Parser RuleEdge
 edge = keyword "(" |> pure RuleEdge 
-   <| (lowerIdent <| keyword ",") 
+   <| lowerIdent
+   <*> (bidirectional <| keyword ",")
    <*> (lowerIdent <| keyword ",") 
    <*> (lowerIdent <| keyword ",") 
    <*> (gpLabel <| keyword ")")
+
+bidirectional :: Parser Bool
+bidirectional = pure (not . null) <*> (maybeOne $ keyword "(B)")
 
 gpLabel :: Parser RuleLabel
 gpLabel = pure RuleLabel <*> list <*> ruleColour

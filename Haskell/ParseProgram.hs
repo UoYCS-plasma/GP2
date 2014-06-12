@@ -4,6 +4,13 @@ import ParseLib
 import GPSyntax
 import ParseRule
 
+testProgram :: String
+testProgram = concat ["Main = rule1; rule2 rule1 (i:int; a:atom) ",
+                      "[ (n1 (R), empty), (n2, i:a) | (e1, n1, n2, \"abc\")]",
+                      "=> [ (n1, b), (n2 (R), 'q') | (e1, n1, n2, a) ]",
+                      "interface = {n1, n2}",
+                      "where and indeg (n1) = 2 i > 5",
+                      "injective = true"]
 
 program :: Parser GPProgram
 program = pure Program <*> atLeastOne declaration 

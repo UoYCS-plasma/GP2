@@ -17,6 +17,6 @@ To make the executable and automatically run it on input files, run:
 
 > make gpparse path/to/gp_program_file path/to/gp_graph_file
 
-This will build gpparse, execute it on the input files, and automatically generate the .dot and .jpeg files of the abstract syntax tree in the same directory. Currently it assumes extensionless file names.
+This will build gpparse and execute it on the inpit file. Currently it assumes extensionless file names.
 
-The program has functionality to print two abstract syntax trees: once before semantic analysis and once after semantic analysis. This is because the semantic analysis phase manipulates the AST while performing static semantic checking.
+The program has functionality to print two abstract syntax trees for debugging: once before semantic analysis and once after semantic analysis. This is because the semantic analysis phase manipulates the AST while performing static semantic checking.

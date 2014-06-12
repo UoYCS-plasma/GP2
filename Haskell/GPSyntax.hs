@@ -112,7 +112,7 @@ data Rule = Rule ID [Variables] (AstRuleGraph, AstRuleGraph) Interface Condition
 type RuleGraph = Graph RuleNode RuleLabel
 data AstRuleGraph = AstRuleGraph [RuleNode] [RuleEdge] deriving (Show)
 data RuleNode = RuleNode ID Bool RuleLabel deriving (Show)
-data RuleEdge = RuleEdge Source Target RuleLabel deriving (Show)
+data RuleEdge = RuleEdge Bool Source Target RuleLabel deriving (Show)
 
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour  deriving (Show)
