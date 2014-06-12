@@ -10,6 +10,7 @@ module Graph (Graph, NodeId, EdgeId, pretty,
 import Prelude hiding (lookup)
 import ExAr
 import Data.Maybe
+import Data.List (intersect)
 
 class Pretty a
 instance Pretty (Graph a b) where
@@ -28,7 +29,7 @@ pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
 
 
 -- labelled graphs
-data Graph a b = Graph (ExAr (Node a)) (ExAr (Edge b)) deriving Show
+data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show
 
 -- intended data invariant for Graph values
 invGraph :: Graph a b -> Bool
