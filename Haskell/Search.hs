@@ -26,7 +26,7 @@ substMerge s ((k, v):kvs) = do
 substExtend :: ( Eq a, Eq b ) => Subst a b -> a -> b -> Maybe (Subst a b)
 --substExtend :: Subst ID [HostAtom] -> ID -> [HostAtom] -> Maybe ( Subst ID [HostAtom] )
 substExtend s key val = 
-    case lookup key s of
+    case Data.List.lookup key s of
             Nothing   -> Just $ (key, val):s
             Just v -> if v == val then Just s else Nothing
 

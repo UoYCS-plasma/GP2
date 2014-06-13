@@ -4,6 +4,7 @@ import Prelude hiding (lookup)
 import Data.List
 import Data.Maybe
 import Control.Monad (guard)
+import Search
 
 import ExAr
 import GPGraph
@@ -27,16 +28,14 @@ data NodeMorphism = NM Environment NodeMatches
 --                  NM env nodeMatches
 
 
-notImplemented = error "Not implemented"
-
-doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe (Subst [HostAtom])
+doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe Environment
 doNodesMatch h r hid rid = doLabelsMatch hlab rlab
     where  -- todo: add error checking!
         HostNode _ _ hlab = fromJust (nLabel h hid)
         RuleNode _ _ rlab = fromJust (nLabel r rid)
 
 -- Also check for matching source and target? TODO: add error checking
-doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe (Subst [HostAtom])
+doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe Environment
 doEdgesMatch h r hid rid = doLabelsMatch (fromJust $ eLabel h hid) (fromJust $ eLabel r rid)
 
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
@@ -44,7 +43,7 @@ matchGraphNodes h r =
     [NM env nodeMatches
         | ss <- sss ,  -- s for subset!
         let nodeMatches = zip rns ss
-        let Just env = foldr labMatch [] nodeMatches ]
+            Just env = foldr labMatch (Just []) nodeMatches ]
     where
         rns = allNodes r
         hns = allNodes h
@@ -64,7 +63,7 @@ matchGraphEdges h r (NM env nodeMatches) = concatMap getGMsForNode nodeMatches
         getGMsForNode ( rn, hn ) = [GM env' nodeMatches edgeMatches
             | ss <- sss ,
             let edgeMatches = zip res ss
-            let Just env' = foldr labMatch env edgeMatches ]
+                Just env' = foldr labMatch (Just env) edgeMatches ]
             where
                 res = outEdges r rn
                 -- Find corresponding host graph node, and all size-n permuted subsets of outgoing edges. 
@@ -81,7 +80,8 @@ matchGraphEdges h r (NM env nodeMatches) = concatMap getGMsForNode nodeMatches
 permutedSizedSubsets :: Int -> [a] -> [[a]]
 permutedSizedSubsets = notImplemented
 
-
+matchGraphs :: HostGraph -> RuleGraph -> [GraphMorphism]
+matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
 
 {-
 -- Returns every hostNode that matches a given ruleNode.
