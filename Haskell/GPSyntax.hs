@@ -117,7 +117,7 @@ data RuleEdge = RuleEdge Bool Source Target RuleLabel deriving (Show)
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour  deriving (Show)
 
-data RuleAtom = Var ID
+data RuleAtom = Var Variable
               | Val HostAtom
               | Indeg ID
               | Outdeg ID

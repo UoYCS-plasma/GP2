@@ -22,6 +22,7 @@ type NodeMatch = (RuleNodeId, HostNodeId, Subst [HostAtom])
 type EdgeMatch = (RuleEdgeId, HostEdgeId, Subst [HostAtom])
 
 
+
 notImplemented = error "Not implemented"
 
 substExtend :: Subst [HostAtom] -> ID -> [HostAtom] -> Maybe ( Subst [HostAtom] )
@@ -91,26 +92,59 @@ doNodesMatch h r hid rid = doLabelsMatch hlab rlab
 doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe (Subst [HostAtom])
 doEdgesMatch h r hid rid = doLabelsMatch (fromJust $ eLabel h hid) (fromJust $ eLabel r rid)
 
+{-
+-- Returns every hostNode that matches a given ruleNode.
 matchRuleNode :: HostGraph -> RuleGraph -> RuleNodeId -> [NodeMatch]
 matchRuleNode h r rn =
     [ (rn, n, fromJust $ doNodesMatch h r n rn) | n <- allNodes h , isJust $ doNodesMatch h r n rn ]
 
+-- Returns every hostEdge that matches a given ruleEdge
 matchRuleEdge :: HostGraph -> RuleGraph -> RuleEdgeId -> [EdgeMatch]
-matchRuleEdge h r re = notImplemented
---    [ (re, e) | e <- allEdges h , doEdgesMatch h r e re ]
+matchRuleEdge h r re =
+    [ (re, he, fromJust $ doEdgesMatch h r he re) | he <- allEdges h , isJust $ doEdgesMatch h r he re ]
 
-matchNodes :: HostGraph -> RuleGraph -> [NodeMatch]
-matchNodes h r = concatMap ( matchRuleNode h r ) $ allNodes r
+-- Needs to be permuted with matchRuleEdge, and then impossible matches (where
+--   nodes and edges are incompatible) need to be filtered out.
+matchNodes :: HostGraph -> RuleGraph -> [[NodeMatch]]
+matchNodes h r = map ( matchRuleNode h r ) $ allNodes r
 
-matchEdges :: HostGraph -> RuleGraph -> [EdgeMatch]
-matchEdges h r = concatMap ( matchRuleEdge h r ) $ allEdges r
+matchEdges :: HostGraph -> RuleGraph -> [[EdgeMatch]]
+matchEdges h r = map ( matchRuleEdge h r ) $ allEdges r
 
+-- should be taking a search-plan approach: start with an arbitrary node
+--   and extend the match as far as possible
 matchGraph :: HostGraph -> RuleGraph -> [GraphMorphism]
 matchGraph = notImplemented
+--matchGraph g r = [ (nm, em) | nm <- matchNodes g r , em <- matchEdges g r ]
+-}
 
 
+-- matching the graph is a generalisation of a parsing task! 
+-- Our parser consumes a host graph _and_ a rule graph, returning the unconsumed parts of the graphs
+-- plus a possible NodeMatch or EdgeMatch
 
+type Matcher a = RuleGraph -> HostGraph -> [(RuleGraph, HostGraph, a)]
 
+pure :: a -> Matcher a
+pure x = \r h -> [(r, h, x)]
+
+infixl 4 °
+
+(°) :: Matcher (a -> b) -> Matcher a -> Matcher b
+f ° a = \h -> [(h1, g b) | (h0, g) <- f h, (h1, b) <- a h0]
+
+matchRuleNode :: RuleGraph -> RuleNodeId -> Matcher NodeMatch
+matchRuleNode r rnid h = notImplemented
+    where
+        r' = rmNode r rnid
+
+matchRuleEdge :: RuleGraph -> RuleEdgeId -> Matcher EdgeMatch
+matchRuleEdge r reid h = notImplemented
+    where
+        r' = rmEdge r reid
+
+matchGraph :: RuleGraph -> Matcher GraphMorphism
+matchGraph r h = notImplemented
 
 
 {-
