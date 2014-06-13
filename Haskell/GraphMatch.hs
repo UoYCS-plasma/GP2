@@ -78,10 +78,24 @@ matchGraphEdges h r (NM env nodeMatches) = concatMap getGMsForNode nodeMatches
             substMerge e e'
 
 permutedSizedSubsets :: Int -> [a] -> [[a]]
-permutedSizedSubsets = notImplemented
+permutedSizedSubsets k xs = concatMap perms $ sublistsOf k xs
+
+sublistsOf :: Int -> [a] -> [[a]]
+sublistsOf 0 _        = [[]]
+sublistsOf _ []       = []
+sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
+
+perms :: [a] -> [[a]]
+perms []      =  [[]]
+perms xs      =  [x:p | (x,xs') <- picks xs, p <- perms xs']
+
+picks :: [a] -> [(a,[a])]
+picks []      =  []
+picks (x:xs)  =  (x,xs) : [(x',x:xs') | (x',xs') <- picks xs]
 
 matchGraphs :: HostGraph -> RuleGraph -> [GraphMorphism]
 matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
+
 
 {-
 -- Returns every hostNode that matches a given ruleNode.
@@ -140,15 +154,7 @@ matchGraph r h = notImplemented
 -}
 
 {-
-makeTestGraph n = nReLabel gr id (HostLabel [] Green)
-    where
-        gr = k n
-        id = head $ allNodes gr
 
---makeRuleGraph n = makeTestGraph
-
-testGraph = makeTestGraph 3
---searchFor = makeRuleGraph 2
 
 
 -- two nodes are equal if their labels are equal

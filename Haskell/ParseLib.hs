@@ -144,7 +144,7 @@ label = token ( atLeastOne gpChar ) <| optSpaces
 
 identifier :: Parser Char -> Parser String
 identifier first = guarded g (pure (:) <*> first <*> maybeSome gpChar)
-  where g s = s `notElem` keywords
+  where g s = (map toLower s) `notElem` keywords
 
 lowerIdent :: Parser String
 lowerIdent = identifier lower <| optSpaces

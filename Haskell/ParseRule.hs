@@ -18,13 +18,15 @@ rule = pure Rule
 -- In a rule parameter declaration, multiple variables can be declared
 -- with a single type. 
 
-parameters :: Parser [Variables]
+parameters :: Parser [[Variable]]
 parameters = keyword "(" |> (pure (:) <*> varList <*> maybeSome (keyword ";" |> varList)) <| keyword ")" 
 
-varList :: Parser Variables
-varList = pure (,)
-    <*> ( pure (:) <*> lowerIdent <*> maybeSome ( keyword "," |> lowerIdent ) ) <| keyword ":"
-    <*> gpType  
+
+varList :: Parser [Variable]
+varList = pure (\(ids, v) -> [ (id, v) | id <- ids ]) <*>
+          ( pure (,)
+            <*> ( pure (:) <*> lowerIdent <*> maybeSome ( keyword "," |> lowerIdent ) ) <| keyword ":"
+            <*> gpType  )
 
 
 gpType :: Parser VarType
