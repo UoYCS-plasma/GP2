@@ -65,11 +65,7 @@ data Declaration = MainDecl Main
 
 data Main = Main CommandSequence deriving (Show)
 
-data Procedure = Procedure ID [LocalDecl] CommandSequence deriving (Show)
-
-data LocalDecl = LocalRule Rule
-               | LocalProcedure Procedure
-     deriving (Show)
+data Procedure = Procedure ID [Declaration] CommandSequence deriving (Show)
 
 data CommandSequence = Sequence [Command] deriving (Show) 
 
@@ -117,8 +113,8 @@ data RuleEdge = RuleEdge Bool Source Target RuleLabel deriving (Show)
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour  deriving (Show)
 
-data RuleAtom = Var ID
-              | Val HostAtom
+data RuleAtom = Variable Variable
+              | Value HostAtom
               | Indeg ID
               | Outdeg ID
               -- RHS only

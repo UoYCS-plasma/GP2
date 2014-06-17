@@ -78,8 +78,11 @@ list :: Parser GPList
 list = pure f <*> keyword "empty" <|> pure (:) <*> atom <*> maybeSome (keyword ":" |> atom)
   where f "empty" = []
 
+-- Variable rule assigns a "temporary" ListVar to each rule to conform with the
+-- Haskell types. The variables are assigned their appropriate types during
+-- semantic analysis.
 atom :: Parser RuleAtom
-atom = pure Var <*> lowerIdent
+atom = pure Var <*> (pure (,) <*> lowerIdent <*> pure ListVar)
    <|> pure Val <*> value
    <|> keyword "indeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
    <|> keyword "outdeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
