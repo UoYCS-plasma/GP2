@@ -95,13 +95,12 @@ data SimpleCommand = RuleCall ID
 
 
 -- GP Rule ADTs
-type Variables = ([ID], VarType)
 type Variable = (ID, VarType)
 type Interface = [ID]
 type Source = ID
 type Target = ID
 
-data Rule = Rule ID [Variables] (AstRuleGraph, AstRuleGraph) Interface Condition String
+data Rule = Rule ID [Variable] (AstRuleGraph, AstRuleGraph) Interface Condition String
     deriving (Show)
 
 -- Rule graph labels are lists of expressions.
@@ -113,8 +112,8 @@ data RuleEdge = RuleEdge Bool Source Target RuleLabel deriving (Show)
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour  deriving (Show)
 
-data RuleAtom = Variable Variable
-              | Value HostAtom
+data RuleAtom = Var Variable
+              | Val HostAtom
               | Indeg ID
               | Outdeg ID
               -- RHS only

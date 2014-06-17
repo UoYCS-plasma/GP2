@@ -15,24 +15,24 @@ testProg = Program
       )
     ),
    RuleDecl (Rule "rule1" 
-       [(["i"],IntVar),(["a"],AtomVar)] 
+       [("i",IntVar),("a",AtomVar)] 
        (AstRuleGraph 
           [RuleNode "n1" True (RuleLabel [] Uncoloured),
-           RuleNode "n2" False (RuleLabel [Variable ("i",ListVar),Variable ("a",ListVar)] Uncoloured)] 
-          [RuleEdge False "n1" "n2" (RuleLabel [Value (Str "abc")] Uncoloured)],
+           RuleNode "n2" False (RuleLabel [Var ("i",ListVar),Var ("a",ListVar)] Uncoloured)] 
+          [RuleEdge False "n1" "n2" (RuleLabel [Val (Str "abc")] Uncoloured)],
        AstRuleGraph
-          [RuleNode "n1" False (RuleLabel [Variable ("b",ListVar)] Uncoloured),
-           RuleNode "n2" True (RuleLabel [Value (Str "q")] Uncoloured)] 
-          [RuleEdge False "n1" "n2" (RuleLabel [Variable ("a",ListVar)] Uncoloured)])
+          [RuleNode "n1" False (RuleLabel [Var ("b",ListVar)] Uncoloured),
+           RuleNode "n2" True (RuleLabel [Val (Str "q")] Uncoloured)] 
+          [RuleEdge False "n1" "n2" (RuleLabel [Var ("a",ListVar)] Uncoloured)])
        ["n1","n2"] 
-       (And (Eq [Indeg "n1"] [Value (Int 2)]) (Greater (Variable ("i",ListVar)) (Value (Int 5)))) "true"
+       (And (Eq [Indeg "n1"] [Val (Int 2)]) (Greater (Var ("i",ListVar)) (Val (Int 5)))) "true"
     ),
    ProcDecl (Procedure "proc1" 
        [RuleDecl (Rule "rule1"
-        [(["a","a"],AtomVar)]
+        [("a",AtomVar),("a",AtomVar)]
         (AstRuleGraph [] [], AstRuleGraph [] [])
         ["n5","n5"]
-        (And (TestInt "a") (NEq ([Variable ("a",ListVar)]) ([Variable ("x",ListVar)])))
+        (And (TestInt "a") (NEq ([Var ("a",ListVar)]) ([Var ("x",ListVar)])))
         "true")
        ]
        (Sequence [Block (SimpleCommand (RuleCall "rule3"))])
@@ -93,12 +93,8 @@ enterDeclarations' scope table decl = case decl of
                                       in addSymbol table' id (Symbol Rule_S scope "")
 
 
-enterVariables :: String -> String -> SymbolTable -> [Variables] -> SymbolTable
-enterVariables scope rule table vars = foldl' (enterVariable scope rule) table (flatten vars) 
-
--- type Variables = ([ID], VarType)
-flatten :: [Variables] -> [Variable]
-flatten = concatMap (\(ids,gptype) -> [(id,gptype) | id <- ids])
+enterVariables :: String -> String -> SymbolTable -> [Variable] -> SymbolTable
+enterVariables scope rule table vars = foldl' (enterVariable scope rule) table vars 
 
 enterVariable :: String -> String -> SymbolTable -> Variable -> SymbolTable
 enterVariable scope rule table (id,gptype) = addSymbol table id (Symbol (Var_S gptype False) scope rule)
