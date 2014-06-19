@@ -112,8 +112,10 @@ condition = keyword "int" |> pure TestInt <*> lowerIdent
         <|> keyword "atom" |> pure TestAtom <*> lowerIdent
         <|> keyword "edge" |> keyword "(" |> 
             pure Edge <*> (lowerIdent <| keyword ",") 
-                      <*> lowerIdent 
-                      <*> (pure head <*> maybeOne (keyword "," |> gpLabel))
+                      <*> lowerIdent
+                      -- fix this - maybeOne could return [] 
+                      <*> (pure head <*> maybeOne (keyword "," |> gpLabel)) 
+                      <| keyword ")"
         <|> pure Eq <*> list <| keyword "=" <*> list
         <|> pure NEq <*> list <| keyword "!=" <*> list
         <|> pure Greater <*> atom <| keyword ">" <*> atom

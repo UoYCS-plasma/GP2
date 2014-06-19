@@ -1,7 +1,7 @@
 -- a simple implementation of extensible sparse arrays using ordered association lists
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
 
-module ExAr (ExAr, empty, extend, addSymbol, lookup, findAll, update, domain, removeAll, remove) where
+module ExAr (ExAr, empty, extend, addSymbol, idLookup, listLookup, findAll, update, domain, removeAll, remove) where
 
 import Prelude hiding (lookup)
 import Data.Maybe (listToMaybe)
@@ -28,8 +28,13 @@ extend (ExAr ixs i) x  =  (ExAr ((i,x):ixs) (i+1), i)
 addSymbol :: ExAr a b -> a -> b -> ExAr a b
 addSymbol (ExAr ixs i) id val = (ExAr ((id,val):ixs) i)
 
-lookup :: Eq a => ExAr a b -> a -> Maybe b
-lookup (ExAr ixs _) id  =  listToMaybe [x | (k,x) <- ixs, k == id]
+-- used to lookup a node or edge in a graph.
+idLookup :: Eq a => ExAr a b -> a -> Maybe b
+idLookup (ExAr ixs _) id  =  listToMaybe [x | (k,x) <- ixs, k == id]
+
+-- used to look up a list of symbols in the symbol table.
+listLookup :: Eq a => ExAr a b -> a -> [b]
+listLookup (ExAr ixs _) id  =  [x | (k,x) <- ixs, k == id]
 
 findAll :: (b -> Bool) -> ExAr a b -> [a]
 findAll p (ExAr ixs _)  =  [id | (id,x) <- ixs, p x]
