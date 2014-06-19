@@ -65,11 +65,7 @@ data Declaration = MainDecl Main
 
 data Main = Main CommandSequence deriving (Show)
 
-data Procedure = Procedure ID [LocalDecl] CommandSequence deriving (Show)
-
-data LocalDecl = LocalRule Rule
-               | LocalProcedure Procedure
-     deriving (Show)
+data Procedure = Procedure ID [Declaration] CommandSequence deriving (Show)
 
 data CommandSequence = Sequence [Command] deriving (Show) 
 
@@ -99,13 +95,12 @@ data SimpleCommand = RuleCall ID
 
 
 -- GP Rule ADTs
-type Variables = ([ID], VarType)
 type Variable = (ID, VarType)
 type Interface = [ID]
 type Source = ID
 type Target = ID
 
-data Rule = Rule ID [Variables] (AstRuleGraph, AstRuleGraph) Interface Condition String
+data Rule = Rule ID [Variable] (AstRuleGraph, AstRuleGraph) Interface Condition String
     deriving (Show)
 
 -- Rule graph labels are lists of expressions.

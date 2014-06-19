@@ -1,55 +1,65 @@
 -- a simple implementation of extensible sparse arrays using ordered association lists
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
 
-module ExAr (ExAr, empty, extend, lookup, findAll, update, domain, removeAll, remove) where
+module ExAr (ExAr, empty, extend, addSymbol, idLookup, listLookup, findAll, update, domain, removeAll, remove) where
 
 import Prelude hiding (lookup)
 import Data.Maybe (listToMaybe)
 
 -- extensible sparse arrays
-data ExAr a = ExAr [(Int,a)] Int deriving Show
+data ExAr a b = ExAr [(a,b)] Int deriving Show
 
--- intended data invariant for ExAr values
-invExAr :: ExAr a -> Bool
+-- intended data invariant for ExAr Int values
+invExAr :: ExAr Int b -> Bool
 invExAr ea@(ExAr _ i) = decreasing d && i > maximum d && minimum d >= 1
   where
   d = domain ea
   decreasing (x:y:etc)  =  x > y && decreasing (y:etc)
   decreasing _          =  True
 
-empty :: ExAr a
-empty  =  ExAr [] 1
+empty :: ExAr a b
+empty =  ExAr [] 1
 
-extend :: ExAr a -> a -> (ExAr a, Int)
+-- used only in Graph module for adding new nodes and edges. 
+extend :: ExAr Int b -> b -> (ExAr Int b, Int)
 extend (ExAr ixs i) x  =  (ExAr ((i,x):ixs) (i+1), i)
 
-lookup :: ExAr a -> Int -> Maybe a
-lookup (ExAr ixs _) i  =  listToMaybe [x | (j,x) <- ixs, j==i]
+-- used only in SemanticAnalysis module for adding symbols. 
+addSymbol :: ExAr a b -> a -> b -> ExAr a b
+addSymbol (ExAr ixs i) id val = (ExAr ((id,val):ixs) i)
 
-findAll :: (a -> Bool) -> ExAr a -> [Int]
-findAll p (ExAr ixs _)  =  [i | (i,x) <- ixs, p x]
+-- used to lookup a node or edge in a graph.
+idLookup :: Eq a => ExAr a b -> a -> Maybe b
+idLookup (ExAr ixs _) id  =  listToMaybe [x | (k,x) <- ixs, k == id]
+
+-- used to look up a list of symbols in the symbol table.
+listLookup :: Eq a => ExAr a b -> a -> [b]
+listLookup (ExAr ixs _) id  =  [x | (k,x) <- ixs, k == id]
+
+findAll :: (b -> Bool) -> ExAr a b -> [a]
+findAll p (ExAr ixs _)  =  [id | (id,x) <- ixs, p x]
 
 -- update outside domain is identity
-update :: (a->a) -> ExAr a -> Int -> ExAr a
-update f ea@(ExAr ixs i') i  =
+update :: Eq a => (b->b) -> ExAr a b -> a -> ExAr a b
+update f ea@(ExAr ixs i) id  =
   case suff of
   []          -> ea
-  (_,x):suff' -> ExAr (pref ++ (i, f x):suff') i'
+  (_,x):suff' -> ExAr (pref ++ (id, f x):suff') i
   where
-  (pref, suff)  =  span (\(j,_) -> j /= i) ixs
+  (pref, suff)  =  span (\(j,_) -> j /= id) ixs
 
-domain :: ExAr a -> [Int]
-domain (ExAr ixs _)  =  [i | (i,_) <- ixs]
+domain :: ExAr a b -> [a]
+domain (ExAr ixs _)  =  [id | (id,_) <- ixs]
 
-removeAll :: (a -> Bool) -> ExAr a -> ExAr a
-removeAll p (ExAr ixs i')  =  ExAr (filter (\(i,x) -> not (p x)) ixs) i'
+removeAll :: (b -> Bool) -> ExAr a b -> ExAr a b
+removeAll p (ExAr ixs i)  =  ExAr (filter (\(id,x) -> not (p x)) ixs) i
 
 -- removal outside domain is identity
-remove :: ExAr a -> Int -> ExAr a
-remove ea@(ExAr ixs i') i   =
+remove :: Eq a => ExAr a b -> a -> ExAr a b
+remove ea@(ExAr ixs i) id =
   case suff of
   []      -> ea
-  _:suff' -> ExAr (pref ++ suff') i'
+  _:suff' -> ExAr (pref ++ suff') i
   where
-  (pref, suff)  =  span (\(j,_) -> j /= i) ixs
+  (pref, suff)  =  span (\(k,_) -> k /= id) ixs
 

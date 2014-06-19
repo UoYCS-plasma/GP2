@@ -29,8 +29,8 @@ procedure = pure Procedure
         <*> keyword "=" |> (pure concat <*> maybeOne (keyword "[" |> localDeclaration <| keyword "]"))
         <*> commandSequence
 
-localDeclaration :: Parser [LocalDecl]
-localDeclaration = atLeastOne (pure LocalRule <*> rule <|> pure LocalProcedure <*> procedure)
+localDeclaration :: Parser [Declaration]
+localDeclaration = atLeastOne (pure RuleDecl <*> rule <|> pure ProcDecl <*> procedure)
 
 commandSequence :: Parser CommandSequence
 commandSequence = pure Sequence <*> (pure (:) <*> command <*> maybeSome (keyword ";" |> command))

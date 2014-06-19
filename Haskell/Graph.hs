@@ -10,6 +10,7 @@ module Graph (Graph, NodeId, EdgeId, pretty,
 import Prelude hiding (lookup)
 import ExAr
 import Data.Maybe
+import Data.List (intersect)
 
 class Pretty a
 instance Pretty (Graph a b) where
@@ -28,7 +29,7 @@ pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
 
 
 -- labelled graphs
-data Graph a b = Graph (ExAr (Node a)) (ExAr (Edge b)) deriving Show
+data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show
 
 -- intended data invariant for Graph values
 invGraph :: Graph a b -> Bool
@@ -70,19 +71,19 @@ inEdges (Graph _ es) n  =  map E $ findAll (\(Edge _ n2 _) -> n2 == n) es
 
 source :: Graph a b -> EdgeId -> Maybe NodeId
 source (Graph _ es) (E i)  =
-  maybe Nothing (\(Edge n1 _ _) -> Just n1) (lookup es i)
+  maybe Nothing (\(Edge n1 _ _) -> Just n1) (idLookup es i)
 
 target :: Graph a b -> EdgeId -> Maybe NodeId
 target (Graph _ es) (E i)  =
-  maybe Nothing (\(Edge _ n2 _) -> Just n2) (lookup es i)
+  maybe Nothing (\(Edge _ n2 _) -> Just n2) (idLookup es i)
 
 nLabel :: Graph a b -> NodeId -> Maybe a
 nLabel (Graph ns _) (N i)  =
-  maybe Nothing (\(Node x) -> Just x) (lookup ns i)
+  maybe Nothing (\(Node x) -> Just x) (idLookup ns i)
 
 eLabel :: Graph a b -> EdgeId -> Maybe b
 eLabel (Graph _ es) (E i)  =
-  maybe Nothing (\(Edge _ _ x) -> Just x) (lookup es i)
+  maybe Nothing (\(Edge _ _ x) -> Just x) (idLookup es i)
 
 -- removing a node also removes all edges with the node as source or target
 rmNode :: Graph a b -> NodeId -> Graph a b

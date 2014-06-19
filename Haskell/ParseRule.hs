@@ -17,18 +17,17 @@ rule = pure Rule
 
 -- In a rule parameter declaration, multiple variables can be declared
 -- with a single type. 
-
-parameters :: Parser [[Variable]]
-parameters = keyword "(" |> (pure (:) <*> varList <*> maybeSome (keyword ";" |> varList)) <| keyword ")" 
-
+parameters :: Parser [Variable]
+parameters = keyword "(" 
+          |> pure (++) <*> varList <*> (pure concat <*> maybeSome (keyword ";" |> varList))
+          <| keyword ")" 
 
 varList :: Parser [Variable]
-varList = pure (\(ids, v) -> [ (id, v) | id <- ids ]) <*>
-          ( pure (,)
-            <*> ( pure (:) <*> lowerIdent <*> maybeSome ( keyword "," |> lowerIdent ) ) <| keyword ":"
-            <*> gpType  )
-
-
+varList = pure (\(ids,gptype) -> [(id,gptype) | id <- ids])
+      <*> ( pure (,)
+          <*> ( pure (:) <*> lowerIdent <*> maybeSome ( keyword "," |> lowerIdent ) ) 
+          <| keyword ":" <*> gpType )
+          
 gpType :: Parser VarType
 gpType = pure gptype <*> label
    where gptype t = fromJust $ lookup t gpTypes
@@ -80,8 +79,11 @@ list :: Parser GPList
 list = pure f <*> keyword "empty" <|> pure (:) <*> atom <*> maybeSome (keyword ":" |> atom)
   where f "empty" = []
 
+-- Variable rule assigns a "temporary" ListVar to each rule to conform with the
+-- Haskell types. The variables are assigned their appropriate types during
+-- semantic analysis.
 atom :: Parser RuleAtom
-atom = pure Var <*> lowerIdent
+atom = pure Var <*> (pure (,) <*> lowerIdent <*> pure ListVar)
    <|> pure Val <*> value
    <|> keyword "indeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
    <|> keyword "outdeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
@@ -108,8 +110,10 @@ condition = keyword "int" |> pure TestInt <*> lowerIdent
         <|> keyword "atom" |> pure TestAtom <*> lowerIdent
         <|> keyword "edge" |> keyword "(" |> 
             pure Edge <*> (lowerIdent <| keyword ",") 
-                      <*> lowerIdent 
-                      <*> (pure head <*> maybeOne (keyword "," |> gpLabel))
+                      <*> lowerIdent
+                      -- fix this - maybeOne could return [] 
+                      <*> (pure head <*> maybeOne (keyword "," |> gpLabel)) 
+                      <| keyword ")"
         <|> pure Eq <*> list <| keyword "=" <*> list
         <|> pure NEq <*> list <| keyword "!=" <*> list
         <|> pure Greater <*> atom <| keyword ">" <*> atom
