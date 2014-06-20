@@ -1,4 +1,4 @@
-module Search where
+module LabelMatch where
 
 import Prelude hiding (lookup)
 import Data.List
@@ -12,9 +12,6 @@ import GPSyntax
 
 type Subst a b = [(a, b)]
 
-
-
-notImplemented = error "Not implemented"
 
 substMerge :: ( Eq a, Eq b ) => Subst a b -> Subst a b -> Maybe (Subst a b)
 substMerge s [] = Just s
