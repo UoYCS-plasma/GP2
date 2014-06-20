@@ -4,7 +4,7 @@ import Prelude hiding (lookup)
 import Data.List
 import Data.Maybe
 import Control.Monad (guard)
-import Search
+import LabelMatch
 
 import ExAr
 import GPGraph
