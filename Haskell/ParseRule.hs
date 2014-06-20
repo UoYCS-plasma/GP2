@@ -74,7 +74,6 @@ bidirectional = pure (not . null) <*> (maybeOne $ keyword "(B)")
 gpLabel :: Parser RuleLabel
 gpLabel = pure RuleLabel <*> list <*> ruleColour
 
-
 list :: Parser GPList
 list = pure f <*> keyword "empty" <|> pure (:) <*> atom <*> maybeSome (keyword ":" |> atom)
   where f "empty" = []
@@ -110,10 +109,9 @@ condition = keyword "int" |> pure TestInt <*> lowerIdent
         <|> keyword "atom" |> pure TestAtom <*> lowerIdent
         <|> keyword "edge" |> keyword "(" |> 
             pure Edge <*> (lowerIdent <| keyword ",") 
-                      <*> lowerIdent
-                      -- fix this - maybeOne could return [] 
-                      <*> (pure head <*> maybeOne (keyword "," |> gpLabel)) 
-                      <| keyword ")"
+                      <*> lowerIdent 
+                      <*> (pure Just <*> (keyword "," |> gpLabel) <| keyword ")"
+                           <|> keyword ")" |> pure Nothing )
         <|> pure Eq <*> list <| keyword "=" <*> list
         <|> pure NEq <*> list <| keyword "!=" <*> list
         <|> pure Greater <*> atom <| keyword ">" <*> atom

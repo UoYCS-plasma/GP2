@@ -144,7 +144,7 @@ data Condition = NoCondition
                | TestChar ID
                | TestStr ID
                | TestAtom ID
-               | Edge ID ID RuleLabel
+               | Edge ID ID (Maybe RuleLabel)
                | Eq GPList GPList
                | NEq GPList GPList
                | Greater RuleAtom RuleAtom

@@ -11,7 +11,7 @@ import Graph
 import GPSyntax
 
 type Subst a b = [(a, b)]
-
+type Environment = Subst ID [HostAtom]
 
 substMerge :: ( Eq a, Eq b ) => Subst a b -> Subst a b -> Maybe (Subst a b)
 substMerge s [] = Just s
@@ -36,18 +36,19 @@ atomsMatchWith env [] [] = Just env
 atomsMatchWith env hall@(ha:has) (ra:ras) =
     case (ha, ra) of
         ( _    , Var (var, ListVar) ) ->
+            let hl = length hall
+                rl = length ras
+                d  = hl - rl 
+            in
             case compare hl rl of
                 LT -> Nothing
                 EQ -> do 
                     env' <- substExtend env var []
                     atomsMatchWith env' hall ras
                 GT -> do
-                    env' <- substExtend env var $ take n hall
-                    atomsMatchWith env' (drop n hall) ras
-            where
-                hl = length hall
-                rl = length ras
-                n  = hl - rl                
+                    env' <- substExtend env var $ take d hall
+                    atomsMatchWith env' (drop d hall) ras
+              
         ( Int i, Val (Int j) ) -> do
             guard $ i == j
             atomsMatchWith env has ras
@@ -63,46 +64,62 @@ atomsMatchWith env hall@(ha:has) (ra:ras) =
             env' <- substExtend env var [ha]
             atomsMatchWith env' has ras
         ( Str str, Val (Chr c) ) -> do
-            guard $ str != ""
+            guard $ str /= ""
             guard $ head str == c
             atomsMatchWith env has ras
         ( Str str, Val (Str s) ) -> do
             guard $ str == s
             atomsMatchWith env has ras
+        ( Str str, Var (var, ChrVar) ) -> do
+            guard $ length str == 1
+            env' <- substExtend env var [(Chr $ head str)]
+            atomsMatchWith env' has ras
         ( Str str, Var (var, vt) ) -> do
             guard $ StrVar <= vt
             env' <- substExtend env var [ha]
             atomsMatchWith env' has ras
--- Don't know how to handle this case yet. Perhaps the intermediate phase
--- can transform a Concat expression into a list of "string atoms" which 
--- can then be processed similarly to atomsMatchWith's handling of lists of
--- atoms.
---     ( Str str, Concat a1 a2 ) -> 
+        ( Str str, a@(Concat a1 a2) ) -> do
+            let as = expand a 
+            env' <- stringMatchWith env str as
+            atomsMatchWith env' has ras
+        _ -> Nothing
 
-{- Returns a Maybe pair of the updated environment and the "unparsed" portion of 
--- the host string.
-stringMatchWith :: Environment -> String -> RuleAtom -> Maybe (Environment, String)
-stringMatchWith env str a = 
+
+expand :: RuleAtom -> [RuleAtom]
+expand (Concat a1 a2) = expand a1 ++ expand a2
+expand a = [a]
+
+-- Matches a host string with a list of rule atoms. Each rule atom is
+-- a string expression: a character constant/variable or a string constant/
+-- variable. Implemented similarly to atomsMatchWith
+stringMatchWith :: Environment -> String -> [RuleAtom] -> Maybe Environment
+stringMatchWith env str@(c:cs) (a:as) = 
    case a of
-        Chr c -> do
-           guard $ s != ""
-           guard $ head str == s
-           return (env, tail s)
-        Str s -> do
+        Val (Chr d) -> do
+           guard $ c == d
+           stringMatchWith env cs as
+        Val (Str s) -> do
            guard $ s `isPrefixOf` str 
            let rl = length s
-           return (env, drop rl str)
+           stringMatchWith env (drop rl str) as
         Var (var, ChrVar) -> do
-           guard $ str != ""
-           env' <- substExtend env var $ head str
-           return (env', tail str)
-        Var (var, StrVar) -> do
-           
-        Concat a1 a2 -> do
-           env' <- stringMatchWith env str a1 
-           stringMatchWith env' str a2
--}
-        
+           guard $ str /= ""
+           env' <- substExtend env var [(Chr c)]
+           stringMatchWith env' cs as
+        Var (var, StrVar) -> 
+           let sl = length str
+               al = length as
+               d = sl - al
+           in
+           case compare sl al of
+              LT -> Nothing
+              EQ -> do
+                  env' <- substExtend env var []
+                  stringMatchWith env' str as
+              GT -> do
+                  env' <- substExtend env var [(Str $ take d str)]
+                  stringMatchWith env' (drop d str) as
+        _ -> Nothing
 
 colourMatch :: Colour -> Colour -> Bool
 colourMatch _  Cyan = True

@@ -16,7 +16,7 @@ type HostNodeId = NodeId
 type RuleEdgeId = EdgeId
 type HostEdgeId = EdgeId
 
-type Environment = Subst ID [HostAtom]
+-- type Environment = Subst ID [HostAtom]
 
 type NodeMatches = Subst RuleNodeId HostNodeId
 type EdgeMatches = Subst RuleEdgeId HostEdgeId
