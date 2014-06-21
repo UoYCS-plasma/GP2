@@ -3,7 +3,7 @@
 
 module Graph (Graph, NodeId, EdgeId, pretty,
                emptyGraph, newNode, newEdge,
-               allNodes, outEdges, inEdges, allEdges,
+               allNodes, outEdges, inEdges, joiningEdges, allEdges,
                source, target, nLabel, eLabel,
                rmNode, rmEdge, eReLabel, nReLabel) where
 
@@ -68,6 +68,9 @@ outEdges (Graph _ es) n  =  map E $ findAll (\(Edge n1 _ _) -> n1 == n) es
 
 inEdges :: Graph a b -> NodeId -> [EdgeId]
 inEdges (Graph _ es) n  =  map E $ findAll (\(Edge _ n2 _) -> n2 == n) es
+
+joiningEdges :: Graph a b -> NodeId -> NodeId -> [EdgeId]
+joiningEdges (Graph _ es) src tgt = map E $ findAll (\(Edge n1 n2 _) -> n1 == src && n2 == tgt) es
 
 source :: Graph a b -> EdgeId -> Maybe NodeId
 source (Graph _ es) (E i)  =

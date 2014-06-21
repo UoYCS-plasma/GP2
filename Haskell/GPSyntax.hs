@@ -15,7 +15,6 @@ keywords = map fst hostColours ++
             "slength", "llength"]
 
 
-{- Colours have yet to be formalised. Currently working on the assumption that only one can be applied to a given edge or node -}
 data Colour = Uncoloured
             | Red 
             | Green 
@@ -141,7 +140,7 @@ instance Ord VarType where
 
 data Condition = NoCondition
                | TestInt ID
-               | TestChar ID
+               | TestChr ID
                | TestStr ID
                | TestAtom ID
                | Edge ID ID (Maybe RuleLabel)

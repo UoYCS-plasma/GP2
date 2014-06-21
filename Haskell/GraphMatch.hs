@@ -25,18 +25,28 @@ type EdgeMatches = Subst RuleEdgeId HostEdgeId
 data GraphMorphism = GM Environment NodeMatches EdgeMatches
 
 data NodeMorphism = NM Environment NodeMatches
---                  NM env nodeMatches
 
 
-doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe Environment
-doNodesMatch h r hid rid = doLabelsMatch hlab rlab
-    where  -- todo: add error checking!
-        HostNode _ _ hlab = fromJust (nLabel h hid)
-        RuleNode _ _ rlab = fromJust (nLabel r rid)
+permutedSizedSubsets :: Int -> [a] -> [[a]]
+permutedSizedSubsets k xs = concatMap perms $ sublistsOf k xs
 
--- Also check for matching source and target? TODO: add error checking
-doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe Environment
-doEdgesMatch h r hid rid = doLabelsMatch (fromJust $ eLabel h hid) (fromJust $ eLabel r rid)
+sublistsOf :: Int -> [a] -> [[a]]
+sublistsOf 0 _        = [[]]
+sublistsOf _ []       = []
+sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
+
+perms :: [a] -> [[a]]
+perms []      =  [[]]
+perms xs      =  [x:p | (x,xs') <- picks xs, p <- perms xs']
+
+picks :: [a] -> [(a,[a])]
+picks []      =  []
+picks (x:xs)  =  (x,xs) : [(x',x:xs') | (x',xs') <- picks xs]
+
+
+
+matchGraphs :: HostGraph -> RuleGraph -> [GraphMorphism]
+matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
 
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
 matchGraphNodes h r = 
@@ -55,6 +65,12 @@ matchGraphNodes h r =
                 s' <- doNodesMatch h r hn rn
                 substMerge s s' 
                 
+doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe Environment
+doNodesMatch h r hid rid = doLabelsMatch hlab rlab
+    where  -- todo: add error checking!
+        HostNode _ _ hlab = fromJust (nLabel h hid)
+        RuleNode _ _ rlab = fromJust (nLabel r rid)
+
 
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
 matchGraphEdges h r (NM env nodeMatches) = concatMap getGMsForNode nodeMatches
@@ -77,24 +93,14 @@ matchGraphEdges h r (NM env nodeMatches) = concatMap getGMsForNode nodeMatches
             e' <- doEdgesMatch h r he re
             substMerge e e'
 
-permutedSizedSubsets :: Int -> [a] -> [[a]]
-permutedSizedSubsets k xs = concatMap perms $ sublistsOf k xs
+-- Also check for matching source and target? TODO: add error checking
+doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe Environment
+doEdgesMatch h r hid rid = doLabelsMatch (fromJust $ eLabel h hid) (fromJust $ eLabel r rid)
 
-sublistsOf :: Int -> [a] -> [[a]]
-sublistsOf 0 _        = [[]]
-sublistsOf _ []       = []
-sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
 
-perms :: [a] -> [[a]]
-perms []      =  [[]]
-perms xs      =  [x:p | (x,xs') <- picks xs, p <- perms xs']
 
-picks :: [a] -> [(a,[a])]
-picks []      =  []
-picks (x:xs)  =  (x,xs) : [(x',x:xs') | (x',xs') <- picks xs]
 
-matchGraphs :: HostGraph -> RuleGraph -> [GraphMorphism]
-matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
+
 
 
 {-

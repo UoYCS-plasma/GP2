@@ -104,8 +104,8 @@ ruleColour = keyword "#" |> pure col <*> label
 
 condition :: Parser Condition
 condition = keyword "int" |> pure TestInt <*> lowerIdent
-        <|> keyword "char" |> pure TestStr <*> lowerIdent
-        <|> keyword "str" |> pure TestChar <*> lowerIdent
+        <|> keyword "char" |> pure TestChr <*> lowerIdent
+        <|> keyword "str" |> pure TestStr <*> lowerIdent
         <|> keyword "atom" |> pure TestAtom <*> lowerIdent
         <|> keyword "edge" |> keyword "(" |> 
             pure Edge <*> (lowerIdent <| keyword ",") 
