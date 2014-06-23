@@ -10,15 +10,39 @@ import Data.Maybe
 -- type Environment = Subst ID [HostAtom]
 
 -- Assumed functions.
-labelEval :: Environment -> RuleLabel -> HostLabel
-labelEval _ _ = HostLabel [] Uncoloured
+labelEval :: Environment -> GraphMorphism -> HostGraph -> RuleLabel -> HostLabel
+labelEval env m g (RuleLabel list col) = HostLabel (concatMap (atomEval env m g) list) col
 
-atomEval :: Environment -> RuleAtom -> HostAtom
-atomEval _ _ = Int 1 
+atomEval :: Environment -> GraphMorphism -> HostGraph -> RuleAtom -> [HostAtom]
+atomEval env m g a = case a of
+   -- TODO: error check
+   Var (Variable (name, gpType)) -> fromJust $ lookup name env 
+   Val ha -> [ha]
+   -- String node IDs. Require integers.
+   Indeg node -> let hnode = lookup node m in
+                 length $ inEdges g hnode
+   Outdeg node -> let hnode = lookup node m in
+                 length $ outEdges g hnode
+   Llength list -> length list 
+   Slength exp -> case exp of
+                      Var (Variable (name, ChrVar)) -> [1]
+                      Var (Variable (name, StrVar)) -> [length $ fromJust $ lookup name env]
+                      -- This is wrong: the Concat expression may contain a string variable.
+                      str@(Concat s t) -> [length $ expand str]
+                      -- Slength not applicable to non-string expressions. 
+                      -- Probably should return an error.
+                      _ -> [0]
+   Neg exp -> [0 - intExpEval env exp]
+   Plus exp1 exp2 -> [intExpEval env exp1 + intExpEval env exp2]
+   Minus exp1 exp2 -> [intExpEval env exp1 - intExpEval env exp2]
+   Times exp1 exp2 -> [intExpEval env exp1 * intExpEval env exp2]
+   -- TODO: handle division by 0
+   Div exp1 exp2 -> [intExpEval env exp1 `div` intExpEval env exp2]
+   exp@(Concat exp1 exp2) -> map atomEval $ expand exp
 
-intEval :: Environment -> RuleAtom -> Int
-intEval _ _ = 1
--- intEval nonIntExp = error "not an integer expression"
+intExpEval :: Environment -> RuleAtom -> Int
+intExpEval _ _ = 1
+intExpEval nonIntExp = error "not an integer expression"
 
 conditionEval :: Condition -> GraphMorphism -> HostGraph -> Environment -> Bool
 conditionEval c m g env = 

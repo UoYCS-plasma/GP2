@@ -117,7 +117,7 @@ data RuleAtom = Var Variable
               | Outdeg ID
               -- RHS only
               | Llength GPList
-              | Slength GPList
+              | Slength RuleAtom
               | Neg RuleAtom
               | Plus RuleAtom RuleAtom
               | Minus RuleAtom RuleAtom

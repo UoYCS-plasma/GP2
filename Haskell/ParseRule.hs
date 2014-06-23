@@ -87,7 +87,7 @@ atom = pure Var <*> (pure (,) <*> lowerIdent <*> pure ListVar)
    <|> keyword "indeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
    <|> keyword "outdeg" |> keyword "(" |> pure Indeg <*> lowerIdent <| keyword ")"
    <|> keyword "llength" |> keyword "(" |> pure Llength <*> list <| keyword ")"
-   <|> keyword "slength" |> keyword "(" |> pure Slength <*> list <| keyword ")"
+   <|> keyword "slength" |> keyword "(" |> pure Slength <*> atom <| keyword ")"
    <|> keyword "~" |> pure Neg <*> atom
    <|> keyword "+" |> pure Plus <*> atom <*> atom
    <|> keyword "-" |> pure Minus <*> atom <*> atom
