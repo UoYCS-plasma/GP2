@@ -14,7 +14,7 @@ testProg = Program
          Block (SimpleCommand (RuleCall "rule2"))]
       )
     ),
-   RuleDecl (Rule "rule1" 
+   RuleDecl (AstRule "rule1" 
        [("i",IntVar),("a",AtomVar)] 
        (AstRuleGraph 
           [RuleNode "n1" True (RuleLabel [] Uncoloured),
@@ -28,7 +28,7 @@ testProg = Program
        (And (Eq [Indeg "n1"] [Val (Int 2)]) (Greater (Var ("i",ListVar)) (Val (Int 5)))) "true"
     ),
    ProcDecl (Procedure "proc1" 
-       [RuleDecl (Rule "rule1"
+       [RuleDecl (AstRule "rule1"
         [("a",AtomVar),("a",AtomVar)]
         (AstRuleGraph [] [], AstRuleGraph [] [])
         ["n5","n5"]
@@ -44,7 +44,7 @@ testProg = Program
 -- This requires changing the ExAr data structure to take two type parameters
 -- e.g. ExAr a b = ExAr [(a,b)] Int
 -- and define data Graph = Graph (ExAr Int (Node a)) (ExAr Int (Edge b))
-type SymbolTable = ExAr String Symbol 
+type SymbolTable = ExAr Symbol 
 
 type Scope = String
 type RuleID = String
@@ -72,10 +72,10 @@ data SymbolType = Procedure_S
    deriving (Show)
 
 
-type SymbolList = [(ID, Symbol)]
+type SymbolList = [(String, Symbol)]
 
 makeTable :: SymbolList -> SymbolTable
-makeTable = foldr (\(id,s) table -> addSymbol table id s) empty
+makeTable = foldr (\(id,s) table -> fst $ extend table id s) empty
 
 testtab = makeTable slist
 
@@ -89,7 +89,7 @@ slist = [("a", Symbol (Var_S AtomVar False) "Global" "r1"),
 -- name), a rule name and a symbol table. It returns the list of symbols with
 -- name <id> with the same Scope and RuleID as those passed into the function. 
 
-symbolsInScope :: ID -> Scope -> RuleID -> SymbolTable -> [Symbol]
+symbolsInScope :: VarName -> Scope -> RuleID -> SymbolTable -> [Symbol]
 symbolsInScope name scope rule table = filter (checkScope scope rule) $ listLookup table name 
   where 
   -- checkScope :: String -> String -> Symbol -> Bool
@@ -115,15 +115,14 @@ enterDeclarations' :: Scope -> SymbolTable -> Declaration -> SymbolTable
 enterDeclarations' scope table decl = case decl of
   MainDecl _ -> table
   ProcDecl (Procedure id decls _ ) -> let table' = enterDeclarations id table decls 
-                                      in addSymbol table' id (Symbol Procedure_S scope "")
-  RuleDecl (Rule id vars _ _ _ _ ) -> let table' = enterVariables scope id table vars
-                                      in addSymbol table' id (Symbol Rule_S scope "")
-
+                                      in fst $ extend table' id (Symbol Procedure_S scope "")
+  RuleDecl (AstRule id vars _ _ _ _ ) -> let table' = enterVariables scope id table vars
+                                      in fst $ extend table' id (Symbol Rule_S scope "")
 
 enterVariables :: Scope -> RuleID -> SymbolTable -> [Variable] -> SymbolTable
 enterVariables s r t vars = foldl' (enterVariable s r) t vars 
 
 enterVariable :: Scope -> RuleID -> SymbolTable -> Variable -> SymbolTable
-enterVariable s r t (id,gptype) = addSymbol t id (Symbol (Var_S gptype False) s r)
+enterVariable s r t (id,gptype) = fst $ extend t id (Symbol (Var_S gptype False) s r)
 
 

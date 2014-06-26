@@ -7,7 +7,7 @@ import Control.Monad (guard)
 import LabelMatch
 
 import ExAr
-import GPGraph
+-- import GPGraph
 import Graph
 import GPSyntax
 

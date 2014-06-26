@@ -23,7 +23,7 @@ testhg = AstHostGraph
 -- NodeMap keeps track of the correspondence between string IDs in the AstGraphs
 -- and the integer IDs in the ExAr graphs.
 
-type NodeMap = [(ID, NodeId)]
+type NodeMap = [(NodeName, NodeId)]
 
 -- makeHostGraph first generates all the nodes so that the node map is available
 -- for edge creation. It uses the node map to ensure that the edges are assigned
@@ -33,8 +33,8 @@ makeHostGraph (AstHostGraph hns hes) = fst $ foldr addHEdge (nodeGraph,nodeMaps)
   where (nodeGraph,nodeMaps) = foldr addHNode (emptyGraph, []) hns
 
 addHNode :: HostNode -> (HostGraph, NodeMap) -> (HostGraph, NodeMap)
-addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newID):nm)
-  where (g', newID) = newNode g hn
+addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newId):nm)
+  where (g', newId) = newNode g id hn
 
 -- Uses the node map to lookup the appropriate node IDs from the
 -- HostEdge's source and target nodes, and creates the appropriate
@@ -43,9 +43,9 @@ addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newID):nm)
 -- the graph, so the lookups should never return Nothing.
 addHEdge :: HostEdge -> (HostGraph, NodeMap) -> (HostGraph, NodeMap)
 addHEdge (HostEdge src tgt label) (g, nm) = (g',nm)
-  where Just srcID = lookup src nm
-        Just tgtID = lookup tgt nm
-        (g', _) = newEdge g srcID tgtID label
+  where Just srcId = lookup src nm
+        Just tgtId = lookup tgt nm
+        (g', _) = newEdge g (src ++ tgt) srcId tgtId label
 
 
 -- makeRuleGraph has the same structure as makeHostGraph with respect to
@@ -62,14 +62,14 @@ makeRuleGraph (AstRuleGraph rns res) s r t = fst $ foldr addREdge (nodeGraph,nod
         res' = map (updateEdge s r t) res
 
 addRNode :: RuleNode -> (RuleGraph, NodeMap) -> (RuleGraph, NodeMap)
-addRNode hn@(RuleNode id _ _ ) (g, nm) = (g', (id, newID):nm)
-  where (g', newID) = newNode g hn
+addRNode hn@(RuleNode id _ _ ) (g, nm) = (g', (id, newId):nm)
+  where (g', newId) = newNode g id hn
 
 addREdge :: RuleEdge -> (RuleGraph, NodeMap) -> (RuleGraph, NodeMap)
 addREdge (RuleEdge _ src tgt label) (g, nm) = (g',nm)
-  where Just srcID = lookup src nm
-        Just tgtID = lookup tgt nm
-        (g', _) = newEdge g srcID tgtID label
+  where Just srcId = lookup src nm
+        Just tgtId = lookup tgt nm
+        (g', _) = newEdge g (src ++ tgt) srcId tgtId label
 
 
 updateNode :: Scope -> RuleID -> SymbolTable -> RuleNode -> RuleNode

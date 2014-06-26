@@ -5,13 +5,13 @@ import Data.List
 import Data.Maybe
 import Control.Monad (guard)
 
-import ExAr
-import GPGraph
-import Graph
+-- import ExAr
+-- import GPGraph
+-- import Graph
 import GPSyntax
 
 type Subst a b = [(a, b)]
-type Environment = Subst ID [HostAtom]
+type Environment = Subst VarName [HostAtom]
 
 substMerge :: ( Eq a, Eq b ) => Subst a b -> Subst a b -> Maybe (Subst a b)
 substMerge s [] = Just s
@@ -21,7 +21,7 @@ substMerge s ((k, v):kvs) = do
 
 
 substExtend :: ( Eq a, Eq b ) => Subst a b -> a -> b -> Maybe (Subst a b)
---substExtend :: Environment -> ID -> [HostAtom] -> Maybe Environment
+--substExtend :: Environment -> VarName -> [HostAtom] -> Maybe Environment
 substExtend s key val = 
     case lookup key s of
             Nothing   -> Just $ (key, val):s
