@@ -3,27 +3,90 @@ module ProcessAst where
 import Prelude 
 import Data.List
 import GPSyntax
-import SemanticAnalysis
 import Graph
 import ExAr
 
-testrg :: AstRuleGraph
-testrg = AstRuleGraph 
-        [RuleNode "n1" False (RuleLabel [Var ("a", ListVar), Var ("l", ListVar)] Red),
-         RuleNode "n2" False (RuleLabel [Var ("i", ListVar)] Uncoloured)]
-        [RuleEdge False "n1" "n2" (RuleLabel [Var ("i", ListVar)] Uncoloured)]
+type SymbolTable = ExAr String Symbol 
 
-testhg :: AstHostGraph
-testhg = AstHostGraph 
-        [HostNode "n1" False (HostLabel [Int 1, Str "one"] Red),
-         HostNode "n2" False (HostLabel [Chr 'a'] Uncoloured)]
-        [HostEdge "n1" "n2" (HostLabel [] Uncoloured)]
+type Scope = String
+type RuleID = String
 
+-- A symbol's Scope is the procedure it is contained in. Global symbols
+-- have scope "Global".
+-- RuleId is used to distinguish between variables, nodes and edges who may
+-- have the same names in different rules. The field is the empty string
+-- for rule and procedure symbols.
+data Symbol = Symbol SymbolType Scope RuleID deriving (Show)
+
+-- A variable symbol Var_S is equipped with its type VarType and a Bool set to
+-- True if the variable occurs in the LHS of a rule.
+-- A node symbol's Bool is True if the node is a wildcard.
+-- An edge symbol's Bool is True if the edge is bidirectional.
+-- Edge's IDs are discarded in parsing. Perhaps their "IDs" can be a concatenation
+-- of the source and target IDs?
+data SymbolType = Procedure_S
+                | Rule_S
+                | Var_S VarType Bool
+                | LeftNode_S Bool
+                | RightNode_S Bool
+                | LeftEdge_S Bool
+                | RightEdge_S Bool
+   deriving (Show)
+
+
+type SymbolList = [(String, Symbol)]
+
+makeTable :: SymbolList -> SymbolTable
+makeTable = foldr (\(id,s) table -> addSymbol table id s) empty
+
+testtab = makeTable slist
+
+slist = [("i", Symbol (Var_S IntVar False) "Global" "r1"),
+         ("l", Symbol (Var_S ListVar False) "Global" "r1")]
+
+-- symbolsInScope takes an identifier <id>, a scope ("Global" or a procedure
+-- name), a rule name and a symbol table. It returns the list of symbols with
+-- name <id> with the same Scope and RuleID as those passed into the function. 
+
+symbolsInScope :: VarName -> Scope -> RuleID -> SymbolTable -> [Symbol]
+symbolsInScope name scope rule table = filter (checkScope scope rule) $ listLookup table name 
+  where 
+  -- checkScope :: String -> String -> Symbol -> Bool
+     checkScope scope rule (Symbol _ symbolScope symbolRule) = 
+        scope == symbolScope && rule == symbolRule
+
+
+
+-- Calls enterDeclarations with "Global" scope and an empty symbol table.
+enterSymbols :: GPProgram -> SymbolTable
+enterSymbols (Program declarations) = enterDeclarations "Global" empty declarations
+
+-- Enter any rule and procedure declarations into the symbol table.
+enterDeclarations :: Scope -> SymbolTable -> [Declaration] -> SymbolTable
+enterDeclarations scope table decls  = foldl' (enterDeclarations' scope) table decls
+
+-- MainDecl: contains only a command sequence, no declarations to enter.
+-- ProcDecl: the name of the procedure being declared is entered into the symbol
+--           table and the local declaration list of the procedure is processed
+--           by a recursive call.
+-- RuleDecl: the name of the rule and its variables are entered into the symbol table.
+enterDeclarations' :: Scope -> SymbolTable -> Declaration -> SymbolTable
+enterDeclarations' scope table decl = case decl of
+  MainDecl _ -> table
+  ProcDecl (Procedure id decls _ ) -> let table' = enterDeclarations id table decls 
+                                      in addSymbol table' id (Symbol Procedure_S scope "")
+  RuleDecl (AstRule id vars _ _ _ _ ) -> let table' = enterVariables scope id table vars
+                                      in addSymbol table' id (Symbol Rule_S scope "")
+
+enterVariables :: Scope -> RuleID -> SymbolTable -> [Variable] -> SymbolTable
+enterVariables s r t vars = foldl' (enterVariable s r) t vars 
+
+enterVariable :: Scope -> RuleID -> SymbolTable -> Variable -> SymbolTable
+enterVariable s r t (id,gptype) = addSymbol t id (Symbol (Var_S gptype False) s r)
 
 -- NodeMap keeps track of the correspondence between string IDs in the AstGraphs
 -- and the integer IDs in the ExAr graphs.
-
-type NodeMap = [(ID, NodeId)]
+type NodeMap = [(NodeName, NodeId)]
 
 -- makeHostGraph first generates all the nodes so that the node map is available
 -- for edge creation. It uses the node map to ensure that the edges are assigned
@@ -33,8 +96,8 @@ makeHostGraph (AstHostGraph hns hes) = fst $ foldr addHEdge (nodeGraph,nodeMaps)
   where (nodeGraph,nodeMaps) = foldr addHNode (emptyGraph, []) hns
 
 addHNode :: HostNode -> (HostGraph, NodeMap) -> (HostGraph, NodeMap)
-addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newID):nm)
-  where (g', newID) = newNode g hn
+addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newId):nm)
+  where (g', newId) = newNode g hn
 
 -- Uses the node map to lookup the appropriate node IDs from the
 -- HostEdge's source and target nodes, and creates the appropriate
@@ -43,10 +106,31 @@ addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newID):nm)
 -- the graph, so the lookups should never return Nothing.
 addHEdge :: HostEdge -> (HostGraph, NodeMap) -> (HostGraph, NodeMap)
 addHEdge (HostEdge src tgt label) (g, nm) = (g',nm)
-  where Just srcID = lookup src nm
-        Just tgtID = lookup tgt nm
-        (g', _) = newEdge g srcID tgtID label
+  where Just srcId = lookup src nm
+        Just tgtId = lookup tgt nm
+        (g', _) = newEdge g srcId tgtId label
 
+-- May need to keep the new SymbolTable t' but I ignore it for now.
+makeRule :: AstRule -> Scope -> RuleID -> SymbolTable -> Rule
+makeRule (AstRule name vars (lhs, rhs) interface cond b) s r t =
+         Rule name vars (lhs', rhs') interface' cond b
+   where
+      t' = enterVariables s r t vars
+      (lhs',nm) = makeRuleGraph lhs s r t' 
+      rhs' = fst $ makeRuleGraph rhs s r t'
+      interface' = makeInterface interface nm
+
+-- Converts String NodeIds in the interface to Graph NodeIds according to
+-- the NodeMap. It is possible that a node declared in the interface does
+-- not exist in the LHS graph which is a semantic error. Currently
+-- I just ignore this, but it should be reported somehow.
+makeInterface :: AstInterface -> NodeMap -> Interface
+makeInterface ns nm = f $ map ((flip lookup) nm) ns 
+  where 
+     f :: [Maybe NodeId] -> [NodeId]
+     f [] = []
+     f (Nothing:xs) = f xs
+     f ((Just x):xs) = x : f xs
 
 -- makeRuleGraph has the same structure as makeHostGraph with respect to
 -- generating the graph. Some additional processing is required to assign
@@ -55,21 +139,21 @@ addHEdge (HostEdge src tgt label) (g, nm) = (g',nm)
 -- to node labels and edge labels respectively. The function assignTypes
 -- is responsible for the bulk of the work.
 
-makeRuleGraph :: AstRuleGraph -> Scope -> RuleID -> SymbolTable -> RuleGraph
-makeRuleGraph (AstRuleGraph rns res) s r t = fst $ foldr addREdge (nodeGraph,nodeMaps) res'
+makeRuleGraph :: AstRuleGraph -> Scope -> RuleID -> SymbolTable -> (RuleGraph, NodeMap)
+makeRuleGraph (AstRuleGraph rns res) s r t = foldr addREdge (nodeGraph,nodeMaps) res'
   where (nodeGraph,nodeMaps) = foldr addRNode (emptyGraph, []) rns'
         rns' = map (updateNode s r t) rns
         res' = map (updateEdge s r t) res
 
 addRNode :: RuleNode -> (RuleGraph, NodeMap) -> (RuleGraph, NodeMap)
-addRNode hn@(RuleNode id _ _ ) (g, nm) = (g', (id, newID):nm)
-  where (g', newID) = newNode g hn
+addRNode hn@(RuleNode id _ _ ) (g, nm) = (g', (id, newId):nm)
+  where (g', newId) = newNode g hn
 
 addREdge :: RuleEdge -> (RuleGraph, NodeMap) -> (RuleGraph, NodeMap)
 addREdge (RuleEdge _ src tgt label) (g, nm) = (g',nm)
-  where Just srcID = lookup src nm
-        Just tgtID = lookup tgt nm
-        (g', _) = newEdge g srcID tgtID label
+  where Just srcId = lookup src nm
+        Just tgtId = lookup tgt nm
+        (g', _) = newEdge g srcId tgtId label
 
 
 updateNode :: Scope -> RuleID -> SymbolTable -> RuleNode -> RuleNode

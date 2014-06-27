@@ -51,20 +51,22 @@ gpTypes = [
     ("atom", AtomVar),
     ("list", ListVar) ]
 
-type ID = String
-
+type ProcName = String
+type RuleName = String
+type VarName = String
+type NodeName = String
 
 -- GP Program ADTs
 data GPProgram = Program [Declaration] deriving (Show)
 
 data Declaration = MainDecl Main
                  | ProcDecl Procedure
-                 | RuleDecl Rule
+                 | RuleDecl AstRule
      deriving (Show)
 
 data Main = Main CommandSequence deriving (Show)
 
-data Procedure = Procedure ID [Declaration] CommandSequence deriving (Show)
+data Procedure = Procedure ProcName [Declaration] CommandSequence deriving (Show)
 
 data CommandSequence = Sequence [Command] deriving (Show) 
 
@@ -81,12 +83,12 @@ data Block = ComSeq CommandSequence
     deriving (Show)
       
 
-data SimpleCommand = RuleCall ID
-                   | LoopedRuleCall ID
-                   | RuleSetCall [ID]
-                   | LoopedRuleSetCall [ID] 
-                   | ProcedureCall ID
-                   | LoopedProcedureCall ID
+data SimpleCommand = RuleCall RuleName
+                   | LoopedRuleCall RuleName
+                   | RuleSetCall [RuleName]
+                   | LoopedRuleSetCall [RuleName] 
+                   | ProcedureCall ProcName
+                   | LoopedProcedureCall ProcName
                    | Skip
                    | Fail
     deriving (Show)
@@ -94,27 +96,32 @@ data SimpleCommand = RuleCall ID
 
 
 -- GP Rule ADTs
-type Variable = (ID, VarType)
-type Interface = [ID]
-type Source = ID
-type Target = ID
+type Variable = (VarName, VarType)
+type AstInterface = [NodeName]
+type Interface = [NodeId]
 
-data Rule = Rule ID [Variable] (AstRuleGraph, AstRuleGraph) Interface Condition String
+data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) 
+            Interface Condition String
+    deriving (Show)
+
+
+data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph) 
+               AstInterface Condition String
     deriving (Show)
 
 -- Rule graph labels are lists of expressions.
 type RuleGraph = Graph RuleNode RuleLabel
 data AstRuleGraph = AstRuleGraph [RuleNode] [RuleEdge] deriving (Show)
-data RuleNode = RuleNode ID Bool RuleLabel deriving (Show)
-data RuleEdge = RuleEdge Bool Source Target RuleLabel deriving (Show)
+data RuleNode = RuleNode NodeName Bool RuleLabel deriving (Show)
+data RuleEdge = RuleEdge Bool NodeName NodeName RuleLabel deriving (Show)
 
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour  deriving (Show)
 
 data RuleAtom = Var Variable
               | Val HostAtom
-              | Indeg ID
-              | Outdeg ID
+              | Indeg NodeName
+              | Outdeg NodeName
               -- RHS only
               | Llength GPList
               | Slength RuleAtom
@@ -139,11 +146,11 @@ instance Ord VarType where
 -- data BinOp = Plus | Min | ... ?
 
 data Condition = NoCondition
-               | TestInt ID
-               | TestChr ID
-               | TestStr ID
-               | TestAtom ID
-               | Edge ID ID (Maybe RuleLabel)
+               | TestInt VarName
+               | TestChr VarName
+               | TestStr VarName
+               | TestAtom VarName
+               | Edge NodeName NodeName (Maybe RuleLabel)
                | Eq GPList GPList
                | NEq GPList GPList
                | Greater RuleAtom RuleAtom
@@ -156,8 +163,8 @@ data Condition = NoCondition
     deriving (Show)
 
 
-data HostNode = HostNode ID Bool HostLabel deriving (Show)
-data HostEdge = HostEdge Source Target HostLabel deriving (Show)
+data HostNode = HostNode NodeName Bool HostLabel deriving (Show)
+data HostEdge = HostEdge NodeName NodeName HostLabel deriving (Show)
 
 -- Host Graph ADTs
 type HostGraph = Graph HostNode HostLabel

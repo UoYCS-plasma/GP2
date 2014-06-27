@@ -5,11 +5,11 @@ import GPSyntax
 import ParseRule
 
 testProgram :: String
-testProgram = concat ["Main = rule1; rule2 rule1 (i:int; a:atom) ",
-                      "[ (n1 (R), empty), (n2, i:a) | (e1, n1, n2, \"abc\")]",
-                      "=> [ (n1, b), (n2 (R), 'q') | (e1, n1, n2, a) ]",
+testProgram = concat ["Main = rule1 rule1 (i:int; l:list) ",
+                      "[ (n1, i), (n2, l) | (e1, n1, n2, empty)]",
+                      "=> [ (n1, i), (n2, l:i) | (e1, n1, n2, empty) ]",
                       "interface = {n1, n2}",
-                      "where and indeg (n1) = 2 i > 5",
+                      "where edge (n1,n2)",
                       "injective = true"]
 
 program :: Parser GPProgram

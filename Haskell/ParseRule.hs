@@ -5,8 +5,8 @@ import Data.Maybe
 import ParseLib
 import GPSyntax
 
-rule :: Parser Rule
-rule = pure Rule 
+rule :: Parser AstRule
+rule = pure AstRule 
        <*> lowerIdent 
        <*> (pure concat <*> maybeOne parameters)
        <*> ruleGraphs
@@ -38,12 +38,12 @@ ruleGraphs = pure (,) <*> ruleGraph <*> ( keyword "=>" |> ruleGraph )
 ruleGraph :: Parser AstRuleGraph
 ruleGraph = keyword "[" |> pure AstRuleGraph <*> nodeList <*> edgeList <| keyword "]"
 
-interface :: Parser Interface
+interface :: Parser AstInterface
 interface = keyword "interface" |> keyword "=" |> keyword "{" 
          |> (pure concat <*> maybeOne ( pure (:) <*> lowerIdent <*> maybeSome interfaceNodes ) )
          <| keyword "}"
 
-interfaceNodes :: Parser ID
+interfaceNodes :: Parser NodeName
 interfaceNodes = keyword "," |> lowerIdent 
 
 nodeList :: Parser [RuleNode]
