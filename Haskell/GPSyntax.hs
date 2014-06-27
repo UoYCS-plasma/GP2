@@ -101,12 +101,12 @@ type AstInterface = [NodeName]
 type Interface = [NodeId]
 
 data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) 
-            Interface (Condition NodeId) String
+            Interface Condition String
     deriving (Show)
 
 
 data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph) 
-               AstInterface (Condition NodeName) String
+               AstInterface Condition String
     deriving (Show)
 
 -- Rule graph labels are lists of expressions.
@@ -145,21 +145,21 @@ instance Ord VarType where
 -- Is it possible to do BinOp Atom Atom and
 -- data BinOp = Plus | Min | ... ?
 
-data Condition a = NoCondition
-                 | TestInt VarName
-                 | TestChr VarName
-                 | TestStr VarName
-                 | TestAtom VarName
-                 | Edge a a (Maybe RuleLabel)
-                 | Eq GPList GPList
-                 | NEq GPList GPList
-                 | Greater RuleAtom RuleAtom
-                 | GreaterEq RuleAtom RuleAtom
-                 | Less RuleAtom RuleAtom
-                 | LessEq RuleAtom RuleAtom
-                 | Not (Condition a)
-                 | Or (Condition a) (Condition a)
-                 | And (Condition a) (Condition a)
+data Condition = NoCondition
+               | TestInt VarName
+               | TestChr VarName
+               | TestStr VarName
+               | TestAtom VarName
+               | Edge NodeName NodeName (Maybe RuleLabel)
+               | Eq GPList GPList
+               | NEq GPList GPList
+               | Greater RuleAtom RuleAtom
+               | GreaterEq RuleAtom RuleAtom
+               | Less RuleAtom RuleAtom
+               | LessEq RuleAtom RuleAtom
+               | Not Condition
+               | Or Condition Condition
+               | And Condition Condition
     deriving (Show)
 
 

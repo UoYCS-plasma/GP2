@@ -1,76 +1,65 @@
 -- a simple implementation of extensible sparse arrays using ordered association lists
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
--- Modifications by Chris Bak 26 June 2014
 
-module ExAr (ExAr, empty, extend, idLookup, listLookup, findAll, update, domain, removeAll, remove) where
+module ExAr (ExAr, empty, extend, addSymbol, idLookup, listLookup, findAll, update, domain, removeAll, remove) where
 
 import Prelude hiding (lookup)
 import Data.Maybe (listToMaybe)
 
 -- extensible sparse arrays
-
--- ExAr is an array of items indexed by String identifiers.
--- Used for nodes, edges and symbols.
--- Not sure if the extra Int of the old definition below is required here,
--- as it was used previously to keep a unique identifier available for new
--- nodes and edges.
--- data ExAr a b = ExAr [(a,b)] Int
-data ExAr a = ExAr [(String,a)] deriving Show
+data ExAr a b = ExAr [(a,b)] Int deriving Show
 
 -- intended data invariant for ExAr Int values
-{-invExAr :: ExAr Int b -> Bool
+invExAr :: ExAr Int b -> Bool
 invExAr ea@(ExAr _ i) = decreasing d && i > maximum d && minimum d >= 1
   where
   d = domain ea
   decreasing (x:y:etc)  =  x > y && decreasing (y:etc)
-  decreasing _          =  True-}
+  decreasing _          =  True
 
-empty :: ExAr a
-empty =  ExAr []
+empty :: ExAr a b
+empty =  ExAr [] 1
 
 -- used only in Graph module for adding new nodes and edges. 
-extend :: ExAr a -> String -> a -> (ExAr a, String)
-extend (ExAr xs) s x =  (ExAr ((s,x):xs), s)
+extend :: ExAr Int b -> b -> (ExAr Int b, Int)
+extend (ExAr ixs i) x  =  (ExAr ((i,x):ixs) (i+1), i)
 
--- Now addSymbol and extend do the same thing.
--- addSymbol :: ExAr a b -> a -> b -> ExAr a b
--- addSymbol (ExAr ixs i) id val = (ExAr ((id,val):ixs) i)
+-- used only in SemanticAnalysis module for adding symbols. 
+addSymbol :: ExAr a b -> a -> b -> ExAr a b
+addSymbol (ExAr ixs i) id val = (ExAr ((id,val):ixs) i)
 
--- used to lookup a node or edge within a single graph, a situation where
--- there should only be one multiple node/edge with a particular ID.
-idLookup :: ExAr a -> String -> Maybe a
-idLookup (ExAr xs) id  =  listToMaybe [x | (s,x) <- xs, s == id]
+-- used to lookup a node or edge in a graph.
+idLookup :: Eq a => ExAr a b -> a -> Maybe b
+idLookup (ExAr ixs _) id  =  listToMaybe [x | (k,x) <- ixs, k == id]
 
 -- used to look up a list of symbols in the symbol table.
--- In comparison to the above, there may be more than one symbol with
--- the same id.
-listLookup :: ExAr a -> String -> [a]
-listLookup (ExAr xs) id  =  [x | (s,x) <- xs, s == id]
+listLookup :: Eq a => ExAr a b -> a -> [b]
+listLookup (ExAr ixs _) id  =  [x | (k,x) <- ixs, k == id]
 
-findAll :: (a -> Bool) -> ExAr a -> [String]
-findAll p (ExAr xs)  =  [id | (id,x) <- xs, p x]
+findAll :: (b -> Bool) -> ExAr a b -> [a]
+findAll p (ExAr ixs _)  =  [id | (id,x) <- ixs, p x]
 
 -- update outside domain is identity
-update :: (a -> a) -> ExAr a -> String -> ExAr a
-update f ea@(ExAr xs) id  =
+update :: Eq a => (b->b) -> ExAr a b -> a -> ExAr a b
+update f ea@(ExAr ixs i) id  =
   case suff of
   []          -> ea
-  (_,x):suff' -> ExAr (pref ++ (id, f x):suff')
+  (_,x):suff' -> ExAr (pref ++ (id, f x):suff') i
   where
-  (pref, suff)  =  span (\(k,_) -> k /= id) xs
+  (pref, suff)  =  span (\(j,_) -> j /= id) ixs
 
-domain :: ExAr a -> [String]
-domain (ExAr xs)  =  [id | (id,_) <- xs]
+domain :: ExAr a b -> [a]
+domain (ExAr ixs _)  =  [id | (id,_) <- ixs]
 
-removeAll :: (a -> Bool) -> ExAr a -> ExAr a
-removeAll p (ExAr xs)  =  ExAr (filter (\(id,x) -> not (p x)) xs)
+removeAll :: (b -> Bool) -> ExAr a b -> ExAr a b
+removeAll p (ExAr ixs i)  =  ExAr (filter (\(id,x) -> not (p x)) ixs) i
 
 -- removal outside domain is identity
-remove :: ExAr a -> String -> ExAr a
-remove ea@(ExAr xs) id =
+remove :: Eq a => ExAr a b -> a -> ExAr a b
+remove ea@(ExAr ixs i) id =
   case suff of
   []      -> ea
-  _:suff' -> ExAr (pref ++ suff')
+  _:suff' -> ExAr (pref ++ suff') i
   where
-  (pref, suff)  =  span (\(k,_) -> k /= id) xs
+  (pref, suff)  =  span (\(k,_) -> k /= id) ixs
 
