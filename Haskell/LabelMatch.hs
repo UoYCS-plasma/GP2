@@ -27,12 +27,49 @@ substExtend s key val =
             Nothing   -> Just $ (key, val):s
             Just v -> if v == val then Just s else Nothing
 
+doLabelsMatch :: HostLabel -> RuleLabel -> Maybe Environment
+doLabelsMatch (HostLabel has hc) (RuleLabel ras rc) = if colourMatch hc rc then atomsMatch has ras else Nothing
+
+colourMatch :: Colour -> Colour -> Bool
+colourMatch _  Cyan = True
+colourMatch hc rc   = (hc == rc)
 
 atomsMatch :: [HostAtom] -> [RuleAtom] -> Maybe Environment
 atomsMatch = atomsMatchWith []
 
+
+{- 
+The core of the label matcher. There are a number of base cases:
+
+(1) The end of both lists is reached at the same time. Return the 
+    current environment.
+(2) The end of the rule list has been reached but there are still unchecked
+    items in the host list. The labels do not match.
+(3) The end of the host list has been reached but there are still unchecked
+    items in the rule list. If the rule list contains only a list variable,
+    then assign it the empty list. Nothing else can match the empty list,
+    so any other remaining rule list means the labels do not match.
+
+The function compares atoms one at a time. Most of it is straightforward:
+constants are checked for equality and variable-value mappings are added
+to the environment provided they are of the correct type.
+
+GP2 semantics allow only one list variable in a list. Hence we use the 
+lengths of both lists to assign the list variable the list of appropriate 
+length, then recursively call atomsMatchWith on the remaining host list.
+
+Concat expressions are handled by calling the auxiliary function 'expand'
+to transform the expression into a list L of RuleAtoms. L is then compared
+with the current host atom with the stringsMatchWith function which operates
+analogously to atomsMatchWith,
+-}
+
+
 atomsMatchWith :: Environment -> [HostAtom] -> [RuleAtom] -> Maybe Environment
 atomsMatchWith env [] [] = Just env
+atomsMatchWith env _ [] = Nothing
+atomsMatchWith env [] [Var (var, ListVar)] = substExtend env var []
+atomsMatchWith env [] _ = Nothing
 atomsMatchWith env hall@(ha:has) (ra:ras) =
     case (ha, ra) of
         ( _    , Var (var, ListVar) ) ->
@@ -91,8 +128,13 @@ expand a = [a]
 
 -- Matches a host string with a list of rule atoms. Each rule atom is
 -- a string expression: a character constant/variable or a string constant/
--- variable. Implemented similarly to atomsMatchWith
+-- variable. The function operates almost identically to atomsMatchWith.
+
 stringMatchWith :: Environment -> String -> [RuleAtom] -> Maybe Environment
+stringMatchWith env [] [] = Just env
+stringMatchWith env _ [] = Nothing
+stringMatchWith env [] [Var (var, StrVar)] = substExtend env var [Str ""] 
+stringMatchWith env [] _ = Nothing
 stringMatchWith env str@(c:cs) (a:as) = 
    case a of
         Val (Chr d) -> do
@@ -121,10 +163,4 @@ stringMatchWith env str@(c:cs) (a:as) =
                   stringMatchWith env' (drop d str) as
         _ -> Nothing
 
-colourMatch :: Colour -> Colour -> Bool
-colourMatch _  Cyan = True
-colourMatch hc rc   = (hc == rc)
-
-doLabelsMatch :: HostLabel -> RuleLabel -> Maybe Environment
-doLabelsMatch (HostLabel has hc) (RuleLabel ras rc) = if colourMatch hc rc then atomsMatch has ras else Nothing
 

@@ -43,6 +43,13 @@ data VarType = IntVar
              | ListVar
    deriving (Eq, Show)
 
+instance Ord VarType where
+    ListVar <= vt = vt == ListVar
+    AtomVar <= vt = vt `elem` [ListVar, AtomVar]
+    IntVar  <= vt = vt `elem` [IntVar, AtomVar, ListVar]
+    StrVar  <= vt = vt `elem` [StrVar, AtomVar, ListVar]
+    ChrVar  <= vt = vt `elem` [ChrVar, StrVar, AtomVar, ListVar] 
+
 gpTypes :: [ (String, VarType) ]
 gpTypes = [
     ("int", IntVar),
@@ -134,12 +141,7 @@ data RuleAtom = Var Variable
     deriving (Show)
 
 
-instance Ord VarType where
-    ListVar < vt = False
-    AtomVar < vt = vt == ListVar
-    IntVar  < vt = vt `elem` [ListVar, AtomVar]
-    StrVar  < vt = vt `elem` [ListVar, AtomVar]
-    ChrVar  < vt = vt `elem` [ListVar, AtomVar, StrVar] 
+
 
 -- TODO: precedence of infix binary operators
 -- Is it possible to do BinOp Atom Atom and
