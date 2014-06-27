@@ -40,6 +40,12 @@ testhg = AstHostGraph
         [HostEdge "n1" "n2" (HostLabel [] Uncoloured),
          HostEdge "n1" "n2" (HostLabel [] Uncoloured)]
 
+testtab :: SymbolTable
+testtab = makeTable slist
+
+slist :: SymbolList
+slist = [("i", Symbol (Var_S IntVar False) "Global" "r1"),
+         ("l", Symbol (Var_S ListVar False) "Global" "r1")]
 
 getNodeId :: HostGraph -> NodeName -> NodeId
 getNodeId g id = case candidates of

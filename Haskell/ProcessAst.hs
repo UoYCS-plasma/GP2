@@ -39,11 +39,6 @@ type SymbolList = [(String, Symbol)]
 makeTable :: SymbolList -> SymbolTable
 makeTable = foldr (\(id,s) table -> addSymbol table id s) empty
 
-testtab = makeTable slist
-
-slist = [("i", Symbol (Var_S IntVar False) "Global" "r1"),
-         ("l", Symbol (Var_S ListVar False) "Global" "r1")]
-
 -- symbolsInScope takes an identifier <id>, a scope ("Global" or a procedure
 -- name), a rule name and a symbol table. It returns the list of symbols with
 -- name <id> with the same Scope and RuleID as those passed into the function. 
@@ -176,12 +171,16 @@ updateEdge s r t (RuleEdge b src tgt ( RuleLabel list c ) ) =
 
 assignTypes :: GPList -> Scope -> RuleID -> SymbolTable -> GPList
 assignTypes [] _ _ _                        = []
-assignTypes ((Var (name, gpType)):as) s r t = Var (name, newType) : assignTypes as s r t 
-  where Just newType = getType $ symbolsInScope name s r t 
+assignTypes ((Var (name, gpType)):as) s r t = 
+  let newType = getType $ symbolsInScope name s r t in
+  case newType of 
+     -- If Nothing, no variable was found in the rule. Semantic error.
+     Nothing -> Var ("poo", ListVar) : assignTypes as s r t
+     Just gpType  -> Var (name, gpType) : assignTypes as s r t 
 assignTypes (a:as) s r t                    = a : assignTypes as s r t 
 
 getType :: [Symbol] -> Maybe VarType
-getType []                             = error "No variable symbol in scope."
+getType []                             = Nothing 
 getType (Symbol ( Var_S t _ ) _ _ :ss) = Just t
 getType (s:ss)                         = getType ss
 
