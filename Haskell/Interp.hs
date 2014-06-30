@@ -7,7 +7,7 @@ import GPSyntax
 import LabelMatch
 import GraphMatch
 import Graph
---import GPCondition
+import GPCondition
 
 -- type Subst a b = [(a, b)]
 -- type NodeMatches = Subst RuleNodeId HostNodeId
@@ -44,25 +44,25 @@ checkAtoms h r ms = ms'
 
 
 ruleNodeToHostNode :: Environment -> RuleNode -> HostNode
-ruleNodeToHostNode e r = notImplemented
+ruleNodeToHostNode e rn = notImplemented
 
-ruleEdgeToHostEdge :: Environment -> RuleEdge -> HostEdge
-ruleEdgeToHostEdge e r = notImplemented
+ruleEdgeToHostEdge :: Environment -> RuleLabel -> HostLabel
+ruleEdgeToHostEdge e rn = notImplemented
 
-substituteNodes :: RuleGraph -> HostGraph -> Environment -> RuleNodeId -> HostNodeId -> HostGraph
-substituteNodes r h env (hid, rid) = nReLabel h hid hn'
+substituteNodes :: RuleGraph -> HostGraph -> GraphMorphism -> HostGraph
+substituteNodes r h m@(GM _ nms ems) = nReLabel h hid hn'
     where
-        hn' = ruleNodeToHostNode env $ fromJust $ nLabel h hid 
+        hn' = labelEval m r $ fromJust $ nLabel r rid 
 
-substituteEdges :: RuleGraph -> HostGraph -> Environment -> RuleEdgeId -> HostEdgeId -> HostGraph
-substituteEdges r h env (hid, rid) = eReLabel h hid he'
+substituteEdges :: Environment -> RuleGraph -> HostGraph -> (HostEdgeId, RuleEdgeId) -> HostGraph
+substituteEdges env r h (hid, rid) = eReLabel h hid he'
     where
-        he' = ruleEdgeToHostEdge env $ fromJust $ eLabel h hid
+        he' = ruleEdgeToHostEdge env $ fromJust $ eLabel r rid
 
 applyMorphism :: RuleGraph -> HostGraph -> GraphMorphism -> HostGraph
-applyMorphism r h (GM env nms ems) = notImplemented
+applyMorphism r h (GM env nms ems) = h''
     where
-        nodes' = map ((substituteNodes r h env) . fromJust . (nLabel r) . fst) nms
-        edges' = map ((substituteEdges r h env) . fromJust . (eLabel r) . fst) ems
+        h'  = foldl (substituteNodes env r) h nms
+        h'' = foldl (substituteEdges env r) h' ems
 
 
