@@ -1,17 +1,19 @@
 -- a simple implementation of labelled graphs using sparse arrays for node and edge sets
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
 
-module Graph (Graph, NodeId, EdgeId, pretty,
-               emptyGraph, newNode, newEdge,
+module Graph (Graph, NodeId, EdgeId,
+               emptyGraph, newNode, newNodeList, newEdge, newEdgeList,
                allNodes, outEdges, inEdges, joiningEdges, allEdges,
-               source, target, nLabel, eLabel,
-               rmNode, rmEdge, eReLabel, nReLabel) where
+               maybeSource, source, maybeTarget, target, 
+               maybeNLabel, nLabel, maybeELabel, eLabel,
+               rmNode, rmIsolatedNodeList, rmEdge, rmEdgeList,
+               eReLabel, nReLabel) where
 
 import Prelude hiding (lookup)
 import ExAr
 import Data.Maybe
-import Data.List (intersect)
-
+import Data.List (union, intersect)
+{-
 class Pretty a
 instance Pretty (Graph a b) where
 pretty :: (Show a, Show b) => Graph a b -> String
@@ -26,7 +28,7 @@ pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
                          ++ " -> node_" ++ getNodeIdAsInt ( fromJust (target g e) )
                          ++ "\t{ label=\"" ++ show ( fromJust (eLabel g e) ) ++ "\" }\n"
         getNodeIdAsInt (N id) = show id
-
+-}
 
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show
@@ -52,10 +54,22 @@ newNode (Graph ns es) x  =  (Graph ns' es, N i)
   where
   (ns', i)  =  extend ns (Node x)
 
+newNodeList :: Graph a b -> [a] -> (Graph a b, [NodeId])
+newNodeList g xs = foldr addNode (g, []) xs
+  where 
+  addNode :: a -> (Graph a b, [NodeId]) -> (Graph a b, [NodeId])
+  addNode label (g, nids) = (g', nid:nids) where (g', nid) = newNode g label 
+
 newEdge :: Graph a b -> NodeId -> NodeId -> b -> (Graph a b, EdgeId)
 newEdge (Graph ns es) n1 n2 x  =  (Graph ns es', E i)
   where
   (es', i)  =  extend es (Edge n1 n2 x)
+
+newEdgeList :: Graph a b -> [(NodeId, NodeId, b)] -> (Graph a b, [EdgeId])
+newEdgeList g xs = foldr addEdge (g, []) xs
+  where 
+  addEdge :: (NodeId, NodeId, b) -> (Graph a b, [EdgeId]) -> (Graph a b, [EdgeId])
+  addEdge (src, tgt, lab) (g, eids) = (g', eid:eids) where (g', eid) = newEdge g src tgt lab
 
 allNodes :: Graph a b -> [NodeId]
 allNodes (Graph ns _)  =  map N (domain ns)
@@ -72,21 +86,33 @@ inEdges (Graph _ es) n  =  map E $ findAll (\(Edge _ n2 _) -> n2 == n) es
 joiningEdges :: Graph a b -> NodeId -> NodeId -> [EdgeId]
 joiningEdges (Graph _ es) src tgt = map E $ findAll (\(Edge n1 n2 _) -> n1 == src && n2 == tgt) es
 
-source :: Graph a b -> EdgeId -> Maybe NodeId
-source (Graph _ es) (E i)  =
+maybeSource :: Graph a b -> EdgeId -> Maybe NodeId
+maybeSource (Graph _ es) (E i)  =
   maybe Nothing (\(Edge n1 _ _) -> Just n1) (idLookup es i)
 
-target :: Graph a b -> EdgeId -> Maybe NodeId
-target (Graph _ es) (E i)  =
+source :: Graph a b -> EdgeId -> NodeId
+source g eid = fromJust $ maybeSource g eid
+
+maybeTarget :: Graph a b -> EdgeId -> Maybe NodeId
+maybeTarget (Graph _ es) (E i)  =
   maybe Nothing (\(Edge _ n2 _) -> Just n2) (idLookup es i)
 
-nLabel :: Graph a b -> NodeId -> Maybe a
-nLabel (Graph ns _) (N i)  =
+target :: Graph a b -> EdgeId -> NodeId
+target g eid = fromJust $ maybeTarget g eid
+
+maybeNLabel :: Graph a b -> NodeId -> Maybe a
+maybeNLabel (Graph ns _) (N i)  =
   maybe Nothing (\(Node x) -> Just x) (idLookup ns i)
 
-eLabel :: Graph a b -> EdgeId -> Maybe b
-eLabel (Graph _ es) (E i)  =
+nLabel :: Graph a b -> NodeId -> a
+nLabel g nid = fromJust $ maybeNLabel g nid
+
+maybeELabel :: Graph a b -> EdgeId -> Maybe b
+maybeELabel (Graph _ es) (E i)  =
   maybe Nothing (\(Edge _ _ x) -> Just x) (idLookup es i)
+
+eLabel :: Graph a b -> EdgeId -> b
+eLabel g eid = fromJust $ maybeELabel g eid
 
 -- removing a node also removes all edges with the node as source or target
 rmNode :: Graph a b -> NodeId -> Graph a b
@@ -95,10 +121,23 @@ rmNode (Graph ns es) n@(N i)  =  Graph ns' es'
   ns'  =  remove ns i
   es'  =  removeAll (\(Edge n1 n2 _) -> n1 == n || n2 == n) es
 
+-- returns Nothing if any of the NodeIds have incident edges.
+rmIsolatedNodeList :: Graph a b -> [NodeId] -> Maybe (Graph a b)
+rmIsolatedNodeList g nids = foldr deleteIsolatedNode (Just g) nids
+  where 
+  deleteIsolatedNode :: NodeId -> Maybe (Graph a b) -> Maybe (Graph a b)
+  deleteIsolatedNode nid Nothing  = Nothing
+  deleteIsolatedNode nid (Just g) = if null $ union (outEdges g nid) (inEdges g nid) 
+                                    then Just (rmNode g nid)
+                                    else Nothing
+
 rmEdge :: Graph a b -> EdgeId -> Graph a b
 rmEdge (Graph ns es) (E i)  =  Graph ns es'
   where
   es'  =  remove es i
+
+rmEdgeList :: Graph a b -> [EdgeId] -> Graph a b
+rmEdgeList g eids = foldr (flip rmEdge) g eids
 
 eReLabel :: Graph a b -> EdgeId -> b -> Graph a b
 eReLabel (Graph ns es) (E i) x  =  Graph ns es'

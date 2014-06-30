@@ -67,7 +67,7 @@ getHostNodeId g id = case candidates of
         [nid] -> nid
         _  -> error $ "Duplicate ID found! Eep!"
     where
-        candidates = filter (matchID . fromJust . nLabel g) $ allNodes g
+        candidates = filter (matchID . nLabel g) $ allNodes g
         matchID :: HostNode -> Bool
         matchID (HostNode i _ _) = i == id
 
@@ -77,12 +77,12 @@ getRuleNodeId r id = case candidates of
         [nid] -> nid
         _  -> error $ "Duplicate ID found! Eep!"
     where
-        candidates = filter (matchID . fromJust . nLabel r) $ allNodes r
+        candidates = filter (matchID . nLabel r) $ allNodes r
         matchID :: RuleNode -> Bool
         matchID (RuleNode i _ _) = i == id
 
 getNodeName :: HostGraph -> NodeId -> NodeName
-getNodeName g nid = case nLabel g nid of
+getNodeName g nid = case maybeNLabel g nid of
         Nothing -> error "Fail!"
         Just ( HostNode id _ _ ) -> id
 
@@ -195,7 +195,7 @@ conditionEval c m@(GM env nms _) g r =
         -- labelCompare :: (HostLabel -> EdgeId -> Bool -> Bool)
            labelCompare _ _ True = True
            labelCompare hlabel e False = 
-              case (eLabel g e) of
+              case (maybeELabel g e) of
                  Nothing     -> False
                  Just label  -> label == hlabel
 

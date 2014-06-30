@@ -105,7 +105,7 @@ data SimpleCommand = RuleCall RuleName
 -- GP Rule ADTs
 type Variable = (VarName, VarType)
 type AstInterface = [NodeName]
-type Interface = [(NodeId¸ NodeId)]
+type Interface = [(NodeId, NodeId)]
 
 data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) 
             Interface Condition String

@@ -2,6 +2,7 @@ module ProcessAst where
 
 import Prelude 
 import Data.List
+import Data.Maybe
 import GPSyntax
 import Graph
 import ExAr

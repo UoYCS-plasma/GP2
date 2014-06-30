@@ -80,8 +80,8 @@ matchGraphNodes h r =
                 
 doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe Environment
 doNodesMatch h r hid rid = 
-   let hnode = (nLabel h hid)
-       rnode = (nLabel r rid) in
+   let hnode = (maybeNLabel h hid)
+       rnode = (maybeNLabel r rid) in
    case (hnode, rnode) of 
         (Nothing, _) -> Nothing
         (_, Nothing) -> Nothing
@@ -119,8 +119,8 @@ matchGraphEdges h r (NM env nodeMatches) = concatMap getGMsForNode nodeMatches
 
 doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe Environment
 doEdgesMatch h r hid rid = 
-   let hedge = (eLabel h hid)
-       redge = (eLabel r rid) in
+   let hedge = (maybeELabel h hid)
+       redge = (maybeELabel r rid) in
    case (hedge, redge) of 
         (Nothing, _) -> Nothing
         (_, Nothing) -> Nothing
