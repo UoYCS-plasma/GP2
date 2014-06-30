@@ -107,26 +107,23 @@ addHEdge (HostEdge src tgt label) (g, nm) = (g',nm)
 
 -- May need to keep the new SymbolTable t' but I ignore it for now.
 makeRule :: AstRule -> Scope -> RuleID -> SymbolTable -> Rule
-makeRule (AstRule name vars (lhs, rhs) interface cond b) s r t =
+makeRule (AstRule name vars (lhs, rhs) _ cond b) s r t =
          Rule name vars (lhs', rhs') interface' cond b
    where
       t' = enterVariables s r t vars
-      (lhs',nm) = makeRuleGraph lhs s r t' 
-      rhs' = fst $ makeRuleGraph rhs s r t'
-      interface' = makeInterface interface nm
+      (lhs',lnm) = makeRuleGraph lhs s r t' 
+      (rhs',rnm) = makeRuleGraph rhs s r t'
+      interface' = makeInterface lnm rnm
 
 -- Converts String NodeIds in the interface to Graph NodeIds according to
 -- the NodeMap. It is possible that a node declared in the interface does
 -- not exist in the LHS graph which is a semantic error. Currently
 -- I just ignore this, but it should be reported somehow.
-makeInterface :: AstInterface -> NodeMap -> Interface
-makeInterface ns nm = f $ map ((flip lookup) nm) ns 
-  where 
-     f :: [Maybe NodeId] -> [NodeId]
-     f [] = []
-     f (Nothing:xs) = f xs
-     f ((Just x):xs) = x : f xs
-
+makeInterface :: NodeMap -> NodeMap -> Interface
+makeInterface lnm rnm = [ (fromJust $ lookup name lnm, fromJust $ lookup name rnm) | name <- interfaceNames ]
+    where
+        interfaceNames = map fst lnm `intersect` map fst rnm
+    
 -- makeRuleGraph has the same structure as makeHostGraph with respect to
 -- generating the graph. Some additional processing is required to assign
 -- variables (in labels) their correct types according to the symbol table.
