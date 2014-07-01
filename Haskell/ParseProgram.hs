@@ -13,15 +13,15 @@ testProgram = concat ["Main = rule1 rule1 (i:int; l:list) ",
                       "injective = true"]
 
 program :: Parser GPProgram
-program = pure Program <*> atLeastOne declaration 
+program = optSpaces |> pure Program <*> atLeastOne declaration 
 
 declaration :: Parser Declaration
-declaration = pure MainDecl <*> main
+declaration = pure MainDecl <*> gpMain
           <|> pure ProcDecl <*> procedure
           <|> pure RuleDecl <*> rule
 
-main :: Parser Main
-main = keyword "Main" |> keyword "=" |> pure Main <*> commandSequence
+gpMain :: Parser Main
+gpMain = keyword "Main" |> keyword "=" |> pure Main <*> commandSequence
 
 procedure :: Parser Procedure
 procedure = pure Procedure 

@@ -16,11 +16,11 @@ import GPCondition
 -- type EdgeMatches = Subst RuleEdgeId HostEdgeId
 -- data GraphMorphism = GM Environment NodeMatches EdgeMatches
 
-notImplemented = error "Not implemented"
+--notImplemented = error "Not implemented"
 
 -- getNodeLabelsForMorphism :: HostGraph -> RuleGraph -> GraphMorphism -> [ (HostLabel, RuleLabel) ]
 -- getNodeLabelsForMorphism h r m = notImplemented
-
+{-
 getNodesForMorphism :: HostGraph -> RuleGraph -> GraphMorphism -> [ ( HostNode, RuleNode ) ]
 getNodesForMorphism h r m = notImplemented
 
@@ -31,7 +31,7 @@ getEdgesForMorphism h r m = notImplemented
 
 checkAtomsFor :: HostGraph -> RuleGraph -> GraphMorphism -> Bool
 checkAtomsFor h g m = notImplemented
-
+-}
 
 
 

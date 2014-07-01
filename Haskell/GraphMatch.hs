@@ -59,11 +59,16 @@ matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
 
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
 matchGraphNodes h r = 
-    [ NM env nodeMatches | nodeSet <- nodeSets,  
-         let nodeMatches = zip rns nodeSet
-             -- This foldr could return Nothing. We need to prune
-             -- such cases from the output list.
-             Just env = foldr labMatch (Just []) nodeMatches ]
+    catMaybes [ nm | nodeSet <- nodeSets, 
+        let nodeMatches = zip rns nodeSet
+            maybeEnv = foldr labMatch (Just []) nodeMatches
+            nm = maybe Nothing (\e -> Just (NM e nodeMatches) ) maybeEnv ]
+{-    NM (fromJust env) nodeMatches | nodeSet <- nodeSets,  
+        isJust env,
+        let nodeMatches = zip rns nodeSet
+            -- This foldr could return Nothing. We need to prune
+            -- such cases from the output list.
+            env = foldr labMatch (Just []) nodeMatches ] -}
     where
         rns = allNodes r
         hns = allNodes h

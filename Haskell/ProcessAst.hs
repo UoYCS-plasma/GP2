@@ -107,13 +107,13 @@ addHEdge (HostEdge src tgt label) (g, nm) = (g',nm)
         (g', _) = newEdge g srcId tgtId label
 
 -- May need to keep the new SymbolTable t' but I ignore it for now.
-makeRule :: AstRule -> Scope -> RuleID -> SymbolTable -> Rule
-makeRule (AstRule name vars (lhs, rhs) _ cond b) s r t =
+makeRule :: AstRule -> Scope -> SymbolTable -> Rule
+makeRule (AstRule name vars (lhs, rhs) _ cond b) s t =
          Rule name vars (lhs', rhs') interface' cond b
    where
-      t' = enterVariables s r t vars
-      (lhs',lnm) = makeRuleGraph lhs s r t' 
-      (rhs',rnm) = makeRuleGraph rhs s r t'
+      t' = enterVariables s name t vars
+      (lhs',lnm) = makeRuleGraph lhs s name t' 
+      (rhs',rnm) = makeRuleGraph rhs s name t'
       interface' = makeInterface lnm rnm
 
 -- Converts String NodeIds in the interface to Graph NodeIds according to

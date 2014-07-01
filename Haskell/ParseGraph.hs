@@ -11,7 +11,7 @@ testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
 testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 
 hostGraph :: Parser AstHostGraph
-hostGraph = keyword "[" |> pure AstHostGraph <*> hostNodeList <*> hostEdgeList <| keyword "]"
+hostGraph = optSpaces |> keyword "[" |> pure AstHostGraph <*> hostNodeList <*> hostEdgeList <| keyword "]"
 
 {-
 idMapping :: String -> NodeID
