@@ -1,16 +1,13 @@
 /*////////////////////////////////////////////////////////////////////////////
 
-                             gplexer.lex                                          
+  ====================================
+  gplexer.lex - Chris Bak (10/05/2013)
+  ====================================                                  
 
-  This is a Flex lexican analyser for the textual program format of GP2. 
-  It scans the input file and sends a token to the Bison parser when required.
+  The Flex lexical analyser for GP2. It scans the input files, sending tokens 
+  to the Bison parser when required.
 
-                     Created on 10/5/2013 by Chris Bak 
-
-////////////////////////////////////////////////////////////////////////////*/ 
-
-
-%option noyywrap nodefault yylineno
+/////////////////////////////////////////////////////////////////////////// */ 
 
 /* yywrap is an old flex library routine to manage multiple input files. 
  * This is done manually here.
@@ -20,18 +17,21 @@
  * number of input. 
  */
 
+%option noyywrap nodefault yylineno
+
 %{
 
+#include "ast.h" /* Printing macros and enum MarkType */
 #include "gpparser.tab.h" /* Token definitions */
 #include <stdbool.h>
-#include <string.h> /* strdup */
+#include <string.h> 
 
 int yycolumn = 1;
 
 extern int abort_scan; /* Defined in main.c */
 extern FILE *log_file; /* Defined in main.c */
-typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, NONE} mark_t; 
 
+/* Defined in main.c according to which parser should be invoked. */
 extern int parse_target;
 
 /* The macro YY_USER_ACTION is invoked for each token recognised by yylex
@@ -59,6 +59,11 @@ extern int parse_target;
 %%
 
 %{
+  /* Return the appropriate token according to the grammar to be parsed with.
+   * Bison token GP_PROGRAM triggers parsing with the program grammar.
+   * Bison token GP_GRAPH triggers parsing with the host graph grammar.
+   */  
+  
   if(parse_target == 1) {
      parse_target = 0; 
      return GP_PROGRAM;
@@ -74,31 +79,43 @@ extern int parse_target;
 <IN_COMMENT>"*/"      		 BEGIN(INITIAL);
 <IN_COMMENT>([^*\n])+|.  	 /* ignore all characters except '*' */
 <IN_COMMENT>(\n)	  	 { yycolumn = 1; } /* reset yycolumn on newline */
-<IN_COMMENT><<EOF>>  		 { fprintf(stderr,"Warning: Unterminated comment.\n");
-			           fprintf(log_file,"Line %d: Unterminated "
-          				   "comment.\n", yylineno); }
+<IN_COMMENT><<EOF>>  		 { print_to_console("Warning: Unterminated "
+                                                    "comment.\n");
+			           print_to_log("Line %d: Unterminated comment", 
+                                                yylineno); 
+				   abort_scan = true;
+				   yyterminate(); }
 
- /* empty string */
+ /* The empty string is valid GP2 syntax. */
 "\"\""				 { yylval.str = NULL; return STR; } 
 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
 <IN_STRING>[a-zA-Z0-9_]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
-<IN_STRING>[^\"a-zA-Z0-9_]       { fprintf(stderr,"Warning: Invalid character in "
-                                           "string: '%c'.\n", yytext[0]); 
-			           fprintf(log_file,"%d.%d-%d.%d: Invalid "
-          				"character '%c'.\n", yylloc.first_line,
-				        yylloc.first_column, yylloc.last_line,
-					yylloc.last_column, yytext[0]);	
+<IN_STRING>(\n)                  { print_to_log("%d.%d-%d.%d: String "
+          				         "continues on new line.\n", 
+                                        yylloc.first_line, yylloc.first_column, 
+                                        yylloc.last_line, yylloc.last_column); 	
+				   abort_scan = true;
+                                   yyterminate(); }
+<IN_STRING>[^\"a-zA-Z0-9_]       { print_to_console("Warning: Invalid character "
+                                                "in string: '%c'.\n", yytext[0]); 
+			           print_to_log("%d.%d-%d.%d: Invalid character: "
+          				        "'%c'.\n", 
+                                           yylloc.first_line, yylloc.first_column, 
+                                           yylloc.last_line, yylloc.last_column,
+                                           yytext[0]);	
 				   yylval.str = strdup(yytext); return STR; }
-<IN_STRING><<EOF>>   		 { fprintf(log_file,"Line %d: Unterminated "
-          				   "string.\n", yylineno); 
-				   abort_scan = true; }   
+<IN_STRING><<EOF>>   		 { print_to_log("Line %d: Unterminated "
+          				        "string.\n", yylineno);                   
+				   abort_scan = true; 
+                                   yyterminate(); }  
 
-"''"				 { fprintf(stderr,"Error: Empty character "
-					  "expression.\n"); 
-				   fprintf(log_file,"%d.%d-%d.%d: Empty "
-          				  "character expression.\n", 
+ /* The empty character is not valid GP2 syntax. */
+"''"				 { print_to_console("Error: Empty character "
+					            "expression.\n"); 
+				   print_to_log("%d.%d-%d.%d: Empty character "
+          				  "expression.\n", 
 					  yylloc.first_line, yylloc.first_column, 
                                           yylloc.last_line, yylloc.last_column); 
 		                    abort_scan = true;
@@ -107,27 +124,34 @@ extern int parse_target;
 '				BEGIN(IN_CHAR);
 <IN_CHAR>'			BEGIN(INITIAL);
 <IN_CHAR>[a-zA-Z0-9_]		{ yylval.str = strdup(yytext); return CHAR; }
-<IN_CHAR>[a-zA-Z0-0_]{2,}       { fprintf(stderr,"Error: Invalid character "
-					  "expression: '%s'.\n", yytext); 
-				  fprintf(log_file,"%d.%d-%d.%d: Invalid "
-          				  "character expression: '%s'.\n", 
+<IN_CHAR>[a-zA-Z0-0_]{2,}       { print_to_console("Error: Invalid character "
+					       "expression: '%s'.\n", yytext); 
+				  print_to_log("%d.%d-%d.%d: Invalid character "
+          				  "expression: '%s'.\n", 
 					  yylloc.first_line, yylloc.first_column, 
                                           yylloc.last_line, yylloc.last_column,
                                           yytext); 
 		                  abort_scan = true;
 				  yylval.str = strdup(yytext); return CHAR; }
-<IN_CHAR>[^'a-zA-Z0-9_]         { fprintf(stderr,"Error: Invalid character: "
-			 		  "'%c'.\n", yytext[0]); 
-				  fprintf(log_file,"%d.%d-%d.%d: Invalid "
-          				  "character: '%c'.\n", 
+<IN_CHAR>(\n)                   { print_to_log("%d.%d-%d.%d: Character "
+          				"expression continues on new line.\n", 
+                                        yylloc.first_line, yylloc.first_column, 
+                                        yylloc.last_line, yylloc.last_column);	
+				   abort_scan = true;
+                                   yyterminate(); }
+<IN_CHAR>[^'a-zA-Z0-9_]         { print_to_console("Error: Invalid character: "
+			 		           "'%c'.\n", yytext[0]); 
+				  print_to_log("%d.%d-%d.%d: Invalid character: "
+          				       "%c'.\n", 
 					  yylloc.first_line, yylloc.first_column, 
                                           yylloc.last_line, yylloc.last_column,
                                           yytext[0]); 
 		                  abort_scan = true;
 				  yylval.str = strdup(yytext); return CHAR; }
-<IN_CHAR><<EOF>>   	        { fprintf(log_file,"Line %d: Unterminated "
-          		                  "character.\n", yylineno); 
-				  abort_scan = true;}   
+<IN_CHAR><<EOF>>   	        { print_to_log("Line %d: Unterminated "
+          		                       "character.\n", yylineno); 
+				  abort_scan = true;
+				  yyterminate(); }   
 
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
@@ -155,13 +179,16 @@ injective           return INJECTIVE;
 llength		    return LLEN;
 slength	            return SLEN;
 
- /* keywords for node and edge marks */
+ /* Keywords for node and edge marks */
 
 red		    { yylval.mark = RED; return MARK; } 
 green		    { yylval.mark = GREEN; return MARK; } 
 blue		    { yylval.mark = BLUE; return MARK; } 
 grey		    { yylval.mark = GREY; return MARK; } 
-dashed		    { yylval.mark = DASHED; return MARK; } 
+dashed		    { yylval.mark = DASHED; return MARK; }
+ /* Cyan has a distinct token since it cannot appear in the host graph and
+    therefore must be distinguished from the other marks. */
+cyan		    { yylval.mark = CYAN; return CYAN_MARK; } 
 
  /* keywords for GP2 types */
 
@@ -195,6 +222,7 @@ list		    return LIST;
 
 "=>"             return ARROW;
 "(R)"	 	 return ROOT;
+"(B)"            return BIDIRECTIONAL;
 "!="		 return NEQ; 
 ">="	         return GTEQ; 
 "<="	         return LTEQ; 
@@ -216,10 +244,10 @@ list		    return LIST;
   * also set to prevent semantic checking from starting. 
   */
 
-[0-9]+[a-zA-Z_][a-zA-Z0-9_]*  { fprintf(stderr,"Error (%s): Identifiers must "
+[0-9]+[a-zA-Z_][a-zA-Z0-9_]*  { print_to_console("Error (%s): Identifiers must "
      			              	"start with a letter.\n", yytext); 
-		                fprintf(log_file, "%d.%d-%d.%d: Invalid "
-				        "identifier %s.\n",
+		                print_to_log("%d.%d-%d.%d: Invalid identifier: "
+				             "%s.\n",
 			                yylloc.first_line, yylloc.first_column,
 			                yylloc.last_line, yylloc.last_column,
 					yytext);

@@ -1,18 +1,19 @@
-/*//////////////////////////////////////////////////////////////////////////////////////////// 
-//
-//				      gpparser.y 					
-//
-//  This is the Bison parser for GP2. In combination with Flex, it performs syntax 
-//  checking and generates an Abstract Syntax Tree for its input GP2 program.
-//
-//                           Created on 28/5/13 by Chris Bak 
-//
-/////////////////////////////////////////////////////////////////////////////////////////// */ 
+/* ////////////////////////////////////////////////////////////////////////////
+
+  ===================================
+  gpparser.y - Chris Bak (28/05/2013) 					
+  ===================================
+
+  The Bison specification for GP2's parser. In combination with Flex, it 
+  performs syntax checking and generates an Abstract Syntax Tree for GP2
+  programs and host graphs
+
+//////////////////////////////////////////////////////////////////////////// */
 
 
 %{
 
-#include "ast.h" /* mark_t, list_t, cond_exp_t, AST constructors */
+#include "ast.h" /* MarkType, ListType, cond_exp_t, AST constructors */
 #include <stdio.h>  /* printf, fprintf, fopen */
 #include <stdlib.h> /* malloc, free */
 #include <stdarg.h> /* va_start, va_list, va_end */
@@ -22,18 +23,17 @@ int report_error(const char *error_message);
 
 /* Flags used in the AST construction. */
   bool is_root = false;
+  bool is_bidir = false;
   bool is_injective = false;
 
 extern List *gp_program; /* This will point to the root of the program AST.
 			  * Defined in main.c. */
 extern GPGraph *host_graph; /* This will point to the root of the host graph AST.
 			     * Defined in main.c */
-extern int abort_scan; /* Defined in main.c */
+extern bool abort_scan; /* Defined in main.c */
 
 
 %}
-
-/* declare tokens */
 
 %locations /* Generates code to process locations of symbols in the source file. */
 
@@ -41,31 +41,31 @@ extern int abort_scan; /* Defined in main.c */
   int num;   /* value of NUM token. */
   char *str; /* value of STRING and CHAR tokens. */
   char *id;  /* value of PROCID and ID tokens. */
-  int mark;  /* enum mark_t, value of MARK token. */
+  int mark;  /* enum MarkTypes, value of MARK token. */
 }
 
-/* Single-character tokens do not need to be explicitly declared. */
+/* Single character tokens do not need to be explicitly declared. */
 
 %token MAIN IF TRY THEN ELSE SKIP FAIL                          
 %token WHERE EDGETEST TRUE FALSE 		               
 %token INDEG OUTDEG LLEN SLEN					
 %token INT STRING ATOM LIST 	                               
 %token INTERFACE EMPTY INJECTIVE 	
-%token <mark> MARK			                        
+%token <mark> MARK CYAN_MARK			                        
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
 %token <num> NUM 
 %token <str> STR CHAR
 %token <id> PROCID ID           				
-%token ROOT	
+%token ROOT BIDIRECTIONAL	
 %token GP_PROGRAM GP_GRAPH						
 
 
-%left '+' '-' AND	/* lowest precedence level, left associative */
+%left '+' '-' AND	/* Lowest precedence level */
 %left '*' '/' OR
 %left UMINUS NOT	/* UMINUS represents unary '-' */
 %left '.'		
-%left ':'	        /* highest precedence level */
+%left ':'	        /* Highest precedence level */
 
 %union {  
   struct List *list; 
@@ -81,24 +81,24 @@ extern int abort_scan; /* Defined in main.c */
   struct GPLabel *label;  
   struct GPAtomicExp *atom_exp;
 
-  int list_type; /* enum list_t */
-  int check_type; /* enum cond_exp_t */
+  int list_type; /* enum ListType */
+  int check_type; /* enum CondExpType */
 } 
 
 %type <list> Program LocalDecls ComSeq RuleSetCall IDList VarDecls
-             VarList Inter NodeIDList NodeList CNodeList EdgeList CEdgeList
-	     List CList
+             VarList Inter NodeIDList NodeList HostNodeList EdgeList 
+             HostEdgeList List HostList
 %type <decl> Declaration
 %type <stmt> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
 %type <rule> RuleDecl
 %type <graph> Graph HostGraph
-%type <node> Node CNode
-%type <edge> Edge CEdge
+%type <node> Node HostNode
+%type <edge> Edge HostEdge
 %type <pos> Position
 %type <cond_exp> CondDecl Condition 
-%type <label> LabelArg Label CLabel
-%type <atom_exp> AtomExp CExp
+%type <label> LabelArg Label HostLabel
+%type <atom_exp> AtomExp HostExp
 %type <list_type> Type  
 %type <check_type> Subtype
 %type <id> NodeID EdgeID ProcID RuleID Variable
@@ -108,7 +108,17 @@ extern int abort_scan; /* Defined in main.c */
   * value needs to be freed.
   */
 %destructor { free($$); } <str> <id>
- /* This probably needs to be done for the AST structs as well */
+%destructor { freeAST($$); } <list>
+%destructor { freeDeclaration($$); } <decl>
+%destructor { freeStatement($$); } <stmt>
+%destructor { freeRule($$); } <rule>
+%destructor { freeGraph($$); } <graph>
+%destructor { freeNode($$); } <node>
+%destructor { freeEdge($$); } <edge>
+%destructor { freeCondition($$); } <cond_exp>
+%destructor { freeLabel($$); } <label>
+%destructor { freeAtomicExp($$); } <atom_exp>
+
 %error-verbose
 
 %start Initialise
@@ -116,42 +126,43 @@ extern int abort_scan; /* Defined in main.c */
 %%
 
  /* The Bison Grammar creates abstract syntax tree (AST) nodes using its 
-  * action code when reducing rules. The action code contains functions 
-  * defined in ast.c. Each AST node has a node type (e.g. IF_STATEMENT).
+  * action code after reducing a rule. The action code contains calls to
+  * functions defined in ast.c. Each AST node has a node type, for example
+  * IF_STATEMENT.
   *
-  * Lists in GP2 programs are represented by a linked list structure in the 
-  * AST. AST nodes of type struct List form the backbone of such structures:
-  * they point to both a 'value' (e.g. a global declaration) and to the next
-  * struct List node in the list (or NULL). These lists are generated in 
-  * reverse order as left recursiive rules are used to minimise the size of
+  * Lists in GP2 programs are represented by a linked list of structures in 
+  * the AST. AST nodes of type struct List are the spine of these linked lists.
+  * They point to both a 'value' (e.g. a global declaration) and to the next
+  * struct List node in the list (maybe NULL). These lists are generated in 
+  * reverse order as left recursive rules are used to minimise the size of
   * Bison's parser stack. The lists are reversed at a later point in the
-  * compilation.
+  * compilation in order to restore the correct order of items according
+  * to the input GP2 program file.
   *
   * The 'add' functions create a new AST node of type struct List. The node 
   * type is provided as the first argument in some cases. The AST node is
-  * pointed to the value node and next node, which are provided as the last two
-  * arguments to the function. The 'new' functions create the other AST nodes;
-  * those which are not part of a linked list structure. They are pointed to
-  * their subtrees, if necessary, which are supplied by the caller. These 
-  * functions are defined in the file ast.c.
+  * pointed to the value node and next node provided as the last two arguments
+  * to the function. The 'new' functions create all the other AST node structs.
+  * They are pointed to their subtrees, if necessary, supplied by the caller. 
+  * These functions are defined in the file ast.c.
   *
   * All AST constructor functions have a location argument. This is usually
   * the second argument, but it is the first argument if the AST node type
-  * is explicitly provided. The lexer generates the location - a structure 
-  * of type YYLTYPE containing line and column numbers - of each token it
-  * reads. This information is stored by Bison and used to assign such locations
-  * to each AST node. 
+  * is explicitly passed. The lexer generates the location - a structure of 
+  * type YYLTYPE containing line and column numbers - of each token it reads.
+  * This information is stored by Bison and used to assign such locations to
+  * each AST node. 
   *
-  * The rule of thumb used here is that AST nodes are assigned the location of the 
-  * entire syntactic string they represent. For example, an AST node 
-  * representing a variable name will contain the location of that name in the 
-  * text file, whereas an AST node representing a graph will contain the 
-  * location from the opening '[' to the closing ']' of the graph in the text 
-  * file, which will span several lines. The main exceptions to this rule are
-  * list nodes: they contain the complete location of the value node to which 
-  * they point. The other exceptions are nodes that act as the root of a named 
-  * structure (procedure, rule, node, edge), whose locations are the location
-  * of the structure's name in the text file.
+  * The rule of thumb used is that AST nodes are assigned the location of the
+  * entire syntactic string they represent. 
+  * For example, an AST node  representing a variable name will contain the 
+  * location of that name in the text file (first character to last character),
+  * while an AST node representing a graph will contain the location from the 
+  * opening '[' to the closing ']' of the graph in the text file.
+  * The main exceptions to this rule are list nodes: they contain the complete
+  * location of the value node to which they point. The other exceptions are
+  * nodes that act as the root of a named structure (procedure, rule, node, edge).
+  * Their locations are the location of the structure's name in the text file.
   *
   * A few locations are assigned explicitly, but most are specified with 
   * Bison's location tokens (@N), which point to the location structure of the
@@ -160,7 +171,7 @@ extern int abort_scan; /* Defined in main.c */
   * RHS symbol.
   *
   * Identifiers (symbols ProcID, RuleID, NodeID, EdgeID and Variable) and
-  * string constant (token STR) are assigned to yylval with strdup. Hence
+  * string constants (token STR) are assigned to yylval with strdup. Hence
   * the action code of any rules with these symbols on the RHS must free
   * the appropriate semantic value after the call to the constructor, otherwise
   * the pointer will be lost when yylval is updated.
@@ -181,24 +192,21 @@ Declaration: MainDecl 			{ $$ = newMainDecl(@$, $1); }
      	   | ProcDecl			{ $$ = newProcedureDecl(@$, $1); }
            | RuleDecl			{ $$ = newRuleDecl(@$, $1); }
 
- /* There are grammar rules for empty command sequences here: the parser will
-  * reduce the rule and continue scanning upon finding such a syntax error.
-  * yyerror reports the error and sets the abort_scan flag to stop semantic 
-  * checking from taking place after parsing is complete.
-  */
-
 MainDecl: MAIN '=' ComSeq 		{ $$ = newCommandSequence(@1, $3); }
 
 ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(@1, $1, NULL, 
                                                newCommandSequence(@3 ,$3));
 					  free($1); }
+
         | ProcID '=' '[' LocalDecls ']' ComSeq 
 					{ $$ = newProcedure(@1, $1, $4, 
                                                newCommandSequence(@6, $6));
 				          free($1); }
         /* Error-catching production */
 	| RuleID '=' '[' LocalDecls ']' ComSeq
-				        { report_error("Procedure names must "
+				        { $$ = newProcedure(@1, $1, $4, 
+                                               newCommandSequence(@6, $6));
+                                          report_error("Procedure names must "
  					   "start with an upper-case letter."); 
 					  free($1); }
 
@@ -211,7 +219,8 @@ LocalDecls: /* empty */			{ $$ = NULL; }
 ComSeq: Command 			{ $$ = addCommand(@1, $1, NULL); }
       | ComSeq ';' Command  		{ $$ = addCommand(@3, $3, $1); }
       /* Error-catching production */
-      | ComSeq ',' Command		{ report_error("Incorrect use of comma "
+      | ComSeq ',' Command		{ $$ = addCommand(@3, $3, $1);
+                                          report_error("Incorrect use of comma "
 					    "to separate commands. Perhaps you "
 					    "meant to use a semicolon?"); }
 
@@ -221,24 +230,26 @@ Command: Block 				/* default $$ = $1 */
        | IF Block THEN Block ELSE Block { $$ = newCondBranch(IF_STATEMENT, @$,
                                                $2, $4, $6); }
        /* Error-catching production */
-       | IF Block ELSE Block	   	{ report_error("No 'then' clause in if "
+       | IF Block ELSE Block	   	{ $$ = newCondBranch(IF_STATEMENT, @$,
+                                               $2, NULL, $4);
+                                          report_error("No 'then' clause in if "
 						       "statement."); }
        | TRY Block 			{ $$ = newCondBranch(TRY_STATEMENT, @$,
                                                $2, newSkip(@$), newSkip(@$)); }
        | TRY Block THEN Block		{ $$ = newCondBranch(TRY_STATEMENT, @$,
                                                $2, $4, newSkip(@$)); }
+       | TRY Block ELSE	Block	   	{ $$ = newCondBranch(TRY_STATEMENT, @$,
+                                               $2, newSkip(@$), $4); }
        | TRY Block THEN Block ELSE Block { $$ = newCondBranch(TRY_STATEMENT, @$,
                                                 $2, $4, $6); }
-       /* Error-catching production */
-       | TRY Block ELSE	Block	   	{ report_error("No 'then' clause in try "
-						       "statement."); }
+
 
 Block: '(' ComSeq ')' 	                { $$ = newCommandSequence(@$,$2); }
      | '(' ComSeq ')' '!' 		{ $$ = newAlap(@$, 
                                                newCommandSequence(@2, $2)); } 
      /* If an error is found in a code block, continue parsing after the right
       * parenthesis. */
-     | '(' error ')'  			{ $$ = NULL; }
+     | error ')'  			{ $$ = NULL; }
      | SimpleCommand 			/* default $$ = $1 */ 
      | SimpleCommand '!'		{ $$ = newAlap(@$, $1); }
      | Block OR Block 			{ $$ = newOrStmt(@$, $1, $3); }
@@ -252,18 +263,20 @@ SimpleCommand: RuleSetCall 	        { $$ = newRuleSetCall(@$, $1); }
 RuleSetCall: '{' IDList '}'		{ $$ = $2; }
            /* If an error is found in an rule set call, continue parsing after
             * the rule set. */
-           | '{' error '}' 		{ $$ = NULL; }
+           | error '}' 			{ $$ = NULL; }
 
 IDList: RuleID				{ $$ = addRule(@1, $1, NULL);
 					  free($1); }
       | IDList ',' RuleID 		{ $$ = addRule(@3, $3, $1); 
 					  free($3);} 
       /* Error-catching productions */
-      | ProcID	 			{ report_error("Procedure name used in "
+      | ProcID	 			{ $$ = addRule(@1, $1, NULL);
+                                          report_error("Procedure name used in "
 					   "a rule set. Rule names must start "
 					   "with a lower-case letter.");
 				          free($1); }
-      | IDList ';' RuleID		{ report_error("Semicolon used in a "
+      | IDList ';' RuleID		{ $$ = addRule(@3, $3, $1);
+                                          report_error("Semicolon used in a "
 					   "rule set. Perhaps you meant to "
 					   "use a comma?"); 
 					  free($1); }
@@ -281,7 +294,9 @@ RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl INJECTIVE
 					  free($1); }
         /* Error-catching productions */
 	| ProcID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl INJECTIVE 
-          '=' Bool		        { report_error("Rule names must "
+          '=' Bool		        { $$ = newRule(@1, is_injective,
+ 					       $1, $3, $5, $7, $8, $9); 
+                                          report_error("Rule names must "
  					   "start with a lower-case letter."
 				 	   "letter.");
 					  free($1); }
@@ -289,7 +304,9 @@ RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl INJECTIVE
          * the user terminates the variable declaration list with a semicolon.
          */
         | RuleID '(' VarDecls ';' ')' Graph ARROW Graph Inter CondDecl INJECTIVE 
-          '=' Bool			{ report_error("Semicolon at the end "
+          '=' Bool			{ $$ = newRule(@1, is_injective,
+ 					       $1, $3, $6, $8, $9, $10);  
+                                          report_error("Semicolon at the end "
 					    "of a rule's variable list");
 					  free($1); }	
 
@@ -314,7 +331,9 @@ Inter: INTERFACE '=' '{' '}'   		{ $$ = NULL; }
      | INTERFACE '=' '{' NodeIDList '}' { $$ = $4; }
      /* If an error is found in an interface list, continue parsing after the 
       * interface list. */
-     | '{' error '}'			{ $$ = NULL; }
+     | error '}'			{ report_error("Error in an interface "
+                                                       " list.");  
+                                          $$ = NULL; }
 
 NodeIDList: NodeID			{ $$ = addNodeID(@1, $1, NULL); 
 					  free($1); }
@@ -325,6 +344,7 @@ Bool: TRUE 				{ is_injective = true; }
     | FALSE				{ is_injective = false; }
 
 Type: INT				{ $$ = INT_DECLARATIONS; } 
+    | CHAR				{ $$ = CHAR_DECLARATIONS; }
     | STRING                            { $$ = STRING_DECLARATIONS; }
     | ATOM 	                        { $$ = ATOM_DECLARATIONS; }
     | LIST				{ $$ = LIST_DECLARATIONS; }
@@ -348,12 +368,16 @@ Node: '(' NodeID RootNode ',' Label ',' Position ')'
 EdgeList: Edge				{ $$ = addEdge(@1, $1, NULL); }
         | EdgeList ',' Edge		{ $$ = addEdge(@3, $3, $1); }
 
-Edge: '(' EdgeID ',' NodeID ',' NodeID ',' Label ')'
-					{ $$ = newEdge(@2, $2, $4, $6, $8);
-					  free($2); free($4); free($6); }
+Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
+					{ $$ = newEdge(@2, is_bidir, $2, $5, $7, $9);
+                                          is_bidir = false;
+					  free($2); free($5); free($7); }
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
+
+Bidirection: /* empty */ 
+	   | BIDIRECTIONAL		{ is_bidir = true; }
 
 Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(@$, $2, $4); }
 
@@ -365,11 +389,11 @@ CondDecl: /* empty */                   { $$ = NULL; }
 
 Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, @$, $3); 
 					  free($3); }
-         | EDGETEST '(' NodeID ',' NodeID LabelArg ')' 
+         | EDGETEST '(' NodeID ',' NodeID  LabelArg ')' 
 					{ $$ = newEdgePred(@$, $3, $5, $6); 
 					  free($3); free($5); }
-	 | List '=' List		{ $$ = newListComparison(EQUAL, @$, $1, $3); }
-	 | List NEQ List		{ $$ = newListComparison(NOT_EQUAL, @$, $1, $3); }
+	 | List '=' List 		{ $$ = newListComparison(EQUAL, @$, $1, $3); }
+	 | List NEQ List 		{ $$ = newListComparison(NOT_EQUAL, @$, $1, $3); }
 	 | AtomExp '>' AtomExp          { $$ = newAtomComparison(GREATER, @$, $1, $3); }    
 	 | AtomExp GTEQ AtomExp         { $$ = newAtomComparison(GREATER_EQUAL, @$, $1, $3); }    
 	 | AtomExp '<' AtomExp          { $$ = newAtomComparison(LESS, @$, $1, $3); }    
@@ -385,21 +409,20 @@ Subtype: INT				{ $$ = INT_CHECK; }
        | ATOM 	                        { $$ = ATOM_CHECK; }
 
 LabelArg: /* empty */ 			{ $$ = NULL; }
- 	| ',' Label			{ $$ = $2; }
+ 	| ',' Label 			{ $$ = $2; }
 
  /* Grammar for GP2 Labels */
 
-Label: List 				{ $$ = newLabel(@$, NONE, $1); }
-     | List '#' MARK			{ $$ = newLabel(@$, $3, $1); }
+Label: List				{ $$ = newLabel(@$, NONE, $1); }
+     | List '#' MARK	  		{ $$ = newLabel(@$, $3, $1); }
+     /* Cyan has a distinct token since it cannot occur in the host graph. */
+     | List '#' CYAN_MARK		{ $$ = newLabel(@$, $3, $1); }
+
 
 List: AtomExp				{ $$ = addAtom(@1, $1, NULL); } 
-    | List ':' AtomExp			{ $$ = addAtom(@3, $3, $1); }
-    | EMPTY				{ $$ = addEmptyList(@$); } 
-    /* If an error occurs while processing a GP list, discard input text until
-     * the next ':' or '#'. The erroneous AtomExp is hence discarded and
-     * parsing may continue. */
-    | error ':' 			{ $$ = NULL; }	
-    | error '#' 			{ $$ = NULL; }
+    | List ':' AtomExp 			{ $$ = addAtom(@3, $3, $1); }
+    | EMPTY				{ $$ = addEmptyList(@$); }
+
 
 AtomExp: Variable			{ $$ = newVariable(@$, $1); free($1); }
        | NUM 				{ $$ = newNumber(@$, $1); }
@@ -415,7 +438,6 @@ AtomExp: Variable			{ $$ = newVariable(@$, $1); free($1); }
        | SLEN '(' AtomExp ')' 		{ $$ = newStringLength(@$, $3); }
        | '-' AtomExp %prec UMINUS 	{ $$ = newNegExp(@$, $2); } 
        | '(' AtomExp ')' 		{ $$ = $2; }
-       /* Ambiguity resolved by explicit precedences */
        | AtomExp '+' AtomExp 		{ $$ = newBinaryOp(ADD, @$, $1, $3);  }
        | AtomExp '-' AtomExp 		{ $$ = newBinaryOp(SUBTRACT, @$, $1, $3); }
        | AtomExp '*' AtomExp 		{ $$ = newBinaryOp(MULTIPLY, @$, $1, $3); }
@@ -438,42 +460,37 @@ Variable: ID		  		/* default $$ = $1 */
  */
 
 HostGraph: '[' Position '|' '|' ']'  	{ $$ = newGraph(@$, $2, NULL, NULL); }
-         | '[' Position '|' CNodeList '|' ']'  
+         | '[' Position '|' HostNodeList '|' ']'  
 					{ $$ = newGraph(@$, $2, $4, NULL); }
-         | '[' Position '|' CNodeList '|' CEdgeList ']' 
+         | '[' Position '|' HostNodeList '|' HostEdgeList ']' 
      					{ $$ = newGraph(@$, $2, $4, $6); }
 
-CNodeList: CNode			{ $$ = addNode(@1, $1, NULL); }
-         | CNodeList ',' CNode		{ $$ = addNode(@3, $3, $1); }
+HostNodeList: HostNode			{ $$ = addNode(@1, $1, NULL); }
+            | HostNodeList ',' HostNode	{ $$ = addNode(@3, $3, $1); }
 
-CNode: '(' NodeID RootNode ',' CLabel ',' Position ')'
+HostNode: '(' NodeID RootNode ',' HostLabel ',' Position ')'
     					{ $$ = newNode(@2, is_root, $2, $5, $7); 
  					  is_root = false; 	
 					  free($2); } 
 
-CEdgeList: CEdge			{ $$ = addEdge(@1, $1, NULL); }
-         | CEdgeList ',' CEdge	 	{ $$ = addEdge(@3, $3, $1); } 
+HostEdgeList: HostEdge			{ $$ = addEdge(@1, $1, NULL); }
+            | HostEdgeList ',' HostEdge	{ $$ = addEdge(@3, $3, $1); } 
 
-CEdge: '(' EdgeID ',' NodeID ',' NodeID ',' CLabel ')'
-					{ $$ = newEdge(@2, $2, $4, $6, $8);
+HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
+					{ $$ = newEdge(@2, false, $2, $4, $6, $8);
 					  free($2); free($4); free($6); }
 
-CLabel: CList 				{ $$ = newLabel(@$, NONE, $1); }
-      | CList '#' MARK			{ $$ = newLabel(@$, $3, $1); }
-      | EMPTY 				{ $$ = addEmptyList(@$); }
+HostLabel: HostList			{ $$ = newLabel(@$, NONE, $1); }
+         | HostList '#' MARK	  	{ $$ = newLabel(@$, $3, $1); }
+
+HostList: HostExp 			{ $$ = addAtom(@1, $1, NULL); } 
+        | HostList ':' HostExp 		{ $$ = addAtom(@3, $3, $1); }
+        | EMPTY				{ $$ = addEmptyList(@$); }
 
 
-CList: CExp				{ $$ = addAtom(@1, $1, NULL); } 
-     | CList ':' CExp			{ $$ = addAtom(@3, $3, $1); }
-     /* If an error occurs while processing a constant list, discard input text
-      * until the next ':' or '#'. The erroneous ConstExp is hence discarded 
-      * parsing may continue. */
-     | error ':' 			{ $$ = NULL; }	
-     | error '#' 			{ $$ = NULL; }
-
-CExp: NUM 				{ $$ = newNumber(@$, $1); }
-    | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
-    | STR 				{ $$ = newString(@$, $1); free($1); }
+HostExp: NUM 				{ $$ = newNumber(@$, $1); }
+       | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
+       | STR 				{ $$ = newString(@$, $1); free($1); }
 
 %%
 
@@ -493,8 +510,8 @@ int yyerror(const char *error_message)
    return 0;
 }
 
-/* gperror is identical to yyerror except that it doesn't refer to yytext.
- * This is called in the action code of error-catching Bison rules, where
+/* report_error is identical to yyerror except that it doesn't refer to yytext.
+ * This is called in the action code of error-catching Bison rules in which
  * the value of yytext may be misleading.
  */
 
