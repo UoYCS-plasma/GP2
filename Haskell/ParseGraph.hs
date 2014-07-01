@@ -3,102 +3,66 @@ module ParseGraph where
 import Data.Maybe
 
 import ParseLib
-import GP2Graph
-
-gpNumChars, gpChars :: [Char]
-gpNumChars = ['0'..'9']
-gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , gpNumChars , ['_'] ]
-
-gpColours :: [ (String, Colour) ]
-gpColours = [
-    ("uncoloured", Uncoloured),
-    ("red", Red),
-    ("green", Green),
-    ("blue", Blue), 
-    ("grey", Grey),
---    ("cyan", Cyan),
-    ("dashed", Dashed) ]
+import GPSyntax
+import Graph
 
 
 testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
 testEdge = "| (e1, n1, n2, \"cheese\" # red )"
 
---gpGraph :: Parser GP2Graph
---gpGraph = keyword "[" |> gpHostGraph <| keyword "]"
+hostGraph :: Parser AstHostGraph
+hostGraph = optSpaces |> keyword "[" |> pure AstHostGraph <*> hostNodeList <*> hostEdgeList <| keyword "]"
 
---gpNodeList :: Parser GP2Graph
---gpHostGraph = gpNodeList <*> gpEdgeList
-
-
-
-gpEdgeList :: Parser [((String, String), GP2Label)]
-gpEdgeList = keyword "|" |> maybeSome gpEdge
+{-
+idMapping :: String -> NodeID
+idMapping id = 
 
 
-gpEdge :: Parser ((String, String), GP2Label)
-gpEdge = keyword "(" |> pure (,) <*> endPoints <*> gp2Label <| keyword ")"
+gpHostGraph :: String -> AstHostGraph
+gpHostGraph str =
+    foldr (\(n1,n2,label) g -> fst $ newEdge g n1 n2 label) isolated edgeEnds
+    where
+        ( str', nodes ) = head $ gpHostNodeList str
+        edges = snd $ head $ gpHostEdgeList str'
+        isolated :: AstHostGraph
+        isolated  =  foldr (\n g -> fst $ newNode g n) emptyGraph nodes
+        edgeEnds :: [(NodeId,NodeId)]
+        edgeEnds  =  [(n1,n2) | n1 <- d, n2 <- d, n1 /= n2]
+-}
+
+hostNodeList :: Parser [HostNode]
+hostNodeList = pure (++) <*> maybeOne hostNode <*> maybeSome (keyword "," |> hostNode)
+
+-- A node is a triple (Node ID, Root Node, Node Label)
+-- The second component is "(R)" if root node, [] otherwise.
+hostNode :: Parser HostNode
+hostNode = keyword "(" |> pure HostNode
+       <*> label
+       <*> (root <| keyword ",") 
+       <*> (hostLabel <| keyword ")")
+
+hostEdgeList :: Parser [HostEdge]
+hostEdgeList = keyword "|" |> ( pure (++) <*> maybeOne hostEdge <*> maybeSome (keyword "," |> hostEdge) )
 
 
-endPoints :: Parser (String, String)
-endPoints = label |> keyword "," |> pure (,) <*> ( label <| keyword "," ) <*> label
+hostEdge :: Parser HostEdge
+hostEdge = keyword "(" |> pure HostEdge
+       <| ( (lowerIdent <| keyword ",") )
+       <*> (lowerIdent <| keyword ",")
+       <*> (lowerIdent <| keyword ",")
+       <*> (hostLabel <| keyword ")")
 
-gpNodeList :: Parser [GP2Label]
-gpNodeList = atLeastOne gpNode
+hostLabel :: Parser HostLabel
+hostLabel = pure HostLabel <*> hostList <*> hostColour
 
-gpNode :: Parser GP2Label
-gpNode = keyword "(" |> nodeBody <| keyword ")"
+hostList :: Parser [HostAtom]
+hostList = pure f <*> keyword "empty" <|> pure (:) <*> value <*> maybeSome (keyword ":" |> value)
+  where f "empty" = []
 
-nodeBody :: Parser GP2Label
-nodeBody = label |> keyword "," |> gp2Label
 
-gp2Label :: Parser GP2Label
-gp2Label = pure GP2Label <*> maybeSome nodeValue <*> nodeColour
-
-nodeColour :: Parser Colour
-nodeColour = keyword "#" |> pure col <*> label
+hostColour :: Parser Colour
+hostColour = keyword "#" |> pure col <*> label
         <|> pure Uncoloured
     where
-        col c = fromJust $ lookup c gpColours
-
-
-nodeValue :: Parser IntOrStr
-nodeValue = intOrStr {- pure (:[]) <*> intOrStr
-        <|> pure (:) <*> intOrStr  -}
-
-
-
-
-intOrStr :: Parser IntOrStr
-intOrStr  = intLit
-        <|> strLit
-
-numChar :: Parser Char
-numChar = satisfy (`elem` gpNumChars)
-
-charLit :: Parser String
-charLit = char '\'' |> exactlyOne gpChar <| char '\'' <| optSpaces
-
-strLit :: Parser IntOrStr
-strLit = char '"' |> pure Str <*> maybeSome gpChar <| keyword "\""
-    <|>  char '\'' |> pure Str <*> exactlyOne gpChar <| keyword "'"
-
-gpChar :: Parser Char
-gpChar = satisfy (`elem` gpChars)
-
-intLit :: Parser IntOrStr
-intLit = pure Int <*> ( pure read <*> atLeastOne numChar <| optSpaces )
-
-label :: Parser String
-label = token ( atLeastOne gpChar ) <| optSpaces
-
-root :: Parser String
-root = keyword "(R)"
-
-empty :: Parser String
-empty = keyword "empty"
-
-
-
---colour :: Parser [String]
---colour = satisfy (`elem` gpColours)
+        col c = fromJust $ lookup c hostColours
 
