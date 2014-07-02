@@ -27,6 +27,18 @@ testastrule = (AstRule "rule1"
               (Edge "n1" "n2" Nothing) 
               "true")
 
+testastrule2 :: AstRule
+testastrule2 = (AstRule "rule1" 
+               [("i",IntVar),("l",ListVar)] 
+              (AstRuleGraph [RuleNode "n1" False (RuleLabel [Var ("i",ListVar)] Uncoloured),
+                             RuleNode "n2" False (RuleLabel [Var ("l",ListVar)] Uncoloured)]
+                            [RuleEdge False "n1" "n2" (RuleLabel [] Uncoloured)],
+               AstRuleGraph [RuleNode "n2" False (RuleLabel [Var ("l",ListVar),Var ("i",ListVar)] Uncoloured)] 
+                            [])
+              ["n2"] 
+              (Edge "n1" "n2" Nothing) 
+              "true")
+
 testLHS :: AstRuleGraph
 testLHS = (AstRuleGraph [RuleNode "n1" False (RuleLabel [Var ("i",ListVar)] Uncoloured),
                          RuleNode "n2" False (RuleLabel [Var ("l",ListVar)] Uncoloured)]
@@ -48,13 +60,14 @@ slist = [("i", Symbol (Var_S IntVar False) "Global" "r1"),
          ("l", Symbol (Var_S ListVar False) "Global" "r1")]
 
 
-lhs :: RuleGraph
 lhs = fst $ makeRuleGraph testLHS "Global" "r1" testtab
 
-host :: HostGraph
 host = makeHostGraph testhg
 
-testmorphisms =  matchGraphNodes host lhs
+rule = makeRule testastrule "" empty 
+rule2 = makeRule testastrule2 "" empty
+ 
+testmorphisms =  matchGraphs host lhs
 
 
 
@@ -91,14 +104,15 @@ getNodeName g nid = case maybeNLabel g nid of
 -- a rule label is transformed into a host label (list of constants) by evaluating
 -- any operators (degree, length) and substituting variables for their values
 -- according to the morphism.
+
 labelEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleLabel -> HostLabel
 labelEval m g r (RuleLabel list col) = HostLabel (concatMap (atomEval m g r) list) col
 
 atomEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleAtom -> [HostAtom]
 atomEval m@(GM env _ _) g r a = case a of
-   -- TODO: error check
-   Var (name, gpType) -> fromJust $ lookup name env 
    Val ha -> [ha]
+   -- Returns the empty list if the variable is not in the environment.
+   Var (name, gpType) -> fromMaybe [] $ lookup name env 
    -- Degree operators assume node exists in the morphism/LHS graph.
    Indeg node -> [Int $ intExpEval m g r a]
    Outdeg node -> [Int $ intExpEval m g r a]
@@ -110,17 +124,20 @@ atomEval m@(GM env _ _) g r a = case a of
    Times exp1 exp2 -> [Int $ intExpEval m g r a]
    Div exp1 exp2 ->  [Int $ intExpEval m g r a]
    exp@(Concat exp1 exp2) -> [Str $ stringExpEval env exp]
-
+ 
 -- Expects a RuleAtom representing an integer expression. 
 intExpEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleAtom -> Int
 intExpEval m@(GM env nms _) g r a = case a of
-   Var (name, IntVar) -> let Just [Int i] = lookup name env in i
    Val (Int i) -> i
-   -- TODO: Error checking of degree operators.
-   Indeg node -> let Just hnode = lookup (getRuleNodeId r node) nms 
-                 in length $ inEdges g hnode
-   Outdeg node -> let Just hnode = lookup (getRuleNodeId r node) nms 
-                  in length $ outEdges g hnode
+   Var (name, IntVar) -> let Just [Int i] = lookup name env in i
+   Indeg node -> let hnode = lookup (getRuleNodeId r node) nms in
+                 case hnode of
+                      Nothing -> error "Argument of indeg not in the LHS."
+                      (Just node) -> length $ inEdges g node
+   Outdeg node -> let hnode = lookup (getRuleNodeId r node) nms in
+                  case hnode of
+                       Nothing -> error "Argument of outdeg not in the LHS."
+                       (Just node) -> length $ outEdges g node
    Llength list -> length list
    Slength exp -> length $ stringExpEval env exp
    Neg exp -> 0 - intExpEval m g r exp
@@ -129,7 +146,7 @@ intExpEval m@(GM env nms _) g r a = case a of
    Times exp1 exp2 -> intExpEval m g r exp1 * intExpEval m g r exp2
    -- TODO: handle division by 0
    Div exp1 exp2 -> intExpEval m g r exp1 `div` intExpEval m g r exp2
-   _ -> error "Not an integer expression."
+   _ -> error "Expecting an integer expression."
 
 -- Expects a RuleAtom representing a string expression. 
 stringExpEval :: Environment -> RuleAtom -> String
@@ -139,7 +156,7 @@ stringExpEval env a = case a of
    Val (Chr c) -> "c"
    Val (Str s) -> s 
    Concat exp1 exp2 -> stringExpEval env exp1 ++ stringExpEval env exp2
-   _ -> error "Not a string expression."
+   _ -> error "Expecting a string expression."
 
 
 conditionEval :: Condition -> GraphMorphism -> HostGraph -> RuleGraph -> Bool
@@ -194,6 +211,7 @@ conditionEval c m@(GM env nms _) g r =
      Or cond1 cond2 -> (conditionEval cond1 m g r) || (conditionEval cond2 m g r)
 
      And cond1 cond2 -> (conditionEval cond1 m g r) && (conditionEval cond2 m g r)
+
    where
         edgeExistsInHostGraph :: NodeName -> NodeName -> [HostEdgeId]
         edgeExistsInHostGraph src tgt = case (hsrc, htgt) of

@@ -3,7 +3,7 @@ module Main where
 import System.IO
 import System.Environment
 
-import Interp
+import ApplyRule
 import ParseProgram
 import ParseLib
 import ParseGraph

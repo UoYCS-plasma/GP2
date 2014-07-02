@@ -100,7 +100,10 @@ ruleColour :: Parser Colour
 ruleColour = keyword "#" |> pure col <*> label
      <|> pure Uncoloured
  where
-     col c = fromJust $ lookup c ruleColours
+     col c = case lookup c ruleColours of
+             -- This should be a syntax error.
+             Nothing -> Uncoloured
+             Just colour -> colour 
 
 condition :: Parser Condition
 condition = keyword "int" |> pure TestInt <*> lowerIdent

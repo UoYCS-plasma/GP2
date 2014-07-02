@@ -3,13 +3,13 @@
 
 module Graph (Graph, NodeId, EdgeId,
                emptyGraph, newNode, newNodeList, newEdge, newEdgeList,
-               allNodes, outEdges, inEdges, joiningEdges, allEdges,
+               allNodes, allEdges, outEdges, inEdges, incidentEdges, joiningEdges,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
-               rmNode, rmIsolatedNodeList, rmEdge, rmEdgeList,
-               eReLabel, nReLabel, dumpGraphViz) where
+               rmNode, rmNodeList, rmEdge, rmEdgeList,
+               eReLabel, nReLabel, dumpGraphViz, lookup') where
 
-import Prelude hiding (lookup)
+import Prelude 
 import ExAr
 import Data.Maybe
 import Data.List (union, intersect)
@@ -28,6 +28,9 @@ dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
                         ++ "\t{ label=\"" ++ show (eLabel g e) ++ "\" }\n"
         getNodeIdAsInt (N id) = show id
 
+
+lookup' :: Eq a => a -> [(a, b)] -> b
+lookup' x xys = fromJust $ lookup x xys
 
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show
@@ -82,6 +85,9 @@ outEdges (Graph _ es) n  =  map E $ findAll (\(Edge n1 _ _) -> n1 == n) es
 inEdges :: Graph a b -> NodeId -> [EdgeId]
 inEdges (Graph _ es) n  =  map E $ findAll (\(Edge _ n2 _) -> n2 == n) es
 
+incidentEdges :: Graph a b -> NodeId -> [EdgeId]
+incidentEdges g n = outEdges g n `union` inEdges g n
+
 joiningEdges :: Graph a b -> NodeId -> NodeId -> [EdgeId]
 joiningEdges (Graph _ es) src tgt = map E $ findAll (\(Edge n1 n2 _) -> n1 == src && n2 == tgt) es
 
@@ -120,7 +126,10 @@ rmNode (Graph ns es) n@(N i)  =  Graph ns' es'
   ns'  =  remove ns i
   es'  =  removeAll (\(Edge n1 n2 _) -> n1 == n || n2 == n) es
 
--- returns Nothing if any of the NodeIds have incident edges.
+rmNodeList :: Graph a b -> [NodeId] -> Graph a b
+rmNodeList g nids = foldr (flip rmNode) g nids
+
+{- returns Nothing if any of the NodeIds have incident edges.
 rmIsolatedNodeList :: Graph a b -> [NodeId] -> Maybe (Graph a b)
 rmIsolatedNodeList g nids = foldr deleteIsolatedNode (Just g) nids
   where 
@@ -128,7 +137,7 @@ rmIsolatedNodeList g nids = foldr deleteIsolatedNode (Just g) nids
   deleteIsolatedNode nid Nothing  = Nothing
   deleteIsolatedNode nid (Just g) = if null $ union (outEdges g nid) (inEdges g nid) 
                                     then Just (rmNode g nid)
-                                    else Nothing
+                                    else Nothing -}
 
 rmEdge :: Graph a b -> EdgeId -> Graph a b
 rmEdge (Graph ns es) (E i)  =  Graph ns es'
