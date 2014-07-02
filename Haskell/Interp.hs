@@ -73,8 +73,6 @@ nodeEval m h r rn@(RuleNode name isRoot label) = HostNode name isRoot $ labelEva
 edgeEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleEdge -> HostEdge
 edgeEval m h r re@(RuleEdge bidi src tgt label) = HostEdge src tgt $ labelEval m h r label
 
-lookup' :: Eq a => a -> [(a, b)] -> b
-lookup' x xys = fromJust $ lookup x xys
 
 makeRhsEdgeSubst :: GraphMorphism -> Rule -> NodeMatches -> HostGraph -> (HostGraph, EdgeMatches)
 makeRhsEdgeSubst m r s h = (h', ems')

@@ -54,8 +54,8 @@ lhs = fst $ makeRuleGraph testLHS "Global" "r1" testtab
 host :: HostGraph
 host = makeHostGraph testhg
 
-testmorphism :: GraphMorphism
-testmorphism = head $ matchGraphs host lhs
+testmorphisms :: [GraphMorphism]
+testmorphisms =  matchGraphs host lhs
 
 
 
