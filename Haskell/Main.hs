@@ -10,6 +10,7 @@ import ParseGraph
 import ProcessAst
 import GPSyntax
 import ExAr
+import Graph (dumpGraphViz)
 
 notImplemented = error "whatever"
 
@@ -19,18 +20,28 @@ loadProgram = readFile
 loadGraph :: String -> IO String
 loadGraph = readFile
 
+
+-- TODO: only gets the first rule declaration
 extractRuleDecl :: GPProgram -> AstRule
 extractRuleDecl (Program ((RuleDecl r):xs)) = r
 extractRuleDecl (Program (_:xs)) = extractRuleDecl (Program xs)
 
+report :: String -> IO ()
+report s = do
+    putStrLn s
+    putStrLn ""
 
 
-main :: IO ()
-main = do
+-- TODO: not doing root-node matching in GraphMatch.hs!
+-- TODO: returned graphs are incorrect after rule application
+
+myMain = do
     [prog, graph] <- getArgs
     p <- loadProgram prog
     g <- loadGraph graph
-    putStrLn $ show $ parse hostGraph g
-    putStrLn ""
-    let rd = extractRuleDecl $ parse program p
-    putStrLn $ show $ makeRule rd "" empty
+    let hg = makeHostGraph $ parse hostGraph g
+    let rd = makeRule  ( extractRuleDecl $ parse program p ) "" empty
+    report $ dumpGraphViz hg
+    --putStrLn $ concatMap prettyPrint $ applyRule hg rd
+    report $ concatMap dumpGraphViz $ applyRule hg rd
+    --putStrLn $ show $ applyRule hg rd

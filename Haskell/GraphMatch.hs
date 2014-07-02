@@ -63,10 +63,18 @@ matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
 -- each Maybe Environment into a Maybe NodeMorphism, then call catMaybes
 -- on the resulting list.
 
+checkRootNode :: HostGraph -> RuleGraph -> (RuleNodeId, HostNodeId) -> Bool
+checkRootNode h r (rid, hid) = case (rb, hb) of
+        (True, False) -> False
+        _ -> True
+    where
+        RuleNode _ rb _ = nLabel r rid
+        HostNode _ hb _ = nLabel h hid 
+
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
-matchGraphNodes h r = 
+matchGraphNodes h r =
     catMaybes [ nm | nodeSet <- nodeSets, 
-          let nodeMatches = zip rns nodeSet
+          let nodeMatches = filter (checkRootNode h r) $ zip rns nodeSet
               maybeEnv = foldr labelMatch (Just []) nodeMatches
               nm = maybe Nothing (\env -> Just (NM env nodeMatches) ) maybeEnv ]
     where
@@ -104,28 +112,32 @@ doNodesMatch h r hid rid =
 
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
 matchGraphEdges h r (NM env nodeMatches) =
-   catMaybes [ gm | maybeEnv = foldr labelMatch (Just []) edgeMatches
-                    gm = maybe Nothing (\env -> Just (GM env edgeMatches) ) maybeEnv ]
+   catMaybes [ gm | edgeMatch <- edgeMatches,
+                    let maybeEnv = foldr labelMatch (Just env) edgeMatch
+                        gm = maybe Nothing (\env -> Just (GM env nodeMatches edgeMatch) ) maybeEnv ]
    where 
      -- [RuleEdgeId]
      ruleEdges = allEdges r
      -- [(RuleNodeId, RuleNodeId)]
      ruleEndPoints = map (\e -> (source r e, target r e)) ruleEdges
      -- [(HostNodeId, HostNodeId)]
-     hostEndPoints = map ruleEndsToHostEnds ruleEndPoints
+     hostEndPoints = mapMaybe ruleEndsToHostEnds ruleEndPoints
      
-     ruleEndsToHostEnds :: (RuleNodeId, RuleNodeId) -> (HostNodeId, HostNodeId)
-     ruleEndsToHostEnds (src, tgt) = (lookup' src nodeMatches, lookup' tgt nodeMatches)
-    
+     ruleEndsToHostEnds :: (RuleNodeId, RuleNodeId) -> Maybe (HostNodeId, HostNodeId)
+     ruleEndsToHostEnds (src, tgt) = case (lookup src nodeMatches, lookup tgt nodeMatches) of
+        (Just s, Just t) -> Just (s, t)
+        _                -> Nothing
+   
+   
      -- [[HostEdgeId]] 
      -- Each [HostEdgeId] corresponds to one of the HostNodeId pairs in hostEndPoints
      hostEdges = map (\(src, tgt) -> [eid | eid <- joiningEdges h src tgt]) hostEndPoints
-
+     
      -- I want to do the following:
      -- edgeMatches [E 1, E 2] [[E 1],[E 2, E 3]] = [(E 1, E 1), (E 2, E 2), (E 2, E 3)]
      -- edgeMatches [E 1, E 2] [[E 1, E 3],[E 2, E 3]] = [(E 1, E 1), (E 1, E 3), (E 2, E 2), (E 2, E 3)]
      -- [(RuleEdgeId, HostEdgeId)]
-     edgeMatches = someZippyFunction ruleEdges hostEdges
+     edgeMatches = zipWith (\re hes -> zip (repeat re) hes) ruleEdges hostEdges
 
      labelMatch :: (RuleEdgeId, HostEdgeId) -> Maybe Environment -> Maybe Environment
      labelMatch (re, he) menv = do
@@ -135,7 +147,7 @@ matchGraphEdges h r (NM env nodeMatches) =
             
 doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe Environment
 doEdgesMatch h r hid rid = 
-   let mhlabel = (maybeELabel h hid) in
+   let mhlabel = (maybeELabel h hid)
        mrlabel = (maybeELabel r rid) in
    case (mhlabel, mrlabel) of 
         (Nothing, _) -> Nothing

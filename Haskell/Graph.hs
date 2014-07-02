@@ -7,28 +7,27 @@ module Graph (Graph, NodeId, EdgeId,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
                rmNode, rmIsolatedNodeList, rmEdge, rmEdgeList,
-               eReLabel, nReLabel) where
+               eReLabel, nReLabel, dumpGraphViz) where
 
 import Prelude hiding (lookup)
 import ExAr
 import Data.Maybe
 import Data.List (union, intersect)
-{-
-class Pretty a
-instance Pretty (Graph a b) where
-pretty :: (Show a, Show b) => Graph a b -> String
-pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
+
+dumpGraphViz :: (Show a, Show b) => Graph a b -> String
+dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
     where
         gvHeader = "digraph {\n"
         gvFooter = "}\n"
+        --prettyNodes _ = "wanker"
         prettyNodes g = concatMap prettyNode $ allNodes g
         prettyEdges g = concatMap prettyEdge $ allEdges g
-        prettyNode n@(N id) = "\tnode_" ++ show id ++ "\t{ label=\"" ++ show ( fromJust (nLabel g n) ) ++ "\" }\n"
-        prettyEdge e@(E id) = "\tnode_" ++ getNodeIdAsInt ( fromJust (source g e) )
-                         ++ " -> node_" ++ getNodeIdAsInt ( fromJust (target g e) )
-                         ++ "\t{ label=\"" ++ show ( fromJust (eLabel g e) ) ++ "\" }\n"
+        prettyNode n@(N id) = "\tnode_" ++ show id ++ "\t{ label=\"" ++ show ( nLabel g n) ++ "\" }\n"
+        prettyEdge e@(E id) = "\tnode_" ++ getNodeIdAsInt (source g e)
+                        ++ " -> node_" ++ getNodeIdAsInt (target g e)
+                        ++ "\t{ label=\"" ++ show (eLabel g e) ++ "\" }\n"
         getNodeIdAsInt (N id) = show id
--}
+
 
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show

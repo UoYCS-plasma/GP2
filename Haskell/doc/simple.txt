@@ -1,7 +1,8 @@
 [
-	( n1(R), 1 # red),
-	( n2, 2:"two" # blue) 
+	( n1, 1),
+	( n2(R), "hello"),
+	( n3, 1:1)
 |
-	( e1, n1, n1, "abc" ),
-	( e2, n1, n2, 'a':'b':'c' )
+	( e1, n1, n2, empty),
+	( e2, n1, n3, empty )
 ]

@@ -54,8 +54,7 @@ lhs = fst $ makeRuleGraph testLHS "Global" "r1" testtab
 host :: HostGraph
 host = makeHostGraph testhg
 
-testmorphisms :: [GraphMorphism]
-testmorphisms =  matchGraphs host lhs
+testmorphisms =  matchGraphNodes host lhs
 
 
 
@@ -148,56 +147,32 @@ conditionEval c m@(GM env nms _) g r =
   case c of
      NoCondition -> True
      TestInt name -> 
-        let var = lookup name env
-        in
+        let var = lookup name env in
            case var of
-               Nothing       -> False
                Just ([Int _]) -> True
                _             -> False
-
      TestChr name -> 
-        let var = lookup name env
-        in
+        let var = lookup name env in
            case var of
-               Nothing         -> False
                Just ([Chr _]) -> True
                _               -> False                         
-
      TestStr name -> 
-        let var = lookup name env
-        in
+        let var = lookup name env in
            case var of
-               Nothing        -> False
                Just ([Str _]) -> True
                _              -> False
-
      TestAtom name -> 
-        let var = lookup name env
-        in
+        let var = lookup name env in
            case var of
-               Nothing      -> False
                Just ([_])   -> True
                _            -> False
-
-     Edge src tgt maybeLabel ->   
-        -- Bug: if label is Nothing, should only test the existence of an
-        --      edge between the two nodes.
-        let label = fromMaybe (RuleLabel [] Uncoloured) maybeLabel
-            hsrc = lookup (getRuleNodeId r src) nms
-            htgt = lookup (getRuleNodeId r tgt) nms
-            hlabel = labelEval m g r label
-        in
-           if (isNothing hsrc || isNothing htgt) 
-              then False
-              else foldr (labelCompare hlabel) False (joiningEdges g (fromJust hsrc) (fromJust htgt))
+     Edge src tgt Nothing      ->   not $ null $ edgeExistsInHostGraph src tgt
+     Edge src tgt (Just label) ->  
+           labelCompare hlabel $ edgeExistsInHostGraph src tgt
         where 
-        -- Should be RuleLabel. Use eval functions.
-        -- labelCompare :: (HostLabel -> EdgeId -> Bool -> Bool)
-           labelCompare _ _ True = True
-           labelCompare hlabel e False = 
-              case (maybeELabel g e) of
-                 Nothing     -> False
-                 Just label  -> label == hlabel
+           hlabel = labelEval m g r label
+           labelCompare :: HostLabel -> [HostEdgeId] -> Bool
+           labelCompare hlabel es = foldr (\eid b -> b || (eLabel g eid == hlabel)) False es
 
      Eq l1 l2 -> and $ zipWith (==) (concatMap (atomEval m g r) l1) (concatMap (atomEval m g r) l2)
 
@@ -219,7 +194,14 @@ conditionEval c m@(GM env nms _) g r =
      Or cond1 cond2 -> (conditionEval cond1 m g r) || (conditionEval cond2 m g r)
 
      And cond1 cond2 -> (conditionEval cond1 m g r) && (conditionEval cond2 m g r)
-
+   where
+        edgeExistsInHostGraph :: NodeName -> NodeName -> [HostEdgeId]
+        edgeExistsInHostGraph src tgt = case (hsrc, htgt) of
+            (Just s, Just t) -> joiningEdges g s t
+            _ -> []
+            where
+                hsrc = lookup (getRuleNodeId r src) nms
+                htgt = lookup (getRuleNodeId r tgt) nms
 
 
 
