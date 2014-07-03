@@ -4,5 +4,5 @@
 	( n3, 1:1)
 |
 	( e1, n1, n2, empty),
-	( e2, n1, n3, empty )
+	( e2, n1, n3, empty)
 ]

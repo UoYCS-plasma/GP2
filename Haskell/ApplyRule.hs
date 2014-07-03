@@ -37,11 +37,10 @@ danglingCondition h r m = null $ criticalHostEdges `intersect` preservedHostEdge
 -- (1) Remove the images of all LHS edges and any deleted nodes from H. 
 --     The deleted nodes are found by taking the set difference of 
 --     'allNodes lhs' and the interface. 
--- (2) Add new nodes to the graph. This is done with a call to the 
---     function addNodesToHost which outputs the new host graph
---     and a mapping from RHS NodeIds to Host NodeIds to facilitate
---     the next step.
--- (3/4) Relabel nodes.
+-- (2) Add new nodes to the graph and relabel existing nodes. This is done
+--     with a call to the function addNodesToHost which outputs the modified 
+--     host graph and a mapping from RHS NodeIds to Host NodeIds to
+--     facilitate the next step.
 -- (3) Add the edges to the graph. 
 
 transform :: GraphMorphism -> Rule -> HostGraph -> HostGraph
@@ -49,7 +48,7 @@ transform m r h = addEdgesToHost m r rhsToHostMap addedNodesGraph
     where 
       removedItemsGraph = rmNodeList (rmEdgeList h deletedHostEdges) deletedHostNodes                 
       (addedNodesGraph, rhsToHostMap) = addNodesToHost m r removedItemsGraph
-      deletedHostEdges  = [ heid | leid <- allEdges lhs, heid = lookup' leid ems ]
+      deletedHostEdges  = [ heid | leid <- allEdges lhs, let heid = lookup' leid ems ]
       deletedHostNodes  = [ hnid | lnid <- deletedLhsNodes, let hnid = lookup' lnid nms ]
       deletedLhsNodes   = allNodes lhs \\ map fst intr
       Rule _ _ (lhs, rhs) intr _ _  = r
@@ -65,11 +64,17 @@ transform m r h = addEdgesToHost m r rhsToHostMap addedNodesGraph
 -- with the new host nodes (obtained from the call to newNodeList).
 
 addNodesToHost :: GraphMorphism -> Rule -> HostGraph -> (HostGraph, NodeMatches)
-addNodesToHost m r h = (h', nms')
+addNodesToHost m r h = (h'', relabelledHostNodes ++ newHostNodes)
     where
-        nms' = [ (ri, hi) | (li, ri) <- intr, let hi = lookup' li nms ]
-               ++ zip insertedRhsNodes insertedHostNodes
+        h'' = foldr relabelNode h' relabelledHostNodes 
         (h', insertedHostNodes) = newNodeList h $ map (nodeEval m h rhs) ruleNodes
+
+        relabelNode :: (RuleNodeId, HostNodeId) -> HostGraph -> HostGraph
+        relabelNode (rid, hid) h = nReLabel h hid newLabel
+            where newLabel = nodeEval m h rhs $ nLabel rhs rid 
+          
+        relabelledHostNodes = [ (ri, hi) | (li, ri) <- intr, let hi = lookup' li nms ]
+        newHostNodes = zip insertedRhsNodes insertedHostNodes
         ruleNodes = map (nLabel rhs) insertedRhsNodes
         insertedRhsNodes  = allNodes rhs \\ map snd intr
         GM env nms ems = m
