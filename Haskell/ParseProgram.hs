@@ -18,25 +18,25 @@ program = optSpaces |> pure Program <*> atLeastOne declaration
 declaration :: Parser Declaration
 declaration = pure MainDecl <*> gpMain
           <|> pure ProcDecl <*> procedure
-          <|> pure RuleDecl <*> rule
+          <|> pure AstRuleDecl <*> rule
 
 gpMain :: Parser Main
-gpMain = keyword "Main" |> keyword "=" |> pure Main <*> commandSequence
+gpMain = keyword "Main" |> keyword "=" |> pure Main <*> block
 
 procedure :: Parser Procedure
 procedure = pure Procedure 
         <*> upperIdent 
         <*> keyword "=" |> (pure concat <*> maybeOne (keyword "[" |> localDeclaration <| keyword "]"))
-        <*> commandSequence
+        <*> block
 
 localDeclaration :: Parser [Declaration]
-localDeclaration = atLeastOne (pure RuleDecl <*> rule <|> pure ProcDecl <*> procedure)
+localDeclaration = atLeastOne (pure AstRuleDecl <*> rule <|> pure ProcDecl <*> procedure)
 
-commandSequence :: Parser CommandSequence
-commandSequence = pure Sequence <*> (pure (:) <*> command <*> maybeSome (keyword ";" |> command))
+commandSequence :: Parser [Block]
+commandSequence = (pure (:) <*> command <*> maybeSome (keyword ";" |> command))
 
-command :: Parser Command
-command = pure Block <*> block
+command :: Parser Block
+command = pure Sequence <*> commandSequence
       <|> keyword "if" |> pure IfStatement <*> block <*> keyword "then" |> block
           <*> (keyword "else" |> block <|> (pure $ SimpleCommand Skip))
       <|> keyword "try" |> pure TryStatement <*> (pure $ SimpleCommand Skip) 
@@ -46,16 +46,14 @@ command = pure Block <*> block
           <*> (keyword "else" |> block <|> (pure $ SimpleCommand Skip)) 
 
 block :: Parser Block
-block = pure LoopedComSeq <*> keyword "(" |> commandSequence <| keyword ")" <| keyword "!"
-    <|> pure ComSeq <*> keyword "(" |> commandSequence <| keyword ")" 
+block = pure Loop <*> keyword "(" |> block <| keyword ")" <| keyword "!"
+    <|> pure Sequence <*> keyword "(" |> commandSequence <| keyword ")" 
     <|> pure SimpleCommand <*> simpleCommand
     <|> pure ProgramOr <*> keyword "or" |> block <*> block
 
 simpleCommand :: Parser SimpleCommand
-simpleCommand = pure LoopedRuleCall <*> lowerIdent <| keyword "!"
-            <|> pure RuleCall <*> lowerIdent
-            <|> pure LoopedRuleSetCall <*> ruleSetCall <| keyword "!"
-            <|> pure RuleSetCall <*> ruleSetCall
+simpleCommand = pure LoopedRuleCall <*> ruleSetCall <| keyword "!"
+            <|> pure RuleCall <*> ruleSetCall
             <|> pure LoopedProcedureCall <*> upperIdent <| keyword "!"
             <|> pure ProcedureCall <*> upperIdent
             <|> pure Skip <| keyword "skip"
@@ -63,3 +61,4 @@ simpleCommand = pure LoopedRuleCall <*> lowerIdent <| keyword "!"
 
 ruleSetCall :: Parser [String]
 ruleSetCall = keyword "{" |> pure (:) <*> lowerIdent <*> maybeSome (keyword "," |> lowerIdent) <| keyword "}" 
+    <|> pure (:[]) <*> lowerIdent

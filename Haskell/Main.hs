@@ -11,6 +11,7 @@ import ProcessAst
 import GPSyntax
 import ExAr
 import Graph (dumpGraphViz)
+import HandleBlocks
 
 notImplemented = error "whatever"
 
@@ -20,11 +21,8 @@ loadProgram = readFile
 loadGraph :: String -> IO String
 loadGraph = readFile
 
+horizon = 3
 
--- TODO: only gets the first rule declaration
-extractRuleDecl :: GPProgram -> AstRule
-extractRuleDecl (Program ((RuleDecl r):xs)) = r
-extractRuleDecl (Program (_:xs)) = extractRuleDecl (Program xs)
 
 report :: String -> IO ()
 report s = do
@@ -40,8 +38,9 @@ myMain = do
     p <- loadProgram prog
     g <- loadGraph graph
     let hg = makeHostGraph $ parse hostGraph g
-    let rd = makeRule  ( extractRuleDecl $ parse program p ) "" empty
+    let (prog, syms) = makeGPProgram $ parse program p
     report $ dumpGraphViz hg
+    report $ concatMap dumpGraphViz $ evalProgram prog hg horizon
     --putStrLn $ concatMap prettyPrint $ applyRule hg rd
-    report $ concatMap dumpGraphViz $ applyRule hg rd
+    --report $ concatMap dumpGraphViz $ applyRule hg rd
     --putStrLn $ show $ applyRule hg rd

@@ -68,13 +68,26 @@ data GPProgram = Program [Declaration] deriving (Show)
 
 data Declaration = MainDecl Main
                  | ProcDecl Procedure
-                 | RuleDecl AstRule
+                 | AstRuleDecl AstRule
+                 | RuleDecl Rule
      deriving (Show)
 
-data Main = Main CommandSequence deriving (Show)
 
-data Procedure = Procedure ProcName [Declaration] CommandSequence deriving (Show)
 
+
+data Block = Sequence [Block]
+    | IfStatement Block Block Block
+    | TryStatement Block Block Block
+    | ProgramOr Block Block
+    | Loop Block
+    | SimpleCommand SimpleCommand
+        deriving Show
+
+data Main = Main Block deriving (Show)
+
+data Procedure = Procedure ProcName [Declaration] Block deriving (Show)
+
+{-
 data CommandSequence = Sequence [Command] deriving (Show) 
 
 data Command = Block Block
@@ -88,12 +101,10 @@ data Block = ComSeq CommandSequence
            | SimpleCommand SimpleCommand
            | ProgramOr Block Block      
     deriving (Show)
-      
+ -}    
 
-data SimpleCommand = RuleCall RuleName
-                   | LoopedRuleCall RuleName
-                   | RuleSetCall [RuleName]
-                   | LoopedRuleSetCall [RuleName] 
+data SimpleCommand = RuleCall [RuleName]
+                   | LoopedRuleCall [RuleName]
                    | ProcedureCall ProcName
                    | LoopedProcedureCall ProcName
                    | Skip

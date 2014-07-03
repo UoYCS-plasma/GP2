@@ -51,7 +51,16 @@ symbolsInScope name scope rule table = filter (checkScope scope rule) $ listLook
      checkScope scope rule (Symbol _ symbolScope symbolRule) = 
         scope == symbolScope && rule == symbolRule
 
+makeGPProgram :: GPProgram -> (GPProgram, SymbolTable)
+makeGPProgram (Program decls) = (Program $ map (makeDeclaration "Global" table) decls, table)
+  where table = enterDeclarations "Global" empty decls 
 
+
+makeDeclaration :: Scope -> SymbolTable -> Declaration -> Declaration
+makeDeclaration s t (AstRuleDecl r) = RuleDecl r'
+    where
+        r' = makeRule r s t
+makeDeclaration _ _ x = x
 
 -- Calls enterDeclarations with "Global" scope and an empty symbol table.
 enterSymbols :: GPProgram -> SymbolTable
@@ -71,7 +80,7 @@ enterDeclarations' scope table decl = case decl of
   MainDecl _ -> table
   ProcDecl (Procedure id decls _ ) -> let table' = enterDeclarations id table decls 
                                       in addSymbol table' id (Symbol Procedure_S scope "")
-  RuleDecl (AstRule id vars _ _ _ _ ) -> let table' = enterVariables scope id table vars
+  AstRuleDecl (AstRule id vars _ _ _ _ ) -> let table' = enterVariables scope id table vars
                                       in addSymbol table' id (Symbol Rule_S scope "")
 
 enterVariables :: Scope -> RuleID -> SymbolTable -> [Variable] -> SymbolTable

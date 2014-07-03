@@ -95,7 +95,5 @@ addEdgesToHost m r nms h = fst $ newEdgeList h newEdges
                       let hsrc = lookup' (source rhs re) nms
                           htgt = lookup' (target rhs re) nms
                           hlabel = labelEval m h rhs (eLabel rhs re) ]
-        -- (h', insertedHostEdges) = newEdgeList h newEdges
-        -- ems' = zip (allEdges rhs) insertedHostEdges
         Rule _ _ (_, rhs) _ _ _ = r
 
