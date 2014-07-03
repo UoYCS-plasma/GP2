@@ -1,11 +1,11 @@
-module HandleBlocks where
+module RunProgram where
 
 import ApplyRule
 import GPSyntax
 
 
-evalProgram :: GPProgram -> HostGraph -> Int -> [HostGraph]
-evalProgram prog h k = evalMain decls (findMain decls) h
+runProgram :: GPProgram -> HostGraph -> Int -> [HostGraph]
+runProgram prog h k = evalMain decls (findMain decls) h
     where
         Program decls = prog
         
@@ -17,7 +17,7 @@ findMain [] = error "No main procedure defined."
 evalMain :: [Declaration] -> Main -> HostGraph -> [HostGraph]
 evalMain decls (Main b) h = evalBlock decls b h
 
-evalBlock :: [Declaration] -> Block -> HostGraph -> [HostGraph]
+evalBlock :: [Declaration] -> Command -> HostGraph -> [HostGraph]
 evalBlock decls (Sequence (b:bs)) h = case evalBlock decls b h of
     [] -> []
     hs -> concatMap (evalBlock decls (Sequence bs)) hs

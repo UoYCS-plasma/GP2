@@ -32,11 +32,11 @@ procedure = pure Procedure
 localDeclaration :: Parser [Declaration]
 localDeclaration = atLeastOne (pure AstRuleDecl <*> rule <|> pure ProcDecl <*> procedure)
 
-commandSequence :: Parser [Block]
+commandSequence :: Parser [Command]
 commandSequence = (pure (:) <*> command <*> maybeSome (keyword ";" |> command))
 
-command :: Parser Block
-command = pure Sequence <*> commandSequence
+command :: Parser Command
+command = pure Block <*> block
       <|> keyword "if" |> pure IfStatement <*> block <*> keyword "then" |> block
           <*> (keyword "else" |> block <|> (pure $ SimpleCommand Skip))
       <|> keyword "try" |> pure TryStatement <*> (pure $ SimpleCommand Skip) 
@@ -45,8 +45,8 @@ command = pure Sequence <*> commandSequence
           <*> (keyword "then" |> block <|> (pure $ SimpleCommand Skip))
           <*> (keyword "else" |> block <|> (pure $ SimpleCommand Skip)) 
 
-block :: Parser Block
-block = pure Loop <*> keyword "(" |> block <| keyword ")" <| keyword "!"
+block :: Parser Command
+block = pure Loop <*> keyword "(" |> commandSequence <| keyword ")" <| keyword "!"
     <|> pure Sequence <*> keyword "(" |> commandSequence <| keyword ")" 
     <|> pure SimpleCommand <*> simpleCommand
     <|> pure ProgramOr <*> keyword "or" |> block <*> block
