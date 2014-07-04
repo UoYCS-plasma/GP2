@@ -15,24 +15,55 @@ findMain (_:ds) = findMain ds
 findMain [] = error "No main procedure defined."
 
 evalMain :: [Declaration] -> Main -> HostGraph -> [HostGraph]
-evalMain decls (Main b) h = evalBlock decls b h
+evalMain decls (Main coms) h = evalCommandSequence decls coms h
 
-evalBlock :: [Declaration] -> Command -> HostGraph -> [HostGraph]
-evalBlock decls (Sequence (b:bs)) h = case evalBlock decls b h of
-    [] -> []
-    hs -> concatMap (evalBlock decls (Sequence bs)) hs
-evalBlock decls (Sequence []) h = [h]
-evalBlock decls (IfStatement cond th el) h = case evalBlock decls cond h of 
-    [] -> evalBlock decls el h
-    hs -> evalBlock decls th h
-evalBlock decls (TryStatement cond th el) h = case evalBlock decls cond h of
-    [] -> evalBlock decls el h
-    hs -> concatMap (evalBlock decls th) hs
-evalBlock decls (ProgramOr b1 b2) h = evalBlock decls b1 h
-evalBlock decls (Loop block) h = case evalBlock decls block h of
-    [] -> [h]
-    hs -> concatMap (evalBlock decls block) hs
-evalBlock decls (SimpleCommand s) h = evalSimpleCommand decls s h
+evalCommandSequence :: [Declaration] -> [Command] -> HostGraph -> [HostGraph]
+evalCommandSequence decls [] h = [h]
+evalCommandSequence decls (c:cs) h = 
+    case evalCommand decls c h of
+        [] -> []
+        hs -> concatMap (evalCommandSequence decls cs) hs
+
+evalCommand :: [Declaration] -> Command -> HostGraph -> [HostGraph]
+evalCommand decls (Conditional cond) h = evalConditional decls cond h
+evalCommand decls (ProgramOr c1 c2) h = evalCommandSequence decls c1 h
+evalCommand decls (Loop commands) h = 
+    case evalCommandSequence decls commands h of
+        [] -> [h]
+        hs -> concatMap (evalCommandSequence decls commands) hs
+evalCommand decls (RuleCall (r:rs)) h = 
+    case applyRule h $ ruleLookup r decls of
+        [] -> evalCommand decls (RuleCall rs) h
+        hs -> hs
+evalCommand decls c@(LoopedRuleCall rs) h = 
+    case evalCommand decls (RuleCall rs) h of
+        [] -> [h]
+        hs -> concatMap (evalCommand decls c) hs
+-- localDecls are placed at the start of the new declaration list
+-- so that procLookup and ruleLookup always return the correct rule
+-- or procedure with respect to GP2's scoping rules.`
+evalCommand decls (ProcedureCall proc) h = 
+    evalCommandSequence (localDecls ++ decls) coms h
+        where
+        Procedure id localDecls coms = procLookup proc decls
+evalCommand decls c@(LoopedProcedureCall proc) h = 
+    case evalCommand decls (ProcedureCall proc) h of
+        [] -> [h]
+        hs -> concatMap (evalCommand decls c) hs
+evalCommand decls Skip h = [h]
+evalCommand decls Fail h = []
+evalCommand decls (RuleCall []) h = []
+
+
+evalConditional :: [Declaration] -> Conditional -> HostGraph -> [HostGraph]
+evalConditional decls (IfStatement cond th el) h = 
+    case evalCommandSequence decls cond h of 
+        [] -> evalCommandSequence decls el h
+        hs -> evalCommandSequence decls th h
+evalConditional decls (TryStatement cond th el) h = 
+    case evalCommandSequence decls cond h of
+        [] -> evalCommandSequence decls el h
+        hs -> concatMap (evalCommandSequence decls th) hs
 
 procLookup :: ProcName -> [Declaration] -> Procedure
 procLookup id decls = case matches of
@@ -54,22 +85,5 @@ ruleLookup id decls = case matches of
         p id (RuleDecl (Rule name _ _ _ _ _)) = id == name 
         p id _ = False
 
-
-evalSimpleCommand :: [Declaration] -> SimpleCommand -> HostGraph -> [HostGraph]
-evalSimpleCommand ds (RuleCall (r:rs)) h = case applyRule h $ ruleLookup r ds of
-    [] -> evalSimpleCommand ds (RuleCall rs) h
-    hs -> hs
-evalSimpleCommand ds c@(LoopedRuleCall rs) h = case evalSimpleCommand ds (RuleCall rs) h of
-    [] -> [h]
-    hs -> concatMap (evalSimpleCommand ds c) hs
-evalSimpleCommand ds (ProcedureCall proc) h = evalBlock (decls++ds) block h
-    where
-        Procedure id decls block = procLookup proc ds
-evalSimpleCommand ds c@(LoopedProcedureCall proc) h = case evalSimpleCommand ds (ProcedureCall proc) h of
-    [] -> [h]
-    hs -> concatMap (evalSimpleCommand ds c) hs
-evalSimpleCommand ds Skip h = [h]
-evalSimpleCommand ds Fail h = []
-evalSimpleCommand ds (RuleCall []) h = []
 
 

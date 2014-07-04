@@ -1,5 +1,5 @@
 
-Main = rule1
+Main = try (rule1) 
 rule1 (i:int; l:list) [
 	(n1, i), (n2, l) | (e1, n1, n2, empty)
 ] => [

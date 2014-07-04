@@ -72,26 +72,24 @@ data Declaration = MainDecl Main
                  | RuleDecl Rule
      deriving Show
 
-data Main = Main Command deriving Show
+data Main = Main [Command] deriving Show
 
-data Procedure = Procedure ProcName [Declaration] Command deriving Show
+data Procedure = Procedure ProcName [Declaration] [Command] deriving Show
 
-data Command = Sequence [Command]
-             | IfStatement Command Command Command
-             | TryStatement Command Command Command
-             | ProgramOr Command Command
-             | Loop Command
-             | SimpleCommand SimpleCommand
-        deriving Show
-
-data SimpleCommand = RuleCall [RuleName]
-                   | LoopedRuleCall [RuleName]
-                   | ProcedureCall ProcName
-                   | LoopedProcedureCall ProcName
-                   | Skip
-                   | Fail
+data Command = Conditional Conditional
+             | ProgramOr [Command] [Command]
+             | Loop [Command]
+             | RuleCall [RuleName]
+             | LoopedRuleCall [RuleName]
+             | ProcedureCall ProcName
+             | LoopedProcedureCall ProcName
+             | Skip
+             | Fail
     deriving Show
 
+data Conditional = IfStatement [Command] [Command] [Command]
+                 | TryStatement [Command] [Command] [Command]
+    deriving Show
 
 
 -- GP Rule ADTs
