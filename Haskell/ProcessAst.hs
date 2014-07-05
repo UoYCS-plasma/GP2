@@ -80,7 +80,7 @@ enterDeclarations' scope table decl = case decl of
   MainDecl _ -> table
   ProcDecl (Procedure id decls _ ) -> let table' = enterDeclarations id table decls 
                                       in addSymbol table' id (Symbol Procedure_S scope "")
-  AstRuleDecl (AstRule id vars _ _ _ _ ) -> let table' = enterVariables scope id table vars
+  AstRuleDecl (AstRule id vars _ _) -> let table' = enterVariables scope id table vars
                                       in addSymbol table' id (Symbol Rule_S scope "")
 
 enterVariables :: Scope -> RuleID -> SymbolTable -> [Variable] -> SymbolTable
@@ -117,8 +117,8 @@ addHEdge (HostEdge src tgt label) (g, nm) = (g',nm)
 
 -- May need to keep the new SymbolTable t' but I ignore it for now.
 makeRule :: AstRule -> Scope -> SymbolTable -> Rule
-makeRule (AstRule name vars (lhs, rhs) _ cond b) s t =
-         Rule name vars (lhs', rhs') interface' cond b
+makeRule (AstRule name vars (lhs, rhs) cond) s t =
+         Rule name vars (lhs', rhs') interface' cond
    where
       t' = enterVariables s name t vars
       (lhs',lnm) = makeRuleGraph lhs s name t' 

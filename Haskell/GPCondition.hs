@@ -13,66 +13,6 @@ import ExAr
 import Data.List
 import Data.Maybe
 
--- Test data
-testastrule :: AstRule
-testastrule = (AstRule "rule1" 
-               [("i",IntVar),("l",ListVar)] 
-              (AstRuleGraph [RuleNode "n1" False (RuleLabel [Var ("i",ListVar)] Uncoloured),
-                             RuleNode "n2" False (RuleLabel [Var ("l",ListVar)] Uncoloured)]
-                            [RuleEdge False "n1" "n2" (RuleLabel [] Uncoloured)],
-               AstRuleGraph [RuleNode "n1" False (RuleLabel [Var ("i",ListVar)] Uncoloured),
-                             RuleNode "n2" False (RuleLabel [Var ("l",ListVar),Var ("i",ListVar)] Uncoloured)] 
-                            [RuleEdge False "n1" "n2" (RuleLabel [] Uncoloured)])
-              ["n1","n2"] 
-              (Edge "n1" "n2" Nothing) 
-              "true")
-
-testastrule2 :: AstRule
-testastrule2 = (AstRule "rule1" 
-               [("i",IntVar),("l",ListVar)] 
-              (AstRuleGraph [RuleNode "n1" False (RuleLabel [Var ("i",ListVar)] Uncoloured),
-                             RuleNode "n2" False (RuleLabel [Var ("l",ListVar)] Uncoloured)]
-                            [RuleEdge False "n1" "n2" (RuleLabel [] Uncoloured)],
-               AstRuleGraph [RuleNode "n2" False (RuleLabel [Var ("l",ListVar),Var ("i",ListVar)] Uncoloured)] 
-                            [])
-              ["n2"] 
-              (Edge "n1" "n2" Nothing) 
-              "true")
-
-testLHS :: AstRuleGraph
-testLHS = (AstRuleGraph [RuleNode "n1" False (RuleLabel [Var ("i",ListVar)] Uncoloured),
-                         RuleNode "n2" False (RuleLabel [Var ("l",ListVar)] Uncoloured)]
-                        [RuleEdge False "n1" "n2" (RuleLabel [] Uncoloured)])
-
-testhg :: AstHostGraph
-testhg = AstHostGraph 
-        [HostNode "n1" False (HostLabel [Int 1] Uncoloured),
-         HostNode "n2" False (HostLabel [Str "hello"] Uncoloured),
-         HostNode "n3" False (HostLabel [Int 1, Int 2] Uncoloured)]
-        [HostEdge "n1" "n2" (HostLabel [] Uncoloured),
-         HostEdge "n1" "n3" (HostLabel [] Uncoloured)]
-
-testtab :: SymbolTable
-testtab = makeTable slist
-
-slist :: SymbolList
-slist = [("i", Symbol (Var_S IntVar False) "Global" "r1"),
-         ("l", Symbol (Var_S ListVar False) "Global" "r1")]
-
-
-lhs = fst $ makeRuleGraph testLHS "Global" "r1" testtab
-
-host = makeHostGraph testhg
-
-rule = makeRule testastrule "" empty 
-rule2 = makeRule testastrule2 "" empty
- 
-testmorphisms =  matchGraphs host lhs
-
-
-
-
-
 getHostNodeId :: HostGraph -> NodeName -> NodeId
 getHostNodeId g id = case candidates of
         [] -> error $ "ID " ++ id ++ " not found"

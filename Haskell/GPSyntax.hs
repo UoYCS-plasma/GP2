@@ -94,17 +94,13 @@ data Conditional = IfStatement [Command] [Command] [Command]
 
 -- GP Rule ADTs
 type Variable = (VarName, VarType)
-type AstInterface = [NodeName]
 type Interface = [(NodeId, NodeId)]
 
-data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) 
-            Interface Condition String
-    deriving Show
-
+data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) Interface 
+            Condition  deriving Show
 
 data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph) 
-               AstInterface Condition String
-    deriving Show
+               Condition  deriving Show
 
 -- Rule graph labels are lists of expressions.
 type RuleGraph = Graph RuleNode RuleLabel
@@ -113,25 +109,22 @@ data RuleNode = RuleNode NodeName Bool RuleLabel deriving Show
 data RuleEdge = RuleEdge Bool NodeName NodeName RuleLabel deriving Show
 
 type GPList = [RuleAtom]
-data RuleLabel = RuleLabel GPList Colour  deriving Show
+data RuleLabel = RuleLabel GPList Colour deriving Show
 
 data RuleAtom = Var Variable
               | Val HostAtom
+              | Neg RuleAtom
               | Indeg NodeName
               | Outdeg NodeName
               -- RHS only
               | Llength GPList
               | Slength RuleAtom
-              | Neg RuleAtom
               | Plus RuleAtom RuleAtom
               | Minus RuleAtom RuleAtom
               | Times RuleAtom RuleAtom
               | Div RuleAtom RuleAtom
               | Concat RuleAtom RuleAtom
     deriving Show
-
-
-
 
 -- TODO: precedence of infix binary operators
 -- Is it possible to do BinOp Atom Atom and

@@ -16,7 +16,7 @@ import GPCondition
 -- each HostGraph is obtained from applying the rule with respect to each morphism.
 
 applyRule :: HostGraph -> Rule -> [HostGraph]
-applyRule h r@(Rule _ _ (lhs, rhs) i cond _) =
+applyRule h r@(Rule _ _ (lhs, rhs) i cond) =
         [ transform m r h | m <- filter (danglingCondition h r) $ matchGraphs h lhs]
 
 -- criticalHostEdges is the set of host edges incident to nodes deleted by the rule.
@@ -29,7 +29,7 @@ danglingCondition h r m = null $ criticalHostEdges `intersect` preservedHostEdge
           preservedHostEdges = allEdges h \\ map snd ems
           deletedHostNodes = [ hnid | lnid <- deletedLhsNodes, let hnid = lookup' lnid nms ]
           deletedLhsNodes = allNodes lhs \\ map fst intr
-          (Rule _ _ (lhs,rhs) intr _ _) = r
+          (Rule _ _ (lhs,rhs) intr _) = r
           GM _ nms ems = m
 
 
@@ -44,14 +44,14 @@ danglingCondition h r m = null $ criticalHostEdges `intersect` preservedHostEdge
 -- (3) Add the edges to the graph. 
 
 transform :: GraphMorphism -> Rule -> HostGraph -> HostGraph
-transform m r h = addEdgesToHost m r rhsToHostMap addedNodesGraph
+transform m r h = addEdgesToHost m rhs rhsToHostMap addedNodesGraph
     where 
       removedItemsGraph = rmNodeList (rmEdgeList h deletedHostEdges) deletedHostNodes                 
       (addedNodesGraph, rhsToHostMap) = addNodesToHost m r removedItemsGraph
       deletedHostEdges  = [ heid | leid <- allEdges lhs, let heid = lookup' leid ems ]
       deletedHostNodes  = [ hnid | lnid <- deletedLhsNodes, let hnid = lookup' lnid nms ]
       deletedLhsNodes   = allNodes lhs \\ map fst intr
-      Rule _ _ (lhs, rhs) intr _ _  = r
+      Rule _ _ (lhs, rhs) intr _ = r
       GM env nms ems                = m
 
 
@@ -78,7 +78,7 @@ addNodesToHost m r h = (h'', relabelledHostNodes ++ newHostNodes)
         ruleNodes = map (nLabel rhs) insertedRhsNodes
         insertedRhsNodes  = allNodes rhs \\ map snd intr
         GM env nms ems = m
-        Rule _ _ (_, rhs) intr _ _ = r
+        Rule _ _ (_, rhs) intr _ = r
 
 
 nodeEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleNode -> HostNode
@@ -88,12 +88,11 @@ nodeEval m h r rn@(RuleNode name isRoot label) = HostNode name isRoot $ labelEva
 -- all RHS NodeIds to host graph NodeIds. This is used to create the correct
 -- arguments for the call to newEdgeList.
 
-addEdgesToHost :: GraphMorphism -> Rule -> NodeMatches -> HostGraph -> HostGraph
-addEdgesToHost m r nms h = fst $ newEdgeList h newEdges
+addEdgesToHost :: GraphMorphism -> RuleGraph -> NodeMatches -> HostGraph -> HostGraph
+addEdgesToHost m rhs nms h = fst $ newEdgeList h newEdges
     where
         newEdges = [ (hsrc, htgt, hlabel) | re <- allEdges rhs, 
                       let hsrc = lookup' (source rhs re) nms
                           htgt = lookup' (target rhs re) nms
                           hlabel = labelEval m h rhs (eLabel rhs re) ]
-        Rule _ _ (_, rhs) _ _ _ = r
 

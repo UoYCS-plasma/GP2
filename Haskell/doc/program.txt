@@ -7,7 +7,6 @@ rule1 (i:int; l:list) [
 ]
 interface = {n1, n2}
 where edge (n1,n2)
-injective = true
 
 
 

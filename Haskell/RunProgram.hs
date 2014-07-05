@@ -82,7 +82,7 @@ ruleLookup id decls = case matches of
     where
         matches = map (\(RuleDecl d) -> d) $ filter (p id) decls
         p :: RuleName -> Declaration -> Bool
-        p id (RuleDecl (Rule name _ _ _ _ _)) = id == name 
+        p id (RuleDecl (Rule name _ _ _ _)) = id == name 
         p id _ = False
 
 

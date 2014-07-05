@@ -5,15 +5,17 @@ import Data.Maybe
 import ParseLib
 import GPSyntax
 
+
+-- The interface is not used: it is valid GP 2 syntax, but it is
+-- not used in this implementation. Hence the parser throws away the
+-- interface.
 rule :: Parser AstRule
 rule = pure AstRule 
        <*> lowerIdent 
        <*> (pure concat <*> maybeOne parameters)
-       <*> ruleGraphs
+       <*> ruleGraphs 
        <*> interface
-       <*> (pure head <*> exactlyOne ( keyword "where" |> condition ) <|> pure NoCondition)
-       <*> keyword "injective" |> keyword "=" |> (keyword "true" <|> keyword "false")
-           
+       |> (pure head <*> exactlyOne ( keyword "where" |> condition ) <|> pure NoCondition)
 
 -- In a rule parameter declaration, multiple variables can be declared
 -- with a single type. 
@@ -38,13 +40,15 @@ ruleGraphs = pure (,) <*> ruleGraph <*> ( keyword "=>" |> ruleGraph )
 ruleGraph :: Parser AstRuleGraph
 ruleGraph = keyword "[" |> pure AstRuleGraph <*> nodeList <*> edgeList <| keyword "]"
 
-interface :: Parser AstInterface
+-- Consumes the interface text: its output is discarded so the return type
+-- is irrelevant.
+interface :: Parser String
 interface = keyword "interface" |> keyword "=" |> keyword "{" 
-         |> (pure concat <*> maybeOne ( pure (:) <*> lowerIdent <*> maybeSome interfaceNodes ) )
+         |> lowerIdent <| maybeSome interfaceNodes
          <| keyword "}"
 
 interfaceNodes :: Parser NodeName
-interfaceNodes = keyword "," |> lowerIdent 
+interfaceNodes = keyword "," |> lowerIdent
 
 nodeList :: Parser [RuleNode]
 nodeList = pure (++) <*> maybeOne node <*> maybeSome (keyword "," |> node)
