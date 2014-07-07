@@ -6,8 +6,9 @@ import Data.Maybe
 import GPSyntax
 import Graph
 import ExAr
+import Mapping
 
-type SymbolTable = ExAr String Symbol 
+type SymbolTable = Mapping String Symbol 
 
 type Scope = String
 type RuleID = String
@@ -37,15 +38,18 @@ data SymbolType = Procedure_S
 
 type SymbolList = [(String, Symbol)]
 
+lookupSymbols :: SymbolTable -> String -> [Symbol]
+lookupSymbols symbols id = [symbol | (name,symbol) <- symbols, name == id]
+
 makeTable :: SymbolList -> SymbolTable
-makeTable = foldr (\(id,s) table -> addSymbol table id s) empty
+makeTable = foldr (\(id,s) table -> addItem table id s) []
 
 -- symbolsInScope takes an identifier <id>, a scope ("Global" or a procedure
 -- name), a rule name and a symbol table. It returns the list of symbols with
 -- name <id> with the same Scope and RuleID as those passed into the function. 
 
 symbolsInScope :: VarName -> Scope -> RuleID -> SymbolTable -> [Symbol]
-symbolsInScope name scope rule table = filter (checkScope scope rule) $ listLookup table name 
+symbolsInScope name scope rule table = filter (checkScope scope rule) $ lookupSymbols table name 
   where 
   -- checkScope :: String -> String -> Symbol -> Bool
      checkScope scope rule (Symbol _ symbolScope symbolRule) = 
@@ -53,7 +57,7 @@ symbolsInScope name scope rule table = filter (checkScope scope rule) $ listLook
 
 makeGPProgram :: GPProgram -> (GPProgram, SymbolTable)
 makeGPProgram (Program decls) = (Program $ map (makeDeclaration "Global" table) decls, table)
-  where table = enterDeclarations "Global" empty decls 
+  where table = enterDeclarations "Global" [] decls 
 
 
 makeDeclaration :: Scope -> SymbolTable -> Declaration -> Declaration
@@ -64,7 +68,7 @@ makeDeclaration _ _ x = x
 
 -- Calls enterDeclarations with "Global" scope and an empty symbol table.
 enterSymbols :: GPProgram -> SymbolTable
-enterSymbols (Program declarations) = enterDeclarations "Global" empty declarations
+enterSymbols (Program declarations) = enterDeclarations "Global" [] declarations
 
 -- Enter any rule and procedure declarations into the symbol table.
 enterDeclarations :: Scope -> SymbolTable -> [Declaration] -> SymbolTable
@@ -79,15 +83,15 @@ enterDeclarations' :: Scope -> SymbolTable -> Declaration -> SymbolTable
 enterDeclarations' scope table decl = case decl of
   MainDecl _ -> table
   ProcDecl (Procedure id decls _ ) -> let table' = enterDeclarations id table decls 
-                                      in addSymbol table' id (Symbol Procedure_S scope "")
+                                      in addItem table' id (Symbol Procedure_S scope "")
   AstRuleDecl (AstRule id vars _ _) -> let table' = enterVariables scope id table vars
-                                      in addSymbol table' id (Symbol Rule_S scope "")
+                                      in addItem table' id (Symbol Rule_S scope "")
 
 enterVariables :: Scope -> RuleID -> SymbolTable -> [Variable] -> SymbolTable
 enterVariables s r t vars = foldl' (enterVariable s r) t vars 
 
 enterVariable :: Scope -> RuleID -> SymbolTable -> Variable -> SymbolTable
-enterVariable s r t (id,gptype) = addSymbol t id (Symbol (Var_S gptype False) s r)
+enterVariable s r t (id,gptype) = addItem t id (Symbol (Var_S gptype False) s r)
 
 -- NodeMap keeps track of the correspondence between string IDs in the AstGraphs
 -- and the integer IDs in the ExAr graphs.
@@ -130,7 +134,7 @@ makeRule (AstRule name vars (lhs, rhs) cond) s t =
 -- NodeMaps and, for each one, creates a pair of the LeftNodeId and RightNodeId
 -- according to both NodeMaps.
 makeInterface :: NodeMap -> NodeMap -> Interface
-makeInterface lnm rnm = [ (lookup' name lnm, lookup' name rnm) | name <- interfaceNames ]
+makeInterface lnm rnm = [ (definiteLookup name lnm, definiteLookup name rnm) | name <- interfaceNames ]
     where
         interfaceNames = map fst lnm `intersect` map fst rnm
     

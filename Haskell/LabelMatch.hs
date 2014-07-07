@@ -5,27 +5,10 @@ import Data.List
 import Data.Maybe
 import Control.Monad (guard)
 
--- import ExAr
--- import GPGraph
--- import Graph
+import Mapping
 import GPSyntax
 
-type Subst a b = [(a, b)]
-type Environment = Subst VarName [HostAtom]
-
-substMerge :: ( Eq a, Eq b ) => Subst a b -> Subst a b -> Maybe (Subst a b)
-substMerge s [] = Just s
-substMerge s ((k, v):kvs) = do
-    s' <- substExtend s k v
-    substMerge s' kvs
-
-
-substExtend :: ( Eq a, Eq b ) => Subst a b -> a -> b -> Maybe (Subst a b)
---substExtend :: Environment -> VarName -> [HostAtom] -> Maybe Environment
-substExtend s key val = 
-    case lookup key s of
-            Nothing   -> Just $ (key, val):s
-            Just v -> if v == val then Just s else Nothing
+type Environment = Mapping VarName [HostAtom]
 
 doLabelsMatch :: HostLabel -> RuleLabel -> Maybe Environment
 doLabelsMatch (HostLabel has hc) (RuleLabel ras rc) = if colourMatch hc rc then atomsMatch has ras else Nothing
@@ -68,7 +51,7 @@ analogously to atomsMatchWith,
 atomsMatchWith :: Environment -> [HostAtom] -> [RuleAtom] -> Maybe Environment
 atomsMatchWith env [] [] = Just env
 atomsMatchWith env _ [] = Nothing
-atomsMatchWith env [] [Var (var, ListVar)] = substExtend env var []
+atomsMatchWith env [] [Var (var, ListVar)] = extendMapping env var []
 atomsMatchWith env [] _ = Nothing
 atomsMatchWith env hall@(ha:has) (ra:ras) =
     case (ha, ra) of
@@ -80,10 +63,10 @@ atomsMatchWith env hall@(ha:has) (ra:ras) =
             case compare hl rl of
                 LT -> Nothing
                 EQ -> do 
-                    env' <- substExtend env var []
+                    env' <- extendMapping env var []
                     atomsMatchWith env' hall ras
                 GT -> do
-                    env' <- substExtend env var $ take d hall
+                    env' <- extendMapping env var $ take d hall
                     atomsMatchWith env' (drop d hall) ras
               
         ( Int i, Val (Int j) ) -> do
@@ -91,14 +74,14 @@ atomsMatchWith env hall@(ha:has) (ra:ras) =
             atomsMatchWith env has ras
         ( Int i, Var (var, vt) ) -> do
             guard $ IntVar <= vt
-            env' <- substExtend env var [ha]
+            env' <- extendMapping env var [ha]
             atomsMatchWith env' has ras
         ( Chr c, Val (Chr d) ) -> do
             guard $ c == d
             atomsMatchWith env has ras
         ( Chr c, Var (var, vt) ) -> do
             guard $ ChrVar <= vt
-            env' <- substExtend env var [ha]
+            env' <- extendMapping env var [ha]
             atomsMatchWith env' has ras
         ( Str str, Val (Chr c) ) -> do
             guard $ str /= ""
@@ -109,11 +92,11 @@ atomsMatchWith env hall@(ha:has) (ra:ras) =
             atomsMatchWith env has ras
         ( Str str, Var (var, ChrVar) ) -> do
             guard $ length str == 1
-            env' <- substExtend env var [(Chr $ head str)]
+            env' <- extendMapping env var [(Chr $ head str)]
             atomsMatchWith env' has ras
         ( Str str, Var (var, vt) ) -> do
             guard $ StrVar <= vt
-            env' <- substExtend env var [ha]
+            env' <- extendMapping env var [ha]
             atomsMatchWith env' has ras
         ( Str str, a@(Concat a1 a2) ) -> do
             let as = expand a 
@@ -133,7 +116,7 @@ expand a = [a]
 stringMatchWith :: Environment -> String -> [RuleAtom] -> Maybe Environment
 stringMatchWith env [] [] = Just env
 stringMatchWith env _ [] = Nothing
-stringMatchWith env [] [Var (var, StrVar)] = substExtend env var [Str ""] 
+stringMatchWith env [] [Var (var, StrVar)] = extendMapping env var [Str ""] 
 stringMatchWith env [] _ = Nothing
 stringMatchWith env str@(c:cs) (a:as) = 
    case a of
@@ -146,7 +129,7 @@ stringMatchWith env str@(c:cs) (a:as) =
            stringMatchWith env (drop rl str) as
         Var (var, ChrVar) -> do
            guard $ str /= ""
-           env' <- substExtend env var [(Chr c)]
+           env' <- extendMapping env var [(Chr c)]
            stringMatchWith env' cs as
         Var (var, StrVar) -> 
            let sl = length str
@@ -156,10 +139,10 @@ stringMatchWith env str@(c:cs) (a:as) =
            case compare sl al of
               LT -> Nothing
               EQ -> do
-                  env' <- substExtend env var []
+                  env' <- extendMapping env var []
                   stringMatchWith env' str as
               GT -> do
-                  env' <- substExtend env var [(Str $ take d str)]
+                  env' <- extendMapping env var [(Str $ take d str)]
                   stringMatchWith env' (drop d str) as
         _ -> Nothing
 

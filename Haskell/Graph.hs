@@ -7,7 +7,7 @@ module Graph (Graph, NodeId, EdgeId,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
                rmNode, rmNodeList, rmEdge, rmEdgeList,
-               eReLabel, nReLabel, dumpGraphViz, lookup') where
+               eReLabel, nReLabel, dumpGraphViz) where
 
 import Prelude 
 import ExAr
@@ -29,8 +29,6 @@ dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
         getNodeIdAsInt (N id) = show id
 
 
-lookup' :: Eq a => a -> [(a, b)] -> b
-lookup' x xys = fromJust $ lookup x xys
 
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show

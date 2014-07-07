@@ -1,17 +1,15 @@
-module GPCondition where
+module Evaluate where
 
-import ParseLib
-import ParseRule
-import ParseProgram
-import ParseGraph
+import Data.List
+import Data.Maybe
+
 import GPSyntax
 import ProcessAst
 import LabelMatch
 import GraphMatch
 import Graph
 import ExAr
-import Data.List
-import Data.Maybe
+
 
 getHostNodeId :: HostGraph -> NodeName -> NodeId
 getHostNodeId g id = case candidates of
@@ -37,8 +35,6 @@ getNodeName :: HostGraph -> NodeId -> NodeName
 getNodeName g nid = case maybeNLabel g nid of
         Nothing -> error "Fail!"
         Just ( HostNode id _ _ ) -> id
-
--- type Environment = Subst ID [HostAtom]
 
 -- Given a graph morphism (containing a variable-value mapping) and a host graph,
 -- a rule label is transformed into a host label (list of constants) by evaluating
