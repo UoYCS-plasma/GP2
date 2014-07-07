@@ -5,9 +5,9 @@ import GPSyntax
 
 
 runProgram :: GPProgram -> HostGraph -> Int -> [HostGraph]
-runProgram prog h k = evalMain decls (findMain decls) h
+runProgram prog h k = evalMain ds (findMain ds) h
     where
-        Program decls = prog
+        Program ds = prog
         
 findMain :: [Declaration] -> Main
 findMain ((MainDecl m):ds) = m
@@ -15,55 +15,59 @@ findMain (_:ds) = findMain ds
 findMain [] = error "No main procedure defined."
 
 evalMain :: [Declaration] -> Main -> HostGraph -> [HostGraph]
-evalMain decls (Main coms) h = evalCommandSequence decls coms h
+evalMain ds (Main coms) h = evalCommandSequence ds coms h
 
 evalCommandSequence :: [Declaration] -> [Command] -> HostGraph -> [HostGraph]
-evalCommandSequence decls [] h = [h]
-evalCommandSequence decls (c:cs) h = 
-    case evalCommand decls c h of
+evalCommandSequence ds [] h = [h]
+evalCommandSequence ds (c:cs) h = 
+    case evalCommand ds c h of
         [] -> []
-        hs -> concatMap (evalCommandSequence decls cs) hs
+        hs -> concatMap (evalCommandSequence ds cs) hs
 
 evalCommand :: [Declaration] -> Command -> HostGraph -> [HostGraph]
-evalCommand decls (Conditional cond) h = evalConditional decls cond h
-evalCommand decls (ProgramOr c1 c2) h = evalCommandSequence decls c1 h
-evalCommand decls (Loop commands) h = 
-    case evalCommandSequence decls commands h of
-        [] -> [h]
-        hs -> concatMap (evalCommandSequence decls commands) hs
-evalCommand decls (RuleCall (r:rs)) h = 
-    case applyRule h $ ruleLookup r decls of
-        [] -> evalCommand decls (RuleCall rs) h
+evalCommand ds (Block b) h = evalBlock ds b h
+evalCommand ds (IfStatement cond th el) h = 
+    case evalBlock ds cond h of 
+        [] -> evalBlock ds el h
+        hs -> evalBlock ds th h
+evalCommand ds (TryStatement cond th el) h = 
+    case evalBlock ds cond h of
+        [] -> evalBlock ds el h
+        hs -> concatMap (evalBlock ds th) hs
+
+evalBlock :: [Declaration] -> Block -> HostGraph -> [HostGraph]
+evalBlock ds (ComSeq cs) h = evalCommandSequence ds cs h
+evalBlock ds (LoopedComSeq cs) h = 
+    case evalCommandSequence ds cs h of
+        [] -> []
+        hs -> concatMap (evalCommandSequence ds cs) hs
+evalBlock ds (SimpleCommand sc) h = evalSimpleCommand ds sc h
+evalBlock ds (ProgramOr b1 b2) h = evalBlock ds b1 h
+
+
+
+
+
+evalSimpleCommand :: [Declaration] -> SimpleCommand -> HostGraph -> [HostGraph]
+evalSimpleCommand ds (RuleCall (r:rs)) h = 
+    case applyRule h $ ruleLookup r ds of
+        [] -> evalSimpleCommand ds (RuleCall rs) h
         hs -> hs
-evalCommand decls c@(LoopedRuleCall rs) h = 
-    case evalCommand decls (RuleCall rs) h of
+evalSimpleCommand ds (RuleCall []) h = []
+evalSimpleCommand ds c@(LoopedRuleCall rs) h = 
+    case evalSimpleCommand ds (RuleCall rs) h of
         [] -> [h]
-        hs -> concatMap (evalCommand decls c) hs
--- localDecls are placed at the start of the new declaration list
--- so that procLookup and ruleLookup always return the correct rule
--- or procedure with respect to GP2's scoping rules.`
-evalCommand decls (ProcedureCall proc) h = 
-    evalCommandSequence (localDecls ++ decls) coms h
-        where
-        Procedure id localDecls coms = procLookup proc decls
-evalCommand decls c@(LoopedProcedureCall proc) h = 
-    case evalCommand decls (ProcedureCall proc) h of
+        hs -> concatMap (evalSimpleCommand ds c) hs
+evalSimpleCommand ds (ProcedureCall proc) h = evalCommandSequence (decls++ds) cs h
+    where
+        Procedure id decls cs = procLookup proc ds
+evalSimpleCommand ds c@(LoopedProcedureCall proc) h = 
+    case evalSimpleCommand ds (ProcedureCall proc) h of
         [] -> [h]
-        hs -> concatMap (evalCommand decls c) hs
-evalCommand decls Skip h = [h]
-evalCommand decls Fail h = []
-evalCommand decls (RuleCall []) h = []
+        hs -> concatMap (evalSimpleCommand ds c) hs
+evalSimpleCommand ds Skip h = [h]
+evalSimpleCommand ds Fail h = []
 
-
-evalConditional :: [Declaration] -> Conditional -> HostGraph -> [HostGraph]
-evalConditional decls (IfStatement cond th el) h = 
-    case evalCommandSequence decls cond h of 
-        [] -> evalCommandSequence decls el h
-        hs -> evalCommandSequence decls th h
-evalConditional decls (TryStatement cond th el) h = 
-    case evalCommandSequence decls cond h of
-        [] -> evalCommandSequence decls el h
-        hs -> concatMap (evalCommandSequence decls th) hs
 
 procLookup :: ProcName -> [Declaration] -> Procedure
 procLookup id decls = case matches of
