@@ -26,26 +26,6 @@ data GraphMorphism = GM Environment NodeMatches EdgeMatches deriving (Show)
 data NodeMorphism = NM Environment NodeMatches deriving (Show)
 
 
-permutedSizedSubsets :: Int -> [a] -> [[a]]
-permutedSizedSubsets k xs = concatMap perms $ sublistsOf k xs
-
-sublistsOf :: Int -> [a] -> [[a]]
-sublistsOf 0 _        = [[]]
-sublistsOf _ []       = []
-sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
-
-perms :: [a] -> [[a]]
-perms []      =  [[]]
-perms xs      =  [x:p | (x,xs') <- picks xs, p <- perms xs']
-
-picks :: [a] -> [(a,[a])]
-picks []      =  []
-picks (x:xs)  =  (x,xs) : [(x',x:xs') | (x',xs') <- picks xs]
-
-
-
-
-
 -- matchGraphEdges h r generates a list of GraphMorphisms from a single
 -- NodeMorphism. In order to generate the complete list of GraphMorphisms,
 -- we concatMap matchGraphEdges h r over the NodeMorphism list obtained

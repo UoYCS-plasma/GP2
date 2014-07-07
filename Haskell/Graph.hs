@@ -6,8 +6,9 @@ module Graph (Graph, NodeId, EdgeId,
                allNodes, allEdges, outEdges, inEdges, incidentEdges, joiningEdges,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
-               rmNode, rmNodeList, rmEdge, rmEdgeList,
-               eReLabel, nReLabel, dumpGraphViz) where
+               rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
+               dumpGraphViz, perms, sublistsOf, picks, permutedSizedSubsets)
+               where
 
 import Prelude 
 import ExAr
@@ -19,7 +20,6 @@ dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
     where
         gvHeader = "digraph {\n"
         gvFooter = "}\n"
-        --prettyNodes _ = "wanker"
         prettyNodes g = concatMap prettyNode $ allNodes g
         prettyEdges g = concatMap prettyEdge $ allEdges g
         prettyNode n@(N id) = "\tnode_" ++ show id ++ "\t{ label=\"" ++ show ( nLabel g n) ++ "\" }\n"
@@ -28,6 +28,23 @@ dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
                         ++ "\t{ label=\"" ++ show (eLabel g e) ++ "\" }\n"
         getNodeIdAsInt (N id) = show id
 
+
+-- Utility functions for graph matching and graph isomorphism checking.
+permutedSizedSubsets :: Int -> [a] -> [[a]]
+permutedSizedSubsets k xs = concatMap perms $ sublistsOf k xs
+
+sublistsOf :: Int -> [a] -> [[a]]
+sublistsOf 0 _        = [[]]
+sublistsOf _ []       = []
+sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
+
+perms :: [a] -> [[a]]
+perms []      =  [[]]
+perms xs      =  [x:p | (x,xs') <- picks xs, p <- perms xs']
+
+picks :: [a] -> [(a,[a])]
+picks []      =  []
+picks (x:xs)  =  (x,xs) : [(x',x:xs') | (x',xs') <- picks xs]
 
 
 -- labelled graphs

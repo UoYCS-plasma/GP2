@@ -11,6 +11,7 @@ import ProcessAst
 import GPSyntax
 import ExAr
 import Graph (dumpGraphViz)
+import GraphIso
 import RunProgram
 
 loadProgram :: String -> IO String
@@ -33,5 +34,8 @@ main = do
     let hg = makeHostGraph $ parse hostGraph g
     let (prog, syms) = makeGPProgram $ parse program p
     report $ dumpGraphViz hg
-    report $ concatMap dumpGraphViz $ runProgram prog hg horizon
+    report $ concatMap dumpGraphViz $ runProgram prog hg horizon 
+    {- let (g1:g2:gs) = runProgram prog hg horizon
+    let b = isomorphic g1 g2
+    if b then putStrLn "True" else putStrLn "False" -}
 

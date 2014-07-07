@@ -155,6 +155,11 @@ data Condition = NoCondition
 
 
 data HostNode = HostNode NodeName Bool HostLabel deriving Show
+-- For graph isomorphism checking.
+instance Eq HostNode where
+    HostNode _ isRoot1 label1 == HostNode _ isRoot2 label2 =
+        isRoot1 == isRoot2 && label1 == label2
+
 data HostEdge = HostEdge NodeName NodeName HostLabel deriving Show
 
 -- Host Graph ADTs
