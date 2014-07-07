@@ -1,10 +1,38 @@
 -- labelled graph isomorphism test
 -- Colin Runciman, July 2014
 
-module GraphIso (isomorphic) where
+module GraphIso (isomorphic, isomorphicSet, isomorphicPartition, isomorphismCount) where
 
+import Data.List (permutations)
 import Graph
 import Mapping
+
+
+-- Given a list of graphs, isomorphismCount returns a list of pairs.
+-- Each pair contains a single representative of a set of isomorphic graphs in 
+-- the list and a count of how many isomorphic copies of that graph were in the
+-- input list.
+isomorphismCount :: (Eq a, Eq b) => [Graph a b] -> [(Int, Graph a b)]
+isomorphismCount graphs = [ (length (g:gs), g) | (g:gs) <- isoGraphs] 
+    where isoGraphs = isomorphicPartition graphs
+
+-- Uses isomorphicSet to partition a list of graphs into a list of lists of 
+-- graphs such that each list contains a number of isomorphic copies of a graph
+-- taken from the input list.
+isomorphicPartition :: (Eq a, Eq b) => [Graph a b] -> [[Graph a b]]
+isomorphicPartition [] = [] 
+isomorphicPartition graphs = copiesOfHead : isomorphicPartition rest
+    where (copiesOfHead, rest) = isomorphicSet graphs
+
+-- Partitions a list of graphs gs into two lists.
+-- The first list is all graphs isomorphic to, and including, head gs
+-- The second list is the rest of the input list.
+isomorphicSet :: (Eq a, Eq b) => [Graph a b] -> ([Graph a b], [Graph a b])
+isomorphicSet [] = ([],[])
+isomorphicSet (g:gs) = (copies, rest)
+    where copies = g : filter (isomorphic g) gs
+          rest   = filter (not . isomorphic g) gs
+
 
 isomorphic :: (Eq a, Eq b) => Graph a b -> Graph a b -> Bool
 isomorphic g1 g2 =
@@ -34,11 +62,12 @@ targetsIso g1 g2 sn se = all sameTarget se
     t1 = target g1 e1
     t2 = target g2 e2
 
-
--- a NodeLabel, b EdgeLabel, c NodeId or EdgeId, d NodeLabel or EdgeLabel.
 permutationsWrt :: Eq d => (Graph a b -> c -> d) -> Graph a b -> Graph a b -> [c] -> [c] -> [Mapping c c]
 permutationsWrt f g1 g2 xs1 xs2 =
-  filter (all agree) [zip xs1 xs2' | xs2' <- perms xs2]
+  filter (all agree) [zip xs1 xs2' | xs2' <- permutations xs2]
   where
   agree (x1, x2)  =  f g1 x1 == f g2 x2
+
+
+
 

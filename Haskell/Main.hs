@@ -22,20 +22,23 @@ loadGraph = readFile
 
 horizon = 3
 
-report :: String -> IO ()
-report s = do
-    putStrLn s
+printGraph :: HostGraph -> IO ()
+printGraph g = do
+    putStrLn $ dumpGraphViz g
     putStrLn ""
+
+printGraphData :: [(Int, HostGraph)] -> IO ()
+printGraphData = putStrLn . concatMap printGraph
+    where printGraph (1,g) = "1 occurrence of\n" ++ dumpGraphViz g
+          printGraph (k,g) = show k ++ " occurrences of\n" ++ dumpGraphViz g
 
 main = do
     [prog, graph] <- getArgs
     p <- loadProgram prog
     g <- loadGraph graph
-    let hg = makeHostGraph $ parse hostGraph g
+    let host = makeHostGraph $ parse hostGraph g
     let (prog, syms) = makeGPProgram $ parse program p
-    report $ dumpGraphViz hg
-    report $ concatMap dumpGraphViz $ runProgram prog hg horizon 
-    {- let (g1:g2:gs) = runProgram prog hg horizon
-    let b = isomorphic g1 g2
-    if b then putStrLn "True" else putStrLn "False" -}
+    printGraph host
+    let graphData = isomorphismCount $ runProgram prog host horizon
+    printGraphData graphData
 

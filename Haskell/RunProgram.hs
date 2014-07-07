@@ -3,11 +3,11 @@ module RunProgram where
 import ApplyRule
 import GPSyntax
 
+-- (# Rule Applications, # Failures, # Unfinished)
+type ExecutionData = (Int, Int, Int)
 
 runProgram :: GPProgram -> HostGraph -> Int -> [HostGraph]
-runProgram prog h k = evalMain ds (findMain ds) h
-    where
-        Program ds = prog
+runProgram (Program ds) h max = evalMain ds (findMain ds) h
         
 findMain :: [Declaration] -> Main
 findMain ((MainDecl m):ds) = m

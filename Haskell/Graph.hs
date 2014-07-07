@@ -7,13 +7,13 @@ module Graph (Graph, NodeId, EdgeId,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
                rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
-               dumpGraphViz, perms, sublistsOf, picks, permutedSizedSubsets)
+               dumpGraphViz, sublistsOf, permutedSizedSubsets)
                where
 
 import Prelude 
 import ExAr
 import Data.Maybe
-import Data.List (union, intersect)
+import Data.List (union, intersect, permutations)
 
 dumpGraphViz :: (Show a, Show b) => Graph a b -> String
 dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
@@ -31,21 +31,12 @@ dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
 
 -- Utility functions for graph matching and graph isomorphism checking.
 permutedSizedSubsets :: Int -> [a] -> [[a]]
-permutedSizedSubsets k xs = concatMap perms $ sublistsOf k xs
+permutedSizedSubsets k xs = concatMap permutations $ sublistsOf k xs
 
 sublistsOf :: Int -> [a] -> [[a]]
 sublistsOf 0 _        = [[]]
 sublistsOf _ []       = []
 sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
-
-perms :: [a] -> [[a]]
-perms []      =  [[]]
-perms xs      =  [x:p | (x,xs') <- picks xs, p <- perms xs']
-
-picks :: [a] -> [(a,[a])]
-picks []      =  []
-picks (x:xs)  =  (x,xs) : [(x',x:xs') | (x',xs') <- picks xs]
-
 
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show
@@ -143,16 +134,6 @@ rmNode (Graph ns es) n@(N i)  =  Graph ns' es'
 
 rmNodeList :: Graph a b -> [NodeId] -> Graph a b
 rmNodeList g nids = foldr (flip rmNode) g nids
-
-{- returns Nothing if any of the NodeIds have incident edges.
-rmIsolatedNodeList :: Graph a b -> [NodeId] -> Maybe (Graph a b)
-rmIsolatedNodeList g nids = foldr deleteIsolatedNode (Just g) nids
-  where 
-  deleteIsolatedNode :: NodeId -> Maybe (Graph a b) -> Maybe (Graph a b)
-  deleteIsolatedNode nid Nothing  = Nothing
-  deleteIsolatedNode nid (Just g) = if null $ union (outEdges g nid) (inEdges g nid) 
-                                    then Just (rmNode g nid)
-                                    else Nothing -}
 
 rmEdge :: Graph a b -> EdgeId -> Graph a b
 rmEdge (Graph ns es) (E i)  =  Graph ns es'
