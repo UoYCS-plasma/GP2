@@ -26,20 +26,23 @@ horizon = 3
 printGraph :: HostGraph -> String
 printGraph = graphToGP2 . makePrintableGraph
 
-printGraphData :: [(Int, HostGraph)] -> IO ()
-printGraphData = putStrLn . concatMap printCount
-    where printCount (1,g) = "1 occurrence of\n\n" ++ printGraph g ++ "\n\n"
-          printCount (k,g) = show k ++ " occurrences of\n\n" ++ printGraph g ++ "\n\n"
+printGraphData :: String -> Int -> [(Int, HostGraph)] -> IO ()
+printGraphData _ _ [] = putStrLn "\n"
+printGraphData fileName k ((count,graph):xs) = do 
+    writeFile (fileName ++ show k) $ printGraph graph
+    if count == 1 
+    then putStrLn $ "1 occurrence of graph in file " ++ fileName ++ show k
+    else putStrLn $ show count ++ " occurrences of graph in file " ++ fileName ++ show k    
+    printGraphData fileName (k+1) xs
 
 main = do
-    [prog, graph] <- getArgs
-    p <- loadProgram prog
-    g <- loadGraph graph
+    [progFile, graphFile] <- getArgs
+    p <- readFile progFile
+    g <- readFile graphFile
     let host = makeHostGraph $ parse hostGraph g
     let (prog, syms) = makeGPProgram $ parse program p
     let pHost = makePrintableGraph host
-    putStrLn $ printGraph host
-    putStrLn "\n"
+    putStrLn $ printGraph host ++ "\n"
     let graphData = isomorphismCount $ runProgram prog host horizon
-    printGraphData graphData
+    printGraphData progFile 1 graphData
 
