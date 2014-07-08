@@ -7,7 +7,7 @@ module Graph (Graph, NodeId, EdgeId,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
                rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
-               dumpGraphViz, sublistsOf, permutedSizedSubsets)
+               graphToGP2, sublistsOf, permutedSizedSubsets)
                where
 
 import Prelude 
@@ -28,6 +28,17 @@ dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
                         ++ "\t{ label=\"" ++ show (eLabel g e) ++ "\" }\n"
         getNodeIdAsInt (N id) = show id
 
+graphToGP2 :: Graph String String -> String
+graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]"
+    where
+        nodeList g = concatMap prettyNode $ allNodes g
+        edgeList g = concatMap prettyEdge $ allEdges g
+        prettyNode n@(N id) = " (n" ++ show id ++ " " ++ nLabel g n ++ ")\n"
+        prettyEdge e@(E id) = " (e" ++ show id ++ ", "
+                              ++ "n" ++ getNodeId (source g e) ++ ", "
+                              ++ "n" ++ getNodeId (target g e) ++ ", "
+                              ++ eLabel g e ++ ")\n"
+        getNodeId (N id) = show id
 
 -- Utility functions for graph matching and graph isomorphism checking.
 permutedSizedSubsets :: Int -> [a] -> [[a]]
@@ -55,7 +66,7 @@ data Node a = Node a               deriving Show
 data Edge a = Edge NodeId NodeId a deriving Show
  
 emptyGraph :: Graph a b
-emptyGraph  =  Graph empty empty
+emptyGraph = Graph empty empty
 
 newNode :: Graph a b -> a -> (Graph a b, NodeId)
 newNode (Graph ns es) x  =  (Graph ns' es, N i)

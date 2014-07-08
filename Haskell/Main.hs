@@ -4,14 +4,15 @@ import System.IO
 import System.Environment
 
 import ApplyRule
-import ParseProgram
-import ParseLib
-import ParseGraph
-import ProcessAst
-import GPSyntax
 import ExAr
-import Graph (dumpGraphViz)
-import GraphIso
+import Graph (graphToGP2)
+import GraphIsomorphism
+import GPSyntax
+import ParseGraph
+import ParseLib
+import ParseProgram
+import PrintGraph
+import ProcessAst
 import RunProgram
 
 loadProgram :: String -> IO String
@@ -22,15 +23,13 @@ loadGraph = readFile
 
 horizon = 3
 
-printGraph :: HostGraph -> IO ()
-printGraph g = do
-    putStrLn $ dumpGraphViz g
-    putStrLn ""
+printGraph :: HostGraph -> String
+printGraph = graphToGP2 . makePrintableGraph
 
 printGraphData :: [(Int, HostGraph)] -> IO ()
-printGraphData = putStrLn . concatMap printGraph
-    where printGraph (1,g) = "1 occurrence of\n" ++ dumpGraphViz g
-          printGraph (k,g) = show k ++ " occurrences of\n" ++ dumpGraphViz g
+printGraphData = putStrLn . concatMap printCount
+    where printCount (1,g) = "1 occurrence of\n\n" ++ printGraph g ++ "\n\n"
+          printCount (k,g) = show k ++ " occurrences of\n\n" ++ printGraph g ++ "\n\n"
 
 main = do
     [prog, graph] <- getArgs
@@ -38,7 +37,9 @@ main = do
     g <- loadGraph graph
     let host = makeHostGraph $ parse hostGraph g
     let (prog, syms) = makeGPProgram $ parse program p
-    printGraph host
+    let pHost = makePrintableGraph host
+    putStrLn $ printGraph host
+    putStrLn "\n"
     let graphData = isomorphismCount $ runProgram prog host horizon
     printGraphData graphData
 

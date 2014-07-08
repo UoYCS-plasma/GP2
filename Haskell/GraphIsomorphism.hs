@@ -1,7 +1,7 @@
 -- labelled graph isomorphism test
 -- Colin Runciman, July 2014
 
-module GraphIso (isomorphic, isomorphicSet, isomorphicPartition, isomorphismCount) where
+module GraphIsomorphism (isomorphic, isomorphicSet, isomorphicPartition, isomorphismCount) where
 
 import Data.List (permutations)
 import Graph

@@ -11,18 +11,8 @@ import Graph
 import ExAr
 
 
-getHostNodeId :: HostGraph -> NodeName -> NodeId
-getHostNodeId g id = case candidates of
-        [] -> error $ "ID " ++ id ++ " not found"
-        [nid] -> nid
-        _  -> error $ "Duplicate ID found! Eep!"
-    where
-        candidates = filter (matchID . nLabel g) $ allNodes g
-        matchID :: HostNode -> Bool
-        matchID (HostNode i _ _) = i == id
-
-getRuleNodeId :: RuleGraph -> NodeName -> NodeId
-getRuleNodeId r id = case candidates of
+getNodeId :: RuleGraph -> NodeName -> NodeId
+getNodeId r id = case candidates of
         [] -> error $ "ID " ++ id ++ " not found"
         [nid] -> nid
         _  -> error $ "Duplicate ID found! Eep!"
@@ -35,6 +25,7 @@ getNodeName :: HostGraph -> NodeId -> NodeName
 getNodeName g nid = case maybeNLabel g nid of
         Nothing -> error "Fail!"
         Just ( HostNode id _ _ ) -> id
+
 
 -- Given a graph morphism (containing a variable-value mapping) and a host graph,
 -- a rule label is transformed into a host label (list of constants) by evaluating
@@ -66,11 +57,11 @@ intExpEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleAtom -> Int
 intExpEval m@(GM env nms _) g r a = case a of
    Val (Int i) -> i
    Var (name, IntVar) -> let Just [Int i] = lookup name env in i
-   Indeg node -> let hnode = lookup (getRuleNodeId r node) nms in
+   Indeg node -> let hnode = lookup (getNodeId r node) nms in
                  case hnode of
                       Nothing -> error "Argument of indeg not in the LHS."
                       (Just node) -> length $ inEdges g node
-   Outdeg node -> let hnode = lookup (getRuleNodeId r node) nms in
+   Outdeg node -> let hnode = lookup (getNodeId r node) nms in
                   case hnode of
                        Nothing -> error "Argument of outdeg not in the LHS."
                        (Just node) -> length $ outEdges g node
@@ -154,8 +145,8 @@ conditionEval c m@(GM env nms _) g r =
             (Just s, Just t) -> joiningEdges g s t
             _ -> []
             where
-                hsrc = lookup (getRuleNodeId r src) nms
-                htgt = lookup (getRuleNodeId r tgt) nms
+                hsrc = lookup (getNodeId r src) nms
+                htgt = lookup (getNodeId r tgt) nms
 
 
 
