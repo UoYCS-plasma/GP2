@@ -1,5 +1,11 @@
 module ParseLib where
 
+{- Chris Bak: to avoid "Local definition of ‘pure’ clashes with a future 
+-- Prelude nameLocal definition of ‘pure’ clashes with a future Prelude name" error
+-- Ditto with '<*>'
+-- A consequence of me running the latest GHC on my laptop.
+-- This is only a short-term fix. Better would be to rename pure and <*> in this module.
+import Prelude (String, Bool, not,  (.), elem, read, notElem, null, ($), take, (++), (==), map, error) -}
 import Data.Char
 
 import GPSyntax

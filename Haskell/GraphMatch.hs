@@ -4,11 +4,12 @@ import Prelude hiding (lookup)
 import Data.List
 import Data.Maybe
 import Control.Monad (guard)
-import LabelMatch
+
 
 import ExAr
--- import GPGraph
 import Graph
+import Mapping
+import LabelMatch
 import GPSyntax
 
 type RuleNodeId = NodeId 
@@ -16,10 +17,8 @@ type HostNodeId = NodeId
 type RuleEdgeId = EdgeId
 type HostEdgeId = EdgeId
 
--- type Environment = Subst ID [HostAtom]
-
-type NodeMatches = Subst RuleNodeId HostNodeId
-type EdgeMatches = Subst RuleEdgeId HostEdgeId
+type NodeMatches = Mapping RuleNodeId HostNodeId
+type EdgeMatches = Mapping RuleEdgeId HostEdgeId
 
 
 data GraphMorphism = GM Environment NodeMatches EdgeMatches deriving (Show) 
@@ -27,202 +26,116 @@ data GraphMorphism = GM Environment NodeMatches EdgeMatches deriving (Show)
 data NodeMorphism = NM Environment NodeMatches deriving (Show)
 
 
-permutedSizedSubsets :: Int -> [a] -> [[a]]
-permutedSizedSubsets k xs = concatMap perms $ sublistsOf k xs
+-- matchGraphEdges h r generates a list of GraphMorphisms from a single
+-- NodeMorphism. In order to generate the complete list of GraphMorphisms,
+-- we concatMap matchGraphEdges h r over the NodeMorphism list obtained
+-- from the call to matchGraphNodes.
 
-sublistsOf :: Int -> [a] -> [[a]]
-sublistsOf 0 _        = [[]]
-sublistsOf _ []       = []
-sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
-
-perms :: [a] -> [[a]]
-perms []      =  [[]]
-perms xs      =  [x:p | (x,xs') <- picks xs, p <- perms xs']
-
-picks :: [a] -> [(a,[a])]
-picks []      =  []
-picks (x:xs)  =  (x,xs) : [(x',x:xs') | (x',xs') <- picks xs]
-
-
-
+-- TODO(?): Test if the rule graphs are valid graphs.
 matchGraphs :: HostGraph -> RuleGraph -> [GraphMorphism]
 matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
 
 
--- Outputs all valid (w.r.t labels) injective morphisms from the nodes of LHS
--- to the nodes of the host graph.
+-- Outputs all valid (w.r.t labels) injective morphisms (node morphisms)
+-- from the nodes of LHS to the nodes of the host graph.
 -- We generate all candidate sets of nodes in the host graph. For an LHS with
 -- k nodes, this is the set of size-k subsets of the node set of the host graph,
 -- including permutations.
 -- These subsets are zipped with the node set of the LHS to create sets of 
--- candidate morphisms. These are tested with doNodeMatch, called by labMatch.
+-- candidate node morphisms. Morphisms that map LHS root nodes to non-root nodes
+-- in the host graph are pruned from the set. The remaining node morphisms 
+-- are tested with doNodesMatch, called by labelMatch.
+-- labelMatch returns a Maybe Environment. We use the maybe function to lift
+-- each Maybe Environment into a Maybe NodeMorphism. FInally we call catMaybes
+-- on the resulting list in order to filter out the Nothings.
 
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
-matchGraphNodes h r = 
+matchGraphNodes h r =
     catMaybes [ nm | nodeSet <- nodeSets, 
-        let nodeMatches = zip rns nodeSet
-            maybeEnv = foldr labMatch (Just []) nodeMatches
-            nm = maybe Nothing (\e -> Just (NM e nodeMatches) ) maybeEnv ]
-{-    NM (fromJust env) nodeMatches | nodeSet <- nodeSets,  
-        isJust env,
-        let nodeMatches = zip rns nodeSet
-            -- This foldr could return Nothing. We need to prune
-            -- such cases from the output list.
-            env = foldr labMatch (Just []) nodeMatches ] -}
+          let nodeMatches = filter (checkRootNode h r) $ zip rns nodeSet
+              maybeEnv = foldr labelMatch (Just []) nodeMatches
+              nm = maybe Nothing (\env -> Just (NM env nodeMatches) ) maybeEnv ]
     where
         rns = allNodes r
         hns = allNodes h
         nodeSets = permutedSizedSubsets (length rns) hns
 
-        -- Can return nothing as substMerge returns Nothing if there is a mapping clash.
         -- Match node labels, further building the environment of variable-value mappings.
-        labMatch :: (RuleNodeId, HostNodeId) -> Maybe Environment -> Maybe Environment
-        labMatch (rn, hn) menv = do
-                env <- menv
-                mapping <- doNodesMatch h r hn rn
-                substMerge mapping env
+        labelMatch :: (RuleNodeId, HostNodeId) -> Maybe Environment -> Maybe Environment
+        labelMatch (rn, hn) menv = do
+                  env <- menv
+                  mapping <- doNodesMatch h r hn rn
+                  mergeMapping mapping env
 
+checkRootNode :: HostGraph -> RuleGraph -> (RuleNodeId, HostNodeId) -> Bool
+checkRootNode h r (rid, hid) = case (rb, hb) of
+        -- Concerning root nodes, a node mapping is invalid only in the case
+        -- where a LHS root node is mapped to a non-root host graph node.
+        (True, False) -> False
+        _ -> True
+        where
+            RuleNode _ rb _ = nLabel r rid
+            HostNode _ hb _ = nLabel h hid 
                 
 doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe Environment
 doNodesMatch h r hid rid = 
-   let hnode = (maybeNLabel h hid)
-       rnode = (maybeNLabel r rid) in
-   case (hnode, rnode) of 
-        (Nothing, _) -> Nothing
-        (_, Nothing) -> Nothing
-        (Just (HostNode _ _ hlabel), Just (RuleNode _ _ rlabel)) 
-                     -> doLabelsMatch hlabel rlabel
+    let hnode = (maybeNLabel h hid)
+        rnode = (maybeNLabel r rid) in
+    case (hnode, rnode) of 
+         (Nothing, _) -> Nothing
+         (_, Nothing) -> Nothing
+         (Just (HostNode _ _ hlabel), Just (RuleNode _ _ rlabel)) 
+                      -> doLabelsMatch hlabel rlabel
 
 
--- For each pair of nodes in the node morphism, we add the morphisms for any edges
--- connecting these nodes together. This is achieved similarly to matchGraphNodes
--- by filtering the set of all possible candidate edge morphisms.
--- The candidate set is generated using the sets of outgoing edges from the rule node 
--- and the host node in the current node morphism.
+-- For each edge in the RuleGraph, we generate a pair of its source and target
+-- node (ruleEndPoints).
+-- Each of these pairs is transformed to the source and target node in the host
+-- graph using the NodeMorphism (hostEndPoints).
+-- joiningEdges is called on each hostEndPoint to generate all the candidate
+-- edges for each RuleEdge. A RuleEdge may have more than one candidate
+-- HostEdge, so a list of lists is created (hostEdges).
+-- hostEdges is used to generate edgeMatches, which are passed to the list
+-- comprehension in the same way as in the node matcher.
 
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
-matchGraphEdges h r (NM env nodeMatches) = concatMap getGMsForNode nodeMatches
-    where
-        getGMsForNode :: (RuleNodeId, HostNodeId) -> [GraphMorphism]
-        getGMsForNode (rn, hn) =
-           [ GM env' nodeMatches edgeMatches | edgeSet <- edgeSets,
-                let edgeMatches = zip res edgeSet
-                    env' = fromMaybe [] (foldr labMatch (Just env) edgeMatches) ]
-            where
-                res = outEdges r rn
-                -- Find corresponding host graph node, and all size-n permuted subsets of outgoing edges. 
-                hes = outEdges h hn
-                edgeSets = permutedSizedSubsets (length res) hes
+matchGraphEdges h r (NM env nodeMatches) =
+   catMaybes [ gm | edgeMatch <- edgeMatches,
+                    let maybeEnv = foldr labelMatch (Just env) edgeMatch
+                        gm = maybe Nothing (\env -> Just (GM env nodeMatches edgeMatch) ) maybeEnv ]
+   where 
+     ruleEdges = allEdges r
+     ruleEndPoints = map (\e -> (source r e, target r e)) ruleEdges
+     hostEndPoints = mapMaybe ruleEndsToHostEnds ruleEndPoints
+     hostEdges = map (\(src, tgt) -> [eid | eid <- joiningEdges h src tgt]) hostEndPoints
 
-        -- Match edge labels, further building the environment of variable-value mappings.
-        labMatch :: (RuleEdgeId, HostEdgeId) -> Maybe (Environment) -> Maybe (Environment)
-        labMatch (re, he) env = do
-            e <- env
-            e' <- doEdgesMatch h r he re
-            substMerge e e'
+     -- The ith RuleEdgeId eid in ruleEdges corresponds to the ith [HostEdgeId] heids in 
+     -- hostEdges. eid needs to be paired up with each item in heids e.g.
+     -- [E 1, E 2] [[E 1, E 2],[E 1, E 2, E 3]] -> 
+     -- [(E 1, E 1), (E 1, E 2), (E 2, E 1), (E 2, E 2), (E 2, E 3)]
+     edgeMatches = zipWith (\re hes -> zip (repeat re) hes) ruleEdges hostEdges
 
+     -- The source and target node aren't guaranteed to exist in the node morphism,
+     -- hence we have to use a standard lookup and pattern match on the pair of 
+     -- Maybe NodeIds.
+     ruleEndsToHostEnds :: (RuleNodeId, RuleNodeId) -> Maybe (HostNodeId, HostNodeId)
+     ruleEndsToHostEnds (src, tgt) = case (lookup src nodeMatches, lookup tgt nodeMatches) of
+        (Just s, Just t) -> Just (s, t)
+        _                -> Nothing
 
+     labelMatch :: (RuleEdgeId, HostEdgeId) -> Maybe Environment -> Maybe Environment
+     labelMatch (re, he) menv = do
+               env <- menv
+               mapping <- doEdgesMatch h r he re
+               mergeMapping mapping env
+            
 doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe Environment
 doEdgesMatch h r hid rid = 
-   let hedge = (maybeELabel h hid)
-       redge = (maybeELabel r rid) in
-   case (hedge, redge) of 
+   let mhlabel = (maybeELabel h hid)
+       mrlabel = (maybeELabel r rid) in
+   case (mhlabel, mrlabel) of 
         (Nothing, _) -> Nothing
         (_, Nothing) -> Nothing
         (Just hlabel, Just rlabel) -> doLabelsMatch hlabel rlabel
-
-{-
--- Returns every hostNode that matches a given ruleNode.
-matchRuleNode :: HostGraph -> RuleGraph -> RuleNodeId -> [NodeMatch]
-matchRuleNode h r rn =
-    [ (rn, n, fromJust $ doNodesMatch h r n rn) | n <- allNodes h , isJust $ doNodesMatch h r n rn ]
-
--- Returns every hostEdge that matches a given ruleEdge
-matchRuleEdge :: HostGraph -> RuleGraph -> RuleEdgeId -> [EdgeMatch]
-matchRuleEdge h r re =
-    [ (re, he, fromJust $ doEdgesMatch h r he re) | he <- allEdges h , isJust $ doEdgesMatch h r he re ]
-
--- Needs to be permuted with matchRuleEdge, and then impossible matches (where
---   nodes and edges are incompatible) need to be filtered out.
-matchNodes :: HostGraph -> RuleGraph -> [[NodeMatch]]
-matchNodes h r = map ( matchRuleNode h r ) $ allNodes r
-
-matchEdges :: HostGraph -> RuleGraph -> [[EdgeMatch]]
-matchEdges h r = map ( matchRuleEdge h r ) $ allEdges r
-
--- should be taking a search-plan approach: start with an arbitrary node
---   and extend the match as far as possible
-matchGraph :: HostGraph -> RuleGraph -> [GraphMorphism]
-matchGraph = notImplemented
---matchGraph g r = [ (nm, em) | nm <- matchNodes g r , em <- matchEdges g r ]
--}
-
-
--- matching the graph is a generalisation of a parsing task! 
--- Our parser consumes a host graph _and_ a rule graph, returning the unconsumed parts of the graphs
--- plus a possible NodeMatch or EdgeMatch
-
-{-
-type Matcher a = RuleGraph -> HostGraph -> [(RuleGraph, HostGraph, a)]
-
-pure :: a -> Matcher a
-pure x = \r h -> [(r, h, x)]
-
-infixl 4 °
-
-(°) :: Matcher (a -> b) -> Matcher a -> Matcher b
-f ° a = \h -> [(h1, g b) | (h0, g) <- f h, (h1, b) <- a h0]
-
-matchRuleNode :: RuleGraph -> RuleNodeId -> Matcher NodeMatch
-matchRuleNode r rnid h = notImplemented
-    where
-        r' = rmNode r rnid
-
-matchRuleEdge :: RuleGraph -> RuleEdgeId -> Matcher EdgeMatch
-matchRuleEdge r reid h = notImplemented
-    where
-        r' = rmEdge r reid
-
-matchGraph :: RuleGraph -> Matcher GraphMorphism
-matchGraph r h = notImplemented
--}
-
-{-
-
-
-
--- two nodes are equal if their labels are equal
-nodesMatch g r gn rn = nLabel g gn == nLabel r rn
-
--- two edges are equal if their labels are equal AND the nodes on either end are equal
-edgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Bool
-edgesMatch g r ge re = ( eLabel g ge == eLabel r re )
-                       && ( nodesMatch g r (fromJust $ source g ge) (fromJust $ source r re) )
-                       && ( nodesMatch g r (fromJust $ target g ge) (fromJust $ target r re) )
-       
-matchRuleNode :: HostGraph -> RuleGraph -> RuleNodeId -> NodeMatches
-matchRuleNode g r rn =
-    [ (rn, n) | n <- allNodes g , nodesMatch g r n rn ]
-
-matchRuleEdge :: HostGraph -> RuleGraph -> RuleEdgeId -> EdgeMatches
-matchRuleEdge g r re =
-    [ (re, e) | e <- allEdges g , edgesMatch g r e re ]
-
-matchNodes :: HostGraph -> RuleGraph -> NodeMatches
-matchNodes g r = concatMap ( matchRuleNode g r ) $ allNodes r
-
-matchEdges :: HostGraph -> RuleGraph -> EdgeMatches
-matchEdges g r = concatMap ( matchRuleEdge g r ) $ allEdges r
-{-matchEdges g r (rn, gn) = union ins outs
-    where
-        ins  = filter (uncurry $ edgesMatch g r)
-                    [ (re, e) | e <- inEdges g gn, re <- inEdges r rn ]
-        outs = filter (uncurry $ edgesMatch g r)
-                    [ (re, e) | e <- outEdges g gn, re <- outEdges r rn ] -}
-
-matchGraph :: HostGraph -> RuleGraph -> [GraphMorphism]
-matchGraph g r = [ (nm, em) | nm <- matchNodes g r , em <- matchEdges g r ]
-
--}                
-
+        
 

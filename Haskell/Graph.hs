@@ -3,32 +3,51 @@
 
 module Graph (Graph, NodeId, EdgeId,
                emptyGraph, newNode, newNodeList, newEdge, newEdgeList,
-               allNodes, outEdges, inEdges, joiningEdges, allEdges,
+               allNodes, allEdges, outEdges, inEdges, incidentEdges, joiningEdges,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
-               rmNode, rmIsolatedNodeList, rmEdge, rmEdgeList,
-               eReLabel, nReLabel) where
+               rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
+               graphToGP2, sublistsOf, permutedSizedSubsets)
+               where
 
-import Prelude hiding (lookup)
+import Prelude 
 import ExAr
 import Data.Maybe
-import Data.List (union, intersect)
-{-
-class Pretty a
-instance Pretty (Graph a b) where
-pretty :: (Show a, Show b) => Graph a b -> String
-pretty g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
+import Data.List (union, intersect, permutations)
+
+dumpGraphViz :: (Show a, Show b) => Graph a b -> String
+dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
     where
         gvHeader = "digraph {\n"
         gvFooter = "}\n"
         prettyNodes g = concatMap prettyNode $ allNodes g
         prettyEdges g = concatMap prettyEdge $ allEdges g
-        prettyNode n@(N id) = "\tnode_" ++ show id ++ "\t{ label=\"" ++ show ( fromJust (nLabel g n) ) ++ "\" }\n"
-        prettyEdge e@(E id) = "\tnode_" ++ getNodeIdAsInt ( fromJust (source g e) )
-                         ++ " -> node_" ++ getNodeIdAsInt ( fromJust (target g e) )
-                         ++ "\t{ label=\"" ++ show ( fromJust (eLabel g e) ) ++ "\" }\n"
+        prettyNode n@(N id) = "\tnode_" ++ show id ++ "\t{ label=\"" ++ show ( nLabel g n) ++ "\" }\n"
+        prettyEdge e@(E id) = "\tnode_" ++ getNodeIdAsInt (source g e)
+                        ++ " -> node_" ++ getNodeIdAsInt (target g e)
+                        ++ "\t{ label=\"" ++ show (eLabel g e) ++ "\" }\n"
         getNodeIdAsInt (N id) = show id
--}
+
+graphToGP2 :: Graph String String -> String
+graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]"
+    where
+        nodeList g = concatMap prettyNode $ allNodes g
+        edgeList g = concatMap prettyEdge $ allEdges g
+        prettyNode n@(N id) = " (n" ++ show id ++ " " ++ nLabel g n ++ ")\n"
+        prettyEdge e@(E id) = " (e" ++ show id ++ ", "
+                              ++ "n" ++ getNodeId (source g e) ++ ", "
+                              ++ "n" ++ getNodeId (target g e) ++ ", "
+                              ++ eLabel g e ++ ")\n"
+        getNodeId (N id) = show id
+
+-- Utility functions for graph matching and graph isomorphism checking.
+permutedSizedSubsets :: Int -> [a] -> [[a]]
+permutedSizedSubsets k xs = concatMap permutations $ sublistsOf k xs
+
+sublistsOf :: Int -> [a] -> [[a]]
+sublistsOf 0 _        = [[]]
+sublistsOf _ []       = []
+sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
 
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show
@@ -47,7 +66,7 @@ data Node a = Node a               deriving Show
 data Edge a = Edge NodeId NodeId a deriving Show
  
 emptyGraph :: Graph a b
-emptyGraph  =  Graph empty empty
+emptyGraph = Graph empty empty
 
 newNode :: Graph a b -> a -> (Graph a b, NodeId)
 newNode (Graph ns es) x  =  (Graph ns' es, N i)
@@ -82,6 +101,9 @@ outEdges (Graph _ es) n  =  map E $ findAll (\(Edge n1 _ _) -> n1 == n) es
 
 inEdges :: Graph a b -> NodeId -> [EdgeId]
 inEdges (Graph _ es) n  =  map E $ findAll (\(Edge _ n2 _) -> n2 == n) es
+
+incidentEdges :: Graph a b -> NodeId -> [EdgeId]
+incidentEdges g n = outEdges g n `union` inEdges g n
 
 joiningEdges :: Graph a b -> NodeId -> NodeId -> [EdgeId]
 joiningEdges (Graph _ es) src tgt = map E $ findAll (\(Edge n1 n2 _) -> n1 == src && n2 == tgt) es
@@ -121,15 +143,8 @@ rmNode (Graph ns es) n@(N i)  =  Graph ns' es'
   ns'  =  remove ns i
   es'  =  removeAll (\(Edge n1 n2 _) -> n1 == n || n2 == n) es
 
--- returns Nothing if any of the NodeIds have incident edges.
-rmIsolatedNodeList :: Graph a b -> [NodeId] -> Maybe (Graph a b)
-rmIsolatedNodeList g nids = foldr deleteIsolatedNode (Just g) nids
-  where 
-  deleteIsolatedNode :: NodeId -> Maybe (Graph a b) -> Maybe (Graph a b)
-  deleteIsolatedNode nid Nothing  = Nothing
-  deleteIsolatedNode nid (Just g) = if null $ union (outEdges g nid) (inEdges g nid) 
-                                    then Just (rmNode g nid)
-                                    else Nothing
+rmNodeList :: Graph a b -> [NodeId] -> Graph a b
+rmNodeList g nids = foldr (flip rmNode) g nids
 
 rmEdge :: Graph a b -> EdgeId -> Graph a b
 rmEdge (Graph ns es) (E i)  =  Graph ns es'
