@@ -1,19 +1,37 @@
 -- labelled graph isomorphism test
 -- Colin Runciman, July 2014
 
-module GraphIsomorphism (isomorphic, isomorphicSet, isomorphicPartition, isomorphismCount) where
+module GraphIsomorphism (getIsomorphismData) where
 
 import Data.List (permutations)
 import Graph
 import Mapping
 
 
+-- Used after applying a RuleCall to a graph g, giving output graphs hs.
+-- k is the current count of isomorphic copies of g.
+
+-- getIsomorphismData (g, k) hs does the following:
+-- (1) Count the graphs in hs isomorphic to g. Let's say there are m such graphs. 
+--     Then update (g, k) to (g, km): for each instance of g, m copies are generated,
+--     giving a total of km isomorphic copies of g.
+-- (2) Call isomorphismCount on the graphs in hs not isomorphic to g. This outputs
+--     the isomorphism count of those graphs. Let's call that hs'
+-- (3) Return (g, km) : hs'
+getIsomorphismData :: (Eq a, Eq b) => (Graph a b, Int) -> [Graph a b] -> [(Graph a b, Int)]
+getIsomorphismData (g, k) hs = (g, k*length gs) : isomorphismCount hs'
+    where partition = isomorphicSet (g:hs) 
+          -- isomorphicSet (g:hs) places g at the head of the list of graphs from hs
+          -- isomorphic to g. g is not counted here.
+          gs        = tail $ fst partition
+          hs'       = snd partition
+
 -- Given a list of graphs, isomorphismCount returns a list of pairs.
 -- Each pair contains a single representative of a set of isomorphic graphs in 
 -- the list and a count of how many isomorphic copies of that graph were in the
 -- input list.
-isomorphismCount :: (Eq a, Eq b) => [Graph a b] -> [(Int, Graph a b)]
-isomorphismCount graphs = [ (length (g:gs), g) | (g:gs) <- isoGraphs] 
+isomorphismCount :: (Eq a, Eq b) => [Graph a b] -> [(Graph a b, Int)]
+isomorphismCount graphs = [ (g, length (g:gs)) | (g:gs) <- isoGraphs] 
     where isoGraphs = isomorphicPartition graphs
 
 -- Uses isomorphicSet to partition a list of graphs into a list of lists of 

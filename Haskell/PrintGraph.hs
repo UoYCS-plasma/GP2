@@ -19,8 +19,8 @@ type NodeMap = Mapping NodeId NodeId
 -- of nLabel and eLabel to strings.
 
 makePrintableGraph :: HostGraph -> PrintableGraph
-makePrintableGraph h = fst $ foldr (makeEdge h) (nodeGraph,nodeMaps) (allEdges h)
-    where (nodeGraph,nodeMaps) = foldr (makeNode h) (emptyGraph, []) (allNodes h)
+makePrintableGraph h = fst $ foldr (makeEdge h) (nodeGraph, nodeMaps) (allEdges h)
+    where (nodeGraph, nodeMaps) = foldr (makeNode h) (emptyGraph, []) (allNodes h)
 
 makeNode :: HostGraph -> NodeId -> (PrintableGraph, NodeMap) -> (PrintableGraph, NodeMap)
 makeNode h nid (g, nm) = (g', (nid, newId):nm)

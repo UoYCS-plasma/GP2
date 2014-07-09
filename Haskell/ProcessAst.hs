@@ -8,8 +8,6 @@ import Graph
 import ExAr
 import Mapping
 
-testHg = AstHostGraph [HostNode "n1" False (HostLabel [Int 1] Uncoloured),HostNode "n2" False (HostLabel [Str "hello"] Uncoloured),HostNode "n3" False (HostLabel [Int 1,Int 1] Uncoloured)] [HostEdge "n1" "n2" (HostLabel [] Uncoloured),HostEdge "n1" "n3" (HostLabel [] Uncoloured)]
-
 type SymbolTable = Mapping String Symbol 
 
 type Scope = String

@@ -21,12 +21,6 @@ getNodeId r id = case candidates of
         matchID :: RuleNode -> Bool
         matchID (RuleNode i _ _) = i == id
 
-getNodeName :: HostGraph -> NodeId -> NodeName
-getNodeName g nid = case maybeNLabel g nid of
-        Nothing -> error "Fail!"
-        Just ( HostNode id _ _ ) -> id
-
-
 -- Given a graph morphism (containing a variable-value mapping) and a host graph,
 -- a rule label is transformed into a host label (list of constants) by evaluating
 -- any operators (degree, length) and substituting variables for their values

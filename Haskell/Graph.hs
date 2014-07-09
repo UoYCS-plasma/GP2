@@ -15,19 +15,8 @@ import ExAr
 import Data.Maybe
 import Data.List (union, intersect, permutations)
 
-dumpGraphViz :: (Show a, Show b) => Graph a b -> String
-dumpGraphViz g = gvHeader ++ prettyNodes g ++ "\n" ++ prettyEdges g ++ gvFooter
-    where
-        gvHeader = "digraph {\n"
-        gvFooter = "}\n"
-        prettyNodes g = concatMap prettyNode $ allNodes g
-        prettyEdges g = concatMap prettyEdge $ allEdges g
-        prettyNode n@(N id) = "\tnode_" ++ show id ++ "\t{ label=\"" ++ show ( nLabel g n) ++ "\" }\n"
-        prettyEdge e@(E id) = "\tnode_" ++ getNodeIdAsInt (source g e)
-                        ++ " -> node_" ++ getNodeIdAsInt (target g e)
-                        ++ "\t{ label=\"" ++ show (eLabel g e) ++ "\" }\n"
-        getNodeIdAsInt (N id) = show id
-
+-- A graph of type Graph String String is generated from a host graph
+-- in the PrintGraph module.
 graphToGP2 :: Graph String String -> String
 graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]"
     where
@@ -35,9 +24,9 @@ graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]"
         edgeList g = concatMap prettyEdge $ allEdges g
         prettyNode n@(N id) = " (n" ++ show id ++ " " ++ nLabel g n ++ ")\n"
         prettyEdge e@(E id) = " (e" ++ show id ++ ", "
-                              ++ "n" ++ getNodeId (source g e) ++ ", "
-                              ++ "n" ++ getNodeId (target g e) ++ ", "
-                              ++ eLabel g e ++ ")\n"
+                           ++ "n" ++ getNodeId (source g e) ++ ", "
+                           ++ "n" ++ getNodeId (target g e) ++ ", "
+                           ++ eLabel g e ++ ")\n"
         getNodeId (N id) = show id
 
 -- Utility functions for graph matching and graph isomorphism checking.
