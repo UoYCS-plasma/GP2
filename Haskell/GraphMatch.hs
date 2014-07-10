@@ -31,9 +31,8 @@ data NodeMorphism = NM Environment NodeMatches deriving (Show)
 -- we concatMap matchGraphEdges h r over the NodeMorphism list obtained
 -- from the call to matchGraphNodes.
 
--- TODO(?): Test if the rule graphs are valid graphs.
 matchGraphs :: HostGraph -> RuleGraph -> [GraphMorphism]
-matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
+matchGraphs h r = concatMap (matchGraphEdges h r) (matchGraphNodes h r)
 
 
 -- Outputs all valid (w.r.t labels) injective morphisms (node morphisms)
@@ -52,9 +51,9 @@ matchGraphs h r = concatMap (matchGraphEdges h r) $ matchGraphNodes h r
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
 matchGraphNodes h r =
     catMaybes [ nm | nodeSet <- nodeSets, 
-          let nodeMatches = filter (checkRootNode h r) $ zip rns nodeSet
-              maybeEnv = foldr labelMatch (Just []) nodeMatches
-              nm = maybe Nothing (\env -> Just (NM env nodeMatches) ) maybeEnv ]
+                 let nodeMatches = filter (checkRootNode h r) $ zip rns nodeSet
+                     maybeEnv = foldr labelMatch (Just []) nodeMatches
+                     nm = maybe Nothing (\env -> Just (NM env nodeMatches) ) maybeEnv ]
     where
         rns = allNodes r
         hns = allNodes h
@@ -95,14 +94,14 @@ doNodesMatch h r hid rid =
 -- joiningEdges is called on each hostEndPoint to generate all the candidate
 -- edges for each RuleEdge. A RuleEdge may have more than one candidate
 -- HostEdge, so a list of lists is created (hostEdges).
--- hostEdges is used to generate edgeMatches, which are passed to the list
+-- hostEdges is used to generate edgeMatches which is passed to the list
 -- comprehension in the same way as in the node matcher.
 
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
-matchGraphEdges h r (NM env nodeMatches) =
-   catMaybes [ gm | edgeMatch <- edgeMatches,
-                    let maybeEnv = foldr labelMatch (Just env) edgeMatch
-                        gm = maybe Nothing (\env -> Just (GM env nodeMatches edgeMatch) ) maybeEnv ]
+matchGraphEdges h r (NM env nodeMatches) = if null (allEdges r) then [GM env nodeMatches []] else
+   catMaybes [ gm | edgeMatch <- edgeMatches, not $ null edgeMatch,
+                let maybeEnv = foldr labelMatch (Just env) edgeMatch
+                    gm = maybe Nothing (\env -> Just (GM env nodeMatches edgeMatch) ) maybeEnv ]
    where 
      ruleEdges = allEdges r
      ruleEndPoints = map (\e -> (source r e, target r e)) ruleEdges
@@ -113,6 +112,10 @@ matchGraphEdges h r (NM env nodeMatches) =
      -- hostEdges. eid needs to be paired up with each item in heids e.g.
      -- [E 1, E 2] [[E 1, E 2],[E 1, E 2, E 3]] -> 
      -- [(E 1, E 1), (E 1, E 2), (E 2, E 1), (E 2, E 2), (E 2, E 3)]
+
+     -- NOTE: edgeMatches == [[]] if hostEdges == []. Unimpeded, this will produce a 
+     -- graph morphism with an empty edge morphism when no morphism should be returned.
+     -- I handle this with a not $ null call in the list comprehension.
      edgeMatches = zipWith (\re hes -> zip (repeat re) hes) ruleEdges hostEdges
 
      -- The source and target node aren't guaranteed to exist in the node morphism,

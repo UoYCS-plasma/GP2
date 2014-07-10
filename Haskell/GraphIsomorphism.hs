@@ -14,17 +14,20 @@ import Mapping
 -- getIsomorphismData (g, k) hs does the following:
 -- (1) Count the graphs in hs isomorphic to g. Let's say there are m such graphs. 
 --     Then update (g, k) to (g, km): for each instance of g, m copies are generated,
---     giving a total of km isomorphic copies of g.
+--     giving a total of km isomorphic copies of g. If there are no such graphs,
+--     do not include (g, k) in the output list.
 -- (2) Call isomorphismCount on the graphs in hs not isomorphic to g. This outputs
 --     the isomorphism count of those graphs. Let's call that hs'
 -- (3) Return (g, km) : hs'
 getIsomorphismData :: (Eq a, Eq b) => (Graph a b, Int) -> [Graph a b] -> [(Graph a b, Int)]
-getIsomorphismData (g, k) hs = (g, k*length gs) : isomorphismCount hs'
-    where partition = isomorphicSet (g:hs) 
-          -- isomorphicSet (g:hs) places g at the head of the list of graphs from hs
-          -- isomorphic to g. g is not counted here.
-          gs        = tail $ fst partition
-          hs'       = snd partition
+getIsomorphismData (g, k) hs = 
+    let partition = isomorphicSet (g:hs) 
+        -- isomorphicSet (g:hs) places g at the head of the list of graphs from hs
+        -- isomorphic to g. g is not counted here.
+        gs        = tail $ fst partition
+        hs'       = snd partition 
+        ihs' = isomorphismCount hs' in
+     if null gs then ihs' else (g, k*length gs) : ihs'
 
 -- Given a list of graphs, isomorphismCount returns a list of pairs.
 -- Each pair contains a single representative of a set of isomorphic graphs in 

@@ -22,7 +22,7 @@ graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]"
     where
         nodeList g = concatMap prettyNode $ allNodes g
         edgeList g = concatMap prettyEdge $ allEdges g
-        prettyNode n@(N id) = " (n" ++ show id ++ " " ++ nLabel g n ++ ")\n"
+        prettyNode n@(N id) = " (n" ++ show id ++ ", " ++ nLabel g n ++ ")\n"
         prettyEdge e@(E id) = " (e" ++ show id ++ ", "
                            ++ "n" ++ getNodeId (source g e) ++ ", "
                            ++ "n" ++ getNodeId (target g e) ++ ", "

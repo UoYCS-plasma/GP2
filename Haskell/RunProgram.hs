@@ -13,9 +13,10 @@ import GPSyntax
 data GraphState = GS HostGraph Int Int
                 | Failure 
                 | Unfinished
+    deriving Show
 
 -- A host graph and its isomorphism count.				
-type GraphData = (HostGraph, Int)
+type GraphData = (HostGraph, Int) 
  
 -- The output of the GP 2 interpreter is a list of output graphs, each with an 
 -- isomorphism count; a failure count; and an unfinished execution count with

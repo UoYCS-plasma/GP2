@@ -36,7 +36,7 @@ data SymbolType = Procedure_S
    deriving (Show)
 
 
-type SymbolList = [(String, Symbol)]
+type SymbolList = Mapping String Symbol
 
 lookupSymbols :: SymbolTable -> String -> [Symbol]
 lookupSymbols symbols id = [symbol | (name,symbol) <- symbols, name == id]
@@ -61,10 +61,8 @@ makeGPProgram (Program decls) = (Program $ map (makeDeclaration "Global" table) 
 
 
 makeDeclaration :: Scope -> SymbolTable -> Declaration -> Declaration
-makeDeclaration s t (AstRuleDecl r) = RuleDecl r'
-    where
-        r' = makeRule r s t
-makeDeclaration _ _ x = x
+makeDeclaration s t (AstRuleDecl r) = RuleDecl $ makeRule r s t
+makeDeclaration _ _ d = d
 
 -- Calls enterDeclarations with "Global" scope and an empty symbol table.
 enterSymbols :: GPProgram -> SymbolTable
@@ -114,10 +112,14 @@ addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newId):nm)
 -- The source and target node of each edge are expected to be in
 -- the graph, so the lookups should never return Nothing.
 addHEdge :: HostEdge -> (HostGraph, NodeMap) -> (HostGraph, NodeMap)
-addHEdge (HostEdge src tgt label) (g, nm) = (g',nm)
-    where srcId = definiteLookup src nm
-          tgtId = definiteLookup tgt nm
-          (g', _) = newEdge g srcId tgtId label
+addHEdge (HostEdge src tgt label) (g, nm) = 
+    let srcId = lookup src nm
+        tgtId = lookup tgt nm in
+    case (srcId, tgtId) of
+        (Nothing, Nothing) -> error $ "Edge source " ++ show src ++ " and target " ++ show tgt ++ " undefined."
+        (Nothing, _) -> error $ "Edge source " ++ show src ++ " undefined."
+        (_, Nothing) -> error $ "Edge target " ++ show tgt ++ " undefined."
+        (Just srcId, Just tgtId) -> (fst $ newEdge g srcId tgtId label, nm)
 
 -- May need to keep the new SymbolTable t' but I ignore it for now.
 makeRule :: AstRule -> Scope -> SymbolTable -> Rule
@@ -156,11 +158,14 @@ addRNode hn@(RuleNode id _ _ ) (g, nm) = (g', (id, newId):nm)
     where (g', newId) = newNode g hn
 
 addREdge :: RuleEdge -> (RuleGraph, NodeMap) -> (RuleGraph, NodeMap)
-addREdge (RuleEdge _ src tgt label) (g, nm) = (g',nm)
-    where Just srcId = lookup src nm
-          Just tgtId = lookup tgt nm
-          (g', _) = newEdge g srcId tgtId label
-
+addREdge (RuleEdge _ src tgt label) (g, nm) = 
+    let srcId = lookup src nm
+        tgtId = lookup tgt nm in
+    case (srcId, tgtId) of
+        (Nothing, Nothing) -> error $ "Edge source " ++ show src ++ " and target " ++ show tgt ++ " undefined."
+        (Nothing, _) -> error $ "Edge source " ++ show src ++ " undefined."
+        (_, Nothing) -> error $ "Edge target " ++ show tgt ++ " undefined."
+        (Just srcId, Just tgtId) -> (fst $ newEdge g srcId tgtId label, nm)
 
 updateNode :: Scope -> RuleID -> SymbolTable -> RuleNode -> RuleNode
 updateNode s r t (RuleNode id b ( RuleLabel list c ) ) =
@@ -185,8 +190,7 @@ assignTypes [] _ _ _                        = []
 assignTypes ((Var (name, gpType)):as) s r t = 
     let newType = getType $ symbolsInScope name s r t in
     case newType of 
-        -- If Nothing, no variable was found in the rule. Semantic error.
-        Nothing -> Var ("poo", ListVar) : assignTypes as s r t
+        Nothing -> error $ "Variable " ++ name ++ " not found in the rule." 
         Just gpType  -> Var (name, gpType) : assignTypes as s r t 
 assignTypes (a:as) s r t                    = a : assignTypes as s r t 
 

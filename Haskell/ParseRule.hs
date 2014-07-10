@@ -12,7 +12,7 @@ import GPSyntax
 rule :: Parser AstRule
 rule = pure AstRule 
        <*> lowerIdent 
-       <*> (pure concat <*> maybeOne parameters)
+       <*> (pure concat <*> keyword "(" |> maybeOne parameters <| keyword ")" )
        <*> ruleGraphs 
        <*> interface
        |> (pure head <*> exactlyOne ( keyword "where" |> condition ) <|> pure NoCondition)
@@ -20,9 +20,7 @@ rule = pure AstRule
 -- In a rule parameter declaration, multiple variables can be declared
 -- with a single type. 
 parameters :: Parser [Variable]
-parameters = keyword "(" 
-          |> pure (++) <*> varList <*> (pure concat <*> maybeSome (keyword ";" |> varList))
-          <| keyword ")" 
+parameters = pure (++) <*> varList <*> (pure concat <*> maybeSome (keyword ";" |> varList))
 
 varList :: Parser [Variable]
 varList = pure (\(ids,gptype) -> [(id,gptype) | id <- ids])
@@ -38,20 +36,20 @@ ruleGraphs :: Parser (AstRuleGraph, AstRuleGraph)
 ruleGraphs = pure (,) <*> ruleGraph <*> ( keyword "=>" |> ruleGraph )
 
 ruleGraph :: Parser AstRuleGraph
-ruleGraph = keyword "[" |> pure AstRuleGraph <*> nodeList <*> edgeList <| keyword "]"
+ruleGraph = keyword "[" |> pure AstRuleGraph 
+        <*> maybeSome node <| keyword "|"   
+        <*> maybeSome edge <| keyword "]"
 
 -- Consumes the interface text: its output is discarded so the return type
 -- is irrelevant.
 interface :: Parser String
-interface = keyword "interface" |> keyword "=" |> keyword "{" 
-         |> lowerIdent <| maybeSome interfaceNodes
+interface = keyword "interface" |> keyword "=" 
+         |> keyword "{" |> pure concat <*> maybeOne (lowerIdent <| maybeSome interfaceNodes)
          <| keyword "}"
 
 interfaceNodes :: Parser NodeName
 interfaceNodes = keyword "," |> lowerIdent
 
-nodeList :: Parser [RuleNode]
-nodeList = pure (++) <*> maybeOne node <*> maybeSome (keyword "," |> node)
 -- A node is a triple (Node ID, Root Node, Node Label)
 -- The second component is "(R)" if root node, [] otherwise.
 node :: Parser RuleNode
@@ -60,10 +58,6 @@ node = keyword "(" |> pure RuleNode
   <*> (root <| keyword ",") 
   <*> gpLabel <| keyword ")"
 
-edgeList :: Parser [RuleEdge]
-edgeList = keyword "|" |> ( pure (++) <*> maybeOne edge <*> maybeSome (keyword "," |> edge) )
-
-                                                                           
 edge :: Parser RuleEdge
 edge = keyword "(" |> pure RuleEdge 
    <| lowerIdent

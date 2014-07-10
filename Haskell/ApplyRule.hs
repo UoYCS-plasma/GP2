@@ -53,7 +53,7 @@ transform m r h = addEdgesToHost m rhs rhsToHostMap addedNodesGraph
       deletedHostNodes  = [ hnid | lnid <- deletedLhsNodes, let hnid = definiteLookup lnid nms ]
       deletedLhsNodes   = allNodes lhs \\ map fst intr
       Rule _ _ (lhs, rhs) intr _ = r
-      GM env nms ems                = m
+      GM env nms ems             = m
 
 
 -- We generate a mapping from all NodeIds in the RHS, including freshly 
