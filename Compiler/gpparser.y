@@ -24,7 +24,6 @@ int report_error(const char *error_message);
 /* Flags used in the AST construction. */
   bool is_root = false;
   bool is_bidir = false;
-  bool is_injective = false;
 
 extern List *gp_program; /* This will point to the root of the program AST.
 			  * Defined in main.c. */
@@ -284,18 +283,15 @@ IDList: RuleID				{ $$ = addRule(@1, $1, NULL);
 
  /* Grammar for GP2 Rule Definitions. */
 
-RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl INJECTIVE 
-          '=' Bool			{ $$ = newRule(@1, is_injective,
- 					       $1, $3, $5, $7, $8, $9); 
+RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl  
+					{ $$ = newRule(@1, $1, $3, $5, $7, $8, $9); 
 					  free($1); }
-        | RuleID '(' ')' Graph ARROW Graph Inter CondDecl INJECTIVE '=' Bool	 
-      					{ $$ = newRule(@1, is_injective,
- 					       $1, NULL, $4, $6, $7, $8); 
+        | RuleID '(' ')' Graph ARROW Graph Inter CondDecl 
+      					{ $$ = newRule(@1, $1, NULL, $4, $6, $7, $8);
 					  free($1); }
         /* Error-catching productions */
-	| ProcID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl INJECTIVE 
-          '=' Bool		        { $$ = newRule(@1, is_injective,
- 					       $1, $3, $5, $7, $8, $9); 
+	| ProcID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl
+				        { $$ = newRule(@1, $1, $3, $5, $7, $8, $9); 
                                           report_error("Rule names must "
  					   "start with a lower-case letter."
 				 	   "letter.");
@@ -303,9 +299,8 @@ RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl INJECTIVE
 	/* This production catches a potentially likely syntax error in which
          * the user terminates the variable declaration list with a semicolon.
          */
-        | RuleID '(' VarDecls ';' ')' Graph ARROW Graph Inter CondDecl INJECTIVE 
-          '=' Bool			{ $$ = newRule(@1, is_injective,
- 					       $1, $3, $6, $8, $9, $10);  
+        | RuleID '(' VarDecls ';' ')' Graph ARROW Graph Inter CondDecl
+					{ $$ = newRule(@1, $1, $3, $6, $8, $9, $10);  
                                           report_error("Semicolon at the end "
 					    "of a rule's variable list");
 					  free($1); }	
@@ -340,9 +335,6 @@ NodeIDList: NodeID			{ $$ = addNodeID(@1, $1, NULL);
           | NodeIDList ',' NodeID 	{ $$ = addNodeID(@3, $3, $1);
 					  free($3); }
 
-Bool: TRUE 				{ is_injective = true; }
-    | FALSE				{ is_injective = false; }
-
 Type: INT				{ $$ = INT_DECLARATIONS; } 
     | CHAR				{ $$ = CHAR_DECLARATIONS; }
     | STRING                            { $$ = STRING_DECLARATIONS; }
@@ -358,7 +350,7 @@ Graph: '[' Position '|' '|' ']'		 { $$ = newGraph(@$, $2, NULL, NULL); }
      					{ $$ = newGraph(@$, $2, $4, $6); }
 
 NodeList: Node				{ $$ = addNode(@1, $1, NULL); }
-        | NodeList ',' Node		{ $$ = addNode(@3, $3, $1); }
+        | NodeList Node			{ $$ = addNode(@2, $2, $1); }
 
 Node: '(' NodeID RootNode ',' Label ',' Position ')'
     					{ $$ = newNode(@2, is_root, $2, $5, $7); 
@@ -366,7 +358,7 @@ Node: '(' NodeID RootNode ',' Label ',' Position ')'
 					  free($2); } 
 
 EdgeList: Edge				{ $$ = addEdge(@1, $1, NULL); }
-        | EdgeList ',' Edge		{ $$ = addEdge(@3, $3, $1); }
+        | EdgeList Edge			{ $$ = addEdge(@2, $2, $1); }
 
 Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
 					{ $$ = newEdge(@2, is_bidir, $2, $5, $7, $9);
@@ -466,7 +458,7 @@ HostGraph: '[' Position '|' '|' ']'  	{ $$ = newGraph(@$, $2, NULL, NULL); }
      					{ $$ = newGraph(@$, $2, $4, $6); }
 
 HostNodeList: HostNode			{ $$ = addNode(@1, $1, NULL); }
-            | HostNodeList ',' HostNode	{ $$ = addNode(@3, $3, $1); }
+            | HostNodeList HostNode	{ $$ = addNode(@2, $2, $1); }
 
 HostNode: '(' NodeID RootNode ',' HostLabel ',' Position ')'
     					{ $$ = newNode(@2, is_root, $2, $5, $7); 
@@ -474,7 +466,7 @@ HostNode: '(' NodeID RootNode ',' HostLabel ',' Position ')'
 					  free($2); } 
 
 HostEdgeList: HostEdge			{ $$ = addEdge(@1, $1, NULL); }
-            | HostEdgeList ',' HostEdge	{ $$ = addEdge(@3, $3, $1); } 
+            | HostEdgeList HostEdge	{ $$ = addEdge(@2, $2, $1); } 
 
 HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
 					{ $$ = newEdge(@2, false, $2, $4, $6, $8);

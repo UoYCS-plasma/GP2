@@ -169,13 +169,10 @@ and                 return AND;
 or                  return OR;
 not                 return NOT;
 edge                return EDGETEST;
-true                return TRUE;
-false               return FALSE;
 indeg 		    return INDEG;
 outdeg		    return OUTDEG;
 interface	    return INTERFACE;
 empty		    return EMPTY;
-injective           return INJECTIVE;
 llength		    return LLEN;
 slength	            return SLEN;
 

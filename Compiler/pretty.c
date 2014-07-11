@@ -1480,7 +1480,7 @@ void printRule(GPRule * const rule, FILE *dot_file)
 
      if(rule->name != NULL)
         print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                          "Rule \\n Name: %s \\n ", 
+                          "Rule \\n Name: %s\"]\n", 
                           rule->node_id, rule->node_id,
                           LOCATION_ARGS(rule->location), rule->name);
      else {
@@ -1491,10 +1491,6 @@ void printRule(GPRule * const rule, FILE *dot_file)
         print_to_log("Error: Undefined rule name at AST node %d", 
                 rule->node_id);       
      }
-
-     if(rule->injective == true) 
-          print_to_dot_file("Injective\"]\n"); 
-     else print_to_dot_file("Non-injective\"]\n");	
 
      prettyPrintList(rule->variables, rule, variables);
 
@@ -1570,7 +1566,7 @@ void printNode(GPNode * const node, FILE *dot_file)
      }
 
      if(node->root == true) 
-          print_to_dot_file(" \\n Root\"]\n"); 
+          print_to_dot_file("\\n Root\"]\n"); 
      else print_to_dot_file("\"]\n");	
      
      print_to_dot_file("node%d->node%d[label=\"label\"]\n", 
@@ -1591,7 +1587,7 @@ void printEdge(GPEdge * const edge, FILE *dot_file)
 
      if(edge->name != NULL)
         print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                          "Edge \\n Name: %s \\n ", 
+                          "Edge \\n Name: %s\\n ", 
                           edge->node_id, edge->node_id, 
                           LOCATION_ARGS(edge->location), edge->name);
      else {
@@ -1605,8 +1601,8 @@ void printEdge(GPEdge * const edge, FILE *dot_file)
      }
 
      if(edge->bidirectional == true) 
-          print_to_dot_file(" \\n Bidirectional\"]\n"); 
-     else print_to_dot_file("\"]\n");	
+          print_to_dot_file("\\n Bidirectional\\n"); 
+     else print_to_dot_file("\\n");	
 
      if(edge->source != NULL)
         print_to_dot_file("Source: %s \\n ", 

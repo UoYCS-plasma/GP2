@@ -669,7 +669,7 @@ GPProcedure *newProcedure(YYLTYPE location, string name, List *local_decls, GPSt
     return proc;
 }
  
-GPRule *newRule(YYLTYPE location, bool injective, string name, List *variables,
+GPRule *newRule(YYLTYPE location, string name, List *variables,
 	        GPGraph *lhs, GPGraph *rhs, List *interface, 
 		GPCondExp *condition)
 {
@@ -682,7 +682,6 @@ GPRule *newRule(YYLTYPE location, bool injective, string name, List *variables,
 
     rule->node_type = RULE;
     rule->location = location;
-    rule->injective = injective;
     rule->name = strdup(name);
     rule->variables = variables;
     rule->lhs = lhs;

@@ -609,11 +609,14 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
    List *variable_list = rule->variables;
 
-   /* Variables to count how many times each type is encountered. Only the 
+   /* Variables to count how many times each type is encountered. These are
+    * incremented, according to the list_type encountered, and a warning is
+    * printed if any variable becomes greater than 1. Hence only the 
     * variables in the first declaration list for a type are added to the
-    * symbol table. Subsequent declaration lists for the same type are 
-    * ignored and a warning is printed to the log file. */
-   int integer_count = 0, string_count = 0, atom_count = 0, list_count = 0;
+    * symbol table; the rest are ignored.
+    */ 
+   int integer_count = 0, character_count = 0, string_count = 0, atom_count = 0, 
+       list_count = 0;
 
    while(variable_list) {
  
@@ -636,7 +639,7 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
          case CHAR_DECLARATIONS:
 
-              if(++integer_count > 1) {
+              if(++character_count > 1) {
                  print_to_log("Warning (%s.%s): More than one character list "
                               "in variable declaration section.",
                               scope, rule_name);
@@ -1471,7 +1474,7 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
 /* Variables used by gpListScan and AtomicExpScan. */
 static int list_var_count = 0;
 static int string_var_count = 0;
-static bool lhs_arithmetic_exp = false;
+static bool lhs_non_simple_exp = false;
 
 void gpListScan(List **gp_list, GHashTable *table, string const scope,
                   string const rule_name, char location)
@@ -1562,7 +1565,7 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
       abort_compilation = true;
    }
 
-   if(lhs_arithmetic_exp) {
+   if(lhs_non_simple_exp) {
       print_to_console("Error (%s.%s): Arithmetic expression in LHS label \n",
                        scope, rule_name);
       print_to_log("Error (%s.%s): Arithmetic expression in LHS label \n",
@@ -1573,7 +1576,7 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
    /* Reset variables for future calls to gpListScan */
    list_var_count = 0;
    string_var_count = 0;
-   lhs_arithmetic_exp = false;
+   lhs_non_simple_exp = false;
 }
 
 
@@ -1744,34 +1747,79 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
            }
 
-           bool in_lhs = false;
+           if(location == 'l') lhs_non_simple_exp = true;
 
-           GSList *node_list = 
-                   g_hash_table_lookup(table, atom_exp->value.node_id);
- 
-           while(node_list != NULL) {
+           /* If the degree operator is in a condition, its argument must exist
+            * in the LHS graph.
+            */
 
-              Symbol *current_node = (Symbol*)node_list->data;     
+           if(location == 'c') {
+	      bool in_lhs = false;
 
-              if(current_node->type == LEFT_NODE_S &&
-                 !strcmp(current_node->scope,scope) && 
-	         !strcmp(current_node->containing_rule,rule_name))  
-              {
-                 in_lhs = true;
-                 break;
+	      GSList *node_list = 
+		      g_hash_table_lookup(table, atom_exp->value.node_id);
+    
+	      while(node_list != NULL) {
+
+		 Symbol *current_node = (Symbol*)node_list->data;     
+
+		 if(current_node->type == LEFT_NODE_S &&
+		    !strcmp(current_node->scope,scope) && 
+		    !strcmp(current_node->containing_rule,rule_name))  
+		 {
+		    in_lhs = true;
+		    break;
+		 }
+
+		 node_list = node_list->next;
+	      }
+
+	      if(!in_lhs) {
+		 print_to_console("Error (%s.%s): Node %s in degree operator is "
+			 "not in the LHS.\n", 
+			 scope, rule_name,atom_exp->value.node_id);
+		 print_to_log("Error (%s.%s): Node %s in degree operator is "
+			 "not in the LHS.\n", 
+			 scope, rule_name,atom_exp->value.node_id);
+              abort_compilation = true;
               }
-
-              node_list = node_list->next;
            }
 
-           if(!in_lhs) {
-              print_to_console("Error (%s.%s): Node %s in degree operator is "
-                      "not in the LHS.\n", 
-                      scope, rule_name,atom_exp->value.node_id);
-              print_to_log("Error (%s.%s): Node %s in degree operator is "
-                      "not in the LHS.\n", 
-                      scope, rule_name,atom_exp->value.node_id);
+           /* If the degree operator is in a right-label, its argument must exist
+            * in the RHS graph.
+            */
+
+           if(location == 'r') {
+	      
+              bool in_rhs = false;
+
+	      GSList *node_list = 
+		      g_hash_table_lookup(table, atom_exp->value.node_id);
+    
+	      while(node_list != NULL) {
+
+		 Symbol *current_node = (Symbol*)node_list->data;     
+
+		 if(current_node->type == RIGHT_NODE_S &&
+		    !strcmp(current_node->scope,scope) && 
+		    !strcmp(current_node->containing_rule,rule_name))  
+		 {
+		    in_rhs = true;
+		    break;
+		 }
+
+		 node_list = node_list->next;
+	      }
+
+	      if(!in_rhs) {
+		 print_to_console("Error (%s.%s): Node %s in degree operator is "
+			 "not in the RHS.\n", 
+			 scope, rule_name,atom_exp->value.node_id);
+		 print_to_log("Error (%s.%s): Node %s in degree operator is "
+			 "not in the RHS.\n", 
+			 scope, rule_name,atom_exp->value.node_id);
               abort_compilation = true;
+              }
            }
 
            break;
@@ -1790,6 +1838,8 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
                 abort_compilation = true;
             }
 
+            if(location == 'l') lhs_non_simple_exp = true;
+
             gpListScan(&(atom_exp->value.list_arg), table, scope, rule_name,
                          location);
 
@@ -1806,6 +1856,8 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
                             scope, rule_name);
                abort_compilation = true; 
             }
+         
+            if(location == 'l') lhs_non_simple_exp = true;
 
 	    atomicExpScan(atom_exp->value.str_arg, table, scope, rule_name, 
 			    location, false, true);
@@ -1824,7 +1876,7 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
                             scope, rule_name);
             }
 
-            if(location == 'l') lhs_arithmetic_exp = true;
+            if(location == 'l') lhs_non_simple_exp = true;
 
             atomicExpScan(atom_exp->value.exp, table, scope, rule_name,
                           location, true, false);
@@ -1849,7 +1901,7 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
                abort_compilation = true;
             }
 
-            if(location == 'l') lhs_arithmetic_exp = true;
+            if(location == 'l') lhs_non_simple_exp = true;
 
             atomicExpScan(atom_exp->value.bin_op.left_exp, table, scope,
                           rule_name, location, true, false);

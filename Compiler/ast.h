@@ -311,7 +311,6 @@ typedef struct GPRule {
   int node_id;
   ASTNodeType node_type;
   YYLTYPE location;
-  bool injective; /* Integer flag to mark whether the rule should be matched injectively or not. */
   string name; 
   struct List *variables;
   struct GPGraph *lhs;
@@ -322,9 +321,10 @@ typedef struct GPRule {
 
 /* Constructs a struct GPRule. */
 
-GPRule *newRule(YYLTYPE location, bool injective, string name, 
-	 struct List *variables, struct GPGraph *lhs, struct GPGraph *rhs, 
-	 struct List *interface, struct GPCondExp *condition);
+GPRule *newRule(YYLTYPE location, string name, struct List *variables, 
+         struct GPGraph *lhs, struct GPGraph *rhs, struct List *interface, 
+         struct GPCondExp *condition);
+
 
 /* Root node for a graph definition. This data structure is used for
  * graphs in rules and for the host graph. */
