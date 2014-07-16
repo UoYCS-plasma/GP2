@@ -29,7 +29,7 @@ lex.yy.o: 	lex.yy.c
 lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
 		flex gplexer.lex
 
-main.o:         main.c pretty.h ast.h seman.h
+main.o:         main.c pretty.h ast.h seman.h 
 		$(CC) $(CFLAGS) -c main.c
 
 ast.o: 		ast.c ast.h
@@ -40,6 +40,9 @@ pretty.o:       pretty.c pretty.h ast.h seman.h
 
 seman.o:	seman.c seman.h ast.h
 		$(CC) $(CFLAGS) -c seman.c
+
+# graph.o:	graph.c graph.h ast.h
+#		$(CC) $(CFLAGS) -c graph.c
 
 clean:
 		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c gpparse

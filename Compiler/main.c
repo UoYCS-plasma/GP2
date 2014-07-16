@@ -195,7 +195,7 @@ int main(int argc, char** argv) {
   fclose(yyin);
   fclose(log_file);
   if(gp_program) freeAST(gp_program); /* Defined in ast.c */
-  if(host_graph) freeGraph(host_graph); /* Defined in ast.c */
+  if(host_graph) freeASTGraph(host_graph); /* Defined in ast.c */
 
   /* The call to g_hash_table_foreeach frees all the hash table values,
    * linked lists of struct Symbols, with the function freeSymbolList 

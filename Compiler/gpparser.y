@@ -108,15 +108,15 @@ extern bool abort_scan; /* Defined in main.c */
   */
 %destructor { free($$); } <str> <id>
 %destructor { freeAST($$); } <list>
-%destructor { freeDeclaration($$); } <decl>
-%destructor { freeStatement($$); } <stmt>
-%destructor { freeRule($$); } <rule>
-%destructor { freeGraph($$); } <graph>
-%destructor { freeNode($$); } <node>
-%destructor { freeEdge($$); } <edge>
-%destructor { freeCondition($$); } <cond_exp>
-%destructor { freeLabel($$); } <label>
-%destructor { freeAtomicExp($$); } <atom_exp>
+%destructor { freeASTDeclaration($$); } <decl>
+%destructor { freeASTStatement($$); } <stmt>
+%destructor { freeASTRule($$); } <rule>
+%destructor { freeASTGraph($$); } <graph>
+%destructor { freeASTNode($$); } <node>
+%destructor { freeASTEdge($$); } <edge>
+%destructor { freeASTCondition($$); } <cond_exp>
+%destructor { freeASTLabel($$); } <label>
+%destructor { freeASTAtomicExp($$); } <atom_exp>
 
 %error-verbose
 
@@ -182,131 +182,131 @@ Initialise: GP_PROGRAM Program		{ gp_program = $2; }
 
  /* Grammar for GP2 Program Text. */
 
-Program: Declaration	      		{ $$ = addDecl(GLOBAL_DECLARATIONS, 
+Program: Declaration	      		{ $$ = addASTDecl(GLOBAL_DECLARATIONS, 
                                                @1, $1, NULL); }  
-       | Program Declaration            { $$ = addDecl(GLOBAL_DECLARATIONS, 
+       | Program Declaration            { $$ = addASTDecl(GLOBAL_DECLARATIONS, 
                                                @2, $2, $1); }  
 
-Declaration: MainDecl 			{ $$ = newMainDecl(@$, $1); }
-     	   | ProcDecl			{ $$ = newProcedureDecl(@$, $1); }
-           | RuleDecl			{ $$ = newRuleDecl(@$, $1); }
+Declaration: MainDecl 			{ $$ = newASTMainDecl(@$, $1); }
+     	   | ProcDecl			{ $$ = newASTProcedureDecl(@$, $1); }
+           | RuleDecl			{ $$ = newASTRuleDecl(@$, $1); }
 
-MainDecl: MAIN '=' ComSeq 		{ $$ = newCommandSequence(@1, $3); }
+MainDecl: MAIN '=' ComSeq 		{ $$ = newASTCommandSequence(@1, $3); }
 
-ProcDecl: ProcID '=' ComSeq 		{ $$ = newProcedure(@1, $1, NULL, 
-                                               newCommandSequence(@3 ,$3));
-					  free($1); }
+ProcDecl: ProcID '=' ComSeq 		{ $$ = newASTProcedure(@1, $1, NULL, 
+                                               newASTCommandSequence(@3 ,$3));
+					  if($1) free($1); }
 
         | ProcID '=' '[' LocalDecls ']' ComSeq 
-					{ $$ = newProcedure(@1, $1, $4, 
-                                               newCommandSequence(@6, $6));
-				          free($1); }
+					{ $$ = newASTProcedure(@1, $1, $4, 
+                                               newASTCommandSequence(@6, $6));
+				          if($1) free($1); }
         /* Error-catching production */
 	| RuleID '=' '[' LocalDecls ']' ComSeq
-				        { $$ = newProcedure(@1, $1, $4, 
-                                               newCommandSequence(@6, $6));
+				        { $$ = newASTProcedure(@1, $1, $4, 
+                                               newASTCommandSequence(@6, $6));
                                           report_error("Procedure names must "
  					   "start with an upper-case letter."); 
-					  free($1); }
+					  if($1) free($1); }
 
 LocalDecls: /* empty */			{ $$ = NULL; }
-        | LocalDecls RuleDecl           { $$ = addDecl(LOCAL_DECLARATIONS, @2, 
-                                               newRuleDecl(@2, $2), $1); }
-	| LocalDecls ProcDecl 		{ $$ = addDecl(LOCAL_DECLARATIONS, @2,
-                                               newProcedureDecl(@2, $2), $1); }
+        | LocalDecls RuleDecl           { $$ = addASTDecl(LOCAL_DECLARATIONS, @2, 
+                                               newASTRuleDecl(@2, $2), $1); }
+	| LocalDecls ProcDecl 		{ $$ = addASTDecl(LOCAL_DECLARATIONS, @2,
+                                               newASTProcedureDecl(@2, $2), $1); }
 
-ComSeq: Command 			{ $$ = addCommand(@1, $1, NULL); }
-      | ComSeq ';' Command  		{ $$ = addCommand(@3, $3, $1); }
+ComSeq: Command 			{ $$ = addASTCommand(@1, $1, NULL); }
+      | ComSeq ';' Command  		{ $$ = addASTCommand(@3, $3, $1); }
       /* Error-catching production */
-      | ComSeq ',' Command		{ $$ = addCommand(@3, $3, $1);
+      | ComSeq ',' Command		{ $$ = addASTCommand(@3, $3, $1);
                                           report_error("Incorrect use of comma "
 					    "to separate commands. Perhaps you "
 					    "meant to use a semicolon?"); }
 
 Command: Block 				/* default $$ = $1 */ 
-       | IF Block THEN Block      	{ $$ = newCondBranch(IF_STATEMENT, @$,
-                                               $2, $4, newSkip(@$)); }
-       | IF Block THEN Block ELSE Block { $$ = newCondBranch(IF_STATEMENT, @$,
+       | IF Block THEN Block      	{ $$ = newASTCondBranch(IF_STATEMENT, @$,
+                                               $2, $4, newASTSkip(@$)); }
+       | IF Block THEN Block ELSE Block { $$ = newASTCondBranch(IF_STATEMENT, @$,
                                                $2, $4, $6); }
        /* Error-catching production */
-       | IF Block ELSE Block	   	{ $$ = newCondBranch(IF_STATEMENT, @$,
+       | IF Block ELSE Block	   	{ $$ = newASTCondBranch(IF_STATEMENT, @$,
                                                $2, NULL, $4);
                                           report_error("No 'then' clause in if "
 						       "statement."); }
-       | TRY Block 			{ $$ = newCondBranch(TRY_STATEMENT, @$,
-                                               $2, newSkip(@$), newSkip(@$)); }
-       | TRY Block THEN Block		{ $$ = newCondBranch(TRY_STATEMENT, @$,
-                                               $2, $4, newSkip(@$)); }
-       | TRY Block ELSE	Block	   	{ $$ = newCondBranch(TRY_STATEMENT, @$,
-                                               $2, newSkip(@$), $4); }
-       | TRY Block THEN Block ELSE Block { $$ = newCondBranch(TRY_STATEMENT, @$,
+       | TRY Block 			{ $$ = newASTCondBranch(TRY_STATEMENT, @$,
+                                               $2, newASTSkip(@$), newASTSkip(@$)); }
+       | TRY Block THEN Block		{ $$ = newASTCondBranch(TRY_STATEMENT, @$,
+                                               $2, $4, newASTSkip(@$)); }
+       | TRY Block ELSE	Block	   	{ $$ = newASTCondBranch(TRY_STATEMENT, @$,
+                                               $2, newASTSkip(@$), $4); }
+       | TRY Block THEN Block ELSE Block { $$ = newASTCondBranch(TRY_STATEMENT, @$,
                                                 $2, $4, $6); }
 
 
-Block: '(' ComSeq ')' 	                { $$ = newCommandSequence(@$,$2); }
-     | '(' ComSeq ')' '!' 		{ $$ = newAlap(@$, 
-                                               newCommandSequence(@2, $2)); } 
+Block: '(' ComSeq ')' 	                { $$ = newASTCommandSequence(@$,$2); }
+     | '(' ComSeq ')' '!' 		{ $$ = newASTAlap(@$, 
+                                               newASTCommandSequence(@2, $2)); } 
      /* If an error is found in a code block, continue parsing after the right
       * parenthesis. */
      | error ')'  			{ $$ = NULL; }
      | SimpleCommand 			/* default $$ = $1 */ 
-     | SimpleCommand '!'		{ $$ = newAlap(@$, $1); }
-     | Block OR Block 			{ $$ = newOrStmt(@$, $1, $3); }
-     | SKIP				{ $$ = newSkip(@$); }
-     | FAIL				{ $$ = newFail(@$); }
+     | SimpleCommand '!'		{ $$ = newASTAlap(@$, $1); }
+     | Block OR Block 			{ $$ = newASTOrStmt(@$, $1, $3); }
+     | SKIP				{ $$ = newASTSkip(@$); }
+     | FAIL				{ $$ = newASTFail(@$); }
 
-SimpleCommand: RuleSetCall 	        { $$ = newRuleSetCall(@$, $1); }
-             | RuleID                   { $$ = newRuleCall(@$, $1); free($1); }
-	     | ProcID	 		{ $$ = newProcCall(@$, $1); free($1); }
+SimpleCommand: RuleSetCall 	        { $$ = newASTRuleSetCall(@$, $1); }
+             | RuleID                   { $$ = newASTRuleCall(@$, $1); if($1) free($1); }
+	     | ProcID	 		{ $$ = newASTProcCall(@$, $1); if($1) free($1); }
 
 RuleSetCall: '{' IDList '}'		{ $$ = $2; }
            /* If an error is found in an rule set call, continue parsing after
             * the rule set. */
            | error '}' 			{ $$ = NULL; }
 
-IDList: RuleID				{ $$ = addRule(@1, $1, NULL);
-					  free($1); }
-      | IDList ',' RuleID 		{ $$ = addRule(@3, $3, $1); 
-					  free($3);} 
+IDList: RuleID				{ $$ = addASTRule(@1, $1, NULL);
+					  if($1) free($1); }
+      | IDList ',' RuleID 		{ $$ = addASTRule(@3, $3, $1); 
+					  if($3) free($3);} 
       /* Error-catching productions */
-      | ProcID	 			{ $$ = addRule(@1, $1, NULL);
+      | ProcID	 			{ $$ = addASTRule(@1, $1, NULL);
                                           report_error("Procedure name used in "
 					   "a rule set. Rule names must start "
 					   "with a lower-case letter.");
-				          free($1); }
-      | IDList ';' RuleID		{ $$ = addRule(@3, $3, $1);
+				          if($1) free($1); }
+      | IDList ';' RuleID		{ $$ = addASTRule(@3, $3, $1);
                                           report_error("Semicolon used in a "
 					   "rule set. Perhaps you meant to "
 					   "use a comma?"); 
-					  free($1); }
+					  if($1) free($1); }
 
 
  /* Grammar for GP2 Rule Definitions. */
 
 RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl  
-					{ $$ = newRule(@1, $1, $3, $5, $7, $8, $9); 
-					  free($1); }
+					{ $$ = newASTRule(@1, $1, $3, $5, $7, $8, $9); 
+					  if($1) free($1); }
         | RuleID '(' ')' Graph ARROW Graph Inter CondDecl 
-      					{ $$ = newRule(@1, $1, NULL, $4, $6, $7, $8);
-					  free($1); }
+      					{ $$ = newASTRule(@1, $1, NULL, $4, $6, $7, $8);
+					  if($1) free($1); }
         /* Error-catching productions */
 	| ProcID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl
-				        { $$ = newRule(@1, $1, $3, $5, $7, $8, $9); 
+				        { $$ = newASTRule(@1, $1, $3, $5, $7, $8, $9); 
                                           report_error("Rule names must "
  					   "start with a lower-case letter."
 				 	   "letter.");
-					  free($1); }
+					  if($1) free($1); }
 	/* This production catches a potentially likely syntax error in which
          * the user terminates the variable declaration list with a semicolon.
          */
         | RuleID '(' VarDecls ';' ')' Graph ARROW Graph Inter CondDecl
-					{ $$ = newRule(@1, $1, $3, $6, $8, $9, $10);  
+					{ $$ = newASTRule(@1, $1, $3, $6, $8, $9, $10);  
                                           report_error("Semicolon at the end "
 					    "of a rule's variable list");
-					  free($1); }	
+					  if($1) free($1); }	
 
 
-VarDecls: VarList ':' Type		{ $$ = addVariableDecl($3, @$, $1, NULL); }  
+VarDecls: VarList ':' Type		{ $$ = addASTVariableDecl($3, @$, $1, NULL); }  
 	/* The location of VarDecls on the LHS is manually set to the location
          * of 'VarList ':' Type' as each Variable Declaration AST node should
          * only represent one list of variables.
@@ -315,12 +315,12 @@ VarDecls: VarList ':' Type		{ $$ = addVariableDecl($3, @$, $1, NULL); }
 				          @$.first_line = @3.first_line;
 					  @$.last_column = @5.last_column;
 				          @$.last_column = @5.last_column;
-					  $$ = addVariableDecl($5, @$, $3, $1); }
+					  $$ = addASTVariableDecl($5, @$, $3, $1); }
 
-VarList: Variable 			{ $$ = addVariable(@1, $1, NULL); 
-					  free($1); }
-       | VarList ',' Variable          	{ $$ = addVariable(@3, $3, $1); 
-		 	                  free($3); }
+VarList: Variable 			{ $$ = addASTVariable(@1, $1, NULL); 
+					  if($1) free($1); }
+       | VarList ',' Variable          	{ $$ = addASTVariable(@3, $3, $1); 
+		 	                  if($3) free($3); }
 
 Inter: INTERFACE '=' '{' '}'   		{ $$ = NULL; }
      | INTERFACE '=' '{' NodeIDList '}' { $$ = $4; }
@@ -330,10 +330,10 @@ Inter: INTERFACE '=' '{' '}'   		{ $$ = NULL; }
                                                        " list.");  
                                           $$ = NULL; }
 
-NodeIDList: NodeID			{ $$ = addNodeID(@1, $1, NULL); 
-					  free($1); }
-          | NodeIDList ',' NodeID 	{ $$ = addNodeID(@3, $3, $1);
-					  free($3); }
+NodeIDList: NodeID			{ $$ = addASTNodeID(@1, $1, NULL); 
+					  if($1) free($1); }
+          | NodeIDList ',' NodeID 	{ $$ = addASTNodeID(@3, $3, $1);
+					  if($3) free($3); }
 
 Type: INT				{ $$ = INT_DECLARATIONS; } 
     | CHAR				{ $$ = CHAR_DECLARATIONS; }
@@ -344,26 +344,28 @@ Type: INT				{ $$ = INT_DECLARATIONS; }
 
  /* Grammar for GP2 Graph Definitions. */
 
-Graph: '[' Position '|' '|' ']'		 { $$ = newGraph(@$, $2, NULL, NULL); }
-     | '[' Position '|' NodeList '|' ']' { $$ = newGraph(@$, $2, $4, NULL); }
+Graph: '[' Position '|' '|' ']'		 { $$ = newASTGraph(@$, $2, NULL, NULL); }
+     | '[' Position '|' NodeList '|' ']' { $$ = newASTGraph(@$, $2, $4, NULL); }
      | '[' Position '|' NodeList '|' EdgeList ']' 
-     					{ $$ = newGraph(@$, $2, $4, $6); }
+     					{ $$ = newASTGraph(@$, $2, $4, $6); }
 
-NodeList: Node				{ $$ = addNode(@1, $1, NULL); }
-        | NodeList Node			{ $$ = addNode(@2, $2, $1); }
+NodeList: Node				{ $$ = addASTNode(@1, $1, NULL); }
+        | NodeList Node			{ $$ = addASTNode(@2, $2, $1); }
 
 Node: '(' NodeID RootNode ',' Label ',' Position ')'
-    					{ $$ = newNode(@2, is_root, $2, $5, $7); 
+    					{ $$ = newASTNode(@2, is_root, $2, $5, $7); 
  					  is_root = false; 	
-					  free($2); } 
+					  if($2) free($2); } 
 
-EdgeList: Edge				{ $$ = addEdge(@1, $1, NULL); }
-        | EdgeList Edge			{ $$ = addEdge(@2, $2, $1); }
+EdgeList: Edge				{ $$ = addASTEdge(@1, $1, NULL); }
+        | EdgeList Edge			{ $$ = addASTEdge(@2, $2, $1); }
 
 Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
-					{ $$ = newEdge(@2, is_bidir, $2, $5, $7, $9);
+					{ $$ = newASTEdge(@2, is_bidir, $2, $5, $7, $9);
                                           is_bidir = false;
-					  free($2); free($5); free($7); }
+					  if($2) free($2); 
+					  if($5) free($5); 
+					  if($7) free($7); }
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
@@ -371,7 +373,7 @@ RootNode: /* empty */
 Bidirection: /* empty */ 
 	   | BIDIRECTIONAL		{ is_bidir = true; }
 
-Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(@$, $2, $4); }
+Position: '(' NUM ',' NUM ')' 		{ $$ = newASTPosition(@$, $2, $4); }
 
 
  /* Grammar for GP2 Conditions. */
@@ -379,20 +381,20 @@ Position: '(' NUM ',' NUM ')' 		{ $$ = newPosition(@$, $2, $4); }
 CondDecl: /* empty */                   { $$ = NULL; }
         | WHERE Condition		{ $$ = $2; }
 
-Condition: Subtype '(' Variable ')' 	{ $$ = newSubtypePred($1, @$, $3); 
-					  free($3); }
+Condition: Subtype '(' Variable ')' 	{ $$ = newASTSubtypePred($1, @$, $3); 
+					  if($3) free($3); }
          | EDGETEST '(' NodeID ',' NodeID  LabelArg ')' 
-					{ $$ = newEdgePred(@$, $3, $5, $6); 
-					  free($3); free($5); }
-	 | List '=' List 		{ $$ = newListComparison(EQUAL, @$, $1, $3); }
-	 | List NEQ List 		{ $$ = newListComparison(NOT_EQUAL, @$, $1, $3); }
-	 | AtomExp '>' AtomExp          { $$ = newAtomComparison(GREATER, @$, $1, $3); }    
-	 | AtomExp GTEQ AtomExp         { $$ = newAtomComparison(GREATER_EQUAL, @$, $1, $3); }    
-	 | AtomExp '<' AtomExp          { $$ = newAtomComparison(LESS, @$, $1, $3); }    
-	 | AtomExp LTEQ AtomExp         { $$ = newAtomComparison(LESS_EQUAL, @$, $1, $3); }    
-         | NOT Condition	        { $$ = newNotExp(@$, $2); }
-         | Condition OR Condition  	{ $$ = newBinaryExp(BOOL_OR, @$, $1, $3); }
-         | Condition AND Condition      { $$ = newBinaryExp(BOOL_AND, @$, $1, $3); }
+					{ $$ = newASTEdgePred(@$, $3, $5, $6); 
+					  if($3) free($3); if($5) free($5); }
+	 | List '=' List 		{ $$ = newASTListComparison(EQUAL, @$, $1, $3); }
+	 | List NEQ List 		{ $$ = newASTListComparison(NOT_EQUAL, @$, $1, $3); }
+	 | AtomExp '>' AtomExp          { $$ = newASTAtomComparison(GREATER, @$, $1, $3); }    
+	 | AtomExp GTEQ AtomExp         { $$ = newASTAtomComparison(GREATER_EQUAL, @$, $1, $3); }    
+	 | AtomExp '<' AtomExp          { $$ = newASTAtomComparison(LESS, @$, $1, $3); }    
+	 | AtomExp LTEQ AtomExp         { $$ = newASTAtomComparison(LESS_EQUAL, @$, $1, $3); }    
+         | NOT Condition	        { $$ = newASTNotExp(@$, $2); }
+         | Condition OR Condition  	{ $$ = newASTBinaryExp(BOOL_OR, @$, $1, $3); }
+         | Condition AND Condition      { $$ = newASTBinaryExp(BOOL_AND, @$, $1, $3); }
 	 | '(' Condition ')' 		{ $$ = $2; }
 
 Subtype: INT				{ $$ = INT_CHECK; } 
@@ -405,36 +407,36 @@ LabelArg: /* empty */ 			{ $$ = NULL; }
 
  /* Grammar for GP2 Labels */
 
-Label: List				{ $$ = newLabel(@$, NONE, $1); }
-     | List '#' MARK	  		{ $$ = newLabel(@$, $3, $1); }
+Label: List				{ $$ = newASTLabel(@$, NONE, $1); }
+     | List '#' MARK	  		{ $$ = newASTLabel(@$, $3, $1); }
      /* Cyan has a distinct token since it cannot occur in the host graph. */
-     | List '#' CYAN_MARK		{ $$ = newLabel(@$, $3, $1); }
+     | List '#' CYAN_MARK		{ $$ = newASTLabel(@$, $3, $1); }
 
 
-List: AtomExp				{ $$ = addAtom(@1, $1, NULL); } 
-    | List ':' AtomExp 			{ $$ = addAtom(@3, $3, $1); }
-    | EMPTY				{ $$ = addEmptyList(@$); }
+List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); } 
+    | List ':' AtomExp 			{ $$ = addASTAtom(@3, $3, $1); }
+    | EMPTY				{ $$ = addASTEmptyList(@$); }
 
 
-AtomExp: Variable			{ $$ = newVariable(@$, $1); free($1); }
-       | NUM 				{ $$ = newNumber(@$, $1); }
-       | CHAR				{ $$ = newCharacter(@$, $1); 
+AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
+       | NUM 				{ $$ = newASTNumber(@$, $1); }
+       | CHAR				{ $$ = newASTCharacter(@$, $1); 
    					  if($1) free($1); }
-       | STR 				{ $$ = newString(@$, $1); 
+       | STR 				{ $$ = newASTString(@$, $1); 
 					  if($1) free($1); }
-       | INDEG '(' NodeID ')' 		{ $$ = newDegreeOp(INDEGREE, @$, $3); 
-					  free($3); }
-       | OUTDEG '(' NodeID ')' 		{ $$ = newDegreeOp(OUTDEGREE, @$, $3); 
-				 	  free($3); }
-       | LLEN '(' List ')' 		{ $$ = newListLength(@$, $3); }
-       | SLEN '(' AtomExp ')' 		{ $$ = newStringLength(@$, $3); }
-       | '-' AtomExp %prec UMINUS 	{ $$ = newNegExp(@$, $2); } 
+       | INDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(INDEGREE, @$, $3); 
+					  if($3) free($3); }
+       | OUTDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(OUTDEGREE, @$, $3); 
+				 	  if($3) free($3); }
+       | LLEN '(' List ')' 		{ $$ = newASTListLength(@$, $3); }
+       | SLEN '(' AtomExp ')' 		{ $$ = newASTStringLength(@$, $3); }
+       | '-' AtomExp %prec UMINUS 	{ $$ = newASTNegExp(@$, $2); } 
        | '(' AtomExp ')' 		{ $$ = $2; }
-       | AtomExp '+' AtomExp 		{ $$ = newBinaryOp(ADD, @$, $1, $3);  }
-       | AtomExp '-' AtomExp 		{ $$ = newBinaryOp(SUBTRACT, @$, $1, $3); }
-       | AtomExp '*' AtomExp 		{ $$ = newBinaryOp(MULTIPLY, @$, $1, $3); }
-       | AtomExp '/' AtomExp 		{ $$ = newBinaryOp(DIVIDE, @$, $1, $3); }
-       | AtomExp '.' AtomExp 		{ $$ = newBinaryOp(CONCAT, @$, $1, $3); }
+       | AtomExp '+' AtomExp 		{ $$ = newASTBinaryOp(ADD, @$, $1, $3);  }
+       | AtomExp '-' AtomExp 		{ $$ = newASTBinaryOp(SUBTRACT, @$, $1, $3); }
+       | AtomExp '*' AtomExp 		{ $$ = newASTBinaryOp(MULTIPLY, @$, $1, $3); }
+       | AtomExp '/' AtomExp 		{ $$ = newASTBinaryOp(DIVIDE, @$, $1, $3); }
+       | AtomExp '.' AtomExp 		{ $$ = newASTBinaryOp(CONCAT, @$, $1, $3); }
 
  /* GP2 Identifiers */
 
@@ -451,38 +453,40 @@ Variable: ID		  		/* default $$ = $1 */
  * are used.
  */
 
-HostGraph: '[' Position '|' '|' ']'  	{ $$ = newGraph(@$, $2, NULL, NULL); }
+HostGraph: '[' Position '|' '|' ']'  	{ $$ = newASTGraph(@$, $2, NULL, NULL); }
          | '[' Position '|' HostNodeList '|' ']'  
-					{ $$ = newGraph(@$, $2, $4, NULL); }
+					{ $$ = newASTGraph(@$, $2, $4, NULL); }
          | '[' Position '|' HostNodeList '|' HostEdgeList ']' 
-     					{ $$ = newGraph(@$, $2, $4, $6); }
+     					{ $$ = newASTGraph(@$, $2, $4, $6); }
 
-HostNodeList: HostNode			{ $$ = addNode(@1, $1, NULL); }
-            | HostNodeList HostNode	{ $$ = addNode(@2, $2, $1); }
+HostNodeList: HostNode			{ $$ = addASTNode(@1, $1, NULL); }
+            | HostNodeList HostNode	{ $$ = addASTNode(@2, $2, $1); }
 
 HostNode: '(' NodeID RootNode ',' HostLabel ',' Position ')'
-    					{ $$ = newNode(@2, is_root, $2, $5, $7); 
+    					{ $$ = newASTNode(@2, is_root, $2, $5, $7); 
  					  is_root = false; 	
-					  free($2); } 
+					  if($2) free($2); } 
 
-HostEdgeList: HostEdge			{ $$ = addEdge(@1, $1, NULL); }
-            | HostEdgeList HostEdge	{ $$ = addEdge(@2, $2, $1); } 
+HostEdgeList: HostEdge			{ $$ = addASTEdge(@1, $1, NULL); }
+            | HostEdgeList HostEdge	{ $$ = addASTEdge(@2, $2, $1); } 
 
 HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
-					{ $$ = newEdge(@2, false, $2, $4, $6, $8);
-					  free($2); free($4); free($6); }
+					{ $$ = newASTEdge(@2, false, $2, $4, $6, $8);
+					  if($2) free($2); 
+					  if($4) free($4); 
+                     			  if($6) free($6); }
 
-HostLabel: HostList			{ $$ = newLabel(@$, NONE, $1); }
-         | HostList '#' MARK	  	{ $$ = newLabel(@$, $3, $1); }
+HostLabel: HostList			{ $$ = newASTLabel(@$, NONE, $1); }
+         | HostList '#' MARK	  	{ $$ = newASTLabel(@$, $3, $1); }
 
-HostList: HostExp 			{ $$ = addAtom(@1, $1, NULL); } 
-        | HostList ':' HostExp 		{ $$ = addAtom(@3, $3, $1); }
-        | EMPTY				{ $$ = addEmptyList(@$); }
+HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); } 
+        | HostList ':' HostExp 		{ $$ = addASTAtom(@3, $3, $1); }
+        | EMPTY				{ $$ = addASTEmptyList(@$); }
 
 
-HostExp: NUM 				{ $$ = newNumber(@$, $1); }
-       | CHAR				{ $$ = newCharacter(@$, $1); free($1); }
-       | STR 				{ $$ = newString(@$, $1); free($1); }
+HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
+       | CHAR				{ $$ = newASTCharacter(@$, $1); if($1) free($1); }
+       | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }
 
 %%
 
