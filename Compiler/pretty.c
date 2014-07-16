@@ -169,7 +169,7 @@ int printDotAST(List *const gp_ast, string file_name)
      print_to_dot_file("node0->node1\n");
 
      next_node_id = 1;   
-     printList(gp_ast,dot_file);
+     printASTList(gp_ast,dot_file);
 
      print_to_dot_file("}\n\n");
 
@@ -209,7 +209,7 @@ int printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
      print_to_dot_file("node0->node1\n");
 
      next_node_id = 1;
-     printGraph(host_graph_ast,dot_file);
+     printASTGraph(host_graph_ast,dot_file);
 
      print_to_dot_file("}\n\n");
 
@@ -235,7 +235,7 @@ int printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
  */
 
 
-void printList(List * const list, FILE *dot_file)
+void printASTList(List * const list, FILE *dot_file)
 {
 
      switch(list->list_type) {
@@ -545,7 +545,7 @@ void printList(List * const list, FILE *dot_file)
 
 
 
-void printDeclaration(GPDeclaration * const decl, FILE *dot_file)
+void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
 {
      switch(decl->decl_type) {
 
@@ -608,7 +608,7 @@ void printDeclaration(GPDeclaration * const decl, FILE *dot_file)
 
 
 
-void printStatement(GPStatement * const stmt, FILE *dot_file)
+void printASTStatement(GPStatement * const stmt, FILE *dot_file)
 {
      switch(stmt->statement_type) {
 
@@ -818,7 +818,7 @@ void printStatement(GPStatement * const stmt, FILE *dot_file)
 
 
 
-void printCondition(GPCondExp * const cond, FILE *dot_file)
+void printASTCondition(GPCondExp * const cond, FILE *dot_file)
 {
      switch(cond->exp_type) {
 
@@ -1145,7 +1145,7 @@ void printCondition(GPCondExp * const cond, FILE *dot_file)
 
 
 
-void printAtom(GPAtomicExp * const atom, FILE *dot_file)
+void printASTAtom(GPAtomicExp * const atom, FILE *dot_file)
 {
      switch(atom->exp_type) {
 
@@ -1444,7 +1444,7 @@ void printAtom(GPAtomicExp * const atom, FILE *dot_file)
 
 
 
-void printProcedure(GPProcedure * const proc, FILE *dot_file)
+void printASTProcedure(GPProcedure * const proc, FILE *dot_file)
 {
      proc->node_id = next_node_id;
      next_node_id += 1;
@@ -1473,7 +1473,7 @@ void printProcedure(GPProcedure * const proc, FILE *dot_file)
 
 
 
-void printRule(GPRule * const rule, FILE *dot_file)
+void printASTRule(GPRule * const rule, FILE *dot_file)
 {
      rule->node_id = next_node_id;
      next_node_id += 1;
@@ -1518,13 +1518,13 @@ void printRule(GPRule * const rule, FILE *dot_file)
      else {                                                            
         print_to_dot_file("node%d->node%d[label=\"condition\"]\n",            
                           rule->node_id, next_node_id);                           
-        printCondition(rule->condition, dot_file);                                        
+        printASTCondition(rule->condition, dot_file);                                        
      }  
 }
 
 
 
-void printGraph(GPGraph * const graph, FILE *dot_file)
+void printASTGraph(GPGraph * const graph, FILE *dot_file)
 {
      graph->node_id = next_node_id;
      next_node_id += 1;
@@ -1545,7 +1545,7 @@ void printGraph(GPGraph * const graph, FILE *dot_file)
 
 
 
-void printNode(GPNode * const node, FILE *dot_file)
+void printASTNode(GPNode * const node, FILE *dot_file)
 {
      node->node_id = next_node_id;
      next_node_id += 1;
@@ -1580,7 +1580,7 @@ void printNode(GPNode * const node, FILE *dot_file)
 
 
 
-void printEdge(GPEdge * const edge, FILE *dot_file)
+void printASTEdge(GPEdge * const edge, FILE *dot_file)
 {
      edge->node_id = next_node_id;
      next_node_id += 1;
@@ -1628,7 +1628,7 @@ void printEdge(GPEdge * const edge, FILE *dot_file)
 }
 
 
-void printPosition(GPPos * const pos, FILE *dot_file)
+void printASTPosition(GPPos * const pos, FILE *dot_file)
 {
      pos->node_id = next_node_id;
      next_node_id += 1;
@@ -1640,7 +1640,7 @@ void printPosition(GPPos * const pos, FILE *dot_file)
 }
 
 
-void printLabel(GPLabel * const label, FILE *dot_file)
+void printASTLabel(GPLabel * const label, FILE *dot_file)
 {
      label->node_id = next_node_id;
      next_node_id += 1;
