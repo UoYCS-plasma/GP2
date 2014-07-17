@@ -65,15 +65,11 @@ typedef struct Node {
    bool root;
    LabelClass label_class;
    MarkType mark; /* MarkType defined in ast.h */
-   /* GList is glib's doubly-linked list. Its values are pointers,
-    * so values being any GP atomic type is not a concern.
-    */ 
    GList *list; 
    int indegree;
    int outdegree;
    GHashTable *in_edges_by_label;
    GHashTable *out_edges_by_label;
-   /* innodes and outnodes? */
 } Node;
 
 
@@ -129,6 +125,7 @@ void freeGraph (Graph *graph);
 void freeNode (void *p);
 void freeEdge (void *p);
 void freeListElement(void *p);
+void freeGSList(gpointer key, gpointer value, gpointer data); 
 
 /* Graph querying functions */
 

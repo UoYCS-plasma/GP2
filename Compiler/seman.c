@@ -414,7 +414,7 @@ bool semanticCheck(List * declarations, GHashTable *table,
     * return knowing the whole AST has been scanned.
     */
    if(!strcmp(scope,"Global")) {
-      freeBiEdgeList(bidirectional_edges);
+      if(bidirectional_edges) freeBiEdgeList(bidirectional_edges);
       return abort_compilation;
    }
 }   
@@ -1268,11 +1268,11 @@ void interfaceScan(List * interface, GHashTable *table,
    */
   for(iterator = interface_ids; iterator->next; iterator = iterator->next) {
         if(!strcmp(iterator->data,iterator->next->data))
-           print_to_log("Warning (%s.%s): Node %s occurs twice in interface "
-                        "list.\n",
+           print_to_log("Warning (%s.%s): Node %s occurs twice in "
+                        "interface list.\n",
 		        scope, rule_name, (char*)(iterator->data));
   }
-
+  g_slist_free(interface_ids); 
 }
 
 
