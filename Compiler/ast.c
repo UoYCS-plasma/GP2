@@ -562,6 +562,7 @@ GPAtomicExp *newASTString (YYLTYPE location, string string)
      atom->exp_type = STRING_CONSTANT;
      atom->location = location;
      if(string) atom->value.string = strdup(string);
+     else atom->value.string = NULL;
 
      return atom;
 }
@@ -796,6 +797,8 @@ GPLabel *newASTLabel (YYLTYPE location, MarkType mark, List *gp_list)
 
 void freeAST(List *ast) 
 {
+   if(!ast) return;
+ 
    switch(ast->list_type) {
 
 	case GLOBAL_DECLARATIONS:

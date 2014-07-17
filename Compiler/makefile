@@ -1,4 +1,4 @@
-P = gpparse
+P = runGP
 OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o graph.o main.o
 CC = gcc
 #CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
@@ -12,9 +12,20 @@ default:        $(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
 		./$(P) $(F1) $(F2)       	
 
+debug:		$(OBJECTS)
+		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
+		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
+
 # For testing the graph API.
 graph:		ast.o graph.o testgraph.o
 		$(CC) graph.o testgraph.o $(LFLAGS) -o testgraph
+		./testgraph
+
+graph-debug:	ast.o graph.o testgraph.o
+		$(CC) graph.o testgraph.o $(LFLAGS) -o testgraph
+		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes --suppressions=GNOME.supp/glib.supp ./testgraph
+
+
 
 # Builds executable gpparse.
 # Usage: make gpparse
@@ -52,5 +63,5 @@ testgraph.o:	testgraph.c graph.h ast.h
 		$(CC) $(CFLAGS) -c testgraph.c
 
 clean:
-		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c gpparse
+		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c runGP
 
