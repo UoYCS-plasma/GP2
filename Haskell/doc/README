@@ -1,0 +1,19 @@
+Known Issues
+============
+The isomorphism filter isn't working properly. This is most evident when running
+inverse-prog: all output graphs are isomorphic but it outputs them all to separate
+files. I *think* this happens because I do not perform an isomorphism check on the final
+list of output graphs. Currently isomorphism checking is performed after each
+rule application (line 94 of RunProgram.hs). Either that or the isomorphism 
+checker doesn't work properly. Or both.
+
+The acyclic program is not interpreted correctly. It outputs a "yes" node on
+acyclic-graph2.txt despite the fact that the graph is a cycle. This might be 
+because it doesn't properly evaluate the indeg (n1) = 0 condition in the
+delete rule.
+
+The 2-colouring program has a rule with bidirectional edges but I do not believe 
+we ever wrote code to handle bidirectional edges during graph matching and rule
+application.
+
+

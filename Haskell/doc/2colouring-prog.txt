@@ -1,0 +1,31 @@
+Main = choose; colour!; if illegal then undo!
+
+choose (x: list) [
+(n1, x) | 
+] => [
+(n1, x:0 # grey) | 
+]
+interface = {n1}
+
+
+colour (a, x, y: list; i: int) [
+(n1, x:i # grey) (n2, y) | (e1 (B), n1, n2, a) 
+] => [
+(n1, x:i # grey) (n2, y:- i 1 #grey) | (e1 (B), n1, n2, a) 
+]
+interface = {n1, n2}
+
+
+illegal (a, x, y: list; i: int) [
+(n1, x:i # grey) (n2, y:i # grey) | (e1, n1, n2, a) 
+] => [
+(n1, x:i # grey) (n2, y:i # grey) | (e1, n1, n2, a) 
+]
+interface = {n1, n2}
+
+undo (x: list; i:int) [
+(n1, x:i # grey) | 
+] => [
+(n1, x) | 
+]
+interface = {n1}
