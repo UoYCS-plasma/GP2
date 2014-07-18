@@ -91,7 +91,8 @@ extern int parse_target;
 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
-<IN_STRING>[a-zA-Z0-9_]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
+<IN_STRING>[a-zA-Z0-9_]{0,63} 	 { yylval.str = strdup(yytext); 
+                                   if(yyleng==1) return CHAR; else return STR; }
 <IN_STRING>(\n)                  { print_to_log("%d.%d-%d.%d: String "
           				         "continues on new line.\n", 
                                         yylloc.first_line, yylloc.first_column, 
@@ -111,48 +112,6 @@ extern int parse_target;
 				   abort_scan = true; 
                                    yyterminate(); }  
 
- /* The empty character is not valid GP2 syntax. */
-"''"				 { print_to_console("Error: Empty character "
-					            "expression.\n"); 
-				   print_to_log("%d.%d-%d.%d: Empty character "
-          				  "expression.\n", 
-					  yylloc.first_line, yylloc.first_column, 
-                                          yylloc.last_line, yylloc.last_column); 
-		                    abort_scan = true;
-				    yylval.str = NULL; return CHAR; }
-
-'				BEGIN(IN_CHAR);
-<IN_CHAR>'			BEGIN(INITIAL);
-<IN_CHAR>[a-zA-Z0-9_]		{ yylval.str = strdup(yytext); return CHAR; }
-<IN_CHAR>[a-zA-Z0-0_]{2,}       { print_to_console("Error: Invalid character "
-					       "expression: '%s'.\n", yytext); 
-				  print_to_log("%d.%d-%d.%d: Invalid character "
-          				  "expression: '%s'.\n", 
-					  yylloc.first_line, yylloc.first_column, 
-                                          yylloc.last_line, yylloc.last_column,
-                                          yytext); 
-		                  abort_scan = true;
-				  yylval.str = strdup(yytext); return CHAR; }
-<IN_CHAR>(\n)                   { print_to_log("%d.%d-%d.%d: Character "
-          				"expression continues on new line.\n", 
-                                        yylloc.first_line, yylloc.first_column, 
-                                        yylloc.last_line, yylloc.last_column);	
-				   abort_scan = true;
-                                   yyterminate(); }
-<IN_CHAR>[^'a-zA-Z0-9_]         { print_to_console("Error: Invalid character: "
-			 		           "'%c'.\n", yytext[0]); 
-				  print_to_log("%d.%d-%d.%d: Invalid character: "
-          				       "%c'.\n", 
-					  yylloc.first_line, yylloc.first_column, 
-                                          yylloc.last_line, yylloc.last_column,
-                                          yytext[0]); 
-		                  abort_scan = true;
-				  yylval.str = strdup(yytext); return CHAR; }
-<IN_CHAR><<EOF>>   	        { print_to_log("Line %d: Unterminated "
-          		                       "character.\n", yylineno); 
-				  abort_scan = true;
-				  yyterminate(); }   
-
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
  /* GP2 keywords */ 
@@ -169,13 +128,10 @@ and                 return AND;
 or                  return OR;
 not                 return NOT;
 edge                return EDGETEST;
-true                return TRUE;
-false               return FALSE;
 indeg 		    return INDEG;
 outdeg		    return OUTDEG;
 interface	    return INTERFACE;
 empty		    return EMPTY;
-injective           return INJECTIVE;
 llength		    return LLEN;
 slength	            return SLEN;
 

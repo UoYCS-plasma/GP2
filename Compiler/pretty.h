@@ -48,7 +48,7 @@
 #define prettyPrint(POINTER_ARG,TYPE)                                         \
   do { 									      \
        if(POINTER_ARG != NULL)                                                \
-         print ## TYPE (POINTER_ARG, dot_file);                               \
+         printAST ## TYPE (POINTER_ARG, dot_file);                            \
        else {                                                                 \
          print_to_dot_file("node%d[shape=plaintext,label=\"%d ERROR\"]\n",    \
                  next_node_id, next_node_id);                                 \
@@ -90,7 +90,7 @@
         else {                                                              \
           print_to_dot_file("node%d->node%d[label=\"" #EDGE_LABEL "\"]\n",  \
                   NODE_TYPE->node_id, next_node_id);                        \
-          printList(POINTER_ARG, dot_file);                                 \
+          printASTList(POINTER_ARG, dot_file);                              \
         }                                                                   \
       } 			                                            \
     while (0)
@@ -160,17 +160,17 @@ int printDotHostGraph(GPGraph * const host_graph_ast, string file_name);
  *
  */
 
-void printList(List * const list, FILE *dot_file);
-void printDeclaration(GPDeclaration * const decl, FILE *dot_file);
-void printStatement(GPStatement * const stmt, FILE *dot_file);
-void printCondition(GPCondExp * const cond, FILE *dot_file);
-void printAtom(GPAtomicExp * const atom, FILE *dot_file);
-void printProcedure(GPProcedure * const proc, FILE *dot_file);
-void printRule(GPRule * const rule, FILE *dot_file);
-void printGraph(GPGraph * const graph, FILE *dot_file);
-void printNode(GPNode * const node, FILE *dot_file);
-void printEdge(GPEdge * const edge, FILE *dot_file);
-void printLabel(GPLabel * const label, FILE *dot_file);
-void printPosition(GPPos * const pos, FILE *dot_file);
+void printASTList(List * const list, FILE *dot_file);
+void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file);
+void printASTStatement(GPStatement * const stmt, FILE *dot_file);
+void printASTCondition(GPCondExp * const cond, FILE *dot_file);
+void printASTAtom(GPAtomicExp * const atom, FILE *dot_file);
+void printASTProcedure(GPProcedure * const proc, FILE *dot_file);
+void printASTRule(GPRule * const rule, FILE *dot_file);
+void printASTGraph(GPGraph * const graph, FILE *dot_file);
+void printASTNode(GPNode * const node, FILE *dot_file);
+void printASTEdge(GPEdge * const edge, FILE *dot_file);
+void printASTLabel(GPLabel * const label, FILE *dot_file);
+void printASTPosition(GPPos * const pos, FILE *dot_file);
 
 #endif /* INC_PRETTY_H */

@@ -1,16 +1,31 @@
-P = gpparse
-OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o main.o
+P = runGP
+OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o graph.o main.o
 CC = gcc
 #CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 CFLAGS = -g -Wall -Wextra -I/local/d0p6/chrisbak/root/include/glib-2.0 -I/local/d0p6/chrisbak/root/lib/glib-2.0/include
 LFLAGS = -lglib-2.0
 
 
-# Builds executable gpparse and uns it on extensionless files.
+# Builds executable gpparse and runs it on extensionless files.
 # Usage: make F1=<program_filename> F2=<graph_filename>
 default:        $(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
 		./$(P) $(F1) $(F2)       	
+
+debug:		$(OBJECTS)
+		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
+		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
+
+# For testing the graph API.
+graph:		ast.o graph.o testgraph.o
+		$(CC) graph.o testgraph.o $(LFLAGS) -o testgraph
+		./testgraph
+
+graph-debug:	ast.o graph.o testgraph.o
+		$(CC) graph.o testgraph.o $(LFLAGS) -o testgraph
+		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes --suppressions=GNOME.supp/glib.supp ./testgraph
+
+
 
 # Builds executable gpparse.
 # Usage: make gpparse
@@ -29,7 +44,7 @@ lex.yy.o: 	lex.yy.c
 lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
 		flex gplexer.lex
 
-main.o:         main.c pretty.h ast.h seman.h
+main.o:         main.c pretty.h ast.h seman.h 
 		$(CC) $(CFLAGS) -c main.c
 
 ast.o: 		ast.c ast.h
@@ -41,6 +56,12 @@ pretty.o:       pretty.c pretty.h ast.h seman.h
 seman.o:	seman.c seman.h ast.h
 		$(CC) $(CFLAGS) -c seman.c
 
+graph.o:	graph.c graph.h ast.h
+		$(CC) $(CFLAGS) -c graph.c
+
+testgraph.o:	testgraph.c graph.h ast.h
+		$(CC) $(CFLAGS) -c testgraph.c
+
 clean:
-		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c gpparse
+		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c runGP
 

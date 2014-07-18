@@ -1,5 +1,11 @@
 module ParseLib where
 
+{- Chris Bak: to avoid "Local definition of ‘pure’ clashes with a future 
+-- Prelude nameLocal definition of ‘pure’ clashes with a future Prelude name" error
+-- Ditto with '<*>'
+-- A consequence of me running the latest GHC on my laptop.
+-- This is only a short-term fix. Better would be to rename pure and <*> in this module.
+import Prelude (String, Bool, not,  (.), elem, read, notElem, null, ($), take, (++), (==), map, error) -}
 import Data.Char
 
 import GPSyntax
@@ -144,19 +150,16 @@ label = token ( atLeastOne gpChar ) <| optSpaces
 
 identifier :: Parser Char -> Parser String
 identifier first = guarded g (pure (:) <*> first <*> maybeSome gpChar)
-  where g s = s `notElem` gpKeywords
+  where g s = (map toLower s) `notElem` keywords
 
 lowerIdent :: Parser String
-lowerIdent = identifier lower
+lowerIdent = identifier lower <| optSpaces
 
 upperIdent :: Parser String
-upperIdent = identifier upper
+upperIdent = identifier upper <| optSpaces
 
-root :: Parser String
-root = keyword "(R)"
-
-empty :: Parser String
-empty = keyword "empty"
+root :: Parser Bool
+root = pure (not . null) <*> (maybeOne $ keyword "(R)")
 
 parse :: Parser a -> String -> a
 parse p s =
