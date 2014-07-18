@@ -24,14 +24,14 @@ testProg = fst $ makeGPProgram $ parse program programStr
 
 programStr = concat ["Main = r\nr (a:list)\n",
                      "[ (n1, a) | (e1, n1, n1, 1) ]\n=>\n",
-                     "[ (n1, a) | (e1, n1, n1, \"fuck\") ]\n",
+                     "[ (n1, a) | (e1, n1, n1, empty) ]\n",
                      "interface = {n1}"]
 
 testRule = makeRule (parse rule ruleStr) "Global" []
 
 ruleStr = concat ["r (a:list)\n",
                   "[ (n1, a) | (e1, n1, n1, 1) ]\n=>\n",
-                  "[ (n1, a) | (e1, n1, n1, \"fuck\") ]\n",
+                  "[ (n1, a) | (e1, n1, n1, empty) ]\n",
                   "interface = {n1}"]
 
 testlhs = fst $ makeRuleGraph (parse ruleGraph lhsStr) "Global" "r" [("a", Symbol (Var_S ListVar False) "Global" "r")]
@@ -45,12 +45,15 @@ hostStr = "[ (n1, 1) (n2, 2) | (e1, n1, n1, 1) ]"
 printGraph :: HostGraph -> String
 printGraph = graphToGP2 . makePrintableGraph
 
+
 printResult :: FilePath -> Result -> IO ()
 printResult fileName (gs, fc, uc) = do
    putStrLn $ show fc ++ " fails."
    putStrLn $ show uc ++ " unfinished computations."
    printGraphData fileName 1 gs
 
+-- It's better if this function creates files in a new directory,
+-- but I do not know how to do this.
 printGraphData :: FilePath -> Int -> [GraphData] -> IO ()
 printGraphData _ _ [] = putStrLn ""
 printGraphData fileName k ((graph, count):gcs) = do
@@ -67,12 +70,16 @@ main = do
     [progFile, graphFile, max] <- getArgs
     p <- readFile progFile
     g <- readFile graphFile
+    let progName = takeWhile (/= '.') progFile
     let maxRules = read max
+    -- Print host graph parse output
+    putStrLn $ show $ hostGraph g
     let host = makeHostGraph $ parse hostGraph g
-    putStrLn $ "\nGP 2 program " ++ progFile ++ " executed on host graph in " ++ graphFile ++ "."
-    -- Program parse output: putStrLn $ show $ program p
+    putStrLn $ "\nGP 2 program " ++ progFile ++ " executed on host graph in " ++ graphFile ++ ".\n"
+    -- Print program parse output
+    putStrLn $ show $ program p
     let (prog, syms) = makeGPProgram $ parse program p
     putStrLn $ "Program execution stopped at " ++ show maxRules ++ " rule applications.\n"
     let result = runProgram prog maxRules host
-    printResult progFile result
+    printResult progName result
 

@@ -23,12 +23,6 @@ type GraphData = (HostGraph, Int)
 -- respect to the bound on rule applications. 
 type Result = ([GraphData], Int, Int)
 
--- Output: List of (finished) host graphs, number of unfinished executions.
--- Failureed executions produce the empty graph. # failures = # empty graphs.
--- TODO: How and where to check when the max rule applications has been reached? 
---           Note that this is done per graph, not globally. How to stop execution for one graph?
--- TODO: Filter out isomorphic graphs at this stage and keep a count.
-
 runProgram :: GPProgram -> Int -> HostGraph -> Result
 runProgram (Program ds) max g = processData $ evalMain max ds (findMain ds) g
 
@@ -96,6 +90,7 @@ evalSimpleCommand max ds (RuleCall rs) (GS g ic rc) =
         else let resultGraphs = [h | r <- rs, h <- applyRule g $ ruleLookup r ds] in
             case resultGraphs of
                 [] -> [Failure]
+                -- Isomorphism filtering performed after each rule application.
                 hs -> [makeGS h (rc+1) | h <- getIsomorphismData (g, ic) hs]
                     where makeGS (x, y) z = GS x y z
 evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g ic rc) = 

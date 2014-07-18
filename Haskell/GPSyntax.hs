@@ -4,7 +4,7 @@ import Graph
 
 gpNumChars, gpChars :: [Char]
 gpNumChars = ['0'..'9']
-gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , gpNumChars , ['_'] ]
+gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , gpNumChars , ['_'], ['-'] ]
 
 keywords :: [String]
 keywords = map fst hostColours ++
