@@ -118,7 +118,8 @@ void relabelEdge(Graph *graph, int index, GList *new_label);
 void printGraph (Graph *graph);
 void printNode (gpointer data, gpointer user_data);
 void printEdge (gpointer data, gpointer user_data);
-void printListElement(gpointer data, gpointer user_data);
+void printList(GList *list);
+void printListElement(ListElement* elem);
 void printEdgeData(gpointer key, gpointer value, gpointer user_data);
 
 void freeGraph (Graph *graph);

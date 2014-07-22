@@ -1,8 +1,8 @@
 P = runGP
 OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o graph.o main.o
 CC = gcc
-#CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
-CFLAGS = -g -Wall -Wextra -I/local/d0p6/chrisbak/root/include/glib-2.0 -I/local/d0p6/chrisbak/root/lib/glib-2.0/include
+CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
+#CFLAGS = -g -Wall -Wextra -I/local/d0p6/chrisbak/root/include/glib-2.0 -I/local/d0p6/chrisbak/root/lib/glib-2.0/include
 LFLAGS = -lglib-2.0
 
 
@@ -23,7 +23,7 @@ graph:		ast.o graph.o testgraph.o
 
 graph-debug:	ast.o graph.o testgraph.o
 		$(CC) graph.o testgraph.o $(LFLAGS) -o testgraph
-		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes --suppressions=GNOME.supp/glib.supp ./testgraph
+		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes ./testgraph
 
 
 

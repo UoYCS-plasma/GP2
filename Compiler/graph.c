@@ -196,8 +196,9 @@ void printNode (gpointer data, gpointer user_data) {
     printf("Label Class: %d\n", node->label_class);
     printf("Mark: %d\n", node->mark);
     printf("Label: ");
-    if(node->list) g_list_foreach(node->list, printListElement, NULL);
-    else printf("empty\n");
+    if(node->list) printList(node->list);
+    else printf("empty");
+    printf("\n");
     printf("Indegree: %d\nOutdegree: %d\n", node->indegree, node->outdegree);
     if(node->in_edges_by_label) 
         g_hash_table_foreach(node->in_edges_by_label, printEdgeData, "Incoming");
@@ -215,8 +216,9 @@ void printEdge (gpointer data, gpointer user_data) {
     printf("Label Class: %d\n", edge->label_class);
     printf("Mark: %d\n", edge->mark);
     printf("Label: ");
-    if(edge->list) g_list_foreach(edge->list, printListElement, NULL);
-    else printf("empty\n");
+    if(edge->list) printList(edge->list);
+    else printf("empty");
+    printf("\n");
     printf("Source: %d-%s\n", edge->source->index, edge->source->name);
     printf("Target: %d-%s\n", edge->target->index, edge->target->name);
     printf("\n");
@@ -229,93 +231,112 @@ void printEdgeData (gpointer key, gpointer value, gpointer user_data) {
     for(current_edge = value; current_edge; current_edge = current_edge->next)
     {
         Edge* edge = (Edge *)(current_edge->data);
-        printf("%d-%s-%d ", edge->index, edge->name, *(int *)key);
+        printf("%d-%s", edge->index, edge->name);
     }
     printf("\n");
 } 
 
 
-void printListElement(gpointer data, gpointer user_data) {
-    ListElement *elem = (ListElement *)data;
-    
+void printList(GList *list) {
+
+    while(list) {
+        printListElement((ListElement*)list->data);
+        if(list->next) printf(" : ");
+        list = list->next;
+    } 
+}
+
+void printListElement(ListElement* elem) {
+       
     switch(elem->type) {
 
 	case VARIABLE: 
-             printf("Variable %s", elem->value.name);
-             break;
+	     printf("%s", elem->value.name);
+	     break;
 
 	case INT_CONSTANT: 
-             printf("Integer %d", elem->value.number);
-             break;
+	     printf("%d", elem->value.number);
+	     break;
 
-        case CHARACTER_CONSTANT:
-             printf("Character %s", elem->value.string);
-             break;
+	case CHARACTER_CONSTANT:
+	     printf("\"%s\"", elem->value.string);
+	     break;
 
 	case STRING_CONSTANT:
-             printf("String %s", elem->value.string);
-             break;
+	     printf("\"%s\"", elem->value.string);
+	     break;
 
 	case INDEGREE:
-	     printf("Indegree %s", elem->value.node_id);
+	     printf("indeg(%s)", elem->value.node_id);
 	     break;
  
-        case OUTDEGREE:
-	     printf("Outdegree %s", elem->value.node_id);
+	case OUTDEGREE:
+	     printf("outdeg(%s)", elem->value.node_id);
 	     break;
 
 	case LIST_LENGTH:
-             printf("Llength ");
-             g_list_foreach(elem->value.list_arg, printListElement, NULL);
-             break;
+	     printf("llength(");
+	     printList(elem->value.list_arg);
+	     printf(")");
+	     break;
 
 	case STRING_LENGTH:
-             printf("Slength ");
-             printListElement(elem->value.str_arg, NULL);
-             break;
+	     printf("slength(");
+	     printListElement(elem->value.str_arg);
+	     printf(")");
+	     break;
 
 	case NEG:
-             printf("- ");
-             printListElement(elem->value.exp, NULL);
-             break;
+	     printf("- ");
+	     printListElement(elem->value.exp);
+	     break;
 
 	case ADD:
-             printListElement(elem->value.bin_op.left_exp, NULL);
-             printf(" + ");
-             printListElement(elem->value.bin_op.right_exp, NULL);
-             break;
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" + ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
 
 	case SUBTRACT:
-             printListElement(elem->value.bin_op.left_exp, NULL);
-             printf(" - ");
-             printListElement(elem->value.bin_op.right_exp, NULL);
-             break;
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" - ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
 
 	case MULTIPLY:
-             printListElement(elem->value.bin_op.left_exp, NULL);
-             printf(" * ");
-             printListElement(elem->value.bin_op.right_exp, NULL);
-             break;
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" * ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
 
 	case DIVIDE:
-             printListElement(elem->value.bin_op.left_exp, NULL);
-             printf(" / ");
-             printListElement(elem->value.bin_op.right_exp, NULL);
-             break;
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" / ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
 
 	case CONCAT:
-             printListElement(elem->value.bin_op.left_exp, NULL);
-             printf(" . ");
-             printListElement(elem->value.bin_op.right_exp, NULL);
-             break;
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" . ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
 
 	default: printf("Unexpected List Element Type: %d\n",
-                       (int)elem->type); 
-                 break;
+		       (int)elem->type); 
+		 break;
     }
-
-    printf(" : ");
 }
+
 
 void freeGraph (Graph *graph) {
     if(graph->nodes) g_ptr_array_free(graph->nodes,TRUE);
