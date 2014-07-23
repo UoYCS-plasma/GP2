@@ -28,14 +28,14 @@ typedef enum {EMPTY=0, CHAR_L, STR_L, INT_L, ATOM_L, LIST2_L, LIST3_L, LIST4_L,
               LIST5_L} LabelClass;
 
 /* Invariants on graphs:
- * (1) A graph with N nodes has assigned node IDs 1,...,N. next_node_id is N+1.
- * (2) A graph with E edges has assigned edge IDs 1,...,N. next_edge_id is E+1.
+ * (1) A graph with N nodes has assigned node indexes 1,...,N. next_node_index
+ *     is N+1.
+ * (2) A graph with E edges has assigned edge indexes 1,...,N. next_edge_index
+ *     is E+1.
  * (3) All edges in a node's incoming/outgoing edge list are in the graph's
  *     edges_by_label table.
  * (4) An edge's source and target node are in the graph's nodes_by_label table.
- * Never mind those first two. Won't be ideal for removing nodes.
  */
-
 
 typedef struct Graph {
    /* These indices are kept in sync with the GPtrArrays. */
@@ -105,8 +105,19 @@ typedef struct ListElement {
 } ListElement;
    
 
-/* Graph utility functions */
+/* Graph utility functions
+ * =======================
+ * The add functions take a graph, a pointer to the item to add and the
+ * item's index in the graph's node/edge array. Either the graph's next node
+ * id or the graph's next edge id should be passed as the third argument. 
+ * 
+ * The remove and relabel functions take a graph and the index in the graph's 
+ * node or edge array of the item to be modified. Each node and edge stores 
+ * its own index so that the function can be called when the caller has access
+ * to the node/edge pointer.
+ */
 
+/* Creates an empty graph and returns a pointer to it. */
 Graph *newGraph(void);
 void addNode(Graph *graph, Node *node, int index); 
 void addEdge(Graph *graph, Edge *edge, int index);
@@ -115,28 +126,42 @@ void removeEdge(Graph *graph, int index);
 void relabelNode(Graph *graph, int index, GList *new_label); 
 void relabelEdge(Graph *graph, int index, GList *new_label); 
 
+/* Graph querying functions 
+ * ========================
+ * The functions to get nodes and get edges take a label class.
+ * The functions return the list of items with that label class,
+ * drawn from the hashtables indexed by label classes.
+ */
+
+GSList *getNodes(Graph *graph, LabelClass label_class);
+GSList *getEdges(Graph *graph, LabelClass label_class);
+GSList *getInEdges(Node *node, LabelClass label_class);
+GSList *getOutEdges(Node *node, LabelClass label_class);
+Node *getSource(Edge *edge);
+Node *getTarget(Edge *edge);
+GList *getNodeLabel(Node *node);
+GList *getEdgeLabel(Edge *edge);
+int getIndegree (Node *node);
+int getOutdegree (Node *node);
+
+
+/* Printing and freeing functions */
+
 void printGraph (Graph *graph);
 void printNode (gpointer data, gpointer user_data);
 void printEdge (gpointer data, gpointer user_data);
 void printList(GList *list);
 void printListElement(ListElement* elem);
+/* printEdgeData is used to print a node's incoming/outgoing edge
+ * table. It does not print the entire edge: just its index and name.
+ */
 void printEdgeData(gpointer key, gpointer value, gpointer user_data);
 
 void freeGraph (Graph *graph);
 void freeNode (void *p);
 void freeEdge (void *p);
 void freeListElement(void *p);
+/* A wrapper for g_slist_free so that it can be called by g_hash_table_foreach.
+ */
 void freeGSList(gpointer key, gpointer value, gpointer data); 
 
-/* Graph querying functions */
-
-GSList *getNodes(Graph *graph, LabelClass label_class);
-GSList *getEdges(Graph *graph, LabelClass label_class);
-GSList *getInEdges(Node *node, LabelClass label_class);
-GSList *getOutEdges(Node *node, LabelClass label_class);
-GSList *getSource(Edge *edge);
-GSList *getTarget(Edge *edge);
-GList *getNodeLabel(Node *node);
-GList *getEdgeLabel(Edge *edge);
-int getIndegree (Node *node);
-int getOutdegree (Node *node);
