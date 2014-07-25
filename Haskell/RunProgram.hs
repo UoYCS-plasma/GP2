@@ -92,6 +92,9 @@ evalSimpleCommand max ds (RuleCall rs) (GS g ic rc) =
                 [] -> [Failure]
                 -- Isomorphism filtering performed after each rule application.
                 hs -> [makeGS h (rc+1) | h <- getIsomorphismData (g, ic) hs]
+                -- TODO: the above only filters graphs that unchanged by the rule application
+                -- not those that are non-unique in the result set!
+                --hs -> [makeGS h (rc+1) | h <- getIsomorphismData (head hs, ic) $ tail hs]
                     where makeGS (x, y) z = GS x y z
 evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g ic rc) = 
     if rc == max 

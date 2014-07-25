@@ -2,6 +2,7 @@ module Main where
 
 import System.IO
 import System.Environment
+import System.Console.GetOpt
 
 import ApplyRule
 import ExAr
@@ -66,20 +67,27 @@ printGraphData fileName k ((graph, count):gcs) = do
 
 -- TODO: convert progFile into a string of the actual program name
 -- i.e. trim off the file extension.
+
+usage = "Usage: gp2 <prog> <hostGraph> <maxDepth>"
+
 main = do
-    [progFile, graphFile, max] <- getArgs
-    p <- readFile progFile
-    g <- readFile graphFile
-    let progName = takeWhile (/= '.') progFile
-    let maxRules = read max
-    -- Print host graph parse output
-    putStrLn $ show $ hostGraph g
-    let host = makeHostGraph $ parse hostGraph g
-    putStrLn $ "\nGP 2 program " ++ progFile ++ " executed on host graph in " ++ graphFile ++ ".\n"
-    -- Print program parse output
-    putStrLn $ show $ program p
-    let (prog, syms) = makeGPProgram $ parse program p
-    putStrLn $ "Program execution stopped at " ++ show maxRules ++ " rule applications.\n"
-    let result = runProgram prog maxRules host
-    printResult progName result
+    args <- getArgs
+    case getOpt Permute [] args of
+        (flags, [progFile, graphFile, max], []) -> do
+            p <- readFile progFile
+            g <- readFile graphFile
+            let progName = takeWhile (/= '.') progFile
+            let maxRules = read max
+            -- Print host graph parse output
+            putStrLn $ show $ hostGraph g
+            let host = makeHostGraph $ parse hostGraph g
+            putStrLn $ "\nGP 2 program " ++ progFile ++ " executed on host graph in " ++ graphFile ++ ".\n"
+            -- Print program parse output
+            putStrLn $ show $ program p
+            let (prog, syms) = makeGPProgram $ parse program p
+            putStrLn $ "Program execution stopped at " ++ show maxRules ++ " rule applications.\n"
+            let result = runProgram prog maxRules host
+            printResult progName result
+        (_, _, errs) -> do
+            error (concat errs ++ usage)
 
