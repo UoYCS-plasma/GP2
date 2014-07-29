@@ -10,7 +10,7 @@ import GPSyntax
 -- Second component is the number of isomorphic copies of the working graph 
 -- generated during program execution.
 -- Third component is the number of rules applied to reach the graph state.	
-data GraphState = GS HostGraph Int Int
+data GraphState = GS HostGraph Int
                 | Failure 
                 | Unfinished
     deriving Show
@@ -24,14 +24,17 @@ type GraphData = (HostGraph, Int)
 type Result = ([GraphData], Int, Int)
 
 runProgram :: GPProgram -> Int -> HostGraph -> Result
-runProgram (Program ds) max g = processData $ evalMain max ds (findMain ds) g
+runProgram (Program ds) max g = isoFilter $ processData $ evalMain max ds (findMain ds) g
+    where isoFilter :: ([HostGraph], Int, Int) -> Result
+          isoFilter (gs, fc, uc) = (isomorphismCount gs, fc, uc)
 
-processData :: [GraphState] -> Result
+
+processData :: [GraphState] -> ([HostGraph], Int, Int)
 processData = foldr addGraphState ([], 0, 0)
-   where addGraphState :: GraphState -> Result -> Result
-         addGraphState (GS g ic r) (gs, fc, uc) = ((g, ic):gs, fc, uc)
-         addGraphState (Unfinished) (gs, fc, uc) = (gs, fc, uc+1)
-         addGraphState (Failure) (gs, fc, uc) = (gs, fc+1, uc)
+    where addGraphState :: GraphState -> ([HostGraph], Int, Int) -> ([HostGraph], Int, Int) 
+          addGraphState (GS g rc) (gs, fc, uc) = (g:gs, fc, uc)
+          addGraphState (Unfinished) (gs, fc, uc) = (gs, fc, uc+1)
+          addGraphState (Failure) (gs, fc, uc) = (gs, fc+1, uc)
         
 findMain :: [Declaration] -> Main
 findMain ((MainDecl m):ds) = m
@@ -39,7 +42,7 @@ findMain (_:ds) = findMain ds
 findMain [] = error "No main procedure defined."
 
 evalMain :: Int -> [Declaration] -> Main -> HostGraph -> [GraphState]
-evalMain max ds (Main coms) g = evalCommandSequence max ds coms (GS g 1 0)
+evalMain max ds (Main coms) g = evalCommandSequence max ds coms (GS g 0)
 
 evalCommandSequence :: Int -> [Declaration] -> [Command] -> GraphState -> [GraphState]
 evalCommandSequence _ _ _ Failure = [Failure]
@@ -83,20 +86,22 @@ evalBlock max ds (ProgramOr b1 b2) gs = evalBlock max ds b1 gs
 evalSimpleCommand :: Int -> [Declaration] -> SimpleCommand -> GraphState -> [GraphState]
 evalSimpleCommand _ _ _ Failure = [Failure]
 evalSimpleCommand _ _ _ Unfinished = [Unfinished]
-evalSimpleCommand max ds (RuleCall rs) (GS g ic rc) = 
+evalSimpleCommand max ds (RuleCall rs) (GS g rc) = 
     if rc == max 
         then [Unfinished]
         -- Apply all rules in the set at the same time.
         else let resultGraphs = [h | r <- rs, h <- applyRule g $ ruleLookup r ds] in
             case resultGraphs of
                 [] -> [Failure]
-                -- Isomorphism filtering performed after each rule application.
+                hs -> [GS h (rc+1) | h <- hs]
+                {- Isomorphism filtering performed after each rule application. 
+                 - Could not get this to work - abandoned for now.
                 hs -> [makeGS h (rc+1) | h <- getIsomorphismData (g, ic) hs]
                 -- TODO: the above only filters graphs that unchanged by the rule application
                 -- not those that are non-unique in the result set!
-                --hs -> [makeGS h (rc+1) | h <- getIsomorphismData (head hs, ic) $ tail hs]
-                    where makeGS (x, y) z = GS x y z
-evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g ic rc) = 
+                -- hs -> [makeGS h (rc+1) | h <- getIsomorphismData (head hs, ic) $ tail hs]
+                     where makeGS (x, y) z = GS x y z -}
+evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) = 
     if rc == max 
         then [Unfinished]
         else 
@@ -114,7 +119,7 @@ evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs =
         [Unfinished] -> [Unfinished]
         [Failure] -> [gs]
         hs     -> concatMap (evalSimpleCommand max ds c) hs
-evalSimpleCommand max ds Skip (GS g ic rc) = [GS g ic (rc+1)]
+evalSimpleCommand max ds Skip (GS g rc) = [GS g (rc+1)]
 evalSimpleCommand max ds Fail _ = [Failure]
 
 procLookup :: ProcName -> [Declaration] -> Procedure

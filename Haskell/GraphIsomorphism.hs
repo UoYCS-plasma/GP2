@@ -1,14 +1,14 @@
 -- labelled graph isomorphism test
 -- Colin Runciman, July 2014
 
-module GraphIsomorphism (getIsomorphismData) where
+module GraphIsomorphism (isomorphismCount) where
 
 import Data.List (permutations)
 import Graph
 import Mapping
 
 
--- Used after applying a RuleCall to a graph g, giving output graphs hs.
+{-- Used after applying a RuleCall to a graph g, giving output graphs hs.
 -- k is the current count of isomorphic copies of g.
 
 -- getIsomorphismData (g, k) hs does the following:
@@ -27,7 +27,7 @@ getIsomorphismData (g, k) hs =
         gs        = tail $ fst partition
         hs'       = snd partition 
         ihs' = isomorphismCount hs' in
-     if null gs then ihs' else (g, k*length gs) : ihs'
+     if null gs then ihs' else (g, k*length gs) : ihs' -}
 
 -- Given a list of graphs, isomorphismCount returns a list of pairs.
 -- Each pair contains a single representative of a set of isomorphic graphs in 
