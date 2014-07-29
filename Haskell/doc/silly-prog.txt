@@ -1,0 +1,17 @@
+Main =  r1
+
+r1 (m: int) [
+(n1 (R), m # grey) | 
+] => [
+(n1, + m 1 # grey) | 
+]
+interface = {n1}
+where i < 5
+
+
+r2 (m,n: int) [
+(n1, m) (n2, n) | (e1, n1, n2, empty)
+] => [
+(n1, m) (n2, n)  |
+]
+interface = {n1, n2}

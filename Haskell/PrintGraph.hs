@@ -5,10 +5,11 @@ import GPSyntax
 import Mapping
 
 -- Converts a host graph to a "printable graph" G. G is identical to the host
--- graph except that its nodes and edges have been converted to strings in
--- correspondence with GP 2's textual syntax.
+-- graph except that the node and edge labels have been converted to strings in
+-- correspondence with GP 2's textual syntax. The node type of PrintableGraph
+-- also contains a Bool to facilitate printing of root nodes.
 
-type PrintableGraph = Graph String String
+type PrintableGraph = Graph (Bool, String) String
 
 -- NodeId mapping from the old graph to the new graph.
 type NodeMap = Mapping NodeId NodeId
@@ -32,10 +33,9 @@ makeEdge h eid (g, nm) = (g', nm)
           tgtId   = definiteLookup (target h eid) nm
           (g', _) = newEdge g srcId tgtId $ printHostEdge h eid
 
-printHostNode :: HostGraph -> NodeId -> String
-printHostNode h nid = root ++ printHostLabel label
-    where root = if isRoot then " (R)" else "" 
-          HostNode _ isRoot label = nLabel h nid
+printHostNode :: HostGraph -> NodeId -> (Bool, String)
+printHostNode h nid = (isRoot, printHostLabel label)
+    where HostNode _ isRoot label = nLabel h nid
 
 printHostEdge :: HostGraph -> EdgeId -> String
 printHostEdge h eid = printHostLabel $ eLabel h eid

@@ -17,12 +17,13 @@ import Data.List (union, intersect, permutations)
 
 -- A graph of type Graph String String is generated from a host graph
 -- in the PrintGraph module.
-graphToGP2 :: Graph String String -> String
+graphToGP2 :: Graph (Bool, String) String -> String
 graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]"
     where
         nodeList g = concatMap prettyNode $ allNodes g
         edgeList g = concatMap prettyEdge $ allEdges g
-        prettyNode n@(N id) = " (n" ++ show id ++ ", " ++ nLabel g n ++ ")\n"
+        prettyNode n@(N id) = let (root, label) = nLabel g n in
+             " (n" ++ show id ++ (if root then " (R)" else "") ++ ", " ++ label ++ ")\n"
         prettyEdge e@(E id) = " (e" ++ show id ++ ", "
                            ++ "n" ++ getNodeId (source g e) ++ ", "
                            ++ "n" ++ getNodeId (target g e) ++ ", "
