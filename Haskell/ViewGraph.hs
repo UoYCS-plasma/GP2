@@ -14,7 +14,6 @@ usage :: String
 usage = "Usage: ViewGraph <GP_graph>"
 
 
-
 main :: IO ()
 main = do
     args <- getArgs
