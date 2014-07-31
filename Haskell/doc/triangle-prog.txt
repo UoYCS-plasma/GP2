@@ -17,7 +17,6 @@ inc (m,n: int) [
 interface = {n1}
 where m > n
 
-
 expand (m, n, p, q: int) [
 (n1, m:n) (n2, n) (n3, p) (n4, q) | 
 (e1, n2, n3, 0) (e2, n2, n4, 1) (e3, n3, n4, 2) 

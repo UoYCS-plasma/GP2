@@ -19,8 +19,10 @@ extendMapping s key val =
             Nothing   -> Just $ (key, val):s
             Just v -> if v == val then Just s else Nothing
 
-definiteLookup :: Eq a => a -> Mapping a b -> b
-definiteLookup x xys = fromJust $ lookup x xys
+definiteLookup :: ( Eq a , Show a , Show b ) => a -> Mapping a b -> b
+definiteLookup x xys = case lookup x xys of
+        Just y -> y
+        Nothing -> error $ "Element " ++ show x ++ " not found in mapping " ++ show xys
 
 addItem :: Mapping a b -> a -> b -> Mapping a b
 addItem items k v = ((k,v):items) 

@@ -7,7 +7,7 @@ module Graph (Graph, NodeId, EdgeId,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
                rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
-               graphToGP2, sublistsOf, permutedSizedSubsets)
+               graphToGP2, permutedSizedSubsets, generateMatches)
                where
 
 import Prelude 
@@ -18,7 +18,7 @@ import Data.List (union, intersect, permutations)
 -- A graph of type Graph String String is generated from a host graph
 -- in the PrintGraph module.
 graphToGP2 :: Graph (Bool, String) String -> String
-graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]"
+graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]\n"
     where
         nodeList g = concatMap prettyNode $ allNodes g
         edgeList g = concatMap prettyEdge $ allEdges g
@@ -38,6 +38,22 @@ sublistsOf :: Int -> [a] -> [[a]]
 sublistsOf 0 _        = [[]]
 sublistsOf _ []       = []
 sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
+
+-- See function matchGraphEdges (GraphMatch.hs) for a description of the
+-- use of generateMatches.
+generateMatches :: [a] -> [[b]] -> [[(a, b)]]
+generateMatches xs ys = makeCombinations $ zipWith pairUp xs ys
+
+-- Returns the list containing all pairs whose first element is the first
+-- argument and whose second element is an item from the second argument.
+pairUp :: a -> [b] -> [(a, b)]
+pairUp x ys = map (\y -> (x, y)) ys
+
+makeCombinations :: [[a]] -> [[a]]
+makeCombinations [] = []
+makeCombinations [xs] = [[x] | x <- xs]
+makeCombinations (xs:yss) = [x:ys | x <- xs, ys <- makeCombinations yss]
+
 
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show

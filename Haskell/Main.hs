@@ -23,25 +23,38 @@ import ParseRule
 
 testProg = fst $ makeGPProgram $ parse program programStr
 
-programStr = concat ["Main = r\nr (a:list)\n",
-                     "[ (n1, a) | (e1, n1, n1, 1) ]\n=>\n",
-                     "[ (n1, a) | (e1, n1, n1, empty) ]\n",
-                     "interface = {n1}"]
+programStr = concat ["Main = r1\nr1 (m:int)\n",
+                     "[ (n1 (R), m # grey) | ]\n=>\n",
+                     "[ (n1, + m 1 # grey) | ]\n",
+                     "interface = {n1}",
+                     "where i < 5"]
 
-testRule = makeRule (parse rule ruleStr) "Global" []
+testRule = makeRule (parse rule ruleStr) "Global" [("m", Symbol (Var_S IntVar False) "Global" "r1"), ("n", Symbol (Var_S IntVar False) "Global" "r1"), ("p", Symbol (Var_S IntVar False) "Global" "r1"), ("q", Symbol (Var_S IntVar False) "Global" "r1") ]
 
-ruleStr = concat ["r (a:list)\n",
-                  "[ (n1, a) | (e1, n1, n1, 1) ]\n=>\n",
-                  "[ (n1, a) | (e1, n1, n1, empty) ]\n",
-                  "interface = {n1}"]
 
-testlhs = fst $ makeRuleGraph (parse ruleGraph lhsStr) "Global" "r" [("a", Symbol (Var_S ListVar False) "Global" "r")]
+ruleStr = concat ["r1 (m,n,p,q:int)\n",
+                  "[ (n1, m:n) (n2, n) (n3, p) (n4, q) |\n",
+                  "(e1, n2, n3, 0) (e2, n2, n4, 1) (e3, n3, n4, 2)]\n=>\n",
+                  "[ (n1, + n 1) (n2, + n 1) (n3, + n 1) (n4, p) (n5, 0) (n6, q) (n7, m:n)|\n",
+                  "(e1, n1, n2, 0) (e2, n1, n3, 1) (e3, n2, n3, 2)\n",
+                  "(e4, n2, n4, 0) (e5, n2, n5, 1) (e6, n4, n5, 2)\n",
+                  "(e7, n3, n5, 0) (e8, n3, n6, 1) (e9, n5, n6, 2)]",
+                  "interface = {n1, n2, n3, n7}"]
 
-lhsStr = "[ (n1, a) | (e1, n1, n1, 1) ]"
+testlhs = fst $ makeRuleGraph (parse ruleGraph lhsStr) "Global" "r1" [("m", Symbol (Var_S IntVar False) "Global" "r1"), ("n", Symbol (Var_S IntVar False) "Global" "r1"), ("p", Symbol (Var_S IntVar False) "Global" "r1"), ("q", Symbol (Var_S IntVar False) "Global" "r1") ]
 
-testHG = makeHostGraph $ parse hostGraph hostStr
+lhsStr = "[(n1, m:n) (n2, n) (n3, p) (n4, q) | (e1, n2, n3, 0) (e2, n2, n4, 1) (e3, n3, n4, 2)]" 
 
-hostStr = "[ (n1, 1) (n2, 2) | (e1, n1, n1, 1) ]"
+testHG1 = makeHostGraph $ parse hostGraph hostStr1
+testHG2 = makeHostGraph $ parse hostGraph hostStr2
+
+hostStr1 = concat ["[ (n1, 2) (n2, 2) (n3, 2) (n4, 0) (n5, 0) (n6, 0) (n7, 1:1)|\n",
+                  "(e1, n1, n2, 0) (e2, n1, n3, 1) (e3, n2, n3, 2)\n",
+                  "(e4, n2, n4, 0) (e5, n2, n5, 1) (e6, n4, n5, 2)\n",
+                  "(e7, n3, n5, 0) (e8, n3, n6, 1) (e9, n5, n6, 2)]"]
+                 
+hostStr2 = concat ["[ (n1, 1) (n2, 0) (n3, 0) (n4, 1:1) |\n",
+                  "(e1, n1, n2, 0) (e2, n1, n3, 1) (e3, n2, n3, 2)]"]
 
 printGraph :: HostGraph -> String
 printGraph = graphToGP2 . makePrintableGraph
@@ -71,6 +84,7 @@ printGraphData fileName k ((graph, count):gcs) = do
 usage = "Usage: gp2 <prog> <hostGraph> <maxDepth>"
 
 main = do
+    hSetBuffering stdout NoBuffering
     args <- getArgs
     case getOpt Permute [] args of
         (flags, [progFile, graphFile, max], []) -> do
@@ -78,12 +92,12 @@ main = do
             g <- readFile graphFile
             let progName = takeWhile (/= '.') progFile
             let maxRules = read max
-            -- Print host graph parse output
-            putStrLn $ show $ hostGraph g
+            -- Debugging: print host graph parse output
+            -- putStrLn $ show $ hostGraph g
             let host = makeHostGraph $ parse hostGraph g
             putStrLn $ "\nGP 2 program " ++ progFile ++ " executed on host graph in " ++ graphFile ++ ".\n"
-            -- Print program parse output
-            putStrLn $ show $ program p
+            -- Debugging: print program parse output
+            -- putStrLn $ show $ program p
             let (prog, syms) = makeGPProgram $ parse program p
             putStrLn $ "Program execution stopped at " ++ show maxRules ++ " rule applications.\n"
             let result = runProgram prog maxRules host

@@ -1,17 +1,27 @@
-Main =  r1
+Main = init; (inc; expand!)!
 
-r1 (m: int) [
-(n1 (R), m # grey) | 
+init (m: int) [
+(n1, m) | 
 ] => [
-(n1, + m 1 # grey) | 
+(n1, m:0) (n2, 1) (n3, 0) (n4, 0) | 
+(e1, n2, n3, 0) (e2, n2, n4, 1) (e3, n3, n4, 2) 
 ]
 interface = {n1}
-where i < 5
 
 
-r2 (m,n: int) [
-(n1, m) (n2, n) | (e1, n1, n2, empty)
+inc (m,n: int) [
+(n1, m:n) | 
 ] => [
-(n1, m) (n2, n)  |
+(n1, m:+ n 1) |
 ]
-interface = {n1, n2}
+interface = {n1}
+where m > n
+
+expand (m, n, p, q: int) [
+(n1, m:n) (n2, n) (n3, p) (n4, q) | 
+(e1, n2, n3, 0) (e2, n2, n4, 1) (e3, n3, n4, 2) 
+] => [
+(n1, m:n) (n2, + n 1) (n3, p) (n4, q) | 
+(e1, n2, n3, 0) (e2, n2, n4, 1) (e3, n3, n4, 2)  
+]
+interface = {n1, n2, n3, n4}
