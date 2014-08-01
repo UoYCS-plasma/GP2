@@ -81,7 +81,7 @@ evalBlock max ds ls@(LoopedComSeq cs) gs =
         [Failure] -> [gs]
         hs     -> concatMap (evalBlock max ds ls) hs
 evalBlock max ds (SimpleCommand sc) gs = evalSimpleCommand max ds sc gs
-evalBlock max ds (ProgramOr b1 b2) gs = evalBlock max ds b1 gs
+evalBlock max ds (ProgramOr b1 b2) gs = evalBlock max ds b1 gs  ++ evalBlock max ds b2 gs
 
 
 evalSimpleCommand :: Int -> [Declaration] -> SimpleCommand -> GraphState -> [GraphState]
