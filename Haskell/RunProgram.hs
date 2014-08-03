@@ -74,13 +74,14 @@ evalBlock :: Int -> [Declaration] -> Block -> GraphState -> [GraphState]
 evalBlock _ _ _ Failure = [Failure]
 evalBlock _ _ _ Unfinished = [Unfinished]
 evalBlock max ds (ComSeq cs) gs = evalCommandSequence max ds cs gs
-evalBlock max ds (LoopedComSeq cs) gs = 
+evalBlock max ds ls@(LoopedComSeq cs) gs = 
     case evalCommandSequence max ds cs gs of
         [Unfinished] -> [Unfinished]
-        [Failure] -> [Failure]
-        hs     -> concatMap (evalCommandSequence max ds cs) hs
+        -- Loop terminates, return input GraphState
+        [Failure] -> [gs]
+        hs     -> concatMap (evalBlock max ds ls) hs
 evalBlock max ds (SimpleCommand sc) gs = evalSimpleCommand max ds sc gs
-evalBlock max ds (ProgramOr b1 b2) gs = evalBlock max ds b1 gs
+evalBlock max ds (ProgramOr b1 b2) gs = evalBlock max ds b1 gs  ++ evalBlock max ds b2 gs
 
 
 evalSimpleCommand :: Int -> [Declaration] -> SimpleCommand -> GraphState -> [GraphState]
@@ -101,13 +102,13 @@ evalSimpleCommand max ds (RuleCall rs) (GS g rc) =
                 -- not those that are non-unique in the result set!
                 -- hs -> [makeGS h (rc+1) | h <- getIsomorphismData (head hs, ic) $ tail hs]
                      where makeGS (x, y) z = GS x y z -}
-evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) = 
+evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) =
     if rc == max 
         then [Unfinished]
         else 
             case evalSimpleCommand max ds (RuleCall rs) gs of
-                -- Loop terminates, return input GraphState
                 [Unfinished] -> [Unfinished]
+                -- Loop terminates, return input GraphState
                 [Failure] -> [gs]
                 -- One rule call successful. If the bound has been reached, stop and return hs,
                 -- otherwise continue with the loop.
@@ -117,6 +118,7 @@ evalSimpleCommand max ds (ProcedureCall proc) gs = evalCommandSequence max (decl
 evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs = 
     case evalSimpleCommand max ds (ProcedureCall proc) gs of
         [Unfinished] -> [Unfinished]
+        -- Loop terminates, return input GraphState
         [Failure] -> [gs]
         hs     -> concatMap (evalSimpleCommand max ds c) hs
 evalSimpleCommand max ds Skip (GS g rc) = [GS g (rc+1)]

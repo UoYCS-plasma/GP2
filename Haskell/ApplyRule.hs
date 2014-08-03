@@ -18,7 +18,12 @@ import Evaluate
 
 applyRule :: HostGraph -> Rule -> [HostGraph]
 applyRule h r@(Rule _ _ (lhs, rhs) i cond) =
-        [ transform m r h | m <- filter (danglingCondition h r) $ matchGraphs h lhs]
+        [ transform m r h | m <- filter (validMorphism h r) $ matchGraphs h lhs]
+
+
+validMorphism :: HostGraph -> Rule -> GraphMorphism -> Bool
+validMorphism h r@(Rule _ _ (lhs, rhs) i cond) gm = 
+        danglingCondition h r gm && conditionEval cond gm h rhs 
 
 -- criticalHostEdges is the set of host edges incident to nodes deleted by the rule.
 -- preservedHostEdges is the set of host edges not deleted by the rule.
@@ -28,7 +33,7 @@ danglingCondition :: HostGraph -> Rule -> GraphMorphism -> Bool
 danglingCondition h r m = null $ criticalHostEdges `intersect` preservedHostEdges
     where criticalHostEdges = concatMap (incidentEdges h) deletedHostNodes
           preservedHostEdges = allEdges h \\ map snd ems
-          deletedHostNodes = [ hnid | lnid <- deletedLhsNodes, let hnid = definiteLookup lnid nms ]
+          deletedHostNodes = [ hnid | lnid <- deletedLhsNodes, let hnid = case lookup lnid nms of Just n -> n ]
           deletedLhsNodes = allNodes lhs \\ map fst intr
           (Rule _ _ (lhs,rhs) intr _) = r
           GM _ nms ems = m
@@ -49,8 +54,8 @@ transform m r h = addEdgesToHost m rhs rhsToHostMap addedNodesGraph
     where 
       removedItemsGraph = rmNodeList (rmEdgeList h deletedHostEdges) deletedHostNodes                 
       (addedNodesGraph, rhsToHostMap) = addNodesToHost m r removedItemsGraph
-      deletedHostEdges  = [ heid | leid <- allEdges lhs, let heid = definiteLookup leid ems ]
-      deletedHostNodes  = [ hnid | lnid <- deletedLhsNodes, let hnid = definiteLookup lnid nms ]
+      deletedHostEdges  = [ heid | leid <- allEdges lhs, let heid = definiteLookup leid ems]
+      deletedHostNodes  = [ hnid | lnid <- deletedLhsNodes, let hnid = definiteLookup lnid nms]
       deletedLhsNodes   = allNodes lhs \\ map fst intr
       Rule _ _ (lhs, rhs) intr _ = r
       GM env nms ems             = m
@@ -74,7 +79,7 @@ addNodesToHost m r h = (h'', relabelledHostNodes ++ newHostNodes)
         relabelNode (rid, hid) h = nReLabel h hid newLabel
             where newLabel = nodeEval m h rhs $ nLabel rhs rid 
           
-        relabelledHostNodes = [ (ri, hi) | (li, ri) <- intr, let hi = definiteLookup li nms ]
+        relabelledHostNodes = [ (ri, hi) | (li, ri) <- intr, let hi = definiteLookup li nms]
         newHostNodes = zip insertedRhsNodes insertedHostNodes
         ruleNodes = map (nLabel rhs) insertedRhsNodes
         insertedRhsNodes  = allNodes rhs \\ map snd intr
@@ -93,7 +98,7 @@ addEdgesToHost :: GraphMorphism -> RuleGraph -> NodeMatches -> HostGraph -> Host
 addEdgesToHost m rhs nms h = fst $ newEdgeList h newEdges
     where
         newEdges = [ (hsrc, htgt, hlabel) | re <- allEdges rhs, 
-                      let hsrc = definiteLookup (source rhs re) nms
-                          htgt = definiteLookup (target rhs re) nms
+                      let hsrc = case lookup (source rhs re) nms of Just n -> n
+                          htgt = case lookup (target rhs re) nms of Just n -> n
                           hlabel = labelEval m h rhs (eLabel rhs re) ]
 
