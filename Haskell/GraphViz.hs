@@ -1,28 +1,47 @@
 module GraphViz where
 
-import GPSyntax
+import Data.List
 
-drawGraph :: GPGraph -> String
+import GPSyntax
+import Graph
+
+showNodeId :: NodeId -> String
+showNodeId = filter (/= ' ') . show
+
+showEdgeId :: EdgeId -> String
+showEdgeId = filter (/= ' ') . show
+
+drawGraph :: HostGraph -> String
+drawGraph g = "digraph {\n\tgraph [ autosize=false size=\"8,8!\" ratio=fill ];\n\n\t" ++ nodeStr ++ "\n\n\t" ++ edgeStr ++ "\n}"
+    where
+        nodeStr = intercalate "\n\t" $ map (drawNode g) $ allNodes g
+        edgeStr = intercalate "\n\t" $ map (drawEdge g) $ allEdges g
 
 -- data HostEdge = HostEdge NodeName NodeName HostLabel deriving Show
-drawEdge :: HostEdge -> String
-drawEdge (HostEdge src dst label) = src ++ " -> " ++ dst
-    ++ " [ " ++ drawLabel label ++ " ];"
+drawEdge :: HostGraph -> EdgeId -> String
+drawEdge g id = src ++ " -> " ++ dst ++ " [ " ++ drawLabel label ++ " ];"
+    where
+        src = showNodeId $ source g id
+        dst = showNodeId $ target g id
+        label = eLabel g id
 
 -- data HostNode = HostNode NodeName Bool HostLabel deriving Show
-drawNode :: HostNode -> String
-drawNode (HostNode name False label) = name ++ " [ " ++ drawLabel label ++ " ];"
-drawNode (HostNode name True label) = name ++ " [ shape=diamond; " ++ drawLabel label ++ " ];"
+drawNode :: HostGraph -> NodeId -> String
+drawNode g id = case nLabel g id of
+        HostNode _ False  label -> name ++ " [ " ++ drawLabel label ++ " ];"
+        HostNode _ True label -> name ++ " [ shape=diamond " ++ drawLabel label ++ " ];"
+    where
+        name = showNodeId id
 
 
 -- data HostLabel = HostLabel [HostAtom] Colour deriving (Eq, Show)
 drawLabel :: HostLabel -> String
-drawLabel (HostLabel [] col) = "style=filled color=" ++ show col
+drawLabel (HostLabel atoms Uncoloured) = "label=\"" ++ (intercalate ":" $ map drawAtom atoms) ++ "\""
 drawLabel (HostLabel atoms col) = "label=\"" ++ (intercalate ":" $ map drawAtom atoms )
-    ++ "\"; " ++ " style=filled color=" ++ show col
+    ++ "\" " ++ " style=filled color=" ++ show col
 
 drawAtom :: HostAtom -> String
-drawAtom = show 
+drawAtom = show
 
 
 
