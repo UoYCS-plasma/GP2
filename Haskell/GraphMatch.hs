@@ -57,7 +57,7 @@ matchGraphs h r = case allNodes r of
 
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
 matchGraphNodes h r = -- filter (\m -> case m of NM _ [] -> False ; _ -> True) $
-    catMaybes [ nm | nodeMatches <- filter (checkRootNodes h r) $ allNodeMatches,
+    catMaybes [ nm | nodeMatches <- filter (checkNodes h r) $ allNodeMatches,
                  let maybeEnv = foldr labelMatch (Just []) nodeMatches
                      nm = maybe Nothing (\env -> Just (NM env nodeMatches) ) maybeEnv ]
     where
@@ -73,6 +73,9 @@ matchGraphNodes h r = -- filter (\m -> case m of NM _ [] -> False ; _ -> True) $
                   mapping <- doNodesMatch h r hn rn
                   mergeMapping mapping env
 
+checkNodes :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool
+checkNodes h r nms =  (checkRootNodes h r nms) && (checkJoiningEdges h r nms) && (checkMarks h r nms)
+
 checkRootNodes :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool
 checkRootNodes _ _ [] = True
 checkRootNodes h r ((rid, hid):nms) =
@@ -83,7 +86,60 @@ checkRootNodes h r ((rid, hid):nms) =
      _ -> True && checkRootNodes h r nms 
      where
          RuleNode _ rb _ = nLabel r rid
-         HostNode _ hb _ = nLabel h hid 
+         HostNode _ hb _ = nLabel h hid
+
+checkDegrees :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool 
+checkDegrees h r ((rid, hid): nms) = 
+    length (inEdges r rid) <= length (inEdges h hid) &&  
+    length (outEdges r rid) <= length (outEdges h hid) 
+
+
+
+checkJoiningEdges :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool
+checkJoiningEdges h r nms = all wiffle nms
+    where
+        wiffle :: (RuleNodeId, HostNodeId) -> Bool
+        wiffle (rid, hid) = lhes >= lres
+            where
+                lhes = length $ filter blah $ [ (res, hes) | res <- outEdges r rid, hes <- outEdges h hid ]
+                lres = length $ outEdges r rid
+
+        blah :: (RuleEdgeId, HostEdgeId) -> Bool
+        blah (reid, heid) = (target r reid, target h heid) `elem` nms
+
+{-
+checkJoiningEdges :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> [(RuleNodeId, HostNodeId)] -> Bool
+checkJoiningEdges h r nms ((rid, hid):nms') =
+    where
+        rEdges = outEdges r rid
+        rTargets = map (target r) rEdges
+        hEdges = outEdges h hid
+        hTargets = map (target h) hEdges
+   
+        [ (rn, hn) | rn <- rTargets, hn <- hTargets ]
+        -- We need the above list and nms' to "line up", whatever that means.
+        
+
+        rn = length rEdges
+        hEdges = filter (someFunction) $ outEdges h hid
+        -- foreach rule edge there must be a corresponding host edge such that
+        --   the target of the rule edge must match the target of the host edge
+        someFunction :: HostEdgeId -> Bool
+        someFunction he = 
+                rn = ... $ source h he
+                target h he
+        rids, hids = unzip nms
+
+f :: HostGraph -> RuleGraph -> (RuleNodeId, HostNodeId) -> (RuleNodeId, HostNodeId) -> Bool
+f h r (rn1, hn1) (rn2, hn2) = null (joiningEdges r rn1 rn2) => null (joiningEdges h hn1 hn2)
+-}        
+
+checkMarks :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool 
+checkMarks h r ((rid, hid): nms) = colourMatch hc rc
+    where
+        RuleNode _ _ (RuleLabel _ rc) = nLabel r rid
+        HostNode _ _ (HostLabel _ hc) = nLabel h hid
+
                 
 doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe Environment
 doNodesMatch h r hid rid = 
