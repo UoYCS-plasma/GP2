@@ -21,6 +21,8 @@ import GraphMatch
 import Graph
 import ParseRule
 
+import Debug.Trace
+
 testProg = fst $ makeGPProgram $ parse program programStr
 
 programStr = concat ["Main = r1\nr1 (m:int)\n",
@@ -81,12 +83,17 @@ printGraphData fileName k ((graph, count):gcs) = do
 -- TODO: convert progFile into a string of the actual program name
 -- i.e. trim off the file extension.
 
-usage = "Usage: gp2 <prog> <hostGraph> <maxDepth>"
+data Flag = Single
+
+options :: [ OptDescr Flag ]
+options = [ Option ['1'] ["one"] (NoArg Single) "output a single graph, instead of all possible graphs" ]
+
+usage = "Usage: gp2 [flags] <prog> <hostGraph> <maxDepth>\nWhere [flags] can be:"
 
 main = do
     hSetBuffering stdout NoBuffering
     args <- getArgs
-    case getOpt Permute [] args of
+    case getOpt Permute options args of
         (flags, [progFile, graphFile, max], []) -> do
             p <- readFile progFile
             g <- readFile graphFile
@@ -99,9 +106,11 @@ main = do
             -- Debugging: print program parse output
             -- putStrLn $ show $ program p
             let (prog, syms) = makeGPProgram $ parse program p
-            putStrLn $ "Program execution stopped at " ++ show maxRules ++ " rule applications.\n"
-            let result = runProgram prog maxRules host
-            printResult progName result
+            putStrLn $ "Program execution will be stopped at " ++ show maxRules ++ " rule applications.\n"
+            let result@(gs, _, _) = runProgram prog maxRules host
+            printResult progName $ case flags of
+                                        [ Single ] -> trace "single result mode" (take 1 gs, 0, 0)
+                                        _          -> result
         (_, _, errs) -> do
-            error (concat errs ++ usage)
+            error (concat errs ++ usageInfo usage options)
 
