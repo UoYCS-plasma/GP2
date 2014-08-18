@@ -11,11 +11,6 @@
 /////////////////////////////////////////////////////////////////////////// */
 
 
-/* I will use glib structures to map out the initial structure, although I
- * might change to Judy arrays or something else when the proper implementation
- * begins. To start with, I will use Greg Manning's structure for GP1.
- */
-
 #include "ast.h"
 #include <glib.h>
 
@@ -24,7 +19,7 @@
  * values refer to lists of a particular length. The limit can be adjusted
  * as necessary.
  */
-typedef enum {EMPTY=0, CHAR_L, STR_L, INT_L, ATOM_L, LIST2_L, LIST3_L, LIST4_L,
+typedef enum {EMPTY=0, INT_L, CHAR_L, STR_L, ATOM_L, LIST2_L, LIST3_L, LIST4_L,
               LIST5_L} LabelClass;
 
 /* Invariants on graphs:
@@ -85,7 +80,8 @@ typedef struct Edge {
    Node *target;
 } Edge;
 
-
+/* This may need a LabelClass field for the relabelling functions, but not
+ * clear at the moment. */
 typedef struct ListElement {
    AtomExpType type;		  /* From ast.h */
    union {
@@ -123,8 +119,8 @@ void addNode(Graph *graph, Node *node, int index);
 void addEdge(Graph *graph, Edge *edge, int index);
 void removeNode(Graph *graph, int index);
 void removeEdge(Graph *graph, int index);
-void relabelNode(Graph *graph, int index, GList *new_label); 
-void relabelEdge(Graph *graph, int index, GList *new_label); 
+void relabelNode(Graph *graph, int index, GList *new_label, LabelClass new_label_class); 
+void relabelEdge(Graph *graph, int index, GList *new_label, LabelClass new_label_class); 
 
 /* Graph querying functions 
  * ========================

@@ -93,8 +93,7 @@ typedef struct List {
 					* LOCAL_DECLARATIONS */
     struct GPStatement *command;       /* COMMANDS */
     string rule_name; 		       /* RULES */
-    struct List *variables; 
-     				       /* INT_DECLARATIONS, CHAR_DECLARATIONS,
+    struct List *variables;            /* INT_DECLARATIONS, CHAR_DECLARATIONS,
                                         * STRING_DECLARATIONS, ATOM_DECLARATIONS */ 
     string variable_name; 	       /* VARIABLE_LIST */	  
     string node_id; 		       /* INTERFACE_LIST */	   
