@@ -28,6 +28,11 @@ runProgram (Program ds) max g = isoFilter $ processData $ evalMain max ds (findM
     where isoFilter :: ([HostGraph], Int, Int) -> Result
           isoFilter (gs, fc, uc) = (isomorphismCount gs, fc, uc)
 
+firstSolution :: GPProgram -> Int -> HostGraph -> Result
+firstSolution (Program ds) max g = makeResult $ processData [ head $ evalMain max ds (findMain ds) g ]
+    where makeResult :: ([HostGraph], Int, Int) -> Result
+          makeResult ([g], fc, uc) = ([(g, 0)], fc, uc)
+
 
 processData :: [GraphState] -> ([HostGraph], Int, Int)
 processData = foldr addGraphState ([], 0, 0)

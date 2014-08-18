@@ -107,10 +107,9 @@ main = do
             -- putStrLn $ show $ program p
             let (prog, syms) = makeGPProgram $ parse program p
             putStrLn $ "Program execution will be stopped at " ++ show maxRules ++ " rule applications.\n"
-            let result@(gs, _, _) = runProgram prog maxRules host
             printResult progName $ case flags of
-                                        [ Single ] -> trace "single result mode" (take 1 gs, 0, 0)
-                                        _          -> result
+                                        [ Single ] -> trace "single result mode" (firstSolution prog maxRules host)
+                                        _          -> runProgram prog maxRules host
         (_, _, errs) -> do
             error (concat errs ++ usageInfo usage options)
 
