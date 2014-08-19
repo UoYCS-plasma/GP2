@@ -109,10 +109,11 @@ data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph)
                Condition  deriving Show
 
 -- Rule graph labels are lists of expressions.
-type RuleGraph = Graph RuleNode RuleLabel
-data AstRuleGraph = AstRuleGraph [RuleNode] [RuleEdge] deriving Show
+type RuleGraph = Graph RuleNode RuleEdge
+data AstRuleGraph = AstRuleGraph [RuleNode] [AstRuleEdge] deriving Show
 data RuleNode = RuleNode NodeName Bool RuleLabel deriving Show
-data RuleEdge = RuleEdge Bool NodeName NodeName RuleLabel deriving Show
+data AstRuleEdge = AstRuleEdge Bool NodeName NodeName RuleLabel deriving Show
+data RuleEdge = RuleEdge Bool RuleLabel deriving Show
 
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour deriving Show

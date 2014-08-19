@@ -100,5 +100,6 @@ addEdgesToHost m rhs nms h = fst $ newEdgeList h newEdges
         newEdges = [ (hsrc, htgt, hlabel) | re <- allEdges rhs, 
                       let hsrc = case lookup (source rhs re) nms of Just n -> n
                           htgt = case lookup (target rhs re) nms of Just n -> n
-                          hlabel = labelEval m h rhs (eLabel rhs re) ]
+                          hlabel = labelEval m h rhs rlabel 
+                          RuleEdge _ rlabel = eLabel rhs re]
 

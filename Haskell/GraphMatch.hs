@@ -165,21 +165,25 @@ doNodesMatch h r hid rid =
 
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
 matchGraphEdges h r (NM env nodeMatches) = if null (allEdges r) then [GM env nodeMatches []] else
-   catMaybes [ gm | edgeMatch <- edgeMatches, --not $ null edgeMatch,
+   catMaybes [ gm | edgeMatch <- edgeMatches,
                 let maybeEnv = foldr labelMatch (Just env) edgeMatch
                     gm = maybe Nothing (\env -> Just (GM env nodeMatches edgeMatch) ) maybeEnv ]
    where 
      ruleEdges = allEdges r
-     ruleEndPoints = map (\e -> (source r e, target r e)) ruleEdges
+     ruleEndPoints = map (\e -> (e, source r e, target r e)) ruleEdges
      hostEndPoints = mapMaybe ruleEndsToHostEnds ruleEndPoints
-     hostEdges = map (\(src, tgt) -> [eid | eid <- joiningEdges h src tgt]) hostEndPoints
+     hostEdges = map getCandidateEdges hostEndPoints
+
+     getCandidateEdges (eid, src, tgt) = case eLabel r eid of
+         RuleEdge False _ -> [heid | heid <- joiningEdges h src tgt]
+         RuleEdge True  _ -> [heid | heid <- joiningEdges h src tgt ++ joiningEdges h tgt src]
 
      -- The source and target node aren't guaranteed to exist in the node morphism,
      -- hence we have to use a standard lookup and pattern match on the pair of 
      -- Maybe NodeIds.
-     ruleEndsToHostEnds :: (RuleNodeId, RuleNodeId) -> Maybe (HostNodeId, HostNodeId)
-     ruleEndsToHostEnds (src, tgt) = case (lookup src nodeMatches, lookup tgt nodeMatches) of
-        (Just s, Just t) -> Just (s, t)
+     ruleEndsToHostEnds :: (RuleEdgeId, RuleNodeId, RuleNodeId) -> Maybe (RuleEdgeId, HostNodeId, HostNodeId)
+     ruleEndsToHostEnds (eid, src, tgt) = case (lookup src nodeMatches, lookup tgt nodeMatches) of
+        (Just s, Just t) -> Just (eid, s, t)
         _                -> Nothing
 
      labelMatch :: (RuleEdgeId, HostEdgeId) -> Maybe Environment -> Maybe Environment
@@ -214,6 +218,6 @@ doEdgesMatch h r hid rid =
    case (mhlabel, mrlabel) of 
         (Nothing, _) -> Nothing
         (_, Nothing) -> Nothing
-        (Just hlabel, Just rlabel) -> doLabelsMatch hlabel rlabel
+        (Just hlabel, Just (RuleEdge _ rlabel)) -> doLabelsMatch hlabel rlabel
         
 
