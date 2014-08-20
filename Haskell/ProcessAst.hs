@@ -8,8 +8,6 @@ import Graph
 import ExAr
 import Mapping
 
-type SymbolTable = Mapping String Symbol 
-
 type Scope = String
 type RuleID = String
 
@@ -18,78 +16,56 @@ type RuleID = String
 -- RuleId is used to distinguish between variables, nodes and edges who may
 -- have the same names in different rules. The field is the empty string
 -- for rule and procedure symbols.
-data Symbol = Symbol SymbolType Scope RuleID deriving (Show)
 
--- A variable symbol Var_S is equipped with its type VarType and a Bool set to
--- True if the variable occurs in the LHS of a rule.
--- A node symbol's Bool is True if the node is a wildcard.
--- An edge symbol's Bool is True if the edge is bidirectional.
--- Edge's IDs are discarded in parsing. Perhaps their "IDs" can be a concatenation
--- of the source and target IDs?
-data SymbolType = Procedure_S
-                | Rule_S
-                | Var_S VarType Bool
-                | LeftNode_S Bool
-                | RightNode_S Bool
-                | LeftEdge_S Bool
-                | RightEdge_S Bool
-   deriving (Show)
-
-
-type SymbolList = Mapping String Symbol
+type SymbolTable = Mapping String Symbol
+data Symbol = Symbol VarType Scope RuleID
 
 lookupSymbols :: SymbolTable -> String -> [Symbol]
-lookupSymbols symbols id = [symbol | (name,symbol) <- symbols, name == id]
+lookupSymbols symbols id = [symbol | (name, symbol) <- symbols, name == id]
 
-makeTable :: SymbolList -> SymbolTable
-makeTable = foldr (\(id,s) table -> addItem table id s) []
-
--- symbolsInScope takes an identifier <id>, a scope ("Global" or a procedure
--- name), a rule name and a symbol table. It returns the list of symbols with
--- name <id> with the same Scope and RuleID as those passed into the function. 
-
-symbolsInScope :: VarName -> Scope -> RuleID -> SymbolTable -> [Symbol]
-symbolsInScope name scope rule table = filter (checkScope scope rule) $ lookupSymbols table name 
+-- symbolInScope takes an identifier <id>, a scope ("Global" or a procedure
+-- name), a rule name and a symbol table. It returns the symbol with
+-- name <id> with the same Scope and RuleID as those passed to the function. 
+-- Assumes there is at most one symbol in said scope, as variable names
+-- cannot be repeated within a single GP 2 rule.
+symbolInScope :: VarName -> Scope -> RuleID -> SymbolTable -> Maybe Symbol
+symbolInScope name scope rule table = find (checkScope scope rule) $ lookupSymbols table name 
   where 
   -- checkScope :: String -> String -> Symbol -> Bool
      checkScope scope rule (Symbol _ symbolScope symbolRule) = 
         scope == symbolScope && rule == symbolRule
 
+
+-- Transforms the GP program AST into a data structure suitable for rule application.
+-- The only transformations are performed on rule declarations: the rule's graphs are
+-- converted to our graph ADT, and any variable names occurring in the rule are
+-- assigned their correct type according to the rule's variable list. The information
+-- from the variable list is stored in the SymbolTable which is created by the call
+-- to makeSymbolTable.
 makeGPProgram :: GPProgram -> (GPProgram, SymbolTable)
 makeGPProgram (Program decls) = (Program $ map (makeDeclaration "Global" table) decls, table)
-  where table = enterDeclarations "Global" [] decls 
-
+  where table = makeSymbolTable "Global" [] decls 
 
 makeDeclaration :: Scope -> SymbolTable -> Declaration -> Declaration
 makeDeclaration s t (AstRuleDecl r) = RuleDecl $ makeRule r s t
 makeDeclaration _ _ d = d
 
--- Calls enterDeclarations with "Global" scope and an empty symbol table.
-enterSymbols :: GPProgram -> SymbolTable
-enterSymbols (Program declarations) = enterDeclarations "Global" [] declarations
+-- Uses makeSymbolTable' to scan the program for rule declarations and to enter 
+-- the variables into the symbol table.
+makeSymbolTable :: Scope -> SymbolTable -> [Declaration] -> SymbolTable
+makeSymbolTable scope table decls  = foldl' (makeSymbolTable' scope) table decls
 
--- Enter any rule and procedure declarations into the symbol table.
-enterDeclarations :: Scope -> SymbolTable -> [Declaration] -> SymbolTable
-enterDeclarations scope table decls  = foldl' (enterDeclarations' scope) table decls
-
--- MainDecl: contains only a command sequence, no declarations to enter.
--- ProcDecl: the name of the procedure being declared is entered into the symbol
---           table and the local declaration list of the procedure is processed
---           by a recursive call.
--- RuleDecl: the name of the rule and its variables are entered into the symbol table.
-enterDeclarations' :: Scope -> SymbolTable -> Declaration -> SymbolTable
-enterDeclarations' scope table decl = case decl of
+makeSymbolTable' :: Scope -> SymbolTable -> Declaration -> SymbolTable
+makeSymbolTable' scope table decl = case decl of
   MainDecl _ -> table
-  ProcDecl (Procedure id decls _ ) -> let table' = enterDeclarations id table decls 
-                                      in addItem table' id (Symbol Procedure_S scope "")
-  AstRuleDecl (AstRule id vars _ _) -> let table' = enterVariables scope id table vars
-                                      in addItem table' id (Symbol Rule_S scope "")
-
+  ProcDecl _ -> table 
+  AstRuleDecl (AstRule id vars _ _) -> enterVariables scope id table vars
+ 
 enterVariables :: Scope -> RuleID -> SymbolTable -> [Variable] -> SymbolTable
-enterVariables s r t vars = foldl' (enterVariable s r) t vars 
+enterVariables scope rule table vars = foldl' (enterVariable scope rule) table vars 
 
 enterVariable :: Scope -> RuleID -> SymbolTable -> Variable -> SymbolTable
-enterVariable s r t (id,gptype) = addItem t id (Symbol (Var_S gptype False) s r)
+enterVariable scope rule table (id, gpType) = addItem table id (Symbol gpType scope rule)
 
 -- NodeMap keeps track of the correspondence between string IDs in the AstGraphs
 -- and the integer IDs in the ExAr graphs.
@@ -106,11 +82,10 @@ addHNode :: HostNode -> (HostGraph, NodeMap) -> (HostGraph, NodeMap)
 addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newId):nm)
     where (g', newId) = newNode g hn
 
--- Uses the node map to lookup the appropriate node IDs from the
--- HostEdge's source and target nodes, and creates the appropriate
--- edge in the HostGraph.
--- The source and target node of each edge are expected to be in
--- the graph, so the lookups should never return Nothing.
+-- Uses the node map to lookup the appropriate node IDs from the HostEdge's
+-- source and target nodes, and creates the appropriate edge in the HostGraph.
+-- The source and target node of each edge are expected to be in the graph, so
+-- the lookups should never return Nothing.
 addHEdge :: HostEdge -> (HostGraph, NodeMap) -> (HostGraph, NodeMap)
 addHEdge (HostEdge src tgt label) (g, nm) = 
     let srcId = lookup src nm
@@ -121,15 +96,15 @@ addHEdge (HostEdge src tgt label) (g, nm) =
         (_, Nothing) -> error $ "Edge target " ++ show tgt ++ " undefined."
         (Just srcId, Just tgtId) -> (fst $ newEdge g srcId tgtId label, nm)
 
--- May need to keep the new SymbolTable t' but I ignore it for now.
+
 makeRule :: AstRule -> Scope -> SymbolTable -> Rule
-makeRule (AstRule name vars (lhs, rhs) cond) s t =
+makeRule (AstRule name vars (lhs, rhs) cond) scope table =
          Rule name vars (lhs', rhs') interface' cond'
     where
-        (lhs',lnm) = makeRuleGraph lhs s name t 
-        (rhs',rnm) = makeRuleGraph rhs s name t
+        (lhs',lnm) = makeRuleGraph lhs scope name table 
+        (rhs',rnm) = makeRuleGraph rhs scope name table
         interface' = makeInterface lnm rnm
-        cond' = makeCondition cond s name t 
+        cond' = makeCondition cond scope name table 
 
 -- makeRuleGraph has the same structure as makeHostGraph with respect to
 -- generating the graph. Some additional processing is required to assign
@@ -139,10 +114,10 @@ makeRule (AstRule name vars (lhs, rhs) cond) s t =
 -- is responsible for the bulk of the work.
 
 makeRuleGraph :: AstRuleGraph -> Scope -> RuleID -> SymbolTable -> (RuleGraph, NodeMap)
-makeRuleGraph (AstRuleGraph rns res) s r t = foldr addREdge (nodeGraph,nodeMaps) res'
+makeRuleGraph (AstRuleGraph rns res) scope rule table = foldr addREdge (nodeGraph,nodeMaps) res'
     where (nodeGraph,nodeMaps) = foldr addRNode (emptyGraph, []) rns'
-          rns' = map (updateNode s r t) rns
-          res' = map (updateEdge s r t) res
+          rns' = map (updateNode scope rule table) rns
+          res' = map (updateEdge scope rule table) res
 
 addRNode :: RuleNode -> (RuleGraph, NodeMap) -> (RuleGraph, NodeMap)
 addRNode hn@(RuleNode id _ _ ) (g, nm) = (g', (id, newId):nm)
@@ -159,15 +134,15 @@ addREdge (AstRuleEdge bidir src tgt label) (g, nm) =
         (Just srcId, Just tgtId) -> (fst $ newEdge g srcId tgtId (RuleEdge bidir label), nm)
 
 updateNode :: Scope -> RuleID -> SymbolTable -> RuleNode -> RuleNode
-updateNode s r t (RuleNode id b ( RuleLabel list c ) ) =
-    let newList = assignTypes s r t list 
-    in (RuleNode id b ( RuleLabel newList c ) ) 
+updateNode scope rule table (RuleNode id isRoot ( RuleLabel list mark ) ) =
+    let newList = assignTypes scope rule table list 
+    in (RuleNode id isRoot ( RuleLabel newList mark ) ) 
       
 
 updateEdge :: Scope -> RuleID -> SymbolTable -> AstRuleEdge -> AstRuleEdge
-updateEdge s r t (AstRuleEdge b src tgt ( RuleLabel list c ) ) =
-    let newList = assignTypes s r t list
-    in (AstRuleEdge b src tgt ( RuleLabel newList c ) ) 
+updateEdge scope rule table (AstRuleEdge bidir src tgt ( RuleLabel list mark ) ) =
+    let newList = assignTypes scope rule table list
+    in (AstRuleEdge bidir src tgt ( RuleLabel newList mark ) ) 
 
 -- Creates the interface from the NodeMaps generated by calls to makeRuleGraph on
 -- the LHS and RHS. It finds all instances of NodeNames that occur in both
@@ -182,43 +157,39 @@ makeInterface lnm rnm = [ (definiteLookup name lnm, definiteLookup name rnm) | n
 -- Finds variables in the condition and assigns them their correct types
 -- according to the symbol table.
 makeCondition :: Condition -> Scope -> RuleID -> SymbolTable -> Condition 
-makeCondition c s r t = case c of
-    Greater a1 a2 -> Greater (assignTypes' s r t a1) (assignTypes' s r t a2)
-    GreaterEq a1 a2 -> GreaterEq (assignTypes' s r t a1) (assignTypes' s r t a2)
-    Less a1 a2 -> Less (assignTypes' s r t a1) (assignTypes' s r t a2)
-    LessEq a1 a2 -> LessEq (assignTypes' s r t a1) (assignTypes' s r t a2)
-    Not c -> Not $ makeCondition c s r t  
-    Or c1 c2 -> Or (makeCondition c1 s r t) (makeCondition c2 s r t)
-    And c1 c2 -> And (makeCondition c1 s r t) (makeCondition c2 s r t)
+makeCondition c scope rule table = case c of
+    Greater a1 a2 -> Greater (assignTypes' scope rule table a1) (assignTypes' scope rule table a2)
+    GreaterEq a1 a2 -> GreaterEq (assignTypes' scope rule table a1) (assignTypes' scope rule table a2)
+    Less a1 a2 -> Less (assignTypes' scope rule table a1) (assignTypes' scope rule table a2)
+    LessEq a1 a2 -> LessEq (assignTypes' scope rule table a1) (assignTypes' scope rule table a2)
+    Not c -> Not $ makeCondition c scope rule table  
+    Or c1 c2 -> Or (makeCondition c1 scope rule table) (makeCondition c2 scope rule table)
+    And c1 c2 -> And (makeCondition c1 scope rule table) (makeCondition c2 scope rule table)
     c -> c
 
 -- Assigns variables in rule labels their correct VarTypes from the symbol 
 -- table.
--- The function traverses the GPList: if a Var is encountered, symbolsInScope
+-- The function traverses the GPList: if a Var is encountered, symbolInScope
 -- and getType are used to extract the correct type from the appropriate
 -- symbol. 
 assignTypes :: Scope -> RuleID -> SymbolTable -> GPList -> GPList
-assignTypes s r t as = map (assignTypes' s r t) as
+assignTypes scope rule table as = map (assignTypes' scope rule table) as
 
 assignTypes' :: Scope -> RuleID -> SymbolTable -> RuleAtom -> RuleAtom
-assignTypes' s r t a = case a of
-    Var (name, gpType) -> 
-        let newType = getType $ symbolsInScope name s r t in
-        case newType of 
-            Nothing -> error $ "Variable " ++ name ++ " not found in the rule." 
-            Just gpType  -> Var (name, gpType) 
-    Slength a -> Slength (assignTypes' s r t a)
-    Plus a b -> Plus (assignTypes' s r t a) (assignTypes' s r t b)
-    Minus a b -> Minus (assignTypes' s r t a) (assignTypes' s r t b)
-    Times a b -> Times (assignTypes' s r t a) (assignTypes' s r t b)
-    Div a b -> Div (assignTypes' s r t a) (assignTypes' s r t b)
-    Concat a b -> Concat (assignTypes' s r t a) (assignTypes' s r t b)
+assignTypes' scope rule table a = case a of
+    Var (name, gpType) -> Var (name, newType) 
+        where newType = getType name $ symbolInScope name scope rule table
+    Slength a -> Slength (assignTypes' scope rule table a)
+    Plus a b -> Plus (assignTypes' scope rule table a) (assignTypes' scope rule table b)
+    Minus a b -> Minus (assignTypes' scope rule table a) (assignTypes' scope rule table b)
+    Times a b -> Times (assignTypes' scope rule table a) (assignTypes' scope rule table b)
+    Div a b -> Div (assignTypes' scope rule table a) (assignTypes' scope rule table b)
+    Concat a b -> Concat (assignTypes' scope rule table a) (assignTypes' scope rule table b)
     a -> a
 
-getType :: [Symbol] -> Maybe VarType
-getType []                             = Nothing 
-getType (Symbol ( Var_S t _ ) _ _ :ss) = Just t
-getType (s:ss)                         = getType ss
+getType :: String -> Maybe Symbol -> VarType
+getType name Nothing             = error $ "Variable " ++ name ++ " not found in the rule." 
+getType _ (Just (Symbol gpType _ _)) = gpType
 
 
 
