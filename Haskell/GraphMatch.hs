@@ -175,8 +175,8 @@ matchGraphEdges h r (NM env nodeMatches) = if null (allEdges r) then [GM env nod
      hostEdges = map getCandidateEdges hostEndPoints
 
      getCandidateEdges (eid, src, tgt) = case eLabel r eid of
-         RuleEdge False _ -> [heid | heid <- joiningEdges h src tgt]
-         RuleEdge True  _ -> [heid | heid <- joiningEdges h src tgt ++ joiningEdges h tgt src]
+         RuleEdge _ False _ -> [heid | heid <- joiningEdges h src tgt]
+         RuleEdge _ True  _ -> [heid | heid <- joiningEdges h src tgt ++ joiningEdges h tgt src]
 
      -- The source and target node aren't guaranteed to exist in the node morphism,
      -- hence we have to use a standard lookup and pattern match on the pair of 
@@ -218,6 +218,6 @@ doEdgesMatch h r hid rid =
    case (mhlabel, mrlabel) of 
         (Nothing, _) -> Nothing
         (_, Nothing) -> Nothing
-        (Just hlabel, Just (RuleEdge _ rlabel)) -> doLabelsMatch hlabel rlabel
+        (Just hlabel, Just (RuleEdge _ _ rlabel)) -> doLabelsMatch hlabel rlabel
         
 

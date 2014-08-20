@@ -60,7 +60,7 @@ node = keyword "(" |> pure RuleNode
 
 edge :: Parser AstRuleEdge
 edge = keyword "(" |> pure AstRuleEdge 
-   <| lowerIdent
+   <*> lowerIdent
    <*> (bidirectional <| keyword ",")
    <*> (lowerIdent <| keyword ",") 
    <*> (lowerIdent <| keyword ",") 

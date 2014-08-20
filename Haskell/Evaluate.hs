@@ -10,17 +10,6 @@ import GraphMatch
 import Graph
 import ExAr
 
-
-getNodeId :: RuleGraph -> NodeName -> NodeId
-getNodeId r id = case candidates of
-        [] -> error $ "ID " ++ id ++ " not found"
-        [nid] -> nid
-        _  -> error $ "Duplicate ID found! Eep!"
-    where
-        candidates = filter (matchID . nLabel r) $ allNodes r
-        matchID :: RuleNode -> Bool
-        matchID (RuleNode i _ _) = i == id
-
 -- Given a graph morphism (containing a variable-value mapping) and a host graph,
 -- a rule label is transformed into a host label (list of constants) by evaluating
 -- any operators (degree, length) and substituting variables for their values
@@ -143,4 +132,13 @@ conditionEval c m@(GM env nms _) g r =
                 htgt = lookup (getNodeId r tgt) nms
 
 
+getNodeId :: RuleGraph -> NodeName -> NodeId
+getNodeId r id = case candidates of
+        [] -> error $ "ID " ++ id ++ " not found"
+        [nid] -> nid
+        _  -> error $ "Duplicate ID found."
+    where
+        candidates = filter (matchID . nLabel r) $ allNodes r
+        matchID :: RuleNode -> Bool
+        matchID (RuleNode i _ _) = i == id
 

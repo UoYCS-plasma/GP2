@@ -62,6 +62,7 @@ type ProcName = String
 type RuleName = String
 type VarName = String
 type NodeName = String
+type EdgeName = String
 
 -- GP Program ADTs
 data GPProgram = Program [Declaration] deriving Show
@@ -100,10 +101,12 @@ data SimpleCommand = RuleCall [RuleName]
 
 -- GP Rule ADTs
 type Variable = (VarName, VarType)
-type Interface = [(NodeId, NodeId)]
+type NodeInterface = [(NodeId, NodeId)]
+-- For bidirectional edges
+type EdgeInterface = [(EdgeId, EdgeId)]
 
-data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) Interface 
-            Condition  deriving Show
+data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) NodeInterface 
+            EdgeInterface Condition deriving Show
 
 data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph) 
                Condition  deriving Show
@@ -112,8 +115,8 @@ data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph)
 type RuleGraph = Graph RuleNode RuleEdge
 data AstRuleGraph = AstRuleGraph [RuleNode] [AstRuleEdge] deriving Show
 data RuleNode = RuleNode NodeName Bool RuleLabel deriving Show
-data AstRuleEdge = AstRuleEdge Bool NodeName NodeName RuleLabel deriving Show
-data RuleEdge = RuleEdge Bool RuleLabel deriving Show
+data AstRuleEdge = AstRuleEdge EdgeName Bool NodeName NodeName RuleLabel deriving Show
+data RuleEdge = RuleEdge EdgeName Bool RuleLabel deriving Show
 
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour deriving Show

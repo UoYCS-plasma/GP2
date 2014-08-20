@@ -11,7 +11,7 @@ interface = {n1}
 colour (a, x, y: list; i: int) [
 (n1, x:i # grey) (n2, y) | (e1 (B), n1, n2, a) 
 ] => [
-(n1, x:i # grey) (n2, y:- i 1 #grey) | (e1 (B), n1, n2, a) 
+(n1, x:i # grey) (n2, y:- 1 i #grey) | (e1 (B), n1, n2, a) 
 ]
 interface = {n1, n2}
 
