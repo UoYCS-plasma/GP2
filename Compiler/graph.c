@@ -14,7 +14,7 @@ Graph *newGraph(void) {
 
     if(new_graph == NULL) {
       printf("Memory exhausted during graph construction.\n");
-      exit(0);
+      exit(1);
     }
     
     new_graph->next_node_index = 0;
@@ -174,12 +174,13 @@ void removeEdge(Graph *graph, int index) {
 
 }
 
-void relabelNode(Graph *graph, int index, GList *new_list, 
+void relabelNode(Graph *graph, int index, GList *new_list, MarkType new_mark, 
                  LabelClass new_label_class) {
 
     Node *node = g_ptr_array_index(graph->nodes, index);
-    if(node->list) g_list_free_full(node->list, freeListElement);
-    node->list = new_list;
+    node->label.mark = new_mark;
+    if(node->label.list) g_list_free_full(node->label.list, freeListElement);
+    node->label.list = new_list;
 
     /* If the label classes differ, the graph's nodes_by_label table needs to 
      * be updated. */
@@ -203,12 +204,13 @@ void relabelNode(Graph *graph, int index, GList *new_list,
     }   
 }
 
-void relabelEdge(Graph *graph, int index, GList *new_list, 
+void relabelEdge(Graph *graph, int index, GList *new_list, MarkType new_mark,
                  LabelClass new_label_class) {
 
-    Edge *edge = g_ptr_array_index(graph->edges, index);
-    if(edge->list) g_list_free_full(edge->list, freeListElement);
-    edge->list = new_list;
+    Edge *edge = g_ptr_array_index(graph->edges, index); 
+    edge->label.mark = new_mark;
+    if(edge->label.list) g_list_free_full(edge->label.list, freeListElement);
+    edge->label.list = new_list;
 
     /* If the label classes differ, the graph's edges_by_label table needs to
      * be updated. */
@@ -296,12 +298,12 @@ Node *getTarget(Edge *edge) {
 }
 
 
-GList *getNodeLabel(Node *node) {
-   return node->list;
+Label getNodeLabel(Node *node) {
+   return node->label;
 }
 
-GList *getEdgeLabel(Edge *edge) {
-   return edge->list;
+Label getEdgeLabel(Edge *edge) {
+   return edge->label;
 }
 
 int getIndegree (Node *node) {
@@ -332,9 +334,9 @@ void printNode (gpointer data, gpointer user_data) {
     printf("Name: %s\nIndex: %d\n", node->name, node->index);
     if(node->root) printf("Root\n");
     printf("Label Class: %d\n", node->label_class);
-    printf("Mark: %d\n", node->mark);
+    printf("Mark: %d\n", node->label.mark);
     printf("Label: ");
-    if(node->list) printList(node->list);
+    if(node->label.list) printList(node->label.list);
     else printf("empty");
     printf("\n");
     printf("Indegree: %d\nOutdegree: %d\n", node->indegree, node->outdegree);
@@ -352,9 +354,9 @@ void printEdge (gpointer data, gpointer user_data) {
     printf("Name: %s\nIndex: %d\n", edge->name, edge->index);
     if(edge->bidirectional) printf("Bidirectional\n");
     printf("Label Class: %d\n", edge->label_class);
-    printf("Mark: %d\n", edge->mark);
+    printf("Mark: %d\n", edge->label.mark);
     printf("Label: ");
-    if(edge->list) printList(edge->list);
+    if(edge->label.list) printList(edge->label.list);
     else printf("empty");
     printf("\n");
     printf("Source: %d-%s\n", edge->source->index, edge->source->name);
@@ -498,7 +500,7 @@ void freeGraph (Graph *graph) {
 void freeNode (void *p) {
     Node *node = (Node *)p;
     if(node->name) free(node->name);
-    if(node->list) g_list_free_full(node->list, freeListElement);
+    if(node->label.list) g_list_free_full(node->label.list, freeListElement);
     if(node->in_edges_by_label) {
         g_hash_table_foreach(node->in_edges_by_label, freeGSList, NULL);
         g_hash_table_destroy(node->in_edges_by_label); 
@@ -519,7 +521,7 @@ void freeEdge (void *p) {
     if(edge->name) free(edge->name);
     /* When freeing a graph, nodes are freed first, so no need to free
      * source and target here. */
-    if(edge->list) g_list_free_full(edge->list, freeListElement);
+    if(edge->label.list) g_list_free_full(edge->label.list, freeListElement);
     if(edge) free(edge);
 }
 
