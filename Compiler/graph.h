@@ -53,14 +53,18 @@ typedef struct Graph {
 } Graph;
 
 
+typedef struct Label {
+   MarkType mark; /* MarkType defined in ast.h */
+   GList *list;
+} Label;
+
 typedef struct Node {
    /* Index in the node array */
    int index;
    string name;
    bool root;
    LabelClass label_class;
-   MarkType mark; /* MarkType defined in ast.h */
-   GList *list; 
+   Label label; 
    int indegree;
    int outdegree;
    GHashTable *in_edges_by_label;
@@ -74,8 +78,7 @@ typedef struct Edge {
    string name;
    bool bidirectional;
    LabelClass label_class;
-   MarkType mark; /* MarkType defined in ast.h */
-   GList *list;
+   Label label;
    Node *source;
    Node *target;
 } Edge;
@@ -119,8 +122,10 @@ void addNode(Graph *graph, Node *node, int index);
 void addEdge(Graph *graph, Edge *edge, int index);
 void removeNode(Graph *graph, int index);
 void removeEdge(Graph *graph, int index);
-void relabelNode(Graph *graph, int index, GList *new_label, LabelClass new_label_class); 
-void relabelEdge(Graph *graph, int index, GList *new_label, LabelClass new_label_class); 
+void relabelNode(Graph *graph, int index, GList *new_label, MarkType new_mark,
+ 	         LabelClass new_label_class); 
+void relabelEdge(Graph *graph, int index, GList *new_label, MarkType new_mark,
+		 LabelClass new_label_class); 
 
 /* Graph querying functions 
  * ========================
@@ -135,8 +140,8 @@ GSList *getInEdges(Node *node, LabelClass label_class);
 GSList *getOutEdges(Node *node, LabelClass label_class);
 Node *getSource(Edge *edge);
 Node *getTarget(Edge *edge);
-GList *getNodeLabel(Node *node);
-GList *getEdgeLabel(Edge *edge);
+Label getNodeLabel(Node *node);
+Label getEdgeLabel(Edge *edge);
 int getIndegree (Node *node);
 int getOutdegree (Node *node);
 

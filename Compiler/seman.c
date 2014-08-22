@@ -175,7 +175,7 @@ bool declarationScan(List * ast, GHashTable *table,
 
 	         if(proc_symbol == NULL) {
                     print_to_log("Memory exhausted during symbol management.\n");
-                    exit(0); 
+                    exit(1); 
                  }
 
                  proc_symbol->type = PROCEDURE_S;
@@ -273,7 +273,7 @@ bool declarationScan(List * ast, GHashTable *table,
  
 	         if(rule_symbol == NULL) {
                     print_to_log("Memory exhausted during symbol management.\n");
-	            exit(0);
+	            exit(1);
 	         }
 
 	         rule_symbol->type = RULE_S;
@@ -746,7 +746,7 @@ void enterVariables(SymbolType const type, List * variables,
 
          if(var_symbol == NULL) {
             print_to_log("Memory exhausted during symbol management.\n");
-            exit(0);
+            exit(1);
          }
 
          var_symbol->type = type;
@@ -850,7 +850,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 
          if(node_symbol == NULL) {
             print_to_log("Memory exhausted during symbol management.\n");
-            exit(0);
+            exit(1);
          }
 
          node_symbol->type = node_type;      
@@ -966,7 +966,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 
          if(edge_symbol == NULL) {
             print_to_log("Memory exhausted during symbol management.\n");
-            exit(0);
+            exit(1);
          }
 
          edge_symbol->type = edge_type;      
@@ -1095,7 +1095,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 
             if(new_edge == NULL) {
                print_to_log("Memory exhausted during creation of BiEdgeList.\n");
-               exit(0);
+               exit(1);
             }
             new_edge->value = bi_edge;
             new_edge->next = NULL;
