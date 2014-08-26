@@ -10,6 +10,8 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
+#ifndef INC_GRAPH_H
+#define INC_GRAPH_H
 
 #include "ast.h"
 #include <glib.h>
@@ -108,7 +110,8 @@ typedef struct ListElement {
  * =======================
  * The add functions take a graph, a pointer to the item to add and the
  * item's index in the graph's node/edge array. Either the graph's next node
- * id or the graph's next edge id should be passed as the third argument. 
+ * index or the graph's next edge index should be passed as the third argument.      int host_source_index = lookup(
+
  * 
  * The remove and relabel functions take a graph and the index in the graph's 
  * node or edge array of the item to be modified. Each node and edge stores 
@@ -118,13 +121,16 @@ typedef struct ListElement {
 
 /* Creates an empty graph and returns a pointer to it. */
 Graph *newGraph(void);
-void addNode(Graph *graph, Node *node, int index); 
-void addEdge(Graph *graph, Edge *edge, int index);
-void removeNode(Graph *graph, int index);
-void removeEdge(Graph *graph, int index);
-void relabelNode(Graph *graph, int index, GList *new_label, MarkType new_mark,
- 	         LabelClass new_label_class); 
-void relabelEdge(Graph *graph, int index, GList *new_label, MarkType new_mark,
+void addNode(Graph *graph, Node *node); 
+void addEdge(Graph *graph, Edge *edge);
+void removeNode(Graph *graph, Node *node);
+void removeEdge(Graph *graph, Edge *edge);
+
+/* Another idea is to ditch the fourth argument and write a function that
+ * returns the label class of a Label. */
+void relabelNode(Graph *graph, Node *node, Label new_label, 
+		 LabelClass new_label_class); 
+void relabelEdge(Graph *graph, Edge *edge, Label new_label, 
 		 LabelClass new_label_class); 
 
 /* Graph querying functions 
@@ -166,3 +172,4 @@ void freeListElement(void *p);
  */
 void freeGSList(gpointer key, gpointer value, gpointer data); 
 
+#endif /* INC_GRAPH_H */
