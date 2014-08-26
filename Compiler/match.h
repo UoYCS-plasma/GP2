@@ -9,35 +9,29 @@
   
 /////////////////////////////////////////////////////////////////////////// */
 
+#ifndef INC_MATCH_H
+#define INC_MATCH_H
+
 #include "ast.h"
 #include "graph.h"
+#include "structures.h"
 #include <glib.h>
 
 
-typedef struct Mapping {
-   int rule_index;
-   int host_index;
-} Mapping;
+typedef struct NodeMorphism {
+   Node *rule_node;
+   Node *host_node;
+} NodeMorphism;
+
+typedef struct EdgeMorphism {
+   Edge *rule_edge;
+   Edge *host_edge;
+} EdgeMorphism;
 
 typedef struct Assignment {
   string name;
   GList *value;
 } Assignment;
-
-typedef struct Stack {
-   int top; /* index to the top item in the stack */
-   int max_size; /* can be determined statically by examining # nodes, edges in the rule. */
-   void **items; /* array of stack items */
-} Stack;
-
-
-Stack *newStack (int maxSize);
-void push (Stack *stack, void *data);
-void *pop (Stack *stack);
-bool stackIsFull (Stack *stack);
-bool stackIsEmpty (Stack *stack);
-void freeStack (Stack *stack);
-
 
 typedef struct Morphism {
    Stack *node_matches;
@@ -45,14 +39,15 @@ typedef struct Morphism {
    Stack *assignment;
 } Morphism;
 
-Morphism *newMorphism (int nodes, int edges, int variables);
-bool matchNode(Node *rule_node, Graph *lhs, Graph *host);
-bool matchEdge(Edge *rule_edge, Graph *lhs, Graph *host); 
-bool matchSourceAndTargets(Graph *lhs, Graph *host);
 bool matchRootNodes(Graph *lhs, Graph *host); 
-void addNodeMatch (Stack *assignment, int rule_index, int host_index);
-void addEdgeMatch (Stack *assignment, int rule_index, int host_index);
-bool addAssignment (Morphism *morphism, string name, GList *value);
+bool matchSourceAndTargets(Graph *lhs, Graph *host);
+bool matchEdge(Edge *rule_edge, Graph *lhs, Graph *host); 
+bool matchNode(Node *rule_node, Graph *lhs, Graph *host);
+
+Morphism *makeMorphism(Graph *lhs, Graph *host, GraphMapping *node_matches, 
+		       GraphMapping *edge_matches, Stack *assignment);
+bool addAssignment(Morphism *morphism, string name, GList *value);
+void freeMorphism(Morphism *morphism);
 
 
 typedef enum {INT_VAR = 0, CHAR_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} GPType;
@@ -122,6 +117,4 @@ bool labelMatch (Stack *assignment, Label rule_label, Label host_label);
 void applyRule (Rule *rule, Morphism *match, Graph *host);
 
 
-
-
-
+#endif /* INC_MATCH_H */
