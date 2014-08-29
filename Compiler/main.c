@@ -29,10 +29,10 @@
 
 /* Macros to control debugging features. */
 #undef PARSER_TRACE 		/* Assign yydebug to 1 */
-#define DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
+#undef DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
 #define DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
 #define PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
-#define DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
+#undef DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
                                    yyparse. */
 
 
@@ -108,7 +108,12 @@ int main(int argc, char** argv) {
   if(!yyparse()) {
      print_to_log("GP2 program parse succeeded\n\n");
      #ifdef DRAW_ORIGINAL_AST
-        printDotAST(gp_program, file_name); /* Defined in pretty.c */ 
+        /* create the string <file_name>_first as an argument to printDotAST */
+        int length = strlen(argv[1])+6;
+        char alt_name[length];
+        strcpy(alt_name,argv[1]);
+        strcat(alt_name,"_first"); 
+        printDotAST(gp_program, alt_name); /* Defined in pretty.c */ 
      #endif
   }
 
@@ -174,12 +179,7 @@ int main(int argc, char** argv) {
      abort_compilation = semanticCheck(gp_program, gp_symbol_table, "Global"); 
 
      #ifdef DRAW_FINAL_AST
-        /* create the string <file_name>_F as an argument to printDotAST */
-        int length = strlen(argv[1])+2;
-        char alt_name[length];
-        strcpy(alt_name,argv[1]);
-        strcat(alt_name,"_F"); 
-        printDotAST(gp_program, alt_name); /* Defined in pretty.c */ 
+        printDotAST(gp_program, argv[1]); /* Defined in pretty.c */ 
      #endif
      
      #ifdef PRINT_SYMBOL_TABLE
@@ -208,4 +208,5 @@ int main(int argc, char** argv) {
     g_hash_table_destroy(gp_symbol_table); 
   }
 
+  return 0;
 }
