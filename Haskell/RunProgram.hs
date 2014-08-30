@@ -28,10 +28,12 @@ runProgram (Program ds) max g = isoFilter $ processData $ evalMain max ds (findM
     where isoFilter :: ([HostGraph], Int, Int) -> Result
           isoFilter (gs, fc, uc) = (isomorphismCount gs, fc, uc)
 
-firstSolution :: GPProgram -> Int -> HostGraph -> Result
-firstSolution (Program ds) max g = makeResult $ processData [ head $ evalMain max ds (findMain ds) g ]
-    where makeResult :: ([HostGraph], Int, Int) -> Result
-          makeResult ([g], fc, uc) = ([(g, 0)], fc, uc)
+-- For use with --one commandline flag: only get first result
+nSolutions :: Int -> GPProgram -> Int -> HostGraph -> Result
+nSolutions n (Program ds) max g = makeResult $ processData $ take n $ evalMain max ds (findMain ds) g
+    where
+        makeResult :: ([HostGraph], Int, Int) -> Result
+        makeResult ([g], fc, uc) = ([(g, 1)], fc, uc)
 
 
 processData :: [GraphState] -> ([HostGraph], Int, Int)
