@@ -33,7 +33,7 @@ nSolutions :: Int -> GPProgram -> Int -> HostGraph -> Result
 nSolutions n (Program ds) max g = makeResult $ processData $ take n $ evalMain max ds (findMain ds) g
     where
         makeResult :: ([HostGraph], Int, Int) -> Result
-        makeResult ([g], fc, uc) = ([(g, 1)], fc, uc)
+        makeResult (gs, fc, uc) = (take n $ zip gs [1,1..], fc, uc)
 
 
 processData :: [GraphState] -> ([HostGraph], Int, Int)
