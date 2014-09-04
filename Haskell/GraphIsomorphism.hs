@@ -1,7 +1,7 @@
 -- labelled graph isomorphism test
 -- Colin Runciman, July 2014
 
-module GraphIsomorphism (getIsomorphismData, isomorphismCount) where
+module GraphIsomorphism (isomorphismCount) where
 
 import Data.List (permutations)
 import Graph
@@ -18,7 +18,7 @@ import Mapping
 --     do not include (g, k) in the output list.
 -- (2) Call isomorphismCount on the graphs in hs not isomorphic to g. This outputs
 --     the isomorphism count of those graphs. Let's call that hs'
--- (3) Return (g, km) : hs' -}
+-- (3) Return (g, km) : hs'
 getIsomorphismData :: (Eq a, Eq b) => (Graph a b, Int) -> [Graph a b] -> [(Graph a b, Int)]
 getIsomorphismData (g, k) hs = 
     let partition = isomorphicSet (g:hs) 
@@ -27,7 +27,7 @@ getIsomorphismData (g, k) hs =
         gs        = tail $ fst partition
         hs'       = snd partition 
         ihs' = isomorphismCount hs' in
-     if null gs then ihs' else (g, k*length gs) : ihs'
+     if null gs then ihs' else (g, k*length gs) : ihs' -}
 
 -- Given a list of graphs, isomorphismCount returns a list of pairs.
 -- Each pair contains a single representative of a set of isomorphic graphs in 
