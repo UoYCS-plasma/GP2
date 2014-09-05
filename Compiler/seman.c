@@ -1588,7 +1588,7 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 {
    switch(atom_exp->exp_type) {
 
-      case INT_CONSTANT:
+      case INTEGER_CONSTANT:
 
            if(string_exp) {
               print_to_console("Error (%s.%s): Integer constant appears in a "

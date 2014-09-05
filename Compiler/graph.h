@@ -16,14 +16,6 @@
 #include "ast.h"
 #include <glib.h>
 
-/* Classes of GP 2 labels for querying by label. The first four values refer
- * to singleton lists containing a value/variable of that type; the remaining
- * values refer to lists of a particular length. The limit can be adjusted
- * as necessary.
- */
-typedef enum {EMPTY=0, INT_L, CHAR_L, STR_L, ATOM_L, LIST2_L, LIST3_L, LIST4_L,
-              LIST5_L} LabelClass;
-
 /* Invariants on graphs:
  * (1) A graph with N nodes has assigned node indexes 1,...,N. next_node_index
  *     is N+1.
@@ -60,6 +52,14 @@ typedef struct Label {
    GList *list;
 } Label;
 
+/* Classes of GP 2 labels for querying by label. The first four values refer
+ * to singleton lists containing a value/variable of that type; the remaining
+ * values refer to lists of a particular length. The limit can be adjusted
+ * as necessary.
+ */
+typedef enum {EMPTY=0, INT_L, CHAR_L, STR_L, ATOM_L, LIST2_L, LIST3_L, LIST4_L,
+              LIST5_L} LabelClass;
+
 typedef struct Node {
    /* Index in the node array */
    int index;
@@ -69,6 +69,8 @@ typedef struct Node {
    Label label; 
    int indegree;
    int outdegree;
+   GSList *in_edges;
+   GSList *out_edges;
    GHashTable *in_edges_by_label;
    GHashTable *out_edges_by_label;
 } Node;
@@ -85,8 +87,7 @@ typedef struct Edge {
    Node *target;
 } Edge;
 
-/* This may need a LabelClass field for the relabelling functions, but not
- * clear at the moment. */
+
 typedef struct ListElement {
    AtomExpType type;		  /* From ast.h */
    union {
@@ -100,7 +101,7 @@ typedef struct ListElement {
     struct { 
       struct ListElement *left_exp;
       struct ListElement *right_exp;
-    } bin_op; 		   	 /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
+    } bin_op; 		   	  /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
   } value;
 
 } ListElement;
@@ -108,10 +109,9 @@ typedef struct ListElement {
 
 /* Graph utility functions
  * =======================
- * The add functions take a graph, a pointer to the item to add and the
- * item's index in the graph's node/edge array. Either the graph's next node
- * index or the graph's next edge index should be passed as the third argument.      int host_source_index = lookup(
-
+ * The add functions take a graph and a pointer to the item to add. Nodes
+ * and edges are created with the newNode and newEdge functions which
+ * take the item's name, a boolean flag and its label.
  * 
  * The remove and relabel functions take a graph and the index in the graph's 
  * node or edge array of the item to be modified. Each node and edge stores 
@@ -121,13 +121,15 @@ typedef struct ListElement {
 
 /* Creates an empty graph and returns a pointer to it. */
 Graph *newGraph(void);
+Node *newNode(string name, bool root, Label label);
+/* Not currently sure how to get the source and target pointers when traversing
+ * the AST. */
+Edge *newEdge(string name, bool bidirectional, Label label, Node *source, 
+             Node *target);
 void addNode(Graph *graph, Node *node); 
 void addEdge(Graph *graph, Edge *edge);
 void removeNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);
-
-/* Another idea is to ditch the fourth argument and write a function that
- * returns the label class of a Label. */
 void relabelNode(Graph *graph, Node *node, Label new_label, 
 		 LabelClass new_label_class); 
 void relabelEdge(Graph *graph, Edge *edge, Label new_label, 
@@ -140,10 +142,15 @@ void relabelEdge(Graph *graph, Edge *edge, Label new_label,
  * drawn from the hashtables indexed by label classes.
  */
 
+Node *getNode(Graph *graph, int index);
+Edge *getEdge(Graph *graph, int index);
+GSList *getRootNodes(Graph *graph);
 GSList *getNodes(Graph *graph, LabelClass label_class);
 GSList *getEdges(Graph *graph, LabelClass label_class);
-GSList *getInEdges(Node *node, LabelClass label_class);
-GSList *getOutEdges(Node *node, LabelClass label_class);
+GSList *getInEdges(Node *node);
+GSList *getOutEdges(Node *node);
+GSList *getInEdgesByLabel(Node *node, LabelClass label_class);
+GSList *getOutEdgesByLabel(Node *node, LabelClass label_class);
 Node *getSource(Edge *edge);
 Node *getTarget(Edge *edge);
 Label getNodeLabel(Node *node);
@@ -162,7 +169,7 @@ void printListElement(ListElement* elem);
 /* printEdgeData is used to print a node's incoming/outgoing edge
  * table. It does not print the entire edge: just its index and name.
  */
-void printEdgeData(gpointer key, gpointer value, gpointer user_data);
+void printEdgeData(gpointer data, gpointer user_data);
 
 void freeGraph (Graph *graph);
 void freeNode (void *p);

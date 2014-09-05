@@ -13,11 +13,11 @@
 #define INC_SEMAN_H
 
 #include "ast.h" /* struct List */
-#include <glib.h>
+/* #include <glib.h>
 #include <stdbool.h>
-#include <stdlib.h> /* malloc, free */
-#include <string.h> /* strdup, strcmp */
-#include <stdio.h> /* fprintf */
+#include <stdlib.h>  malloc, free 
+#include <string.h>  strdup, strcmp 
+#include <stdio.h>  fprintf */
 
 
 /* GP2 symbols are stored in struct Symbol. These are values of the
