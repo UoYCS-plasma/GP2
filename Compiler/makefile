@@ -1,5 +1,5 @@
 P = runGP
-OBJECTS = gpparser.tab.o lex.yy.o ast.o structures.o pretty.o seman.o graph.o match.o main.o
+OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 #CFLAGS = -g -Wall -Wextra -I/local/d0p6/chrisbak/root/include/glib-2.0 -I/local/d0p6/chrisbak/root/lib/glib-2.0/include
@@ -27,8 +27,8 @@ graph-debug:	ast.o graph.o testgraph.o
 
 
 
-# Builds executable gpparse.
-# Usage: make gpparse
+# Builds executable runGP.
+# Usage: make runGP
 $(P):		$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P)
 
@@ -50,8 +50,8 @@ main.o:         main.c pretty.h ast.h seman.h
 ast.o: 		ast.c ast.h
 		$(CC) $(CFLAGS) -c ast.c
 
-structures.o:	structures.c ast.h structures.h
-		$(CC) $(CFLAGS) -c structures.c
+rule.o:		rule.c ast.h rule.h
+		$(CC) $(CFLAGS) -c rule.c
 
 pretty.o:       pretty.c pretty.h ast.h seman.h
 		$(CC) $(CFLAGS) -c pretty.c
@@ -62,7 +62,7 @@ seman.o:	seman.c seman.h ast.h
 graph.o:	graph.c graph.h ast.h
 		$(CC) $(CFLAGS) -c graph.c
 
-match.o:	match.c match.h graph.h structures.h ast.h
+match.o:	match.c match.h graph.h rule.h ast.h
 		$(CC) $(CFLAGS) -c match.c
 
 testgraph.o:	testgraph.c graph.h ast.h
