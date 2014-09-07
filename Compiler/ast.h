@@ -24,10 +24,13 @@
   do { fprintf(stderr, error_message, ##__VA_ARGS__); }     \
   while(0) 
 
-#include <stdio.h> /* FILE type */
+#include <assert.h>
+#include <glib.h> 
+#include <stdarg.h>
 #include <stdbool.h>
-#include <stdlib.h> /* malloc */
-#include <string.h> /* strdup */
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 typedef char* string;
 
@@ -246,7 +249,7 @@ GPCondExp *newASTBinaryExp (CondExpType exp_type, YYLTYPE location,
 
 /* Definition of AST nodes representing integer or string expressions. */
 
-typedef enum {VARIABLE=0, INT_CONSTANT, CHARACTER_CONSTANT,
+typedef enum {VARIABLE=0, INTEGER_CONSTANT, CHARACTER_CONSTANT,
               STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
               NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType;
 
@@ -256,7 +259,7 @@ typedef struct GPAtomicExp {
   YYLTYPE location;
   union {
     string name;		  /* VARIABLE */
-    int number; 	 	  /* INT_CONSTANT */
+    int number; 	 	  /* INTEGER_CONSTANT */
     string string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
     struct List *list_arg; 	  /* LIST_LENGTH */

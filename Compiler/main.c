@@ -18,13 +18,13 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
-#include "ast.h" /* struct List, struct GPGraph */
-#include "pretty.h" /* Pretty printer functions */
-#include "seman.h" /* Semantic analysis functions */
+#include "pretty.h" 
+/* #include "ast.h" 
+#include "seman.h" 
 #include <stdbool.h>
 #include <stdio.h> 
 #include <stdlib.h>
-#include <string.h>
+#include <string.h> */
 
 
 /* Macros to control debugging features. */

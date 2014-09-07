@@ -1171,7 +1171,7 @@ void printASTAtom(GPAtomicExp * const atom, FILE *dot_file)
 
              break;
 
-	case INT_CONSTANT:
+	case INTEGER_CONSTANT:
 
 	     atom->node_id = next_node_id;
              next_node_id += 1;

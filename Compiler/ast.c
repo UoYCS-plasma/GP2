@@ -524,7 +524,7 @@ GPAtomicExp *newASTNumber (YYLTYPE location, int number)
        exit(1);
      }
 
-     atom->exp_type = INT_CONSTANT;
+     atom->exp_type = INTEGER_CONSTANT;
      atom->location = location;
      atom->value.number = number;
 
@@ -1098,7 +1098,7 @@ void freeASTAtomicExp(GPAtomicExp *atom)
              break;
 
 
-	case INT_CONSTANT:
+	case INTEGER_CONSTANT:
 
              break;
 
