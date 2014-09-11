@@ -249,7 +249,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
             }
          }
          /* Restart the do-while loop. */
-         break;   
+         continue;   
 
       /* end if(backtracking) */
       }
@@ -345,7 +345,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
                   if(result == -1)
                      {
                         backtracking = true;
-                        break;
+                        continue;
                      }
                }
                /* Otherwise matchTarget/matchSource returned -2 and nothing needs
@@ -353,10 +353,10 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
             }
             else 
             {
-               /* The node has no match. Turn backtracking on and break the 
+               /* The node has no match. Turn backtracking on and restart the 
                 * main loop. */
                backtracking = true;
-               break; 
+               continue; 
             }
          /* No unmatched edge has been found. Breaking here would result
           * in an infinite loop of trying to find an edge to match. 
@@ -386,16 +386,9 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
                   match_count++;
                   nodes_matched++;
                }
-               else 
-               {
-                  backtracking = true;
-                  break; 
-               }
+               else backtracking = true; 
             }
          }
-      /* Restart the while loop to check the loop condition. */
-      break;
-
       }
    }
    while(match_count > 0 || match_count < number_of_nodes + number_of_edges);

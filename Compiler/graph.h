@@ -140,8 +140,7 @@ void relabelEdge(Graph *graph, Edge *edge, Label new_label,
  * ========================
  * The functions to get nodes and get edges take a label class.
  * The functions return the list of items with that label class,
- * drawn from the hashtables indexed by label classes.
- */
+ * drawn from the hashtables indexed by label classes. */
 
 Node *getNode(Graph *graph, int index);
 Edge *getEdge(Graph *graph, int index);
@@ -160,7 +159,8 @@ int getIndegree (Node *node);
 int getOutdegree (Node *node);
 
 
-/* Printing and freeing functions */
+/* Printing and freeing functions 
+ * ============================== */
 
 void printGraph (Graph *graph);
 void printNode (gpointer data, gpointer user_data);

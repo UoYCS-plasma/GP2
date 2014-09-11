@@ -88,6 +88,15 @@ Assignment *addAssignment(Assignment *assignment, string name, GList *value)
    return new_assignment;
 }
 
+
+Assignment *removeAssignment(Assignment *assignment)
+{
+   Assignment *new_assignment = assignment->next;
+   free(assignment);
+   return new_assignment;
+}
+
+
 GList *lookupValue(Assignment *assignment, string name)
 {
    while(assignment != NULL) 
@@ -161,6 +170,11 @@ void freeMorphism(Morphism *morphism)
 bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
                 Assignment **assignment) 
 {
+   /* Keeps track of the number of assignments made in the scope of this
+    * function so that they can be removed should the lists fail to match.
+    */
+   int new_assignments = 0;
+
    /* Error checking. The lists should never be NULL. */
    if(rule_label.list == NULL)
    {
@@ -229,12 +243,17 @@ bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
                list_variable = rule_atom->value.name;
                ListElement atom = { .type = EMPTY };
                GList *list = g_list_prepend(NULL, &atom);
-               return verifyListVariable(assignment, list_variable, list);
+               if(verifyListVariable(assignment, list_variable, list)) 
+                  return true;
             }
          }
-         /* If this point is reached then rule_atom is either not a list
-          * variable (inner if statement) or not a variable (outer if
-          * statement). Return false. */
+         /* If this point is reached then the label match failed: Either the
+          * call to verifyListVariable returned false, the current rule atom 
+          * is not a list variable, or the current rule atom is not a variable.
+          * Remove any assignments made in this function and return false. */
+         int counter;
+         for(counter = 0; counter < new_assignments; counter++)
+            *assignment = removeAssignment(*assignment);
          return false;
       }
 
@@ -250,8 +269,16 @@ bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
          }
       }
       
-      if(!compareAtoms(rule_atom, host_atom, variables, assignment)) 
+      int result = compareAtoms(rule_atom, host_atom, variables, assignment);
+
+      if(result >= 0) new_assignments += result;
+      else 
+      {
+         int counter;
+         for(counter = 0; counter < new_assignments; counter++)
+            *assignment = removeAssignment(*assignment);
          return false;
+      }
 
       rule_list = rule_list->next;
       host_list = host_list->next;
@@ -315,7 +342,14 @@ bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
                   list = g_list_prepend(list, atom);
                }
             } 
-            return verifyListVariable(assignment, list_variable, list);
+            if(verifyListVariable(assignment, list_variable, list)) return true;
+            else
+            {
+               /* Remove the assignments made in the duration of this function. */
+               for(counter = 0; counter < new_assignments; counter++)
+                  *assignment = removeAssignment(*assignment);
+               return false;
+            }
          }
       }
   
@@ -327,8 +361,16 @@ bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
         
       ListElement *host_atom = (ListElement*)host_list->data;
 
-      if(!compareAtoms(rule_atom, host_atom, variables, assignment)) 
+      int result = compareAtoms(rule_atom, host_atom, variables, assignment);
+
+      if(result >= 0) new_assignments += result;
+      else 
+      {
+         int counter;
+         for(counter = 0; counter < new_assignments; counter++)
+            *assignment = removeAssignment(*assignment);
          return false;
+      }
 
       rule_list = rule_list->prev;
       host_list = host_list->prev;
@@ -338,8 +380,8 @@ bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
 }
     
 
-bool compareAtoms(ListElement *rule_atom, ListElement *host_atom, 
-            VariableList *variables, Assignment **assignment) 
+int compareAtoms(ListElement *rule_atom, ListElement *host_atom, 
+                 VariableList *variables, Assignment **assignment) 
 {
    switch(rule_atom->type) 
    {
@@ -353,7 +395,7 @@ bool compareAtoms(ListElement *rule_atom, ListElement *host_atom,
             
                if(host_atom->type == INTEGER_CONSTANT)
                   return(verifyAtomVariable(assignment, variable, host_atom));
-               else return false;
+               else return -1;
                
                break;
 
@@ -402,8 +444,9 @@ bool compareAtoms(ListElement *rule_atom, ListElement *host_atom,
       case INTEGER_CONSTANT:
 
            if(host_atom->type == INTEGER_CONSTANT)
-              return(rule_atom->value.number == host_atom->value.number);
-           else return false;
+              if(rule_atom->value.number == host_atom->value.number) return 0; 
+              else return -1;
+           else return -1;
            
            break;
           
@@ -411,7 +454,9 @@ bool compareAtoms(ListElement *rule_atom, ListElement *host_atom,
       case CHARACTER_CONSTANT:
 
            if(host_atom->type == CHARACTER_CONSTANT)
-              return(strcmp(rule_atom->value.string, host_atom->value.string) == 0);
+              if(strcmp(rule_atom->value.string, host_atom->value.string) == 0)
+                 return 0;
+              else return -1;
            else return false;
            
            break;
@@ -421,7 +466,9 @@ bool compareAtoms(ListElement *rule_atom, ListElement *host_atom,
 
            if(host_atom->type == CHARACTER_CONSTANT ||
               host_atom->type == STRING_CONSTANT)
-              return(strcmp(rule_atom->value.string, host_atom->value.string) == 0);
+              if(strcmp(rule_atom->value.string, host_atom->value.string) == 0)
+                 return 0;
+              else return -1;
            else return false;
            
            break;
@@ -430,7 +477,9 @@ bool compareAtoms(ListElement *rule_atom, ListElement *host_atom,
       case NEG:
 
            if(host_atom->type == INTEGER_CONSTANT)
-              return(rule_atom->value.number == -(host_atom->value.number));
+              if(rule_atom->value.number == -(host_atom->value.number)) 
+                 return 0;
+              else return -1;
            else return false;
            
            break;
@@ -646,23 +695,21 @@ bool verifyListVariable(Assignment **assignment, string name, GList *list)
 
       ListElement *atom = (ListElement*)list->data;
 
-      if(!compareConstants(assigned_atom, atom)) return false;
+      if(compareConstants(assigned_atom, atom) == -1) return false;
 
       assigned_list = assigned_list->next;
       list = list->next;
    }
 
-   /* At this point the while loop has exited without returning false.
-    * One final check needs to be made: have we reached the end of the list?
-    * If not, then list contains more elements than assigned_list, hence they
-    * are not equal. If so, the lists match but list already exists in the assignment
-    * and it needs to be freed.
-    */
-   return list == NULL;
+   /* At this point the while loop has exited without returning false, so all  
+    * elements in assigned_list match up with their counterparts in list. 
+    * If list has more elements, then the lists are not of equal length and
+    * are not compatible. */ 
+    return(list == NULL);
 }	 
 
 
-bool verifyAtomVariable(Assignment **assignment, string name, ListElement *atom)
+int verifyAtomVariable(Assignment **assignment, string name, ListElement *atom)
 {
    GList *assigned_value = lookupValue(*assignment, name);
 
@@ -686,7 +733,7 @@ bool verifyAtomVariable(Assignment **assignment, string name, ListElement *atom)
       assigned_value = g_list_prepend(assigned_value, atom_copy);
 
       *assignment = addAssignment(*assignment, name, assigned_value);
-      return true;
+      return 1;
    }
 
    /* Check if assigned_value has more than one element. It shouldn't, as this
@@ -696,11 +743,12 @@ bool verifyAtomVariable(Assignment **assignment, string name, ListElement *atom)
    {
       print_to_log("Error (verifyAtomVariable): non-list variable %s assigned "
 		   "a non-atomic value.\n", name);
-      return false;
+      return -1;
    }
 
    ListElement *assigned_atom = (ListElement *)assigned_value->data;
-   return(compareConstants(assigned_atom, atom));
+   if(compareConstants(assigned_atom, atom)) return 0;
+   else return -1;
 }
 
 
