@@ -25,8 +25,8 @@ Graph *newGraph(void)
     new_graph->nodes = g_ptr_array_new_with_free_func(freeNode);
     new_graph->edges = g_ptr_array_new_with_free_func(freeEdge);
 
-    new_graph->nodes_by_label = g_hash_table_new(g_direct_hash,g_direct_equal);    
-    new_graph->edges_by_label = g_hash_table_new(g_direct_hash,g_direct_equal);    
+    new_graph->nodes_by_label = g_hash_table_new(g_direct_hash, g_direct_equal);    
+    new_graph->edges_by_label = g_hash_table_new(g_direct_hash, g_direct_equal);    
 
     new_graph->root_nodes = NULL;
 
@@ -49,8 +49,10 @@ Node *newNode(string name, bool root, Label label)
    node->label = label;
    node->indegree = 0;
    node->outdegree = 0;
-   node->in_edges_by_label = g_hash_table_new(g_direct_hash,g_direct_equal); 
-   node->out_edges_by_label = g_hash_table_new(g_direct_hash,g_direct_equal); 
+   node->in_edges = NULL;
+   node->out_edges = NULL;
+   node->in_edges_by_label = g_hash_table_new(g_direct_hash, g_direct_equal); 
+   node->out_edges_by_label = g_hash_table_new(g_direct_hash, g_direct_equal); 
 
    return node;
 }
@@ -326,13 +328,15 @@ GSList *getRootNodes(Graph *graph)
 
 GSList *getNodes(Graph *graph, LabelClass label_class) 
 {
-   return g_hash_table_lookup(graph->nodes_by_label, &label_class);
+   void *hash_key = GINT_TO_POINTER(label_class);
+   return g_hash_table_lookup(graph->nodes_by_label, hash_key);
 }
    
 
 GSList *getEdges(Graph *graph, LabelClass label_class) 
 {
-   return g_hash_table_lookup(graph->edges_by_label, &label_class);
+   void *hash_key = GINT_TO_POINTER(label_class);
+   return g_hash_table_lookup(graph->edges_by_label, hash_key);
 }
 
 
@@ -350,13 +354,15 @@ GSList *getOutEdges(Node *node)
 
 GSList *getInEdgesByLabel(Node *node, LabelClass label_class) 
 {
-   return g_hash_table_lookup(node->in_edges_by_label, &label_class);
+   void *hash_key = GINT_TO_POINTER(label_class);
+   return g_hash_table_lookup(node->in_edges_by_label, hash_key);
 }
 
 
 GSList *getOutEdgesByLabel(Node *node, LabelClass label_class)  
 {
-   return g_hash_table_lookup(node->out_edges_by_label, &label_class);
+   void *hash_key = GINT_TO_POINTER(label_class);
+   return g_hash_table_lookup(node->out_edges_by_label, hash_key);
 }
 
 
@@ -416,7 +422,6 @@ void printNode (gpointer data, gpointer user_data)
     printf("Mark: %d\n", node->label.mark);
     printf("Label: ");
     if(node->label.list) printList(node->label.list);
-    else printf("empty");
     printf("\n");
     printf("Indegree: %d\nOutdegree: %d\n", node->indegree, node->outdegree);
     if(node->in_edges) 
@@ -437,7 +442,6 @@ void printEdge (gpointer data, gpointer user_data)
     printf("Mark: %d\n", edge->label.mark);
     printf("Label: ");
     if(edge->label.list) printList(edge->label.list);
-    else printf("empty");
     printf("\n");
     printf("Source: %d-%s\n", edge->source->index, edge->source->name);
     printf("Target: %d-%s\n", edge->target->index, edge->target->name);
@@ -468,6 +472,10 @@ void printListElement(ListElement* elem)
        
     switch(elem->type) 
     {
+        case EMPTY:
+             printf("empty");
+             break;
+
 	case VARIABLE: 
 	     printf("%s", elem->value.name);
 	     break;
@@ -615,6 +623,10 @@ void freeListElement(void *p)
 
      switch(elem->type) 
      {
+        case EMPTY:
+
+             break;
+
 
 	case VARIABLE:
 

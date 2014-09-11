@@ -14,7 +14,6 @@
 #define INC_GRAPH_H
 
 #include "ast.h"
-#include <glib.h>
 
 /* Invariants on graphs:
  * (1) A graph with N nodes has assigned node indexes 1,...,N. next_node_index
@@ -49,7 +48,8 @@ typedef struct Graph {
 
 typedef struct Label {
    MarkType mark; /* MarkType defined in ast.h */
-   GList *list;
+   GList *list; /* The empty list is represented by a GList with one element with
+                 * type EMPTY. */
 } Label;
 
 /* Classes of GP 2 labels for querying by label. The first four values refer
@@ -57,7 +57,7 @@ typedef struct Label {
  * values refer to lists of a particular length. The limit can be adjusted
  * as necessary.
  */
-typedef enum {EMPTY=0, INT_L, CHAR_L, STR_L, ATOM_L, LIST2_L, LIST3_L, LIST4_L,
+typedef enum {EMPTY_L=0, INT_L, CHAR_L, STR_L, ATOM_L, LIST2_L, LIST3_L, LIST4_L,
               LIST5_L} LabelClass;
 
 typedef struct Node {
@@ -92,7 +92,7 @@ typedef struct ListElement {
    AtomExpType type;		  /* From ast.h */
    union {
     string name;		  /* VARIABLE */
-    int number; 	 	  /* INT_CONSTANT */
+    int number; 	 	  /* INTEGER_CONSTANT */
     string string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
     GList *list_arg;	 	  /* LIST_LENGTH */
@@ -102,6 +102,7 @@ typedef struct ListElement {
       struct ListElement *left_exp;
       struct ListElement *right_exp;
     } bin_op; 		   	  /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
+    /* There is also the EMPTY type which has no value. */
   } value;
 
 } ListElement;
