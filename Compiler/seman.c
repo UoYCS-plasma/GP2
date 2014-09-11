@@ -110,12 +110,13 @@ bool declarationScan(List * ast, GHashTable *table,
     * on recursive calls to declarationScan. 
     */
    static int main_count = 0;
-   /* The return value. Set to 1 if a clash is detected. */
+
+   /* The return value. Set to true if a name clash is detected. */
    static bool name_clash = false;
 
    GSList *symbol_list = NULL;
 
-   while(ast) {     
+   while(ast != NULL) {     
 
       switch(ast->value.declaration->decl_type) {
 
@@ -132,9 +133,10 @@ bool declarationScan(List * ast, GHashTable *table,
          {
 
 	      /* Get the name of the procedure */
-	      proc_name = strdup(ast->value.declaration->value.procedure->name);	      
+              GPProcedure *procedure = ast->value.declaration->value.procedure;
+	      string procedure_name = strdup(procedure->name);	      
 
-              symbol_list = g_hash_table_lookup(table, proc_name);
+              symbol_list = g_hash_table_lookup(table, procedure_name);
 	      
 	      /* Make a copy of symbol_list for list traversal as symbol_list
 	       * needs to point to the head of the list in case the new symbol
@@ -188,23 +190,22 @@ bool declarationScan(List * ast, GHashTable *table,
 
                  symbol_list = g_slist_prepend(symbol_list, proc_symbol);      
 
-                 g_hash_table_replace(table, proc_name, symbol_list); 
+                 g_hash_table_replace(table, procedure_name, symbol_list); 
 
 	      }
 
-	      if(ast->value.declaration->value.procedure->local_decls) {
+	      if(procedure->local_decls) {
 
 	         /* Reverse local declaration list */
-                 ast->value.declaration->value.procedure->local_decls = 
-	            reverse(ast->value.declaration->value.procedure->local_decls);
+                 procedure->local_decls = reverse(procedure->local_decls);
 
-                 /* Scan for any local declarations. proc_name is passed
-                  * as the scope argument. */
-                 declarationScan(ast->value.declaration->value.procedure->
-			          local_decls, table, proc_name);
+                 /* Scan for any local declarations. The procedure's name is
+                  * passed as the new scope. */
+                 name_clash = declarationScan(procedure->local_decls, table, 
+                                              procedure_name);
               }
 
-              if(!add_procedure && proc_name) free(proc_name);
+              if(!add_procedure && procedure_name) free(procedure_name);
  
               break;
          }
@@ -307,27 +308,26 @@ bool declarationScan(List * ast, GHashTable *table,
 
    }
 
-   /* The code following the if statement should only be executed upon
-    * reaching the end of the global declaration list. 
-    * As declarationScan is a recursive function, I must check if the current 
-    * invocation of declarationScan is in global scope. If so, then I know
-    * the end of the global declaration list has been reached and I can return
-    * knowing the whole AST has been scanned.
+   /* The code following the if statement is only executed upon reaching the
+    * end of the global declaration list. 
     */
-   if(!strcmp(scope,"Global")) {
-
-     if(main_count == 0) {
+   if(!strcmp(scope,"Global")) 
+   {
+     if(main_count == 0) 
+     {
         print_to_console("Error: No Main procedure.\n");
         print_to_log("Error: No Main procedure.\n");
+        return false;
      }
-
-     if(main_count > 1) {
+     if(main_count > 1) 
+     {
         print_to_console("Error: More than one Main declaration.\n");
         print_to_log("Error: More than one Main declaration.\n");
+        return false;
      }
-
-     return name_clash;
    }  
+   
+   return name_clash;
 }
 
 
@@ -337,14 +337,13 @@ bool declarationScan(List * ast, GHashTable *table,
  * in graph_scan and freed in semanticCheck.
  */
 
+BiEdgeList *bidirectional_edges = NULL; 
+
 /* The main body recurses over declaration lists, handling each of the three 
  * declaration types with the help of subprocedures.
  */
 
-BiEdgeList *bidirectional_edges = NULL; 
-
-bool semanticCheck(List * declarations, GHashTable *table,
-                   string const scope)
+bool semanticCheck(List * declarations, GHashTable *table, string const scope)                   
 {
    while(declarations) {
 
@@ -369,23 +368,21 @@ bool semanticCheck(List * declarations, GHashTable *table,
          case PROCEDURE_DECLARATION: 
 	 {
               /* Set scope to procedure name for scanning local declarations */
-              string new_scope = current_declaration->value.procedure->name;
+              GPProcedure *procedure = current_declaration->value.procedure;
+              string new_scope = procedure->name;
 
 	      /* An empty main program does not comform to the grammar. The
 	       * parser should catch it and report a syntax error, but there is
 	       * no harm in checking here as well.
 	       */
-              if(current_declaration->value.procedure->cmd_seq)
-                  statementScan(current_declaration->value.procedure->cmd_seq,
-                                 table, new_scope);
+              if(procedure->cmd_seq)
+                  statementScan(procedure->cmd_seq, table, new_scope);
 	      else print_to_log("Error: Procedure %s has no program, "
-                                "not caught by parser. \n",
-                                current_declaration->value.procedure->name);
+                                "not caught by parser. \n", procedure->name);
 
-	      if(current_declaration->value.procedure->local_decls)
-                  semanticCheck(current_declaration->value.procedure->
-				 local_decls, table, new_scope);
-
+	      if(procedure->local_decls)
+                 abort_compilation = semanticCheck(procedure->local_decls,
+                                                   table, new_scope);
               break;
 	 }    
 
@@ -406,18 +403,15 @@ bool semanticCheck(List * declarations, GHashTable *table,
 
    }
 
-   /* The code following the if statement should only be executed upon
-    * reaching the end of the global declaration list. 
-    * As semanticCheck is a recursive function, I must check if the current 
-    * invocation of semanticCheck is in global scope. If so, then I know
-    * the end of the global declaration list has been reached and I can
-    * return knowing the whole AST has been scanned.
+   /* The code following the if statement is only executed upon reaching the
+    * end of the global declaration list. 
     */
    if(!strcmp(scope,"Global")) {
       if(bidirectional_edges) freeBiEdgeList(bidirectional_edges);
-      return abort_compilation;
    }
+   return abort_compilation;
 }   
+
 
 void freeBiEdgeList(BiEdgeList *edge_list) 
 {
@@ -477,7 +471,7 @@ void statementScan(GPStatement * const statement, GHashTable *table,
 	      List *rule_list = statement->value.rule_set;
 
               while(rule_list) {
-                 validateCall(rule_list->value.rule_name, table, scope, RULE_S);                               
+                 validateCall(rule_list->value.rule_name, table, scope, RULE_S);                             
 		 rule_list = rule_list->next;   
               }           
      

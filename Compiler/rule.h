@@ -14,7 +14,13 @@
 
 #include "graph.h"
 
-typedef enum {INT_VAR = 0, CHAR_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} GPType;
+/* The parameter list of a rule. Each variable has one of the five GP 2 types 
+ * according to the rule declaration. Used in the matching algorithm to check
+ * the type of a variable for label matching.
+ */
+
+typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} 
+  GPType;
 
 typedef struct VariableList {
   string variable;
@@ -22,34 +28,9 @@ typedef struct VariableList {
   struct VariableList *next;
 } VariableList;
 
-void addVariable(VariableList *variable_list, string name, GPType type);
+VariableList *addVariable(VariableList *variable_list, string name, GPType type);
 GPType lookupType(VariableList *variable_list, string name);
 void freeVariableList(VariableList *variable_list);
-
-/* Association list for mappings between rule nodes/edges and host nodes/edges. 
- * The integers refer to the item's indices in the pointer arrays of their 
- * respective graphs.
- */
-
-typedef struct GraphMapping {
-   int rule_item;
-   int host_item;
-   /* Controls backtracking.
-    * For a node, the flag is true if we need to search for another 
-    * match for this node while backtracking.
-    * For an edge, the flag is true if the edge was matched from its
-    * source node. */
-   bool flag;
-   struct GraphMapping *next;
-} GraphMapping;
-
-/* addMap called with first argument NULL creates a new GraphMapping. */
-GraphMapping *addMapping(GraphMapping *mapping, int rule_item, int host_item, 
-                         bool flag); 
-GraphMapping *removeMapping(GraphMapping *mapping);
-int lookupFromRule(GraphMapping *mapping, int rule_item);
-int lookupFromHost(GraphMapping *mapping, int rule_item);
-void freeMapping(GraphMapping *mapping);
 
 
 typedef struct Condition {
@@ -60,9 +41,7 @@ typedef struct Condition {
     struct {
       string source; 
       string target; 
-      /* Edge predicate can take an optional label argument, but how to represent
-       * marks in a textual rule condition? Perhaps a list might be better. */
-      GList *list;
+      Label label;
     } edge_pred; 		/* EDGE_PRED */
 
     struct { 
@@ -87,34 +66,17 @@ typedef struct Condition {
 
 typedef struct Rule {
    string name; 
-   /* Generated from the AST with list->value == NULL. Type information is 
-    * needed at this stage. */
    VariableList *variables;
    int number_of_variables;
    Graph *lhs;
    Graph *rhs; 
-   /* Association list between LHS nodes and RHS nodes. Bidir edges too. */
-   GraphMapping *interface;
+   /* Define data structure for interface. */
+   int interface;
    Condition *condition;
    /* True if the rule does not change the host graph. */
    bool is_predicate; 
 } Rule;
 
-
-/* Association list for mappings between variables and values. */
-
-typedef struct Assignment {
-  string variable;
-  GList *value;
-  struct Assignment *next;
-} Assignment;
-
-bool verifyList(Assignment *assignment, string name, GList *value);
-bool verifyAtom(Assignment *assignment, string name, ListElement *value);
-bool compareConstants(ListElement *atom, ListElement *test_atom);
-Assignment *addAssignment(Assignment *assignment, string name, GList *value);
-GList *lookupValue(Assignment *assignment, string name);
-void freeAssignment(Assignment *assignment);
 
 
 /* Generic stack implementation. Used to keep track of the host graph changes

@@ -22,8 +22,8 @@ int yyerror(const char *error_message);
 int report_error(const char *error_message);
 
 /* Flags used in the AST construction. */
-  bool is_root = false;
-  bool is_bidir = false;
+bool is_root = false;
+bool is_bidir = false;
 
 extern List *gp_program; /* This will point to the root of the program AST.
 			  * Defined in main.c. */

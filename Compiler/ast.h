@@ -175,7 +175,7 @@ typedef struct GPStatement {
       struct GPStatement *right_stmt; 
     } or_stmt;			        /* PROGRAM_OR */
     /* skip and fail are predefined GP rules represented by a struct GPStatement
-     * containing only a statement_type and location */
+     * containing only a statement_type and location. */
   } value;
 } GPStatement;
 
@@ -249,7 +249,9 @@ GPCondExp *newASTBinaryExp (CondExpType exp_type, YYLTYPE location,
 
 /* Definition of AST nodes representing integer or string expressions. */
 
-typedef enum {VARIABLE=0, INTEGER_CONSTANT, CHARACTER_CONSTANT,
+/* EMPTY is not used in anything AST-related; it is used later for label
+ * matching purposes. */
+typedef enum {EMPTY=0, VARIABLE, INTEGER_CONSTANT, CHARACTER_CONSTANT,
               STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
               NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType;
 

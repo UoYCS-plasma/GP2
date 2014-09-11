@@ -1,5 +1,5 @@
 P = runGP
-OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o main.o
+OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o staticsearch.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 #CFLAGS = -g -Wall -Wextra -I/local/d0p6/chrisbak/root/include/glib-2.0 -I/local/d0p6/chrisbak/root/lib/glib-2.0/include
@@ -16,14 +16,14 @@ debug:		$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
 		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
 
-# For testing the graph API.
-graph:		ast.o graph.o testgraph.o
-		$(CC) graph.o testgraph.o $(LFLAGS) -o testgraph
-		./testgraph
+# Testing file.
+test:		ast.o graph.o match.o rule.o staticsearch.o test.o
+		$(CC) ast.o graph.o match.o rule.o staticsearch.o test.o $(LFLAGS) -o testGP
+		./testGP
 
-graph-debug:	ast.o graph.o testgraph.o
-		$(CC) graph.o testgraph.o $(LFLAGS) -o testgraph
-		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes ./testgraph
+test-debug:	ast.o graph.o match.o rule.o staticsearch.o test.o
+		$(CC) ast.o graph.o match.o rule.o staticsearch.o test.o $(LFLAGS) -o testGP
+		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes ./testGP
 
 
 
@@ -44,29 +44,32 @@ lex.yy.o: 	lex.yy.c
 lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
 		flex gplexer.lex
 
-main.o:         main.c pretty.h ast.h seman.h 
+main.o:         main.c pretty.h
 		$(CC) $(CFLAGS) -c main.c
 
 ast.o: 		ast.c ast.h
 		$(CC) $(CFLAGS) -c ast.c
 
-rule.o:		rule.c ast.h rule.h
+rule.o:		rule.c rule.h
 		$(CC) $(CFLAGS) -c rule.c
 
-pretty.o:       pretty.c pretty.h ast.h seman.h
+pretty.o:       pretty.c pretty.h 
 		$(CC) $(CFLAGS) -c pretty.c
 
-seman.o:	seman.c seman.h ast.h
+seman.o:	seman.c seman.h 
 		$(CC) $(CFLAGS) -c seman.c
 
-graph.o:	graph.c graph.h ast.h
+graph.o:	graph.c graph.h 
 		$(CC) $(CFLAGS) -c graph.c
 
-match.o:	match.c match.h graph.h rule.h ast.h
+match.o:	match.c match.h 
 		$(CC) $(CFLAGS) -c match.c
 
-testgraph.o:	testgraph.c graph.h ast.h
-		$(CC) $(CFLAGS) -c testgraph.c
+staticsearch.o:	staticsearch.c staticsearch.h 
+		$(CC) $(CFLAGS) -c staticsearch.c
+
+test.o:		test.c staticsearch.h
+		$(CC) $(CFLAGS) -c test.c
 clean:
 		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c runGP
 
