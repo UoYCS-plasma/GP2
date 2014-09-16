@@ -18,7 +18,7 @@ VariableList *addVariable(VariableList *variable_list, string name, GPType type)
       exit(1);
    }
 
-   new_variable_list->variable = name;
+   new_variable_list->variable = strdup(name);
    new_variable_list->type = type;   
    new_variable_list->next = variable_list;
 
@@ -39,11 +39,10 @@ GPType lookupType(VariableList *variable_list, string name)
 
 void freeVariableList(VariableList *variable_list)
 {
-   while(variable_list->next != NULL) 
-   {
-      freeVariableList(variable_list->next);
-   }
-   free(variable_list);
+   if(variable_list == NULL) return;
+   if(variable_list->variable) free(variable_list->variable);
+   if(variable_list->next) freeVariableList(variable_list->next);  
+   free(variable_list); 
 }
 
 

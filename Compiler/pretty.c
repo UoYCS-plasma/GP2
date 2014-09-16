@@ -456,8 +456,8 @@ void printASTList(List * const list, FILE *dot_file)
                                   "Node \\n Name: UNDEFINED\"]\n", 
                                   list->node_id, list->node_id, 
                                   LOCATION_ARGS(list->location));
-                print_to_log("Error: Undefined node name at AST node %d", 
-                             list->node_id);
+                print_to_log("Error (printASTList): Undefined node name at "
+                             "AST node %d", list->node_id);
              }
 
              prettyPrintList(list->next,list,next);
@@ -536,7 +536,7 @@ void printASTList(List * const list, FILE *dot_file)
              break;
 
 
-	default: print_to_log("Unexpected List Type: %d\n",
+	default: print_to_log("Error (printASTList): Unexpected type: %d\n",
                               (int)list->list_type); 
                  break;	 
 
@@ -599,8 +599,8 @@ void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
 
 	     break;
 
-	default: print_to_log("Unexpected Declaration Type: %d\n",
-                              (int)decl->decl_type); 
+	default: print_to_log("Error (printASTDeclaration): Unexpected type: "
+                              "%d\n", (int)decl->decl_type);
                  break;
 
 	}
@@ -645,8 +645,8 @@ void printASTStatement(GPStatement * const stmt, FILE *dot_file)
                                   "Rule \\n Name: UNDEFINED\"]\n",  
                                   stmt->node_id, stmt->node_id, 
                                   LOCATION_ARGS(stmt->location));
-                print_to_log("Error: Undefined rule name at AST node %d", 
-                        stmt->node_id);
+                print_to_log("Error (printASTStatement): Undefined rule name "
+                             "at AST node %d", stmt->node_id);
              }
 
 	     break;
@@ -684,8 +684,8 @@ void printASTStatement(GPStatement * const stmt, FILE *dot_file)
                                   "Procedure \\n Name: UNDEFINED\"]\n",
                                   stmt->node_id, stmt->node_id,
                                   LOCATION_ARGS(stmt->location));
-                print_to_log("Error: Undefined procedure name at AST node %d", 
-                             stmt->node_id);
+                print_to_log("Error (printASTStatement): Undefined procedure "
+                             "ame at AST node %d", stmt->node_id);
              }
 
 	     break;
@@ -809,8 +809,8 @@ void printASTStatement(GPStatement * const stmt, FILE *dot_file)
 
 	     break;
 	
-	default: print_to_log("Unexpected Statement Type: %d\n",
-                              (int)stmt->statement_type); 
+	default: print_to_log("Error (printASTStatement): Unexpected type: "
+                              "%d\n", (int)stmt->statement_type); 
                  break;
 
 	}
@@ -838,8 +838,8 @@ void printASTCondition(GPCondExp * const cond, FILE *dot_file)
                                   "Variable: \\n UNDEFINED\"]\n",
                                   cond->node_id, cond->node_id,
                                   LOCATION_ARGS(cond->location));
-                print_to_log("Error: Undefined variable name at AST node %d", 
-                             cond->node_id);
+                print_to_log("Error (printASTCondition.INT_CHECK): Undefined "
+                             "name at AST node %d", cond->node_id);
              }
 
              break;
@@ -861,8 +861,8 @@ void printASTCondition(GPCondExp * const cond, FILE *dot_file)
                                   "Variable: \\n UNDEFINED\"]\n",
                                    cond->node_id, cond->node_id,
                                    LOCATION_ARGS(cond->location));
-                print_to_log("Error: Undefined variable name at AST node %d", 
-                             cond->node_id);
+                print_to_log("Error (printASTCondition.CHAR_CHECK): Undefined "
+                             "name at AST node %d", cond->node_id);
              }
 
              break;
@@ -884,8 +884,8 @@ void printASTCondition(GPCondExp * const cond, FILE *dot_file)
                                   "Variable: \\n UNDEFINED\"]\n",
                                   cond->node_id, cond->node_id,
                                   LOCATION_ARGS(cond->location));
-                print_to_log("Error: Undefined variable name at AST node %d", 
-                             cond->node_id);
+                print_to_log("Error (printASTCondition.STRING_CHECK): "
+                             "Undefined name at AST node %d", cond->node_id);
              }
 
              break;
@@ -906,8 +906,8 @@ void printASTCondition(GPCondExp * const cond, FILE *dot_file)
                                   "Variable: \\n UNDEFINED\"]\n",
                                   cond->node_id, cond->node_id,
                                   LOCATION_ARGS(cond->location));
-                print_to_log("Error: Undefined variable name at AST node %d", 
-                             cond->node_id);
+                print_to_log("Error (printASTCondition.ATOM_CHECK): Undefined "
+                             "name at AST node %d", cond->node_id);
              }
 
              break;
@@ -926,8 +926,8 @@ void printASTCondition(GPCondExp * const cond, FILE *dot_file)
                  print_to_dot_file("Source: %s \\n ", 
                                    cond->value.edge_pred.source);
              else {
-                 print_to_log("Error: Undefined node at AST node %d", 
-                              cond->node_id);
+                 print_to_log("Error (printASTCondition): Undefined node at "
+                              "AST node %d", cond->node_id);
                  print_to_dot_file("Source: ERROR \\n ");
              }
 
@@ -935,8 +935,8 @@ void printASTCondition(GPCondExp * const cond, FILE *dot_file)
                  print_to_dot_file("Target: %s\"]\n ", 
                                    cond->value.edge_pred.target);
              else {
-                 print_to_log("Error: Undefined node at AST node %d", 
-                              cond->node_id);
+                 print_to_log("Error (printASTCondition): Undefined node at "
+                              "AST node %d", cond->node_id);
                  print_to_dot_file("Target: ERROR \"]\n");
              }
 
@@ -1136,8 +1136,8 @@ void printASTCondition(GPCondExp * const cond, FILE *dot_file)
 
 	     break;
 
-	default: print_to_log("Unexpected Condition Type: %d\n",
-                         (int)cond->exp_type); 
+	default: print_to_log("Error (printASTCondition): Unexpected Type: "
+                              "%d\n", (int)cond->exp_type); 
                  break;
 
 	}
@@ -1165,8 +1165,8 @@ void printASTAtom(GPAtomicExp * const atom, FILE *dot_file)
                                   "\\nVariable: \\n UNDEFINED\"]\n",
                                   atom->node_id, atom->node_id, 
                                   LOCATION_ARGS(atom->location));
-                print_to_log("Error: Undefined variable name at AST node %d", 
-                             atom->node_id);
+                print_to_log("Error (printASTAtom): Undefined variable name "
+                             "at AST node %d", atom->node_id);
              }
 
              break;
@@ -1201,8 +1201,8 @@ void printASTAtom(GPAtomicExp * const atom, FILE *dot_file)
                                   "UNDEFINED\"]\n",
                                   atom->node_id, atom->node_id, 
                                   LOCATION_ARGS(atom->location));
-                print_to_log("Error: Empty character at AST node %d\n", 
-                             atom->node_id);
+                print_to_log("Error (printASTAtom): Empty character at AST "
+                             "node %d\n", atom->node_id);
              }
 
              break;
@@ -1244,8 +1244,8 @@ void printASTAtom(GPAtomicExp * const atom, FILE *dot_file)
                                   "\\nindegree: \\n UNDEFINED\"]\n", 
                                   atom->node_id, atom->node_id, 
                                   LOCATION_ARGS(atom->location));
-                print_to_log("Error: Undefined node name at AST node %d", 
-                             atom->node_id);
+                print_to_log("Error (printASTAtom.INDEGREE): Undefined node "
+                             "name at AST node %d", atom->node_id);
              }
 
 
@@ -1267,8 +1267,8 @@ void printASTAtom(GPAtomicExp * const atom, FILE *dot_file)
                                   "\\noutdegree: \\n UNDEFINED\"]\n", 
                                   atom->node_id, atom->node_id,
                                   LOCATION_ARGS(atom->location));
-                print_to_log("Error: Undefined node name at AST node %d", 
-                        atom->node_id);
+                print_to_log("Error (printASTAtom.OUTDEGREE): Undefined node "
+                             "name at AST node %d", atom->node_id);
              }
 
 
@@ -1435,8 +1435,8 @@ void printASTAtom(GPAtomicExp * const atom, FILE *dot_file)
 
              break;
 
-	default: print_to_log("Unexpected Atomic Expression Type: %d\n",
-                         (int)atom->exp_type); 
+	default: print_to_log("Error (printAtomicExp): Unexpected Atomic "
+                              "Expression Type: %d\n", (int)atom->exp_type);
                  break;
 
 	}
@@ -1460,8 +1460,8 @@ void printASTProcedure(GPProcedure * const proc, FILE *dot_file)
                           proc->node_id, proc->node_id, 
                           LOCATION_ARGS(proc->location));
 
-        print_to_log("Error: Undefined procedure name at AST node %d", 
-                  proc->node_id);
+        print_to_log("Error (printASTProcedure): Undefined procedure name at "
+                     "AST node %d", proc->node_id);
      }
 
      prettyPrintList(proc->local_decls, proc, decls);
@@ -1488,8 +1488,8 @@ void printASTRule(GPRule * const rule, FILE *dot_file)
                           "Rule \\n Name: UNDEFINED\"]\n", 
                           rule->node_id, rule->node_id, 
                           LOCATION_ARGS(rule->location));
-        print_to_log("Error: Undefined rule name at AST node %d", 
-                rule->node_id);       
+        print_to_log("Error (printASTRule): Undefined rule name at AST node "
+                     "%d", rule->node_id);       
      }
 
      prettyPrintList(rule->variables, rule, variables);
@@ -1560,8 +1560,8 @@ void printASTNode(GPNode * const node, FILE *dot_file)
                           "Node \\n Name: UNDEFINED", 
                           node->node_id, node->node_id, 
                           LOCATION_ARGS(node->location));
-        print_to_log("Error: Undefined node name at AST node %d", 
-                     node->node_id);
+        print_to_log("Error (printASTNode): Undefined node name at AST node "
+                     "%d", node->node_id);
 
      }
 
@@ -1595,8 +1595,8 @@ void printASTEdge(GPEdge * const edge, FILE *dot_file)
                           "Edge \\n Name: UNDEFINED", 
                           edge->node_id, edge->node_id, 
                           LOCATION_ARGS(edge->location));
-        print_to_log("Error: Undefined edge name at AST node %d", 
-                edge->node_id);
+        print_to_log("Error (printASTEdge): Undefined edge name at AST node "
+                     "%d", edge->node_id);
 
      }
 
@@ -1608,8 +1608,8 @@ void printASTEdge(GPEdge * const edge, FILE *dot_file)
         print_to_dot_file("Source: %s \\n ", 
                           edge->source);
      else {
-        print_to_log("Error: Undefined edge source at AST node %d", 
-                     edge->node_id);
+        print_to_log("Error (printASTEdge): Undefined edge source at AST "
+                     "node %d", edge->node_id);
         print_to_dot_file("Source: UNDEFINED \\n ");
      }
 
@@ -1617,8 +1617,8 @@ void printASTEdge(GPEdge * const edge, FILE *dot_file)
         print_to_dot_file("Target: %s\"]\n", 
                           edge->target);
      else {
-        print_to_log("Error: Undefined edge target at AST node %d", 
-                     edge->node_id);
+        print_to_log("Error (printASTEdge): Undefined edge target at AST "
+                     "node %d", edge->node_id);
         print_to_dot_file("Target: UNDEFINED \"]\n");
      }
 
@@ -1659,9 +1659,12 @@ void printASTLabel(GPLabel * const label, FILE *dot_file)
         case (CYAN):	 print_to_dot_file("Cyan\"]\n"); break;
         case (NONE): 	 print_to_dot_file("No mark\"]\n"); break;
 
-        default: print_to_log("Error: Unexpected \\n GPLabel mark: %d\"]\n", 
-                         (int)label->mark); 
-                 break;
+        default: {
+             print_to_dot_file("Unexpected mark: %d\"]\n", (int)label->mark);
+             print_to_log("Error (printASTLabel): Unexpected mark %d at AST "
+                          "node %d", (int)label->mark, label->node_id);
+             break;
+        }
      }
 
      print_to_dot_file("node%d->node%d[label=\"gp list\"]\n",  

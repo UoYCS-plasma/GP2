@@ -111,10 +111,8 @@ GList *lookupValue(Assignment *assignment, string name)
 void freeAssignment(Assignment *assignment)
 {
    if(assignment == NULL) return; 
-
    if(assignment->value) g_list_free_full(assignment->value, freeListElement);
    if(assignment->next) freeAssignment(assignment->next);
-   
    free(assignment);
 }
 
@@ -167,6 +165,67 @@ void freeMorphism(Morphism *morphism)
 }
 
 
+ListElement *copyListElement(ListElement *atom)
+{ 
+   ListElement *atom_copy = malloc(sizeof(ListElement));
+
+   if(atom_copy == NULL)
+   {
+      print_to_log("Error (copyListElement): Memory exhausted during "
+                   "creation of a list element.\n");
+      exit(1);
+   }
+
+   /* Duplicate any string values and recursively copy any sub-expressions. */
+   atom_copy->type = atom->type;
+
+   switch(atom->type)
+   {
+      case VARIABLE:
+
+           atom_copy->value.name = strdup(atom->value.name);
+
+           break;
+      
+      case INTEGER_CONSTANT:
+
+           atom_copy->value.number = atom->value.number;
+
+           break;
+
+      case CHARACTER_CONSTANT:
+
+      case STRING_CONSTANT:
+
+           atom_copy->value.string = strdup(atom->value.string);
+
+           break;
+
+      case NEG:
+ 
+           atom_copy->value.exp = copyListElement(atom->value.exp);
+
+           break;
+
+      case CONCAT:
+
+           atom_copy->value.bin_op.left_exp = 
+              copyListElement(atom->value.bin_op.left_exp);
+           atom_copy->value.bin_op.right_exp = 
+              copyListElement(atom->value.bin_op.right_exp);
+
+           break;
+
+      default:
+             print_to_log("Error (copyListElement): Atom type %d should not "
+                          "occur here.\n", atom->type);
+             return NULL;
+   }
+
+   return atom_copy;
+}
+
+
 bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
                 Assignment **assignment) 
 {
@@ -214,7 +273,8 @@ bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
          if(lookupType(variables, rule_atom->value.name) == LIST_VAR) 
          {  
             list_variable = rule_atom->value.name;
-            return verifyListVariable(assignment, list_variable, host_list);
+            GList *host_list_copy = g_list_copy(host_list);
+            return verifyListVariable(assignment, list_variable, host_list_copy);
          }
       }
       /* If this point is reached then rule_atom is either not a list
@@ -232,11 +292,12 @@ bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
    {
       rule_atom = (ListElement*)rule_list->data;
 
-      /* If the end of the host list has been reached, a match if possible
-       * only if rule_atom is a list variable. */
+      /* If the end of the host list has been reached, a match is possible
+       * only if rule_list has one element left and that element is a list 
+       * variable. */
       if(host_list == NULL)
       {
-         if(rule_atom->type == VARIABLE) 
+         if(rule_atom->type == VARIABLE && rule_list->next == NULL) 
          {
             if(lookupType(variables, rule_atom->value.name) == LIST_VAR) 
             {  
@@ -249,7 +310,8 @@ bool labelMatch(Label rule_label, Label host_label, VariableList *variables,
          }
          /* If this point is reached then the label match failed: Either the
           * call to verifyListVariable returned false, the current rule atom 
-          * is not a list variable, or the current rule atom is not a variable.
+          * is not a list variable, the current rule atom is not a variable,
+          * or there are elements in the rule list after the current one.
           * Remove any assignments made in this function and return false. */
          int counter;
          for(counter = 0; counter < new_assignments; counter++)
@@ -394,7 +456,10 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
             case INTEGER_VAR:
             
                if(host_atom->type == INTEGER_CONSTANT)
-                  return(verifyAtomVariable(assignment, variable, host_atom));
+               {
+                  ListElement *atom_copy = copyListElement(host_atom);
+                  return(verifyAtomVariable(assignment, variable, atom_copy));
+               }
                else return -1;
                
                break;
@@ -403,8 +468,11 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
             case CHARACTER_VAR:
 
                if(host_atom->type == CHARACTER_CONSTANT)
-                  return(verifyAtomVariable(assignment, variable, host_atom));
-               else return false;
+               {
+                  ListElement *atom_copy = copyListElement(host_atom);
+                  return(verifyAtomVariable(assignment, variable, atom_copy));
+               }
+               else return -1;
                
                break;
 
@@ -413,8 +481,11 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
 
                if(host_atom->type == CHARACTER_CONSTANT || 
                   host_atom->type == STRING_CONSTANT)
-                  return(verifyAtomVariable(assignment, variable, host_atom));
-               else return false;
+               {
+                  ListElement *atom_copy = copyListElement(host_atom);
+                  return(verifyAtomVariable(assignment, variable, atom_copy));
+               }
+               else return -1;
                
                break;
 
@@ -424,8 +495,8 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
                if(host_atom->type == INTEGER_CONSTANT   ||
                   host_atom->type == CHARACTER_CONSTANT || 
                   host_atom->type == STRING_CONSTANT)
-                    return verifyAtomVariable(assignment, variable, host_atom);
-               else return false;
+                  return(verifyAtomVariable(assignment, variable, host_atom));
+               else return -1;
                        
                break;
 
@@ -434,7 +505,7 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
         
                 print_to_log("Error: A list variable has appeared in the "
                              "compareAtoms function!\n");
-                return false;
+                return -1;
                 break;
          }
 
@@ -442,7 +513,8 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
       break; 
  
       case INTEGER_CONSTANT:
-
+   
+           /* if if return -1 (no elses) may be more concise */
            if(host_atom->type == INTEGER_CONSTANT)
               if(rule_atom->value.number == host_atom->value.number) return 0; 
               else return -1;
@@ -457,7 +529,7 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
               if(strcmp(rule_atom->value.string, host_atom->value.string) == 0)
                  return 0;
               else return -1;
-           else return false;
+           else return -1;
            
            break;
 
@@ -469,7 +541,7 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
               if(strcmp(rule_atom->value.string, host_atom->value.string) == 0)
                  return 0;
               else return -1;
-           else return false;
+           else return -1;
            
            break;
 
@@ -480,7 +552,7 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
               if(rule_atom->value.number == -(host_atom->value.number)) 
                  return 0;
               else return -1;
-           else return false;
+           else return -1;
            
            break;
            
@@ -498,150 +570,264 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
            if(host_atom->type == CHARACTER_CONSTANT ||
               host_atom->type == STRING_CONSTANT)
            {
-              /* Possibility (1) */
-              if(rule_atom->value.bin_op.left_exp->type == VARIABLE) 
-              {
-                 string variable = rule_atom->value.bin_op.left_exp->value.name;
-                 /* Semantic checking ensures that right_exp is a string or 
-                  * character constant. Need to check that right_exp is a 
-                  * suffix of host_string. */
-                 string host_string = host_atom->value.string;
-                 string rule_string = 
-                    rule_atom->value.bin_op.right_exp->value.string;
-                 
-                 string result = isSuffix(rule_string, host_string);
-                 
-                 if(result != NULL)  
-                 {  
-                    ListElement *atom = NULL;
-                    atom->type = STRING_CONSTANT;
-                    atom->value.string = result;
-                    bool is_valid = verifyAtomVariable(assignment, variable, atom);
-                    free(result);
-                    return is_valid;
-                 }
-                 else return false;
-              }
-              else 
-              {
-                 /* Check if left_exp is a prefix of the host string. */
-                 string host_string = host_atom->value.string;
-                 string rule_string = 
-                    rule_atom->value.bin_op.left_exp->value.string;
-
-                 string host_suffix = isPrefix(rule_string, host_string); 
-                 
-                 if(host_suffix != NULL)
-                 {
-                    /* Possibility (2) */
-                    if(rule_atom->value.bin_op.right_exp->type == VARIABLE) 
-                    {                 
-                       string variable = rule_atom->value.bin_op.right_exp->value.name;
-                       ListElement *atom = NULL;
-                       atom->type = STRING_CONSTANT;
-                       atom->value.string = host_suffix;
-                       bool is_valid = verifyAtomVariable(assignment, variable, atom);
-                       free(host_suffix);
-                       return is_valid;
-                    }
-                    /* Possibility (3) */
-                    else /* right_exp is a concat */
-                    {
-                       ListElement *str = rule_atom->value.bin_op.right_exp; 
-
-                       assert(str->type == CONCAT);
-                       assert(str->value.bin_op.left_exp->type == VARIABLE);
-                       assert(str->value.bin_op.right_exp->type == CHARACTER_CONSTANT ||
-                              str->value.bin_op.right_exp->type == STRING_CONSTANT);
-
-                       /* Check str->right_exp is a suffix of host_remainder. */
-                       rule_string = str->value.bin_op.right_exp->value.string;
-
-                       string result = isSuffix(rule_string, host_suffix);
-                       
-                       if(result != NULL) 
-                       {
-                          string variable = rule_atom->value.bin_op.left_exp->value.name;
-                          ListElement *atom = NULL;
-                          atom->type = STRING_CONSTANT;
-                          atom->value.string = result;
-                          bool is_valid = verifyAtomVariable(assignment, variable, atom);
-                          free(result);
-                          return is_valid;
-                       }
-                       else return false;
-                    }
-                 }
-                 else return false;
-              }
+              GList *string_exp = concatExpToList(rule_atom);
+              return verifyStringExp(string_exp, host_atom, variables, assignment);
            }
-           else return false;
-           
            break;
            
       default: print_to_log("Error: Unexpected list element type %d "
                             "encountered during label matching.\n", 
                             rule_atom->type);
-           break;
+               break;
    }
-   return false;
-}   
+   return -1;
+}  
 
+/* This will be moved to the AST translation phase. Any strings from string_exp
+ * are strdup'd so that string_exp can be freed without accidentally freeing
+ * the strings to retain for the GList. */
+
+GList *concatExpToList(ListElement *string_exp)
+{
+   GList *list = NULL;
+
+   switch(string_exp->type)
+   {
+      case CONCAT:
+      {
+           GList *first_exp = concatExpToList(string_exp->value.bin_op.left_exp);
+           GList *second_exp = concatExpToList(string_exp->value.bin_op.right_exp);
+           list = g_list_concat(first_exp, second_exp);
+           break;
+      }
+
+      case CHARACTER_CONSTANT:
+ 
+      case STRING_CONSTANT:
+      {
+           StringExp *exp = malloc(sizeof(StringExp));
+           if(exp == NULL)
+           {
+              printf("Error: Memory exhausted during StringExp construction.\n");
+              exit(1);
+           }
+           exp->type = CONSTANT_S;
+           exp->value = strdup(string_exp->value.string); 
+           list = g_list_prepend(list, exp); 
+           break;           
+      }
+
+      case VARIABLE:
+      {
+           StringExp *exp = malloc(sizeof(StringExp));
+           if(exp == NULL)
+           {
+              printf("Error: Memory exhausted during StringExp construction.\n");
+              exit(1);
+           }
+           exp->type = VARIABLE_S;
+           exp->value = strdup(string_exp->value.name); 
+           list = g_list_prepend(list, exp);
+           break;
+      }
+
+      default: print_to_log("Error (concatExpToList): Unexpected type: %d\n",
+                            (int)string_exp->value.bin_op.left_exp->type);
+               return NULL;
+   }
+   return list;
+}
+
+/* host_atom is of type CHARACTER_CONSTANT or STRING_CONSTANT */
+int verifyStringExp(GList *string_exp, ListElement *host_atom,
+                    VariableList *variables, Assignment **assignment)
+{
+   int new_assignments = 0;
+   int return_value = 0;
+   
+   string host_value = strdup(host_atom->value.string);
+   string host_string = host_value;
+
+   /* Go through string_exp until the string variable or the end of the list. */
+   while(string_exp != NULL)
+   {
+      StringExp *exp = (StringExp*)string_exp->data;
+
+      if(host_string[0] == '\0')
+      {
+         if(exp->type == VARIABLE_S)
+         {
+            if(lookupType(variables, exp->value) == STRING_VAR &&
+               string_exp->next == NULL)
+            {
+               ListElement atom = { .type = STRING_CONSTANT,
+                                    .value.string = "" };
+               int result = verifyAtomVariable(assignment, exp->value, &atom);
+               if(result >= 0)
+               {
+                  new_assignments += result;
+                  return_value = new_assignments;
+                  break;
+               }
+            }
+         }
+         return_value = -1;
+         break;
+      }
+
+      if(exp->type == CONSTANT_S) 
+      {
+         int prefix_length = isPrefix(exp->value, host_string);
+         if(prefix_length == -1) 
+         {
+            return_value = -1;
+            break;
+         }
+         else host_string = host_string + prefix_length;
+      }
+
+      else /* exp_type == VARIABLE_S */
+      {
+         if(lookupType(variables, exp->value) == CHARACTER_VAR)
+         { 
+            char first_character[2] = {host_string[0], '\0'};
+
+            ListElement atom = { .type = CHARACTER_CONSTANT,
+                                 .value.string = first_character };
+            int result = verifyAtomVariable(assignment, exp->value, &atom); 
+            if(result >= 0)
+            {
+               new_assignments += result;
+               return_value = new_assignments;
+               host_string = host_string + 1;
+            }
+            else       
+            { 
+               return_value = -1;
+               break;
+            }
+         }
+
+         if(lookupType(variables, exp->value) == STRING_VAR) break;
+      }
+      string_exp = string_exp->next;
+   }
+
+   if(string_exp == NULL) 
+   {
+      if(host_string[0] == '\0') return_value = new_assignments;
+      else 
+      {
+         int counter;
+         for(counter = 0; counter < new_assignments; counter++)
+             *assignment = removeAssignment(*assignment);
+         return_value = -1;
+      }
+      free(host_value);
+      return return_value;
+   }
+
+   string_exp = g_list_last(string_exp);
+    
+   while(string_exp != NULL)
+   {
+      StringExp *exp = (StringExp*)string_exp->data;
+      
+      if(exp->type == CONSTANT_S) 
+      {
+         int suffix_length = isSuffix(exp->value, host_string);
+         if(suffix_length == -1)
+         {
+            return_value = -1;
+            break;
+         }
+         else host_string[suffix_length] = '\0';
+      }
+
+      else /* exp_type == VARIABLE_S */
+      {
+         if(lookupType(variables, exp->value) == CHARACTER_VAR)
+         { 
+            int host_length = strlen(host_string);
+            char last_character[2] = {host_string[host_length - 1], '\0'};
+
+            ListElement atom = { .type = CHARACTER_CONSTANT,
+                                 .value.string = last_character };
+            int result = verifyAtomVariable(assignment, exp->value, &atom); 
+            if(result >= 0) 
+            {
+               new_assignments += result;
+               host_string[host_length - 1] = '\0';
+               return_value = new_assignments;
+            }
+            else 
+            {
+               return_value = -1;
+               break;
+            }
+         }
+
+         if(lookupType(variables, exp->value) == STRING_VAR) 
+         {
+            ListElement atom = { .type = STRING_CONSTANT,
+                                 .value.string = host_string };
+            int result = verifyAtomVariable(assignment, exp->value, &atom);
+            if(result >= 0) 
+            {
+               new_assignments += result;
+               return_value = new_assignments;
+               break;
+            }
+            else 
+            {
+               return_value = -1;
+               break;
+            }  
+         }
+       }
+
+       string_exp = string_exp->prev;
+    }
+    free(host_value);
+    if(return_value == -1)
+    {
+       int counter;
+       for(counter = 0; counter < new_assignments; counter++)
+           *assignment = removeAssignment(*assignment);
+    }
+  
+    return return_value;
+}
+            
 
 /* Check if test is a prefix of str. If so, return the rest of str after the
  * matched prefix. Otherwise return NULL.
  */
 
-string isPrefix(const string test, const string str)
+int isPrefix(const string test, const string str)
 {
    int offset = strlen(str) - strlen(test);
-   if(offset < 0) return NULL;
+   if(offset < 0) return -1;
    /* strncmp compares test against the first strlen(test) characters
     * of str. */
-   if(strncmp(str, test, strlen(test)) == 0) 
-   {
-      string rest = malloc(offset + 1);
-      if(rest == NULL)
-      {
-         print_to_log("Error (isPrefix): Memory exhausted during string "
-		      "construction.\n");
-         exit(1);
-      }
-      /* Copy offset + 1 characters from str starting from the character after
-       * the one at strlen(test). The +1 is for the terminating NULL character.
-       */
-      rest = strcpy(rest, str + strlen(test));
-      return rest;
-   }
-   else return NULL;
+   if(strncmp(str, test, strlen(test)) == 0) return strlen(test);
+   else return -1;
 }
 
 /* Check if test is a suffix of str. If so, return the rest of str before the
  * matched suffix. Otherwise return NULL.
  */
 
-string isSuffix(const string test, const string str)
+int isSuffix(const string test, const string str)
 {
    int offset = strlen(str) - strlen(test);
-   if(offset < 0) return NULL;
+   if(offset < 0) return -1;
    /* compare the last strlen(test) characters of str with test. */
-   if(strcmp(str + offset, test) == 0) 
-   {
-      /* Make a string containing the first offset characters of str. */
-      string rest = malloc(offset + 1);
-      if(rest == NULL)
-      {
-         print_to_log("Error (isSuffix): Memory exhausted during string "
-		      "construction.\n");
-         exit(1);
-      }
-      strncpy(rest, str, offset);
-      rest[offset] = '\0';
-      return rest;
-   }
-   else return NULL;
+   if(strcmp(str + offset, test) == 0) return offset;
+   else return -1;
 }
-  
+ 
+
 
 bool verifyListVariable(Assignment **assignment, string name, GList *list) 
 {
@@ -660,52 +846,61 @@ bool verifyListVariable(Assignment **assignment, string name, GList *list)
       while(list_to_copy != NULL)
       {
          ListElement *atom = (ListElement*)list_to_copy->data;
-         ListElement *atom_copy = malloc(sizeof(ListElement));
-
-         if(atom_copy == NULL)
-         {
-            print_to_log("Error (verifyListVariable): Memory exhausted during "
-	                 "creation of a list element.\n");
-            exit(1);
-         }
-
-         atom_copy = memcpy(atom_copy, atom, sizeof(ListElement));
-
+         ListElement *atom_copy = copyListElement(atom);
          list_copy = g_list_prepend(list_copy, atom_copy);
-     
          list_to_copy = list_to_copy->prev;
       }
-
-      *assignment = addAssignment(*assignment, name, list_copy);
+      string name_copy = strdup(name);
+      *assignment = addAssignment(*assignment, name_copy, list_copy);
+      g_list_free(list);
       return true;
    }
 
    /* Otherwise, a list is already assigned to this variable. We need to check
     * if the value passed to this function is equal to the existing one. This 
-    * is done by stepping through both value and assigned_list (GLists) and 
+    * is done by stepping through both list and assigned_list (GLists) and 
     * comparing their elements with compareConstants.
     * Return false if an inconsistency is found.
     */
+   GList *iterator = list;
+  
    while(assigned_list != NULL)
    {
       ListElement *assigned_atom = (ListElement*)assigned_list->data;
       
       /* Check if list is shorter than assigned_list. */
-      if(list == NULL) return false;
+      if(iterator == NULL) 
+      {
+         g_list_free(list);
+         return false;
+      }
 
-      ListElement *atom = (ListElement*)list->data;
+      ListElement *atom = (ListElement*)iterator->data;
 
-      if(compareConstants(assigned_atom, atom) == -1) return false;
+      if(compareConstants(assigned_atom, atom) == -1)
+      {
+         g_list_free(list);
+         return false;
+      }
 
       assigned_list = assigned_list->next;
-      list = list->next;
+      iterator = iterator->next;
    }
 
    /* At this point the while loop has exited without returning false, so all  
     * elements in assigned_list match up with their counterparts in list. 
     * If list has more elements, then the lists are not of equal length and
-    * are not compatible. */ 
-    return(list == NULL);
+    * are not compatible. */
+    if(iterator == NULL)
+    {
+       g_list_free(list);
+       return true;
+    }
+    else 
+    {
+       g_list_free(list); 
+       return false;
+    }
 }	 
 
 
@@ -720,19 +915,10 @@ int verifyAtomVariable(Assignment **assignment, string name, ListElement *atom)
       /* Make a copy of atom in heap, lift it to a GList and add it to the 
        * assignment. 
        */
-      ListElement *atom_copy = malloc(sizeof(ListElement));
-      if(atom_copy == NULL)
-      {
-         print_to_log("Error (verifyAtomVariable): Memory exhausted during "
-                      "creation of a list element.\n");
-         exit(1);
-      }
-
-      atom_copy = memcpy(atom_copy, atom, sizeof(ListElement));
-
+      ListElement *atom_copy = copyListElement(atom); 
       assigned_value = g_list_prepend(assigned_value, atom_copy);
-
-      *assignment = addAssignment(*assignment, name, assigned_value);
+      string name_copy = strdup(name);
+      *assignment = addAssignment(*assignment, name_copy, assigned_value);
       return 1;
    }
 
@@ -747,19 +933,18 @@ int verifyAtomVariable(Assignment **assignment, string name, ListElement *atom)
    }
 
    ListElement *assigned_atom = (ListElement *)assigned_value->data;
-   if(compareConstants(assigned_atom, atom)) return 0;
-   else return -1;
+   return(compareConstants(assigned_atom, atom)); 
 }
 
 
-bool compareConstants(ListElement *atom, ListElement *test_atom)
+int compareConstants(ListElement *atom, ListElement *test_atom)
 {
 
    switch (test_atom->type)
    {
       case EMPTY:
            
-           if(atom->type != EMPTY) return false;
+           if(atom->type != EMPTY) return -1;
 
            break;
            
@@ -768,7 +953,7 @@ bool compareConstants(ListElement *atom, ListElement *test_atom)
                   
            if(atom->type != INTEGER_CONSTANT || 
               test_atom->value.number != atom->value.number)
-                return false;
+                return -1;
                
            break;
                   
@@ -777,7 +962,7 @@ bool compareConstants(ListElement *atom, ListElement *test_atom)
            
            if(atom->type != CHARACTER_CONSTANT ||
               strcmp(test_atom->value.string, atom->value.string) != 0)
-                 return false;
+                 return -1;
                   
            break;
              
@@ -787,7 +972,7 @@ bool compareConstants(ListElement *atom, ListElement *test_atom)
            if((atom->type != CHARACTER_CONSTANT &&
                atom->type != STRING_CONSTANT) ||
               strcmp(test_atom->value.string, atom->value.string) != 0)
-                 return false;
+                 return -1;
                
            break;
              
@@ -795,7 +980,7 @@ bool compareConstants(ListElement *atom, ListElement *test_atom)
       default: print_to_log("Error: Unexpected list element type %d "
                              "encountered during variable assignment.\n",
 	     	                test_atom->type);
-           return false;
+           return -1;
    }
-   return true;
+   return 0;
 }

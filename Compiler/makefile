@@ -1,5 +1,6 @@
 P = runGP
 OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o staticsearch.o main.o
+PARSEOBJECTS = gpparser.tab.o lex.yy.o ast.o seman.o pretty.o main.o  
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 #CFLAGS = -g -Wall -Wextra -I/local/d0p6/chrisbak/root/include/glib-2.0 -I/local/d0p6/chrisbak/root/lib/glib-2.0/include
@@ -8,12 +9,12 @@ LFLAGS = -lglib-2.0
 
 # Builds executable gpparse and runs it on extensionless files.
 # Usage: make F1=<program_filename> F2=<graph_filename>
-default:        $(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
+default:        $(PARSEOBJECTS)
+		$(CC) $(PARSEOBJECTS) $(LFLAGS) -o $(P) 	
 		./$(P) $(F1) $(F2)       	
 
-debug:		$(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o $(P) 	
+debug:		$(PARSEOBJECTS)
+		$(CC) $(PARSEOBJECTS) $(LFLAGS) -o $(P) 	
 		G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --leak-check=full --leak-resolution=high --track-origins=yes --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
 
 # Testing file.

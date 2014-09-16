@@ -99,6 +99,15 @@ void freeMorphism(Morphism *morphism);
 void applyRule (Rule *rule, Morphism *match, Graph *host);
 
 
+/* Creates a heap copy of the passed ListElement. Used to pass fresh copies of
+ * ListElements to the verifyVariable functions so that the ListElements in the
+ * host graph labels are not accidentally freed.
+ *
+ * Currently only copies simple expressions i.e. no degree, length or 
+ * arithmetic operators. */
+
+ListElement *copyListElement(ListElement *atom);
+
 /* labelMatch checks if two labels match. The rule label may contain variables,
  * so it must also perform variable-value assignments. It first compares the 
  * marks directly and then steps through the lists of both labels, comparing
@@ -116,7 +125,9 @@ void applyRule (Rule *rule, Morphism *match, Graph *host);
  * If labelMatch fails it restores the assignment to the state it was in before
  * the function was called. This is monitored by a count of the number of
  * assignments made in this function's scope which is updated using the return
- * values of compareAtoms and verifyAtomVariable.
+ * values of compareAtoms and verifyAtomVariable. The exception to this is
+ * the function verifyStringVariable which undoes its own local assignment
+ * changes if it fails. 
  *
  * Argument 1: The label of the item in the rule graph.
  * Argument 2: The (constant) label of the item in the host graph.
@@ -149,7 +160,45 @@ bool labelMatch (Label rule_label, Label host_label, VariableList *variables,
  */			              
 			              
 int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
-		  VariableList *variables, Assignment **assignment);
+                 VariableList *variables, Assignment **assignment);
+
+
+/* concatExpToList returns a list of struct StringExps. */
+
+typedef enum {CONSTANT_S, VARIABLE_S} stringType;
+
+typedef struct StringExp {
+   stringType type;
+   string value;
+} StringExp;
+
+/* To be executed at the AST transformation stage, but I put it here for now. 
+ * Expects a ListElement of type CONCAT. */
+
+GList *concatExpToList(ListElement *string_exp);
+
+
+/* Tests a string expression against a host character or string. The string
+ * expression can contain multiple character variables but at most one
+ * string variable. The algorithm is analogous to labelMatch in the way
+ * it traverses lists, compares elements and handles variabes. 
+ *
+ * Since multiple variables can be assigned values in this function, it
+ * internally keeps a count of how many assignments are made. If the 
+ * expressions do not match, it removes any local assignment additions
+ * and returns -1. Otherwise, it returns the number of assignments
+ * made (possibly none).
+ *
+ * Argument 1: The string expression, taken from a label of the rule graph.
+ * Argument 2: The constant string, taken from a label of the host graph.
+ * Argument 3: The list of variables from the rule.
+ * Argument 4: The current assignment, passed by reference, as it may be 
+ *             updated during label matching.  
+ */
+
+int verifyStringExp(GList *string_exp, ListElement *host_atom,
+                    VariableList *variables, Assignment **assignment);
+
 
 /* Auxiliary functions for compareAtoms in the case of a concatenated string
  * expression.
@@ -159,10 +208,11 @@ int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
  * suffix removed. Otherwise, it returns NULL. 
  * Both functions return a string allocated in the heap. It is the 
  * responsibility of the caller to free the output.
- */
+ */	
  
-string isPrefix(const string test, const string str);
-string isSuffix(const string test, const string str);
+int isPrefix(const string test, const string str);
+int isSuffix(const string test, const string str);
+
 
 /* The two verify variable functions are called during label matching. In the
  * case that a variable-value mapping is required to match two labels, these
@@ -186,16 +236,21 @@ string isSuffix(const string test, const string str);
  *             may be updated.
  * Argument 2: The name of the variable to be verified.
  * Argument 3: The value required for a label match. If the value is to be
- *             added to the assignment, a heap copy is created inside
- *             the function. */                    
+ *             added to the assignment, a heap copy is created inside the
+ *             function. verifyListVariable is passed a shallow copy of a
+ *             GList, which is freed with g_list_free inside the function.
+ *             verifyAtomVariable is passed the address of a local ListElement
+ *             and does not need to free anything.
+ */                    
 
 bool verifyListVariable(Assignment **assignment, string name, GList *list);
 int verifyAtomVariable(Assignment **assignment, string name, ListElement *value);
 
 /* compareConstants takes two ListElements representing a constant value and 
  * checks if the values they represent are equal. Used as an auxiliary function
- * to the verify variable functions. */
+ * to the verify variable functions. To be consistent with the return value
+ * of the verify functions, it returns -1 on failure and 0 on success. */
  
-bool compareConstants(ListElement *atom, ListElement *test_atom);
+int compareConstants(ListElement *atom, ListElement *test_atom);
 
 #endif /* INC_MATCH_H */
