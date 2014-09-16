@@ -64,7 +64,7 @@ extern int yydebug;
 
 /* enum used by the parser for mark keywords */
 
-typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkType; 
+typedef enum {RED = 0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkType; 
 
 /* The functions after each struct definition are AST node constructors. The
  * constructors are called from the Bison parser (gpparser.y) which provides 
@@ -81,7 +81,7 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkType;
 
 /* Definition of AST nodes representing lists. */
 
-typedef enum {GLOBAL_DECLARATIONS=0, LOCAL_DECLARATIONS, COMMANDS, 
+typedef enum {GLOBAL_DECLARATIONS = 0, LOCAL_DECLARATIONS, COMMANDS, 
               RULES, INT_DECLARATIONS, CHAR_DECLARATIONS, 
               STRING_DECLARATIONS, ATOM_DECLARATIONS,  
               LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, 
@@ -126,7 +126,7 @@ List *addASTEmptyList (YYLTYPE location);
 
 /* Definition of AST nodes representing declarations. */
 
-typedef enum {MAIN_DECLARATION=0, PROCEDURE_DECLARATION, RULE_DECLARATION} DeclType;
+typedef enum {MAIN_DECLARATION = 0, PROCEDURE_DECLARATION, RULE_DECLARATION} DeclType;
 
 typedef struct GPDeclaration {
   int node_id;
@@ -148,7 +148,7 @@ GPDeclaration *newASTRuleDecl (YYLTYPE location, struct GPRule *rule);
 
 /* Definition of AST nodes representing GP program statements. */
 
-typedef enum {COMMAND_SEQUENCE=0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL, 
+typedef enum {COMMAND_SEQUENCE = 0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL, 
               IF_STATEMENT, TRY_STATEMENT, ALAP_STATEMENT, PROGRAM_OR, 
               SKIP_STATEMENT, FAIL_STATEMENT} StatementType;
 
@@ -197,7 +197,7 @@ GPStatement *newASTFail(YYLTYPE location);
 
 /* Definition of AST nodes representing conditional expressions.*/
 
-typedef enum {INT_CHECK=0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
+typedef enum {INT_CHECK = 0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
               EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
 	      BOOL_NOT, BOOL_OR, BOOL_AND } CondExpType;
 
@@ -251,7 +251,7 @@ GPCondExp *newASTBinaryExp (CondExpType exp_type, YYLTYPE location,
 
 /* EMPTY is not used in anything AST-related; it is used later for label
  * matching purposes. */
-typedef enum {EMPTY=0, VARIABLE, INTEGER_CONSTANT, CHARACTER_CONSTANT,
+typedef enum {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, CHARACTER_CONSTANT,
               STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
               NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType;
 
@@ -290,7 +290,7 @@ GPAtomicExp *newASTBinaryOp (AtomExpType exp_type, YYLTYPE location,
 
 /* Definition of the remaining AST node types. */
 
-typedef enum {PROCEDURE=0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, POSITION, LABEL} ASTNodeType;
+typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, POSITION, LABEL} ASTNodeType;
 
 /* Root node for a procedure definition. */
 

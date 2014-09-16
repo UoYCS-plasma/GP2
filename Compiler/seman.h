@@ -396,7 +396,6 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
                   string const rule_name, char const location);
 
 
-
 /* atomicExpScan checks variables and nodes in expressions to see if they 
  * have been declared in the rule. If the function is called with location
  * 'l', it checks for expressions that violate the simple list condition.
@@ -423,8 +422,9 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
  *             are encountered.
  */
 
-void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table, string const scope,
-                    string const rule_name, char const location, bool const int_exp,
-		    bool const string_exp);
+void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table, 
+		   string const scope, string const rule_name, 
+	           char const location, bool const int_exp,
+		   bool const string_exp);
 
 #endif /* INC_SEMAN_H */

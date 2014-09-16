@@ -129,7 +129,7 @@ edge                return EDGETEST;
 indeg 		    return INDEG;
 outdeg		    return OUTDEG;
 interface	    return INTERFACE;
-empty		    return EMPTY;
+empty		    return _EMPTY;
 llength		    return LLEN;
 slength	            return SLEN;
 

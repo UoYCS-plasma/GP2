@@ -193,7 +193,6 @@ int main(int argc, char** argv) {
  
   /* Garbage collection */
   fclose(yyin);
-  fclose(log_file);
   if(gp_program) freeAST(gp_program); /* Defined in ast.c */
   if(host_graph) freeASTGraph(host_graph); /* Defined in ast.c */
 
@@ -207,6 +206,7 @@ int main(int argc, char** argv) {
     g_hash_table_foreach(gp_symbol_table, freeSymbolList, NULL);
     g_hash_table_destroy(gp_symbol_table); 
   }
+  fclose(log_file);
 
   return 0;
 }

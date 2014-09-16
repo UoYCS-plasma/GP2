@@ -49,7 +49,7 @@ extern bool abort_scan; /* Defined in main.c */
 %token WHERE EDGETEST  		               
 %token INDEG OUTDEG LLEN SLEN					
 %token INT STRING ATOM LIST 	                               
-%token INTERFACE EMPTY INJECTIVE 	
+%token INTERFACE _EMPTY INJECTIVE 	
 %token <mark> MARK CYAN_MARK			                        
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
@@ -415,7 +415,7 @@ Label: List				{ $$ = newASTLabel(@$, NONE, $1); }
 
 List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); } 
     | List ':' AtomExp 			{ $$ = addASTAtom(@3, $3, $1); }
-    | EMPTY				{ $$ = addASTEmptyList(@$); }
+    | _EMPTY				{ $$ = addASTEmptyList(@$); }
 
 
 AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
@@ -481,7 +481,7 @@ HostLabel: HostList			{ $$ = newASTLabel(@$, NONE, $1); }
 
 HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); } 
         | HostList ':' HostExp 		{ $$ = addASTAtom(@3, $3, $1); }
-        | EMPTY				{ $$ = addASTEmptyList(@$); }
+        | _EMPTY			{ $$ = addASTEmptyList(@$); }
 
 
 HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
