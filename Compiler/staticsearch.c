@@ -95,7 +95,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
           * to test the stack for its match_count character. */
          Node *node = getNode(lhs, node_matches->rule_item);
          int host_index = matchRootNode(node, host, node_matches->host_item, 
-                                        node_matches, variables, &assignment);
+                                        node_matches, variables);
          if(host_index >= 0)
          {
             /* Replace the old mapping with the new one. 
@@ -118,8 +118,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
       else
       {
          Node *node = (Node*)rule_roots->data;
-         int host_index = matchRootNode(node, host, -1, node_matches,
-                                        variables, &assignment);
+         int host_index = matchRootNode(node, host, -1, node_matches, variables);
          if(host_index >= 0)
          {
             node_matches = addMapping(node_matches, node->index, host_index, true);
@@ -155,10 +154,10 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
                 * in question is a root node. */
                if(node->root)
                   host_index = matchRootNode(node, host, node_matches->host_item,
-                                             node_matches, variables, &assignment);
+                                             node_matches, variables);
                else
                   host_index = matchNode(node, host, node_matches->host_item,
-                                         node_matches, variables, &assignment);
+                                         node_matches, variables);
 
                if(host_index >= 0)
                {
@@ -201,8 +200,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
 
             int host_index = 
                matchEdge(rule_edge, host, edge_matches->flag, 
-                         edge_matches->host_item, edge_matches, variables, 
-                         &assignment);
+                         edge_matches->host_item, edge_matches, variables);
             
             if(host_index >= 0)
             {
@@ -218,7 +216,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
                Edge *host_edge = getEdge(host, host_index);
                int result = matchIncidentNode(rule_edge, host_edge,
                                               edge_matches->flag, node_matches,
-                                              variables, &assignment);
+                                              variables);
                if(result >= 0)
                {
                   /* Add the new node mapping. */
@@ -315,7 +313,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
          if(edge != NULL) 
          {
             int host_index = matchEdge(edge, host, match_from_source, -1,
-                                       edge_matches, variables, &assignment);
+                                       edge_matches, variables);
             if(host_index >= 0)
             {
                edge_matches = addMapping(edge_matches, edge->index, host_index, 
@@ -328,7 +326,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
                Edge *host_edge = getEdge(host, host_index);
 
                int result = matchIncidentNode(edge, host_edge, match_from_source,
-                                              node_matches, variables, &assignment);
+                                              node_matches, variables);
                if(result >= 0)
                {
                   int index = 0;
@@ -377,7 +375,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
             if(lookupFromRule(node_matches, rule_node->index) == -1) 
             {
                int host_index = matchNode(rule_node, host, -1, node_matches,
-                                          variables, &assignment);
+                                          variables);
                if(host_index >= 0)
                {
                   node_matches = addMapping(node_matches, rule_node->index,
@@ -421,8 +419,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
 
 
 int matchRootNode(Node *rule_root, Graph *host, int index, 
-                  GraphMapping *node_matches, VariableList *variables,
-		  Assignment **assignment)
+                  GraphMapping *node_matches, VariableList *variables)
 {
    GSList *host_roots = getRootNodes(host);
 
@@ -443,8 +440,7 @@ int matchRootNode(Node *rule_root, Graph *host, int index,
        * rule_root with host_root. */
       if(lookupFromHost(node_matches, host_root->index) == -1) 
       {
-         if(labelMatch(rule_root->label, host_root->label, variables, 
-		       assignment)) 
+         if(labelMatch(rule_root->label, host_root->label, variables)) 
             return host_root->index;
       }
       /* If host_root has already been matched, move to the next host root. */
@@ -456,8 +452,7 @@ int matchRootNode(Node *rule_root, Graph *host, int index,
     
 
 int matchEdge(Edge *rule_edge, Graph *host, bool match_from_source, int index, 
-              GraphMapping *edge_matches, VariableList *variables,
-              Assignment **assignment)
+              GraphMapping *edge_matches, VariableList *variables)
 {
    LabelClass label_class = rule_edge->label_class;
    Node *host_node = NULL;
@@ -492,8 +487,7 @@ int matchEdge(Edge *rule_edge, Graph *host, bool match_from_source, int index,
 
       if(lookupFromHost(edge_matches, host_edge->index) == -1)
       {
-         if(labelMatch(rule_edge->label, host_edge->label, variables,
-                       assignment))
+         if(labelMatch(rule_edge->label, host_edge->label, variables))
             return host_edge->index;
       }
       host_edges = host_edges->next;
@@ -505,8 +499,7 @@ int matchEdge(Edge *rule_edge, Graph *host, bool match_from_source, int index,
 
 
 int matchIncidentNode(Edge *rule_edge, Edge *host_edge, bool match_target, 
-                      GraphMapping *node_matches, VariableList *variables,
-		      Assignment **assignment)
+                      GraphMapping *node_matches, VariableList *variables)
 {
    if(match_target)
    {
@@ -524,8 +517,7 @@ int matchIncidentNode(Edge *rule_edge, Edge *host_edge, bool match_target,
 	 else return -1;
       }
 
-      if(labelMatch(rule_target->label, host_target->label, variables,
-                    assignment)) 
+      if(labelMatch(rule_target->label, host_target->label, variables)) 
          return host_target->index;
       else return -1;
    }
@@ -546,8 +538,7 @@ int matchIncidentNode(Edge *rule_edge, Edge *host_edge, bool match_target,
          else return -1;
       }
 
-      if(labelMatch(rule_source->label, host_source->label, variables,
-                    assignment)) 
+      if(labelMatch(rule_source->label, host_source->label, variables)) 
          return host_source->index;
       else return -1;
    }
@@ -555,8 +546,7 @@ int matchIncidentNode(Edge *rule_edge, Edge *host_edge, bool match_target,
 
 
 int matchNode(Node *rule_node, Graph *host, int index, 
-              GraphMapping *node_matches, VariableList *variables,
-              Assignment **assignment)
+              GraphMapping *node_matches, VariableList *variables)
 {
    LabelClass label_class = rule_node->label_class;
    GSList *host_nodes = getNodes(host, label_class);
@@ -577,11 +567,10 @@ int matchNode(Node *rule_node, Graph *host, int index,
        * node. */
       if(lookupFromHost(node_matches, host_node->index) == -1) 
       {
-         if(labelMatch(rule_node->label, host_node->label, variables,
-                       assignment))
+         if(labelMatch(rule_node->label, host_node->label, variables))
             return host_node->index;
-      host_nodes = host_nodes->next;
       }
+      host_nodes = host_nodes->next;
    }
    return -1;
 }
