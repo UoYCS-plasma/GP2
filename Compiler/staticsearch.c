@@ -77,11 +77,23 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
   
    int number_of_nodes = lhs->next_node_index;
    int number_of_edges = lhs->next_edge_index;
+
+   /* Fail if there are more nodes or edges in the rule graph than there are
+    * in the host graph. */
+   if(number_of_nodes > host->next_node_index ||
+      number_of_edges > host->next_edge_index)  
+      return NULL; 
+
+   /* Used to check if all the nodes or all the edges have been matched. */
    int nodes_matched = 0, edges_matched = 0;
 
    bool backtracking = false;
    
-   char matches[number_of_nodes + number_of_edges]; 
+   char matches[number_of_nodes + number_of_edges];
+
+   /* Records the number of matches in the working morphism. Due to array
+    * indexing starting at 0, after the first item is added, match_count-1 
+    * always points to the array entry marking the most recently added item. */ 
    int match_count = 0;
 
    /* (1) Match all root nodes. */
@@ -108,7 +120,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
          else 
          { 
             /* No alternate match is found. Remove the mapping and decrement
-             * the match_counts. */
+             * the match counts. */
             node_matches = removeMapping(node_matches);
             nodes_matched--;
             match_count--;
@@ -141,7 +153,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
    {
       if(backtracking)
       { 
-         if(matches[match_count] == 'n')
+         if(matches[match_count-1] == 'n')
          {
             /* (2) If the last matched item is a node, find another
              *     match for that node. */
@@ -182,13 +194,15 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
                 /* node_matches->flag == false. The node was matched as
                  * the source or target of a match, hence there was only
                  * one option and we should backtrack once more. */
+                node_matches = removeMapping(node_matches);
                 nodes_matched--;
                 match_count--;
             }
          }
 
-         else /* matches[match_count= != 'n'] */
-         {
+         else 
+         { 
+            assert(matches[match_count-1] == 'e');
             /* (3) If the last matched item is a edge, find another
              *     match for that edge. 
              *
@@ -200,7 +214,8 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
 
             int host_index = 
                matchEdge(rule_edge, host, edge_matches->flag, 
-                         edge_matches->host_item, edge_matches, variables);
+                         edge_matches->host_item, node_matches, 
+                         edge_matches, variables);
             
             if(host_index >= 0)
             {
@@ -313,7 +328,7 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
          if(edge != NULL) 
          {
             int host_index = matchEdge(edge, host, match_from_source, -1,
-                                       edge_matches, variables);
+                                       node_matches, edge_matches, variables);
             if(host_index >= 0)
             {
                edge_matches = addMapping(edge_matches, edge->index, host_index, 
@@ -371,7 +386,8 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
          for(counter = 0; counter < number_of_nodes; counter++) 
          {
             Node *rule_node = g_ptr_array_index(lhs->nodes, counter);
-            /* If the rule node has not been matched, try to match it. */
+            /* If the rule node has not been matched, try to match it and then
+             * break the for loop to avoid matching more than one node. */
             if(lookupFromRule(node_matches, rule_node->index) == -1) 
             {
                int host_index = matchNode(rule_node, host, -1, node_matches,
@@ -384,12 +400,13 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables)
                   match_count++;
                   nodes_matched++;
                }
-               else backtracking = true; 
+               else backtracking = true;  
+               break;
             }
          }
       }
    }
-   while(match_count > 0 || match_count < number_of_nodes + number_of_edges);
+   while(match_count > 0 && match_count < number_of_nodes + number_of_edges);
        
    /* Check if a complete match has been found. */    
 
@@ -452,7 +469,8 @@ int matchRootNode(Node *rule_root, Graph *host, int index,
     
 
 int matchEdge(Edge *rule_edge, Graph *host, bool match_from_source, int index, 
-              GraphMapping *edge_matches, VariableList *variables)
+              GraphMapping *node_matches, GraphMapping *edge_matches, 
+              VariableList *variables)
 {
    LabelClass label_class = rule_edge->label_class;
    Node *host_node = NULL;
@@ -461,14 +479,16 @@ int matchEdge(Edge *rule_edge, Graph *host, bool match_from_source, int index,
    /* Get the appropriate edge list according to the match_from_source flag. */
    if(match_from_source)
    {
-      int node_index = rule_edge->source->index;         
-      host_node = getNode(host, node_index);
+      int rule_index = rule_edge->source->index;        
+      int host_index = lookupFromRule(node_matches, rule_index); 
+      host_node = getNode(host, host_index);
       host_edges = getOutEdgesByLabel(host_node, label_class);
    }
    else
    {
-      int node_index = rule_edge->target->index;         
-      host_node = getNode(host, node_index); 
+      int rule_index = rule_edge->target->index;         
+      int host_index = lookupFromRule(node_matches, rule_index); 
+      host_node = getNode(host, host_index); 
       host_edges = getInEdgesByLabel(host_node, label_class);    
    } 
 

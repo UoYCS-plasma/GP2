@@ -92,7 +92,8 @@ int matchRootNode(Node *rule_root, Graph *host, int index,
  */
 
 int matchEdge(Edge *rule_edge, Graph *host, bool match_from_source, int index, 
-              GraphMapping *edge_matches, VariableList *variables);
+              GraphMapping *node_matches, GraphMapping *edge_matches,
+              VariableList *variables);
 
 /* Called directly after a call to matchEdge. matchEdge matches an edge from 
  * one of its endpoints; matchIncidentNode tries to match the other endpoint N

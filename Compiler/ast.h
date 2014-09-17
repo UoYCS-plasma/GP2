@@ -64,7 +64,7 @@ extern int yydebug;
 
 /* enum used by the parser for mark keywords */
 
-typedef enum {RED = 0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkType; 
+typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; 
 
 /* The functions after each struct definition are AST node constructors. The
  * constructors are called from the Bison parser (gpparser.y) which provides 
