@@ -62,14 +62,11 @@ Morphism *staticSearchplan(Graph *lhs, Graph *host, VariableList *variables);
  * Argument 4: The list of node matches. Used to check if a host node has
  *             already been matched.       
  * Argument 5: A pointer to the list of variables in the rule. Required for
- *             checking if labels match. 
- * Argument 6: The current assignment, passed by reference, as it may be 
- *             updated during label matching.           
+ *             checking if labels match.       
  */
 
 int matchRootNode(Node *rule_root, Graph *host, int index, 
-                  GraphMapping *node_matches, VariableList *variables,
-		  Assignment **assignment);
+                  GraphMapping *node_matches, VariableList *variables);
 
 
 /* matchEdge attempts to match a rule edge from either its source or target
@@ -91,14 +88,11 @@ int matchRootNode(Node *rule_root, Graph *host, int index,
  * Argument 5: The list of edge matches. Used to check if a host edge has
  *             already been matched.    
  * Argument 6: A pointer to the list of variables in the rule. Required for
- *             checking if labels match. 
- * Argument 7: The current assignment, passed by reference, as it may be 
- *             updated during label matching.      
+ *             checking if labels match.     
  */
 
 int matchEdge(Edge *rule_edge, Graph *host, bool match_from_source, int index, 
-              GraphMapping *edge_matches, VariableList *variables,
-              Assignment **assignment);
+              GraphMapping *edge_matches, VariableList *variables);
 
 /* Called directly after a call to matchEdge. matchEdge matches an edge from 
  * one of its endpoints; matchIncidentNode tries to match the other endpoint N
@@ -122,14 +116,11 @@ int matchEdge(Edge *rule_edge, Graph *host, bool match_from_source, int index,
  * Argument 4: The list of node matches. Used to check if a host node has
  *             already been matched. 
  * Argument 5: A pointer to the list of variables in the rule. Required for
- *             checking if labels match. 
- * Argument 6: The current assignment, passed by reference, as it may be 
- *             updated during label matching.           
+ *             checking if labels match.           
  */
 
 int matchIncidentNode(Edge *rule_edge, Edge *host_edge, bool match_target, 
-                      GraphMapping *node_matches, VariableList *variables,
-		      Assignment **assignment);
+                      GraphMapping *node_matches, VariableList *variables);
 
 
 /* matchNode attempts to match a non-root rule node against each node in the 
@@ -146,13 +137,10 @@ int matchIncidentNode(Edge *rule_edge, Edge *host_edge, bool match_target,
  *             root node has already been matched.      
  * Argument 5: A pointer to the list of variables in the rule. Required for
  *             checking if labels match. 
- * Argument 6: The current assignment, passed by reference, as it may be 
- *             updated during label matching.  
  */
 
 int matchNode(Node *rule_node, Graph *host, int index, 
-              GraphMapping *node_matches, VariableList *variables,
-              Assignment **assignment);
+              GraphMapping *node_matches, VariableList *variables);
               
 
 #endif /* STATIC_SEARCH_H*/

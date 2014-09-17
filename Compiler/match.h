@@ -135,9 +135,13 @@ ListElement *copyListElement(ListElement *atom);
  * Argument 4: The current assignment, passed by reference, as it may be 
  *             updated during label matching.  
  */
+
+/* Global assignment, used by all the functions below this point and all functions
+ * in the staticsearch module. */
+
+extern Assignment *assignment;
  
-bool labelMatch (Label rule_label, Label host_label, VariableList *variables, 
-		 Assignment **assignment);
+bool labelMatch (Label rule_label, Label host_label, VariableList *variables);
 			              
 /* compareAtoms checks if two atomic expressions match. The expression from the
  * rule may contain variables so it must also perform variable-value assignments. 
@@ -155,13 +159,10 @@ bool labelMatch (Label rule_label, Label host_label, VariableList *variables,
  * Argument 1: An atomic expression from a rule graph label.
  * Argument 2: An atomic expression from a host graph label.
  * Argument 3: The list of variables from the rule.
- * Argument 4: The current assignment, passed by reference, as it may be 
- *             updated during label matching.  
  */			              
 			              
 int compareAtoms(ListElement *rule_atom, ListElement *host_atom,
-                 VariableList *variables, Assignment **assignment);
-
+                VariableList *variables);
 
 /* concatExpToList returns a list of struct StringExps. */
 
@@ -171,6 +172,8 @@ typedef struct StringExp {
    stringType type;
    string value;
 } StringExp;
+
+void freeStringExp(gpointer data);
 
 /* To be executed at the AST transformation stage, but I put it here for now. 
  * Expects a ListElement of type CONCAT. */
@@ -192,12 +195,10 @@ GList *concatExpToList(ListElement *string_exp);
  * Argument 1: The string expression, taken from a label of the rule graph.
  * Argument 2: The constant string, taken from a label of the host graph.
  * Argument 3: The list of variables from the rule.
- * Argument 4: The current assignment, passed by reference, as it may be 
- *             updated during label matching.  
  */
 
 int verifyStringExp(GList *string_exp, ListElement *host_atom,
-                    VariableList *variables, Assignment **assignment);
+                    VariableList *variables);
 
 
 /* Auxiliary functions for compareAtoms in the case of a concatenated string
@@ -232,10 +233,8 @@ int isSuffix(const string test, const string str);
  * whether an assignment was made or not. Hence it returns false if the values
  * differ, and true otherwise, whether an assignment was added or not.
  *
- * Argument 1: The existing assignment, passed by reference as the assignment
- *             may be updated.
- * Argument 2: The name of the variable to be verified.
- * Argument 3: The value required for a label match. If the value is to be
+ * Argument 1: The name of the variable to be verified.
+ * Argument 2: The value required for a label match. If the value is to be
  *             added to the assignment, a heap copy is created inside the
  *             function. verifyListVariable is passed a shallow copy of a
  *             GList, which is freed with g_list_free inside the function.
@@ -243,8 +242,8 @@ int isSuffix(const string test, const string str);
  *             and does not need to free anything.
  */                    
 
-bool verifyListVariable(Assignment **assignment, string name, GList *list);
-int verifyAtomVariable(Assignment **assignment, string name, ListElement *value);
+bool verifyListVariable(string name, GList *list);
+int verifyAtomVariable(string name, ListElement *value);
 
 /* compareConstants takes two ListElements representing a constant value and 
  * checks if the values they represent are equal. Used as an auxiliary function
