@@ -197,4 +197,5 @@ void push (Stack *stack, void *data);
 void *pop (Stack *stack);
 void freeStack (Stack *stack);
 
+
 #endif /* INC_GRAPH_H */

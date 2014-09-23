@@ -11,8 +11,8 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --
 default:	$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P)
 
-# Builds executable runGP and runs it on extensionless files.
-# Usage: make runGP F1=<program_filename> F2=<graph_filename>
+# Builds executable gpparse and runs it on extensionless files.
+# Usage: make F1=<program_filename> F2=<graph_filename>
 $(P):	        $(PARSEOBJECTS)
 		$(CC) $(PARSEOBJECTS) $(LFLAGS) -o $(P) 	
 		./$(P) $(F1) $(F2)       	
@@ -31,7 +31,6 @@ test-debug:	ast.o graph.o match.o rule.o staticsearch.o test.o
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./testGP
 
 
-
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
 		$(CC) $(CFLAGS) -c gpparser.tab.c
 
@@ -45,7 +44,6 @@ lex.yy.c:	gplexer.lex gpparser.tab.h ast.h
 		flex gplexer.lex
 
 main.o:         main.c ast.h globals.h pretty.h seman.h
-		$(CC) $(CFLAGS) -c main.c
 
 ast.o: 		ast.c ast.h globals.h
 		$(CC) $(CFLAGS) -c ast.c
@@ -66,7 +64,6 @@ match.o:	match.c globals.h graph.h rule.h match.h
 		$(CC) $(CFLAGS) -c match.c
 
 staticsearch.o:	staticsearch.c globals.h graph.h match.h rule.h staticsearch.h 
-		$(CC) $(CFLAGS) -c staticsearch.c
 
 test.o:		test.c staticsearch.h
 		$(CC) $(CFLAGS) -c test.c

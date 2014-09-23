@@ -16,6 +16,7 @@
 #include "match.h"
 #include "rule.h"
 
+
 /* staticSearchplan conducts a depth-first search for a graph morphism
  * from lhs to host. It returns the first morphism found or, in the case
  * where no morphism exists, NULL.

@@ -79,7 +79,4 @@ typedef struct Rule {
 } Rule;
 
 
-
-
-
 #endif /* INC_RULE_H */
