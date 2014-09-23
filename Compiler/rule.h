@@ -12,6 +12,7 @@
 #ifndef INC_STRUCTURES_H
 #define INC_STRUCTURES_H
 
+#include "globals.h"
 #include "graph.h"
 
 /* The parameter list of a rule. Each variable has one of the five GP 2 types 
@@ -34,7 +35,7 @@ void freeVariableList(VariableList *variable_list);
 
 
 typedef struct Condition {
-  CondExpType exp_type;		/* From ast.h */
+  CondExpType exp_type;		/* globals.h */
   union {
     string var; 		/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
 				 * ATOM_CHECK */
@@ -79,20 +80,6 @@ typedef struct Rule {
 
 
 
-/* Generic stack implementation. Used to keep track of the host graph changes
- * for try statements, where we may need to roll back to an older graph. 
- * If not used at all for rules, move this to another module. */
 
-typedef struct Stack {
-   int top; /* index to the top item in the stack */
-   int max_size; /* can be determined statically by examining # nodes, edges in the rule. */
-   void **items; /* array of stack items */
-} Stack;
-
-
-Stack *newStack (int maxSize);
-void push (Stack *stack, void *data);
-void *pop (Stack *stack);
-void freeStack (Stack *stack);
 
 #endif /* INC_RULE_H */

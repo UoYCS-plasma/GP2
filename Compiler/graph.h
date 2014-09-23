@@ -13,7 +13,7 @@
 #ifndef INC_GRAPH_H
 #define INC_GRAPH_H
 
-#include "ast.h"
+#include "globals.h"
 
 /* Invariants on graphs:
  * (1) A graph with N nodes has assigned node indexes 1,...,N. next_node_index
@@ -89,7 +89,7 @@ typedef struct Edge {
 
 
 typedef struct ListElement {
-   AtomExpType type;		  /* From ast.h */
+   AtomExpType type;		  /* globals.h */
    union {
     string name;		  /* VARIABLE */
     int number; 	 	  /* INTEGER_CONSTANT */
@@ -106,7 +106,7 @@ typedef struct ListElement {
   } value;
 
 } ListElement;
-   
+
 
 /* Graph utility functions
  * =======================
@@ -179,5 +179,22 @@ void freeListElement(void *p);
 /* A wrapper for g_slist_free so that it can be called by g_hash_table_foreach.
  */
 void freeGSList(gpointer key, gpointer value, gpointer data); 
+
+
+/* Generic stack implementation. Used to keep track of the host graph changes
+ * for try statements, where we may need to roll back to an older graph. 
+ * If not used at all for rules, move this to another module. */
+
+typedef struct Stack {
+   int top; /* index to the top item in the stack */
+   int max_size; /* can be determined statically by examining # nodes, edges in the rule. */
+   void **items; /* array of stack items */
+} Stack;
+
+
+Stack *newStack (int maxSize);
+void push (Stack *stack, void *data);
+void *pop (Stack *stack);
+void freeStack (Stack *stack);
 
 #endif /* INC_GRAPH_H */

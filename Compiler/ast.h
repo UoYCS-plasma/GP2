@@ -14,57 +14,7 @@
 #ifndef INC_AST_H
 #define INC_AST_H 
 
-/* Wrappers for frequently occurring calls to fprintf. */
-
-#define print_to_log(error_message, ...)                    \
-  do { fprintf(log_file, error_message, ##__VA_ARGS__); }   \
-  while(0)
-
-#define print_to_console(error_message, ...)                \
-  do { fprintf(stderr, error_message, ##__VA_ARGS__); }     \
-  while(0) 
-
-#include <assert.h>
-#include <glib.h> 
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdlib.h> 
-#include <stdio.h> 
-#include <string.h> 
-
-typedef char* string;
-
-/* Bison uses a global variable yylloc of type YYLTYPE to keep track of the 
- * locations of tokens and nonterminals. The scanner will set these values upon
- * reading each token. This is the standard YYLTYPE definition but I define it
- * here so it is seen by every file.
- */
-typedef struct YYLTYPE {
-  int first_line;
-  int first_column;
-  int last_line;
-  int last_column;
-} YYLTYPE;
-
-# define YYLTYPE_IS_DECLARED 1 /* tells the parser that YYLTYPE is defined here */
-
-extern FILE *yyin; /* Created by Bison. */
-extern FILE *log_file; /* Created in main.c */
-
-
-/* Declarations for functions and variables defined in gplexer.l */
-extern int yylineno; 
-extern string yytext; 
-
-
-/* Declarations for functions and variables defined in gpparser.y */
-int yyparse(void);
-extern struct List *gp_program; 
-extern int yydebug;
-
-/* enum used by the parser for mark keywords */
-
-typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; 
+#include "globals.h"
 
 /* The functions after each struct definition are AST node constructors. The
  * constructors are called from the Bison parser (gpparser.y) which provides 
@@ -197,10 +147,6 @@ GPStatement *newASTFail(YYLTYPE location);
 
 /* Definition of AST nodes representing conditional expressions.*/
 
-typedef enum {INT_CHECK = 0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
-              EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
-	      BOOL_NOT, BOOL_OR, BOOL_AND } CondExpType;
-
 typedef struct GPCondExp {
   int node_id;
   CondExpType exp_type;
@@ -248,12 +194,6 @@ GPCondExp *newASTBinaryExp (CondExpType exp_type, YYLTYPE location,
 
 
 /* Definition of AST nodes representing integer or string expressions. */
-
-/* EMPTY is not used in anything AST-related; it is used later for label
- * matching purposes. */
-typedef enum {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, CHARACTER_CONSTANT,
-              STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
-              NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType;
 
 typedef struct GPAtomicExp {
   int node_id;

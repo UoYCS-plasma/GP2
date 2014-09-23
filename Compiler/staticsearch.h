@@ -11,7 +11,10 @@
 #ifndef STATIC_SEARCH_H
 #define STATIC_SEARCH_H
 
+#include "globals.h"
+#include "graph.h"
 #include "match.h"
+#include "rule.h"
 
 /* staticSearchplan conducts a depth-first search for a graph morphism
  * from lhs to host. It returns the first morphism found or, in the case

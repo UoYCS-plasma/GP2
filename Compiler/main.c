@@ -18,14 +18,11 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
-#include "pretty.h" 
-/* #include "ast.h" 
-#include "seman.h" 
-#include <stdbool.h>
-#include <stdio.h> 
-#include <stdlib.h>
-#include <string.h> */
 
+#include "ast.h" 
+#include "globals.h"
+#include "pretty.h" 
+#include "seman.h" 
 
 /* Macros to control debugging features. */
 #undef PARSER_TRACE 		/* Assign yydebug to 1 */
@@ -64,11 +61,10 @@ GHashTable *gp_symbol_table = NULL;
 
 
 
-/* Usage: gpparse [-dg] <program_file> <host_graph_file> */
 int main(int argc, char** argv) {
 
   if(argc != 3) {
-    print_to_console( "Usage: gpparse <program_file> <host_graph_file>\n");
+    print_to_console( "Usage: runGP <program_file> <host_graph_file>\n");
     return 1;
   }
 

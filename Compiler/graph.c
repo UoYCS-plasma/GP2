@@ -709,3 +709,65 @@ void freeListElement(void *p)
 
    if(elem) free(elem);
 }
+
+
+Stack *newStack (int max_size) 
+{
+   Stack *new_stack = malloc(sizeof(Stack));
+
+   if(new_stack == NULL) 
+   {
+      print_to_log("Memory exhausted during stack construction.\n");
+      exit(1);
+   }
+ 
+   void **items = calloc(max_size, sizeof(void*));
+
+   if(items == NULL) 
+   {
+      print_to_log("Memory exhausted during stack construction.\n");
+      exit(1);
+   } 
+
+   new_stack->top = 0;
+   new_stack->max_size = max_size;
+   new_stack->items = items;
+
+   return new_stack;
+}
+
+void push (Stack *stack, void *data) 
+{
+   if(stack->top == stack->max_size) 
+      print_to_log("Warning: Trying to push to a full stack.\n");
+   else 
+   {
+      stack->items[stack->top] = data;
+      stack->top++;
+   }
+}
+
+void *pop (Stack *stack) 
+{
+   void *popped_item = NULL;
+
+   if(stack->top == 0) 
+   {
+      print_to_log("Warning: Trying to pop from an empty stack.\n");
+      return NULL;
+   }
+   else 
+   {
+      stack->top--;
+      popped_item = stack->items[stack->top];
+   }
+   
+   return popped_item;
+}
+
+void freeStack (Stack *stack) 
+{
+   /* Need to free the items in the stack rule_item. */
+   free(stack->items);
+   free(stack);
+}
