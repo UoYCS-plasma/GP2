@@ -11,25 +11,24 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --
 default:	$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o $(P)
 
-# Builds executable gpparse and runs it on extensionless files.
+# Builds executable GP 2 parser and runs it on extensionless files.
 # Usage: make F1=<program_filename> F2=<graph_filename>
 $(P):	        $(PARSEOBJECTS)
 		$(CC) $(PARSEOBJECTS) $(LFLAGS) -o $(P) 	
 		./$(P) $(F1) $(F2)       	
 
-debug:		$(PARSEOBJECTS)
+debug-parse:	$(PARSEOBJECTS)
 		$(CC) $(PARSEOBJECTS) $(LFLAGS) -o $(P) 	
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
 
 # Testing file.
-test:		ast.o graph.o match.o rule.o staticsearch.o test.o
-		$(CC) ast.o graph.o match.o rule.o staticsearch.o test.o $(LFLAGS) -o testGP
+test:		graph.o test.o
+		$(CC) graph.o test.o $(LFLAGS) -o testGP
 		./testGP
 
-test-debug:	ast.o graph.o match.o rule.o staticsearch.o test.o
-		$(CC) ast.o graph.o match.o rule.o staticsearch.o test.o $(LFLAGS) -o testGP
+test-debug:	graph.o test.o
+		$(CC) graph.o test.o $(LFLAGS) -o testGP
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./testGP
-
 
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
 		$(CC) $(CFLAGS) -c gpparser.tab.c
@@ -65,7 +64,7 @@ match.o:	match.c globals.h graph.h rule.h match.h
 
 staticsearch.o:	staticsearch.c globals.h graph.h match.h rule.h staticsearch.h 
 
-test.o:		test.c staticsearch.h
+test.o:		test.c graph.h
 		$(CC) $(CFLAGS) -c test.c
 clean:
 		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c runGP

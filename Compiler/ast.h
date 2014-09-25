@@ -210,7 +210,7 @@ typedef struct GPAtomicExp {
     struct { 
       struct GPAtomicExp *left_exp;
       struct GPAtomicExp *right_exp;
-    } bin_op; 		   	 /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
+    } bin_op; 		   	  /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
   } value;
 } GPAtomicExp;
 

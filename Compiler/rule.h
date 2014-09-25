@@ -42,7 +42,7 @@ typedef struct Condition {
     struct {
       string source; 
       string target; 
-      Label label;
+      Label *label;
     } edge_pred; 		/* EDGE_PRED */
 
     struct { 
