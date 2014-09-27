@@ -1,5 +1,5 @@
 P = runGP
-OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o staticsearch.o main.o
+OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o stack.o staticsearch.o main.o
 PARSEOBJECTS = gpparser.tab.o lex.yy.o ast.o seman.o pretty.o main.o  
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
@@ -22,12 +22,12 @@ debug-parse:	$(PARSEOBJECTS)
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
 
 # Testing file.
-test:		graph.o test.o
-		$(CC) graph.o test.o $(LFLAGS) -o testGP
+test:		graph.o stack.o test.o
+		$(CC) graph.o stack.o test.o $(LFLAGS) -o testGP
 		./testGP
 
-test-debug:	graph.o test.o
-		$(CC) graph.o test.o $(LFLAGS) -o testGP
+test-debug:	graph.o stack.o test.o
+		$(CC) graph.o stack.o test.o $(LFLAGS) -o testGP
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./testGP
 
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
@@ -61,6 +61,9 @@ graph.o:	graph.c globals.h graph.h
 
 match.o:	match.c globals.h graph.h rule.h match.h 
 		$(CC) $(CFLAGS) -c match.c
+
+stack.o:	stack.c globals.h
+		$(CC) $(CFLAGS) -c stack.c
 
 staticsearch.o:	staticsearch.c globals.h graph.h match.h rule.h staticsearch.h 
 
