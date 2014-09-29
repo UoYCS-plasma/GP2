@@ -24,10 +24,13 @@
   do { fprintf(stderr, error_message, ##__VA_ARGS__); }     \
   while(0) 
 
-#include <stdio.h> /* FILE type */
+#include <assert.h>
+#include <glib.h> 
+#include <stdarg.h>
 #include <stdbool.h>
-#include <stdlib.h> /* malloc */
-#include <string.h> /* strdup */
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 typedef char* string;
 
@@ -61,7 +64,7 @@ extern int yydebug;
 
 /* enum used by the parser for mark keywords */
 
-typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkType; 
+typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; 
 
 /* The functions after each struct definition are AST node constructors. The
  * constructors are called from the Bison parser (gpparser.y) which provides 
@@ -78,7 +81,7 @@ typedef enum {RED=0, GREEN, BLUE, GREY, DASHED, CYAN, NONE} MarkType;
 
 /* Definition of AST nodes representing lists. */
 
-typedef enum {GLOBAL_DECLARATIONS=0, LOCAL_DECLARATIONS, COMMANDS, 
+typedef enum {GLOBAL_DECLARATIONS = 0, LOCAL_DECLARATIONS, COMMANDS, 
               RULES, INT_DECLARATIONS, CHAR_DECLARATIONS, 
               STRING_DECLARATIONS, ATOM_DECLARATIONS,  
               LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, 
@@ -93,8 +96,7 @@ typedef struct List {
 					* LOCAL_DECLARATIONS */
     struct GPStatement *command;       /* COMMANDS */
     string rule_name; 		       /* RULES */
-    struct List *variables; 
-     				       /* INT_DECLARATIONS, CHAR_DECLARATIONS,
+    struct List *variables;            /* INT_DECLARATIONS, CHAR_DECLARATIONS,
                                         * STRING_DECLARATIONS, ATOM_DECLARATIONS */ 
     string variable_name; 	       /* VARIABLE_LIST */	  
     string node_id; 		       /* INTERFACE_LIST */	   
@@ -124,7 +126,7 @@ List *addASTEmptyList (YYLTYPE location);
 
 /* Definition of AST nodes representing declarations. */
 
-typedef enum {MAIN_DECLARATION=0, PROCEDURE_DECLARATION, RULE_DECLARATION} DeclType;
+typedef enum {MAIN_DECLARATION = 0, PROCEDURE_DECLARATION, RULE_DECLARATION} DeclType;
 
 typedef struct GPDeclaration {
   int node_id;
@@ -146,7 +148,7 @@ GPDeclaration *newASTRuleDecl (YYLTYPE location, struct GPRule *rule);
 
 /* Definition of AST nodes representing GP program statements. */
 
-typedef enum {COMMAND_SEQUENCE=0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL, 
+typedef enum {COMMAND_SEQUENCE = 0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL, 
               IF_STATEMENT, TRY_STATEMENT, ALAP_STATEMENT, PROGRAM_OR, 
               SKIP_STATEMENT, FAIL_STATEMENT} StatementType;
 
@@ -173,7 +175,7 @@ typedef struct GPStatement {
       struct GPStatement *right_stmt; 
     } or_stmt;			        /* PROGRAM_OR */
     /* skip and fail are predefined GP rules represented by a struct GPStatement
-     * containing only a statement_type and location */
+     * containing only a statement_type and location. */
   } value;
 } GPStatement;
 
@@ -195,7 +197,7 @@ GPStatement *newASTFail(YYLTYPE location);
 
 /* Definition of AST nodes representing conditional expressions.*/
 
-typedef enum {INT_CHECK=0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
+typedef enum {INT_CHECK = 0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
               EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
 	      BOOL_NOT, BOOL_OR, BOOL_AND } CondExpType;
 
@@ -247,7 +249,9 @@ GPCondExp *newASTBinaryExp (CondExpType exp_type, YYLTYPE location,
 
 /* Definition of AST nodes representing integer or string expressions. */
 
-typedef enum {VARIABLE=0, INT_CONSTANT, CHARACTER_CONSTANT,
+/* EMPTY is not used in anything AST-related; it is used later for label
+ * matching purposes. */
+typedef enum {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, CHARACTER_CONSTANT,
               STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
               NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType;
 
@@ -257,7 +261,7 @@ typedef struct GPAtomicExp {
   YYLTYPE location;
   union {
     string name;		  /* VARIABLE */
-    int number; 	 	  /* INT_CONSTANT */
+    int number; 	 	  /* INTEGER_CONSTANT */
     string string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
     struct List *list_arg; 	  /* LIST_LENGTH */
@@ -286,7 +290,7 @@ GPAtomicExp *newASTBinaryOp (AtomExpType exp_type, YYLTYPE location,
 
 /* Definition of the remaining AST node types. */
 
-typedef enum {PROCEDURE=0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, POSITION, LABEL} ASTNodeType;
+typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, POSITION, LABEL} ASTNodeType;
 
 /* Root node for a procedure definition. */
 

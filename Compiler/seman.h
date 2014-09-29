@@ -13,11 +13,11 @@
 #define INC_SEMAN_H
 
 #include "ast.h" /* struct List */
-#include <glib.h>
+/* #include <glib.h>
 #include <stdbool.h>
-#include <stdlib.h> /* malloc, free */
-#include <string.h> /* strdup, strcmp */
-#include <stdio.h> /* fprintf */
+#include <stdlib.h>  malloc, free 
+#include <string.h>  strdup, strcmp 
+#include <stdio.h>  fprintf */
 
 
 /* GP2 symbols are stored in struct Symbol. These are values of the
@@ -127,7 +127,7 @@ extern bool abort_compilation; /* Defined in main.c */
  *
  *
  * ======================================
- * g_hash_table_insert(table, key, list); 
+ * g_hash_table_replace(table, key, list); 
  * ======================================
  *
  * Inserts the GSList list to the symbol table. If the key already exists 
@@ -310,7 +310,9 @@ void graphScan(GPGraph *graph, GHashTable *table, string const scope,
 
 /* interfaceScan performs semantic checking on the interface list of a rule.
  * All nodes in the list are checked to see if they appear in both graphs of
- * the rule. This function is called only by ruleScan.
+ * the rule. The function also reports a warning if any node appears more than
+ * once in the list. Repeated nodes are not removed from the AST interface
+ * list. This function is called only by ruleScan.
  *
  * Argument 1: Pointer to the head of an AST interface list.
  * Argument 2: The symbol table.
@@ -318,7 +320,7 @@ void graphScan(GPGraph *graph, GHashTable *table, string const scope,
  * Argument 4: The current rule being processed.
  */
 
-void interfaceScan(List * interface, GHashTable *table, string const scope,
+void interfaceScan(List *interface, GHashTable *table, string const scope,
                     string const rule_name);
 
 
@@ -335,7 +337,7 @@ void interfaceScan(List * interface, GHashTable *table, string const scope,
  */   
 
 
-void conditionScan(GPCondExp * const condition, GHashTable *table, string const scope,
+void conditionScan(GPCondExp *const condition, GHashTable *table, string const scope,
                     string const rule_name);
 
 
@@ -394,7 +396,6 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
                   string const rule_name, char const location);
 
 
-
 /* atomicExpScan checks variables and nodes in expressions to see if they 
  * have been declared in the rule. If the function is called with location
  * 'l', it checks for expressions that violate the simple list condition.
@@ -421,8 +422,9 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
  *             are encountered.
  */
 
-void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table, string const scope,
-                    string const rule_name, char const location, bool const int_exp,
-		    bool const string_exp);
+void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table, 
+		   string const scope, string const rule_name, 
+	           char const location, bool const int_exp,
+		   bool const string_exp);
 
 #endif /* INC_SEMAN_H */

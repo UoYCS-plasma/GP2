@@ -1,0 +1,711 @@
+/* ///////////////////////////////////////////////////////////////////////////
+
+  ================================
+  graph.c - Chris Bak (14/07/2014)
+  ================================
+
+/////////////////////////////////////////////////////////////////////////// */
+
+#include "graph.h"
+
+Graph *newGraph(void) 
+{
+    Graph *new_graph = malloc(sizeof(Graph));
+
+    if(new_graph == NULL) {
+      printf("Memory exhausted during graph construction.\n");
+      exit(1);
+    }
+    
+    new_graph->next_node_index = 0;
+    new_graph->next_edge_index = 0;
+
+    /* The pointer arrays handle all the freeing of Node and Edge structs.
+       Hence they are passed the freeing functions for nodes and edges. */
+    new_graph->nodes = g_ptr_array_new_with_free_func(freeNode);
+    new_graph->edges = g_ptr_array_new_with_free_func(freeEdge);
+
+    new_graph->nodes_by_label = g_hash_table_new(g_direct_hash, g_direct_equal);    
+    new_graph->edges_by_label = g_hash_table_new(g_direct_hash, g_direct_equal);    
+
+    new_graph->root_nodes = NULL;
+
+    return new_graph;
+}
+
+Node *newNode(string name, bool root, Label label)
+{
+   Node *node = malloc(sizeof(Node));
+
+   if(node == NULL) {
+      print_to_log("Memory exhausted during node construction.\n");
+      exit(1);
+   }
+
+   node->index = 0;
+   node->name = strdup(name);
+   node->root = root;
+   node->label_class = EMPTY; /* Needs to be initialised somehow. */
+   node->label = label;
+   node->indegree = 0;
+   node->outdegree = 0;
+   node->in_edges = NULL;
+   node->out_edges = NULL;
+   node->in_edges_by_label = g_hash_table_new(g_direct_hash, g_direct_equal); 
+   node->out_edges_by_label = g_hash_table_new(g_direct_hash, g_direct_equal); 
+
+   return node;
+}
+
+
+Edge *newEdge(string name, bool bidirectional, Label label, Node *source,
+              Node *target)
+{
+   Edge *edge = malloc(sizeof(Edge));
+
+   if(edge == NULL) {
+      print_to_log("Memory exhausted during node construction.\n");
+      exit(1);
+   }
+	
+   edge->index = 0;
+   edge->name = strdup(name);
+   edge->bidirectional = bidirectional;
+   edge->label_class = EMPTY; /* Needs to be initialised somehow. */
+   edge->label = label;
+   edge->source = source;
+   edge->target = target;
+   
+   return edge;
+}
+	
+
+void addNode(Graph *graph, Node *node) 
+{
+    node->index = graph->next_node_index;
+    void *hash_key = GINT_TO_POINTER(node->label_class);
+
+    /* Add to graph->nodes */
+    g_ptr_array_add(graph->nodes, node);
+
+    /* Update graph->nodes_by_label */
+    GSList *node_list = g_hash_table_lookup(graph->nodes_by_label, hash_key);
+    node_list = g_slist_prepend(node_list,node);
+    g_hash_table_replace(graph->nodes_by_label, hash_key, node_list);
+    
+    /* Update graph->root_nodes */
+    if(node->root) graph->root_nodes = g_slist_prepend(graph->root_nodes,node);
+
+    graph->next_node_index +=1;
+}
+
+
+void addEdge(Graph *graph, Edge *edge) 
+{
+    edge->index = graph->next_edge_index;
+    void *hash_key = GINT_TO_POINTER(edge->label_class);
+
+    /* Update the source and target nodes with the new edge: first increment
+     * the appropriate degrees and then add the edge to the out_edges/in_edges
+     * tables. */ 
+    Node *source = edge->source;
+    Node *target = edge->target;
+
+    source->outdegree++;
+    target->indegree++;
+
+    source->out_edges = g_slist_prepend(source->out_edges, edge);
+
+    GSList *out_edges = 
+        g_hash_table_lookup(source->out_edges_by_label, hash_key);
+    out_edges = g_slist_prepend(out_edges, edge);
+    g_hash_table_replace(source->out_edges_by_label, hash_key, out_edges);
+
+    target->in_edges = g_slist_prepend(target->in_edges, edge);
+
+    GSList *in_edges = 
+        g_hash_table_lookup(target->in_edges_by_label, hash_key);
+    in_edges = g_slist_prepend(in_edges, edge);
+    g_hash_table_replace(target->in_edges_by_label, hash_key, in_edges);
+
+
+    /* Add to graph->edges */
+    g_ptr_array_add(graph->edges, edge);
+
+    /* Update graph->edges_by_label */
+    GSList *edge_list = g_hash_table_lookup(graph->edges_by_label, hash_key);
+    edge_list = g_slist_prepend(edge_list, edge);
+    g_hash_table_replace(graph->edges_by_label, hash_key, edge_list);
+
+    graph->next_edge_index +=1;
+}
+
+/* Removes a node from the graph. The function g_ptr_array_remove_fast is used
+ * to remove the node from the pointer array. It also moves the last element
+ * of the array in its place. Hence, to keep the indices consistent, I update
+ * the index of the last item to the index of the deleted node.
+ * Assumes at least one node in the graph and no incident edges. */
+
+void removeNode(Graph *graph, Node *node)
+{
+    /* Get the last element and set its index to that of the node to be removed. */
+    Node *node_to_update = g_ptr_array_index(graph->nodes,graph->next_node_index-1);
+    node_to_update->index = node->index;
+    
+    void *hash_key = GINT_TO_POINTER(node->label_class);
+    bool is_root = node->root;
+  
+    /* Remove the node from the pointer array. */
+    g_ptr_array_remove_index_fast(graph->nodes, node->index);
+    graph->next_node_index--;
+
+    /* Remove the node from the hash table. */
+    GSList *node_list = g_hash_table_lookup(graph->nodes_by_label, hash_key);
+    node_list = g_slist_remove(node_list, node);
+    g_hash_table_insert(graph->nodes_by_label, hash_key, node_list);
+
+    /* Remove the node from the root node list if necessary. */
+    if(is_root) graph->root_nodes = g_slist_remove(graph->root_nodes, node);
+}
+
+/* Removes an edge from the graph. The function g_ptr_array_remove_fast is used
+ * to remove the edge from the pointer array. It also moves the last element
+ * of the array in its place. Hence, to keep the indices consistent, I update
+ * the index of the last item to the index of the deleted node.
+ * Assumes at least one node in the graph and no incident edges. */
+
+void removeEdge(Graph *graph, Edge *edge) 
+{
+    /* Get the last element and set its index to that of the edge to be 
+     * removed. */
+    Edge *edge_to_update = 
+       g_ptr_array_index(graph->edges,graph->next_edge_index-1);
+    edge_to_update->index = edge->index;
+    
+    void *hash_key = GINT_TO_POINTER(edge->label_class);
+ 
+    /* Update the source and target nodes with the deleted edge: first 
+     * decrement the appropriate degrees and then remove the edge from the 
+     * out_edges/in_edges structures. */ 
+    Node *source = edge->source;
+    Node *target = edge->target;
+
+    source->outdegree--;
+    target->indegree--;
+
+    source->out_edges = g_slist_remove(source->out_edges, edge);
+
+    GSList *out_edges = 
+        g_hash_table_lookup(source->out_edges_by_label, hash_key);
+    out_edges = g_slist_remove(out_edges, edge);
+    g_hash_table_replace(source->out_edges_by_label, hash_key, out_edges);
+
+    target->in_edges = g_slist_remove(source->in_edges, edge);
+
+    GSList *in_edges = 
+        g_hash_table_lookup(target->in_edges_by_label, hash_key);
+    in_edges = g_slist_remove(in_edges, edge);
+    g_hash_table_replace(target->in_edges_by_label, hash_key, in_edges);
+
+    /* Remove the edge from the edge array. The pointer is freed by the call to
+     * g_ptr_array_remove_fast. */
+    g_ptr_array_remove_index_fast(graph->edges, edge->index);
+    graph->next_edge_index--;
+
+    /* Remove the edge from the hash table. */
+    GSList *edge_list = g_hash_table_lookup(graph->edges_by_label, hash_key);
+    edge_list = g_slist_remove(edge_list,edge);
+    g_hash_table_replace(graph->edges_by_label, hash_key, edge_list);
+
+}
+
+void relabelNode(Graph *graph, Node *node, Label new_label, LabelClass new_label_class) 
+{
+    node->label.mark = new_label.mark;
+    if(node->label.list) g_list_free_full(node->label.list, freeListElement);
+    node->label.list = new_label.list;
+
+    /* If the label classes differ, the graph's nodes_by_label table needs to 
+     * be updated. */
+    if(node->label_class != new_label_class) 
+    {
+       void *hash_key_1 = GINT_TO_POINTER(node->label_class);
+       void *hash_key_2 = GINT_TO_POINTER(new_label_class);
+       node->label_class = new_label_class;
+
+       /* Remove the node from the list indexed by its old label class. */
+       GSList *old_node_list = 
+	  g_hash_table_lookup(graph->nodes_by_label, hash_key_1);
+       old_node_list = g_slist_remove(old_node_list, node); 
+       g_hash_table_replace(graph->nodes_by_label, hash_key_1, old_node_list);
+
+       /* Add the node to the list indexed by its new label class. */
+       GSList *new_node_list = 
+           g_hash_table_lookup(graph->nodes_by_label, hash_key_2);
+       new_node_list = g_slist_prepend(new_node_list, node);
+       g_hash_table_replace(graph->nodes_by_label, hash_key_2, new_node_list);
+    }   
+}
+
+void relabelEdge(Graph *graph, Edge *edge, Label new_label, 
+		 LabelClass new_label_class) 
+{		 
+    edge->label.mark = new_label.mark;
+    if(edge->label.list) g_list_free_full(edge->label.list, freeListElement);
+    edge->label.list = new_label.list;
+
+    /* If the label classes differ, the graph's edges_by_label table needs to
+     * be updated. */
+    if(edge->label_class != new_label_class) 
+    {
+       void *hash_key_1 = GINT_TO_POINTER(edge->label_class);
+       void *hash_key_2 = GINT_TO_POINTER(new_label_class);
+       edge->label_class = new_label_class;
+
+       /* Remove the edge from the list indexed by its old label class. */
+       GSList *old_edge_list = 
+           g_hash_table_lookup(graph->edges_by_label, hash_key_1);
+       old_edge_list = g_slist_remove(old_edge_list, edge); 
+       g_hash_table_replace(graph->edges_by_label, hash_key_1, old_edge_list);
+
+       /* Add the edge to the list indexed by its new label class. */
+       GSList *new_edge_list = 
+           g_hash_table_lookup(graph->edges_by_label, hash_key_2);
+       new_edge_list = g_slist_prepend(new_edge_list, edge);
+       g_hash_table_replace(graph->edges_by_label, hash_key_2, new_edge_list);
+ 
+       /* The hash tables of the source and target node must also be updated. 
+        */
+       Node *source = edge->source;
+       Node *target = edge->target;
+
+       GSList *old_src_edge_list = 
+           g_hash_table_lookup(source->out_edges_by_label, hash_key_1);
+       old_src_edge_list = g_slist_remove(old_src_edge_list, edge); 
+       g_hash_table_replace(source->out_edges_by_label, hash_key_1, 
+                            old_src_edge_list);
+
+       GSList *new_src_edge_list =
+           g_hash_table_lookup(source->out_edges_by_label, hash_key_2);
+       new_src_edge_list = g_slist_prepend(new_src_edge_list, edge);
+       g_hash_table_replace(source->out_edges_by_label, hash_key_2, 
+                            new_src_edge_list);
+
+       GSList *old_tgt_edge_list = 
+	  g_hash_table_lookup(target->in_edges_by_label, hash_key_1);
+       old_tgt_edge_list = g_slist_remove(old_tgt_edge_list, edge);
+       g_hash_table_replace(target->in_edges_by_label, hash_key_1, 
+                            old_tgt_edge_list);
+
+       GSList *new_tgt_edge_list = 
+	  g_hash_table_lookup(target->in_edges_by_label, hash_key_2);
+       new_tgt_edge_list = g_slist_prepend(new_tgt_edge_list, edge);
+       g_hash_table_replace(target->in_edges_by_label, hash_key_2, 
+                            new_tgt_edge_list);
+    }   
+}
+
+
+/* Querying functions */
+
+Node *getNode(Graph *graph, int index)
+{
+   return g_ptr_array_index(graph->nodes, index);
+}
+
+
+Edge *getEdge(Graph *graph, int index)
+{
+   return g_ptr_array_index(graph->edges, index);
+}
+
+
+GSList *getRootNodes(Graph *graph)
+{
+   return graph->root_nodes;
+}
+
+
+GSList *getNodes(Graph *graph, LabelClass label_class) 
+{
+   void *hash_key = GINT_TO_POINTER(label_class);
+   return g_hash_table_lookup(graph->nodes_by_label, hash_key);
+}
+   
+
+GSList *getEdges(Graph *graph, LabelClass label_class) 
+{
+   void *hash_key = GINT_TO_POINTER(label_class);
+   return g_hash_table_lookup(graph->edges_by_label, hash_key);
+}
+
+
+GSList *getInEdges(Node *node)
+{
+   return node->in_edges;
+}
+
+
+GSList *getOutEdges(Node *node)
+{
+   return node->out_edges;
+}
+
+
+GSList *getInEdgesByLabel(Node *node, LabelClass label_class) 
+{
+   void *hash_key = GINT_TO_POINTER(label_class);
+   return g_hash_table_lookup(node->in_edges_by_label, hash_key);
+}
+
+
+GSList *getOutEdgesByLabel(Node *node, LabelClass label_class)  
+{
+   void *hash_key = GINT_TO_POINTER(label_class);
+   return g_hash_table_lookup(node->out_edges_by_label, hash_key);
+}
+
+
+Node *getSource(Edge *edge) 
+{
+   return edge->source;
+}
+
+Node *getTarget(Edge *edge) 
+{
+   return edge->target;
+}
+
+
+Label getNodeLabel(Node *node) 
+{
+   return node->label;
+}
+
+Label getEdgeLabel(Edge *edge) 
+{
+   return edge->label;
+}
+
+int getIndegree (Node *node) 
+{
+   return node->indegree;
+}
+
+int getOutdegree (Node *node) 
+{
+   return node->outdegree;
+}
+
+void printGraph (Graph *graph) 
+{
+    printf("\nGraph Description\n=================\n");
+    printf("Next node index: %d\n", graph->next_node_index);
+    printf("Next edge index: %d\n\n", graph->next_edge_index);
+    printf("Nodes\n=====\n");
+    g_ptr_array_foreach(graph->nodes, printNode, NULL);   
+    printf("Edges\n=====\n");
+    g_ptr_array_foreach(graph->edges, printEdge, NULL);   
+    printf("Root Nodes\n==========\n");
+    g_slist_foreach(graph->root_nodes, printNode, NULL);   
+    printf("\n");
+}
+
+void printNode (gpointer data, gpointer user_data) 
+{
+
+    Node *node = (Node *)data;
+
+    printf("Name: %s\nIndex: %d\n", node->name, node->index);
+    if(node->root) printf("Root\n");
+    printf("Label Class: %d\n", node->label_class);
+    printf("Mark: %d\n", node->label.mark);
+    printf("Label: ");
+    if(node->label.list) printList(node->label.list);
+    printf("\n");
+    printf("Indegree: %d\nOutdegree: %d\n", node->indegree, node->outdegree);
+    if(node->in_edges) 
+        g_slist_foreach(node->in_edges, printEdgeData, "Incoming");
+    if(node->out_edges) 
+        g_slist_foreach(node->out_edges, printEdgeData, "Outgoing");
+    printf("\n");
+}
+
+void printEdge (gpointer data, gpointer user_data) 
+{
+
+    Edge *edge = (Edge *)data;
+
+    printf("Name: %s\nIndex: %d\n", edge->name, edge->index);
+    if(edge->bidirectional) printf("Bidirectional\n");
+    printf("Label Class: %d\n", edge->label_class);
+    printf("Mark: %d\n", edge->label.mark);
+    printf("Label: ");
+    if(edge->label.list) printList(edge->label.list);
+    printf("\n");
+    printf("Source: %d-%s\n", edge->source->index, edge->source->name);
+    printf("Target: %d-%s\n", edge->target->index, edge->target->name);
+    printf("\n");
+}
+
+void printEdgeData (gpointer data, gpointer user_data) 
+{
+   Edge *edge = (Edge*)data;
+
+   printf("%s edges: %d-%s-%d\n", (string)user_data, edge->index,
+          edge->name, edge->label_class);
+} 
+
+
+void printList(GList *list) 
+{
+    while(list) 
+    {
+        printListElement((ListElement*)list->data);
+        if(list->next) printf(" : ");
+        list = list->next;
+    } 
+}
+
+void printListElement(ListElement* elem) 
+{
+       
+    switch(elem->type) 
+    {
+        case EMPTY:
+             printf("empty");
+             break;
+
+	case VARIABLE: 
+	     printf("%s", elem->value.name);
+	     break;
+
+	case INTEGER_CONSTANT: 
+	     printf("%d", elem->value.number);
+	     break;
+
+	case CHARACTER_CONSTANT:
+	     printf("\"%s\"", elem->value.string);
+	     break;
+
+	case STRING_CONSTANT:
+	     printf("\"%s\"", elem->value.string);
+	     break;
+
+	case INDEGREE:
+	     printf("indeg(%s)", elem->value.node_id);
+	     break;
+ 
+	case OUTDEGREE:
+	     printf("outdeg(%s)", elem->value.node_id);
+	     break;
+
+	case LIST_LENGTH:
+	     printf("llength(");
+	     printList(elem->value.list_arg);
+	     printf(")");
+	     break;
+
+	case STRING_LENGTH:
+	     printf("slength(");
+	     printListElement(elem->value.str_arg);
+	     printf(")");
+	     break;
+
+	case NEG:
+	     printf("- ");
+	     printListElement(elem->value.exp);
+	     break;
+
+	case ADD:
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" + ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
+
+	case SUBTRACT:
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" - ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
+
+	case MULTIPLY:
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" * ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
+
+	case DIVIDE:
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" / ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
+
+	case CONCAT:
+	     printf("(");
+	     printListElement(elem->value.bin_op.left_exp);
+	     printf(" . ");
+	     printListElement(elem->value.bin_op.right_exp);
+	     printf(")");
+	     break;
+
+	default: printf("Unexpected List Element Type: %d\n",
+		       (int)elem->type); 
+		 break;
+    }
+}
+
+
+void freeGraph (Graph *graph) 
+{
+    if(graph->nodes) g_ptr_array_free(graph->nodes, TRUE);
+    if(graph->edges) g_ptr_array_free(graph->edges, TRUE);
+    if(graph->nodes_by_label) 
+    {
+       g_hash_table_foreach(graph->nodes_by_label, freeGSList, NULL);
+       g_hash_table_destroy(graph->nodes_by_label); 
+    }
+    if(graph->edges_by_label) 
+    {
+        g_hash_table_foreach(graph->edges_by_label, freeGSList, NULL);
+        g_hash_table_destroy(graph->edges_by_label);  
+    }
+    if(graph->root_nodes) g_slist_free(graph->root_nodes);
+    if(graph) free(graph);
+}
+
+void freeNode (void *p) 
+{
+    Node *node = (Node *)p;
+    if(node->name) free(node->name);
+    if(node->label.list) g_list_free_full(node->label.list, freeListElement);
+    if(node->in_edges) g_slist_free(node->in_edges);
+    if(node->out_edges) g_slist_free(node->out_edges);
+    if(node->in_edges_by_label) 
+    {
+        g_hash_table_foreach(node->in_edges_by_label, freeGSList, NULL);
+        g_hash_table_destroy(node->in_edges_by_label); 
+    }
+    if(node->out_edges_by_label) 
+    {
+        g_hash_table_foreach(node->out_edges_by_label, freeGSList, NULL);
+        g_hash_table_destroy(node->out_edges_by_label); 
+    }
+    if(node) free(node);
+}
+
+void freeGSList(gpointer key, gpointer value, gpointer data) 
+{
+    g_slist_free(value);
+}
+
+void freeEdge (void *p) 
+{
+    Edge *edge = (Edge *)p;
+    if(edge->name) free(edge->name);
+    /* When freeing a graph, nodes are freed first, so no need to free
+     * source and target here. */
+    if(edge->label.list) g_list_free_full(edge->label.list, freeListElement);
+    if(edge) free(edge);
+}
+
+void freeListElement(void *p)
+{
+     ListElement* elem = (ListElement*)p;
+
+     switch(elem->type) 
+     {
+        case EMPTY:
+
+             break;
+
+
+	case VARIABLE:
+
+	     if(elem->value.name)
+               free(elem->value.name);
+
+             break;
+
+
+	case INTEGER_CONSTANT:
+
+             break;
+
+
+        case CHARACTER_CONSTANT:
+          
+	case STRING_CONSTANT:
+
+	     if(elem->value.string)
+               free(elem->value.string);
+
+             break;
+
+
+	case INDEGREE:
+ 
+        case OUTDEGREE:
+
+	     if(elem->value.node_id) 
+               free(elem->value.node_id);
+
+             break;
+
+
+	case LIST_LENGTH:
+
+	     if(elem->value.list_arg)
+               g_list_free_full(elem->value.list_arg, freeListElement);
+		
+             break;
+
+
+	case STRING_LENGTH:
+
+	     if(elem->value.str_arg)
+               freeListElement(elem->value.str_arg);
+
+             break;
+
+	case NEG:
+
+	     if(elem->value.exp) freeListElement(elem->value.exp);
+
+             break;
+
+
+	case ADD:
+
+	case SUBTRACT:
+
+	case MULTIPLY:
+
+	case DIVIDE:
+
+	case CONCAT:
+
+	     if(elem->value.bin_op.left_exp)
+                freeListElement(elem->value.bin_op.left_exp);
+	     if(elem->value.bin_op.right_exp)  
+                freeListElement(elem->value.bin_op.right_exp);
+
+             break;
+
+
+	default: printf("Unexpected List Element Type: %d\n",
+                       (int)elem->type); 
+                 break;
+
+	}
+
+   if(elem) free(elem);
+}
