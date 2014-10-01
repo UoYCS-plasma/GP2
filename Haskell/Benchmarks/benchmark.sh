@@ -3,7 +3,11 @@
 GPOPTS=""
 GP="time -o test.log -a ../../../Main"
 
-for b in */ ; do
+BMS="$@"
+
+if [ -z "$@" ] ; then BMS="*/" ; fi
+
+for b in $BMS ; do
 	pushd "$b"
 	prog=`ls *.gp2`
 	for host in `ls *.host` ; do
