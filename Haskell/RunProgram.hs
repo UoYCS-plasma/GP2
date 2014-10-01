@@ -1,5 +1,6 @@
 module RunProgram where
 
+import Debug.Trace
 import ApplyRule
 import Graph (emptyGraph)
 import GraphIsomorphism
@@ -66,15 +67,15 @@ evalCommand _ _ _ Failure = [Failure]
 evalCommand _ _ _ Unfinished = [Unfinished]
 evalCommand max ds (Block b) gs = evalBlock max ds b gs 
 evalCommand max ds (IfStatement cond pass fail) gs = 
-    case evalBlock max ds cond gs of 
-        [Unfinished] -> [Unfinished]
-        [Failure] -> evalBlock max ds fail gs
-        _        -> evalBlock max ds pass gs
+    concatMap handleIf $ evalBlock max ds cond gs
+    where handleIf Unfinished = [Unfinished]
+          handleIf Failure    = evalBlock max ds fail gs
+          handleIf _          = evalBlock max ds pass gs
 evalCommand max ds (TryStatement cond pass fail) gs = 
-    case evalBlock max ds cond gs of
-        [Unfinished] -> [Unfinished]
-        [Failure] -> evalBlock max ds fail gs
-        hs       -> concatMap (evalBlock max ds pass) hs
+    concatMap handleTry $ evalBlock max ds cond gs
+    where handleTry Unfinished = [Unfinished]
+          handleTry Failure    = evalBlock max ds fail gs
+          handleTry gs'        = evalBlock max ds pass gs'
 
 
 evalBlock :: Int -> [Declaration] -> Block -> GraphState -> [GraphState]
