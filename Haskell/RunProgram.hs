@@ -86,7 +86,7 @@ evalBlock :: Int -> [Declaration] -> Block -> GraphState -> [GraphState]
 evalBlock _ _ _ Failure = [Failure]
 evalBlock _ _ _ Unfinished = [Unfinished]
 evalBlock max ds (ComSeq cs) gs = evalCommandSequence max ds cs gs
-evalBlock max ds ls@(LoopedComSeq cs) gs@(GS g rc) =  trace ("rc: "++show rc) $
+evalBlock max ds ls@(LoopedComSeq cs) gs@(GS g rc) =  
     concatMap handleLoop $ evalCommandSequence max ds cs gs
     where handleLoop Unfinished = [Unfinished]
           handleLoop Failure    = [gs]
@@ -103,7 +103,7 @@ evalBlock max ds (ProgramOr b1 b2) gs = evalBlock max ds b1 gs  ++ evalBlock max
 evalSimpleCommand :: Int -> [Declaration] -> SimpleCommand -> GraphState -> [GraphState]
 evalSimpleCommand _ _ _ Failure = [Failure]
 evalSimpleCommand _ _ _ Unfinished = [Unfinished]
-evalSimpleCommand max ds (RuleCall rs) (GS g rc) = trace ("rc: " ++ show rc) $
+evalSimpleCommand max ds (RuleCall rs) (GS g rc) = 
     if rc == max 
         then [Unfinished]
         -- Apply all rules in the set at the same time.
@@ -118,7 +118,7 @@ evalSimpleCommand max ds (RuleCall rs) (GS g rc) = trace ("rc: " ++ show rc) $
                 -- not those that are non-unique in the result set!
                 -- hs -> [makeGS h (rc+1) | h <- getIsomorphismData (head hs, ic) $ tail hs]
                      where makeGS (x, y) z = GS x y z -}
-evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) = trace ("rc: "++show rc) $
+evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) = 
     if rc == max 
         then [Unfinished]
         else 
@@ -135,7 +135,7 @@ evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) = trace ("rc: "++sho
                 hs -> concatMap (evalSimpleCommand max ds c) hs -}
 evalSimpleCommand max ds (ProcedureCall proc) gs = evalCommandSequence max (decls++ds) cs gs
     where Procedure id decls cs = procLookup proc ds
-evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs@(GS g rc) =  trace ("rc: "++show rc) $
+evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs@(GS g rc) =  
     concatMap handleLoopedProc $ evalSimpleCommand max ds (ProcedureCall proc) gs
     where handleLoopedProc Unfinished = [Unfinished]
           handleLoopedProc Failure    = [gs]
