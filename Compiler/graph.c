@@ -472,12 +472,19 @@ void removeEdge(Graph *graph, int index)
        if(source->out_edges[counter] == edge) break;   
        else counter++;
     }
-
+    
+    /* Shift the elements after the deleted edge one place to the left. 
+     * This is done by redirecting the (i-1)th pointer to the ith pointer's
+     * target for each i from index + 1 to source->outdegree. 
+     * After the loop, set the last pointer to NULL.
+     */ 
+    counter++;
     while(counter < source->outdegree)
     {
-       source->out_edges[counter] = source->out_edges[counter+1];
+       source->out_edges[counter - 1] = source->out_edges[counter];
        counter++;
     }
+    source->out_edges[counter - 1] = NULL;
     source->outdegree--;
 
     Node *target = edge->target;
@@ -490,11 +497,13 @@ void removeEdge(Graph *graph, int index)
        else counter++;
     }
 
+    counter++;
     while(counter < target->indegree)
     {
-       target->in_edges[counter] = target->in_edges[counter+1];
+       target->in_edges[counter - 1] = target->in_edges[counter];
        counter++;
     }
+    target->in_edges[counter - 1] = NULL;
     target->indegree--;
 
     void *label_key = GINT_TO_POINTER(edge->label_class);
