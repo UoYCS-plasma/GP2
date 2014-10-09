@@ -34,4 +34,8 @@ void push (Stack *stack, void *data);
  * and updates stack->top. */
 void *pop (Stack *stack);
 
+/* Frees the stack. Dynamically allocated data is freed with the passed
+ * freeData function. */
+void freeStack (Stack *stack, void (*freeData)(void *));
+
 #endif /* INC_STACK_H */

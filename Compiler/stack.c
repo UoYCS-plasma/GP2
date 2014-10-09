@@ -19,6 +19,8 @@ Stack *newStack()
    }
 
    new_stack->top = NULL;
+  
+   return new_stack;
 }
 
 
@@ -55,4 +57,20 @@ void *pop (Stack *stack)
    
    return data;
 }
+
+void freeStack(Stack *stack, void (*freeData)(void *))
+{
+   StackNode *iterator = stack->top;
+
+   while(iterator != NULL)
+   {
+      freeData(iterator->data);
+      StackNode *temp = iterator;
+      iterator = iterator->next;
+      free(temp);
+   }
+   
+   free(stack);
+}
+
 
