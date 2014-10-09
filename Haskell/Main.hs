@@ -50,12 +50,13 @@ printGraphData fileName k ((graph, count):gcs) = do
 
 data Flag = MaxGraphs Int
 
-maxIso :: String -> Flag
-maxIso = MaxGraphs . read 
+maxIso :: Maybe String -> Flag
+maxIso Nothing = MaxGraphs 1000
+maxIso (Just v) = (MaxGraphs . read) v
 
 options :: [ OptDescr Flag ]
 options = [ Option ['1'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, instead of all possible graphs",
-            Option ['n'] ["no-iso"] (ReqArg maxIso "MAX") "disable the isomorphism checker, limiting to a maximum of MAX result graphs" ]
+            Option ['n'] ["no-iso"] (OptArg maxIso "MAX") "disable the isomorphism checker, limiting to a maximum of MAX result graphs" ]
 
 usage = "Usage: gp2 [flags] <prog> <hostGraph> <maxDepth>\nWhere [flags] can be:"
 
