@@ -1,4 +1,4 @@
-GHC=ghc -O2 -prof
+GHC=ghc -O2 -prof -fprof-auto -rtsopts
 
 
 all : gp2 ViewGraph IsoChecker
