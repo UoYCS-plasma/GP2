@@ -22,27 +22,28 @@ type GraphData = (HostGraph, Int)
 -- The output of the GP 2 interpreter is a list of output graphs, each with an 
 -- isomorphism count; a failure count; and an unfinished execution count with
 -- respect to the bound on rule applications. 
-type Result = ([GraphData], Int, Int)
+type Result = ([GraphData], Int, Int, (Int, Int))
 
 runProgram :: GPProgram -> Int -> HostGraph -> Result
 runProgram (Program ds) max g = isoFilter $ processData $ evalMain max ds (findMain ds) g
-    where isoFilter :: ([HostGraph], Int, Int) -> Result
-          isoFilter (gs, fc, uc) = (isomorphismCount gs, fc, uc)
+    where isoFilter :: ([HostGraph], Int, Int, (Int, Int)) -> Result
+          isoFilter (gs, fc, uc, bds) = (isomorphismCount gs, fc, uc, bds)
 
 -- For use with --one commandline flag: only get first result
 nSolutions :: Int -> GPProgram -> Int -> HostGraph -> Result
 nSolutions n (Program ds) max g = makeResult $ processData $ take n $ evalMain max ds (findMain ds) g
     where
-        makeResult :: ([HostGraph], Int, Int) -> Result
-        makeResult (gs, fc, uc) = (take n $ zip gs [1,1..], fc, uc)
+        makeResult :: ([HostGraph], Int, Int, (Int, Int)) -> Result
+        makeResult (gs, fc, uc, bds) = (take n $ zip gs [1,1..], fc, uc, bds)
 
 
-processData :: [GraphState] -> ([HostGraph], Int, Int)
-processData = foldr addGraphState ([], 0, 0)
-    where addGraphState :: GraphState -> ([HostGraph], Int, Int) -> ([HostGraph], Int, Int) 
-          addGraphState (GS g rc) (gs, fc, uc) = (g:gs, fc, uc)
-          addGraphState (Unfinished) (gs, fc, uc) = (gs, fc, uc+1)
-          addGraphState (Failure) (gs, fc, uc) = (gs, fc+1, uc)
+processData :: [GraphState] -> ([HostGraph], Int, Int, (Int, Int))
+processData = foldr addGraphState ([], 0, 0, (maxBound, 0))
+    where addGraphState :: GraphState -> ([HostGraph], Int, Int, (Int, Int)) -> ([HostGraph], Int, Int, (Int, Int)) 
+          addGraphState (GS g rc) (gs, fc, uc, (low, high)) =
+                (g:gs, fc, uc, (min rc low, max rc high))
+          addGraphState (Unfinished) (gs, fc, uc, bds) = (gs, fc, uc+1, bds)
+          addGraphState (Failure) (gs, fc, uc, bds) = (gs, fc+1, uc, bds)
         
 findMain :: [Declaration] -> Main
 findMain ((MainDecl m):ds) = m

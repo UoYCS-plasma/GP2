@@ -11,3 +11,5 @@ gp2 : Main.hs
 
 clean :
 	rm -f *.o ViewGraph IsoChecker Main gp2
+
+.PHONY : gp2

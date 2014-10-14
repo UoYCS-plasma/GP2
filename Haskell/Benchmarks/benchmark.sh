@@ -50,7 +50,7 @@ for mode in "--one" "" ; do
 			echo "$wd" >> test.log
 			echo "$GP" >> test.log
 			echo "Max allowed time is: $TIMEOUT" >> test.log
-			/usr/bin/timeout $TIMEOUT $GP ../"$prog" ../"$host" $MAXAPPS >> test.log
+			/usr/bin/timeout --foreground $TIMEOUT $GP ../"$prog" ../"$host" $MAXAPPS >> test.log
 			state=$?
 			if [ "$state" = "124" ] ; then
 				echo "$amber	Timed out$default"
