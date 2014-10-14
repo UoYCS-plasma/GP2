@@ -28,9 +28,10 @@ printGraph = graphToGP2 . makePrintableGraph
 
 
 printResult :: FilePath -> Result -> IO ()
-printResult fileName (gs, fc, uc) = do
+printResult fileName (gs, fc, uc, bds) = do
    putStrLn $ show fc ++ " fails."
    putStrLn $ show uc ++ " unfinished computations."
+   if length gs > 0 then putStrLn $ "Rule application bounds (low, high): " ++ show bds else putStrLn ""
    printGraphData fileName 1 gs
 
 -- It's better if this function creates files in a new directory,
