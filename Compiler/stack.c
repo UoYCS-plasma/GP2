@@ -64,7 +64,7 @@ void freeStack(Stack *stack, void (*freeData)(void *))
 
    while(iterator != NULL)
    {
-      freeData(iterator->data);
+      if(freeData) freeData(iterator->data);
       StackNode *temp = iterator;
       iterator = iterator->next;
       free(temp);

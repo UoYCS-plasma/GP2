@@ -24,7 +24,6 @@ debug-parse:	$(PARSEOBJECTS)
 # Testing file.
 test:		graph.o stack.o test.o
 		$(CC) graph.o stack.o test.o $(LFLAGS) -o testGP
-		./testGP
 
 test-debug:	graph.o stack.o test.o
 		$(CC) graph.o stack.o test.o $(LFLAGS) -o testGP

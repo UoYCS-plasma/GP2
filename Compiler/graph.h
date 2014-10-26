@@ -26,9 +26,18 @@ typedef struct Graph
     * TODO: bounds checking. */
    struct Node **nodes;
    struct Edge **edges;
+   
+   /* Keeps track of holes in the arrays when a node or edge is removed. */
+   Stack *free_node_slots;
+   Stack *free_edge_slots;
 
+   /* Refers to the first free index at the end of the array i.e. where no 
+    * nodes or edges have yet been allocated. */
    int next_node_index;
    int next_edge_index;
+
+   int number_of_nodes;
+   int number_of_edges;
 
    /* Nodes and edges indexed by label class. Used to quickly obtain candidate
     * items when matching a rule. */
@@ -38,6 +47,7 @@ typedef struct Graph
    /* Root nodes referenced in a linked list for fast access. */
    GSList *root_nodes;
 } Graph;
+
 
 /* Abstract data type for GP2's marks defined in globals.h
  * typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; */
@@ -90,13 +100,19 @@ typedef struct Node {
    bool root;
    LabelClass label_class;
    Label *label; 
-   /* Indegree and outdegree act as the next unused index of the
-    * in- and out-edge arrays. */
    int indegree;
    int outdegree;
+
    /* TODO: Check for overflow! */
    struct Edge **out_edges;
    struct Edge **in_edges;
+
+   /* Keeps track of the holes in the array whenever an item is removed. */
+   Stack *free_out_edge_slots;
+   Stack *free_in_edge_slots;
+
+   int next_out_edge_index;
+   int next_in_edge_index;
 } Node;
 
 
