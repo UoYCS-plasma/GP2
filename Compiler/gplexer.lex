@@ -21,7 +21,7 @@
 
 %{
 
-#include "ast.h" /* Printing macros and enum MarkType */
+#include "globals.h"
 #include "gpparser.tab.h" /* Token definitions */
 
 int yycolumn = 1;
