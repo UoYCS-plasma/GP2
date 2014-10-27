@@ -6,93 +6,73 @@
                              
   Module for defining the graph data structure and its operations.
 
-  Version 1 (14/07/14) - Initial implementation based on my design notes.
-
 /////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_GRAPH_H
 #define INC_GRAPH_H
 
-#include "ast.h"
-#include <glib.h>
+#define MAX_NODES 64
+#define MAX_EDGES 128
+#define MAX_INCIDENT_EDGES 16
 
-/* Invariants on graphs:
- * (1) A graph with N nodes has assigned node indexes 1,...,N. next_node_index
- *     is N+1.
- * (2) A graph with E edges has assigned edge indexes 1,...,N. next_edge_index
- *     is E+1.
- * (3) All edges in a node's incoming/outgoing edge list are in the graph's
- *     edges_by_label table.
- * (4) An edge's source and target node are in the graph's nodes_by_label table.
- */
+#include "globals.h"
+#include "stack.h"
 
-typedef struct Graph {
-   /* These indices are kept in sync with the GPtrArrays. */
-   int next_node_index; 
+typedef struct Graph 
+{
+   /* The primary reference for a graph's nodes and edges. Indices for each 
+    * node and edge remain constant. next_node_index and next_edge_index
+    * always store the smallest free index in the array.
+    * TODO: bounds checking. */
+   struct Node **nodes;
+   struct Edge **edges;
+   
+   /* Keeps track of holes in the arrays when a node or edge is removed. */
+   Stack *free_node_slots;
+   Stack *free_edge_slots;
+
+   /* Refers to the first free index at the end of the array i.e. where no 
+    * nodes or edges have yet been allocated. */
+   int next_node_index;
    int next_edge_index;
 
-   /* Nodes and edges indexed by IDs. Used to quickly access an item after
-    * looking it up via the label hashtables. All graph modification operations
-    * should be done via these arrays. I think. */
-   GPtrArray *nodes;
-   GPtrArray *edges;
+   int number_of_nodes;
+   int number_of_edges;
 
-   /* Nodes and edges indexed by label. Used to quickly obtain candidate
+   /* Nodes and edges indexed by label class. Used to quickly obtain candidate
     * items when matching a rule. */
    GHashTable *nodes_by_label;
    GHashTable *edges_by_label;
 
-   /* Singly linked list to quickly look up root nodes. */
+   /* Root nodes referenced in a linked list for fast access. */
    GSList *root_nodes;
 } Graph;
 
 
+/* Abstract data type for GP2's marks defined in globals.h
+ * typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; */
+
 typedef struct Label {
-   MarkType mark; /* MarkType defined in ast.h */
-   GList *list;
+   MarkType mark; 
+   GList *list; /* The empty list is represented by a GList with one element with
+                 * type EMPTY. It has length 0 in the Label struct. */
+   /* Metadata set while the label is being constructed from the AST. */
+   int list_length; 
+   bool has_list_variable;
 } Label;
 
-/* Classes of GP 2 labels for querying by label. The first four values refer
- * to singleton lists containing a value/variable of that type; the remaining
- * values refer to lists of a particular length. The limit can be adjusted
- * as necessary.
- */
-typedef enum {EMPTY=0, INT_L, CHAR_L, STR_L, ATOM_L, LIST2_L, LIST3_L, LIST4_L,
-              LIST5_L} LabelClass;
 
-typedef struct Node {
-   /* Index in the node array */
-   int index;
-   string name;
-   bool root;
-   LabelClass label_class;
-   Label label; 
-   int indegree;
-   int outdegree;
-   GSList *in_edges;
-   GSList *out_edges;
-   GHashTable *in_edges_by_label;
-   GHashTable *out_edges_by_label;
-} Node;
-
-
-typedef struct Edge {
-   /* Index in the edge array */
-   int index;
-   string name;
-   bool bidirectional;
-   LabelClass label_class;
-   Label label;
-   Node *source;
-   Node *target;
-} Edge;
-
+/* Abstract data type for atomic expressions. From globals.h. 
+typedef enum {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, CHARACTER_CONSTANT,
+              STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
+              NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType; */
 
 typedef struct ListElement {
-   AtomExpType type;		  /* From ast.h */
+   AtomExpType type;		  
+   /* The EMPTY type has no value. */
    union {
     string name;		  /* VARIABLE */
-    int number; 	 	  /* INT_CONSTANT */
+    int number; 	 	  /* INTEGER_CONSTANT */
     string string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
     GList *list_arg;	 	  /* LIST_LENGTH */
@@ -103,80 +83,210 @@ typedef struct ListElement {
       struct ListElement *right_exp;
     } bin_op; 		   	  /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
   } value;
-
 } ListElement;
-   
 
-/* Graph utility functions
- * =======================
- * The add functions take a graph and a pointer to the item to add. Nodes
- * and edges are created with the newNode and newEdge functions which
- * take the item's name, a boolean flag and its label.
+
+/* Classes of GP 2 labels for querying by label. This is a partition of the
+ * set of all GP 2 labels. 
+ * The label classes are the empty list, an integer constant, a string constant,
+ * constant, a variable of atomic type (int, string, char or atom), 
+ * fixed-length lists of length 2 up to a fixed bound, and any list containing 
+ * a list variable. */
+typedef enum {EMPTY_L = 0, INT_L, STRING_L, ATOMIC_VAR_L, LIST2_L, LIST3_L,
+              LIST4_L, LIST5_L, LISTVAR_L} LabelClass;
+
+typedef struct Node {
+   int index;
+   bool root;
+   LabelClass label_class;
+   Label *label; 
+   int indegree;
+   int outdegree;
+
+   /* TODO: Check for overflow! */
+   struct Edge **out_edges;
+   struct Edge **in_edges;
+
+   /* Keeps track of the holes in the array whenever an item is removed. */
+   Stack *free_out_edge_slots;
+   Stack *free_in_edge_slots;
+
+   int next_out_edge_index;
+   int next_in_edge_index;
+} Node;
+
+
+typedef struct Edge {
+   int index;
+   bool bidirectional;
+   LabelClass label_class;
+   Label *label;
+   struct Node *source;
+   struct Node *target;
+} Edge;
+
+
+/* Graph operations
+ * ================
+ * Nodes and edges are created with the newNode and newEdge functions that take
+ * the necessary construction data as their arguments. newNode and newEdge use 
+ * getLabelClass to generate label classes. The returned pointers can then be
+ * added to a graph with the addNode and addEdge functions.
  * 
- * The remove and relabel functions take a graph and the index in the graph's 
- * node or edge array of the item to be modified. Each node and edge stores 
- * its own index so that the function can be called when the caller has access
- * to the node/edge pointer.
+ * The relabel functions take a boolean argument to specify if the boolean flag
+ * of the node should be changed. For nodes, this is the root flag. For edges,
+ * this is the bidirectional flag. To modify the flag and not the label itself,
+ * call the function with a NULL third argument.
  */
 
-/* Creates an empty graph and returns a pointer to it. */
+/* Creates an empty graph. */
 Graph *newGraph(void);
-Node *newNode(string name, bool root, Label label);
-/* Not currently sure how to get the source and target pointers when traversing
- * the AST. */
-Edge *newEdge(string name, bool bidirectional, Label label, Node *source, 
-             Node *target);
+
+/* Tests the passed graph to see if it satisfies the data invariants. */
+bool validGraph(Graph *graph);
+
+LabelClass getLabelClass(Label *label);
+Node *newNode(bool root, Label *label);
+Edge *newEdge(bool bidirectional, Label *label, Node *source, 
+              Node *target);
 void addNode(Graph *graph, Node *node); 
 void addEdge(Graph *graph, Edge *edge);
-void removeNode(Graph *graph, Node *node);
-void removeEdge(Graph *graph, Edge *edge);
-void relabelNode(Graph *graph, Node *node, Label new_label, 
-		 LabelClass new_label_class); 
-void relabelEdge(Graph *graph, Edge *edge, Label new_label, 
-		 LabelClass new_label_class); 
+void removeNode(Graph *graph, int index);
+void removeEdge(Graph *graph, int index);
+void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root); 
+void relabelEdge(Graph *graph, Edge *edge, Label *new_label, 
+                 bool change_bidirectional);
 
-/* Graph querying functions 
- * ========================
- * The functions to get nodes and get edges take a label class.
- * The functions return the list of items with that label class,
- * drawn from the hashtables indexed by label classes.
- */
 
+/* Graph backtracking 
+ * ================== */
+extern Stack *graph_stack;
+
+/* Creates a complete copy of the passed graph and pushes it to the global
+ * graph_stack. */
+void copyGraph(Graph *graph);
+
+/* restoreGraph is passed the current graph and frees it before returning
+ * the top graph from the graph stack. */
+Graph *restoreGraph(Graph *graph);
+
+void freeGraphStack(Stack *graph_stack);
+
+/* Returns a dynamically-allocated copy of the passed label. */
+Label *copyLabel(Label *label);
+ListElement *copyListElement(ListElement *atom);
+
+
+/* Graph querying
+ * ============== */
 Node *getNode(Graph *graph, int index);
 Edge *getEdge(Graph *graph, int index);
 GSList *getRootNodes(Graph *graph);
-GSList *getNodes(Graph *graph, LabelClass label_class);
-GSList *getEdges(Graph *graph, LabelClass label_class);
-GSList *getInEdges(Node *node);
-GSList *getOutEdges(Node *node);
-GSList *getInEdgesByLabel(Node *node, LabelClass label_class);
-GSList *getOutEdgesByLabel(Node *node, LabelClass label_class);
+GSList *getNodesByLabel(Graph *graph, LabelClass label_class);
+GSList *getEdgesByLabel(Graph *graph, LabelClass label_class);
+Edge *getInEdge(Node *node, int index);
+Edge *getOutEdge(Node *node, int index);
 Node *getSource(Edge *edge);
 Node *getTarget(Edge *edge);
-Label getNodeLabel(Node *node);
-Label getEdgeLabel(Edge *edge);
-int getIndegree (Node *node);
-int getOutdegree (Node *node);
+Label *getNodeLabel(Node *node);
+Label *getEdgeLabel(Edge *edge);
+int getIndegree(Node *node);
+int getOutdegree(Node *node);
 
 
-/* Printing and freeing functions */
 
+/* Printing and freeing functions 
+ * ============================== */
 void printGraph (Graph *graph);
-void printNode (gpointer data, gpointer user_data);
-void printEdge (gpointer data, gpointer user_data);
+void printNode(Node *node);
+void printEdge(Edge *edge);
 void printList(GList *list);
 void printListElement(ListElement* elem);
-/* printEdgeData is used to print a node's incoming/outgoing edge
- * table. It does not print the entire edge: just its index and name.
- */
-void printEdgeData(gpointer data, gpointer user_data);
 
-void freeGraph (Graph *graph);
-void freeNode (void *p);
-void freeEdge (void *p);
-void freeListElement(void *p);
-/* A wrapper for g_slist_free so that it can be called by g_hash_table_foreach.
- */
+/* The node and edge structures are freed in freeGraph when the graph's node 
+ * and edge pointer arrays are freed. 
+ * It follows that the freeing of the graph's other node/edge accessing 
+ * structures (hash tables in the graph, pointer arrays in the nodes, pointers
+ * in the edges) should only free any supporting structures and not the
+ * node/edge structures themselves.
+ * freeGraph is a function passed to freeStack (via freeGraphStack), so it 
+ * takes a void pointer.
+ */     
+void freeGraph(void *graph_pointer);
+void freeNode(Node *node);
+void freeEdge(Edge *edge);
+
+/* A wrapper for g_slist_free so that it can be called by g_hash_table_foreach
+ * when freeing the hash tables indexed by label class. */
 void freeGSList(gpointer key, gpointer value, gpointer data); 
+
+void freeLabel(Label *label);
+
+/* freeListElement is passed to g_list_free_full, so it takes a void pointer. */
+void freeListElement(void *atom);
+
+
+/* structs placed on the graph change stack. It contains sufficient
+ * information to undo any of the six types of graph change.
+ *
+ * Add Node + Add Edge
+ * ===================
+ * The undo operations are removeNode and removeEdge which only require the 
+ * name of the item's since the pointer can be quickly accessed via a hash
+ * lookup. Storing the pointer to the item itself is dangerous because the 
+ * added item could be deleted before restoreGraph is called.
+ *
+ * Remove Node + Remove Edge
+ * =========================
+ * The undo operations are addNode and addEdge. The structs contain the 
+ * arguments to these functions. In the case of addEdge, called with pointers
+ * to its source and target, these are obtained by hasing the names in
+ * the GraphChange removed_edge struct. The label pointers are heap copies
+ * since labels are freed when an item is deleted.
+ *
+ * Relabel Node + Relabel Edge
+ * ===========================
+ * As above, the structs contain the arguments to the relabelNode and 
+ * relabelEdge functions. Labels do not have to be copied to heap in this
+ * case as the pointers to the old labels of the items are used.
+ */
+
+/* typedef enum { ADD_NODE = 0, ADD_EDGE, REMOVE_NODE, REMOVE_EDGE, 
+	       RELABEL_NODE, RELABEL_EDGE } GraphChangeType; 
+
+typedef struct GraphChange 
+{
+   GraphChangeType type;
+   union
+   {
+      int added_node; 
+      int added_edge;
+
+      struct {
+         bool root;
+         Label *label;
+      } removed_node;
+
+      struct {
+         Label *label;
+         bool bidirectional;
+         int source_name;
+         int target_name;
+      } removed_edge;
+
+      struct {
+         int index;
+         Label *old_label;
+         bool change_root;
+      } relabelled_node;
+   
+      struct {
+         int index;
+         Label *old_label;
+         bool change_bidirectional;
+      } relabelled_edge;
+   } data;
+} GraphChange; 
+void freeGraphChange(GraphChange *change); */
 
 #endif /* INC_GRAPH_H */

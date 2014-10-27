@@ -58,9 +58,9 @@ node = keyword "(" |> pure RuleNode
   <*> (root <| keyword ",") 
   <*> gpLabel <| keyword ")"
 
-edge :: Parser RuleEdge
-edge = keyword "(" |> pure RuleEdge 
-   <| lowerIdent
+edge :: Parser AstRuleEdge
+edge = keyword "(" |> pure AstRuleEdge 
+   <*> lowerIdent
    <*> (bidirectional <| keyword ",")
    <*> (lowerIdent <| keyword ",") 
    <*> (lowerIdent <| keyword ",") 

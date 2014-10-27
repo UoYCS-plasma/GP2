@@ -1,0 +1,29 @@
+Main = init; (inc; expand!)!
+
+init (m: int) [
+(n1, m) | 
+] => [
+(n1, m:0) (n2 (R), 1) (n3, 0) (n4, 0) | 
+(e1, n2, n3, 0) (e2, n2, n4, 1) (e3, n3, n4, 2) 
+]
+interface = {n1}
+
+
+inc (m,n: int) [
+(n1, m:n) | 
+] => [
+(n1, m:+ n 1) |
+]
+interface = {n1}
+where m > n
+
+expand (m, n, p, q: int) [
+(n1, m:n) (n2 (R), n) (n3, p) (n4, q) | 
+(e1, n2, n3, 0) (e2, n2, n4, 1) (e3, n3, n4, 2) 
+] => [
+(n1, m:n) (n2 (R), + n 1) (n3, p) (n4, q) (n5 (R), + n 1) (n6 (R),+ n 1) (n7, 0) |
+(e1, n2, n5, 0) (e2, n2, n6, 1) (e3, n5, n6, 2) 
+(e4, n5, n3, 0) (e5, n5, n7, 1) (e6, n3, n7, 2) 
+(e7, n6, n7, 0) (e8, n6, n4, 1) (e9, n7, n4, 2) 
+]
+interface = {n1, n2, n3, n4}

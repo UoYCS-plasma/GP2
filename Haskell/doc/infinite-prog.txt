@@ -1,0 +1,12 @@
+Main = init; {stop, next}!
+
+
+init () [ | ] => [ (n1, empty) | ]
+interface = {}
+
+
+stop () [ (n1, empty) | ] => [ | ]
+interface = {}
+
+next () [ (n1, empty) | ] => [ (n1, empty) (n2, 1) | ]
+interface = {}

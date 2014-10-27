@@ -21,7 +21,7 @@
 
 %{
 
-#include "ast.h" /* Printing macros and enum MarkType */
+#include "globals.h"
 #include "gpparser.tab.h" /* Token definitions */
 
 int yycolumn = 1;
@@ -129,7 +129,7 @@ edge                return EDGETEST;
 indeg 		    return INDEG;
 outdeg		    return OUTDEG;
 interface	    return INTERFACE;
-empty		    return EMPTY;
+empty		    return _EMPTY;
 llength		    return LLEN;
 slength	            return SLEN;
 

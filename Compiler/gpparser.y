@@ -13,17 +13,15 @@
 
 %{
 
-#include "ast.h" /* MarkType, ListType, cond_exp_t, AST constructors */
-/* #include <stdio.h>  
-#include <stdlib.h> 
-#include <stdarg.h> */
+#include "ast.h"
+#include "globals.h"
 
 int yyerror(const char *error_message);
 int report_error(const char *error_message);
 
 /* Flags used in the AST construction. */
-  bool is_root = false;
-  bool is_bidir = false;
+bool is_root = false;
+bool is_bidir = false;
 
 extern List *gp_program; /* This will point to the root of the program AST.
 			  * Defined in main.c. */
@@ -49,7 +47,7 @@ extern bool abort_scan; /* Defined in main.c */
 %token WHERE EDGETEST  		               
 %token INDEG OUTDEG LLEN SLEN					
 %token INT STRING ATOM LIST 	                               
-%token INTERFACE EMPTY INJECTIVE 	
+%token INTERFACE _EMPTY INJECTIVE 	
 %token <mark> MARK CYAN_MARK			                        
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
@@ -415,7 +413,7 @@ Label: List				{ $$ = newASTLabel(@$, NONE, $1); }
 
 List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); } 
     | List ':' AtomExp 			{ $$ = addASTAtom(@3, $3, $1); }
-    | EMPTY				{ $$ = addASTEmptyList(@$); }
+    | _EMPTY				{ $$ = addASTEmptyList(@$); }
 
 
 AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
@@ -481,7 +479,7 @@ HostLabel: HostList			{ $$ = newASTLabel(@$, NONE, $1); }
 
 HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); } 
         | HostList ':' HostExp 		{ $$ = addASTAtom(@3, $3, $1); }
-        | EMPTY				{ $$ = addASTEmptyList(@$); }
+        | _EMPTY			{ $$ = addASTEmptyList(@$); }
 
 
 HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }

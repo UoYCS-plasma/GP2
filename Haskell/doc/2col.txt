@@ -1,0 +1,10 @@
+Main = colour!
+
+colour (i: int) [
+(n1, i ) (n2, i) |
+] => [
+(n1, i ) (n2, * 2 i) |
+]
+interface = {n1, n2}
+
+

@@ -18,14 +18,10 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
+#include "ast.h" 
+#include "globals.h"
 #include "pretty.h" 
-/* #include "ast.h" 
 #include "seman.h" 
-#include <stdbool.h>
-#include <stdio.h> 
-#include <stdlib.h>
-#include <string.h> */
-
 
 /* Macros to control debugging features. */
 #undef PARSER_TRACE 		/* Assign yydebug to 1 */
@@ -64,11 +60,10 @@ GHashTable *gp_symbol_table = NULL;
 
 
 
-/* Usage: gpparse [-dg] <program_file> <host_graph_file> */
 int main(int argc, char** argv) {
 
   if(argc != 3) {
-    print_to_console( "Usage: gpparse <program_file> <host_graph_file>\n");
+    print_to_console( "Usage: runGP <program_file> <host_graph_file>\n");
     return 1;
   }
 
@@ -193,7 +188,6 @@ int main(int argc, char** argv) {
  
   /* Garbage collection */
   fclose(yyin);
-  fclose(log_file);
   if(gp_program) freeAST(gp_program); /* Defined in ast.c */
   if(host_graph) freeASTGraph(host_graph); /* Defined in ast.c */
 
@@ -207,6 +201,7 @@ int main(int argc, char** argv) {
     g_hash_table_foreach(gp_symbol_table, freeSymbolList, NULL);
     g_hash_table_destroy(gp_symbol_table); 
   }
+  fclose(log_file);
 
   return 0;
 }

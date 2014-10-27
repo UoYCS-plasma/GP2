@@ -14,12 +14,9 @@
 #ifndef INC_PRETTY_H
 #define INC_PRETTY_H
 
-
-#include "seman.h" /* Symbol structure */
-/* #include "ast.h" AST structures 
-#include <stdio.h> 
-#include <string.h> 
-#include <glib.h> */ 
+#include "ast.h" /* AST structs */
+#include "globals.h"
+#include "seman.h" /* Symbol struct */
 
 #define print_to_dot_file(text, ...)                  \
   do { fprintf(dot_file, text, ## __VA_ARGS__); }     \

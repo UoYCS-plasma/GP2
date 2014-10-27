@@ -1,0 +1,3 @@
+[( n1, "a") ( n2, "b") ( n3, "c") |
+( e1, n1, n2, empty) ( e2, n2, n3, empty) ( e3, n3, n1, empty)
+]

@@ -13,12 +13,7 @@
 #define INC_SEMAN_H
 
 #include "ast.h" /* struct List */
-/* #include <glib.h>
-#include <stdbool.h>
-#include <stdlib.h>  malloc, free 
-#include <string.h>  strdup, strcmp 
-#include <stdio.h>  fprintf */
-
+#include "globals.h"
 
 /* GP2 symbols are stored in struct Symbol. These are values of the
  * symbol table. The symbol's identifier, namely the identifier in GP2,
@@ -396,7 +391,6 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
                   string const rule_name, char const location);
 
 
-
 /* atomicExpScan checks variables and nodes in expressions to see if they 
  * have been declared in the rule. If the function is called with location
  * 'l', it checks for expressions that violate the simple list condition.
@@ -423,8 +417,9 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
  *             are encountered.
  */
 
-void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table, string const scope,
-                    string const rule_name, char const location, bool const int_exp,
-		    bool const string_exp);
+void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table, 
+		   string const scope, string const rule_name, 
+	           char const location, bool const int_exp,
+		   bool const string_exp);
 
 #endif /* INC_SEMAN_H */
