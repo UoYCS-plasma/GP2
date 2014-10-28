@@ -1,7 +1,10 @@
 GHC=ghc -O2 -prof -fprof-auto -rtsopts
 
 
-all : gp2 ViewGraph IsoChecker
+all : gp2 gp2c ViewGraph IsoChecker
+
+gp2c : GP2c.hs
+	$(GHC) -o $@ $<
 
 gp2 : Main.hs
 	$(GHC) -o $@ $<
