@@ -1,5 +1,6 @@
 module Cassava.Instructions where
 
+type Prog = [Instr]
 
 type Addr = Int
 type Deg  = Int
