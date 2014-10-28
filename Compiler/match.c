@@ -168,65 +168,7 @@ void freeMorphism(Morphism *morphism)
 }
 
 
-ListElement *copyListElement(ListElement *atom)
-{ 
-   ListElement *atom_copy = malloc(sizeof(ListElement));
 
-   if(atom_copy == NULL)
-   {
-      print_to_log("Error (copyListElement): Memory exhausted during "
-                   "creation of a list element.\n");
-      exit(1);
-   }
-
-   /* Duplicate any string values and recursively copy any sub-expressions. */
-   atom_copy->type = atom->type;
-
-   switch(atom->type)
-   {
-      case VARIABLE:
-
-           atom_copy->value.name = strdup(atom->value.name);
-
-           break;
-      
-      case INTEGER_CONSTANT:
-
-           atom_copy->value.number = atom->value.number;
-
-           break;
-
-      case CHARACTER_CONSTANT:
-
-      case STRING_CONSTANT:
-
-           atom_copy->value.string = strdup(atom->value.string);
-
-           break;
-
-      case NEG:
- 
-           atom_copy->value.exp = copyListElement(atom->value.exp);
-
-           break;
-
-      case CONCAT:
-
-           atom_copy->value.bin_op.left_exp = 
-              copyListElement(atom->value.bin_op.left_exp);
-           atom_copy->value.bin_op.right_exp = 
-              copyListElement(atom->value.bin_op.right_exp);
-
-           break;
-
-      default:
-             print_to_log("Error (copyListElement): Atom type %d should not "
-                          "occur here.\n", atom->type);
-             return NULL;
-   }
-
-   return atom_copy;
-}
 
 
 Assignment *assignment = NULL;

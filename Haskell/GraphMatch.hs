@@ -171,20 +171,23 @@ matchGraphEdges h r (NM env nodeMatches) = if null (allEdges r) then [GM env nod
    where 
      ruleEdges = allEdges r
      ruleEndPoints = map (\e -> (e, source r e, target r e)) ruleEdges
-     hostEndPoints = mapMaybe ruleEndsToHostEnds ruleEndPoints
+     hostEndPoints = map ruleEndsToHostEnds ruleEndPoints
      hostEdges = map getCandidateEdges hostEndPoints
 
      getCandidateEdges (eid, src, tgt) = case eLabel r eid of
          RuleEdge _ False _ -> [heid | heid <- joiningEdges h src tgt]
          RuleEdge _ True  _ -> [heid | heid <- joiningEdges h src tgt ++ joiningEdges h tgt src]
 
-     -- The source and target node aren't guaranteed to exist in the node morphism,
+     {- The source and target node aren't guaranteed to exist in the node morphism,
      -- hence we have to use a standard lookup and pattern match on the pair of 
      -- Maybe NodeIds.
      ruleEndsToHostEnds :: (RuleEdgeId, RuleNodeId, RuleNodeId) -> Maybe (RuleEdgeId, HostNodeId, HostNodeId)
      ruleEndsToHostEnds (eid, src, tgt) = case (lookup src nodeMatches, lookup tgt nodeMatches) of
         (Just s, Just t) -> Just (eid, s, t)
-        _                -> Nothing
+        _                -> Nothing  -}
+
+     ruleEndsToHostEnds :: (RuleEdgeId, RuleNodeId, RuleNodeId) -> (RuleEdgeId, HostNodeId, HostNodeId)
+     ruleEndsToHostEnds (eid, src, tgt) = (eid, definiteLookup src nodeMatches, definiteLookup tgt nodeMatches)
 
      labelMatch :: (RuleEdgeId, HostEdgeId) -> Maybe Environment -> Maybe Environment
      labelMatch (re, he) menv = do

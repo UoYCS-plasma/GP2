@@ -13,10 +13,8 @@
 
 %{
 
-#include "ast.h" /* MarkType, ListType, cond_exp_t, AST constructors */
-/* #include <stdio.h>  
-#include <stdlib.h> 
-#include <stdarg.h> */
+#include "ast.h"
+#include "globals.h"
 
 int yyerror(const char *error_message);
 int report_error(const char *error_message);
