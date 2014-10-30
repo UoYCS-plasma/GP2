@@ -73,7 +73,9 @@ int main(int argc, char** argv) {
   char log_file_name[length];
   strcpy(log_file_name, file_name);
   strncat(log_file_name, ".log", 4);
-  if(!(log_file = fopen(log_file_name, "w"))) { 
+
+  log_file = fopen(log_file_name, "w");
+  if(log_file = NULL) { 
      perror(log_file_name);
      return 1;
   }

@@ -30,6 +30,13 @@
   do { fprintf(stderr, error_message, ##__VA_ARGS__); }     \
   while(0) 
 
+#define printCode(code, ...)	                      \
+  do { fprintf(match_source, code, ##__VA_ARGS__); }  \
+  while(0) 
+
+#define printICode(code, indent, ...)	                   		 \
+  do { fprintf(match_source, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
+  while(0) 
 
 typedef char* string;
 
