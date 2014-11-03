@@ -1,4 +1,4 @@
-P = runGP
+P = parseGP
 OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o stack.o main.o
 PARSEOBJECTS = gpparser.tab.o lex.yy.o ast.o seman.o pretty.o main.o  
 CC = gcc
@@ -9,15 +9,19 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --
 
 # Builds executable runGP.
 default:	$(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o $(P)
+		$(CC) $(OBJECTS) $(LFLAGS) -o runGP
+
+# Builds executable GP 2 parser
+$(P):	        $(PARSEOBJECTS)
+		$(CC) $(PARSEOBJECTS) $(LFLAGS) -o $(P) 	  	
 
 # Builds executable GP 2 parser and runs it on extensionless files.
 # Usage: make F1=<program_filename> F2=<graph_filename>
-$(P):	        $(PARSEOBJECTS)
+$(P)-run:       $(PARSEOBJECTS)
 		$(CC) $(PARSEOBJECTS) $(LFLAGS) -o $(P) 	
 		./$(P) $(F1) $(F2)       	
 
-debug-parse:	$(PARSEOBJECTS)
+$(P)-debug:	$(PARSEOBJECTS)
 		$(CC) $(PARSEOBJECTS) $(LFLAGS) -o $(P) 	
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
 
