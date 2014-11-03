@@ -35,6 +35,12 @@ test:		graph.o stack.o lhs.o
 
 test-debug:	graph.o stack.o lhs.o
 		$(CC) graph.o stack.o lhs.o $(LFLAGS) -o testGP
+
+test:		generate.o graph.o stack.o test.o
+		$(CC) generate.o graph.o stack.o test.o $(LFLAGS) -o testGP
+
+test-debug:	generate.o graph.o stack.o test.o
+		$(CC) generate.o graph.o stack.o test.o $(LFLAGS) -o testGP
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./testGP
 
 match:		runtime.o match_r1.o match.o graph.o stack.o 
