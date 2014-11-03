@@ -30,6 +30,10 @@ data Instr =
     | RINFO Deg
     | RINFL Deg
 
+    | NCI Deg
+    | NCO Deg
+    | NCL Deg
+
     -- Get the next node
     | NEXT
 
@@ -44,10 +48,14 @@ data Instr =
     -- Program control prims
     ----------------------------------
 
+    | PROC String
+
+    | CALL String
+    | RET
+
     | JUMP Addr
     | JS Addr
     | JF Addr
-
 
     ----------------------------------
     -- Stack management prims
