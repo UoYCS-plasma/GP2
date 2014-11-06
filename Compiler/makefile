@@ -1,5 +1,5 @@
 P = parseGP
-OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o stack.o oilgraph.o main.o
+OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o stack.o main.o
 PARSEOBJECTS = gpparser.tab.o lex.yy.o ast.o seman.o pretty.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
