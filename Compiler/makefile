@@ -45,6 +45,9 @@ lex.yy.o: 	lex.yy.c
 lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
 		flex gplexer.lex
 
+oilgraph.o: oilgraph.c oilgraph.h
+	$(CC) $(CFLAGS) -c $<
+
 main.o:         main.c ast.h globals.h pretty.h seman.h
 
 ast.o: 		ast.c ast.h globals.h

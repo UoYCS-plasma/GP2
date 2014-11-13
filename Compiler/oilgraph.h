@@ -3,12 +3,10 @@
 
 struct OilNode;
 
-#define TOOMANY 3
-
-typedef struct OilGraph {
-	Graph *graph;
-	struct OilNode chains[TOOMANY];
-} OilGraph;
+#define TOOMANYO 3
+#define TOOMANYI 3
+#define TOOMANYL 3
+#define TOOMANYR 2
 
 typedef struct Link {
 	struct OilNode *prev;
@@ -19,29 +17,27 @@ typedef struct Link {
 typedef struct OilNode {
 	Node *node;
 	bool matched;
-	Link ochain;
-	Link ichain;
-	Link lchain;
-	Link rchain;
+	Link chain;
 } OilNode;
 
-typedef Edge OilEdge ;
+typedef struct Shadow {
+	int len;
+	OilNode head;
+} Shadow;
 
+typedef struct OilGraph {
+	Graph *graph;
+	Shadow shadowTables[TOOMANYO][TOOMANYI][TOOMANYL][2];
+} OilGraph;
 
-typedef enum Roil {
-	RootTrav,
-	OutTrav,
-	InTrav,
-	LoopTrav
-} Roil;
+typedef struct OilEdge {
+	Edge *edge;
+} OilEdge;
+
 
 typedef struct Traverser {
 	OilNode *oilNode;
-	Roil travKind;
 	bool isInterface;
-	int o;
-	int i;
-	int l;
 } Traverser;
 
 #define TRAV_STACK_SIZE 10
@@ -50,6 +46,7 @@ typedef struct Traverser {
 Traverser travStack[TRAV_STACK_SIZE];
 Traverser *tsp = travStack;
 
+/*Traverser traverserPool[MAX_NODES+MAX_EDGES]; */
 
 #define GRAPH_STACK_SIZE 10
 
@@ -61,6 +58,8 @@ OilGraph *gsp = oilGraphStack;
 OilNode oilNodePool[MAX_NODES];
 OilNode *onp = oilNodePool;
 
+OilEdge oilEdgePool[MAX_EDGES];
+OilEdge *oep = oilEdgePool;
 
 /* *************************************************** */
 /* Graph building and modification functions           */
@@ -98,11 +97,11 @@ void nipGraph();
 
 /* TODO: does having a zero default for o, i and l have any
    implications for non-interface nodes? */
-void newTrav(Roil kind, bool isInterface, int o, int i, int l);
+void newTrav(bool isInterface, int o, int i, int l, bool root);
 
 /* TODO: do we want to also handle root contstraint using this
-   interface. probably not */
-void constrainTrav(Roil kind, int val);
+   interface. probably not
+void constrainTrav(int val); */
 
 /* Return the next node from the top traverser. If none then pop
    trav stack */
