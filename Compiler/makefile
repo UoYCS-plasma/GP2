@@ -26,12 +26,19 @@ $(P)-debug:	$(PARSEOBJECTS)
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
 
 # Testing file.
-test:		generate.o graph.o stack.o test.o
-		$(CC) generate.o graph.o stack.o test.o $(LFLAGS) -o testGP
+test:		generate.o graph.o stack.o lhs.o
+		$(CC) generate.o graph.o stack.o lhs.o $(LFLAGS) -o testGP
 
-test-debug:	generate.o graph.o stack.o test.o
-		$(CC) generate.o graph.o stack.o test.o $(LFLAGS) -o testGP
+test-debug:	generate.o graph.o stack.o lhs.o
+		$(CC) generate.o graph.o stack.o lhs.o $(LFLAGS) -o testGP
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./testGP
+
+match:		runtime.o match_r1.o match.o graph.o stack.o 
+		$(CC) runtime.o match_r1.o match.o graph.o stack.o  $(LFLAGS) -o match
+
+match-debug:	runtime.o match_r1.o match.o graph.o stack.o 
+		$(CC) runtime.o match_r1.o match.o graph.o stack.o $(LFLAGS) -o match
+		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./match
 
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
 		$(CC) $(CFLAGS) -c gpparser.tab.c
@@ -71,10 +78,14 @@ stack.o:	stack.c globals.h stack.h
 generate.o:	generate.c globals.h match.h generate.h
 		$(CC) $(CFLAGS) -c generate.c
 
-staticsearch.o:	staticsearch.c globals.h graph.h match.h rule.h staticsearch.h 
+runtime.o:	runtime.c globals.h graph.h match_r1.h runtime.h
+		$(CC) $(CFLAGS) -c runtime.c
 
-test.o:		test.c graph.h
-		$(CC) $(CFLAGS) -c test.c
+match_r1.o:	match_r1.c match_r1.h globals.h graph.h match.h
+		$(CC) $(CFLAGS) -c match_r1.c
+
+lhs.o:		lhs.c generate.h graph.h
+		$(CC) $(CFLAGS) -c lhs.c
 clean:
 		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c runGP
 

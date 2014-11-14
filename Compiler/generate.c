@@ -6,161 +6,749 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#define PC printCode
-#define PIC printICode
+#define PTH printToHeader
+#define PTS printToSource
+#define PTSI printToSourceI
 
 #include "generate.h"
 
+FILE *match_header = NULL;
 FILE *match_source = NULL;
+ 
+Searchplan *searchplan = NULL;
 
 void generateMatchingCode(Graph *lhs, string rule_name)
 {
-   /* Create a file match_<rule_name>.c */
+   /* Create the searchplan. */
+   generateSearchplan(lhs); 
+
+   if(searchplan->first == NULL)
+   {
+      print_to_log("Error: empty searchplan. Aborting.\n");
+      freeSearchplan(searchplan);
+      return;
+   }
+
+   /* Create files match_<rule_name>.h and match_<rule_name>.c */
    int length = strlen(rule_name) + 8;
-   char file_name[length];
-   strcpy(file_name, "match_");
-   strcat(file_name, rule_name);
-   strcat(file_name, ".c");
+   char header_name[length];
+   char source_name[length];
+   strcpy(header_name, "match_");
+   strcat(header_name, rule_name);
+   strcpy(source_name, header_name);
+   strcat(header_name, ".h");
+   strcat(source_name, ".c");
 
-   match_source = fopen(file_name, "w");
-   if(match_source == NULL) { 
-     perror(file_name);
+   match_header = fopen(header_name, "w");
+   if(match_header == NULL) { 
+     perror(header_name);
      exit(1);
-   } 
+   }  
 
-   PC("#include \"globals.h\"\n"
+   match_source = fopen(source_name, "w");
+   if(match_source == NULL) { 
+     perror(source_name);
+     exit(1);
+   }
+
+
+   PTH("#include \"globals.h\"\n"
       "#include \"graph.h\"\n"
       "#include \"match.h\"\n\n"
       "#define LEFT_NODES %d\n"
-      "#define LEFT_EDGES %d\n\n" 
+      "#define LEFT_EDGES %d\n\n"
+      "extern Morphism *morphism;\n\n",
+      lhs->number_of_nodes, lhs->number_of_edges);
 
-      "Morphism *match_%s(Graph *host)\n"
-      "{\n" 
-      "   if(LEFT_NODES > host->number_of_nodes ||\n"
-      "      LEFT_EDGES > host->number_of_edges)\n"
-      "      return NULL;\n\n"
-      "   /* Initialise variables. */\n"
-      "   Stack *node_images = newStack();\n"
-      "   Stack *edge_images = newStack();\n"
-      "   int nodes_matched = 0, edges_matched = 0, match_count = 0;\n"
-      "   bool backtracking = false, match_found = false; set_root_list = false;\n"
-      "   Stack *matched_items = NULL;\n\n"
-      "   GSList *roots = getRootNodes(host);\n\n",
-      lhs->number_of_nodes, lhs->number_of_edges, rule_name);
+   PTS("#include \"match_%s.h\"\n\n", rule_name);
+
+   SearchOp *operation = searchplan->first;
+   Node *node = NULL;
+   Edge *edge = NULL;
+
+   while(operation != NULL)
+   {
+      char type = operation->type;
+
+      switch(type) {
+        
+         case 'n': 
+
+              node = getNode(lhs, operation->index);
+              PTS("static bool match_n%d(Graph *host, Morphism *morphism,\n "
+                  "                     bool *matched_nodes, bool *matched_edges);\n",
+                  node->index);
+              break;
+
+         case 'r': 
+
+              node = getNode(lhs, operation->index);
+              PTS("static bool match_n%d(Graph *host, Morphism *morphism,\n "
+                  "                     bool *matched_nodes, bool *matched_edges);\n",
+                  node->index);
+              break;
+
+         case 'i': 
+
+         case 'o': 
+
+         case 'b':
+
+              node = getNode(lhs, operation->index);
+              PTS("static bool match_n%d(Edge *edge, Morphism *morphism,\n "
+                  "                     bool *matched_nodes, bool *matched_edges);\n",
+                  node->index);
+              break;
+
+         case 'e': 
+
+              edge = getEdge(lhs, operation->index);
+              PTS("static bool match_e%d(Graph *host, Morphism *morphism,\n "
+                  "                     bool *matched_nodes, bool *matched_edges);\n",
+                  edge->index);
+              break;
+
+         case 's': 
+
+         case 't':
+
+              edge = getEdge(lhs, operation->index);
+              PTS("static bool match_e%d(Node *node, Morphism *morphism,\n "
+                  "                     bool *matched_nodes, bool *matched_edges);\n",
+                  edge->index);
+              break;
+ 
+         default:
+              print_to_log("Error (generateMatchingCode): Unexpected "
+                           "operation type %c.\n", operation->type);
+              break;
+      }
+      operation = operation->next;
+   }
+
+   PTS("\nMorphism *morphism = NULL;\n\n");
+
+   operation = searchplan->first;
+
+   while(operation != NULL)
+   {
+      char type = operation->type;
+
+      switch(type) {
+        
+         case 'n': 
+
+              node = getNode(lhs, operation->index);
+              emitNodeMatcher(node, false, operation->next);
+              break;
+
+         case 'r': 
+
+              node = getNode(lhs, operation->index);
+              emitNodeMatcher(node, true, operation->next);
+              break;
+
+         case 'i': 
+
+         case 'o': 
+
+         case 'b':
+
+              node = getNode(lhs, operation->index);
+              emitNodeFromEdgeMatcher(node, type, operation->next);
+              break;
+
+         case 'e': 
+
+              edge = getEdge(lhs, operation->index);
+              emitEdgeMatcher(edge, operation->next);
+              break;
+
+         case 's': 
+
+         case 't':
+
+              edge = getEdge(lhs, operation->index);
+              emitEdgeFromNodeMatcher(edge, type, operation->next);
+              break;
+         
+         default:
+              print_to_log("Error (generateMatchingCode): Unexpected "
+                           "operation type %c.\n", operation->type);
+              break;
+      }
+      operation = operation->next;
+   } 
+
+   emitMainFunction(rule_name, searchplan->first);
+}
+
+
+void emitMainFunction(string rule_name, SearchOp *first_op)
+{
+   /* TODO: Function name should also contain procedural scope. This could be 
+    * applied to the rule name at AST transformation time. */
+   char item;
+   if(first_op->is_node) item = 'n';
+   else item = 'e';
+
+   PTH("Morphism *match_%s(Graph *host);\n", rule_name);
+   PTS("Morphism *match_%s(Graph *host)\n"
+       "{\n" 
+       "   morphism = makeMorphism();\n\n"
+       "   int host_nodes = host->number_of_nodes;\n"
+       "   int host_edges = host->number_of_edges;\n\n"
+       "   if(LEFT_NODES > host_nodes || LEFT_EDGES > host_edges)\n"
+       "   {\n"
+       "      freeMorphism(morphism);\n"
+       "      return NULL;\n"
+       "   }\n"
+       "   /* Initialise variables. */\n"
+       "   int index = 0;\n"
+       "   bool matched_nodes[host_nodes];\n"
+       "   for(index = 0; index < host_nodes; index++)\n"
+       "   {\n"
+       "      matched_nodes[index] = false;\n"
+       "   }\n\n"
+       "   bool matched_edges[host_edges];\n"
+       "   for(index = 0; index < host_edges; index++)\n"
+       "   {\n"
+       "      matched_edges[index] = false;\n"
+       "   }\n\n"
+       "   bool match_found = match_%c%d(host, morphism, matched_nodes, "
+       "   matched_edges);\n\n"
+       "   if(match_found) return morphism;\n"
+       "   else freeMorphism(morphism);\n\n"
+       "   return NULL;\n"
+       "}\n",
+       rule_name, item, first_op->index);
+}
+
+
+void emitNodeMatcher(Node *left_node, bool is_root, SearchOp *next_op)
+{
+   PTS("static bool match_n%d(Graph *host, Morphism *morphism,\n"
+       "                      bool *matched_nodes,\n bool *matched_edges)\n"
+       "{\n", left_node->index);
+
+   if(is_root) PTSI("GSList *nodes = getRootNodes(host);\n", 3);
+   else PTSI("GSList *nodes = getNodesByLabel(host, %d);\n", 3,
+             left_node->label_class);
+
+   PTSI("while(nodes != NULL)\n", 3);
+   PTSI("{\n", 3);
+   PTSI("Node *host_node = (Node *)nodes->data;\n", 6);
+   PTSI("int index = host_node->index;\n\n", 6);
+   PTSI("/* Check if the host node has already been matched. */\n", 6);
+   PTSI("if(matched_nodes[index])\n", 6);    
+   PTSI("{\n", 6);
+   PTSI("nodes = nodes->next;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("/* Check label class, mark and degrees. */\n", 6);
+   PTSI("if(host_node->label_class != %d)\n", 6, left_node->label_class);
+   PTSI("{\n", 6);
+   PTSI("nodes = nodes->next;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("if(host_node->label->mark != %d)\n", 6, left_node->label->mark);
+   PTSI("{\n", 6);
+   PTSI("nodes = nodes->next;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("if(host_node->indegree < %d)\n", 6, left_node->indegree);
+   PTSI("{\n", 6);
+   PTSI("nodes = nodes->next;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("if(host_node->outdegree < %d)\n", 6, left_node->outdegree);
+   PTSI("{\n", 6);
+   PTSI("nodes = nodes->next;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("/* Label matching code does not exist yet. */\n", 6);
+   /* TODO: Call to label matcher goes here. */
+   PTSI("bool nodes_match = host_node->label->list_length == 0;\n", 6);
+   PTSI("if(nodes_match)\n", 6);
+   PTSI("{\n", 6);
+   PTSI("StackData image;\n", 9);
+   PTSI("image.index = index;\n", 9);
+   PTSI("push(morphism->node_images, &image);\n", 9);
+   PTSI("matched_nodes[index] = true;\n", 9);
+   bool total_match = emitNextMatcherCall(next_op);
+   if(!total_match) 
+   {
+      PTSI("if(result) return true;\n", 9);
+      PTSI("StackData *data = pop(morphism->node_images);\n", 9);
+      PTSI("matched_nodes[index] = false;\n", 9);
+   }
+   PTSI("}\n", 6);
+   PTSI("else nodes = nodes->next;\n", 6);
+   PTSI("}\n", 3);
+   PTSI("return false;\n", 3);
+   PTS("}\n\n");
+}
+
+
+void emitNodeFromEdgeMatcher(Node *left_node, char type, SearchOp *next_op)
+{
+   PTS("static bool match_n%d(Edge *edge, Morphism *morphism,\n"
+       "                      bool *matched_nodes, bool *matched_edges)\n"
+       "{\n", left_node->index);
+
+   /* First trying the target of the image of a bidirectional edge is
+    * completely arbitrary. Might be an idea to code a "coin flip" to
+    * choose the incident node. */ 
+   if(type == 'i' || type == 'b') PTSI("Node *host_node = getTarget(edge);\n", 3);
+   else PTSI("Node *host_node = getSource(edge);\n", 3);
+   PTSI("int index = host_node->index;\n\n", 3);
+
+   PTSI("/* This is the only node to check, so perform all the preliminaries\n"
+        "    * in one step. */\n", 3);
+   PTSI("if(matched_nodes[index] ||\n", 3); 
+   PTSI("host_node->label_class != %d ||\n", 6, left_node->label_class);
+   PTSI("host_node->label->mark != NONE ||\n", 6);    
+   PTSI("host_node->indegree < 1 ||\n" , 6);
+   PTSI("host_node->outdegree < 0)\n", 6);
+   if(type == 'b')
+   {
+      PTSI("{\n", 3); 
+      if(type == 'i') PTSI("host_node = getSource(edge);\n", 6);
+      else PTSI("host_node = getTarget(edge);\n", 6);
+      PTSI("if(matched_nodes[index] ||\n", 6); 
+      PTSI("host_node->label_class != EMPTY ||\n", 9);
+      PTSI("host_node->label->mark != NONE ||\n", 9);    
+      PTSI("host_node->indegree < 1 ||\n" , 9);
+      PTSI("host_node->outdegree < 0)\n", 9);
+      PTSI("{\n", 6); 
+      PTSI("StackData *data = pop(morphism->edge_images);\n", 9);
+      PTSI("matched_edges[edge->index] = false;\n", 9);
+      PTSI("return false;\n", 9);
+      PTSI("}\n\n", 6);
+   }
+   else 
+   {
+      PTSI("{\n", 3); 
+      PTSI("StackData *data = pop(morphism->edge_images);\n", 6);
+      PTSI("matched_edges[edge->index] = false;\n", 6);
+      PTSI("return false;\n", 6);
+      PTSI("}\n\n", 3);
+   }
+      
+
+   /* TODO: Call to label matcher goes here. */
+   PTSI("bool nodes_match = host_node->label->list_length == 0;\n", 3);
+   PTSI("if(nodes_match)\n", 3);
+   PTSI("{\n", 3);
+   PTSI("StackData image;\n", 6);
+   PTSI("image.index = index;\n", 6);
+   PTSI("push(morphism->node_images, &image);\n", 6);
+   PTSI("matched_nodes[index] = true;\n", 6);
+   bool total_match = emitNextMatcherCall(next_op); 
+   if(!total_match)
+   {
+      PTSI("if(result) return true;\n", 6);
+      PTSI("StackData *data = pop(morphism->node_images);\n", 6);
+      PTSI("matched_edges[edge->index] = false;\n", 6);
+   }
+   PTSI("}\n", 3);
+   PTSI("return false;\n", 3);
+   PTS("}\n\n");
+}
+
+
+void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
+{
+   PTS("static bool match_e%d(Graph *host, Morphism *morphism,\n"
+       "                      bool *matched_nodes, bool *matched_edges)\n"
+       "{\n", left_edge->index);
+
+   PTSI("GSList *edges = getEdgesByLabel(host, %d);\n", 3,
+        left_edge->label_class);
+
+   PTSI("while(edges != NULL)\n", 3);
+   PTSI("{\n", 3);
+   PTSI("Edge *host_edge = (Edge *)edges->data;\n", 3);
+   PTSI("int index = host_edge->index;\n\n", 3);
+
+   PTSI("/* Check if the host edge has already been matched. */\n", 6);
+   PTSI("if(matched_edges[index])\n", 6);    
+   PTSI("{\n", 6);
+   PTSI("edges = edges->next;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("/* Check label class and mark. */\n", 6);
+   PTSI("if(host_edge->label_class != %d)\n", 6, left_edge->label_class);
+   PTSI("{\n", 6);
+   PTSI("edges = edges->next;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("if(host_edge->label->mark != %d)\n", 6, left_edge->label->mark);
+   PTSI("{\n", 6);
+   PTSI("edges = edges->next;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   /* TODO: Call to label matcher goes here. */
+   PTSI("bool edges_match = host_edge->label->list_length == 0;\n", 3);
+   PTSI("if(edges_match)\n", 6);
+   PTSI("{\n", 6);
+   PTSI("StackData image;\n", 9);
+   PTSI("image.index = index;\n", 9);
+   PTSI("push(morphism->edge_images, &image);\n", 9);
+   PTSI("matched_edges[index] = true;\n", 9);
+   bool total_match = emitNextMatcherCall(next_op);
+   if(!total_match)
+   {
+      PTSI("if(result) return true;\n", 9);
+      PTSI("StackData *data = pop(morphism->node_images);\n", 9);
+      PTSI("matched_edges[index] = false;\n", 9);
+   }
+   PTSI("}\n", 6);
+   PTSI("else edges = edges->next;\n", 6);
+   PTSI("}\n", 3);
+   PTSI("return false;\n", 3);
+   PTS("}\n\n");
+}
+
+
+void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
+{
+   PTS("static bool match_e%d(Node *node, Morphism *morphism,\n"
+       "                      bool *matched_nodes, bool *matched_edges)\n"
+       "{\n"
+       "   int counter;\n", left_edge->index);
+
+   if(type == 's')
+      PTSI("for(counter = 0; counter < node->outdegree; counter++)\n", 3);
+   else PTSI("for(counter = 0; counter < node->indegree; counter++)\n", 3);
+
+   PTSI("{\n", 3);
+   if(type == 's') PTSI("Edge *host_edge = getOutEdge(node, counter);\n", 6);
+   else PTSI("Edge *host_edge = getInEdge(node, counter);\n", 6);
+   PTSI("int index = host_edge->index;\n\n", 6);
+   PTSI("/* Check if the host edge has already been matched. */\n", 6);
+   PTSI("if(matched_edges[index])\n", 6);    
+   PTSI("{\n", 6);
+   PTSI("index++;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("/* Check label class and mark. */\n", 6);
+   PTSI("if(host_edge->label_class != %d)\n", 6, left_edge->label_class);
+   PTSI("{\n", 6);
+   PTSI("index++;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   PTSI("if(host_edge->label->mark != %d)\n", 6, left_edge->label->mark);
+   PTSI("{\n", 6);
+   PTSI("index++;\n", 9);
+   PTSI("continue;\n", 9);
+   PTSI("}\n\n", 6); 
+
+   /* TODO: Call to label matcher goes here. */
+   PTSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+   PTSI("if(edges_match)\n", 6);
+   PTSI("{\n", 6);
+   PTSI("StackData image;\n", 9);
+   PTSI("image.index = index;\n", 9);
+   PTSI("push(morphism->edge_images, &image);\n", 9);
+   PTSI("matched_edges[index] = true;\n", 9);
+   bool total_match = emitNextMatcherCall(next_op);
+   if(!total_match) PTSI("if(result) return true;\n", 9);
+
+   if(left_edge->bidirectional)
+   {
+      PTSI("}\n", 6);
+      PTSI("}\n", 3);
+      if(type == 's')
+         PTSI("for(counter = 0; counter < node->indegree; counter++)\n", 3);
+      else PTSI("for(counter = 0; counter < node->outdegree; counter++)\n", 3);
+
+      PTSI("{\n", 3);
+      if(type == 's') PTSI("Edge *host_edge = getInEdge(node, counter);\n", 6);
+      else PTSI("Edge *host_edge = getOutEdge(node, counter);\n", 6);
+      PTSI("int index = host_edge->index;\n\n", 6);
+      PTSI("/* Check if the host edge has already been matched. */\n", 6);
+      PTSI("if(matched_edges[index])\n", 6);    
+      PTSI("{\n", 6);
+      PTSI("index++;\n", 9);
+      PTSI("continue;\n", 9);
+      PTSI("}\n\n", 6); 
+
+      PTSI("/* Check label class and mark. */\n", 6);
+      PTSI("if(host_edge->label_class != %d)\n", 6, left_edge->label_class);
+      PTSI("{\n", 6);
+      PTSI("index++;\n", 9);
+      PTSI("continue;\n", 9);
+      PTSI("}\n\n", 6); 
+
+      PTSI("if(host_edge->label->mark != %d)\n", 6, left_edge->label->mark);
+      PTSI("{\n", 6);
+      PTSI("index++;\n", 9);
+      PTSI("continue;\n", 9);
+      PTSI("}\n\n", 6); 
+
+      /* TODO: Call to label matcher goes here. */
+      PTSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+      PTSI("if(edges_match)\n", 6);
+      PTSI("{\n", 6);
+      PTSI("StackData image;\n", 9);
+      PTSI("image.index = index;\n", 9);
+      PTSI("push(morphism->edge_images, &image);\n", 9);
+      PTSI("matched_edges[index] = true;\n", 9);
+      bool total_match = emitNextMatcherCall(next_op);
+      if(!total_match) 
+      {
+         PTSI("if(result) return true;\n", 9);   
+         PTSI("StackData *data = pop(morphism->edge_images;\n", 9);
+         PTSI("matched_edges[index] = false;\n", 9);
+         PTSI("}\n", 6);
+         PTSI("else index++;\n", 6);
+         PTSI("}\n", 3);
+      }
+   }
+   else
+   {   
+      PTSI("StackData *data = pop(morphism->edge_images);\n", 9);
+      PTSI("matched_edges[index] = false;\n", 9);
+      PTSI("}\n", 6);
+      PTSI("else index++;\n", 6);
+      PTSI("}\n", 3);
+   }
+   PTSI("return false;\n", 3);
+   PTS("}\n\n");
+}
+
+
+bool emitNextMatcherCall(SearchOp *next_op)
+{
+   if(next_op == NULL)    
+   {
+      PTSI("/* All items matched! */\n", 6);
+      PTSI("return true;\n", 6);
+      return true;
+   }
+   switch(next_op->type)
+   {
+      case 'n':
+  
+      case 'r':
+
+           PTSI("bool result = match_n%d(host, morphism, matched_nodes, "
+                "matched_edges);\n", 9, next_op->index);
+           break;
+
+      case 'i':
+
+      case 'o':
+ 
+      case 'b':
+
+           PTSI("bool result = match_n%d(host_edge, morphism, matched_nodes, "
+                "matched_edges);\n", 9, next_op->index);
+           break;
+  
+      case 'e':
+
+           PTSI("bool result = match_e%d(host, morphism, matched_nodes, "
+                "matched_edges);\n", 9, next_op->index);
+           break;
+
+      case 's':
+ 
+      case 't':
+
+           PTSI("bool result = match_e%d(host_node, morphism, matched_nodes, "
+                "matched_edges);\n", 9, next_op->index);
+           break;
+
+      default:
+ 
+           print_to_log("Error (emitNextMatcherCall): Unexpected "
+                           "operation type %c.\n", next_op->type);
+           break;
+   
+   }
+   return false;
+}
+
+
+void generateSearchplan(Graph *lhs)
+{
+   int lhs_nodes = lhs->number_of_nodes;
+   int lhs_size = lhs_nodes + lhs->number_of_edges;
+
+   searchplan = initialiseSearchplan();
+
+   /* Indices 0 to |V_L|-1 are the nodes. Indices |V_L| to |V_L|+|E_L|-1 are the
+    * edges. Index |V_L| refers to the LHS edge with index 0. */
+   bool discovered_items[lhs_size];
+
+   int index;
+   for(index = 0; index < lhs_size; index++)
+   {
+      discovered_items[index] = false;
+   }  
 
    GSList *left_roots = getRootNodes(lhs); 
-   Node *left_node = (Node *)left_roots->data;
-
+   GSList *iterator = left_roots;
+   
+   /* Add the root nodes to the search plan. Before traversing the graph. */ 
+   while(iterator != NULL)
+   {
+      Node *root = (Node *)iterator->data;
+      addSearchOp(searchplan, 'r', root->index);      
+      iterator = iterator->next;
+   }  
+ 
+   /* Perform a depth-first traversal of the graph from its root nodes. */
    while(left_roots != NULL)
    {
-      PIC("/* Match a root node. */\n", 3);
-      PIC("while(roots != NULL)\n", 3);
-      PIC("{\n", 3);
-      PIC("if(backtracking)\n", 6);
-      PIC("{\n", 6);
-      PIC("/* At this point the match stack contains only nodes, \n", 9);
-      PIC(" * so the top of the matched_items stack is discarded.\n", 9);
-      PIC(" */\n", 9);
-      PIC("void *p = pop(matched_items);\n", 9);
-      PIC("Node *node = (Node *)pop(node_images);\n\n", 9);
-      PIC("if(node == NULL) \n", 9);
-      PIC("{\n", 9);
-      PIC("print_to_log(\"Error: Unexpected NULL pointer from node "
-                 "image stack.\\n\");\n", 12);
-      PIC("exit(1);\n", 12);
-      PIC("}\n\n", 9);
-      PIC("/* Navigate to the node's location in the root list if not already "
-          "done so. */\n", 9);
-      PIC("if(!set_root_list)\n", 9);
-      PIC("{\n", 9);
-      PIC("roots = g_slist_find(roots, node);\n", 12);
-      PIC("roots = roots->next;\n", 12);
-      PIC("set_root_list = true;\n", 12);
-      PIC("}\n\n", 9);
-      PIC("node = (Node *)roots->data;\n\n", 9);
-      emitNodeMatchingCode(left_node, true, 9);
-      PIC("}\n", 6);
-
-      PIC("else\n", 6); 
-      PIC("{\n", 6);
-      PIC("Node *node = (Node *)roots->data;\n\n", 9);
-      emitNodeMatchingCode(left_node, false, 9);
-      PIC("}\n", 6);
-      PIC("roots = roots->next;\n", 6);
-      PIC("}\n\n", 3);
-
+      Node *root = (Node *)left_roots->data;
+      if(!discovered_items[root->index]) 
+         traverseNode(root, 'r', discovered_items, lhs_nodes);
       left_roots = left_roots->next;
    }
-   
-   PIC("}\n", 0);
+
+   /* Search for undiscovered nodes. These are nodes not reachable from a root
+    * node.
+    * Optimisation: check rules beforehand to see if they are left-root-connected.
+    * If so, this code fragment is unnecessary. */
+   for(index = 0; index < lhs_nodes; index++)
+   {
+      if(!discovered_items[index]) 
+      {
+         Node *node = getNode(lhs, index);
+         traverseNode(node, 'n', discovered_items, lhs_nodes);
+      }
+   }      
 }
 
-void emitNodeMatchingCode(Node *left_node, bool backtracking, int indent)
+void traverseNode(Node *node, char type, bool *discovered_items, int offset)
 {
-    PIC("/* Check if the node is already matched. */\n", indent);
-    PIC("/* Search node matches stack or something. */\n\n", indent);
+   discovered_items[node->index] = true;
 
-    PIC("/* Check label class, mark and degrees. */\n", indent);
+   /* If the node is not a root node, add it to the searchplan. */
+   if(type != 'r') 
+   {      
+      addSearchOp(searchplan, type, node->index);
+   }
+   
+   int index;
+ 
+   for(index = 0; index < node->outdegree; index++)
+   {
+      Edge *edge = getOutEdge(node, index);
+      if(!discovered_items[offset + edge->index]) 
+         traverseEdge(edge, 's', discovered_items, offset);
+   }
 
-    PIC("if(node->label_class != %d)\n", indent, left_node->label_class);
-    PIC("{\n", indent);
-    PIC("roots = roots->next;\n", indent + 3);
-    PIC("continue;\n", indent + 3);
-    PIC("}\n\n", indent); 
-
-    PIC("if(node->label->mark != %d)\n", indent, left_node->label->mark);
-    PIC("{\n", indent);
-    PIC("roots = roots->next;\n", indent + 3);
-    PIC("continue;\n", indent + 3);
-    PIC("}\n\n", indent); 
-
-    PIC("if(node->indegree < %d)\n", indent, left_node->indegree);
-    PIC("{\n", indent);
-    PIC("roots = roots->next;\n", indent + 3);
-    PIC("continue;\n", indent + 3);
-    PIC("}\n\n", indent); 
-
-    PIC("if(node->outdegree < %d)\n", indent, left_node->outdegree);
-    PIC("{\n", indent);
-    PIC("roots = roots->next;\n", indent + 3);
-    PIC("continue;\n", indent + 3);
-    PIC("}\n\n", indent); 
-
-    /* Generating label matching code is currently a chasm of confusion. */
-    PIC("if(labelMatch(node))\n", indent);
-    PIC("{\n", indent);
-    PIC("push(node_images, node);\n", indent + 3);
-    PIC("push(matched_items, \"n\");\n", indent + 3);
-    PIC("nodes_matches++;\n", indent + 3);
-    PIC("match_count++;\n", indent + 3);
-    PIC("backtracking = false;\n", indent + 3);
-    PIC("match_found = true;\n", indent + 3);
-    PIC("break;\n", indent + 3);
-    PIC("}\n", indent);
-
-    if(backtracking)
-    {
-       PIC("else\n", indent);
-       PIC("{\n", indent);
-       PIC("/* If the first root node fails to match, then no morphism \n", indent + 3); 
-       PIC(" * exists. Otherwise set the backtracking flag. */\n", indent + 3);
-       PIC("nodes_matched--;\n", indent + 3);
-       PIC("match_count--;\n", indent + 3);
-       PIC("if(match_count == 0) return NULL;\n", indent + 3);
-       PIC("else\n", indent + 3);
-       PIC("{\n", indent + 3);
-       PIC("roots = roots->next;\n", indent + 6);
-       PIC("continue;\n", indent + 6);
-       PIC("}\n", indent + 3);
-       PIC("}\n", indent);
-    }
-    else
-    {
-       PIC("else /* (!backtracking) */\n", indent);
-       PIC("{\n", indent);
-       PIC("/* If the first root node fails to match, then no morphism \n", indent + 3); 
-       PIC(" * exists. Otherwise set the backtracking flag. */\n", indent + 3);
-       PIC("if(match_count == 0) return NULL;\n", indent + 3);
-       PIC("}\n", indent);
-    }
+   for(index = 0; index < node->indegree; index++)
+   {
+      Edge *edge = getInEdge(node, index);
+      if(!discovered_items[offset + edge->index]) 
+         traverseEdge(edge, 't', discovered_items, offset);
+   }
 }
+
+
+void traverseEdge(Edge *edge, char type, bool *discovered_items, int offset)
+{
+   discovered_items[offset + edge->index] = true;
+
+   addSearchOp(searchplan, type, edge->index);
+
+   if(type == 's') 
+      traverseNode(edge->target, 'i', discovered_items, offset);
+   else traverseNode(edge->source, 'o', discovered_items, offset);
+}
+
+
+Searchplan *initialiseSearchplan(void)
+{
+   Searchplan *new_plan = malloc(sizeof(Searchplan));
+
+   if(new_plan == NULL)
+   {
+     print_to_log("Error: Memory exhausted during searchplan "
+                  "construction.\n");
+     exit(1);
+   }   
+
+   new_plan->first = NULL;
+   new_plan->last = NULL;
+
+   return new_plan;
+}
+
+void addSearchOp(Searchplan *plan, char type, int index)
+{
+   SearchOp *new_op = malloc(sizeof(SearchOp));
+
+   if(new_op == NULL)
+   {
+     print_to_log("Error: Memory exhausted during search operation "
+                  "construction.\n");
+     exit(1);
+   }   
+ 
+   if(type == 'e' || type == 's' || type == 't') new_op->is_node = false;
+   else new_op->is_node = true;
+   new_op->type = type;
+   new_op->index = index;
+
+   if(plan->last == NULL)
+   {
+      new_op->next = NULL;
+      plan->first = new_op;
+      plan->last = new_op;  
+   }
+   else
+   {
+      new_op->next = NULL;
+      plan->last->next = new_op;
+      plan->last = new_op;
+   }
+}  
+
+void printSearchplan(Searchplan *plan)
+{ 
+   if(plan->first == NULL) printf("Empty searchplan.\n");
+   else
+   {
+      SearchOp *iterator = plan->first;
+      while(iterator != NULL)
+      {
+         if(iterator->is_node) printf("Node\n");
+         else printf("Edge\n");
+         printf("Type: %c\nIndex: %d\n\n", iterator->type, iterator->index);
+         iterator = iterator->next;  
+      }
+   }
+}
+
+void freeSearchplan(Searchplan *plan)
+{
+   if(plan->first == NULL) free(plan);
+   else
+   {
+      SearchOp *iterator = plan->first;
+      while(iterator != NULL)
+      {
+         SearchOp *temp = iterator;
+         iterator = iterator->next;  
+         free(temp);
+      }
+      free(plan);
+   }
+}
+

@@ -28,7 +28,7 @@
 #undef DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
 #define DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
 #define PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
-#undef DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
+#define DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
                                    yyparse. */
 
 
@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
   strncat(log_file_name, ".log", 4);
 
   log_file = fopen(log_file_name, "w");
-  if(log_file = NULL) { 
+  if(log_file == NULL) { 
      perror(log_file_name);
      return 1;
   }

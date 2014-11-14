@@ -30,13 +30,6 @@
   do { fprintf(stderr, error_message, ##__VA_ARGS__); }     \
   while(0) 
 
-#define printCode(code, ...)	                      \
-  do { fprintf(match_source, code, ##__VA_ARGS__); }  \
-  while(0) 
-
-#define printICode(code, indent, ...)	                   		 \
-  do { fprintf(match_source, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
-  while(0) 
 
 typedef char* string;
 
@@ -65,8 +58,9 @@ extern string yytext;
 
 /* Declarations for functions and variables defined in gpparser.y */
 int yyparse(void);
-extern struct List *gp_program; 
 extern int yydebug;
+extern struct List *gp_program; 
+extern struct GPGraph *host_graph; 
 
 /* Abstract data type for GP2's marks. */
 typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; 
