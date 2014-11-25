@@ -9,14 +9,12 @@ import ParseLib
 import Cassava.Instructions
 import Cassava.Compile
 import Cassava.NullBackend
+import Cassava.CBackend
 
-
-formatInstr i@(PROC id) = show i
-formatInstr i = ' ' : ' ' : ' ' : show i
 
 emitInstrs prog = do
-    let asm = map formatInstr prog
-    mapM putStrLn asm
+    let asm = cCompile prog
+    putStrLn asm
 
 main = do
     hSetBuffering stdout NoBuffering
@@ -26,8 +24,8 @@ main = do
             do
                 p <- readFile progFile
                 let prog = parse program p
-                putStrLn $ show prog
-                putStrLn ""
+                -- putStrLn $ show prog
+                -- putStrLn ""
                 emitInstrs $ compileGPProg prog
                 return ()
 

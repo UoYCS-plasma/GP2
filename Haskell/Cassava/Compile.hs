@@ -7,10 +7,10 @@ import Data.List
 notImplemented s = error $ "Not implemented: " ++ s
 
 type Interface = [NodeName]
-
+type RegisterMap = [(NodeName, Int)]
 
 compileGPProg :: GPProgram -> Prog
-compileGPProg (Program ds) = concatMap compileDecl ds
+compileGPProg (Program ds) = concat $ reverse $ map compileDecl ds
 
 
 compileDecl :: Declaration -> Prog
@@ -32,7 +32,7 @@ compileComm (TryStatement _ _ _) = notImplemented "compileComm"
 
 compileBlock :: Block -> Prog
 compileBlock (ComSeq cs) = concatMap compileComm cs
-compileBlock (LoopedComSeq cs) = block ++ [ JS (negate $ length block) ]
+compileBlock (LoopedComSeq cs) = notImplemented "LoopedComSeq" -- block ++ [ JS (negate $ length block) ]
     where
         block = compileBlock (ComSeq cs)
 compileBlock (SimpleCommand s) = compileSimple s
@@ -41,25 +41,88 @@ compileBlock (ProgramOr _ _) = notImplemented "compileBlock"
 
 compileSimple :: SimpleCommand -> Prog
 compileSimple (RuleCall rs) = map (\id -> CALL id) rs
-compileSimple (LoopedRuleCall rs) = map (\id -> CALL id) rs ++ [JS (negate $ length rs)]
+compileSimple (LoopedRuleCall rs) = map (\id -> LOOP id) rs
 compileSimple (ProcedureCall p) = [CALL p]
-compileSimple (LoopedProcedureCall p) = [CALL p , JS (-1)]
+compileSimple (LoopedProcedureCall p) = [LOOP p]
 compileSimple Skip = notImplemented "compileSimple"
 compileSimple Fail = notImplemented "compileSimple"
 
 compileRule :: AstRule -> Prog
 compileRule (AstRule id _ (lhs, rhs) cond) =
-    (PROC id) : compileLhs id interface cond lhs'
-    ++ (if changed then compileRhs id interface rhs' else [])
-    ++ [RET]
+    case changed of
+        True  -> compiledLhs ++ compiledRhs ++ [RET]
+        false -> compiledLhs ++ [RET]
+    
     where
-        changed = lhs' /= rhs'
-        interface = computeInterface lhs rhs
+        compiledLhs = (PROC id) : nodeTravs ++ edgeTravs ++ conditions ++ [GO, ZTRF]
+        compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap' rhs'
+        (nodeTravs, rmap)  = travsForLhsNodes interface lhs'
+        edgeTravs  = travsForLhsEdges rmap lhs'
+        conditions = compileCond rmap lhs' cond
+        interface  = computeInterface lhs' rhs'
+        (updatedNodes, rmap') = updateNodes interface rmap rhs'
+        changed    = lhs' /= rhs'
         (lhs', rhs') = sortNodes lhs rhs
 
-simplifyListEquality :: (GPList -> GPList -> Condition) -> GPList -> GPList -> Condition
+
+travsForLhsNodes :: Interface -> AstRuleGraph -> (Prog, RegisterMap)
+travsForLhsNodes iface (AstRuleGraph ns es) = (map (travForLhsNode iface es) ns, rmap)
+    where
+        rmap = zip (map (\(RuleNode id _ _) -> id) ns) [0..]
+
+
+travForLhsNode :: Interface -> [AstRuleEdge] -> RuleNode -> Instr
+travForLhsNode iface es (RuleNode id root _) =
+    case (root, id `elem` iface) of
+        (True, True)   -> TRIN o i l
+        (True, False)  -> TRN  o i l
+        (False, True)  -> TIN  o i l
+        (False, False) -> TN   o i l
+    where
+        (o, i, l) = classifyEdgesForNode id es
+
+travsForLhsEdges :: RegisterMap -> AstRuleGraph -> Prog
+travsForLhsEdges rmap (AstRuleGraph ns es) = map (travForLhsEdge rmap) es
+
+travForLhsEdge :: RegisterMap -> AstRuleEdge -> Instr
+travForLhsEdge rmap e@(AstRuleEdge id bidi src tgt _) =
+    case (bidi, lookup src rmap, lookup tgt rmap) of
+        (False, Just n, Just m)  -> TE n m
+        (True,  Just n, Just m)  -> TBE n m
+        _ -> error $ "Reference to a node without a traverser in edge " ++ id
+
+
+updateNodes :: Interface -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
+updateNodes iface rmap (AstRuleGraph ns es) = (updated ++ created, rmap')
+    where
+        (updateMe, createMe) = partition (\(RuleNode id _ _) -> id `elem` iface) ns
+        updated = concatMap updateNode updateMe
+        (created, rmap') = createNodes rmap [] createMe
+        updateNode (RuleNode id root _) = case (lookup id rmap, root) of
+            (Just n, True)  -> [ROOT n]
+            (Just n, False) -> [TOOR n]
+            _               -> error "Node not found!"
+        nids  = map (\(RuleNode id _ _) -> id) ns
+
+createNodes :: RegisterMap -> Prog -> [RuleNode] -> (Prog, RegisterMap)
+createNodes rmap prog [] = (prog, rmap)
+createNodes rmap prog (RuleNode id root _:ns) = createNodes rmap' prog' ns
+    where
+        prog' = prog ++ (if root then [NEWN, ROOT (length rmap)] else [NEWN])
+        rmap' = (id, length rmap):rmap
+
+
+createEdges :: RegisterMap -> AstRuleGraph -> Prog
+createEdges rmap (AstRuleGraph ns es) = map mkEdge es
+    where
+        mkEdge (AstRuleEdge id _ src tgt _) =
+            case (lookup src rmap, lookup tgt rmap) of
+                    (Just n, Just m) -> NEWE n m
+                    _                -> error $ "Unknown node in " ++ id
+
+{-simplifyListEquality :: (GPList -> GPList -> Condition) -> GPList -> GPList -> Condition
 simplifyListEquality cmp [a] [v] = cmp [a] [v]
-simplifyListEquality cmp as vs = foldr1 (\c d -> And c d) $ map (\(a, v) -> cmp [a] [v]) $ zip as vs 
+simplifyListEquality cmp as vs = foldr1 (\c d -> And c d) $ map (\(a, v) -> cmp [a] [v]) $ zip as vs
 
 -- Only equality and inequality accept GPLists as arguments
 simplifyConds :: Condition -> Condition
@@ -70,50 +133,37 @@ simplifyConds (Or c d)   = Or (simplifyConds c) (simplifyConds d)
 simplifyConds (Not c)    = Not (simplifyConds c)
 simplifyConds c          = c
 
+-}
 
 
-compileCond :: Condition -> [(NodeName, Prog)]
-compileCond NoCondition = []
-compileCond (Eq [Indeg n]  [Val (Int i)]) = [(n, [NCI, NCL])] -- TODO: vast oversimplification!
-compileCond (Eq [Outdeg n] [Val (Int i)]) = [(n, [NCO, NCL])] -- TODO: vast oversimplification!
-compileCond (Not (Edge a b _)) = [(a, [EF, JS (-2)])]  -- TODO: just wrong!
-compileCond (Edge a b _) = []
-compileCond (Not c)   = notImplemented "compileCond Not"
-compileCond (Or c d)  = notImplemented "compileCond Or"
-compileCond (And c d) = notImplemented "compileCond And"
-compileCond _ = notImplemented "compileCond"
+-- TODO: fixing indeg/outdeg to non-zero or non-constant is not supported.
 
-compileLhs :: RuleName -> Interface -> Condition -> AstRuleGraph -> Prog
-compileLhs rid nif cond (AstRuleGraph ns es) =
-    concatMap (compileLhsNode rid nif es) ns
+compileCond :: RegisterMap -> AstRuleGraph -> Condition -> Prog
+compileCond rmap lhs NoCondition = []
+compileCond rmap lhs (Eq [Indeg n]  [Val (Int i)]) =
+    if i == 0 then
+        [FIXI reg, FIXL reg]
+    else 
+        notImplemented "Non-zero indegree."
     where
-        cond' = simplifyConds cond
-compileLhsNode :: RuleName -> Interface -> [AstRuleEdge] -> RuleNode -> Prog
-compileLhsNode rid interface es n@(RuleNode id root _) = subProc : 
-    lhsNodeCodeGen root isINode (classifyEdgesForNode n es) n
+        reg = case lookup n rmap of
+            Just x -> x
+            _      -> error $ "Node specified in condition not found"
+compileCond rmap lhs (Eq [Outdeg n] [Val (Int i)]) =
+    if i == 0 then
+        [FIXO reg, FIXL reg]
+    else 
+        notImplemented "Non-zero indegree."
     where
-        subProc = PROC $ rid ++ ":lhs_" ++ id
-        isINode = id `elem` interface
+        reg = case lookup n rmap of
+            Just x -> x
+            _      -> error $ "Node specified in condition not found"
+compileCond rmap lhs (Not (Edge a b _)) =
+    case (lookup a rmap, lookup b rmap) of
+        (Just n, Just m) -> [XE n m]
+        _                -> error "Anti-traverser creation failed!"
+compileCond rmap lhs _ = notImplemented "compileCond"
 
-
-
-lhsNodeCodeGen :: Bool -> Bool -> (Deg, Deg, Deg) -> RuleNode -> Prog
-lhsNodeCodeGen root inode (i, o, l) n = finst : []
-    where
-        finst = case (root, inode) of 
-                    (True, True)   -> FRIN o i l
-                    (True, False)  -> FRN  o i l
-                    (False, True)  -> FIN  o i l
-                    (False, False) -> FN   o i l
-
-
--- TODO: actually compile RHS
-compileRhs :: RuleName -> Interface -> AstRuleGraph -> Prog
-compileRhs rid _ _ = [PROC $ (rid ++ ":rhs") , COMMIT]
-
-
-compileRhsDelNode :: RuleNode -> Prog
-compileRhsDelNode _ = notImplemented "compileRhsDelNode"
 
 
 
@@ -128,8 +178,8 @@ classifyEdgeForId id (AstRuleEdge _ _ i o _) =
         (_, True)    -> InEdge
         _            -> UninterestingEdge
 
-classifyEdgesForNode :: RuleNode -> [AstRuleEdge] -> (Deg, Deg, Deg)
-classifyEdgesForNode (RuleNode id _ _) es = (ins, outs, loops)
+classifyEdgesForNode :: RuleName -> [AstRuleEdge] -> (Deg, Deg, Deg)
+classifyEdgesForNode id es = (ins, outs, loops)
     where
         ins   = length $ filter (==InEdge) cs
         outs  = length $ filter (==OutEdge) cs
