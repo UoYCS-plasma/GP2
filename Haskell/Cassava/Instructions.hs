@@ -11,28 +11,17 @@ data Instr =
     ----------------------------------
 
     -- Find non-interface nodes
-      NFI Deg
-    | NFO Deg
-    | NFL Deg
+      FN  Deg Deg Deg
+    | FRN Deg Deg Deg
 
     -- Find interface nodes
-    | INFI Deg
-    | INFO Deg
-    | INFL Deg
+    | FIN Deg Deg Deg
+    | FRIN Deg Deg Deg
 
-    -- Find root non-interface nodes
-    | RNFI Deg
-    | RNFO Deg
-    | RNFL Deg
-
-    -- Find root interface nodes
-    | RINFI Deg
-    | RINFO Deg
-    | RINFL Deg
-
-    | NCI Deg
-    | NCO Deg
-    | NCL Deg
+    -- Constrain in- and out-degrees to 
+    -- exact number, even for interface
+    -- nodes
+    | NCI | NCO | NCL
 
     -- Get the next node
     | NEXT
@@ -56,6 +45,8 @@ data Instr =
     | JUMP Addr
     | JS Addr
     | JF Addr
+
+    | COMMIT
 
     ----------------------------------
     -- Stack management prims

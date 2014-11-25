@@ -2,8 +2,11 @@ module Cassava.Compile (compileGPProg) where
 
 import GPSyntax
 import Cassava.Instructions
+import Data.List
 
 notImplemented s = error $ "Not implemented: " ++ s
+
+type Interface = [NodeName]
 
 
 compileGPProg :: GPProgram -> Prog
@@ -29,7 +32,9 @@ compileComm (TryStatement _ _ _) = notImplemented "compileComm"
 
 compileBlock :: Block -> Prog
 compileBlock (ComSeq cs) = concatMap compileComm cs
-compileBlock (LoopedComSeq _) = notImplemented "compileBlock"
+compileBlock (LoopedComSeq cs) = block ++ [ JS (negate $ length block) ]
+    where
+        block = compileBlock (ComSeq cs)
 compileBlock (SimpleCommand s) = compileSimple s
 compileBlock (ProgramOr _ _) = notImplemented "compileBlock"
 
@@ -44,58 +49,104 @@ compileSimple Fail = notImplemented "compileSimple"
 
 compileRule :: AstRule -> Prog
 compileRule (AstRule id _ (lhs, rhs) cond) =
-    (PROC id) :
-    compileCond cond
-    ++ compileLhs nodeIf lhs'
-    ++ compileRhs nodeIf rhs'
+    (PROC id) : compileLhs id interface cond lhs'
+    ++ (if changed then compileRhs id interface rhs' else [])
     ++ [RET]
     where
-        (nodeIf, edgeIf) = computeInterface lhs rhs
+        changed = lhs' /= rhs'
+        interface = computeInterface lhs rhs
         (lhs', rhs') = sortNodes lhs rhs
 
--- TODO: replace null sort function with one that puts the most informative first.
-sortNodes :: AstRuleGraph -> AstRuleGraph -> (AstRuleGraph, AstRuleGraph)
-sortNodes lhs rhs = (lhs, rhs)
+simplifyListEquality :: (GPList -> GPList -> Condition) -> GPList -> GPList -> Condition
+simplifyListEquality cmp [a] [v] = cmp [a] [v]
+simplifyListEquality cmp as vs = foldr1 (\c d -> And c d) $ map (\(a, v) -> cmp [a] [v]) $ zip as vs 
 
-compileCond :: Condition -> Prog
+-- Only equality and inequality accept GPLists as arguments
+simplifyConds :: Condition -> Condition
+simplifyConds (Eq as vs)  = simplifyListEquality Eq as vs
+simplifyConds (NEq as vs) = simplifyListEquality NEq as vs
+simplifyConds (And c d)  = And (simplifyConds c) (simplifyConds d)
+simplifyConds (Or c d)   = Or (simplifyConds c) (simplifyConds d)
+simplifyConds (Not c)    = Not (simplifyConds c)
+simplifyConds c          = c
+
+
+
+compileCond :: Condition -> [(NodeName, Prog)]
 compileCond NoCondition = []
+compileCond (Eq [Indeg n]  [Val (Int i)]) = [(n, [NCI, NCL])] -- TODO: vast oversimplification!
+compileCond (Eq [Outdeg n] [Val (Int i)]) = [(n, [NCO, NCL])] -- TODO: vast oversimplification!
+compileCond (Not (Edge a b _)) = [(a, [EF, JS (-2)])]  -- TODO: just wrong!
+compileCond (Edge a b _) = []
+compileCond (Not c)   = notImplemented "compileCond Not"
+compileCond (Or c d)  = notImplemented "compileCond Or"
+compileCond (And c d) = notImplemented "compileCond And"
 compileCond _ = notImplemented "compileCond"
 
-compileLhs :: NodeInterface -> AstRuleGraph -> Prog
-compileLhs nif (AstRuleGraph ns es) = concatMap compileLhsNode ns
-
-compileLhsNode :: RuleNode -> Prog
-compileLhsNode n = [ NFI ins, NCO outs, NCL loops, NEXT, JF (-1) ]
+compileLhs :: RuleName -> Interface -> Condition -> AstRuleGraph -> Prog
+compileLhs rid nif cond (AstRuleGraph ns es) =
+    concatMap (compileLhsNode rid nif es) ns
     where
-        ins   = countInEdges n
-        outs  = countOutEdges n
-        loops = countLoops n
-
-compileLhsINode :: RuleNode -> Prog
-compileLhsINode n = [ INFI ins, NCO outs, NCL loops, NEXT ]
+        cond' = simplifyConds cond
+compileLhsNode :: RuleName -> Interface -> [AstRuleEdge] -> RuleNode -> Prog
+compileLhsNode rid interface es n@(RuleNode id root _) = subProc : 
+    lhsNodeCodeGen root isINode (classifyEdgesForNode n es) n
     where
-        ins   = countInEdges n
-        outs  = countOutEdges n
-        loops = countLoops n
+        subProc = PROC $ rid ++ ":lhs_" ++ id
+        isINode = id `elem` interface
+
+
+
+lhsNodeCodeGen :: Bool -> Bool -> (Deg, Deg, Deg) -> RuleNode -> Prog
+lhsNodeCodeGen root inode (i, o, l) n = finst : []
+    where
+        finst = case (root, inode) of 
+                    (True, True)   -> FRIN o i l
+                    (True, False)  -> FRN  o i l
+                    (False, True)  -> FIN  o i l
+                    (False, False) -> FN   o i l
+
 
 -- TODO: actually compile RHS
-compileRhs :: NodeInterface -> AstRuleGraph -> Prog
-compileRhs _ _ = []
+compileRhs :: RuleName -> Interface -> AstRuleGraph -> Prog
+compileRhs rid _ _ = [PROC $ (rid ++ ":rhs") , COMMIT]
 
 
 compileRhsDelNode :: RuleNode -> Prog
 compileRhsDelNode _ = notImplemented "compileRhsDelNode"
 
--- TODO: vast oversimplification
-countInEdges :: RuleNode -> Deg
-countInEdges _ = 0
 
-countOutEdges :: RuleNode -> Deg
-countOutEdges _ = 0
 
-countLoops :: RuleNode -> Deg
-countLoops _ = 0
+-- Classify edges as in out or loop
+data EdgeType = InEdge | OutEdge | LoopEdge | UninterestingEdge deriving Eq
 
-computeInterface :: AstRuleGraph -> AstRuleGraph -> (NodeInterface, EdgeInterface)
-computeInterface = notImplemented "computeInterface"
+classifyEdgeForId :: NodeName -> AstRuleEdge -> EdgeType
+classifyEdgeForId id (AstRuleEdge _ _ i o _) =
+    case (i==id, o==id) of
+        (True, True) -> LoopEdge
+        (True, _)    -> OutEdge
+        (_, True)    -> InEdge
+        _            -> UninterestingEdge
+
+classifyEdgesForNode :: RuleNode -> [AstRuleEdge] -> (Deg, Deg, Deg)
+classifyEdgesForNode (RuleNode id _ _) es = (ins, outs, loops)
+    where
+        ins   = length $ filter (==InEdge) cs
+        outs  = length $ filter (==OutEdge) cs
+        loops = length $ filter (==LoopEdge) cs
+        cs = map (classifyEdgeForId id) es
+
+-- TODO: replace null sort function with one that puts the most informative first.
+sortNodes :: AstRuleGraph -> AstRuleGraph -> (AstRuleGraph, AstRuleGraph)
+sortNodes lhs rhs = (lhs, rhs)
+
+-- Compute the interface
+computeInterface :: AstRuleGraph -> AstRuleGraph -> Interface
+computeInterface (AstRuleGraph lns _) (AstRuleGraph rns _) = interface
+    where
+        lids = map extractNodeName lns
+        rids = map extractNodeName rns
+        interface = intersect lids rids
+        extractNodeName :: RuleNode -> RuleName
+        extractNodeName (RuleNode id _ _) = id
 
