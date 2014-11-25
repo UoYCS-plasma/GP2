@@ -60,7 +60,7 @@ extern string yytext;
 int yyparse(void);
 extern int yydebug;
 extern struct List *gp_program; 
-extern struct GPGraph *host_graph; 
+extern struct GPGraph *host_graph;
 
 /* Abstract data type for GP2's marks. */
 typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; 

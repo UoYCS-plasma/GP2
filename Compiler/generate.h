@@ -39,6 +39,9 @@ extern struct Searchplan *searchplan;
  * 'e': Edge.
  * 's': Edge matched from its source.
  * 't': Edge matched from its target.
+ *
+ * The index of a search operation refers to the index of the node or edge
+ * in the graph's corresponding pointer array. 
  */
 typedef struct SearchOp {
    bool is_node;
@@ -47,36 +50,69 @@ typedef struct SearchOp {
    struct SearchOp *next;
 } SearchOp;
 
+/* Operations are appended to the searchplan, so a pointer to the last
+ * searchplan operation is maintained for efficiency. */
 typedef struct Searchplan {
    SearchOp *first;
    SearchOp *last;
 } Searchplan;
 
-/* Appends the search operation (type, index) to plan. */
 Searchplan *initialiseSearchplan(void);
+/* Appends the search operation (type, index) to the plan. The is_node flag
+ * is inferred from the type. */
 void addSearchOp(Searchplan *plan, char type, int index);
 void printSearchplan(Searchplan *searchplan);
 void freeSearchplan(Searchplan *searchplan);
 
+/* generateSearchplan traverses a graph in order to create a searchplan
+ * using the following algorithm:
+ * (1) For each root node, append the 'r' operation to the searchplan.
+ * (2) From each root node, walk the graph depth-first. 
+ *     Tag each item, including the initial root node, when it is encountered.
+ *     If the next item in the traversal is untagged, tag it and append the
+ *     appropriate operation to the searchplan. For instance, if we examine an
+ *     outgoing edge of a root node, add the 's' operation to the searchplan.
+ *     Once this step is complete, all connected components containing root
+ *     nodes have been examined.
+ * (3) Scan the node list of the graph, performing step 2 on any untagged nodes.
+ *     Unnecessary if the input graph is root-connected.
+ *
+ * The depth-first search is performed by recursive calls to traverseNode and
+ * traverseEdge. These two functions are responsible for checking if items
+ * are tagged, tagging items, and adding new operations to the searchplan.
+ */     
 void generateSearchplan(Graph *lhs);
 void traverseNode(Node *node, char match_from, bool *discovered_item, 
 	          int offset);
 void traverseEdge(Edge *edge, char match_from, bool *discovered_item,
 		  int offset);
 
+/* Called with rule_name R, generateMatchingCode creates a C module named
+ * match_R. It creates the header file, calls generateSearchplan, and emits
+ * the matching code (according to the searchplan) to the source file.
+ * Four auxiliary functions emit a C function to execute a particular
+ * kind of searchplan operation. */
 void generateMatchingCode(Graph *lhs, string rule_name);
 void emitMainFunction(string rule_name, SearchOp *first_op);
 
-/* Emits a function that iterates over a list of host nodes and tries to label 
- * match it with left_node's label. The list of host nodes is determined by
- * type and a position. The position is a parameter to the emitted function. 
- * The function takes the address of the position and updates it if a match
- * is found. */
+/* The four emitMatcher functions take an LHS item and emit code that searches
+ * for a matching host item. The generated code queries the host graph for the
+ * appropriate item or list of items from the host graph according to the LHS 
+ * item and the searchplan operation from which the code is generated.
+ * If a host item matching the LHS item is found, the generated code pushes its
+ * index to the appropriate morphism stack and calls the next function in the
+ * searchplan. The correct call is generated from the subsequent searchplan
+ * operation next_op and the emitNextMatcherCall function.
+ */
 void emitNodeMatcher(Node *left_node, bool is_root, SearchOp *next_op);
 void emitNodeFromEdgeMatcher(Node *left_node, char type, SearchOp *next_op);
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op);
 void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op);
-bool emitNextMatcherCall(SearchOp* next_op);
+
+/* emitNextMatcherCall writes a call to a matching function according to the
+ * passed searchplan operation. If next_op is NULL, then 'return true;' is
+ * written to the generated source file. */
+bool emitNextMatcherCall(SearchOp* next_op, int indent);
 
 #endif /* INC_GENERATE_H */
 

@@ -66,6 +66,9 @@ void generateMatchingCode(Graph *lhs, string rule_name)
    Node *node = NULL;
    Edge *edge = NULL;
 
+   /* The searchplan is iterated over twice. On the first pass, the prototypes
+    * of the matching functions are printed to the generated source file. This
+    * is necessary since the functions are static. */   
    while(operation != NULL)
    {
       char type = operation->type;
@@ -76,7 +79,7 @@ void generateMatchingCode(Graph *lhs, string rule_name)
 
               node = getNode(lhs, operation->index);
               PTS("static bool match_n%d(Graph *host, Morphism *morphism,\n "
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
+                  "                    bool *matched_nodes, bool *matched_edges);\n",
                   node->index);
               break;
 
@@ -84,7 +87,7 @@ void generateMatchingCode(Graph *lhs, string rule_name)
 
               node = getNode(lhs, operation->index);
               PTS("static bool match_n%d(Graph *host, Morphism *morphism,\n "
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
+                  "                    bool *matched_nodes, bool *matched_edges);\n",
                   node->index);
               break;
 
@@ -95,8 +98,8 @@ void generateMatchingCode(Graph *lhs, string rule_name)
          case 'b':
 
               node = getNode(lhs, operation->index);
-              PTS("static bool match_n%d(Edge *edge, Morphism *morphism,\n "
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
+              PTS("static bool match_n%d(Graph *host, Edge *edge, Morphism *morphism,\n "
+                  "                    bool *matched_nodes, bool *matched_edges);\n",
                   node->index);
               break;
 
@@ -104,7 +107,7 @@ void generateMatchingCode(Graph *lhs, string rule_name)
 
               edge = getEdge(lhs, operation->index);
               PTS("static bool match_e%d(Graph *host, Morphism *morphism,\n "
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
+                  "                    bool *matched_edges, bool *matched_edges);\n",
                   edge->index);
               break;
 
@@ -113,8 +116,8 @@ void generateMatchingCode(Graph *lhs, string rule_name)
          case 't':
 
               edge = getEdge(lhs, operation->index);
-              PTS("static bool match_e%d(Node *node, Morphism *morphism,\n "
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
+              PTS("static bool match_e%d(Graph *host, Node *node, Morphism *morphism,\n "
+                  "                    bool *matched_nodes, bool *matched_edges);\n",
                   edge->index);
               break;
  
@@ -128,6 +131,10 @@ void generateMatchingCode(Graph *lhs, string rule_name)
 
    PTS("\nMorphism *morphism = NULL;\n\n");
 
+   /* The second iteration of the searchplan prints the definitions of the 
+    * functions that are now declared in the source file. The type of the
+    * searchplan operation determines which emitMatcher function is called
+    * and which parameters are passed to it. */
    operation = searchplan->first;
 
    while(operation != NULL)
@@ -202,21 +209,39 @@ void emitMainFunction(string rule_name, SearchOp *first_op)
        "   {\n"
        "      freeMorphism(morphism);\n"
        "      return NULL;\n"
-       "   }\n"
+       "   }\n\n"
        "   /* Initialise variables. */\n"
        "   int index = 0;\n"
-       "   bool matched_nodes[host_nodes];\n"
+       "   bool *matched_nodes = calloc(host_nodes, sizeof(bool));\n"
+       "   if(matched_nodes == NULL)\n"
+       "   {\n"
+       "      print_to_log(\"Error: Memory exhausted during matched nodes \"\n"
+       "                   \"table construction.\\n\");\n"
+       "      exit(1);\n"
+       "   }\n"
        "   for(index = 0; index < host_nodes; index++)\n"
        "   {\n"
        "      matched_nodes[index] = false;\n"
        "   }\n\n"
-       "   bool matched_edges[host_edges];\n"
-       "   for(index = 0; index < host_edges; index++)\n"
+       "   bool *matched_edges = NULL;\n"
+       "   if(host_edges > 0)\n"
        "   {\n"
-       "      matched_edges[index] = false;\n"
+       "      matched_edges = calloc(host_edges, sizeof(bool));\n"
+       "      if(matched_edges == NULL)\n"
+       "      {\n"
+       "         print_to_log(\"Error: Memory exhausted during matched edges \"\n"
+       "                      \"table construction.\\n\");\n"
+       "         exit(1);\n"
+       "      }\n"
+       "      for(index = 0; index < host_edges; index++)\n"
+       "      {\n"
+       "         matched_edges[index] = false;\n"
+       "      }\n"
        "   }\n\n"
        "   bool match_found = match_%c%d(host, morphism, matched_nodes, "
-       "   matched_edges);\n\n"
+       "matched_edges);\n\n"
+       "   free(matched_nodes);\n"
+       "   free(matched_edges);\n\n"
        "   if(match_found) return morphism;\n"
        "   else freeMorphism(morphism);\n\n"
        "   return NULL;\n"
@@ -228,7 +253,7 @@ void emitMainFunction(string rule_name, SearchOp *first_op)
 void emitNodeMatcher(Node *left_node, bool is_root, SearchOp *next_op)
 {
    PTS("static bool match_n%d(Graph *host, Morphism *morphism,\n"
-       "                      bool *matched_nodes,\n bool *matched_edges)\n"
+       "                     bool *matched_nodes, bool *matched_edges)\n"
        "{\n", left_node->index);
 
    if(is_root) PTSI("GSList *nodes = getRootNodes(host);\n", 3);
@@ -245,13 +270,20 @@ void emitNodeMatcher(Node *left_node, bool is_root, SearchOp *next_op)
    PTSI("nodes = nodes->next;\n", 9);
    PTSI("continue;\n", 9);
    PTSI("}\n\n", 6); 
-
-   PTSI("/* Check label class, mark and degrees. */\n", 6);
-   PTSI("if(host_node->label_class != %d)\n", 6, left_node->label_class);
-   PTSI("{\n", 6);
-   PTSI("nodes = nodes->next;\n", 9);
-   PTSI("continue;\n", 9);
-   PTSI("}\n\n", 6); 
+   
+   /* If !is_root, then the candidate nodes are obtained by label class.
+    * In that case, there is no need to explicitly check the label class
+    * of the host node. */
+   if(is_root)
+   {
+      PTSI("/* Check label class, mark and degrees. */\n", 6);
+      PTSI("if(host_node->label_class != %d)\n", 6, left_node->label_class);
+      PTSI("{\n", 6);
+      PTSI("nodes = nodes->next;\n", 9);
+      PTSI("continue;\n", 9);
+      PTSI("}\n\n", 6); 
+   }
+   else PTSI("/* Check mark and degrees. */\n", 6);
 
    PTSI("if(host_node->label->mark != %d)\n", 6, left_node->label->mark);
    PTSI("{\n", 6);
@@ -280,15 +312,18 @@ void emitNodeMatcher(Node *left_node, bool is_root, SearchOp *next_op)
    PTSI("image.index = index;\n", 9);
    PTSI("push(morphism->node_images, &image);\n", 9);
    PTSI("matched_nodes[index] = true;\n", 9);
-   bool total_match = emitNextMatcherCall(next_op);
+   bool total_match = emitNextMatcherCall(next_op, 9);
    if(!total_match) 
    {
       PTSI("if(result) return true;\n", 9);
-      PTSI("StackData *data = pop(morphism->node_images);\n", 9);
-      PTSI("matched_nodes[index] = false;\n", 9);
+      PTSI("else\n", 9);
+      PTSI("{\n", 9);
+      PTSI("pop(morphism->node_images);\n", 12);
+      PTSI("matched_nodes[index] = false;\n", 12);
+      PTSI("}\n", 9);
    }
    PTSI("}\n", 6);
-   PTSI("else nodes = nodes->next;\n", 6);
+   PTSI("nodes = nodes->next;\n", 6);
    PTSI("}\n", 3);
    PTSI("return false;\n", 3);
    PTS("}\n\n");
@@ -297,8 +332,8 @@ void emitNodeMatcher(Node *left_node, bool is_root, SearchOp *next_op)
 
 void emitNodeFromEdgeMatcher(Node *left_node, char type, SearchOp *next_op)
 {
-   PTS("static bool match_n%d(Edge *edge, Morphism *morphism,\n"
-       "                      bool *matched_nodes, bool *matched_edges)\n"
+   PTS("static bool match_n%d(Graph *host, Edge *edge, Morphism *morphism,\n"
+       "                     bool *matched_nodes, bool *matched_edges)\n"
        "{\n", left_node->index);
 
    /* First trying the target of the image of a bidirectional edge is
@@ -312,29 +347,32 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type, SearchOp *next_op)
         "    * in one step. */\n", 3);
    PTSI("if(matched_nodes[index] ||\n", 3); 
    PTSI("host_node->label_class != %d ||\n", 6, left_node->label_class);
-   PTSI("host_node->label->mark != NONE ||\n", 6);    
-   PTSI("host_node->indegree < 1 ||\n" , 6);
-   PTSI("host_node->outdegree < 0)\n", 6);
+   PTSI("host_node->label->mark != %d ||\n", 6, left_node->label->mark);    
+   PTSI("host_node->indegree < %d ||\n" , 6, left_node->indegree);
+   PTSI("host_node->outdegree < %d)\n", 6, left_node->outdegree);
    if(type == 'b')
    {
       PTSI("{\n", 3); 
-      if(type == 'i') PTSI("host_node = getSource(edge);\n", 6);
+      PTSI("/* Matching from bidirectional edge: check the second incident node. */\n", 6);
+      if(type == 'i' || type == 'b') PTSI("host_node = getSource(edge);\n", 6);
       else PTSI("host_node = getTarget(edge);\n", 6);
+      PTSI("index = host_node->index;\n\n", 6);
       PTSI("if(matched_nodes[index] ||\n", 6); 
-      PTSI("host_node->label_class != EMPTY ||\n", 9);
-      PTSI("host_node->label->mark != NONE ||\n", 9);    
-      PTSI("host_node->indegree < 1 ||\n" , 9);
-      PTSI("host_node->outdegree < 0)\n", 9);
+      PTSI("host_node->label_class != %d ||\n", 9, left_node->label_class);
+      PTSI("host_node->label->mark != %d ||\n", 9, left_node->label->mark);    
+      PTSI("host_node->indegree < %d ||\n" , 9, left_node->outdegree);
+      PTSI("host_node->outdegree < %d)\n", 9, left_node->indegree);
       PTSI("{\n", 6); 
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 9);
+      PTSI("pop(morphism->edge_images);\n", 9);
       PTSI("matched_edges[edge->index] = false;\n", 9);
       PTSI("return false;\n", 9);
-      PTSI("}\n\n", 6);
+      PTSI("}\n", 6);
+      PTSI("}\n\n", 3);
    }
    else 
    {
       PTSI("{\n", 3); 
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 6);
+      PTSI("pop(morphism->edge_images);\n", 6);
       PTSI("matched_edges[edge->index] = false;\n", 6);
       PTSI("return false;\n", 6);
       PTSI("}\n\n", 3);
@@ -349,12 +387,15 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type, SearchOp *next_op)
    PTSI("image.index = index;\n", 6);
    PTSI("push(morphism->node_images, &image);\n", 6);
    PTSI("matched_nodes[index] = true;\n", 6);
-   bool total_match = emitNextMatcherCall(next_op); 
+   bool total_match = emitNextMatcherCall(next_op, 6); 
    if(!total_match)
    {
       PTSI("if(result) return true;\n", 6);
-      PTSI("StackData *data = pop(morphism->node_images);\n", 6);
-      PTSI("matched_edges[edge->index] = false;\n", 6);
+      PTSI("else\n", 6);
+      PTSI("{\n", 6);
+      PTSI("pop(morphism->node_images);\n", 9);
+      PTSI("matched_nodes[index] = false;\n", 9);
+      PTSI("}\n", 6);
    }
    PTSI("}\n", 3);
    PTSI("return false;\n", 3);
@@ -365,7 +406,7 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type, SearchOp *next_op)
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 {
    PTS("static bool match_e%d(Graph *host, Morphism *morphism,\n"
-       "                      bool *matched_nodes, bool *matched_edges)\n"
+       "                     bool *matched_nodes, bool *matched_edges)\n"
        "{\n", left_edge->index);
 
    PTSI("GSList *edges = getEdgesByLabel(host, %d);\n", 3,
@@ -404,12 +445,15 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
    PTSI("image.index = index;\n", 9);
    PTSI("push(morphism->edge_images, &image);\n", 9);
    PTSI("matched_edges[index] = true;\n", 9);
-   bool total_match = emitNextMatcherCall(next_op);
+   bool total_match = emitNextMatcherCall(next_op, 9);
    if(!total_match)
    {
       PTSI("if(result) return true;\n", 9);
-      PTSI("StackData *data = pop(morphism->node_images);\n", 9);
-      PTSI("matched_edges[index] = false;\n", 9);
+      PTSI("else\n", 9);
+      PTSI("{\n", 9);
+      PTSI("pop(morphism->edge_images);\n", 12);
+      PTSI("matched_edges[index] = false;\n", 12);
+      PTSI("}\n", 9);
    }
    PTSI("}\n", 6);
    PTSI("else edges = edges->next;\n", 6);
@@ -421,8 +465,8 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 
 void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
 {
-   PTS("static bool match_e%d(Node *node, Morphism *morphism,\n"
-       "                      bool *matched_nodes, bool *matched_edges)\n"
+   PTS("static bool match_e%d(Graph *host, Node *node, Morphism *morphism,\n"
+       "                     bool *matched_nodes, bool *matched_edges)\n"
        "{\n"
        "   int counter;\n", left_edge->index);
 
@@ -462,13 +506,13 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
    PTSI("image.index = index;\n", 9);
    PTSI("push(morphism->edge_images, &image);\n", 9);
    PTSI("matched_edges[index] = true;\n", 9);
-   bool total_match = emitNextMatcherCall(next_op);
+   bool total_match = emitNextMatcherCall(next_op, 9);
    if(!total_match) PTSI("if(result) return true;\n", 9);
 
    if(left_edge->bidirectional)
    {
       PTSI("}\n", 6);
-      PTSI("}\n", 3);
+      PTSI("}\n\n", 3);
       if(type == 's')
          PTSI("for(counter = 0; counter < node->indegree; counter++)\n", 3);
       else PTSI("for(counter = 0; counter < node->outdegree; counter++)\n", 3);
@@ -505,21 +549,27 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
       PTSI("image.index = index;\n", 9);
       PTSI("push(morphism->edge_images, &image);\n", 9);
       PTSI("matched_edges[index] = true;\n", 9);
-      bool total_match = emitNextMatcherCall(next_op);
+      bool total_match = emitNextMatcherCall(next_op, 9);
       if(!total_match) 
       {
          PTSI("if(result) return true;\n", 9);   
-         PTSI("StackData *data = pop(morphism->edge_images;\n", 9);
-         PTSI("matched_edges[index] = false;\n", 9);
+         PTSI("else\n", 9);
+         PTSI("{\n", 9);
+         PTSI("pop(morphism->edge_images);\n", 12);
+         PTSI("matched_edges[index] = false;\n", 12);
+         PTSI("}\n", 9);
          PTSI("}\n", 6);
          PTSI("else index++;\n", 6);
          PTSI("}\n", 3);
       }
    }
    else
-   {   
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 9);
-      PTSI("matched_edges[index] = false;\n", 9);
+   {  
+      PTSI("else\n", 9);
+      PTSI("{\n", 9);
+      PTSI("pop(morphism->edge_images);\n", 12);
+      PTSI("matched_edges[index] = false;\n", 12);
+      PTSI("}\n", 9);
       PTSI("}\n", 6);
       PTSI("else index++;\n", 6);
       PTSI("}\n", 3);
@@ -529,12 +579,12 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
 }
 
 
-bool emitNextMatcherCall(SearchOp *next_op)
+bool emitNextMatcherCall(SearchOp *next_op, int indent)
 {
    if(next_op == NULL)    
    {
-      PTSI("/* All items matched! */\n", 6);
-      PTSI("return true;\n", 6);
+      PTSI("/* All items matched! */\n", indent);
+      PTSI("return true;\n", indent);
       return true;
    }
    switch(next_op->type)
@@ -543,8 +593,9 @@ bool emitNextMatcherCall(SearchOp *next_op)
   
       case 'r':
 
-           PTSI("bool result = match_n%d(host, morphism, matched_nodes, "
-                "matched_edges);\n", 9, next_op->index);
+           PTSI("bool result = match_n%d(host, morphism, matched_nodes,\n"
+                "                             matched_edges);\n", 
+		indent, next_op->index);
            break;
 
       case 'i':
@@ -553,22 +604,25 @@ bool emitNextMatcherCall(SearchOp *next_op)
  
       case 'b':
 
-           PTSI("bool result = match_n%d(host_edge, morphism, matched_nodes, "
-                "matched_edges);\n", 9, next_op->index);
+           PTSI("bool result = match_n%d(host, host_edge, morphism, matched_nodes,\n"
+                "                                matched_edges);\n",
+		indent, next_op->index);
            break;
   
       case 'e':
 
-           PTSI("bool result = match_e%d(host, morphism, matched_nodes, "
-                "matched_edges);\n", 9, next_op->index);
+           PTSI("bool result = match_e%d(host, morphism, matched_nodes,\n"
+                "                             matched_edges);\n",
+                indent, next_op->index);
            break;
 
       case 's':
  
       case 't':
 
-           PTSI("bool result = match_e%d(host_node, morphism, matched_nodes, "
-                "matched_edges);\n", 9, next_op->index);
+           PTSI("bool result = match_e%d(host, host_node, morphism, matched_nodes,\n"
+                "                                matched_edges);\n", 
+                indent, next_op->index);
            break;
 
       default:
@@ -586,23 +640,30 @@ void generateSearchplan(Graph *lhs)
 {
    int lhs_nodes = lhs->number_of_nodes;
    int lhs_size = lhs_nodes + lhs->number_of_edges;
+   int index;
 
    searchplan = initialiseSearchplan();
 
    /* Indices 0 to |V_L|-1 are the nodes. Indices |V_L| to |V_L|+|E_L|-1 are the
     * edges. Index |V_L| refers to the LHS edge with index 0. */
-   bool discovered_items[lhs_size];
-
-   int index;
+   bool *tagged_items = calloc(lhs_size, sizeof(bool));
+   if(tagged_items == NULL)
+   {
+      print_to_log("Error: Memory exhausted during tagged items "
+                   "array construction.\n");
+      exit(1);
+   }
    for(index = 0; index < lhs_size; index++)
    {
-      discovered_items[index] = false;
-   }  
+      tagged_items[index] = false;
+   }
 
    GSList *left_roots = getRootNodes(lhs); 
    GSList *iterator = left_roots;
    
-   /* Add the root nodes to the search plan. Before traversing the graph. */ 
+   /* Add the root nodes to the search plan before traversing the graph.
+    * Optimisation: if the rule has no root nodes, this and the next 
+    * while loop are unnecessary. */ 
    while(iterator != NULL)
    {
       Node *root = (Node *)iterator->data;
@@ -614,8 +675,8 @@ void generateSearchplan(Graph *lhs)
    while(left_roots != NULL)
    {
       Node *root = (Node *)left_roots->data;
-      if(!discovered_items[root->index]) 
-         traverseNode(root, 'r', discovered_items, lhs_nodes);
+      if(!tagged_items[root->index]) 
+         traverseNode(root, 'r', tagged_items, lhs_nodes);
       left_roots = left_roots->next;
    }
 
@@ -625,51 +686,75 @@ void generateSearchplan(Graph *lhs)
     * If so, this code fragment is unnecessary. */
    for(index = 0; index < lhs_nodes; index++)
    {
-      if(!discovered_items[index]) 
+      if(!tagged_items[index]) 
       {
          Node *node = getNode(lhs, index);
-         traverseNode(node, 'n', discovered_items, lhs_nodes);
+         traverseNode(node, 'n', tagged_items, lhs_nodes);
       }
-   }      
+   }
+
+   free(tagged_items);      
 }
 
-void traverseNode(Node *node, char type, bool *discovered_items, int offset)
+void traverseNode(Node *node, char type, bool *tagged_items, int offset)
 {
-   discovered_items[node->index] = true;
+   tagged_items[node->index] = true;
 
-   /* If the node is not a root node, add it to the searchplan. */
+   /* Root nodes are already in the searchplan. */
    if(type != 'r') 
    {      
       addSearchOp(searchplan, type, node->index);
    }
    
    int index;
- 
+   /* Search the node's incident edges for an untagged edge. Outedges
+    * are arbitrarily examined first. If no such edges exist, the function
+    * exits and control passes to the caller. */
    for(index = 0; index < node->outdegree; index++)
    {
       Edge *edge = getOutEdge(node, index);
-      if(!discovered_items[offset + edge->index]) 
-         traverseEdge(edge, 's', discovered_items, offset);
+      if(!tagged_items[offset + edge->index]) 
+         traverseEdge(edge, 's', tagged_items, offset);
    }
 
    for(index = 0; index < node->indegree; index++)
    {
       Edge *edge = getInEdge(node, index);
-      if(!discovered_items[offset + edge->index]) 
-         traverseEdge(edge, 't', discovered_items, offset);
+      if(!tagged_items[offset + edge->index]) 
+         traverseEdge(edge, 't', tagged_items, offset);
    }
 }
 
 
-void traverseEdge(Edge *edge, char type, bool *discovered_items, int offset)
+void traverseEdge(Edge *edge, char type, bool *tagged_items, int offset)
 {
-   discovered_items[offset + edge->index] = true;
+   tagged_items[offset + edge->index] = true;
 
    addSearchOp(searchplan, type, edge->index);
 
-   if(type == 's') 
-      traverseNode(edge->target, 'i', discovered_items, offset);
-   else traverseNode(edge->source, 'o', discovered_items, offset);
+   /* Check if the edge's source and target are untagged. The target is
+    * arbitrarily examined first. If both nodes are tagged, the function exits
+    * and control passes to the caller. */
+   if(type == 's')
+   {
+      Node *target = edge->target;
+      if(!tagged_items[target->index])
+      {
+         if(edge->bidirectional) 
+              traverseNode(target, 'b', tagged_items, offset);
+         else traverseNode(target, 'i', tagged_items, offset);
+      }
+   }      
+   else 
+   {
+      Node *source = edge->source;
+      if(!tagged_items[source->index])
+      {
+         if(edge->bidirectional) 
+              traverseNode(source, 'b', tagged_items, offset);
+         else traverseNode(source, 'o', tagged_items, offset);  
+      }
+   }
 }
 
 
