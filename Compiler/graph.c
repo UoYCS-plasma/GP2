@@ -1309,60 +1309,62 @@ void printListElement(ListElement* elem)
 
 void freeGraph(Graph *graph) 
 {
-    int index;
+   if(graph == NULL) return;
+   int index;
 
-    for(index = 0; index < graph->next_node_index; index++)
-       if(graph->nodes[index]) freeNode(graph->nodes[index]);
-    if(graph->nodes) free(graph->nodes);
+   for(index = 0; index < graph->next_node_index; index++)
+      if(graph->nodes[index]) freeNode(graph->nodes[index]);
+   if(graph->nodes) free(graph->nodes);
 
-    for(index = 0; index < graph->next_edge_index; index++)
-       if(graph->edges[index]) freeEdge(graph->edges[index]);
-    if(graph->edges) free(graph->edges);
- 
-    if(graph->free_node_slots) freeStack(graph->free_node_slots);
-    if(graph->free_edge_slots) freeStack(graph->free_edge_slots);
- 
-    if(graph->nodes_by_label) 
-    {
-       g_hash_table_foreach(graph->nodes_by_label, freeGSList, NULL);
-       g_hash_table_destroy(graph->nodes_by_label); 
-    }
+   for(index = 0; index < graph->next_edge_index; index++)
+      if(graph->edges[index]) freeEdge(graph->edges[index]);
+   if(graph->edges) free(graph->edges);
 
-    if(graph->edges_by_label) 
-    {
-        g_hash_table_foreach(graph->edges_by_label, freeGSList, NULL);
-        g_hash_table_destroy(graph->edges_by_label);  
-    }
+   if(graph->free_node_slots) freeStack(graph->free_node_slots);
+   if(graph->free_edge_slots) freeStack(graph->free_edge_slots);
 
-    if(graph->root_nodes) g_slist_free(graph->root_nodes);
+   if(graph->nodes_by_label) 
+   {
+      g_hash_table_foreach(graph->nodes_by_label, freeGSList, NULL);
+      g_hash_table_destroy(graph->nodes_by_label); 
+   }
 
-    /*if(graph->graph_change_stack)
-    {
-       while(graph->graph_change_stack->top != NULL)
-       {
-          GraphChange *change = (GraphChange*)pop(graph->graph_change_stack);
-          freeGraphChange(change);
-       }
-       free(graph->graph_change_stack);
-    }*/
+   if(graph->edges_by_label) 
+   {
+       g_hash_table_foreach(graph->edges_by_label, freeGSList, NULL);
+       g_hash_table_destroy(graph->edges_by_label);  
+   }
 
-    if(graph) free(graph);
+   if(graph->root_nodes) g_slist_free(graph->root_nodes);
+
+   /*if(graph->graph_change_stack)
+   {
+      while(graph->graph_change_stack->top != NULL)
+      {
+         GraphChange *change = (GraphChange*)pop(graph->graph_change_stack);
+         freeGraphChange(change);
+      }
+      free(graph->graph_change_stack);
+   }*/
+   free(graph);
 }
 
 void freeNode(Node *node) 
 {
-    if(node->label) freeLabel(node->label);
-    if(node->in_edges) free(node->in_edges);
-    if(node->out_edges) free(node->out_edges);
-    if(node->free_out_edge_slots) freeStack(node->free_out_edge_slots);
-    if(node->free_in_edge_slots) freeStack(node->free_in_edge_slots);
-    if(node) free(node);
+   if(node == NULL) return;
+   if(node->label) freeLabel(node->label);
+   if(node->in_edges) free(node->in_edges);
+   if(node->out_edges) free(node->out_edges);
+   if(node->free_out_edge_slots) freeStack(node->free_out_edge_slots);
+   if(node->free_in_edge_slots) freeStack(node->free_in_edge_slots);
+   free(node);
 }
 
 void freeEdge(Edge *edge) 
 {
-    if(edge->label) freeLabel(edge->label);
-    if(edge) free(edge);
+   if(edge == NULL) return;
+   if(edge->label) freeLabel(edge->label);
+   free(edge);
 }
 
 
@@ -1373,102 +1375,104 @@ void freeGSList(gpointer key, gpointer value, gpointer data)
 
 void freeLabel(Label *label)
 {
-    if(label->list) 
-       g_list_free_full(label->list, freeListElement);
-    if(label) free(label);
+   if(label == NULL) return;
+   if(label->list) 
+      g_list_free_full(label->list, freeListElement);
+   free(label);
 }
 
 void freeListElement(void *atom)
 {
-     ListElement* elem = (ListElement*)atom;
+   if(atom == NULL) return;
 
-     switch(elem->type) 
-     {
-        case EMPTY:
+   ListElement* elem = (ListElement*)atom;
 
-             break;
+   switch(elem->type) 
+   {
+     case EMPTY:
 
-
-	case VARIABLE:
-
-	     if(elem->value.name)
-               free(elem->value.name);
-
-             break;
+           break;
 
 
-	case INTEGER_CONSTANT:
+     case VARIABLE:
 
-             break;
+           if(elem->value.name)
+             free(elem->value.name);
 
-
-        case CHARACTER_CONSTANT:
-          
-	case STRING_CONSTANT:
-
-	     if(elem->value.string)
-               free(elem->value.string);
-
-             break;
+           break;
 
 
-	case INDEGREE:
- 
-        case OUTDEGREE:
+     case INTEGER_CONSTANT:
 
-	     if(elem->value.node_id) 
-               free(elem->value.node_id);
-
-             break;
+           break;
 
 
-	case LIST_LENGTH:
+     case CHARACTER_CONSTANT:
+       
+     case STRING_CONSTANT:
 
-	     if(elem->value.list_arg)
-               g_list_free_full(elem->value.list_arg, freeListElement);
-		
-             break;
+           if(elem->value.string)
+             free(elem->value.string);
 
-
-	case STRING_LENGTH:
-
-	     if(elem->value.str_arg)
-               freeListElement(elem->value.str_arg);
-
-             break;
-
-	case NEG:
-
-	     if(elem->value.exp) freeListElement(elem->value.exp);
-
-             break;
+           break;
 
 
-	case ADD:
+     case INDEGREE:
 
-	case SUBTRACT:
+     case OUTDEGREE:
 
-	case MULTIPLY:
+           if(elem->value.node_id) 
+             free(elem->value.node_id);
 
-	case DIVIDE:
-
-	case CONCAT:
-
-	     if(elem->value.bin_op.left_exp)
-                freeListElement(elem->value.bin_op.left_exp);
-	     if(elem->value.bin_op.right_exp)  
-                freeListElement(elem->value.bin_op.right_exp);
-
-             break;
+           break;
 
 
-	default: printf("Unexpected List Element Type: %d\n",
-                       (int)elem->type); 
-                 break;
+     case LIST_LENGTH:
 
-	}
+           if(elem->value.list_arg)
+             g_list_free_full(elem->value.list_arg, freeListElement);
+             
+           break;
 
-   if(elem) free(elem);
+
+     case STRING_LENGTH:
+
+           if(elem->value.str_arg)
+             freeListElement(elem->value.str_arg);
+
+           break;
+
+     case NEG:
+
+           if(elem->value.exp) freeListElement(elem->value.exp);
+
+           break;
+
+
+     case ADD:
+
+     case SUBTRACT:
+
+     case MULTIPLY:
+
+     case DIVIDE:
+
+     case CONCAT:
+
+           if(elem->value.bin_op.left_exp)
+             freeListElement(elem->value.bin_op.left_exp);
+           if(elem->value.bin_op.right_exp)  
+             freeListElement(elem->value.bin_op.right_exp);
+
+           break;
+
+
+     default: printf("Unexpected List Element Type: %d\n",
+                     (int)elem->type); 
+               break;
+
+   }
+   free(elem);
 }
 
 /* void freeGraphChange(GraphChange *change)

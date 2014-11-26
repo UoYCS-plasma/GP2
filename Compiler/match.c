@@ -81,6 +81,12 @@ Morphism *makeMorphism(void)
 
 void printMorphism(Morphism *morphism)
 {
+   if(morphism == NULL)
+   {
+      printf("No morphism exists.\n\n");
+      return;
+   }
+
    printf("Morphism\n=======\n");
 
    StackNode *iterator = morphism->node_images->top;
@@ -112,10 +118,12 @@ void printMorphism(Morphism *morphism)
       printf("\n");
       assignment = assignment->next;
    }
+   printf("\n");
 }
 
 void freeMorphism(Morphism *morphism)
 {
+   if(morphism == NULL) return;
    if(morphism->node_images) freeStack(morphism->node_images);
    if(morphism->edge_images) freeStack(morphism->edge_images);
    if(morphism->assignment) freeAssignment(morphism->assignment);

@@ -823,6 +823,7 @@ void printSearchplan(Searchplan *plan)
 
 void freeSearchplan(Searchplan *plan)
 {
+   if(plan == NULL) return;
    if(plan->first == NULL) free(plan);
    else
    {

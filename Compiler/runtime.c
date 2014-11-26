@@ -80,13 +80,9 @@ int main() {
 
    Morphism *morphism = match_r1(host);
 
-   if(morphism)
-   {
-      printMorphism(morphism);
-      freeMorphism(morphism);
-   }
-   else printf("No morphism found.\n");
- 
+   printMorphism(morphism);
+   freeMorphism(morphism);
+
    if(host) freeGraph(host);
    
    return 0;

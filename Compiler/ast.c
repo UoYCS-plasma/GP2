@@ -927,340 +927,350 @@ void freeAST(List *ast)
 	}
 
    if(ast->next) freeAST(ast->next);
-   if(ast) free(ast);
+   free(ast);
 }
 
 void freeASTDeclaration(GPDeclaration *decl)
 {
-     switch(decl->decl_type) 
-     {
-	case MAIN_DECLARATION:
+   if(decl == NULL) return;
 
-             if(decl->value.main_program) 
-               freeASTStatement(decl->value.main_program);
+   switch(decl->decl_type) 
+   {
+      case MAIN_DECLARATION:
 
-	     break;
+           if(decl->value.main_program) 
+             freeASTStatement(decl->value.main_program);
 
+           break;
 
-	case PROCEDURE_DECLARATION:
+      case PROCEDURE_DECLARATION:
 
-             if(decl->value.procedure) freeASTProcedure(decl->value.procedure);
+           if(decl->value.procedure) freeASTProcedure(decl->value.procedure);
 
-	     break;
+           break;
 
+      case RULE_DECLARATION:
 
-	case RULE_DECLARATION:
+           if(decl->value.rule) freeASTRule(decl->value.rule);
 
-             if(decl->value.rule) freeASTRule(decl->value.rule);
+           break;
 
-	     break;
+      default: print_to_log("Error (freeASTDeclaration): Unexpected Type: "
+                          "%d\n", (int)decl->decl_type);
+                break;
+   }
 
-
-	default: print_to_log("Error (freeASTDeclaration): Unexpected Type: "
-                              "%d\n", (int)decl->decl_type);
-                 break;
-
-	}
-
-   if(decl) free(decl);
+   free(decl);
 }
 
 void freeASTStatement(GPStatement *stmt)
 {
-     switch(stmt->statement_type) 
-     {
-	case COMMAND_SEQUENCE:	
+   if(stmt == NULL) return;
 
-             if(stmt->value.cmd_seq) freeAST(stmt->value.cmd_seq);
+   switch(stmt->statement_type) 
+   {
+      case COMMAND_SEQUENCE:	
 
-	     break;
+           if(stmt->value.cmd_seq) freeAST(stmt->value.cmd_seq);
 
-
-	case RULE_CALL:
-
-             if(stmt->value.rule_name) free(stmt->value.rule_name);
-
-	     break;
+           break;
 
 
-	case RULE_SET_CALL:
+      case RULE_CALL:
 
-             if(stmt->value.rule_set) freeAST(stmt->value.rule_set);
+           if(stmt->value.rule_name) free(stmt->value.rule_name);
 
-	     break;
-
-
-	case PROCEDURE_CALL:
-
-             if(stmt->value.proc_name) free(stmt->value.proc_name);
-
-	     break;
+           break;
 
 
-	case IF_STATEMENT:
+      case RULE_SET_CALL:
 
-        case TRY_STATEMENT:
+           if(stmt->value.rule_set) freeAST(stmt->value.rule_set);
 
-             if(stmt->value.cond_branch.condition) 
-               freeASTStatement(stmt->value.cond_branch.condition);
-             if(stmt->value.cond_branch.then_stmt) 
-               freeASTStatement(stmt->value.cond_branch.then_stmt);
-	     if(stmt->value.cond_branch.else_stmt) 
-               freeASTStatement(stmt->value.cond_branch.else_stmt);
-
-	     break;
+           break;
 
 
-	case ALAP_STATEMENT:
+      case PROCEDURE_CALL:
 
-	     if(stmt->value.loop_stmt) freeASTStatement(stmt->value.loop_stmt);
-             
-	     break;
+           if(stmt->value.proc_name) free(stmt->value.proc_name);
 
-
-	case PROGRAM_OR:
-
-             if(stmt->value.or_stmt.left_stmt) 
-               freeASTStatement(stmt->value.or_stmt.left_stmt);
-             if(stmt->value.or_stmt.right_stmt) 
-               freeASTStatement(stmt->value.or_stmt.right_stmt);
-
-	     break;
+           break;
 
 
-	case SKIP_STATEMENT:
+      case IF_STATEMENT:
 
- 	case FAIL_STATEMENT:
+      case TRY_STATEMENT:
 
-	     break;
+           if(stmt->value.cond_branch.condition) 
+             freeASTStatement(stmt->value.cond_branch.condition);
+           if(stmt->value.cond_branch.then_stmt) 
+             freeASTStatement(stmt->value.cond_branch.then_stmt);
+           if(stmt->value.cond_branch.else_stmt) 
+             freeASTStatement(stmt->value.cond_branch.else_stmt);
 
-	
-	default: print_to_log("Error (freeASTStatement): Unexpected type: %d\n",
-                              (int)stmt->statement_type); 
-                 break;
+           break;
 
-	}
 
-   if(stmt) free(stmt);
+      case ALAP_STATEMENT:
+
+           if(stmt->value.loop_stmt) freeASTStatement(stmt->value.loop_stmt);
+            
+           break;
+
+
+      case PROGRAM_OR:
+
+           if(stmt->value.or_stmt.left_stmt) 
+             freeASTStatement(stmt->value.or_stmt.left_stmt);
+           if(stmt->value.or_stmt.right_stmt) 
+             freeASTStatement(stmt->value.or_stmt.right_stmt);
+
+           break;
+
+
+      case SKIP_STATEMENT:
+
+      case FAIL_STATEMENT:
+
+           break;
+
+      
+      default: print_to_log("Error (freeASTStatement): Unexpected type: %d\n",
+                            (int)stmt->statement_type); 
+               break;
+
+      }
+
+   free(stmt);
 }
 
 void freeASTCondition(GPCondExp *cond)
 {
-     switch(cond->exp_type) 
-     {
-	case INT_CHECK:
+   if(cond == NULL) return;
 
-	case STRING_CHECK:
+   switch(cond->exp_type) 
+   {
+      case INT_CHECK:
 
-	case ATOM_CHECK:
+      case STRING_CHECK:
 
-             if(cond->value.var) free(cond->value.var);
+      case ATOM_CHECK:
 
-             break;
+           if(cond->value.var) free(cond->value.var);
+
+           break;
 
 
-	case EDGE_PRED:
+      case EDGE_PRED:
 
-	     if(cond->value.edge_pred.source)
-               free(cond->value.edge_pred.source);
-	     if(cond->value.edge_pred.target)
-               free(cond->value.edge_pred.target);
-	     if(cond->value.edge_pred.label)
-               freeASTLabel(cond->value.edge_pred.label);
+           if(cond->value.edge_pred.source)
+              free(cond->value.edge_pred.source);
+	   if(cond->value.edge_pred.target)
+              free(cond->value.edge_pred.target);
+	   if(cond->value.edge_pred.label)
+              freeASTLabel(cond->value.edge_pred.label);
                                          
-             break;
+           break;
 
 
-	case EQUAL:
+      case EQUAL:
 
-	case NOT_EQUAL:
+      case NOT_EQUAL:
 
-             if(cond->value.list_cmp.left_list) 
-               freeAST(cond->value.list_cmp.left_list);
-             if(cond->value.list_cmp.right_list)  
-               freeAST(cond->value.list_cmp.right_list);
+           if(cond->value.list_cmp.left_list) 
+             freeAST(cond->value.list_cmp.left_list);
+           if(cond->value.list_cmp.right_list)  
+             freeAST(cond->value.list_cmp.right_list);
 
-	     break;
+           break;
 	
 
-	case GREATER:
+      case GREATER:
 
-	case GREATER_EQUAL:
+      case GREATER_EQUAL:
 
-	case LESS:
+      case LESS:
+        
+      case LESS_EQUAL:
 
-	case LESS_EQUAL:
+           if(cond->value.atom_cmp.left_exp)
+             freeASTAtomicExp(cond->value.atom_cmp.left_exp);
+           if(cond->value.atom_cmp.right_exp) 
+             freeASTAtomicExp(cond->value.atom_cmp.right_exp);
 
-             if(cond->value.atom_cmp.left_exp)
-               freeASTAtomicExp(cond->value.atom_cmp.left_exp);
-             if(cond->value.atom_cmp.right_exp) 
-               freeASTAtomicExp(cond->value.atom_cmp.right_exp);
-
-	     break;	  
-
-
-	case BOOL_NOT:
-
-	     if(cond->value.not_exp) freeASTCondition(cond->value.not_exp);
-
-	     break;
+           break;	  
 
 
-	case BOOL_OR:
+      case BOOL_NOT:
 
-	case BOOL_AND:
+           if(cond->value.not_exp) freeASTCondition(cond->value.not_exp);
 
-	     if(cond->value.bin_exp.left_exp)
-               freeASTCondition(cond->value.bin_exp.left_exp);
-	     if(cond->value.bin_exp.right_exp) 
-               freeASTCondition(cond->value.bin_exp.right_exp);
-
-	     break;
+	   break;
 
 
-	default: print_to_log("Error (freeASTCondition): Unexpected type: %d\n",
+      case BOOL_OR:
+
+      case BOOL_AND:
+
+           if(cond->value.bin_exp.left_exp)
+              freeASTCondition(cond->value.bin_exp.left_exp);
+           if(cond->value.bin_exp.right_exp) 
+              freeASTCondition(cond->value.bin_exp.right_exp);
+
+      break;
+
+
+      default: print_to_log("Error (freeASTCondition): Unexpected type: %d\n",
                               (int)cond->exp_type); 
-                 break;
+               break;
 
 	}
 
-   if(cond) free(cond);
+   free(cond);
 }
 
 void freeASTAtomicExp(GPAtomicExp *atom)
 {
-     switch(atom->exp_type) 
-     {
-	case VARIABLE:
+   if(atom == NULL) return;
 
-	     if(atom->value.name)
-               free(atom->value.name);
+   switch(atom->exp_type) 
+   {
+      case VARIABLE:
 
-             break;
+           if(atom->value.name)
+              free(atom->value.name);
 
-
-	case INTEGER_CONSTANT:
-
-             break;
+           break;
 
 
-        case CHARACTER_CONSTANT:
+      case INTEGER_CONSTANT:
+
+           break;
+
+
+      case CHARACTER_CONSTANT:
           
-	case STRING_CONSTANT:
+      case STRING_CONSTANT:
 
-	     if(atom->value.string)
-               free(atom->value.string);
+           if(atom->value.string)
+             free(atom->value.string);
 
-             break;
+           break;
 
 
-	case INDEGREE:
+      case INDEGREE:
  
-        case OUTDEGREE:
+      case OUTDEGREE:
 
-	     if(atom->value.node_id) 
-               free(atom->value.node_id);
+           if(atom->value.node_id) 
+             free(atom->value.node_id);
 
-             break;
+           break;
 
 
-	case LIST_LENGTH:
+      case LIST_LENGTH:
 
-	     if(atom->value.list_arg)
-               freeAST(atom->value.list_arg);
+           if(atom->value.list_arg)
+             freeAST(atom->value.list_arg);
 		
-             break;
+           break;
 
 
-	case STRING_LENGTH:
+      case STRING_LENGTH:
 
-	     if(atom->value.str_arg)
-               freeASTAtomicExp(atom->value.str_arg);
+           if(atom->value.str_arg)
+             freeASTAtomicExp(atom->value.str_arg);
 
-             break;
+           break;
 
-	case NEG:
+      case NEG:
 
-	     if(atom->value.exp) freeASTAtomicExp(atom->value.exp);
+           if(atom->value.exp) freeASTAtomicExp(atom->value.exp);
 
-             break;
-
-
-	case ADD:
-
-	case SUBTRACT:
-
-	case MULTIPLY:
-
-	case DIVIDE:
-
-	case CONCAT:
-
-	     if(atom->value.bin_op.left_exp)
-                freeASTAtomicExp(atom->value.bin_op.left_exp);
-	     if(atom->value.bin_op.right_exp)  
-                freeASTAtomicExp(atom->value.bin_op.right_exp);
-
-             break;
+           break;
 
 
-	default: print_to_log("Error (freeASTAtomicExp): Unexpected type: %d\n",
-                              (int)atom->exp_type); 
-                 break;
+      case ADD:
 
-	}
+      case SUBTRACT:
 
-   if(atom) free(atom);
+      case MULTIPLY:
+
+      case DIVIDE:
+
+      case CONCAT:
+
+           if(atom->value.bin_op.left_exp)
+              freeASTAtomicExp(atom->value.bin_op.left_exp);
+           if(atom->value.bin_op.right_exp)  
+              freeASTAtomicExp(atom->value.bin_op.right_exp);
+
+           break;
+
+
+      default: print_to_log("Error (freeASTAtomicExp): Unexpected type: %d\n",
+                            (int)atom->exp_type); 
+               break;
+
+      }
+
+   free(atom);
 }
 
 void freeASTProcedure(GPProcedure *proc)
 {
+   if(proc == NULL) return;
    if(proc->name) free(proc->name);
    if(proc->local_decls) freeAST(proc->local_decls);
    if(proc->cmd_seq) freeASTStatement(proc->cmd_seq);
-   if(proc) free(proc);
+   free(proc);
 }
 
 void freeASTRule(GPRule *rule)
 {
+   if(rule == NULL) return;
    if(rule->name) free(rule->name);
    if(rule->variables) freeAST(rule->variables);
    if(rule->lhs) freeASTGraph(rule->lhs);  
    if(rule->rhs) freeASTGraph(rule->rhs);
    if(rule->interface) freeAST(rule->interface);
    if(rule->condition) freeASTCondition(rule->condition);
-   if(rule) free(rule);
+   free(rule);
 }
 
 void freeASTGraph(GPGraph *graph)
 {
+   if(graph == NULL) return;
    if(graph->position) free(graph->position);
    if(graph->nodes) freeAST(graph->nodes);
    if(graph->edges) freeAST(graph->edges);
-   if(graph) free(graph);
+   free(graph);
 }
 
 void freeASTNode(GPNode *node)
 {
+   if(node == NULL) return;
    if(node->name) free(node->name);
    if(node->label) freeASTLabel(node->label);
    if(node->position) free(node->position);
-   if(node) free(node);
+   free(node);
 }
 
 void freeASTEdge(GPEdge *edge)
-{
+{ 
+   if(edge == NULL) return;
    if(edge->name) free(edge->name);
    if(edge->source) free(edge->source);
    if(edge->target) free(edge->target);
    if(edge->label) freeASTLabel(edge->label);
-   if(edge) free(edge);
+   free(edge);
 }
 
 void freeASTLabel(GPLabel *label)
 {
+   if(label == NULL) return;
    if(label->gp_list) freeAST(label->gp_list);
-   if(label) free(label);
+   free(label);
 }
    
 
