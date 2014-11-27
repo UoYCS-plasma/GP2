@@ -2,6 +2,7 @@
 extern false;
 extern true;
 extern success;
+extern travStack[];
 
 
 #define PROC(label) void label() { \
@@ -21,23 +22,23 @@ label:
 #define TRN(o,i,l)   newNodeTrav(false, o, i, l, true);
 #define TRIN(o,i,l)  newNodeTrav(true, o, i, l, true);
 
-#define TE(src, tgt) newEdgeTrav(src, tgt);
+#define TE(src, tgt) newEdgeTrav(&(travStack[src]), &(travStack[tgt]));
 
-#define XE(src, tgt) newEdgeAntiTrav(src, tgt);
+#define XE(src, tgt) newNegatedEdgeTrav(src, tgt);
 
-#define FIXO(r)  
-#define FIXI(r)
-#define FIXL(r)
+#define FIXO(r) constrainO(&(travStack[r]);
+#define FIXI(r) constrainI(&(travStack[r]);
+#define FIXL(r) constrainL(&(travStack[r]);
 
 #define DELE  deleteEdges();
 #define DELN  deleteNonInterfaceNodes();
 
 #define NEWN()  newNode();
-#define NEWE(src, tgt)  newEdge(src, tgt);
+#define NEWE(src, tgt)  addNewOilrEdge(&(travStack[src]), &(travStack[tgt]));
 
-#define ROOT(r) setRoot(r);
-#define TOOR(r) unsetRoot(r);
+#define ROOT(r) setRoot(&(travStack[r]));
+#define TOOR(r) unsetRoot(&(travStack[r]));
 
 
-#define GO
+#define GO runSearch();
 

@@ -1,7 +1,10 @@
 #ifndef INC_OIL_GRAPH_H
 #define INC_OIL_GRAPH_H
 
-struct OilNode;
+
+bool success = false;
+
+struct OilrNode;
 
 #define TOOMANYO 3
 #define TOOMANYI 3
@@ -9,35 +12,65 @@ struct OilNode;
 #define TOOMANYR 2
 
 typedef struct Link {
-	struct OilNode *prev;
+	struct OilrNode *prev;
 	int val;
-	struct OilNode *next;
+	struct OilrNode *next;
 } Link;
 
-typedef struct OilNode {
+typedef struct OilrNode {
 	Node *node;
 	bool matched;
 	Link chain;
-} OilNode;
+} OilrNode;
 
 typedef struct Shadow {
 	int len;
-	OilNode head;
+	OilrNode head;
 } Shadow;
 
-typedef struct OilGraph {
+typedef struct OilrGraph {
 	Graph *graph;
 	Shadow shadowTables[TOOMANYO][TOOMANYI][TOOMANYL][2];
-} OilGraph;
+} OilrGraph;
 
-typedef struct OilEdge {
+typedef struct OilrEdge {
 	Edge *edge;
-} OilEdge;
+} OilrEdge;
 
+
+typedef struct NodeTraverser {
+	OilrNode *oilrNode;
+	int o,i,l;
+	int capo, capi, capl;
+	bool r;
+	bool isInterface;
+} NodeTraverser;
+
+typedef struct EdgeTraverser {
+	Edge *edge;
+	OilrNode *oilrNode;
+	NodeTraverser *src, *tgt;
+} EdgeTraverser;
+
+typedef enum {
+	InvalidTrav = 0,
+	/* Test for node trav with "& 0x1" */
+	NodeTrav    = 1,
+	/* Test for edge travs with "& 0x2" */
+	EdgeTrav    = 2,
+	XeTrav      = -2,
+} TravType;
+
+#define isNodeTrav(t) ((t->type & 0x1) ? true : false)
+#define isEdgeTrav(t) ((t->type & 0x2) ? true : false)
+#define isNegated(t) ((t->type < 0) ? true : false)
 
 typedef struct Traverser {
-	OilNode *oilNode;
-	bool isInterface;
+	TravType type;
+	union {
+		NodeTraverser n;
+		EdgeTraverser e;
+	};
 } Traverser;
 
 #define TRAV_STACK_SIZE 10
@@ -51,15 +84,12 @@ Traverser *tsp = travStack;
 #define GRAPH_STACK_SIZE 10
 
 /* TODO: no bounds checking! stack overflow will happen! Also we are wasting the first element of the array by pre-incrementing pointer. Find a neater solution! */
-OilGraph oilGraphStack[GRAPH_STACK_SIZE];
-OilGraph *gsp = oilGraphStack;
+OilrGraph oilrGraphStack[GRAPH_STACK_SIZE];
+OilrGraph *gsp = oilrGraphStack;
 
 /* MAX_NODES and MAX_EDGES are defined in graph.h */
-OilNode oilNodePool[MAX_NODES];
-OilNode *onp = oilNodePool;
-
-OilEdge oilEdgePool[MAX_EDGES];
-OilEdge *oep = oilEdgePool;
+OilrNode oilrNodePool[MAX_NODES];
+OilrNode *onp = oilrNodePool;
 
 /* *************************************************** */
 /* Graph building and modification functions           */
@@ -70,11 +100,11 @@ OilEdge *oep = oilEdgePool;
  * TODO: no label args for now -- these will be null if safe! Also check
  * no bidi edges in host graphs */
 
-OilGraph *newOilGraph();
-OilNode *addNewOilNode(bool root);
-OilEdge *addNewOilEdge(OilNode *src, OilNode *dst);
-void remOilNode(OilNode *node);
-void remOilEdge(OilEdge *edge);
+OilrGraph *newOilrGraph();
+OilrNode *addNewOilrNode(bool root);
+OilrEdge *addNewOilrEdge(OilrNode *src, OilrNode *dst);
+void delOilrNode(NodeTraverser *nt);
+void delOilrEdge(EdgeTraverser *et);
 
 /* Graph stack management */
 
@@ -105,7 +135,7 @@ void constrainTrav(int val); */
 
 /* Return the next node from the top traverser. If none then pop
    trav stack */
-OilNode *next();
+OilrNode *next();
 
 /* Push current nodes and edges pointed to by traversers on to
    node and edge stacks in reverse and clear the TRAV stack */
