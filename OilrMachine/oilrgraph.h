@@ -1,6 +1,7 @@
 #ifndef INC_OIL_GRAPH_H
 #define INC_OIL_GRAPH_H
 
+#include <stdbool.h>
 
 bool success = false;
 
@@ -10,6 +11,22 @@ struct OilrNode;
 #define TOOMANYI 3
 #define TOOMANYL 3
 #define TOOMANYR 2
+
+
+#ifdef OILR_STANDALONE
+
+typedef struct Edge {
+	int index;
+	Node *src, *tgt;
+}
+
+typedef struct Node {
+	int index;
+	int out_edges;
+} Node;
+
+#endif
+
 
 typedef struct Link {
 	struct OilrNode *prev;
@@ -73,7 +90,7 @@ typedef struct Traverser {
 	};
 } Traverser;
 
-#define TRAV_STACK_SIZE 10
+#define TRAV_STACK_SIZE 100
 
 /* TODO: no bounds checking! stack overflow will happen! */
 Traverser travStack[TRAV_STACK_SIZE];
@@ -102,9 +119,13 @@ OilrNode *onp = oilrNodePool;
 
 OilrGraph *newOilrGraph();
 OilrNode *addNewOilrNode(bool root);
-OilrEdge *addNewOilrEdge(OilrNode *src, OilrNode *dst);
+OilrEdge *addNewOilrEdge(Traverser *src, Traverser *dst);
 void delOilrNode(NodeTraverser *nt);
 void delOilrEdge(EdgeTraverser *et);
+void deleteNonInterfaceNodes();
+void deleteEdges();
+void setRoot(NodeTraverser *n);
+void unsetRoot(NodeTraverser *n);
 
 /* Graph stack management */
 
@@ -127,8 +148,11 @@ void nipGraph();
 
 /* TODO: does having a zero default for o, i and l have any
    implications for non-interface nodes? */
-void newTrav(bool isInterface, int o, int i, int l, bool root);
+void newNodeTrav(bool isInterface, int o, int i, int l, bool root);
 
+void newEdgeTrav(NodeTraverser *src, NodeTraverser *tgt);
+void newNegatedEdgeTrav(NodeTraverser *src, NodeTraverser *tgt);
+		
 /* TODO: do we want to also handle root contstraint using this
    interface. probably not
 void constrainTrav(int val); */
@@ -139,8 +163,7 @@ OilrNode *next();
 
 /* Push current nodes and edges pointed to by traversers on to
    node and edge stacks in reverse and clear the TRAV stack */
-void foundTrav();
-
+void runSearch();
 
 
 

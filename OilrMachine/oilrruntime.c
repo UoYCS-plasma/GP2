@@ -1,7 +1,9 @@
-#include "graph.h"
+#include <stdbool.h>
+
+#include "Compiler/graph.h"
 #include "oilrgraph.h"
 
-#include <stdbool.h>
+extern void Main();
 
 /* *************************************************** */
 /* Graph building and modification functions           */
@@ -269,3 +271,8 @@ void runSearch() {
 	success = true;
 }
 
+
+int main(int argc, char **argv) {
+	Main();
+	return 0;
+}

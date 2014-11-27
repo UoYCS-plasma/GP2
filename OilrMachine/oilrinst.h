@@ -1,12 +1,6 @@
 
-extern false;
-extern true;
-extern success;
-extern travStack[];
 
-
-#define PROC(label) void label() { \
-label:
+#define PROC(label) void label() {
 
 #define RET return; \
 }
@@ -24,7 +18,7 @@ label:
 
 #define TE(src, tgt) newEdgeTrav(&(travStack[src]), &(travStack[tgt]));
 
-#define XE(src, tgt) newNegatedEdgeTrav(src, tgt);
+#define XE(src, tgt) newNegatedEdgeTrav(&(travStack[src]), &(travStack[tgt]));
 
 #define FIXO(r) constrainO(&(travStack[r]);
 #define FIXI(r) constrainI(&(travStack[r]);
