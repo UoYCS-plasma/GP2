@@ -23,7 +23,7 @@ compileMain :: Main -> Prog
 compileMain (Main cs) = PROC "Main" : concatMap compileComm cs ++ [RET]
 
 compileProc :: Procedure -> Prog
-compileProc (Procedure _ ds cs) = concatMap compileDecl ds ++ concatMap compileComm cs
+compileProc (Procedure id ds cs) = PROC id : concatMap compileDecl ds ++ concatMap compileComm cs ++ [RET]
 
 compileComm :: Command -> Prog
 compileComm (Block b) = compileBlock b
@@ -40,9 +40,9 @@ compileBlock (ProgramOr _ _) = notImplemented "compileBlock"
 
 
 compileSimple :: SimpleCommand -> Prog
-compileSimple (RuleCall rs) = map (\id -> CALL id) rs
+compileSimple (RuleCall rs) = concatMap (\id -> [CALL id, ZTRF]) rs
 compileSimple (LoopedRuleCall rs) = map (\id -> LOOP id) rs
-compileSimple (ProcedureCall p) = [CALL p]
+compileSimple (ProcedureCall p) = [CALL p , ZTRF]
 compileSimple (LoopedProcedureCall p) = [LOOP p]
 compileSimple Skip = notImplemented "compileSimple"
 compileSimple Fail = notImplemented "compileSimple"
@@ -162,8 +162,8 @@ compileCond rmap lhs (Not (Edge a b _)) =
     case (lookup a rmap, lookup b rmap) of
         (Just n, Just m) -> [XE n m]
         _                -> error "Anti-traverser creation failed!"
-compileCond rmap lhs _ = notImplemented "compileCond"
-
+compileCond rmap lhs (And x y) = compileCond rmap lhs x ++ compileCond rmap lhs y
+compileCond rmap lhs c = notImplemented $ "compileCond: " ++ show c
 
 
 

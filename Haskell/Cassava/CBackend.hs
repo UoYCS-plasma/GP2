@@ -29,11 +29,11 @@ cCompileI (CALL s) = "    CALL(" ++ s ++ ")"
 cCompileI (LOOP s) = "    LOOP(" ++ s ++ ")"
 
 
-cCompileI i | i `elem` [GO, DELE, DELN, ZTRF] = "    " ++ show i
+cCompileI i | i `elem` [GO, DELE, DELN, ZTRF, NEWN] = "    " ++ show i
             | otherwise = show i
 
 
 
 cCompile :: Prog -> String
-cCompile prog = "#include \"oilr_instructions.h\"\n\n" ++ (concat . intersperse "\n" . map cCompileI) prog
+cCompile prog = "#include \"oilrinst.h\"\n\n" ++ (concat . intersperse "\n" . map cCompileI) prog
 
