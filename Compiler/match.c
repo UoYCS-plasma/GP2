@@ -87,13 +87,13 @@ void printMorphism(Morphism *morphism)
       return;
    }
 
-   printf("Morphism\n=======\n");
-
    StackNode *iterator = morphism->node_images->top;
 
+   printf("\nNode Mappings\n=============\n");
    while(iterator != NULL)
    {
-      printf("Host Node %d\n", iterator->data.index);
+      printf("%d --> %d\n", iterator->data->map.left_index, 
+             iterator->data->map.host_index);
       iterator = iterator->next;
    }
   
@@ -101,9 +101,11 @@ void printMorphism(Morphism *morphism)
 
    iterator = morphism->edge_images->top;
 
+   printf("Edge Mappings\n=============\n");
    while(iterator != NULL)
    {
-      printf("Host Edge %d\n", iterator->data.index);
+      printf("%d --> %d\n", iterator->data->map.left_index, 
+             iterator->data->map.host_index);
       iterator = iterator->next;
    }
 
@@ -118,7 +120,6 @@ void printMorphism(Morphism *morphism)
       printf("\n");
       assignment = assignment->next;
    }
-   printf("\n");
 }
 
 void freeMorphism(Morphism *morphism)

@@ -64,8 +64,8 @@ int main() {
    Node *hn5 = newNode(false, empty5);
    Edge *he1 = newEdge(false, empty6, hn1, hn2); 
    Edge *he2 = newEdge(false, empty7, hn2, hn3); 
-   Edge *he3 = newEdge(false, empty8, hn3, hn3); 
-   Edge *he4 = newEdge(false, empty9, hn5, hn3); 
+   Edge *he3 = newEdge(false, empty8, hn3, hn4); 
+   Edge *he4 = newEdge(false, empty9, hn3, hn5); 
 
    Graph *host = newGraph();
    addNode(host, hn1);
@@ -74,7 +74,7 @@ int main() {
    addNode(host, hn4);
    addNode(host, hn5);
    addEdge(host, he1);
-   //addEdge(host, he2);
+   addEdge(host, he2);
    addEdge(host, he3);
    addEdge(host, he4);
 

@@ -14,13 +14,16 @@
 #include "globals.h"
 
 typedef union StackData {
-   int index;
+   struct {
+      int left_index;
+      int host_index;
+   } map;
    struct Graph *graph;
 } StackData;
 
 typedef struct StackNode
 {
-   StackData data;
+   StackData *data;
    struct StackNode *next;
 } StackNode;
 
@@ -39,8 +42,9 @@ void push (Stack *stack, StackData *data);
  * and updates stack->top. */
 StackData *pop (Stack *stack);
 
-/* Frees all the StackNodes and the stack itself. Should only be called for 
- * stacks whose data is not in heap. */
+/* Frees all StackData and StackNode structs and the Stack itself. If the 
+ * StackData contains pointers to heap memory, this needs to be freed 
+ * explicitly. */
 void freeStack (Stack *stack);
 
 #endif /* INC_STACK_H */

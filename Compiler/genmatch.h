@@ -92,7 +92,7 @@ void traverseEdge(Edge *edge, char match_from, bool *discovered_item,
  * the matching code (according to the searchplan) to the source file.
  * Four auxiliary functions emit a C function to execute a particular
  * kind of searchplan operation. */
-void generateMatchingCode(Graph *lhs, string rule_name);
+void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name);
 void emitMainFunction(string rule_name, SearchOp *first_op);
 
 /* The four emitMatcher functions take an LHS item and emit code that searches
@@ -104,8 +104,10 @@ void emitMainFunction(string rule_name, SearchOp *first_op);
  * searchplan. The correct call is generated from the subsequent searchplan
  * operation next_op and the emitNextMatcherCall function.
  */
-void emitNodeMatcher(Node *left_node, bool is_root, SearchOp *next_op);
-void emitNodeFromEdgeMatcher(Node *left_node, char type, SearchOp *next_op);
+void emitNodeMatcher(Node *left_node, bool is_root, bool *dangling_nodes,
+                     SearchOp *next_op);
+void emitNodeFromEdgeMatcher(Node *left_node, char type, bool *dangling_nodes,
+                             SearchOp *next_op);
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op);
 void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op);
 
