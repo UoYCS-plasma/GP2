@@ -1,9 +1,26 @@
+#include <stdio.h>
 #include <stdbool.h>
 
-#include "Compiler/graph.h"
+#include "graph.h"
 #include "oilrgraph.h"
 
+FILE *log_file;
+
 extern void Main();
+
+bool success = false;
+
+/* TODO: no bounds checking! stack overflow will happen! */
+Traverser travStack[TRAV_STACK_SIZE];
+Traverser *tsp = travStack;
+
+/* TODO: no bounds checking! stack overflow will happen! Also we are wasting the first element of the array by pre-incrementing pointer. Find a neater solution! */
+OilrGraph oilrGraphStack[GRAPH_STACK_SIZE];
+OilrGraph *gsp = oilrGraphStack;
+
+/* MAX_NODES and MAX_EDGES are defined in graph.h */
+OilrNode oilrNodePool[MAX_NODES];
+OilrNode *onp = oilrNodePool;
 
 /* *************************************************** */
 /* Graph building and modification functions           */
@@ -60,9 +77,9 @@ OilrNode *addNewOilrNode(bool root) {
 	return onp++;
 }
 
-Edge *addNewEdge(OilrNode *src, OilrNode *dst) {
+Edge *addNewEdge(NodeTraverser *src, NodeTraverser *dst) {
 	/* bidirectional param has no meaning for host graph edges, so is always false. TODO: NULL label pointer is not safe! Should be Label structure containing a GList with one element of type EMPTY! */
-	Edge *edge = newEdge(false, NULL, src->node, dst->node);
+	Edge *edge = newEdge(false, NULL, src->oilrNode->node, dst->oilrNode->node);
 	addEdge(gsp->graph, edge);
 	return edge;
 }
@@ -271,8 +288,17 @@ void runSearch() {
 	success = true;
 }
 
+void setRoot(NodeTraverser *nt, bool state) {
+	OilrNode *n = nt->oilrNode;
+	Graph *g = gsp;
+	n->node->root = state;
+	/* TODO: update shadow tables! 
+	 * unlink(gsp, n);
+	insertIntoChain(gsp, n, n->); */
+}
 
 int main(int argc, char **argv) {
+	log_file = stderr;
 	Main();
 	return 0;
 }

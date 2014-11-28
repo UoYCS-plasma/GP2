@@ -1,3 +1,9 @@
+#ifndef OILR_INSTRUCTIONS
+#define OILR_INSTRUCTIONS
+
+extern Traverser travStack[];
+extern OilrGraph oilrGraphStack[];
+extern OilrGraph *gsp;
 
 
 #define PROC(label) void label() {
@@ -16,23 +22,24 @@
 #define TRN(o,i,l)   newNodeTrav(false, o, i, l, true);
 #define TRIN(o,i,l)  newNodeTrav(true, o, i, l, true);
 
-#define TE(src, tgt) newEdgeTrav(&(travStack[src]), &(travStack[tgt]));
+#define TE(src, tgt) newEdgeTrav(&(travStack[src].n), &(travStack[tgt].n));
 
-#define XE(src, tgt) newNegatedEdgeTrav(&(travStack[src]), &(travStack[tgt]));
+#define XE(src, tgt) newNegatedEdgeTrav(&(travStack[src].n), &(travStack[tgt].n));
 
-#define FIXO(r) constrainO(&(travStack[r]);
-#define FIXI(r) constrainI(&(travStack[r]);
-#define FIXL(r) constrainL(&(travStack[r]);
+#define FIXO(r) constrainO(&(travStack[r].n);
+#define FIXI(r) constrainI(&(travStack[r].n);
+#define FIXL(r) constrainL(&(travStack[r].n);
 
 #define DELE  deleteEdges();
 #define DELN  deleteNonInterfaceNodes();
 
-#define NEWN()  newNode();
-#define NEWE(src, tgt)  addNewOilrEdge(&(travStack[src]), &(travStack[tgt]));
+#define NEWN()  addNewOilrNode(false);
+#define NEWE(src, tgt)  addNewEdge(&(travStack[src]), &(travStack[tgt]));
 
-#define ROOT(r) setRoot(&(travStack[r]));
-#define TOOR(r) unsetRoot(&(travStack[r]));
+#define ROOT(r) setRoot(&(travStack[r].n), true);
+#define TOOR(r) setRoot(&(travStack[r].n), false);
 
 
 #define GO runSearch();
 
+#endif

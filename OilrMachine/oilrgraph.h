@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-bool success = false;
+bool success;
 
 struct OilrNode;
 
@@ -92,21 +92,10 @@ typedef struct Traverser {
 
 #define TRAV_STACK_SIZE 100
 
-/* TODO: no bounds checking! stack overflow will happen! */
-Traverser travStack[TRAV_STACK_SIZE];
-Traverser *tsp = travStack;
-
 /*Traverser traverserPool[MAX_NODES+MAX_EDGES]; */
 
 #define GRAPH_STACK_SIZE 10
 
-/* TODO: no bounds checking! stack overflow will happen! Also we are wasting the first element of the array by pre-incrementing pointer. Find a neater solution! */
-OilrGraph oilrGraphStack[GRAPH_STACK_SIZE];
-OilrGraph *gsp = oilrGraphStack;
-
-/* MAX_NODES and MAX_EDGES are defined in graph.h */
-OilrNode oilrNodePool[MAX_NODES];
-OilrNode *onp = oilrNodePool;
 
 /* *************************************************** */
 /* Graph building and modification functions           */
@@ -119,13 +108,12 @@ OilrNode *onp = oilrNodePool;
 
 OilrGraph *newOilrGraph();
 OilrNode *addNewOilrNode(bool root);
-OilrEdge *addNewOilrEdge(Traverser *src, Traverser *dst);
+Edge *addNewEdge(NodeTraverser *src, NodeTraverser *dst);
 void delOilrNode(NodeTraverser *nt);
 void delOilrEdge(EdgeTraverser *et);
 void deleteNonInterfaceNodes();
 void deleteEdges();
-void setRoot(NodeTraverser *n);
-void unsetRoot(NodeTraverser *n);
+void setRoot(NodeTraverser *n, bool state);
 
 /* Graph stack management */
 
