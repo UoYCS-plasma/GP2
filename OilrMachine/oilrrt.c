@@ -9,19 +9,20 @@ extern void _HOST();
 bool success = false;
 
 
-#define fail(...) do { printf (__VA_ARGS__) ; passed = false; } while (false);
+#define fail(...) do { printf ("\n ** ") ; printf (__VA_ARGS__) ; passed = false; } while (false);
 
-#define nextInChain(on) (on->chain.next)
-#define prevInChain(on) (on->chain.prev)
+#define nextInChain(on) ((on)->chain.next)
+#define prevInChain(on) ((on)->chain.prev)
 
-#define hasRealNode(on) (on->node != NULL)
+#define hasRealNode(on) ((on)->node != NULL)
 
-#define getNodeId(n)      ( n==NULL ? -1 : (int)(n-nodePool))
-#define getEdgeId(e)      ( e==NULL ? -1 : (int)(e-edgePool))
-#define getOilrNodeId(on) (on==NULL ? -1 \
-							: ((void*)on > (void*)&gsp[0] && (void*)on < (void*)&gsp[2]) ? -2 \
-							: (int)(on-oilrNodePool))
-#define getTravId(t)      ( t==NULL ? -1 : (int)(t-travStack))
+#define getNodeId(n)      ( (n)==NULL ? -1 : (int)((n)-nodePool))
+#define getEdgeId(e)      ( (e)==NULL ? -1 : (int)((e)-edgePool))
+#define getOilrNodeId(on) \
+	((on)==NULL ? -1 \
+		: ((void*)(on) > (void*)&gsp[0] && (void*)(on) < (void*)&gsp[2]) ? -2 \
+		: (int)((on)-oilrNodePool))
+#define getTravId(t)      ( (t)==NULL ? -1 : (int)((t)-travStack))
 
 #define isDeletedEdge(e)  ( (e)->source == NULL )
 
@@ -144,6 +145,49 @@ FILE *log_file;
 #endif
 
 
+
+void dumpTravStack(Traverser *txp) {
+	int id;
+	char *col;
+	Traverser *t = travStack;
+	printf("  ");
+
+	while (t <= tsp) {
+		if (t == txp)
+			printf("[0;1m>");
+		switch (t->type) {
+			case NodeTrav:
+				id = getOilrNodeId(t->n.oilrNode);
+				col = id<0 ? "[31m" : "[32m";
+				if (id>=0)
+					printf("%sn%d ", col, id);
+				else if (id == -2)
+					printf("%sn_ ", col);
+				else
+					printf("[31mn?? ");
+				break;
+			case EdgeTrav:
+				id = getEdgeId(t->e.edge);
+				col = id<0 ? "[31m" : "[32m";
+				if (id>=0)
+					printf("%se%d ", col, id);
+				else
+					printf("%se_ ", col);
+				break;
+			case XeTrav:
+				col = "[33m";
+				printf("%sxe ", col);
+				break;
+			default:
+				col = "[31m";
+				printf("%s__ ", col);
+		}
+		if (t == txp)
+			printf("[0m");
+		t++;
+	}
+	printf("[0m\n");
+}
 
 
 void initShadowTables(OilrGraph *g) {
@@ -344,12 +388,12 @@ bool nextNode(NodeTraverser *nt) {
 	OilrNode *on = nt->oilrNode;
 	Shadow *s;
 
-	/* if we've got a non-dummy node, clear the matched flag */
+	/* if we've got a non-dummy node, clear the matched flag, and advance
+	 * (because we already know this node will match the rule). */
 	if ( hasRealNode(on) ) {
 		on->matched = false;
 		on = nextInChain(on);
 	}
-	trace("\tnextNode():");
 
 	if (nt->isInterface) {
 		/* TODO: naive traversal strategy! */
@@ -362,7 +406,7 @@ bool nextNode(NodeTraverser *nt) {
 					if (s->len == 0)
 						continue;
 
-					trace("\n\to=%d i=%d l=%d   count=%d", o, i, l, s->len);
+					//trace("\n\to=%d i=%d l=%d   count=%d", o, i, l, s->len);
 
 					/* if we reached the end of a previous chain
 					 * and wrapped to a new one... */
@@ -441,12 +485,20 @@ void constrainL(NodeTraverser *nt) {
 }
 
 void resetTrav(Traverser *t) {
+	int o, i, l;
 	NodeTraverser *nt = &(t->n);
 	EdgeTraverser *et = &(t->e);
 	if ( isNodeTrav(t) ) {
-		nt->o = nt->fromo;
-		nt->i = nt->fromi;
-		nt->l = nt->froml;
+		o = nt->fromo;
+		i = nt->fromi;
+		l = nt->froml;
+		if (nt->oilrNode && hasRealNode(nt->oilrNode)) {
+			nt->oilrNode->matched = false;
+			nt->oilrNode = &(gsp->shadowTables[o][i][l][nt->r].head);
+		}
+		nt->o = o;
+		nt->i = i;
+		nt->l = l;
 	} else if (isEdgeTrav(t) ) {
 		et->edge = NULL;
 	}
@@ -455,35 +507,43 @@ void resetTrav(Traverser *t) {
 void runSearch() {
 	Traverser *txp = travStack;
 	bool found;
+	dumpTravStack(txp);
+	trace("runSearch:\n");
 	while (txp <= tsp) {
-		trace("runSearch(): (type: %d) txp=%d \n", txp->type, getTravId(txp));
 		if (isNodeTrav(txp)) {
 			if (! nextNode(&(txp->n)) ) {
 				/* backtrack */
-				trace("\n\t[33m-- failure[0m\n");
+				//trace("\n\t[33m-- failure[0m\n");
 				success = false;
 				resetTrav(txp);
 				txp--;
+				dumpTravStack(txp);
 				if (txp<travStack) {
 					trace("\texit runSearch()\n");
 					return;
 				}
 				continue;
 			}
-			trace(" [32m-- success[0m oNode=%d\n", getOilrNodeId(txp->n.oilrNode));
+			// trace(" [32m-- success[0m oNode=%d\n", getOilrNodeId(txp->n.oilrNode));
 		} else if (isEdgeTrav(txp)) {
 			found = nextEdge(&(txp->e));
 			if (isNegated(txp))
 				found = !found;
 			if (!found) {
-				trace("\n\t[33m-- failure[0m\n");
+				//trace("\t[33m-- failure[0m\n");
 				success = false;
-				while (--txp >= travStack && isEdgeTrav(txp)) {} /* finding a different edge won't help with structural match */
+				while (txp >= travStack && isEdgeTrav(txp)) {
+					/* finding a different edge won't help with structural match */
+					txp->e.edge = NULL;
+					txp--;
+				}
+				dumpTravStack(txp);
 				continue;
 			}
-			trace("\t[32m-- success[0m edge=%d\n", getEdgeId(txp->e.edge));
+			//trace("\t[32m-- success[0m edge=%d\n", getEdgeId(txp->e.edge));
 		}
 		txp++;	
+		dumpTravStack(txp);
 	}
 	success = true;
 }
@@ -537,12 +597,12 @@ bool testInvariants() {
 			deletedEdgeCount++;
 	}
 
-	printf("Testing invariants...\n");
+	printf("Testing invariants... ");
 	/* sum of lens in shadowTables
 	 * 	== nodeCount
 	 * 	== oilrNodeCount */
 	if (nodeCount != oilrNodeCount) {
-		fail("** Number of Nodes is not the same as number of OilrNodes\n");
+		fail("Number of Nodes is not the same as number of OilrNodes");
 	}
 	for (o=0; o<TOOMANYO; o++) {
 		for (i=0; i<TOOMANYI; i++) {
@@ -555,7 +615,7 @@ bool testInvariants() {
 					fail("Root chaining incorrectly initialised");
 
 				if (!s->head.matched)
-					fail("Found a dummy node with unset matched flag");
+					fail("dummy node with unset matched flag: [%d][%d][%d][false]", o, i, l);
 
 				sum += s->len;
 
@@ -565,24 +625,26 @@ bool testInvariants() {
 				while ( on->chain.next != NULL && steps <= MAX_NODES) {
 					/* on->next is never equal to on->prev or on! */
 					if (on->chain.next == on)
-						fail("Link with self-referential next pointer in chain [%d][%d][%d]\n",
+						fail("Link with self-referential next pointer in chain [%d][%d][%d]",
 								o, i, l);
 					if (on->chain.prev == on)
-						fail("Link with self-referential prev pointer\n");
+						fail("Link with self-referential prev pointer");
 					if (on->chain.next == on->chain.prev)
-						fail("Link with identical next and prev\n");
+						fail("Link with identical next and prev");
 					on = on->chain.next;
 					steps++;
 					if (on->node == NULL) /* skip dummy nodes */
 						skips++;
 					if (on->node != NULL && on->chain.shadow != s) {
-						fail("** Found node with incorrect shadow pointer\n");
+						fail("Found node with incorrect shadow pointer");
 					}
-					if (!passed)
-						break;
+					if (hasRealNode(on) && on->matched == true)
+						fail("Found a spurious matched node: %d", getOilrNodeId(on));
+					/*if (!passed)
+						break;*/
 				}
 				if (steps-skips != s->len)
-					fail("** Found an incorrect chain length. %d-%d != s->len: %d\n",
+					fail("Found an incorrect chain length. %d-%d != s->len: %d",
 							steps, skips, s->len);
 
 				while ( on->chain.prev != NULL && steps >= 0 ) {
@@ -593,9 +655,9 @@ bool testInvariants() {
 				/* every chain must be the same length in both directions, and 
 				 * prevs must end at the head where nexts started. */
 				if (on != &(s->head) )
-					fail("** Found an inconsistency in a chain.\n");
+					fail("Found an inconsistency in a chain.");
 				if (steps != 0)
-					fail("** asymmetric chain\n");
+					fail("asymmetric chain");
 
 				s = &(gsp->shadowTables[o][i][l][true]);
 				if (!s->head.matched)
@@ -605,7 +667,7 @@ bool testInvariants() {
 		}
 	}
 	if (sum != nodeCount) {
-		fail("** nodeCount (%d) differs from number of shadow table entries (%d)\n",
+		fail("nodeCount (%d) differs from number of shadow table entries (%d)",
 				nodeCount, sum);
 	}
 
@@ -619,11 +681,11 @@ bool testInvariants() {
 		i += nodePool[l].indegree;
 	}
 	if (edgeCount-deletedEdgeCount != o) {
-		fail("** Number of Edges (%d) differs from sum of outdegrees (%d)\n",
+		fail("Number of Edges (%d) differs from sum of outdegrees (%d)",
 				edgeCount, o);
 	}
 	if (edgeCount-deletedEdgeCount != i) {
-		fail("** Number of Edges (%d) differs from sum of indegrees (%d)\n",
+		fail("Number of Edges (%d) differs from sum of indegrees (%d)",
 				edgeCount, o);
 	}
 
@@ -639,12 +701,12 @@ bool testInvariants() {
 			o++;
 		}
 		if (o != n->outdegree) {
-			fail("** Found a node with an incorrect outdegree\n");
+			fail("Found a node with an incorrect outdegree");
 		}
 		/* every node, n with a loopdegree of l has exactly 
 		*   l out-edges with target=n */
 		if (loops != n->loopdegree) {
-			fail("** Found a node with an incorrect loopdegree\n");
+			fail("Found a node with an incorrect loopdegree");
 		}
 	}
 		
@@ -653,7 +715,7 @@ bool testInvariants() {
 	if (passed)
 		printf("[32mOK[0m\n");
 	else
-		printf("[31mFailed[0m\n");
+		printf("\n[31mFailed[0m\n");
 	return passed;
 }
 
@@ -662,15 +724,9 @@ int main(int argc, char **argv) {
 	log_file = stderr;
 #endif
 	newOilrGraph();
-	if (! testInvariants() )
-		return 1;
 	_HOST();
 	dumpGraph();
-	if (! testInvariants() )
-		return 1;
 	Main();
-	if (! testInvariants() )
-		return 1;
 	dumpGraph();
 	return 0;
 }
