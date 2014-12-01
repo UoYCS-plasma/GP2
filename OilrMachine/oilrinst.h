@@ -1,21 +1,24 @@
 #ifndef OILR_INSTRUCTIONS
 #define OILR_INSTRUCTIONS
 
+#include "oilrrt.h"
+
 extern Traverser travStack[];
-extern OilrGraph oilrGraphStack[];
 extern OilrGraph *gsp;
 
 
 #define PROC(label) void label() {
 
-#define RET return; \
+#define RET clearTravs(); \
+	return; \
 }
 
 #define CALL(label) label();
-#define LOOP(label) do { label(); } while (success);
-#define JS(label) if (success) goto label;
-#define JF(label) if (!success) goto label;
-#define ZTRF if (!success) return;
+#define LOOP(label) do { \
+	trace("[34mLooping PROC(%s)[0m\n", #label); \
+	label(); \
+	trace("[34mPROC(%s) %s[0m\n", #label, success ? "succeeded" : "failed"); } while (success);
+#define ZTRF if (!success) { clearTravs(); return; }
 
 #define TN(o,i,l)    newNodeTrav(false, o, i, l, false);
 #define TIN(o,i,l)   newNodeTrav(true, o, i, l, false);
@@ -30,11 +33,11 @@ extern OilrGraph *gsp;
 #define FIXI(r) constrainI(&(travStack[r].n);
 #define FIXL(r) constrainL(&(travStack[r].n);
 
-#define DELE  deleteEdges();
-#define DELN  deleteNonInterfaceNodes();
+#define DELE  trace("deleteEdges()"); deleteEdges();
+#define DELN  trace("deleteNonInterfaceNodes()"); deleteNonInterfaceNodes();
 
-#define NEWN()  addNewOilrNode(false);
-#define NEWE(src, tgt)  addNewEdge(&(travStack[src]), &(travStack[tgt]));
+#define NEWN  addNewOilrNode(false);
+#define NEWE(src, tgt)  addNewEdge(&(travStack[src].n), &(travStack[tgt].n));
 
 #define ROOT(r) setRoot(&(travStack[r].n), true);
 #define TOOR(r) setRoot(&(travStack[r].n), false);

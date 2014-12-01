@@ -5,9 +5,11 @@ import System.Environment
 import System.Console.GetOpt
 
 import ParseProgram
+import ParseGraph
 import ParseLib
 import Cassava.Instructions
 import Cassava.Compile
+import Cassava.HostCompile
 import Cassava.NullBackend
 import Cassava.CBackend
 
@@ -33,6 +35,24 @@ main = do
                 -- putStrLn ""
                 putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
                 let code = cCompile $ compileGPProg prog
+                writeFile targ code
+                return ()
+        (flags, [progFile, hostFile], []) ->
+            do
+                putStrLn $ " ** Warning: host-graph burned into executable!"
+                p <- readFile progFile
+                h <- readFile hostFile
+                let stem = takeWhile (/= '.') progFile
+                let targ = stem ++ ".c"
+                putStrLn $ "Parsing " ++ progFile
+                let prog = parse program p
+                -- putStrLn $ show prog
+                -- putStrLn ""
+                putStrLn $ "Parsing " ++ hostFile
+                let host = parse hostGraph h
+                putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
+                let code = cCompile $ compileHostGraph host ++ compileGPProg prog
+
                 writeFile targ code
                 return ()
 

@@ -1,4 +1,4 @@
-module Cassava.Compile (compileGPProg) where
+module Cassava.Compile (compileGPProg, RegisterMap) where
 
 import GPSyntax
 import Cassava.Instructions
@@ -179,7 +179,7 @@ classifyEdgeForId id (AstRuleEdge _ _ i o _) =
         _            -> UninterestingEdge
 
 classifyEdgesForNode :: RuleName -> [AstRuleEdge] -> (Deg, Deg, Deg)
-classifyEdgesForNode id es = (ins, outs, loops)
+classifyEdgesForNode id es = (outs, ins, loops)
     where
         ins   = length $ filter (==InEdge) cs
         outs  = length $ filter (==OutEdge) cs

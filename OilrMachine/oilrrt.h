@@ -1,9 +1,57 @@
-#ifndef INC_OIL_GRAPH_H
-#define INC_OIL_GRAPH_H
+#ifndef OILRRT_H
+#define OILRRT_H
 
 #include <stdbool.h>
 
-bool success;
+#ifdef DEBUG
+#include <stdio.h>
+#define trace(...) printf (__VA_ARGS__)
+#else
+#define trace(...)
+#endif
+
+
+#ifdef OILR_STANDALONE
+
+#define MAX_NODES 64
+#define MAX_EDGES 128
+#define MAX_INCIDENT_EDGES 16
+
+/* dummy data structures for testing OILR in isolation */
+typedef void Label ;
+struct Edge;
+
+typedef struct Node {
+	bool root;
+	struct Node *index;
+	int outdegree, indegree;
+	int loopdegree;
+	struct Edge *out_edges[MAX_INCIDENT_EDGES];
+} Node;
+
+typedef struct Edge {
+	struct Edge *index;
+	Node *source, *target;
+} Edge;
+
+typedef struct Graph {
+	void *dummy;
+} Graph;
+
+extern Edge edgePool[];
+extern Node nodePool[];
+
+
+#else
+
+#include "graph.h"
+
+#endif
+
+
+
+
+extern bool success;
 
 struct OilrNode;
 
@@ -13,24 +61,11 @@ struct OilrNode;
 #define TOOMANYR 2
 
 
-#ifdef OILR_STANDALONE
-
-typedef struct Edge {
-	int index;
-	Node *src, *tgt;
-}
-
-typedef struct Node {
-	int index;
-	int out_edges;
-} Node;
-
-#endif
 
 
 typedef struct Link {
 	struct OilrNode *prev;
-	int val;
+	struct Shadow *shadow;
 	struct OilrNode *next;
 } Link;
 
@@ -58,6 +93,7 @@ typedef struct OilrEdge {
 typedef struct NodeTraverser {
 	OilrNode *oilrNode;
 	int o,i,l;
+	int fromo, fromi, froml;
 	int capo, capi, capl;
 	bool r;
 	bool isInterface;
@@ -81,6 +117,9 @@ typedef enum {
 #define isNodeTrav(t) ((t->type & 0x1) ? true : false)
 #define isEdgeTrav(t) ((t->type & 0x2) ? true : false)
 #define isNegated(t) ((t->type < 0) ? true : false)
+
+#define getTravNode(someTrav) (trav->n->oilrNode)
+#define getTravEdge(someTrav) (trav->e->edge)
 
 typedef struct Traverser {
 	TravType type;
@@ -158,4 +197,4 @@ void runSearch();
 
 
 
-#endif /* INC_OIL_GRAPH_H */
+#endif /* OILRRT_H */

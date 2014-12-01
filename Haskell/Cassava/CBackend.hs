@@ -35,5 +35,5 @@ cCompileI i | i `elem` [GO, DELE, DELN, ZTRF, NEWN] = "    " ++ show i
 
 
 cCompile :: Prog -> String
-cCompile prog = "#include \"oilrinst.h\"\n#include \"oilrgraph.h\"\n\n" ++ (concat . intersperse "\n" . map cCompileI) prog
+cCompile prog = "#include \"oilrinst.h\"\n#include \"oilrrt.h\"\n\n" ++ (concat . intersperse "\n" . map cCompileI) prog
 

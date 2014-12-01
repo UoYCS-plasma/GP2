@@ -1,15 +1,17 @@
-CC=gcc -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
+CC=gcc
+# -Wall -Wextra
 
-OBJECTS=oilrruntime.o Compiler/graph.o Compiler/graph.o Compiler/stack.o
+TARGETS=oilrrt.o
 
-runtime.a : $(OBJECTS)
-	ar rcs $@ $(OBJECTS)
-	ranlib $@
+oilrrt_s.o : oilrrt.o
+	cp $< $@
+
+
 
 %.o : %.c
-	$(CC) -g -c $<
+	$(CC) -g -c $(CFLAGS) $<
 
 clean :
-	rm -f *.o runtime.a
+	rm -f *.o
 
 
