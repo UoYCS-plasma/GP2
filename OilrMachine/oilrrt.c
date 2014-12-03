@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <error.h>
 
 #include "oilrrt.h"
 
@@ -14,7 +16,7 @@ bool success = false;
 #define nextInChain(on) ((on)->chain.next)
 #define prevInChain(on) ((on)->chain.prev)
 
-#define hasRealNode(on) ((on)->node != NULL)
+#define hasRealNode(on) ((on) && (on)->node != NULL)
 
 #define getNodeId(n)      ( (n)==NULL ? -1 : (int)((n)-nodePool))
 #define getEdgeId(e)      ( (e)==NULL ? -1 : (int)((e)-edgePool))
@@ -25,6 +27,10 @@ bool success = false;
 #define getTravId(t)      ( (t)==NULL ? -1 : (int)((t)-travStack))
 
 #define isDeletedEdge(e)  ( (e)->source == NULL )
+
+#define match(on) (on)->matched = true
+#define unmatch(on) (on)->matched = false
+#define isMatched(on) ((on)->matched)
 
 /* TODO: no bounds checking! stack overflow will happen! */
 Traverser travStack[TRAV_STACK_SIZE];
@@ -45,7 +51,7 @@ OilrNode *freeOilrNode = oilrNodePool;
 OilrNode nullNode = {
 	.node = NULL,
 	.matched = true, /* always set so dummy nodes won't be returned by a traverser */
-	.chain = { .prev = NULL , .shadow = NULL , .next = NULL },
+	.chain = { .prev = NULL , .index = NULL , .next = NULL },
 };
 
 
@@ -161,7 +167,7 @@ void dumpTravStack(Traverser *txp) {
 				col = id<0 ? "[31m" : "[32m";
 				if (id>=0)
 					printf("%sn%d ", col, id);
-				else if (id == -2)
+				else if (id == -1)
 					printf("%sn_ ", col);
 				else
 					printf("[31mn?? ");
@@ -190,14 +196,14 @@ void dumpTravStack(Traverser *txp) {
 }
 
 
-void initShadowTables(OilrGraph *g) {
+void initIndices(OilrGraph *g) {
 	int o,i,l;
-	Shadow *s, *sr;
+	Index *s, *sr;
 	for (o=0; o<TOOMANYO; o++) {
 		for (i=0; i<TOOMANYI; i++) {
 			for (l=0; l<TOOMANYL; l++) {
-				s = &(g->shadowTables[o][i][l][false]);
-				sr = &(g->shadowTables[o][i][l][true]);
+				s = &(g->indices[o][i][l][false]);
+				sr = &(g->indices[o][i][l][true]);
 
 				s->head = nullNode;
 				sr->head = nullNode;
@@ -214,17 +220,60 @@ void initShadowTables(OilrGraph *g) {
 
 OilrGraph *newOilrGraph() {
 	(++gsp)->graph = newGraph();
-	initShadowTables(gsp);
+	initIndices(gsp);
 	return gsp;
+}
+
+void makeSearchSpace(Traverser *t) {
+	int o, i, l, pos=0;
+	Index *ind;
+	NodeTraverser *nt = &(t->n);
+	SearchSpace *spc;
+	/* only node-traversers need search spaces */
+	if (!isNodeTrav(t))
+		return;
+
+	if ( !(spc = malloc(sizeof(SearchSpace))) ) {
+		error(1, 0, "Couldn't allocate a new search space");
+	}
+	spc->pos = 0;
+	spc->size = 0;
+
+	if (nt->isInterface) {
+		for (o=nt->o; o<nt->capo; o++) {
+			for (i=nt->i; i<nt->capo; i++) {
+				for (l=nt->l; l<nt->capl; l++) {
+					/* add all indices containing candidates to search space */
+					ind = &(gsp->indices[o][i][l][nt->r]);
+					if (ind->len == 0)
+						continue;
+					spc->index[pos++] = ind;
+					spc->size += ind->len;
+					/* TODO: special cases for spc->size == 1 and spc->size == 0 */
+				}
+			}
+		}
+		trace("Search space %d: O:%d-%d  I:%d-%d  L:%d-%d  R:%d", getTravId(t),
+				nt->o, nt->capo,
+				nt->i, nt->capi,
+				nt->l, nt->capl,
+				nt->r);
+		trace("Contains %d nodes across %d live indices", spc->size, pos);
+	} else {
+		/* TODO */
+		spc->index[pos++] = &(gsp->indices[nt->o][nt->i][nt->l][nt->r]);
+	}
+	spc->index[pos+1] = NULL;
+	t->n.searchSpace = spc;
 }
 
 void disconnect(OilrNode *n) {
 	/* TODO: not updating chain-length count! */
 	OilrNode *prev = prevInChain(n), *next = nextInChain(n);
-	n->chain.shadow->len--;
+	n->chain.index->len--;
 	nextInChain(prev) = next;
 	prevInChain(next) = prev;
-	n->chain.shadow = NULL;
+	n->chain.index = NULL;
 	nextInChain(n) = NULL;
 	prevInChain(n) = NULL;
 }
@@ -232,7 +281,7 @@ void disconnect(OilrNode *n) {
 /* When kind == RootTrav val is ignored! */
 void connect(OilrNode *n) {
 	OilrNode *next, *head;
-	Shadow *s;
+	Index *s;
 	int loop = n->node->loopdegree;
 	int out  = n->node->outdegree - loop;
 	int in   = n->node->indegree - loop;
@@ -241,13 +290,13 @@ void connect(OilrNode *n) {
 	in   = in   < TOOMANYI ? in   : TOOMANYI-1;
 	loop = loop < TOOMANYL ? loop : TOOMANYL-1;
 
-	s = &(gsp->shadowTables[out][in][loop][root]);
+	s = &(gsp->indices[out][in][loop][root]);
 	head = &(s->head);
 	next = nextInChain(head);
 	nextInChain(head) = n;
 	prevInChain(n) = head;
 	nextInChain(n) = next;
-	n->chain.shadow = s;
+	n->chain.index = s;
 	if (next != NULL)
 		next->chain.prev = n;
 	s->len++;
@@ -257,8 +306,8 @@ OilrNode *addNewOilrNode(bool root) {
 	newNodeTrav(true, 0, 0, 0, root);
 	tsp->type = NodeTrav;
 	freeOilrNode->node = newNode(root, NULL);
-	freeOilrNode->matched = false;
-	freeOilrNode->chain.shadow = NULL;
+	unmatch(freeOilrNode);
+	freeOilrNode->chain.index = NULL;
 	tsp->n.oilrNode =  freeOilrNode;
 	connect(freeOilrNode);
 	return freeOilrNode++;
@@ -279,7 +328,7 @@ Edge *addNewEdge(NodeTraverser *src, NodeTraverser *tgt) {
 
 void remOilrNode(NodeTraverser *nt) {
 	/* TODO: should this automatically remove all in- and out-bound edges? If
-	 * so, beware of double-freeing loops! TODO: remove from Shadow Tables too! */
+	 * so, beware of double-freeing loops! TODO: remove from index Tables too! */
 	removeNode(gsp->graph, nt->oilrNode->node->index);
 	nt->oilrNode->node = NULL; /* mark for garbage collection */
 	disconnect(nt->oilrNode);
@@ -331,10 +380,8 @@ void deleteNonInterfaceNodes() {
 
 
 
-
-/* TODO: does having a zero default for o, i and l have any
-   implications for non-interface nodes? */
 void newNodeTrav(bool isInterface, int o, int i, int l, bool root) {
+	/* TODO: o, i, and l should be capped at TOOMANYx too */
 	tsp++;
 	tsp->type = NodeTrav;
 	tsp->n.o = tsp->n.fromo = o;
@@ -344,7 +391,7 @@ void newNodeTrav(bool isInterface, int o, int i, int l, bool root) {
 	tsp->n.capo = TOOMANYO;
 	tsp->n.capi = TOOMANYI;
 	tsp->n.capl = TOOMANYL;
-	tsp->n.oilrNode = &(gsp->shadowTables[o][i][l][root].head);
+	tsp->n.oilrNode = NULL; //  &(gsp->indices[o][i][l][root].head);
 	tsp->n.isInterface = isInterface;
 }
 
@@ -363,92 +410,18 @@ void newNegatedEdgeTrav(NodeTraverser *src, NodeTraverser *tgt) {
 }
 
 void clearTravs() {
-	trace("clearTravs(): success=%s\n", success ? "true" : "false");
+	trace("clearTravs() (success=%s):", success ? "true" : "false");
 	while (tsp >= travStack) {
-		if ( isNodeTrav(tsp) && hasRealNode(tsp->n.oilrNode) ) {
-			tsp->n.oilrNode->matched = false;
-			tsp->type = InvalidTrav;
+		if (isNodeTrav(tsp)) {
+			if (tsp->n.searchSpace)
+				free(tsp->n.searchSpace);
+			if (hasRealNode(tsp->n.oilrNode) ) {
+				unmatch(tsp->n.oilrNode);
+				tsp->type = InvalidTrav;
+			}
 		}
 		tsp--;
 	}
-}
-
-/* Return the next node from a traverser. */
-bool nextNode(NodeTraverser *nt) {
-	/* this requires some thought:
-	 *
-	 * nt may point to either:
-	 *  - dummy node at head of chain (fresh trav only)
-	 *  - a real node (used trav)
-	 *
-	 * we must never see an nt with a NULL oilrNode here.
-	 */
-
-	int o,i,l;
-	OilrNode *on = nt->oilrNode;
-	Shadow *s;
-
-	/* if we've got a non-dummy node, clear the matched flag, and advance
-	 * (because we already know this node will match the rule). */
-	if ( hasRealNode(on) ) {
-		on->matched = false;
-		on = nextInChain(on);
-	}
-
-	if (nt->isInterface) {
-		/* TODO: naive traversal strategy! */
-		/* TODO: only works for fixing in- and out-degrees at zero */
-		for (o=nt->o; o<nt->capo; o++) {
-			for (i=nt->i; i<nt->capi; i++) {
-				for (l=nt->l; l<nt->capl; l++) {
-					s = &(gsp->shadowTables[o][i][l][nt->r]);
-					/* no point descending empty chains */
-					if (s->len == 0)
-						continue;
-
-					//trace("\n\to=%d i=%d l=%d   count=%d", o, i, l, s->len);
-
-					/* if we reached the end of a previous chain
-					 * and wrapped to a new one... */
-					if (on == NULL)
-						on = &(s->head);
-
-					/* skip over dummy and matched nodes */
-					while (on && on->matched) {
-						on = nextInChain(on);
-					} 
-
-					/* if we get to here, we've either... */
-					if (on == NULL) /* ...reached the end of the chain... */ 
-						continue;
-					else {         /* ...or found a candidate */
-						on->matched = true;
-						nt->oilrNode = on;
-						nt->o = o;
-						nt->i = i;
-						nt->l = l;
-						return true;
-					}
-				}
-			}
-		}
-
-		/* update state so that we don't repeat last traversal if the spent
-		 * traverser incorrectly gets called again */
-		nt->o = o;
-		nt->i = i;
-		nt->l = l;
-	} else {
-		while (on && on->matched) { /* skip dummy and already-matched nodes */
-			on = nextInChain(on);
-		}
-		if (on != NULL) {
-			on->matched = true;
-			nt->oilrNode = on;
-			return true;
-		}
-	}
-	return false;
 }
 
 Edge *findEdgeBetween(OilrNode *src, OilrNode *tgt) {
@@ -489,12 +462,14 @@ void resetTrav(Traverser *t) {
 	NodeTraverser *nt = &(t->n);
 	EdgeTraverser *et = &(t->e);
 	if ( isNodeTrav(t) ) {
+		/* reset the search space tracker */
+		nt->searchSpace->pos = 0;
 		o = nt->fromo;
 		i = nt->fromi;
 		l = nt->froml;
 		if (nt->oilrNode && hasRealNode(nt->oilrNode)) {
-			nt->oilrNode->matched = false;
-			nt->oilrNode = &(gsp->shadowTables[o][i][l][nt->r].head);
+			unmatch(nt->oilrNode);
+			nt->oilrNode = NULL;
 		}
 		nt->o = o;
 		nt->i = i;
@@ -504,27 +479,69 @@ void resetTrav(Traverser *t) {
 	}
 }
 
+OilrNode *nextUnmatchedNodeInChain(OilrNode *on) {
+	/* requires a valid OilrNode! */
+	if (hasRealNode(on))
+		unmatch(on);
+	do {
+		on = on->chain.next;
+		if (!on)
+			return NULL;
+	} while (isMatched(on));
+	match(on);
+	return on;
+}
+
+bool findCandidateNode(NodeTraverser *nt) {
+	/* TODO: nt must have a valid, non-exhausted search space! */
+	SearchSpace *spc = nt->searchSpace;
+	Index *ind = spc->index[spc->pos];
+	OilrNode *on = nt->oilrNode == NULL ? &(ind->head) : nt->oilrNode;
+	
+	do {
+		if (!on)
+			on = &(ind->head);
+		while ( (on = nextUnmatchedNodeInChain(on)) ) {
+			nt->oilrNode = on;
+			return true;
+		} 
+		spc->pos++;
+	} while ( (ind = spc->index[spc->pos]) );
+	return false;
+}
+
 void runSearch() {
 	Traverser *txp = travStack;
+	SearchSpace *spc;
 	bool found;
 	dumpTravStack(txp);
-	trace("runSearch:\n");
+
+	/* set-up search spaces */
 	while (txp <= tsp) {
 		if (isNodeTrav(txp)) {
-			if (! nextNode(&(txp->n)) ) {
-				/* backtrack */
-				//trace("\n\t[33m-- failure[0m\n");
+			makeSearchSpace(txp); /* init the search space */
+			spc = txp->n.searchSpace;
+			if (spc->size == 0) {
+				/* can't ever match this traverser with this host graph! */
+				trace("Shortcut exit due to unmatchable rule node.");
 				success = false;
-				resetTrav(txp);
-				txp--;
-				dumpTravStack(txp);
-				if (txp<travStack) {
-					trace("\texit runSearch()\n");
-					return;
-				}
-				continue;
+				return;
 			}
-			// trace(" [32m-- success[0m oNode=%d\n", getOilrNodeId(txp->n.oilrNode));
+		}
+		/* TODO: fix traverser on single matching node */
+		txp++;
+	}
+
+	txp = travStack;
+	while (txp <= tsp) {
+		if ( isNodeTrav(txp) && !findCandidateNode(&(txp->n)) ) {
+			success = false;
+			resetTrav(txp);
+			txp--;
+			dumpTravStack(txp);
+			if (txp < travStack)
+				return;
+			continue;
 		} else if (isEdgeTrav(txp)) {
 			found = nextEdge(&(txp->e));
 			if (isNegated(txp))
@@ -587,7 +604,7 @@ bool testInvariants() {
 	int edgeCount = getEdgeId(freeEdge);
 	int oilrNodeCount = getOilrNodeId(freeOilrNode);
 	int deletedEdgeCount = 0;
-	Shadow *s;
+	Index *s;
 	Node *n;
 	Edge *e;
 	OilrNode *on;
@@ -598,7 +615,7 @@ bool testInvariants() {
 	}
 
 	printf("Testing invariants... ");
-	/* sum of lens in shadowTables
+	/* sum of lens in indices
 	 * 	== nodeCount
 	 * 	== oilrNodeCount */
 	if (nodeCount != oilrNodeCount) {
@@ -609,17 +626,17 @@ bool testInvariants() {
 			for (l=0; l<TOOMANYL; l++) {
 				steps = 0;
 				skips = 0;
-				s = &(gsp->shadowTables[o][i][l][false]);
+				s = &(gsp->indices[o][i][l][false]);
 				/* root chain -> prev -> next shoudl be root chain. */
 				if (&(s->head) != s->head.chain.next->chain.prev)
 					fail("Root chaining incorrectly initialised");
 
-				if (!s->head.matched)
+				if (!isMatched(&(s->head)))
 					fail("dummy node with unset matched flag: [%d][%d][%d][false]", o, i, l);
 
 				sum += s->len;
 
-				/* every real node n in chain ch points back to Shadow s, at the
+				/* every real node n in chain ch points back to index s, at the
 				 * head of ch */
 				on = &(s->head);
 				while ( on->chain.next != NULL && steps <= MAX_NODES) {
@@ -635,10 +652,10 @@ bool testInvariants() {
 					steps++;
 					if (on->node == NULL) /* skip dummy nodes */
 						skips++;
-					if (on->node != NULL && on->chain.shadow != s) {
-						fail("Found node with incorrect shadow pointer");
+					if (on->node != NULL && on->chain.index != s) {
+						fail("Found node with incorrect index pointer");
 					}
-					if (hasRealNode(on) && on->matched == true)
+					if (hasRealNode(on) && isMatched(on))
 						fail("Found a spurious matched node: %d", getOilrNodeId(on));
 					/*if (!passed)
 						break;*/
@@ -659,15 +676,15 @@ bool testInvariants() {
 				if (steps != 0)
 					fail("asymmetric chain");
 
-				s = &(gsp->shadowTables[o][i][l][true]);
-				if (!s->head.matched)
+				s = &(gsp->indices[o][i][l][true]);
+				if (!isMatched(&(s->head)))
 					fail("Found a dummy node on root chain with unset matched flag");
 
 			}
 		}
 	}
 	if (sum != nodeCount) {
-		fail("nodeCount (%d) differs from number of shadow table entries (%d)",
+		fail("nodeCount (%d) differs from number of index table entries (%d)",
 				nodeCount, sum);
 	}
 

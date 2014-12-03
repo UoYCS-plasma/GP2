@@ -5,7 +5,7 @@
 
 #ifdef DEBUG
 #include <stdio.h>
-#define trace(...) printf (__VA_ARGS__)
+#define trace(...) do { printf("--> ") ; printf(__VA_ARGS__) ; printf("\n");} while (false);
 #else
 #define trace(...)
 #endif
@@ -14,8 +14,8 @@
 #ifdef OILR_STANDALONE
 
 #define MAX_NODES 64
-#define MAX_EDGES 128
-#define MAX_INCIDENT_EDGES 16
+#define MAX_EDGES 1024
+#define MAX_INCIDENT_EDGES 128
 
 /* dummy data structures for testing OILR in isolation */
 typedef void Label ;
@@ -65,7 +65,7 @@ struct OilrNode;
 
 typedef struct Link {
 	struct OilrNode *prev;
-	struct Shadow *shadow;
+	struct Index *index;
 	struct OilrNode *next;
 } Link;
 
@@ -75,19 +75,24 @@ typedef struct OilrNode {
 	Link chain;
 } OilrNode;
 
-typedef struct Shadow {
+typedef struct Index {
 	int len;
 	OilrNode head;
-} Shadow;
+} Index;
 
 typedef struct OilrGraph {
 	Graph *graph;
-	Shadow shadowTables[TOOMANYO][TOOMANYI][TOOMANYL][2];
+	Index indices[TOOMANYO][TOOMANYI][TOOMANYL][2];
 } OilrGraph;
 
 typedef struct OilrEdge {
 	Edge *edge;
 } OilrEdge;
+
+typedef struct SearchSpace {
+	int size, pos;
+	Index *index[TOOMANYO*TOOMANYI*TOOMANYL*2 + 1];
+} SearchSpace;
 
 
 typedef struct NodeTraverser {
@@ -97,6 +102,7 @@ typedef struct NodeTraverser {
 	int capo, capi, capl;
 	bool r;
 	bool isInterface;
+	SearchSpace *searchSpace;
 } NodeTraverser;
 
 typedef struct EdgeTraverser {

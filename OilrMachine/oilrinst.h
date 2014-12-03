@@ -28,9 +28,9 @@ extern OilrGraph *gsp;
 
 #define XE(src, tgt) newNegatedEdgeTrav(&(travStack[src].n), &(travStack[tgt].n));
 
-#define FIXO(r) constrainO(&(travStack[r].n);
-#define FIXI(r) constrainI(&(travStack[r].n);
-#define FIXL(r) constrainL(&(travStack[r].n);
+#define FIXO(r) constrainO(&(travStack[r].n));
+#define FIXI(r) constrainI(&(travStack[r].n));
+#define FIXL(r) constrainL(&(travStack[r].n));
 
 #define DELE  trace("deleteEdges()"); deleteEdges();
 #define DELN  trace("deleteNonInterfaceNodes()"); deleteNonInterfaceNodes();
