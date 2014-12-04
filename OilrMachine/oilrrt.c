@@ -10,8 +10,7 @@ extern void _HOST();
 
 bool success = false;
 
-
-#define fail(...) do { printf ("\n ** ") ; printf (__VA_ARGS__) ; passed = false; } while (false);
+#define DYNAMIC_OPTS
 
 #define nextInChain(on) ((on)->chain.next)
 #define prevInChain(on) ((on)->chain.prev)
@@ -27,6 +26,7 @@ bool success = false;
 #define getTravId(t)      ( (t)==NULL ? -1 : (int)((t)-travStack))
 
 #define isDeletedEdge(e)  ( (e)->source == NULL )
+#define isDeletedNode(n)  ( (n)->node == NULL )
 
 #define match(on) (on)->matched = true
 #define unmatch(on) (on)->matched = false
@@ -42,7 +42,6 @@ OilrGraph *gsp = oilrGraphStack;
 
 /* MAX_NODES and MAX_EDGES are defined in graph.h */
 OilrNode oilrNodePool[MAX_NODES];
-OilrNode *freeOilrNode = oilrNodePool;
 
 /* *************************************************** */
 /* Graph building and modification functions           */
@@ -58,6 +57,11 @@ OilrNode nullNode = {
 
 #ifdef OILR_STANDALONE
 
+#define getO(n) ((n)->outdegree - (n)->loopdegree)
+#define getI(n) ((n)->indegree  - (n)->loopdegree)
+#define getL(n) ((n)->loopdegree)
+#define getR(n) ((n)->root)
+
 Graph dummyGraph = { NULL };
 
 Node nodePool[MAX_NODES];
@@ -72,7 +76,7 @@ Graph *newGraph() {
 
 Node *newNode(bool root, Label *label) {
 	freeNode->root = root;
-	freeNode->index = freeNode; /* not an index! just to preserve API compat */
+	freeNode->index = getNodeId(freeNode); /* not an index! just to preserve API compat */
 	freeNode->indegree = 0;
 	freeNode->outdegree = 0;
 	freeNode->loopdegree = 0;
@@ -123,7 +127,7 @@ void removeEdge(Graph *g, Edge *e) {
 	while (free > edgePool) {
 		/* compaction */
 		--free;
-		if (free->index != NULL) {
+		if (free->index >= 0) {
 			free++;
 			break;
 		}
@@ -131,13 +135,14 @@ void removeEdge(Graph *g, Edge *e) {
 	freeEdge = free;
 }
 
-void removeNode(Graph *g, Node *n) {
+void removeNode(Graph *g, int index) {
 	Node *free = freeNode;
-	n->index = NULL;
+	Node *n = &(nodePool[index]);
+	n->index = -1;
 	while (free > nodePool) {
 		/* compaction */
 		--free;
-		if (free->index != NULL) {
+		if (free->index >= 0) {
 			free++;
 			break;
 		}
@@ -151,7 +156,7 @@ FILE *log_file;
 #endif
 
 
-
+#ifdef DEBUG
 void dumpTravStack(Traverser *txp) {
 	int id;
 	char *col;
@@ -194,6 +199,7 @@ void dumpTravStack(Traverser *txp) {
 	}
 	printf("[0m\n");
 }
+#endif
 
 
 void initIndices(OilrGraph *g) {
@@ -228,16 +234,19 @@ void makeSearchSpace(Traverser *t) {
 	int o, i, l, pos=0;
 	Index *ind;
 	NodeTraverser *nt = &(t->n);
-	SearchSpace *spc;
+	SearchSpace *spc = &(nt->searchSpace);
+	Index **buf;
 	/* only node-traversers need search spaces */
 	if (!isNodeTrav(t))
 		return;
 
-	if ( !(spc = malloc(sizeof(SearchSpace))) ) {
+	if ( !(buf = malloc(sizeof(Index *) * TOOMANYO * TOOMANYL * TOOMANYI + 1)) ) { 
 		error(1, 0, "Couldn't allocate a new search space");
 	}
 	spc->pos = 0;
 	spc->size = 0;
+	spc->index = buf;
+	spc->edgeFrom = NULL;
 
 	if (nt->isInterface) {
 		for (o=nt->o; o<nt->capo; o++) {
@@ -264,7 +273,6 @@ void makeSearchSpace(Traverser *t) {
 		spc->index[pos++] = &(gsp->indices[nt->o][nt->i][nt->l][nt->r]);
 	}
 	spc->index[pos+1] = NULL;
-	t->n.searchSpace = spc;
 }
 
 void disconnect(OilrNode *n) {
@@ -303,14 +311,18 @@ void connect(OilrNode *n) {
 }
 
 OilrNode *addNewOilrNode(bool root) {
+	Node *n = newNode(root, NULL);
+	OilrNode *on = &(oilrNodePool[n->index]);
+	on->node = n;
+	unmatch(on);
+	on->chain.index = NULL;
+	connect(on);
+
 	newNodeTrav(true, 0, 0, 0, root);
 	tsp->type = NodeTrav;
-	freeOilrNode->node = newNode(root, NULL);
-	unmatch(freeOilrNode);
-	freeOilrNode->chain.index = NULL;
-	tsp->n.oilrNode =  freeOilrNode;
-	connect(freeOilrNode);
-	return freeOilrNode++;
+	tsp->n.oilrNode = on;
+
+	return on;
 }
 
 Edge *addNewEdge(NodeTraverser *src, NodeTraverser *tgt) {
@@ -332,10 +344,6 @@ void remOilrNode(NodeTraverser *nt) {
 	removeNode(gsp->graph, nt->oilrNode->node->index);
 	nt->oilrNode->node = NULL; /* mark for garbage collection */
 	disconnect(nt->oilrNode);
-	while (freeOilrNode->node == NULL && freeOilrNode > oilrNodePool) {
-		/* maybe free some nodes */
-		freeOilrNode--;
-	}
 }
 
 
@@ -393,6 +401,8 @@ void newNodeTrav(bool isInterface, int o, int i, int l, bool root) {
 	tsp->n.capl = TOOMANYL;
 	tsp->n.oilrNode = NULL; //  &(gsp->indices[o][i][l][root].head);
 	tsp->n.isInterface = isInterface;
+	tsp->n.searchSpace.pos = 0;
+	tsp->n.searchSpace.edgeFrom = 0;
 }
 
 
@@ -413,8 +423,8 @@ void clearTravs() {
 	trace("clearTravs() (success=%s):", success ? "true" : "false");
 	while (tsp >= travStack) {
 		if (isNodeTrav(tsp)) {
-			if (tsp->n.searchSpace)
-				free(tsp->n.searchSpace);
+			if (tsp->n.searchSpace.index)
+				free(tsp->n.searchSpace.index);
 			if (hasRealNode(tsp->n.oilrNode) ) {
 				unmatch(tsp->n.oilrNode);
 				tsp->type = InvalidTrav;
@@ -444,7 +454,6 @@ bool nextEdge(EdgeTraverser *et) {
 		return NULL;
 	}
 	return (et->edge = findEdgeBetween(et->src->oilrNode, et->tgt->oilrNode));
-	
 }
 
 void constrainO(NodeTraverser *nt) {
@@ -463,7 +472,7 @@ void resetTrav(Traverser *t) {
 	EdgeTraverser *et = &(t->e);
 	if ( isNodeTrav(t) ) {
 		/* reset the search space tracker */
-		nt->searchSpace->pos = 0;
+		nt->searchSpace.pos = 0;
 		o = nt->fromo;
 		i = nt->fromi;
 		l = nt->froml;
@@ -492,35 +501,87 @@ OilrNode *nextUnmatchedNodeInChain(OilrNode *on) {
 	return on;
 }
 
+OilrNode *nextUnmatchedNodeFromEdge(NodeTraverser *nt) {
+	int pos, in, out, loop;
+	bool root;
+	OilrNode *on, *origin = nt->searchSpace.edgeFrom->oilrNode;
+	Node *n = NULL;
+	if (origin == NULL)
+		error(1, 0, "NULL node as edge origin! Something went wrong!");
+
+	if (hasRealNode(nt->oilrNode))
+		unmatch(nt->oilrNode);
+			
+	trace("%d", nt->searchSpace.pos);
+	for (pos=nt->searchSpace.pos; pos<origin->node->outdegree; pos++) {
+		n = origin->node->out_edges[pos]->target;
+		out  = getO(n);
+		in   = getI(n);
+		loop = getL(n);
+		root = getR(n);
+
+		if (root == nt->r) {
+			if (nt->isInterface
+					/* TODO: completely disregards limited range (eg from indeg() directive) */
+					&& out  >= nt->o
+					&& in   >= nt->i
+					&& loop >= nt->l ) {
+				on = &(oilrNodePool[n->index]);
+				match(on); /* Nodes and OilrNodes must have the same index */
+				break;
+			} else if ( out == nt->o
+					&&   in == nt->i
+					&& loop == nt->l) {
+				on = &(oilrNodePool[n->index]);
+				match(on); /* Nodes and OilrNodes must have the same index */
+				break;
+			}
+		}
+		on = NULL;
+	}
+
+	nt->searchSpace.pos = pos+1;
+	return on;
+}
+
 bool findCandidateNode(NodeTraverser *nt) {
 	/* TODO: nt must have a valid, non-exhausted search space! */
-	SearchSpace *spc = nt->searchSpace;
-	Index *ind = spc->index[spc->pos];
-	OilrNode *on = nt->oilrNode == NULL ? &(ind->head) : nt->oilrNode;
+	SearchSpace *spc = &(nt->searchSpace);
+	Index *ind;
+	OilrNode *on;
 	
-	do {
-		if (!on)
-			on = &(ind->head);
-		while ( (on = nextUnmatchedNodeInChain(on)) ) {
+	if (spc->edgeFrom) {
+		while ( (on = nextUnmatchedNodeFromEdge(nt)) ) {
 			nt->oilrNode = on;
 			return true;
-		} 
-		spc->pos++;
-	} while ( (ind = spc->index[spc->pos]) );
+		}
+	} else {
+		ind = spc->index[spc->pos];
+		on = nt->oilrNode == NULL ? &(ind->head) : nt->oilrNode;
+		do {
+			if (!on)
+				on = &(ind->head);
+			while ( (on = nextUnmatchedNodeInChain(on)) ) {
+				nt->oilrNode = on;
+				return true;
+			} 
+			spc->pos++;
+		} while ( (ind = spc->index[spc->pos]) );
+	}
 	return false;
 }
 
 void runSearch() {
-	Traverser *txp = travStack;
+	Traverser *txp = tsp;
 	SearchSpace *spc;
 	bool found;
-	dumpTravStack(txp);
 
 	/* set-up search spaces */
-	while (txp <= tsp) {
-		if (isNodeTrav(txp)) {
+	while (txp >= travStack) {
+		if (isNodeTrav(txp) && !txp->n.searchSpace.edgeFrom) {
+			/* TODO: fix traverser result on single matching node */
 			makeSearchSpace(txp); /* init the search space */
-			spc = txp->n.searchSpace;
+			spc = &(txp->n.searchSpace);
 			if (spc->size == 0) {
 				/* can't ever match this traverser with this host graph! */
 				trace("Shortcut exit due to unmatchable rule node.");
@@ -528,11 +589,18 @@ void runSearch() {
 				return;
 			}
 		}
-		/* TODO: fix traverser on single matching node */
-		txp++;
+#ifdef DYNAMIC_OPTS
+		else if (isEdgeTrav(txp) && txp->e.src <= txp->e.tgt) {
+			/* TODO: only works for out-edges currently. Needs to consider in-edges too */
+			txp->e.tgt->searchSpace.edgeFrom = txp->e.src;
+			
+		} 
+#endif
+		txp--;
 	}
 
 	txp = travStack;
+	dumpTravStack(txp);
 	while (txp <= tsp) {
 		if ( isNodeTrav(txp) && !findCandidateNode(&(txp->n)) ) {
 			success = false;
@@ -596,13 +664,25 @@ void dumpGraph() {
 	printf("]\n");
 }
 
+#ifdef DEBUG
+#define fail(...) do { printf ("\n ** ") ; printf (__VA_ARGS__) ; passed = false; } while (false);
+
+int countOilrNodes() {
+	int i, total=0;
+	for (i=0; i<MAX_NODES; i++) {
+		if (!isDeletedNode(&(oilrNodePool[i])))
+			total++;
+	}
+	return total;
+}
+
 bool testInvariants() {
 	bool passed = true;
 	int o, i, l, sum=0, steps=0, skips=0, loops=0;
 	/* TODO: will these still hold we start deleting nodes?! */
 	int nodeCount = getNodeId(freeNode);
 	int edgeCount = getEdgeId(freeEdge);
-	int oilrNodeCount = getOilrNodeId(freeOilrNode);
+	int oilrNodeCount = countOilrNodes();
 	int deletedEdgeCount = 0;
 	Index *s;
 	Node *n;
@@ -735,6 +815,7 @@ bool testInvariants() {
 		printf("\n[31mFailed[0m\n");
 	return passed;
 }
+#endif
 
 int main(int argc, char **argv) {
 #ifndef OILR_STANDALONE

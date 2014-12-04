@@ -8,6 +8,8 @@
 #define trace(...) do { printf("--> ") ; printf(__VA_ARGS__) ; printf("\n");} while (false);
 #else
 #define trace(...)
+#define dumpTravStack(x)
+#define testInvariants()
 #endif
 
 
@@ -23,7 +25,7 @@ struct Edge;
 
 typedef struct Node {
 	bool root;
-	struct Node *index;
+	int index;
 	int outdegree, indegree;
 	int loopdegree;
 	struct Edge *out_edges[MAX_INCIDENT_EDGES];
@@ -91,7 +93,8 @@ typedef struct OilrEdge {
 
 typedef struct SearchSpace {
 	int size, pos;
-	Index *index[TOOMANYO*TOOMANYI*TOOMANYL*2 + 1];
+	struct NodeTraverser *edgeFrom;
+	Index **index;
 } SearchSpace;
 
 
@@ -102,7 +105,7 @@ typedef struct NodeTraverser {
 	int capo, capi, capl;
 	bool r;
 	bool isInterface;
-	SearchSpace *searchSpace;
+	SearchSpace searchSpace;
 } NodeTraverser;
 
 typedef struct EdgeTraverser {
