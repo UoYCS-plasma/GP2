@@ -17,8 +17,6 @@ bool success = false;
 
 #define hasRealNode(on) ((on) && (on)->node != NULL)
 
-#define getNodeId(n)      ( (n)==NULL ? -1 : (int)((n)-nodePool))
-#define getEdgeId(e)      ( (e)==NULL ? -1 : (int)((e)-edgePool))
 #define getOilrNodeId(on) \
 	((on)==NULL ? -1 \
 		: ((void*)(on) > (void*)&gsp[0] && (void*)(on) < (void*)&gsp[2]) ? -2 \
@@ -57,10 +55,15 @@ OilrNode nullNode = {
 
 #ifdef OILR_STANDALONE
 
+#define getNodeId(n)      ( (n)==NULL ? -1 : (int)((n)-nodePool))
+#define getEdgeId(e)      ( (e)==NULL ? -1 : (int)((e)-edgePool))
+
 #define getO(n) ((n)->outdegree - (n)->loopdegree)
 #define getI(n) ((n)->indegree  - (n)->loopdegree)
 #define getL(n) ((n)->loopdegree)
 #define getR(n) ((n)->root)
+
+#define copyLabel(...) NULL
 
 Graph dummyGraph = { NULL };
 
@@ -76,7 +79,7 @@ Graph *newGraph() {
 
 Node *newNode(bool root, Label *label) {
 	freeNode->root = root;
-	freeNode->index = getNodeId(freeNode); /* not an index! just to preserve API compat */
+	freeNode->index = getNodeId(freeNode);
 	freeNode->indegree = 0;
 	freeNode->outdegree = 0;
 	freeNode->loopdegree = 0;
@@ -85,6 +88,7 @@ Node *newNode(bool root, Label *label) {
 }
 
 Edge *newEdge(bool bidirectional, Label *label, Node *src, Node *tgt) {
+	trace("newEdge() src=%d tgt=%d", getNodeId(src), getNodeId(tgt));
 	freeEdge->source = src;
 	freeEdge->target = tgt;
 	freeEdge->index = freeEdge;
@@ -97,10 +101,10 @@ Edge *newEdge(bool bidirectional, Label *label, Node *src, Node *tgt) {
 	return freeEdge++;
 }
 
-void addEdge(Graph *g, Edge *e) {
-	/* Adding is handled by newEdge, as we don't have a graph structure! */
-	return;
-}
+/* we don't need either of these functions */
+#define addNode(...)
+#define addEdge(...)
+
 
 void removeEdge(Graph *g, Edge *e) {
 	Edge *free = freeEdge;
@@ -149,9 +153,52 @@ void removeNode(Graph *g, int index) {
 	}
 }
 
+void dumpGraph() {
+	Node *n = nodePool;
+	Edge *e = edgePool;
+	int src_id, tgt_id, i = 0;
+
+	printf("[\n");
+	while (n < freeNode) {
+		printf("\t(n%d%s, empty)\n", i++, n->root ? "(R)" : "");
+		n++;
+	}
+	printf("|\n");
+	i=0;
+	while (e < freeEdge) {
+		if (!isDeletedEdge(e)) {
+			src_id = getNodeId(e->source);
+			tgt_id = getNodeId(e->target);
+			printf("\t(e%d, n%d, n%d, empty)\n", i++, src_id, tgt_id);
+		}
+		e++;
+	}
+	printf("]\n");
+}
+
 #else
 
 FILE *log_file;
+
+#define getNodeId(n)      ( (n)==NULL ? -1 : (n)->index )
+#define getEdgeId(e)      ( (e)==NULL ? -1 : (e)->index )
+
+#define dumpGraph(...)
+#define getO(n) ((n)->outdegree - getL(n))
+#define getI(n) ((n)->indegree  - getL(n))
+#define getR(n) ((n)->root)
+
+
+int getL(Node *n) {
+	int i, loopcount = 0;
+	for (i=0; i<n->outdegree; i++) {
+		if (n->out_edges[i]->source == n->out_edges[i]->target)
+			loopcount++;
+	}
+	return loopcount;
+}
+
+Label emptyLabel = { .mark=0, .list = NULL, .list_length = 0, .has_list_variable = false };
 
 #endif
 
@@ -174,8 +221,10 @@ void dumpTravStack(Traverser *txp) {
 					printf("%sn%d ", col, id);
 				else if (id == -1)
 					printf("%sn_ ", col);
-				else
+				else {
 					printf("[31mn?? ");
+					trace("Suspicious OilrNode id: %d", id);
+				}
 				break;
 			case EdgeTrav:
 				id = getEdgeId(t->e.edge);
@@ -290,10 +339,10 @@ void disconnect(OilrNode *n) {
 void connect(OilrNode *n) {
 	OilrNode *next, *head;
 	Index *s;
-	int loop = n->node->loopdegree;
-	int out  = n->node->outdegree - loop;
-	int in   = n->node->indegree - loop;
-	bool root = n->node->root;
+	int out  = getO(n->node);
+	int in   = getI(n->node);
+	int loop = getL(n->node);
+	bool root = getR(n->node);
 	out  = out  < TOOMANYO ? out  : TOOMANYO-1;
 	in   = in   < TOOMANYI ? in   : TOOMANYI-1;
 	loop = loop < TOOMANYL ? loop : TOOMANYL-1;
@@ -311,8 +360,10 @@ void connect(OilrNode *n) {
 }
 
 OilrNode *addNewOilrNode(bool root) {
-	Node *n = newNode(root, NULL);
-	OilrNode *on = &(oilrNodePool[n->index]);
+	OilrNode *on;
+	Node *n = newNode(root, copyLabel(&emptyLabel));
+	addNode(gsp->graph, n);
+	on = &(oilrNodePool[n->index]);
 	on->node = n;
 	unmatch(on);
 	on->chain.index = NULL;
@@ -329,8 +380,11 @@ Edge *addNewEdge(NodeTraverser *src, NodeTraverser *tgt) {
 	/* bidirectional param has no meaning for host graph edges, so is always
 	 * false. TODO: NULL label pointer is not safe! Should be Label structure
 	 * containing a GList with one element of type EMPTY! */
-	Edge *edge = newEdge(false, NULL, src->oilrNode->node, tgt->oilrNode->node);
+	trace("Edge from %d to %d", src->oilrNode->node->index, tgt->oilrNode->node->index);
+	Edge *edge = newEdge(false, copyLabel(&emptyLabel), src->oilrNode->node, tgt->oilrNode->node);
+	//trace("Edge %d --> old outdegree: %d", getEdgeId(edge), getO(src->oilrNode->node));
 	addEdge(gsp->graph, edge);
+	//trace("Edge %d --> new outdegree: %d", getEdgeId(edge), getO(src->oilrNode->node));
 	disconnect(src->oilrNode);
 	connect(src->oilrNode);
 	disconnect(tgt->oilrNode);
@@ -641,30 +695,7 @@ void setRoot(NodeTraverser *nt, bool state) {
 }
 
 
-void dumpGraph() {
-	Node *n = nodePool;
-	Edge *e = edgePool;
-	int src_id, tgt_id, i = 0;
-
-	printf("[\n");
-	while (n < freeNode) {
-		printf("\t(n%d%s, empty)\n", i++, n->root ? "(R)" : "");
-		n++;
-	}
-	printf("|\n");
-	i=0;
-	while (e < freeEdge) {
-		if (!isDeletedEdge(e)) {
-			src_id = getNodeId(e->source);
-			tgt_id = getNodeId(e->target);
-			printf("\t(e%d, n%d, n%d, empty)\n", i++, src_id, tgt_id);
-		}
-		e++;
-	}
-	printf("]\n");
-}
-
-#ifdef DEBUG
+#ifdef TEST_INVARIANTS
 #define fail(...) do { printf ("\n ** ") ; printf (__VA_ARGS__) ; passed = false; } while (false);
 
 int countOilrNodes() {
