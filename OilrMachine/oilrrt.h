@@ -5,7 +5,9 @@
 
 #ifdef DEBUG
 #include <stdio.h>
+#define TEST_INVARIANTS
 #define trace(...) do { printf("--> ") ; printf(__VA_ARGS__) ; printf("\n");} while (false);
+bool testInvariants();
 #else
 #define trace(...)
 #define dumpTravStack(x)
@@ -201,7 +203,7 @@ OilrNode *next();
    node and edge stacks in reverse and clear the TRAV stack */
 void runSearch();
 
-
+void clearTravs();
 
 
 

@@ -1,15 +1,12 @@
-CC=gcc
-# -Wall -Wextra
+DEFINES=-DOILR_STANDALONE -DDEBUG
+CC=gcc -g -Wall -Werror $(DEFINES)
 
 TARGETS=oilrrt.o
 
-oilrrt_s.o : oilrrt.o
-	cp $< $@
+all : $(TARGETS)
 
-
-
-%.o : %.c
-	$(CC) -g -c $(CFLAGS) $<
+%.o : %.c oilrrt.h oilrinst.h invariants.c
+	$(CC) -c $<
 
 clean :
 	rm -f *.o
