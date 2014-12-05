@@ -50,11 +50,11 @@ typedef struct YYLTYPE {
 extern FILE *yyin; /* Created by Bison. */
 extern FILE *log_file; /* Created in main.c */
 
-
 /* Declarations for functions and variables defined in gplexer.l */
 extern int yylineno; 
 extern string yytext; 
 
+extern struct Stack *rule_stack;
 
 /* Declarations for functions and variables defined in gpparser.y */
 int yyparse(void);

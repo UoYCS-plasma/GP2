@@ -99,7 +99,10 @@ typedef struct Node {
    int index;
    bool root;
    LabelClass label_class;
-   Label *label; 
+   Label *label;
+
+   /* The node's indegree (outdegree) is the size (largest index) of the
+    * in_edges (out_edges) array. */
    int indegree;
    int outdegree;
 

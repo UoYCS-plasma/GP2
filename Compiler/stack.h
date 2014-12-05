@@ -18,7 +18,9 @@ typedef union StackData {
       int left_index;
       int host_index;
    } map;
+   int free_slot;
    struct Graph *graph;
+   struct Rule *rule;
 } StackData;
 
 typedef struct StackNode
@@ -43,7 +45,7 @@ void push (Stack *stack, StackData *data);
 StackData *pop (Stack *stack);
 
 /* Frees all StackData and StackNode structs and the Stack itself. If the 
- * StackData contains pointers to heap memory, this needs to be freed 
+ * StackData contains a pointers to heap memory, it needs to be freed 
  * explicitly. */
 void freeStack (Stack *stack);
 

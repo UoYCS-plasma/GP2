@@ -1,5 +1,5 @@
 P = parseGP
-OBJECTS = gpparser.tab.o lex.yy.o ast.o rule.o pretty.o seman.o graph.o match.o stack.o main.o
+OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o transform.o graph.o rule.o match.o stack.o main.o
 PARSEOBJECTS = gpparser.tab.o lex.yy.o ast.o seman.o pretty.o main.o  
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
@@ -10,6 +10,10 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --
 # Builds executable runGP.
 default:	$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o runGP
+
+debug:		$(OBJECTS)
+		$(CC) $(OBJECTS) $(LFLAGS) -o runGP 	
+		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./runGP $(F1) $(F2)
 
 # Builds executable GP 2 parser
 $(P):	        $(PARSEOBJECTS)
@@ -26,11 +30,11 @@ $(P)-debug:	$(PARSEOBJECTS)
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
 
 # Testing file.
-test:		generate.o graph.o stack.o lhs.o
-		$(CC) generate.o graph.o stack.o lhs.o $(LFLAGS) -o testGP
+test:		graph.o stack.o lhs.o
+		$(CC) graph.o stack.o lhs.o $(LFLAGS) -o testGP
 
-test-debug:	generate.o graph.o stack.o lhs.o
-		$(CC) generate.o graph.o stack.o lhs.o $(LFLAGS) -o testGP
+test-debug:	graph.o stack.o lhs.o
+		$(CC) graph.o stack.o lhs.o $(LFLAGS) -o testGP
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./testGP
 
 match:		runtime.o match_r1.o match.o graph.o stack.o 
@@ -52,7 +56,8 @@ lex.yy.o: 	lex.yy.c
 lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
 		flex gplexer.lex
 
-main.o:         main.c ast.h globals.h pretty.h seman.h
+main.o:         main.c ast.h globals.h pretty.h rule.h seman.h stack.h transform.h
+		$(CC) $(CFLAGS) -c main.c
 
 ast.o: 		ast.c ast.h globals.h
 		$(CC) $(CFLAGS) -c ast.c
@@ -65,6 +70,9 @@ pretty.o:       pretty.c pretty.h ast.h globals.h seman.h
 
 seman.o:	seman.c seman.h ast.h globals.h
 		$(CC) $(CFLAGS) -c seman.c
+
+transform.o:	transform.c transform.h ast.h globals.h graph.h rule.h 
+		$(CC) $(CFLAGS) -c transform.c
 
 graph.o:	graph.c globals.h graph.h 
 		$(CC) $(CFLAGS) -c graph.c
@@ -87,5 +95,5 @@ match_r1.o:	match_r1.c match_r1.h globals.h graph.h match.h
 lhs.o:		lhs.c generate.h graph.h
 		$(CC) $(CFLAGS) -c lhs.c
 clean:
-		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c runGP
+		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c runGP $(P) testGP match
 

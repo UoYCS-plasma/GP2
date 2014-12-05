@@ -17,7 +17,8 @@ FILE *match_source = NULL;
  
 Searchplan *searchplan = NULL;
 
-void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name)
+void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name,
+                          RuleData *rule_data)
 {
    /* Create the searchplan. */
    generateSearchplan(lhs); 
@@ -127,8 +128,10 @@ void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name)
       }
       operation = operation->next;
    }
-
+ 
    PTS("\nMorphism *morphism = NULL;\n\n");
+   emitMainFunction(rule_name, searchplan->first, rule_data);
+   PTS("\n\n");
 
    /* The second iteration of the searchplan prints the definitions of the 
     * functions that are now declared in the source file. The type of the
@@ -185,9 +188,12 @@ void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name)
               break;
       }
       operation = operation->next;
-   } 
+   }
 
-   emitMainFunction(rule_name, searchplan->first);
+   emitRuleApplicationCode(string rule_name, RuleData *rule_data);
+
+   fclose(match_header);
+   fclose(match_source);
 }
 
 
@@ -199,8 +205,8 @@ void emitMainFunction(string rule_name, SearchOp *first_op)
    if(first_op->is_node) item = 'n';
    else item = 'e';
 
-   PTH("Morphism *match_%s(Graph *host);\n", rule_name);
-   PTS("Morphism *match_%s(Graph *host)\n"
+   PTH("Graph *match_%s(Graph *host);\n", rule_name);
+   PTS("Graph *match_%s(Graph *host)\n"
        "{\n" 
        "   morphism = makeMorphism();\n\n"
        "   int host_nodes = host->number_of_nodes;\n"
@@ -242,11 +248,11 @@ void emitMainFunction(string rule_name, SearchOp *first_op)
        "                                matched_edges);\n\n"
        "   free(matched_nodes);\n"
        "   free(matched_edges);\n\n"
-       "   if(match_found) return morphism;\n"
+       "   if(match_found) return apply_%s(host, morphism);\n"
        "   else freeMorphism(morphism);\n\n"
        "   return NULL;\n"
        "}\n",
-       rule_name, item, first_op->index);
+       rule_name, item, first_op->index, rule_name);
 }
 
 
@@ -696,6 +702,26 @@ bool emitNextMatcherCall(SearchOp *next_op, int indent)
    }
    return false;
 }
+
+void emitRuleApplicationCode(string rule_name, Graph *lhs, Graph *rhs,
+                             RuleData *rule_data)
+{
+   PTH("Graph *apply_%s(Graph *host, Morphism *morphism);\n", rule_name);
+   PTS("Graph *apply_%s(Graph *host, Morphism *morphism)\n", rule_name);
+   PTS("{\n");
+  
+   int index = 0;
+
+   if(rule_data->deleted_edges != NULL)
+   {
+      PTSI("/* Delete edges. */\n", 3);
+      while(rule_data->deleted_edges[index] >= 0)
+      {
+         PTSI("
+
+         index++;
+      }
+      
 
 
 void generateSearchplan(Graph *lhs)

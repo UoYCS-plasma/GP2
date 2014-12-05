@@ -8,8 +8,8 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#ifndef INC_GENERATE_H
-#define INC_GENERATE_H
+#ifndef INC_GENRULE_H
+#define INC_GENRULE_H
 
 #define printToHeader(code, ...)	              \
   do { fprintf(match_header, code, ##__VA_ARGS__); }  \
@@ -64,6 +64,22 @@ void addSearchOp(Searchplan *plan, char type, int index);
 void printSearchplan(Searchplan *searchplan);
 void freeSearchplan(Searchplan *searchplan);
 
+
+/* If k < |E_L| edges are to be deleted, I probably want an array whose
+ * first k entries contain the indices of those edges, and the rest to
+ * be -1. Then I do not have to iterate |E_L| times over the array
+ * (stop when -1 is found). Ditto for the other arrays. */
+
+typedef struct RuleData {
+   int *deleted_edges; /* indexed from 0 to |E_L| */
+   int *deleted_nodes; /* indexed from 0 to |V_L| */
+   int *added_nodes; /* indexed from 0 to |V_R| */
+   int *added_edges; /* indexed from 0 to |E_R| */
+   int *preserved_nodes; /* indexed from 0 to |V_R| */  
+   int *preserved_edges; /* indexed from 0 to |E_R| */
+} RuleData;
+   
+
 /* generateSearchplan traverses a graph in order to create a searchplan
  * using the following algorithm:
  * (1) For each root node, append the 'r' operation to the searchplan.
@@ -82,7 +98,7 @@ void freeSearchplan(Searchplan *searchplan);
  * are tagged, tagging items, and adding new operations to the searchplan.
  */     
 void generateSearchplan(Graph *lhs);
-void traverseNode(Node *node, char match_from, bool *discovered_item, 
+void traverseNode(Node *node, char match_from, bool *discovered_item,
 	          int offset);
 void traverseEdge(Edge *edge, char match_from, bool *discovered_item,
 		  int offset);
@@ -92,7 +108,8 @@ void traverseEdge(Edge *edge, char match_from, bool *discovered_item,
  * the matching code (according to the searchplan) to the source file.
  * Four auxiliary functions emit a C function to execute a particular
  * kind of searchplan operation. */
-void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name);
+void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name,
+                          RuleData *rule_data);
 void emitMainFunction(string rule_name, SearchOp *first_op);
 
 /* The four emitMatcher functions take an LHS item and emit code that searches
@@ -111,10 +128,13 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type, bool *dangling_nodes,
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op);
 void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op);
 
+void emitRuleApplicationCode(string rule_name, Graph *lhs, Graph *rhs,
+                             RuleData *rule_data);
+
 /* emitNextMatcherCall writes a call to a matching function according to the
  * passed searchplan operation. If next_op is NULL, then 'return true;' is
  * written to the generated source file. */
 bool emitNextMatcherCall(SearchOp* next_op, int indent);
 
-#endif /* INC_GENERATE_H */
+#endif /* INC_GENRULE_H */
 

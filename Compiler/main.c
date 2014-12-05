@@ -20,8 +20,11 @@
 
 #include "ast.h" 
 #include "globals.h"
-#include "pretty.h" 
+#include "pretty.h"
+#include "rule.h"
 #include "seman.h" 
+#include "stack.h"
+#include "transform.h"
 
 /* Macros to control debugging features. */
 #undef PARSER_TRACE 		/* Assign yydebug to 1 */
@@ -55,155 +58,170 @@ struct List *gp_program = NULL;
 /* The parser points this to the root of the host graph's AST. */
 struct GPGraph *host_graph = NULL; 
 
-/* The symbol table is created inside main */
+/* The symbol table is created inside main. */
 GHashTable *gp_symbol_table = NULL;	
 
+Stack *rule_stack = NULL;
 
-
-int main(int argc, char** argv) {
-
-  if(argc != 3) {
-    print_to_console( "Usage: runGP <program_file> <host_graph_file>\n");
-    return 1;
-  }
-
-  /* Open the log file for writing. */
-  file_name = argv[1]; 
-  int length = strlen(file_name) + 4; 
-  char log_file_name[length];
-  strcpy(log_file_name, file_name);
-  strncat(log_file_name, ".log", 4);
-
-  log_file = fopen(log_file_name, "w");
-  if(log_file == NULL) { 
-     perror(log_file_name);
+int main(int argc, char** argv)
+{
+   if(argc != 3) {
+     print_to_console( "Usage: runGP <program_file> <host_graph_file>\n");
      return 1;
-  }
-  print_to_log("%s\n\n",log_file_name);
+   }
 
-  /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
-   * pointed to the file to be read by the parser. argv[1] is the file 
-   * containing the GP program text file.
-   */
+   file_name = argv[1]; 
+   int length = strlen(file_name) + 4; 
+   char log_file_name[length];
+   strcpy(log_file_name, file_name);
+   strncat(log_file_name, ".log", 4);
 
-  if(!(yyin = fopen(argv[1], "r"))) {  
-     perror(argv[1]);
-     yylineno = 1;	
-     return 1;
-  }
+   log_file = fopen(log_file_name, "w");
+   if(log_file == NULL) { 
+      perror(log_file_name);
+      return 1;
+   }
+   print_to_log("%s\n\n",log_file_name);
 
-  #ifdef PARSER_TRACE
-  yydebug = 1; /* When yydebug is set to 1, Bison outputs a trace of its 
-                * parse to stderr. */
-  #endif
+   /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
+    * pointed to the file to be read by the parser. argv[1] is the file 
+    * containing the GP program text file.
+    */
 
-  /* Bison parses with the GP2 program grammar */
-  parse_target = GP_PROGRAM;
+   if(!(yyin = fopen(argv[1], "r"))) {  
+      perror(argv[1]);
+      yylineno = 1;	
+      return 1;
+   }
 
-  printf("\nProcessing %s...\n\n", file_name);
+   #ifdef PARSER_TRACE
+   yydebug = 1; /* When yydebug is set to 1, Bison outputs a trace of its 
+                 * parse to stderr. */
+   #endif
 
-  if(!yyparse()) {
-     print_to_log("GP2 program parse succeeded\n\n");
-     #ifdef DRAW_ORIGINAL_AST
-        /* create the string <file_name>_first as an argument to printDotAST */
-        int length = strlen(argv[1])+6;
-        char alt_name[length];
-        strcpy(alt_name,argv[1]);
-        strcat(alt_name,"_first"); 
-        printDotAST(gp_program, alt_name); /* Defined in pretty.c */ 
-     #endif
-  }
+   /* Bison parses with the GP2 program grammar */
+   parse_target = GP_PROGRAM;
 
-  else print_to_log("GP2 program parse failed.\n\n");
+   printf("\nProcessing %s...\n\n", file_name);
 
-  /* Point yyin to the file containing the host graph. */
+   if(!yyparse()) {
+      print_to_log("GP2 program parse succeeded\n\n");
+      #ifdef DRAW_ORIGINAL_AST
+         /* create the string <file_name>_first as an argument to printDotAST */
+         int length = strlen(argv[1])+6;
+         char alt_name[length];
+         strcpy(alt_name,argv[1]);
+         strcat(alt_name,"_first"); 
+         printDotAST(gp_program, alt_name);
+      #endif
+   }
 
-  if(!(yyin = fopen(argv[2], "r"))) {  
-     perror(argv[1]);
-     yylineno = 1;	
-     return 1;
-  }
+   else print_to_log("GP2 program parse failed.\n\n");
 
-  file_name = argv[2];
+   /* Point yyin to the file containing the host graph. */
 
-  /* Bison parses with the host graph grammar */
-  parse_target = GP_GRAPH;
+   if(!(yyin = fopen(argv[2], "r"))) {  
+      perror(argv[1]);
+      yylineno = 1;	
+      return 1;
+   }
 
-  printf("\nProcessing %s...\n\n", file_name);
- 
-  if(!yyparse()) {
-     print_to_log("GP2 graph parse succeeded\n\n");    
+   file_name = argv[2];
+
+   /* Bison parses with the host graph grammar */
+   parse_target = GP_GRAPH;
+
+   printf("\nProcessing %s...\n\n", file_name);
   
-     reverseGraphAST(host_graph); /* Defined in seman.c */
+   if(!yyparse()) {
+      print_to_log("GP2 graph parse succeeded\n\n");    
+   
+      reverseGraphAST(host_graph);
 
-     #ifdef DRAW_HOST_GRAPH_AST
-        printDotHostGraph(host_graph, file_name); /* Defined in pretty.c */
-     #endif
-  }
-  else print_to_log("GP2 graph parse failed.\n\n");     
+      #ifdef DRAW_HOST_GRAPH_AST
+         printDotHostGraph(host_graph, file_name);
+      #endif
+   }
+   else print_to_log("GP2 graph parse failed.\n\n");     
 
-  /* The lexer and parser set the abort_scan flag if a syntax error is
-   * encountered. */
+   /* The lexer and parser set the abort_scan flag if a syntax error is
+    * encountered. */
 
-  if(abort_scan) abort_compilation = true; 
-  else {
-    /* Reverse the global declaration list at the top of the generated AST. */
-    gp_program = reverse(gp_program);
+   if(abort_scan) abort_compilation = true; 
+   else {
+     /* Reverse the global declaration list at the top of the generated AST. */
+     gp_program = reverse(gp_program);
 
-    /* Create a new GHashTable with strings as keys.
-     * g_str_hash is glib's default string hashing function.
-     * g_str_equal is glib's default function for comparing strings for hash
-     * lookups.
-     * free is the function called by glib to free keys during hash table
-     * insertions and in the g_hash_table_destroy function.
-     * The fourth argument is a function to free values. I do this manually
-     * with the function freeSymbolList defined in seman.c: I do not pass a 
-     * value-freeing function to g_hash_table_new_full.
-     */
-    gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);    
+     /* Create a new GHashTable with strings as keys.
+      * g_str_hash is glib's default string hashing function.
+      * g_str_equal is glib's default function for comparing strings for hash
+      * lookups.
+      * free is the function called by glib to free keys during hash table
+      * insertions and in the g_hash_table_destroy function.
+      * The fourth argument is a function to free values. I do this manually
+      * with the function freeSymbolList defined in seman.c: I do not pass a 
+      * value-freeing function to g_hash_table_new_full. */
+     gp_symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);    
 
-    /* declarationScan is defined in seman.c. It returns true if there is a
-     * name clash among the rule and procedure declarations.
-     */
-    abort_scan = declarationScan(gp_program, gp_symbol_table, "Global");
-  }
-    
-  if(abort_scan) abort_compilation = true;
-  else {
-     /* semanticCheck is defined in seman.c. It returns true if there is a
-      * semantic error.
-      */
-     abort_compilation = semanticCheck(gp_program, gp_symbol_table, "Global"); 
-
-     #ifdef DRAW_FINAL_AST
-        printDotAST(gp_program, argv[1]); /* Defined in pretty.c */ 
-     #endif
+     /* declarationScan is defined in seman.c. It returns true if there is a
+      * name clash among the rule and procedure declarations. */
+     abort_scan = declarationScan(gp_program, gp_symbol_table, "Global");
+   }
      
-     #ifdef PRINT_SYMBOL_TABLE
-        printSymbolTable(gp_symbol_table, argv[1]); /* Defined in pretty.c */
-     #endif
-  }
+   if(abort_scan) abort_compilation = true;
+   else {
+      /* semanticCheck returns true if there is a critical semantic error. */
+      abort_compilation = semanticCheck(gp_program, gp_symbol_table, "Global"); 
 
-  if(!abort_compilation) print_to_console("Proceed with code generation.\n"); 
-  else print_to_console("\nBuild aborted. Please consult the file %s.log for "
-                        "a detailed error report.\n", argv[1]);   
- 
-  /* Garbage collection */
-  fclose(yyin);
-  if(gp_program) freeAST(gp_program); /* Defined in ast.c */
-  if(host_graph) freeASTGraph(host_graph); /* Defined in ast.c */
+      #ifdef DRAW_FINAL_AST
+         printDotAST(gp_program, argv[1]); 
+      #endif
+      
+      #ifdef PRINT_SYMBOL_TABLE
+         printSymbolTable(gp_symbol_table, argv[1]); 
+      #endif
+   }
 
-  /* The call to g_hash_table_foreeach frees all the hash table values,
-   * linked lists of struct Symbols, with the function freeSymbolList 
-   * defined in seman.c.
-   * g_hash_table_destroy uses the key-freeing function passed to 
-   * g_hash_table_full (free) to free the dynamically allocated keys.
-   */
-  if(gp_symbol_table) {
-    g_hash_table_foreach(gp_symbol_table, freeSymbolList, NULL);
-    g_hash_table_destroy(gp_symbol_table); 
-  }
-  fclose(log_file);
+   if(abort_compilation)
+   {
+      print_to_console("\nBuild aborted. Please consult the file %s.log for "
+                       "a detailed error report.\n", argv[1]);   
+      exit(0);
+   }
+      
+   print_to_console("Proceed with code generation.\n\n"); 
 
-  return 0;
+   /* Populate the rule stack. */
+   rule_stack = newStack();
+   transformAST(gp_program, rule_stack);
+
+   StackData *data = NULL;
+   while((data = pop(rule_stack)) != NULL)
+   {
+      if(data->rule == NULL) continue;
+      printRule(data->rule, false);
+      freeRule(data->rule);
+      free(data);
+      //generateMatchingCode(data->rule);
+   }
+  
+   /* Garbage collection */
+   freeStack(rule_stack);
+   fclose(yyin);
+   if(gp_program) freeAST(gp_program); 
+   if(host_graph) freeASTGraph(host_graph); 
+
+   /* The call to g_hash_table_foreeach frees all the hash table values,
+    * linked lists of struct Symbols, with the function freeSymbolList 
+    * defined in seman.c.
+    * g_hash_table_destroy uses the key-freeing function passed to 
+    * g_hash_table_full (free) to free the dynamically allocated keys.
+    */
+   if(gp_symbol_table) {
+     g_hash_table_foreach(gp_symbol_table, freeSymbolList, NULL);
+     g_hash_table_destroy(gp_symbol_table); 
+   }
+   fclose(log_file);
+
+   return 0;
 }

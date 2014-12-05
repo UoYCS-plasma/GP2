@@ -105,7 +105,7 @@ void freeSymbolList(gpointer key, gpointer value, gpointer data)
  * global declaration list is reached.
  */
 
-bool declarationScan(List * ast, GHashTable *table, string const scope)
+bool declarationScan(List *ast, GHashTable *table, string const scope)
 {
    string proc_name = NULL, rule_name = NULL;
 	
@@ -348,7 +348,7 @@ BiEdgeList *bidirectional_edges = NULL;
  * declaration types with the help of subprocedures.
  */
 
-bool semanticCheck(List * declarations, GHashTable *table, string const scope)                   
+bool semanticCheck(List *declarations, GHashTable *table, string const scope)                   
 {
    while(declarations) 
    {
@@ -1234,7 +1234,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 
 
 
-void interfaceScan(List * interface, GHashTable *table, 
+void interfaceScan(List *interface, GHashTable *table, 
                    string const scope, string const rule_name)
 {
   /* Linked list to store node IDs encountered to check for uniqueness */
