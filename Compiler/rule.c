@@ -269,7 +269,6 @@ void printRule(Rule *rule, bool print_graphs)
              edge->target_location, edge->target_index);
       edge = edge->next;
    }
-   printf("\n");
 
    if(rule->flags.is_predicate) printf("Rule is a predicate.\n");
    if(rule->flags.deletes_nodes) printf("Rule deletes nodes.\n");

@@ -1536,7 +1536,7 @@ void printASTGraph(GPGraph * const graph, FILE *dot_file)
      print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
                        graph->node_id, next_node_id); 
 
-     prettyPrint(graph->position, Position);
+     /* prettyPrint(graph->position, Position); */
 
      prettyPrintList(graph->nodes, graph, nodes);
 
@@ -1575,7 +1575,7 @@ void printASTNode(GPNode * const node, FILE *dot_file)
 
      print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
                        node->node_id, next_node_id); 
-     prettyPrint(node->position, Position);
+     /* prettyPrint(node->position, Position); */
 }
 
 
@@ -1628,7 +1628,7 @@ void printASTEdge(GPEdge * const edge, FILE *dot_file)
 }
 
 
-void printASTPosition(GPPos * const pos, FILE *dot_file)
+/* void printASTPosition(GPPos * const pos, FILE *dot_file)
 {
      pos->node_id = next_node_id;
      next_node_id += 1;
@@ -1637,7 +1637,7 @@ void printASTPosition(GPPos * const pos, FILE *dot_file)
                        "Position \\n x: %d \\n y: %d\"]\n", 
                        pos->node_id, pos->node_id,
                        LOCATION_ARGS(pos->location), pos->x, pos->y);
-}
+} */
 
 
 void printASTLabel(GPLabel * const label, FILE *dot_file)
@@ -1656,7 +1656,7 @@ void printASTLabel(GPLabel * const label, FILE *dot_file)
         case (BLUE): 	 print_to_dot_file("Blue\"]\n"); break;
         case (GREY): 	 print_to_dot_file("Grey\"]\n"); break;
         case (DASHED): 	 print_to_dot_file("Dashed\"]\n"); break;
-        case (CYAN):	 print_to_dot_file("Cyan\"]\n"); break;
+        case (ANY):	 print_to_dot_file("Any\"]\n"); break;
         case (NONE): 	 print_to_dot_file("No mark\"]\n"); break;
 
         default: {

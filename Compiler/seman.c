@@ -605,7 +605,19 @@ void validateCall(string const name, GHashTable *table, string const scope,
 
 void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 {   
-   string rule_name = rule->name;
+   /* Augment the rule name: new rule name is <scope>-<rule_name> */
+   int length = strlen(rule->name) + strlen(scope) + 2;
+   char *rule_name = calloc(length, sizeof(char));
+   if(rule_name == NULL)
+   {
+      print_to_log("Error: Memory exhausted during rule name creation.\n");
+      exit(1);
+   }
+   rule_name = strcat(rule_name, scope);
+   rule_name = strcat(rule_name, "-");
+   rule_name = strcat(rule_name, rule->name);
+   free(rule->name);
+   rule->name = rule_name;
 
    /* Reverse the list of declaration types and the interface list. */
    if(rule->variables) rule->variables = reverse(rule->variables);
@@ -633,12 +645,12 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
               if(++integer_count > 1) 
               {
-                 print_to_console("Warning (%s.%s): More than one integer "
+                 print_to_console("Warning (%s): More than one integer "
                                   "list in variable declaration section.",
-                                  scope, rule_name);
-                 print_to_log("Warning (%s.%s): More than one integer list "
+                                  rule_name);
+                 print_to_log("Warning (%s): More than one integer list "
                               "in variable declaration section.",
-                              scope, rule_name);
+                              rule_name);
               }
               else enterVariables(INT_S, variable_list->value.variables,
 			           table, scope, rule_name);
@@ -649,12 +661,12 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
               if(++character_count > 1)
               {
-                 print_to_console("Warning (%s.%s): More than one character "
+                 print_to_console("Warning (%s): More than one character "
                                   "list in variable declaration section.",
-                                  scope, rule_name);
-                 print_to_log("Warning (%s.%s): More than one character list "
+                                  rule_name);
+                 print_to_log("Warning (%s): More than one character list "
                               "in variable declaration section.",
-                              scope, rule_name);
+                              rule_name);
               }
               else enterVariables(CHAR_S, variable_list->value.variables,
 			           table, scope, rule_name);
@@ -666,12 +678,12 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
               if(++string_count > 1)
               {
-                 print_to_console("Warning (%s.%s): More than one string "
+                 print_to_console("Warning (%s): More than one string "
                                   "list in variable declaration section.", 
-                                  scope, rule_name);
-                 print_to_log("Warning (%s.%s): More than one string list "
+                                  rule_name);
+                 print_to_log("Warning (%s): More than one string list "
                               "in variable declaration section.", 
-                              scope, rule_name);
+                              rule_name);
               }
               else enterVariables(STRING_S, variable_list->value.variables,
 			           table, scope, rule_name);
@@ -682,12 +694,12 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
               if(++atom_count > 1) 
               {
-                 print_to_console("warning (%s.%s): more than one atom "
+                 print_to_console("warning (%s): more than one atom "
                                   "list in variable declaration section.", 
-                                  scope, rule_name);
-                 print_to_log("Warning (%s.%s): More than one 'atom' list "
+                                  rule_name);
+                 print_to_log("Warning (%s): More than one 'atom' list "
                               "in variable declaration section.",
-                              scope, rule_name);
+                              rule_name);
               }
               else enterVariables(ATOM_S, variable_list->value.variables,
 			           table, scope, rule_name);
@@ -698,12 +710,12 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 
               if(++list_count > 1) 
               {
-                 print_to_console("warning (%s.%s): more than one list "
+                 print_to_console("warning (%s): more than one list "
                                   "list in variable declaration section.", 
-                                  scope, rule_name);
-                 print_to_log("Warning (%s.%s): More than one 'list' list "
+                                  rule_name);
+                 print_to_log("Warning (%s): More than one 'list' list "
                               "in variable declaration section.", 
-                              scope, rule_name);
+                              rule_name);
               }
               else enterVariables(LIST_S, variable_list->value.variables,
 			           table, scope, rule_name);
@@ -753,10 +765,10 @@ void enterVariables(SymbolType const type, List * variables,
             !strcmp(current_var->scope,scope) &&
 	    !strcmp(current_var->containing_rule,rule_name))
 	 {	 
-	    print_to_console("Warning (%s.%s): Variable %s declared twice.\n", 
-                             scope, rule_name, variable_name);
-	    print_to_log("Warning (%s.%s): Variable %s declared twice.\n", 
-                         scope, rule_name, variable_name);
+	    print_to_console("Warning (%s): Variable %s declared twice.\n", 
+                             rule_name, variable_name);
+	    print_to_log("Warning (%s): Variable %s declared twice.\n", 
+                         rule_name, variable_name);
 	    add_variable = false;
             break;
 	 }
@@ -849,9 +861,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 	     !strcmp(current_node->scope,scope) && 
 	     !strcmp(current_node->containing_rule,rule_name) )	
 	 {
-	     print_to_log("Warning (%s.%s): Node ID %s not unique in the "
+	     print_to_log("Warning (%s): Node ID %s not unique in the "
                           "%s.\n", 
-                          scope, rule_name, node_id, graph_type);  
+                          rule_name, node_id, graph_type);  
 	     add_node = false;
 	     break;
 	 }
@@ -862,9 +874,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 
       if(node_list->value.node->label->mark == DASHED)
       {
-          print_to_log("Error (%s.%s): Node %s in %s graph has invalid mark " 
+          print_to_log("Error (%s): Node %s in %s graph has invalid mark " 
 	               "\"dashed\".\n", 
-                       scope, rule_name, node_id, graph_type);
+                       rule_name, node_id, graph_type);
           abort_compilation = true; 
       }
 
@@ -884,7 +896,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          node_symbol->containing_rule = strdup(rule_name);
          node_symbol->is_var = false;
          node_symbol->in_lhs = false;      
-         node_symbol->wildcard = (node_list->value.node->label->mark == CYAN);    
+         node_symbol->wildcard = (node_list->value.node->label->mark == ANY);    
          node_symbol->bidirectional = false;      
  
          symbol_list = g_slist_prepend(symbol_list, node_symbol);         
@@ -892,10 +904,10 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          g_hash_table_replace(table, node_id, symbol_list);         
       }      
 
-      /* If the node is in the RHS and has a cyan mark, the corresponding LHS node
-       * must also have a cyan mark. */
+      /* If the node is in the RHS and has an any mark, the corresponding LHS node
+       * must also have an any mark. */
 
-      if(side == 'r' && node_list->value.node->label->mark == CYAN) 
+      if(side == 'r' && node_list->value.node->label->mark == ANY) 
       {
          /* The current node has just been prepended to the symbol list.
           * Hence the first entry in the symbol list is an RHS node. 
@@ -909,7 +921,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
             Symbol *current_node = (Symbol*)(iterator->data);
 
 	    /* Find a node in the same rule. If that node is in the LHS
-             * and is not a wildcard (cyan mark) then report an error.
+             * and is not a wildcard (any mark) then report an error.
              * Note there is only one such LHS node because for each scope,
              * rule, and graph (LHS/RHS), only one node with a particular
              * ID is entered into the symbol table. 
@@ -921,9 +933,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
                 if(current_node->type == LEFT_NODE_S &&
                    !current_node->wildcard) 
                 {
-	           print_to_log("Error (%s.%s): RHS wildcard node %s has no "
+	           print_to_log("Error (%s): RHS wildcard node %s has no "
                                 "matching LHS wildcard.", 
-                                scope, rule_name, node_id);  
+                                rule_name, node_id);  
                    abort_compilation = true; 
                 }
                 /* Regardless of the outcome of the inner if statement, exit
@@ -976,9 +988,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 	    !strcmp(current_edge->scope,scope) && 
 	    !strcmp(current_edge->containing_rule,rule_name))	
          {
-	     print_to_log("Warning (%s.%s): Edge ID %s not unique in the %s "
+	     print_to_log("Warning (%s): Edge ID %s not unique in the %s "
                           "graph.\n", 
-                          scope, rule_name, edge_id, graph_type);
+                          rule_name, edge_id, graph_type);
 	     add_edge = false;
 	     break;
 	 }
@@ -1001,7 +1013,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          edge_symbol->containing_rule = strdup(rule_name);
          edge_symbol->is_var = false;
          edge_symbol->in_lhs = false;             
-         edge_symbol->wildcard = (edge_list->value.edge->label->mark == CYAN); 
+         edge_symbol->wildcard = (edge_list->value.edge->label->mark == ANY); 
          edge_symbol->bidirectional = (edge_list->value.edge->bidirectional); 
 
          symbol_list = g_slist_prepend(symbol_list, edge_symbol);   
@@ -1010,7 +1022,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
   
       }
 
-      if(side == 'r' && edge_list->value.edge->label->mark == CYAN) 
+      if(side == 'r' && edge_list->value.edge->label->mark == ANY) 
       {
          /* The current edge has just been prepended to the symbol list.
           * Hence the first entry in the symbol list is this RHS edge. 
@@ -1024,7 +1036,7 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
             Symbol *current_edge = (Symbol*)(iterator->data);
 
 	    /* Find an edge in the same rule. If that edge is in the LHS
-             * and is not a wildcard (cyan mark) then report an error.
+             * and is not a wildcard (any mark) then report an error.
              * Note there is only one such LHS edge because for each scope,
              * rule, and graph (LHS/RHS), only one edge with a particular
              * ID is entered into the symbol table. 
@@ -1036,9 +1048,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
                 if(current_edge->type == LEFT_EDGE_S &&
                    !current_edge->wildcard) 
                 {
-	           print_to_log("Error (%s.%s): RHS wildcard edge %s has no "
+	           print_to_log("Error (%s): RHS wildcard edge %s has no "
                                 "matching LHS wildcard.\n", 
-                                scope, rule_name, edge_id);  
+                                rule_name, edge_id);  
                    abort_compilation = true;
                 }
                 /* Regardless of the outcome of the if statement, exit
@@ -1089,8 +1101,8 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
                 {
                    if(list_edge.graph == side)
                    {
-                      print_to_log("Error (%s.%s): Parallel bidirectional edges "
-                                   "in %s.\n", scope, rule_name, graph_type);
+                      print_to_log("Error (%s): Parallel bidirectional edges "
+                                   "in %s.\n", rule_name, graph_type);
                       abort_compilation = true;
                       add_bi_edge = false;
                    }
@@ -1101,9 +1113,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 
          if(side == 'r' && !matching_bi_edge) 
          {
-	    print_to_log("Error (%s.%s): RHS bidirectional edge %s has no "
+	    print_to_log("Error (%s): RHS bidirectional edge %s has no "
                          "matching LHS bidirectional edge.\n", 
-                         scope, rule_name, edge_id); 
+                         rule_name, edge_id); 
             abort_compilation = true; 
          }
 
@@ -1152,9 +1164,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
 
       if(symbol_list == NULL) 
       {
-	 print_to_log("Error (%s.%s): Source node %s of edge %s does not "
+	 print_to_log("Error (%s): Source node %s of edge %s does not "
                       "exist in %s graph.\n",
-                      scope, rule_name, source_id, edge_id, graph_type);     
+                      rule_name, source_id, edge_id, graph_type);     
          abort_compilation = true; 
       }
 
@@ -1175,9 +1187,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
                strcmp(current_sym->containing_rule,rule_name))
          {   
            if(symbol_list->next == NULL) {
-              print_to_log("Error (%s.%s): Source node %s of edge %s does "
+              print_to_log("Error (%s): Source node %s of edge %s does "
                            "not exist in %s graph.\n", 
-                           scope, rule_name, source_id, edge_id, graph_type);     
+                           rule_name, source_id, edge_id, graph_type);     
               abort_compilation = true; 
               break;
            }
@@ -1190,9 +1202,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
  
       if(symbol_list == NULL) 
       {
-	 print_to_log("Error (%s.%s): Target node %s of edge %s does not "
+	 print_to_log("Error (%s): Target node %s of edge %s does not "
                       "exist in %s graph.\n", 
-                      scope, rule_name, target_id, edge_id, graph_type);     
+                      rule_name, target_id, edge_id, graph_type);     
          abort_compilation = true; 
       } 
 
@@ -1214,9 +1226,9 @@ void graphScan(GPGraph *const graph, GHashTable *table, string const scope,
          {
            if(symbol_list->next == NULL) 
            {
-              print_to_log("Error (%s.%s): Target node %s of edge %s does "
+              print_to_log("Error (%s): Target node %s of edge %s does "
                            "not exist in %s graph.\n", 
-                           scope, rule_name, target_id, edge_id, graph_type);   
+                           rule_name, target_id, edge_id, graph_type);   
               abort_compilation = true; 
               break;
            }
@@ -1277,17 +1289,17 @@ void interfaceScan(List *interface, GHashTable *table,
 
      if(!in_lhs)  
      {
-        print_to_log("Error (%s.%s): Interface node %s not in the LHS "
+        print_to_log("Error (%s): Interface node %s not in the LHS "
 	   	     "graph.\n",
-                     scope, rule_name, current_node_id);
+                     rule_name, current_node_id);
         abort_compilation = true; 
      }
 
      if(!in_rhs) 
      {
-        print_to_log("Error (%s.%s): Interface node %s not in the RHS "
+        print_to_log("Error (%s): Interface node %s not in the RHS "
 		     "graph.\n", 
-                     scope, rule_name, current_node_id);
+                     rule_name, current_node_id);
         abort_compilation = true; 
      }
 
@@ -1300,9 +1312,9 @@ void interfaceScan(List *interface, GHashTable *table,
   for(iterator = interface_ids; iterator->next; iterator = iterator->next)
   {
      if(!strcmp(iterator->data,iterator->next->data))
-        print_to_log("Warning (%s.%s): Node %s occurs twice in "
+        print_to_log("Warning (%s): Node %s occurs twice in "
                      "interface list.\n",
-                     scope, rule_name, (char*)(iterator->data));
+                     rule_name, (char*)(iterator->data));
   }
   g_slist_free(interface_ids); 
 }
@@ -1352,12 +1364,12 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
             */
            if(!in_rule) 
            {
-              print_to_console("Warning (%s.%s): Variable %s in condition not "
+              print_to_console("Warning (%s): Variable %s in condition not "
                                "declared.\n", 
-                               scope, rule_name, condition->value.var);
-              print_to_log("Warning (%s.%s): Variable %s in condition not "
+                               rule_name, condition->value.var);
+              print_to_log("Warning (%s): Variable %s in condition not "
                            "declared.\n", 
-                           scope, rule_name, condition->value.var);
+                           rule_name, condition->value.var);
            }
            break;
       }
@@ -1388,11 +1400,11 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
 
            if(!in_lhs) 
            {
-              print_to_console("Error (%s.%s): Node %s in edge predicate not "
-                               "in LHS.\n", scope, rule_name,
+              print_to_console("Error (%s): Node %s in edge predicate not "
+                               "in LHS.\n", rule_name,
                                condition->value.edge_pred.source);
-              print_to_log("Error (%s.%s): Node %s in edge predicate not in "
-                           "LHS.\n", scope, rule_name,
+              print_to_log("Error (%s): Node %s in edge predicate not in "
+                           "LHS.\n", rule_name,
                            condition->value.edge_pred.source);
               abort_compilation = true;  
            }
@@ -1417,11 +1429,11 @@ void conditionScan(GPCondExp * const condition, GHashTable *table,
 
            if(!in_lhs) 
            {
-              print_to_console("Error (%s.%s): Node %s in edge predicate not "
-                               "in LHS.\n", scope, rule_name,
+              print_to_console("Error (%s): Node %s in edge predicate not "
+                               "in LHS.\n", rule_name,
                                condition->value.edge_pred.target);
-              print_to_log("Error (%s.%s): Node %s in edge predicate not in "
-                           "LHS.\n", scope, rule_name,
+              print_to_log("Error (%s): Node %s in edge predicate not in "
+                           "LHS.\n", rule_name,
                            condition->value.edge_pred.target);
               abort_compilation = true;  
            }
@@ -1567,32 +1579,28 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
 
    if(list_var_count > 1) 
    { 
-      print_to_console("Error (%s.%s): More than one list variable in LHS "
-	               "label.\n", 
-                       scope, rule_name);
-      print_to_log("Error (%s.%s): More than one list variable in LHS "
-	           "label.\n", 
-                   scope, rule_name);
+      print_to_console("Error (%s): More than one list variable in LHS "
+	               "label.\n", rule_name);
+      print_to_log("Error (%s): More than one list variable in LHS "
+	           "label.\n", rule_name);
       abort_compilation = true;
    }
 
    if(string_var_count > 1) 
    {
-      print_to_console("Error (%s.%s): More than one string variable in LHS "
-	               "string expression.\n", 
-                       scope, rule_name);
-      print_to_log("Error (%s.%s): More than one string variable in LHS "
-	           "string expression.\n", 
-                   scope, rule_name);
+      print_to_console("Error (%s): More than one string variable in LHS "
+	               "string expression.\n", rule_name);
+      print_to_log("Error (%s): More than one string variable in LHS "
+	           "string expression.\n", rule_name);
       abort_compilation = true;
    }
 
    if(lhs_non_simple_exp) 
    {
-      print_to_console("Error (%s.%s): Arithmetic expression in LHS label \n",
-                       scope, rule_name);
-      print_to_log("Error (%s.%s): Arithmetic expression in LHS label \n",
-                   scope, rule_name);
+      print_to_console("Error (%s): Arithmetic expression in LHS label \n",
+                       rule_name);
+      print_to_log("Error (%s): Arithmetic expression in LHS label \n",
+                   rule_name);
       abort_compilation = true;
    }
 
@@ -1615,12 +1623,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
            if(string_exp) 
            {
-              print_to_console("Error (%s.%s): Integer constant appears in a "
-                               "string expression.\n", 
-                               scope, rule_name);
-              print_to_log("Error (%s.%s): Integer constant appears in a "
-                           "string expression.\n",
-                           scope, rule_name);
+              print_to_console("Error (%s): Integer constant appears in a "
+                               "string expression.\n", rule_name);
+              print_to_log("Error (%s): Integer constant appears in a "
+                           "string expression.\n", rule_name);
               abort_compilation = true;
            }             
 
@@ -1631,12 +1637,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
            if(int_exp) 
            {
-              print_to_console("Error (%s.%s): Character constant appears in "
-                               "an integer expression.\n", 
-                               scope, rule_name);
-              print_to_log("Error (%s.%s): Character constant appears in "
-                           "an integer expression.\n", 
-                           scope, rule_name);
+              print_to_console("Error (%s): Character constant appears in "
+                               "an integer expression.\n", rule_name);
+              print_to_log("Error (%s): Character constant appears in "
+                           "an integer expression.\n", rule_name);
 	      abort_compilation = true;
            }
 
@@ -1647,12 +1651,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
            if(int_exp) 
            {
-              print_to_console("Error (%s.%s): String constant appears in an "
-                               "integer expression.\n", 
-                               scope, rule_name);
-              print_to_log("Error (%s.%s): String constant appears in an "
-                           "integer expression.\n", 
-                           scope, rule_name);
+              print_to_console("Error (%s): String constant appears in an "
+                               "integer expression.\n", rule_name);
+              print_to_log("Error (%s): String constant appears in an "
+                           "integer expression.\n", rule_name);
 	      abort_compilation = true;
            }
 
@@ -1694,11 +1696,11 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
                if(!in_rule) 
                {
-                  print_to_console("Error (%s.%s): Variable %s in "
+                  print_to_console("Error (%s): Variable %s in "
                                    "expression but not declared.\n",
-                                   scope, rule_name, atom_exp->value.name);
-                  print_to_log("Error (%s.%s): Variable %s in expression "
-                               "but not declared.\n", scope, rule_name,
+                                   rule_name, atom_exp->value.name);
+                  print_to_log("Error (%s): Variable %s in expression "
+                               "but not declared.\n", rule_name,
                                atom_exp->value.name);
                   abort_compilation = true;
                }
@@ -1712,11 +1714,11 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 	          /* Check if a RHS variable exists in the LHS */
                   if(location == 'r' && !(current_var->in_lhs))
                   {
-                     print_to_console("Error (%s.%s): Variable %s in RHS but "
-                                      "not in LHS.\n", scope, rule_name,
+                     print_to_console("Error (%s): Variable %s in RHS but "
+                                      "not in LHS.\n", rule_name,
                                       atom_exp->value.name);
-                     print_to_log("Error (%s.%s): Variable %s in RHS but "
-                                  "not in LHS.\n", scope, rule_name,
+                     print_to_log("Error (%s): Variable %s in RHS but "
+                                  "not in LHS.\n", rule_name,
                                   atom_exp->value.name);
 	             abort_compilation = true;
                   }
@@ -1724,28 +1726,28 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 	          /* Type checking */
                   if(int_exp && current_var->type != INT_S) 
                   {
-                     print_to_console("Error(%s.%s): Variable %s occurs in "
+                     print_to_console("Error(%s): Variable %s occurs in "
                                       "an integer expression but not declared "
-                                      "as an integer.\n",
-                                      scope, rule_name, atom_exp->value.name);
-                     print_to_log("Error(%s.%s): Variable %s occurs in an "
+                                      "as an integer.\n", rule_name, 
+                                      atom_exp->value.name);
+                     print_to_log("Error(%s): Variable %s occurs in an "
                                   "integer expression but not declared as "
-                                  "an integer.\n",
-                                  scope, rule_name, atom_exp->value.name);
+                                  "an integer.\n", rule_name, 
+                                  atom_exp->value.name);
                      abort_compilation = true;
 		  }
 
                   if(string_exp && current_var->type != CHAR_S
                                 && current_var->type != STRING_S )
                   {
-                     print_to_console("Error(%s.%s): Variable %s occurs in a "
+                     print_to_console("Error(%s): Variable %s occurs in a "
                              "string expression but not declared as a string "
-                             "or character. \n",
-                             scope, rule_name, atom_exp->value.name);
-                     print_to_log("Error(%s.%s): Variable %s occurs in a "
+                             "or character. \n", rule_name, 
+                             atom_exp->value.name);
+                     print_to_log("Error(%s): Variable %s occurs in a "
                              "string expression but not declared as a string."
-                             "or character. \n",
-                             scope, rule_name, atom_exp->value.name);
+                             "or character. \n", rule_name, 
+                             atom_exp->value.name);
                      abort_compilation = true;
                   }
 	       }
@@ -1767,12 +1769,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
       {
            if(string_exp) 
            {
-	      print_to_console("Error (%s.%s): Degree operator appears in "
-                               "string expression.\n", 
-                               scope, rule_name);
-	      print_to_log("Error (%s.%s): Degree operator appears in "
-                           "string expression.\n", 
-                           scope, rule_name);
+	      print_to_console("Error (%s): Degree operator appears in "
+                               "string expression.\n", rule_name);
+	      print_to_log("Error (%s): Degree operator appears in "
+                           "string expression.\n", rule_name);
 	      abort_compilation = true;
            }
 
@@ -1806,12 +1806,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
 	      if(!in_lhs) 
               {
-		 print_to_console("Error (%s.%s): Node %s in degree operator is "
-			 "not in the LHS.\n", 
-			 scope, rule_name,atom_exp->value.node_id);
-		 print_to_log("Error (%s.%s): Node %s in degree operator is "
-			 "not in the LHS.\n", 
-			 scope, rule_name,atom_exp->value.node_id);
+		 print_to_console("Error (%s): Node %s in degree operator is "
+			 "not in the LHS.\n", rule_name, atom_exp->value.node_id);
+		 print_to_log("Error (%s): Node %s in degree operator is "
+			 "not in the LHS.\n", rule_name,atom_exp->value.node_id);
               abort_compilation = true;
               }
            }
@@ -1844,12 +1842,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
 	      if(!in_rhs)  
               {
-		 print_to_console("Error (%s.%s): Node %s in degree operator is "
-			 "not in the RHS.\n", 
-			 scope, rule_name,atom_exp->value.node_id);
-		 print_to_log("Error (%s.%s): Node %s in degree operator is "
-			 "not in the RHS.\n", 
-			 scope, rule_name,atom_exp->value.node_id);
+		 print_to_console("Error (%s): Node %s in degree operator is "
+			 "not in the RHS.\n", rule_name,atom_exp->value.node_id);
+		 print_to_log("Error (%s): Node %s in degree operator is "
+			 "not in the RHS.\n", rule_name,atom_exp->value.node_id);
               abort_compilation = true;
               }
            }
@@ -1860,12 +1856,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
             if(string_exp) 
             {
-                print_to_console("Error (%s.%s): Length operator appears in "
-                                 "string expression.\n", 
-                                 scope, rule_name);
-                print_to_log("Error (%s.%s): Length operator appears in "
-                             "string expression.\n",
-                             scope, rule_name);
+                print_to_console("Error (%s): Length operator appears in "
+                                 "string expression.\n", rule_name);
+                print_to_log("Error (%s): Length operator appears in "
+                             "string expression.\n", rule_name);
                 abort_compilation = true;
             }
 
@@ -1880,12 +1874,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
             if(string_exp) 
             {
-               print_to_console("Error (%s.%s): Length operator appears in "
-                                "string expression.\n", 
-                                scope, rule_name);
-               print_to_log("Error (%s.%s): Length operator appears in "
-                            "string expression.\n",
-                            scope, rule_name);
+               print_to_console("Error (%s): Length operator appears in "
+                                "string expression.\n", rule_name);
+               print_to_log("Error (%s): Length operator appears in "
+                            "string expression.\n", rule_name);
                abort_compilation = true; 
             }
          
@@ -1901,12 +1893,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
             if(string_exp) 
             {
-               print_to_console("Error (%s.%s): Arithmetic operator appears "
-                                "in string expression.\n", 
-                                scope, rule_name);
-               print_to_log("Error (%s.%s): Arithmetic operator appears in "
-                            "string expression.\n", 
-                            scope, rule_name);
+               print_to_console("Error (%s): Arithmetic operator appears "
+                                "in string expression.\n", rule_name);
+               print_to_log("Error (%s): Arithmetic operator appears in "
+                            "string expression.\n", rule_name);
             }
 
             if(location == 'l') lhs_non_simple_exp = true;
@@ -1926,12 +1916,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
             if(string_exp) 
             {
-               print_to_console("Error (%s.%s): Arithmetic operator appears in "
-                                "string expression.\n", 
-                                scope, rule_name);
-               print_to_log("Error (%s.%s): Arithmetic operator appears in "
-                            "string expression.\n", 
-                            scope, rule_name);
+               print_to_console("Error (%s): Arithmetic operator appears in "
+                                "string expression.\n", rule_name);
+               print_to_log("Error (%s): Arithmetic operator appears in "
+                            "string expression.\n", rule_name);
                abort_compilation = true;
             }
 
@@ -1948,10 +1936,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
             if(int_exp) 
             {
-               print_to_console("Error (%s.%s): String operator appears in "
-                                "integer expression.\n", scope, rule_name);
-               print_to_log("Error (%s.%s): String operator appears in "
-                            "integer expression.\n", scope, rule_name);
+               print_to_console("Error (%s): String operator appears in "
+                                "integer expression.\n", rule_name);
+               print_to_log("Error (%s): String operator appears in "
+                            "integer expression.\n", rule_name);
                abort_compilation = true;
             }
 
@@ -1962,11 +1950,10 @@ void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table,
 
 	    if(string_var_count > 1) 
             {
-	       print_to_console("Error (%s.%s): More than one string variable "
-		                "in LHS string expression.\n", 
-                                scope, rule_name);
-	       print_to_log("Error (%s.%s): More than one string variable "
-		            "in LHS string expression.\n", scope, rule_name);
+	       print_to_console("Error (%s): More than one string variable "
+		                "in LHS string expression.\n", rule_name);
+	       print_to_log("Error (%s): More than one string variable "
+		            "in LHS string expression.\n", rule_name);
 	       string_var_count = 0;
             }
 

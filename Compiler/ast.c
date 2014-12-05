@@ -8,8 +8,8 @@
 
 #include "ast.h" 
 
-List *addASTDecl (ListType list_type, YYLTYPE location, GPDeclaration *declaration,
-	       List *next)
+List *addASTDecl(ListType list_type, YYLTYPE location, GPDeclaration *declaration,
+	         List *next)
 { 
     List *new_decl = malloc(sizeof(List));
     
@@ -28,7 +28,7 @@ List *addASTDecl (ListType list_type, YYLTYPE location, GPDeclaration *declarati
     return new_decl;
 }
 
-List *addASTCommand (YYLTYPE location, GPStatement *command, List *next)
+List *addASTCommand(YYLTYPE location, GPStatement *command, List *next)
 { 
     List *new_command = malloc(sizeof(List));
     
@@ -46,7 +46,7 @@ List *addASTCommand (YYLTYPE location, GPStatement *command, List *next)
     return new_command;
 }
 
-List *addASTRule (YYLTYPE location, string rule_name, List *next)
+List *addASTRule(YYLTYPE location, string rule_name, List *next)
 { 
     List *new_rule = malloc(sizeof(List));
     
@@ -64,8 +64,8 @@ List *addASTRule (YYLTYPE location, string rule_name, List *next)
     return new_rule;
 }
 
-List *addASTVariableDecl (ListType list_type, YYLTYPE location, List *variables,
-	                  List *next)
+List *addASTVariableDecl(ListType list_type, YYLTYPE location, List *variables,
+	                 List *next)
 { 
     List *new_var_decl = malloc(sizeof(List));
     
@@ -85,7 +85,7 @@ List *addASTVariableDecl (ListType list_type, YYLTYPE location, List *variables,
     return new_var_decl;
 }
 
-List *addASTVariable (YYLTYPE location, string variable_name, List *next)
+List *addASTVariable(YYLTYPE location, string variable_name, List *next)
 { 
     List *new_var = malloc(sizeof(List));
     
@@ -103,7 +103,7 @@ List *addASTVariable (YYLTYPE location, string variable_name, List *next)
     return new_var;
 }
 
-List *addASTNodeID (YYLTYPE location, string node_id, List *next)
+List *addASTNodeID(YYLTYPE location, string node_id, List *next)
 { 
     List *new_pair = malloc(sizeof(List));
     
@@ -121,7 +121,7 @@ List *addASTNodeID (YYLTYPE location, string node_id, List *next)
     return new_pair;
 }
 
-List *addASTNode (YYLTYPE location, GPNode *node, List *next)
+List *addASTNode(YYLTYPE location, GPNode *node, List *next)
 {
      List *new_node = malloc(sizeof(List));
      
@@ -139,7 +139,7 @@ List *addASTNode (YYLTYPE location, GPNode *node, List *next)
      return new_node;
 }
       
-List *addASTEdge (YYLTYPE location, GPEdge *edge, List *next)
+List *addASTEdge(YYLTYPE location, GPEdge *edge, List *next)
 {
      List *new_edge = malloc(sizeof(List));
      
@@ -157,7 +157,7 @@ List *addASTEdge (YYLTYPE location, GPEdge *edge, List *next)
      return new_edge;
 }
 
-List *addASTAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
+List *addASTAtom(YYLTYPE location, GPAtomicExp *atom, List *next)
 {
     List *new_atom = malloc(sizeof(List));
    
@@ -175,7 +175,7 @@ List *addASTAtom (YYLTYPE location, GPAtomicExp *atom, List *next)
     return new_atom;
 }
 
-List *addASTEmptyList (YYLTYPE location)
+List *addASTEmptyList(YYLTYPE location)
 {
      List *new_empty = malloc(sizeof(List));
 
@@ -194,7 +194,7 @@ List *addASTEmptyList (YYLTYPE location)
 
 
 
-GPDeclaration *newASTMainDecl (YYLTYPE location, GPStatement *main_program)
+GPDeclaration *newASTMainDecl(YYLTYPE location, GPStatement *main_program)
 {
     GPDeclaration *new_main = malloc(sizeof(GPDeclaration));
    
@@ -211,7 +211,7 @@ GPDeclaration *newASTMainDecl (YYLTYPE location, GPStatement *main_program)
     return new_main;
 }
 
-GPDeclaration *newASTProcedureDecl (YYLTYPE location, GPProcedure *procedure)
+GPDeclaration *newASTProcedureDecl(YYLTYPE location, GPProcedure *procedure)
 {
     GPDeclaration *new_proc = malloc(sizeof(GPDeclaration));
    
@@ -228,7 +228,7 @@ GPDeclaration *newASTProcedureDecl (YYLTYPE location, GPProcedure *procedure)
     return new_proc;
 }
 
-GPDeclaration *newASTRuleDecl (YYLTYPE location, GPRule *rule)
+GPDeclaration *newASTRuleDecl(YYLTYPE location, GPRule *rule)
 {
     GPDeclaration *new_rule = malloc(sizeof(GPDeclaration));
    
@@ -316,7 +316,8 @@ GPStatement *newASTProcCall(YYLTYPE location, string proc_name)
 }
 
 GPStatement *newASTCondBranch(StatementType statement_type, YYLTYPE location, 
-	      GPStatement *condition, GPStatement *then_stmt, GPStatement *else_stmt)
+	                      GPStatement *condition, GPStatement *then_stmt, 
+                              GPStatement *else_stmt)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
@@ -354,7 +355,7 @@ GPStatement *newASTAlap(YYLTYPE location, GPStatement *loop_stmt)
 }
 
 GPStatement *newASTOrStmt(YYLTYPE location, GPStatement *left_stmt, 
-	      GPStatement *right_stmt)
+	                  GPStatement *right_stmt)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
@@ -406,7 +407,7 @@ GPStatement *newASTFail(YYLTYPE location)
 
 
 
-GPCondExp *newASTSubtypePred (CondExpType exp_type, YYLTYPE location, string var)
+GPCondExp *newASTSubtypePred(CondExpType exp_type, YYLTYPE location, string var)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -424,8 +425,8 @@ GPCondExp *newASTSubtypePred (CondExpType exp_type, YYLTYPE location, string var
      return cond;
 }
 
-GPCondExp *newASTEdgePred (YYLTYPE location, string source, string target, 
-	    GPLabel *label)
+GPCondExp *newASTEdgePred(YYLTYPE location, string source, string target, 
+	                  GPLabel *label)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -444,8 +445,8 @@ GPCondExp *newASTEdgePred (YYLTYPE location, string source, string target,
      return cond;
 }
 
-GPCondExp *newASTListComparison (CondExpType exp_type, YYLTYPE location,
-	    List *left_list, List *right_list)
+GPCondExp *newASTListComparison(CondExpType exp_type, YYLTYPE location,
+	                        List *left_list, List *right_list)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -465,8 +466,8 @@ GPCondExp *newASTListComparison (CondExpType exp_type, YYLTYPE location,
 }
 
 
-GPCondExp *newASTAtomComparison (CondExpType exp_type, YYLTYPE location,
-	    GPAtomicExp *left_exp, GPAtomicExp *right_exp)
+GPCondExp *newASTAtomComparison(CondExpType exp_type, YYLTYPE location,
+	                        GPAtomicExp *left_exp, GPAtomicExp *right_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -486,7 +487,7 @@ GPCondExp *newASTAtomComparison (CondExpType exp_type, YYLTYPE location,
 }
 
 
-GPCondExp *newASTNotExp (YYLTYPE location, GPCondExp *not_exp)
+GPCondExp *newASTNotExp(YYLTYPE location, GPCondExp *not_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -503,8 +504,8 @@ GPCondExp *newASTNotExp (YYLTYPE location, GPCondExp *not_exp)
      return cond;
 }
 
-GPCondExp *newASTBinaryExp (CondExpType exp_type, YYLTYPE location, 
-	    GPCondExp *left_exp, GPCondExp *right_exp)
+GPCondExp *newASTBinaryExp(CondExpType exp_type, YYLTYPE location, 
+                           GPCondExp *left_exp, GPCondExp *right_exp)
 {
      GPCondExp *cond = malloc(sizeof(GPCondExp));
  
@@ -524,7 +525,7 @@ GPCondExp *newASTBinaryExp (CondExpType exp_type, YYLTYPE location,
 }
 
 
-GPAtomicExp *newASTVariable (YYLTYPE location, string name)
+GPAtomicExp *newASTVariable(YYLTYPE location, string name)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -541,7 +542,7 @@ GPAtomicExp *newASTVariable (YYLTYPE location, string name)
      return atom;
 }
 
-GPAtomicExp *newASTNumber (YYLTYPE location, int number)
+GPAtomicExp *newASTNumber(YYLTYPE location, int number)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -559,7 +560,7 @@ GPAtomicExp *newASTNumber (YYLTYPE location, int number)
 }
 
 
-GPAtomicExp *newASTCharacter (YYLTYPE location, string character)
+GPAtomicExp *newASTCharacter(YYLTYPE location, string character)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
 
@@ -578,7 +579,7 @@ GPAtomicExp *newASTCharacter (YYLTYPE location, string character)
 
 
 
-GPAtomicExp *newASTString (YYLTYPE location, string string)
+GPAtomicExp *newASTString(YYLTYPE location, string string)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -596,7 +597,8 @@ GPAtomicExp *newASTString (YYLTYPE location, string string)
      return atom;
 }
 
-GPAtomicExp *newASTDegreeOp (AtomExpType exp_type, YYLTYPE location, string node_id)
+GPAtomicExp *newASTDegreeOp(AtomExpType exp_type, YYLTYPE location, 
+                            string node_id)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -614,7 +616,7 @@ GPAtomicExp *newASTDegreeOp (AtomExpType exp_type, YYLTYPE location, string node
      return atom;
 }
 
-GPAtomicExp *newASTListLength (YYLTYPE location, List *list_arg)
+GPAtomicExp *newASTListLength(YYLTYPE location, List *list_arg)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -631,7 +633,7 @@ GPAtomicExp *newASTListLength (YYLTYPE location, List *list_arg)
      return atom;
 }
 
-GPAtomicExp *newASTStringLength (YYLTYPE location, GPAtomicExp *str_arg)
+GPAtomicExp *newASTStringLength(YYLTYPE location, GPAtomicExp *str_arg)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -648,7 +650,7 @@ GPAtomicExp *newASTStringLength (YYLTYPE location, GPAtomicExp *str_arg)
      return atom;
 }
 
-GPAtomicExp *newASTNegExp (YYLTYPE location, GPAtomicExp *exp)
+GPAtomicExp *newASTNegExp(YYLTYPE location, GPAtomicExp *exp)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -665,7 +667,8 @@ GPAtomicExp *newASTNegExp (YYLTYPE location, GPAtomicExp *exp)
      return atom;
 }
 
-GPAtomicExp *newASTBinaryOp (AtomExpType exp_type, YYLTYPE location, GPAtomicExp *left_exp, GPAtomicExp *right_exp)
+GPAtomicExp *newASTBinaryOp(AtomExpType exp_type, YYLTYPE location, 
+                            GPAtomicExp *left_exp, GPAtomicExp *right_exp)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
  
@@ -685,7 +688,8 @@ GPAtomicExp *newASTBinaryOp (AtomExpType exp_type, YYLTYPE location, GPAtomicExp
 }
 
 
-GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls, GPStatement *cmd_seq)
+GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls,
+                             GPStatement *cmd_seq)
 {
     GPProcedure *proc = malloc(sizeof(GPProcedure));
     
@@ -705,8 +709,8 @@ GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls, G
 }
  
 GPRule *newASTRule(YYLTYPE location, string name, List *variables,
-	        GPGraph *lhs, GPGraph *rhs, List *interface, 
-		GPCondExp *condition)
+	           GPGraph *lhs, GPGraph *rhs, List *interface, 
+		   GPCondExp *condition)
 {
     GPRule *rule = malloc(sizeof(GPRule));
     
@@ -729,8 +733,7 @@ GPRule *newASTRule(YYLTYPE location, string name, List *variables,
 }    
 
 
-GPGraph *newASTGraph (YYLTYPE location, GPPos *position, List *nodes, 
-                   List *edges)
+GPGraph *newASTGraph(YYLTYPE location, List *nodes, List *edges)
 {
     GPGraph *graph = malloc(sizeof(GPGraph));
     
@@ -742,7 +745,6 @@ GPGraph *newASTGraph (YYLTYPE location, GPPos *position, List *nodes,
 
     graph->node_type = GRAPH;
     graph->location = location;
-    graph->position = position; 
     graph->nodes = nodes;
     graph->edges = edges;
 
@@ -750,8 +752,7 @@ GPGraph *newASTGraph (YYLTYPE location, GPPos *position, List *nodes,
 }
 
 
-GPNode *newASTNode (YYLTYPE location, bool root, string name, GPLabel *label, 
-                 GPPos *position)
+GPNode *newASTNode(YYLTYPE location, bool root, string name, GPLabel *label)
 {
     GPNode *node = malloc(sizeof(GPNode));
     
@@ -766,13 +767,12 @@ GPNode *newASTNode (YYLTYPE location, bool root, string name, GPLabel *label,
     node->root = root;
     node->name = strdup(name);
     node->label = label;
-    node->position = position;
 
     return node;
 }
 
-GPEdge *newASTEdge (YYLTYPE location, bool bidirectional, string name, 
-                 string source, string target, GPLabel *label)
+GPEdge *newASTEdge(YYLTYPE location, bool bidirectional, string name, 
+                   string source, string target, GPLabel *label)
 {
     GPEdge *edge = malloc(sizeof(GPEdge));
     
@@ -793,7 +793,7 @@ GPEdge *newASTEdge (YYLTYPE location, bool bidirectional, string name,
     return edge;
 }
 
-GPPos *newASTPosition (YYLTYPE location, int x, int y)
+/* GPPos *newASTPosition (YYLTYPE location, int x, int y)
 {
     GPPos *pos = malloc(sizeof(GPPos));
     
@@ -809,9 +809,9 @@ GPPos *newASTPosition (YYLTYPE location, int x, int y)
     pos->y = y;
 
     return pos;
-}
+} */
 
-GPLabel *newASTLabel (YYLTYPE location, MarkType mark, List *gp_list)
+GPLabel *newASTLabel(YYLTYPE location, MarkType mark, List *gp_list)
 {
     GPLabel *label = malloc(sizeof(GPLabel));
     
@@ -1241,7 +1241,6 @@ void freeASTRule(GPRule *rule)
 void freeASTGraph(GPGraph *graph)
 {
    if(graph == NULL) return;
-   if(graph->position) free(graph->position);
    if(graph->nodes) freeAST(graph->nodes);
    if(graph->edges) freeAST(graph->edges);
    free(graph);
@@ -1252,7 +1251,6 @@ void freeASTNode(GPNode *node)
    if(node == NULL) return;
    if(node->name) free(node->name);
    if(node->label) freeASTLabel(node->label);
-   if(node->position) free(node->position);
    free(node);
 }
 
