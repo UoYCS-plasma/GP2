@@ -17,8 +17,8 @@ void testInvariants();
 
 #ifdef OILR_STANDALONE
 
-#define MAX_NODES 64
-#define MAX_EDGES 1024
+#define MAX_NODES 128
+#define MAX_EDGES 16184
 #define MAX_INCIDENT_EDGES 128
 
 /* dummy data structures for testing OILR in isolation */
