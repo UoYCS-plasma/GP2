@@ -1,9 +1,12 @@
 DEFINES=-DOILR_STANDALONE -DDEBUG
 CC=gcc -g -Wall -Werror $(DEFINES)
 
-TARGETS=oilrrt.o
+TARGETS=oilrrt.a
 
-all : $(TARGETS)
+$(TARGETS) : $(OBJS)
+
+oilrrt.a : oilrrt.o
+	ar rcs $@ $^
 
 %.o : %.c oilrrt.h oilrinst.h invariants.c
 	$(CC) -c $<

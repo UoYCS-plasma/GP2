@@ -318,7 +318,6 @@ void makeSearchSpace(Traverser *t) {
 				nt->r);
 		trace("Contains %d nodes across %d live indices", spc->size, pos);
 	} else {
-		/* TODO */
 		spc->index[pos++] = &(gsp->indices[nt->o][nt->i][nt->l][nt->r]);
 	}
 	spc->index[pos+1] = NULL;
@@ -558,7 +557,7 @@ OilrNode *nextUnmatchedNodeInChain(OilrNode *on) {
 OilrNode *nextUnmatchedNodeFromEdge(NodeTraverser *nt) {
 	int pos, in, out, loop;
 	bool root;
-	OilrNode *on, *origin = nt->searchSpace.edgeFrom->oilrNode;
+	OilrNode *on = NULL, *origin = nt->searchSpace.edgeFrom->oilrNode;
 	Node *n = NULL;
 	if (origin == NULL)
 		error(1, 0, "NULL node as edge origin! Something went wrong!");
@@ -566,7 +565,7 @@ OilrNode *nextUnmatchedNodeFromEdge(NodeTraverser *nt) {
 	if (hasRealNode(nt->oilrNode))
 		unmatch(nt->oilrNode);
 			
-	trace("%d", nt->searchSpace.pos);
+	trace("%d %d", nt->searchSpace.pos, origin->node->outdegree);
 	for (pos=nt->searchSpace.pos; pos<origin->node->outdegree; pos++) {
 		n = origin->node->out_edges[pos]->target;
 		out  = getO(n);
@@ -604,6 +603,7 @@ bool findCandidateNode(NodeTraverser *nt) {
 	Index *ind;
 	OilrNode *on;
 	
+	testInvariants();
 	if (spc->edgeFrom) {
 		while ( (on = nextUnmatchedNodeFromEdge(nt)) ) {
 			nt->oilrNode = on;
@@ -632,6 +632,7 @@ void runSearch() {
 
 	/* set-up search spaces */
 	while (txp >= travStack) {
+		testInvariants();
 		if (isNodeTrav(txp) && !txp->n.searchSpace.edgeFrom) {
 			/* TODO: fix traverser result on single matching node */
 			makeSearchSpace(txp); /* init the search space */
@@ -656,6 +657,7 @@ void runSearch() {
 	txp = travStack;
 	dumpTravStack(txp);
 	while (txp <= tsp) {
+		testInvariants();
 		if ( isNodeTrav(txp) && !findCandidateNode(&(txp->n)) ) {
 			success = false;
 			resetTrav(txp);

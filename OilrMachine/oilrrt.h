@@ -7,7 +7,7 @@
 #include <stdio.h>
 #define TEST_INVARIANTS
 #define trace(...) do { printf("--> ") ; printf(__VA_ARGS__) ; printf("\n");} while (false);
-bool testInvariants();
+void testInvariants();
 #else
 #define trace(...)
 #define dumpTravStack(x)

@@ -36,6 +36,11 @@ data Instr =
     | TBE Int Int
 
     -- Create a traverser-like object
+    -- that succeeds if an edge exists
+    | CE Int Int
+    | CBE Int Int
+
+    -- Create a traverser-like object
     -- that fails if its edge exists!
     | XE Int Int
 
