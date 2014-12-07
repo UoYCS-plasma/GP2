@@ -96,7 +96,7 @@ bool validGraph(Graph *graph)
 
          while(iterator != NULL)
          {
-            free_slot = *(int *)iterator->data;
+            free_slot = iterator->data->free_slot;
             if(free_slot == graph_index) 
             {
                slot_found = true;
@@ -127,7 +127,7 @@ bool validGraph(Graph *graph)
 
                while(iterator != NULL)
                {
-                  free_slot = *(int *)iterator->data;
+                  free_slot = iterator->data->free_slot;
                   if(free_slot == node_index) 
                   {
                      slot_found = true;
@@ -171,7 +171,7 @@ bool validGraph(Graph *graph)
 
                while(iterator != NULL)
                {
-                  free_slot = *(int *)iterator->data;
+                  free_slot = iterator->data->free_slot;
                   if(free_slot == node_index) 
                   {
                      slot_found = true;
@@ -230,7 +230,7 @@ bool validGraph(Graph *graph)
 
          while(iterator != NULL)
          {
-            free_slot = *(int *)iterator->data;
+            free_slot = iterator->data->free_slot;
             if(free_slot == graph_index) 
             {
                slot_found = true;
@@ -337,6 +337,30 @@ bool validGraph(Graph *graph)
    return valid_graph;
 }
 
+
+Label *newBlankLabel(void)
+{
+   ListElement *empty = malloc(sizeof(ListElement));
+   if(empty == NULL) {
+      printf("OUT OF MEMORY.\n"); 
+      exit(0);
+    }
+   empty->type = EMPTY;
+
+   GList *list = g_list_prepend(NULL, empty);
+
+   Label *label = malloc(sizeof(Label));
+   if(label == NULL) {
+      printf("OUT OF MEMORY.\n"); 
+      exit(0);
+    }
+   label->mark = NONE;
+   label->list = list;
+   label->list_length = 0;
+   label->has_list_variable = false; 
+
+   return label;
+}
 
 LabelClass getLabelClass(Label *label)
 {
@@ -460,8 +484,8 @@ void addNode(Graph *graph, Node *node)
 {
     /* Add the node to the pointer array. First check the free node slots stack
      * to see if there are any holes in the node array. */
-    int *free_node_slot = (int *)pop(graph->free_node_slots);
-    if(free_node_slot == NULL) 
+    StackData *data = pop(graph->free_node_slots);
+    if(data == NULL) 
     {
        graph->nodes[graph->next_node_index] = node;
        node->index = graph->next_node_index;
@@ -469,8 +493,9 @@ void addNode(Graph *graph, Node *node)
     }
     else 
     {
-       graph->nodes[*free_node_slot] = node;
-       node->index = *free_node_slot;
+       graph->nodes[data->free_slot] = node;
+       node->index = data->free_slot;
+       free(data);
     }
 
     /* Update graph->nodes_by_label by adding the new node to the appropriate
@@ -491,8 +516,8 @@ void addEdge(Graph *graph, Edge *edge)
 {
     /* Add the edge to the pointer array. First check the free edge slots stack
      * to see if there are any holes in the edge array. */
-    int *free_edge_slot = (int *)pop(graph->free_edge_slots);
-    if(free_edge_slot == NULL) 
+    StackData *data = pop(graph->free_edge_slots);
+    if(data == NULL) 
     {
        graph->edges[graph->next_edge_index] = edge;
        edge->index = graph->next_edge_index;
@@ -500,33 +525,42 @@ void addEdge(Graph *graph, Edge *edge)
     }
     else
     { 
-       graph->edges[*free_edge_slot] = edge;    
-       edge->index = *free_edge_slot;
+       graph->edges[data->free_slot] = edge;    
+       edge->index = data->free_slot;
+       free(data);
     }
 
     /* Update the source and target nodes with the new edge: first add the
      * edge to the out_edges/in_edges array and then update the degree. */ 
     Node *source = edge->source;
 
-    free_edge_slot = (int *)pop(source->free_out_edge_slots);
-    if(free_edge_slot == NULL) 
+    data = pop(source->free_out_edge_slots);
+    if(data == NULL) 
     {
        source->out_edges[source->next_out_edge_index] = edge;
        source->next_out_edge_index++;
     }
-    else source->out_edges[*free_edge_slot] = edge;
+    else 
+    {
+       source->out_edges[data->free_slot] = edge;
+       free(data);
+    }
 
     source->outdegree++;
 
     Node *target = edge->target;
 
-    free_edge_slot = (int *)pop(target->free_in_edge_slots);
-    if(free_edge_slot == NULL) 
+    data = pop(target->free_in_edge_slots);
+    if(data == NULL) 
     {
        target->in_edges[target->next_in_edge_index] = edge;
        target->next_in_edge_index++;
     }
-    else target->in_edges[*free_edge_slot] = edge;
+    else 
+    {
+       target->in_edges[data->free_slot] = edge;
+       free(data);
+    }
 
     target->indegree++;
 
@@ -571,9 +605,20 @@ void removeNode(Graph *graph, int index)
     freeNode(node);
     graph->nodes[index] = NULL;
 
-    /* Add the node's index to the list of free node slots. */
-    push(graph->free_node_slots, &index);
-
+    /* If the node's index is not the last index in the array, add the node's 
+     * index to the list of free node slots. */
+    if(index < graph->number_of_nodes)
+    {
+       StackData *data = malloc(sizeof(StackData));
+       if(data == NULL)
+       {
+          print_to_log("Error (removeNode): Memory exhausted during free slot "
+                       "construction.\n");
+          exit(1);
+       }
+       data->free_slot = index;
+       push(graph->free_node_slots, data);
+    }
     graph->number_of_nodes--;
 }
 
@@ -593,8 +638,19 @@ void removeEdge(Graph *graph, int index)
     {
        if(source->out_edges[counter] == edge) 
        {
+          if(counter < source->outdegree)
+          {
+             StackData *data = malloc(sizeof(StackData));
+             if(data == NULL)
+             {
+                print_to_log("Error (removeEdge): Memory exhausted during "
+                             "free outedge slot construction.\n");
+                exit(1);
+             }
+             data->free_slot = counter;
+             push(source->free_out_edge_slots, data);
+          }
           source->out_edges[counter] = NULL;
-          push(source->free_out_edge_slots, &counter);
           source->outdegree--;
           break;
        } 
@@ -608,8 +664,19 @@ void removeEdge(Graph *graph, int index)
     {
        if(target->in_edges[counter] == edge) 
        {
+          if(counter < source->indegree)
+          {
+             StackData *data = malloc(sizeof(StackData));
+             if(data == NULL)
+             {
+                print_to_log("Error (removeEdge): Memory exhausted during "
+                             "free inedge slot onstruction.\n");
+                exit(1);
+             }
+             data->free_slot = counter;
+             push(target->free_in_edge_slots, data);
+          }
           target->in_edges[counter] = NULL;
-          push(target->free_in_edge_slots, &counter);
           target->indegree--;
           break;
        } 
@@ -633,8 +700,20 @@ void removeEdge(Graph *graph, int index)
     freeEdge(edge);
     graph->edges[index] = NULL;
 
-    /* Add the edge's index to the list of free edge slots. */
-    push(graph->free_edge_slots, &index);
+    /* If the edge's index is not the last index in the array, add the edge's 
+     * index to the list of free edge slots. */
+    if(index < graph->number_of_edges)
+    {
+       StackData *data = malloc(sizeof(StackData));
+       if(data == NULL)
+       {
+          print_to_log("Error (removeEdge): Memory exhausted during free slot "
+                       "construction.\n");
+          exit(1);
+       }
+       data->free_slot = index;
+       push(graph->free_edge_slots, data);
+    }
 
     graph->number_of_edges--;
 }
@@ -753,7 +832,18 @@ void copyGraph (Graph *graph)
    {
       Edge *edge = getEdge(graph, index);
 
-      if(edge == NULL) push(graph_copy->free_edge_slots, &index);
+      if(edge == NULL) 
+      {
+         StackData *data = malloc(sizeof(StackData));
+         if(data == NULL)
+         {
+            print_to_log("Error (copyGraph): Memory exhausted during free edge "
+                         "slot construction.\n");
+            exit(1);
+         }
+         data->free_slot = index;
+         push(graph_copy->free_edge_slots, data);
+      }
       else
       {
          Edge *edge_copy = malloc(sizeof(Edge));
@@ -779,7 +869,18 @@ void copyGraph (Graph *graph)
    {
       Node *node = getNode(graph, index);
       
-      if(node == NULL) push(graph_copy->free_node_slots, &index);
+      if(node == NULL)
+      {
+         StackData *data = malloc(sizeof(StackData));
+         if(data == NULL)
+         {
+            print_to_log("Error (copyGraph): Memory exhausted during free node "
+                         "slot construction.\n");
+            exit(1);
+         }
+         data->free_slot = index;
+         push(graph_copy->free_node_slots, data);
+      }
       else 
       {
          Node *node_copy = malloc(sizeof(Node)); 
@@ -808,7 +909,18 @@ void copyGraph (Graph *graph)
          {
             Edge *edge = getOutEdge(node, counter);
 
-            if(edge == NULL) push(node_copy->free_out_edge_slots, &counter);
+            if(edge == NULL) 
+            {
+               StackData *data = malloc(sizeof(StackData));
+               if(data == NULL)
+               {
+                  print_to_log("Error (copyGraph): Memory exhausted during "
+                               "free outedge slot construction.\n");
+                  exit(1);
+               }
+               data->free_slot = counter;
+               push(node_copy->free_out_edge_slots, data);
+            }
             else
             {
                Edge *edge_copy = getEdge(graph_copy, edge->index);
@@ -827,7 +939,18 @@ void copyGraph (Graph *graph)
          {
             Edge *edge = getInEdge(node, counter);
 
-            if(edge == NULL) push(node_copy->free_in_edge_slots, &counter);
+            if(edge == NULL) 
+            {
+               StackData *data = malloc(sizeof(StackData));
+               if(data == NULL)
+               {
+                  print_to_log("Error (copyGraph): Memory exhausted during "
+                               "free inedge slot construction.\n");
+                  exit(1);
+               }
+               data->free_slot = counter;
+               push(node_copy->free_in_edge_slots, data);
+            }
             else
             {
                Edge *edge_copy = getEdge(graph_copy, edge->index);
@@ -869,18 +992,38 @@ void copyGraph (Graph *graph)
    }  
  
    if(graph_stack == NULL) graph_stack = newStack();
-   push(graph_stack, graph_copy);
+   
+   StackData *data = malloc(sizeof(StackData));
+   if(data == NULL)
+   {
+      print_to_log("Error (copyGraph): Memory exhausted during graph "
+                   "construction.\n");
+      exit(1);
+   }
+   data->graph = graph_copy;
+   push(graph_stack, data);
 }
 
 Graph *restoreGraph(Graph *graph)
 { 
    freeGraph(graph);
-   return (Graph *)pop(graph_stack);
+   StackData *data = pop(graph_stack);
+   Graph *output = data->graph;
+   free(data);
+   return output;
 }
 
 void freeGraphStack(Stack *graph_stack)
-{ 
-   freeStack(graph_stack, freeGraph);
+{
+   /* Before calling freeStack, free all the pointers to graphs. */
+   StackNode *iterator = graph_stack->top;
+
+   while(iterator != NULL)
+   {
+      if(iterator->data->graph) freeGraph(iterator->data->graph);
+      iterator = iterator->next;
+   }
+   freeStack(graph_stack);
 }
 
 
@@ -1243,63 +1386,64 @@ void printListElement(ListElement* elem)
 }
 
 
-void freeGraph(void *graph_pointer) 
+void freeGraph(Graph *graph) 
 {
-    Graph *graph = (Graph *)graph_pointer;
-    int index;
+   if(graph == NULL) return;
+   int index;
 
-    for(index = 0; index < graph->next_node_index; index++)
-       if(graph->nodes[index]) freeNode(graph->nodes[index]);
-    if(graph->nodes) free(graph->nodes);
+   for(index = 0; index < graph->next_node_index; index++)
+      if(graph->nodes[index]) freeNode(graph->nodes[index]);
+   if(graph->nodes) free(graph->nodes);
 
-    for(index = 0; index < graph->next_edge_index; index++)
-       if(graph->edges[index]) freeEdge(graph->edges[index]);
-    if(graph->edges) free(graph->edges);
- 
-    if(graph->free_node_slots) freeStack(graph->free_node_slots, NULL);
-    if(graph->free_edge_slots) freeStack(graph->free_edge_slots, NULL);
- 
-    if(graph->nodes_by_label) 
-    {
-       g_hash_table_foreach(graph->nodes_by_label, freeGSList, NULL);
-       g_hash_table_destroy(graph->nodes_by_label); 
-    }
+   for(index = 0; index < graph->next_edge_index; index++)
+      if(graph->edges[index]) freeEdge(graph->edges[index]);
+   if(graph->edges) free(graph->edges);
 
-    if(graph->edges_by_label) 
-    {
-        g_hash_table_foreach(graph->edges_by_label, freeGSList, NULL);
-        g_hash_table_destroy(graph->edges_by_label);  
-    }
+   if(graph->free_node_slots) freeStack(graph->free_node_slots);
+   if(graph->free_edge_slots) freeStack(graph->free_edge_slots);
 
-    if(graph->root_nodes) g_slist_free(graph->root_nodes);
+   if(graph->nodes_by_label) 
+   {
+      g_hash_table_foreach(graph->nodes_by_label, freeGSList, NULL);
+      g_hash_table_destroy(graph->nodes_by_label); 
+   }
 
-    /*if(graph->graph_change_stack)
-    {
-       while(graph->graph_change_stack->top != NULL)
-       {
-          GraphChange *change = (GraphChange*)pop(graph->graph_change_stack);
-          freeGraphChange(change);
-       }
-       free(graph->graph_change_stack);
-    }*/
+   if(graph->edges_by_label) 
+   {
+       g_hash_table_foreach(graph->edges_by_label, freeGSList, NULL);
+       g_hash_table_destroy(graph->edges_by_label);  
+   }
 
-    if(graph) free(graph);
+   if(graph->root_nodes) g_slist_free(graph->root_nodes);
+
+   /*if(graph->graph_change_stack)
+   {
+      while(graph->graph_change_stack->top != NULL)
+      {
+         GraphChange *change = (GraphChange*)pop(graph->graph_change_stack);
+         freeGraphChange(change);
+      }
+      free(graph->graph_change_stack);
+   }*/
+   free(graph);
 }
 
 void freeNode(Node *node) 
 {
-    if(node->label) freeLabel(node->label);
-    if(node->in_edges) free(node->in_edges);
-    if(node->out_edges) free(node->out_edges);
-    if(node->free_out_edge_slots) freeStack(node->free_out_edge_slots, NULL);
-    if(node->free_in_edge_slots) freeStack(node->free_in_edge_slots, NULL);
-    if(node) free(node);
+   if(node == NULL) return;
+   if(node->label) freeLabel(node->label);
+   if(node->in_edges) free(node->in_edges);
+   if(node->out_edges) free(node->out_edges);
+   if(node->free_out_edge_slots) freeStack(node->free_out_edge_slots);
+   if(node->free_in_edge_slots) freeStack(node->free_in_edge_slots);
+   free(node);
 }
 
 void freeEdge(Edge *edge) 
 {
-    if(edge->label) freeLabel(edge->label);
-    if(edge) free(edge);
+   if(edge == NULL) return;
+   if(edge->label) freeLabel(edge->label);
+   free(edge);
 }
 
 
@@ -1310,102 +1454,104 @@ void freeGSList(gpointer key, gpointer value, gpointer data)
 
 void freeLabel(Label *label)
 {
-    if(label->list) 
-       g_list_free_full(label->list, freeListElement);
-    if(label) free(label);
+   if(label == NULL) return;
+   if(label->list) 
+      g_list_free_full(label->list, freeListElement);
+   free(label);
 }
 
 void freeListElement(void *atom)
 {
-     ListElement* elem = (ListElement*)atom;
+   if(atom == NULL) return;
 
-     switch(elem->type) 
-     {
-        case EMPTY:
+   ListElement* elem = (ListElement*)atom;
 
-             break;
+   switch(elem->type) 
+   {
+     case EMPTY:
 
-
-	case VARIABLE:
-
-	     if(elem->value.name)
-               free(elem->value.name);
-
-             break;
+           break;
 
 
-	case INTEGER_CONSTANT:
+     case VARIABLE:
 
-             break;
+           if(elem->value.name)
+             free(elem->value.name);
 
-
-        case CHARACTER_CONSTANT:
-          
-	case STRING_CONSTANT:
-
-	     if(elem->value.string)
-               free(elem->value.string);
-
-             break;
+           break;
 
 
-	case INDEGREE:
- 
-        case OUTDEGREE:
+     case INTEGER_CONSTANT:
 
-	     if(elem->value.node_id) 
-               free(elem->value.node_id);
-
-             break;
+           break;
 
 
-	case LIST_LENGTH:
+     case CHARACTER_CONSTANT:
+       
+     case STRING_CONSTANT:
 
-	     if(elem->value.list_arg)
-               g_list_free_full(elem->value.list_arg, freeListElement);
-		
-             break;
+           if(elem->value.string)
+             free(elem->value.string);
 
-
-	case STRING_LENGTH:
-
-	     if(elem->value.str_arg)
-               freeListElement(elem->value.str_arg);
-
-             break;
-
-	case NEG:
-
-	     if(elem->value.exp) freeListElement(elem->value.exp);
-
-             break;
+           break;
 
 
-	case ADD:
+     case INDEGREE:
 
-	case SUBTRACT:
+     case OUTDEGREE:
 
-	case MULTIPLY:
+           if(elem->value.node_id) 
+             free(elem->value.node_id);
 
-	case DIVIDE:
-
-	case CONCAT:
-
-	     if(elem->value.bin_op.left_exp)
-                freeListElement(elem->value.bin_op.left_exp);
-	     if(elem->value.bin_op.right_exp)  
-                freeListElement(elem->value.bin_op.right_exp);
-
-             break;
+           break;
 
 
-	default: printf("Unexpected List Element Type: %d\n",
-                       (int)elem->type); 
-                 break;
+     case LIST_LENGTH:
 
-	}
+           if(elem->value.list_arg)
+             g_list_free_full(elem->value.list_arg, freeListElement);
+             
+           break;
 
-   if(elem) free(elem);
+
+     case STRING_LENGTH:
+
+           if(elem->value.str_arg)
+             freeListElement(elem->value.str_arg);
+
+           break;
+
+     case NEG:
+
+           if(elem->value.exp) freeListElement(elem->value.exp);
+
+           break;
+
+
+     case ADD:
+
+     case SUBTRACT:
+
+     case MULTIPLY:
+
+     case DIVIDE:
+
+     case CONCAT:
+
+           if(elem->value.bin_op.left_exp)
+             freeListElement(elem->value.bin_op.left_exp);
+           if(elem->value.bin_op.right_exp)  
+             freeListElement(elem->value.bin_op.right_exp);
+
+           break;
+
+
+     default: printf("Unexpected List Element Type: %d\n",
+                     (int)elem->type); 
+               break;
+
+   }
+   free(elem);
 }
 
 /* void freeGraphChange(GraphChange *change)

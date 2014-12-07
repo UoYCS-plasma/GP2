@@ -48,7 +48,7 @@ extern bool abort_scan; /* Defined in main.c */
 %token INDEG OUTDEG LLEN SLEN					
 %token INT STRING ATOM LIST 	                               
 %token INTERFACE _EMPTY INJECTIVE 	
-%token <mark> MARK CYAN_MARK			                        
+%token <mark> MARK ANY_MARK			                        
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
 %token <num> NUM 
@@ -92,7 +92,7 @@ extern bool abort_scan; /* Defined in main.c */
 %type <graph> Graph HostGraph
 %type <node> Node HostNode
 %type <edge> Edge HostEdge
-%type <pos> Position
+/* %type <pos> Position */
 %type <cond_exp> CondDecl Condition 
 %type <label> LabelArg Label HostLabel
 %type <atom_exp> AtomExp HostExp
@@ -100,10 +100,10 @@ extern bool abort_scan; /* Defined in main.c */
 %type <check_type> Subtype
 %type <id> NodeID EdgeID ProcID RuleID Variable
 
- /* This code is called whenever Bison discards a symbol during error recovery.
-  * In the case of strings and identifiers, the dynamically allocated semantic
-  * value needs to be freed.
-  */
+/* This code is called whenever Bison discards a symbol during error recovery.
+ * In the case of strings and identifiers, the dynamically allocated semantic
+ * value needs to be freed.
+ */
 %destructor { free($$); } <str> <id>
 %destructor { freeAST($$); } <list>
 %destructor { freeASTDeclaration($$); } <decl>
@@ -342,16 +342,14 @@ Type: INT				{ $$ = INT_DECLARATIONS; }
 
  /* Grammar for GP2 Graph Definitions. */
 
-Graph: '[' Position '|' '|' ']'		 { $$ = newASTGraph(@$, $2, NULL, NULL); }
-     | '[' Position '|' NodeList '|' ']' { $$ = newASTGraph(@$, $2, $4, NULL); }
-     | '[' Position '|' NodeList '|' EdgeList ']' 
-     					{ $$ = newASTGraph(@$, $2, $4, $6); }
-
+Graph: '[' '|' ']'			 { $$ = newASTGraph(@$, NULL, NULL); }
+     | '[' NodeList '|' ']'		 { $$ = newASTGraph(@$, $2, NULL); }
+     | '[' NodeList '|' EdgeList ']' 	 { $$ = newASTGraph(@$, $2, $4); }
+	
 NodeList: Node				{ $$ = addASTNode(@1, $1, NULL); }
         | NodeList Node			{ $$ = addASTNode(@2, $2, $1); }
 
-Node: '(' NodeID RootNode ',' Label ',' Position ')'
-    					{ $$ = newASTNode(@2, is_root, $2, $5, $7); 
+Node: '(' NodeID RootNode ',' Label ')' { $$ = newASTNode(@2, is_root, $2, $5); 
  					  is_root = false; 	
 					  if($2) free($2); } 
 
@@ -371,7 +369,7 @@ RootNode: /* empty */
 Bidirection: /* empty */ 
 	   | BIDIRECTIONAL		{ is_bidir = true; }
 
-Position: '(' NUM ',' NUM ')' 		{ $$ = newASTPosition(@$, $2, $4); }
+/* Position: '(' NUM ',' NUM ')' 	{ $$ = newASTPosition(@$, $2, $4); } */
 
 
  /* Grammar for GP2 Conditions. */
@@ -407,8 +405,8 @@ LabelArg: /* empty */ 			{ $$ = NULL; }
 
 Label: List				{ $$ = newASTLabel(@$, NONE, $1); }
      | List '#' MARK	  		{ $$ = newASTLabel(@$, $3, $1); }
-     /* Cyan has a distinct token since it cannot occur in the host graph. */
-     | List '#' CYAN_MARK		{ $$ = newASTLabel(@$, $3, $1); }
+     /* Any has a distinct token since it cannot occur in the host graph. */
+     | List '#' ANY_MARK		{ $$ = newASTLabel(@$, $3, $1); }
 
 
 List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); } 
@@ -451,17 +449,16 @@ Variable: ID		  		/* default $$ = $1 */
  * are used.
  */
 
-HostGraph: '[' Position '|' '|' ']'  	{ $$ = newASTGraph(@$, $2, NULL, NULL); }
-         | '[' Position '|' HostNodeList '|' ']'  
-					{ $$ = newASTGraph(@$, $2, $4, NULL); }
-         | '[' Position '|' HostNodeList '|' HostEdgeList ']' 
-     					{ $$ = newASTGraph(@$, $2, $4, $6); }
+HostGraph: '[' '|' ']'  		{ $$ = newASTGraph(@$, NULL, NULL); }
+         | '[' HostNodeList '|' ']'  	{ $$ = newASTGraph(@$, $2, NULL); }
+         | '[' HostNodeList '|' HostEdgeList ']' 
+     					{ $$ = newASTGraph(@$, $2, $4); }
 
 HostNodeList: HostNode			{ $$ = addASTNode(@1, $1, NULL); }
             | HostNodeList HostNode	{ $$ = addASTNode(@2, $2, $1); }
 
-HostNode: '(' NodeID RootNode ',' HostLabel ',' Position ')'
-    					{ $$ = newASTNode(@2, is_root, $2, $5, $7); 
+HostNode: '(' NodeID RootNode ',' HostLabel ')'
+    					{ $$ = newASTNode(@2, is_root, $2, $5); 
  					  is_root = false; 	
 					  if($2) free($2); } 
 

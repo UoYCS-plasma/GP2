@@ -99,7 +99,10 @@ typedef struct Node {
    int index;
    bool root;
    LabelClass label_class;
-   Label *label; 
+   Label *label;
+
+   /* The node's indegree (outdegree) is the size (largest index) of the
+    * in_edges (out_edges) array. */
    int indegree;
    int outdegree;
 
@@ -145,6 +148,7 @@ Graph *newGraph(void);
 /* Tests the passed graph to see if it satisfies the data invariants. */
 bool validGraph(Graph *graph);
 
+Label *newBlankLabel(void);
 LabelClass getLabelClass(Label *label);
 Node *newNode(bool root, Label *label);
 Edge *newEdge(bool bidirectional, Label *label, Node *source, 
@@ -209,10 +213,8 @@ void printListElement(ListElement* elem);
  * structures (hash tables in the graph, pointer arrays in the nodes, pointers
  * in the edges) should only free any supporting structures and not the
  * node/edge structures themselves.
- * freeGraph is a function passed to freeStack (via freeGraphStack), so it 
- * takes a void pointer.
  */     
-void freeGraph(void *graph_pointer);
+void freeGraph(Graph *graph);
 void freeNode(Node *node);
 void freeEdge(Edge *edge);
 

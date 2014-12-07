@@ -13,9 +13,19 @@
 
 #include "globals.h"
 
+typedef union StackData {
+   struct {
+      int left_index;
+      int host_index;
+   } map;
+   int free_slot;
+   struct Graph *graph;
+   struct Rule *rule;
+} StackData;
+
 typedef struct StackNode
 {
-   void *data;
+   StackData *data;
    struct StackNode *next;
 } StackNode;
 
@@ -28,14 +38,15 @@ Stack *newStack();
 
 /* Pushes data to the stack and updates stack->top. Should only be passed a 
  * pointer returned by newStack. */
-void push (Stack *stack, void *data);
+void push (Stack *stack, StackData *data);
 
 /* Returns the data pointer from the top stack node. It then frees that node 
  * and updates stack->top. */
-void *pop (Stack *stack);
+StackData *pop (Stack *stack);
 
-/* Frees the stack. Dynamically allocated data is freed with the passed
- * freeData function. */
-void freeStack (Stack *stack, void (*freeData)(void *));
+/* Frees all StackData and StackNode structs and the Stack itself. If the 
+ * StackData contains a pointers to heap memory, it needs to be freed 
+ * explicitly. */
+void freeStack (Stack *stack);
 
 #endif /* INC_STACK_H */
