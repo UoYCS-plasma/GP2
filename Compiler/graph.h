@@ -61,15 +61,16 @@ typedef struct Label {
    bool has_list_variable;
 } Label;
 
+/* Global structure for blank labels. */
+extern Label blank_label;
 
 /* Abstract data type for atomic expressions. From globals.h. 
-typedef enum {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, CHARACTER_CONSTANT,
+typedef enum {VARIABLE = 0, INTEGER_CONSTANT, CHARACTER_CONSTANT,
               STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
               NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType; */
 
 typedef struct ListElement {
    AtomExpType type;		  
-   /* The EMPTY type has no value. */
    union {
     string name;		  /* VARIABLE */
     int number; 	 	  /* INTEGER_CONSTANT */
@@ -136,10 +137,13 @@ typedef struct Edge {
  * getLabelClass to generate label classes. The returned pointers can then be
  * added to a graph with the addNode and addEdge functions.
  * 
- * The relabel functions take a boolean argument to specify if the boolean flag
- * of the node should be changed. For nodes, this is the root flag. For edges,
- * this is the bidirectional flag. To modify the flag and not the label itself,
- * call the function with a NULL third argument.
+ * The relabel functions take boolean arguments to control if the label is 
+ * updated and if boolean flag of the item should be changed. For nodes, this 
+ * is the root flag. For edges, this is the bidirectional flag.
+ *
+ * To assign the global Label blank_label to a node or edge, pass the NULL
+ * pointer as the Label * argument of newNode, newEdge, relabelNode or 
+ * relabelEdge. 
  */
 
 /* Creates an empty graph. */
@@ -148,7 +152,6 @@ Graph *newGraph(void);
 /* Tests the passed graph to see if it satisfies the data invariants. */
 bool validGraph(Graph *graph);
 
-Label *newBlankLabel(void);
 LabelClass getLabelClass(Label *label);
 Node *newNode(bool root, Label *label);
 Edge *newEdge(bool bidirectional, Label *label, Node *source, 
@@ -157,8 +160,9 @@ void addNode(Graph *graph, Node *node);
 void addEdge(Graph *graph, Edge *edge);
 void removeNode(Graph *graph, int index);
 void removeEdge(Graph *graph, int index);
-void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root); 
-void relabelEdge(Graph *graph, Edge *edge, Label *new_label, 
+void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label, 
+                 bool change_root); 
+void relabelEdge(Graph *graph, Edge *edge, Label *new_label, bool change_label, 
                  bool change_bidirectional);
 
 
@@ -215,6 +219,7 @@ void printListElement(ListElement* elem);
  * node/edge structures themselves.
  */     
 void freeGraph(Graph *graph);
+
 void freeNode(Node *node);
 void freeEdge(Edge *edge);
 

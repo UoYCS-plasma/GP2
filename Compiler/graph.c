@@ -8,6 +8,9 @@
 
 #include "graph.h"
 
+Label blank_label = { .mark = NONE, .list = NULL, .list_length = 0,
+                      .has_list_variable = false };
+
 Graph *newGraph(void) 
 {
     Graph *new_graph = malloc(sizeof(Graph));
@@ -338,36 +341,12 @@ bool validGraph(Graph *graph)
 }
 
 
-Label *newBlankLabel(void)
-{
-   ListElement *empty = malloc(sizeof(ListElement));
-   if(empty == NULL) {
-      printf("OUT OF MEMORY.\n"); 
-      exit(0);
-    }
-   empty->type = EMPTY;
-
-   GList *list = g_list_prepend(NULL, empty);
-
-   Label *label = malloc(sizeof(Label));
-   if(label == NULL) {
-      printf("OUT OF MEMORY.\n"); 
-      exit(0);
-    }
-   label->mark = NONE;
-   label->list = list;
-   label->list_length = 0;
-   label->has_list_variable = false; 
-
-   return label;
-}
-
 LabelClass getLabelClass(Label *label)
 {
    int length = label->list_length;
 
    if(label->has_list_variable) return LISTVAR_L;
-   if(length == 0) return EMPTY_L;
+   if(label->list == NULL) return EMPTY_L;
    if(length > 1)
    {
       switch(length)
@@ -428,8 +407,16 @@ Node *newNode(bool root, Label *label)
  
    node->index = 0;
    node->root = root;
-   node->label_class = getLabelClass(label);
-   node->label = label;
+   if(label == NULL)
+   {
+      node->label_class = EMPTY_L;
+      node->label = &blank_label;
+   }
+   else
+   { 
+      node->label_class = getLabelClass(label);
+      node->label = label;
+   }
    node->indegree = 0;
    node->outdegree = 0;
 
@@ -471,8 +458,16 @@ Edge *newEdge(bool bidirectional, Label *label, Node *source,
 	
    edge->index = 0;
    edge->bidirectional = bidirectional;
-   edge->label_class = getLabelClass(label);
-   edge->label = label;
+   if(label == NULL)
+   {
+      edge->label_class = EMPTY_L;
+      edge->label = &blank_label;
+   }
+   else
+   { 
+      edge->label_class = getLabelClass(label);
+      edge->label = label;
+   }
    edge->source = source;
    edge->target = target;
    
@@ -719,7 +714,8 @@ void removeEdge(Graph *graph, int index)
 }
 
 
-void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root) 
+void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label,
+                 bool change_root) 
 {
     if(change_root)
     {
@@ -735,16 +731,25 @@ void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root)
        }
     }
 
-    if(new_label == NULL) return;
+    if(change_label == false) return;
     else
     {  
        /* node->label is freed before being pointed to new_label. */
-       freeLabel(node->label); 
-       node->label = new_label; 
+       if(node->label != &blank_label) freeLabel(node->label); 
 
+       LabelClass new_label_class;
+       if(new_label == NULL)
+       {          
+          node->label = &blank_label; 
+          new_label_class = EMPTY_L;
+       }
+       else
+       {
+          node->label = new_label;
+          new_label_class = getLabelClass(new_label);
+       }
        /* If the label classes differ, the graph's nodes_by_label table needs to 
         * be updated. */
-       LabelClass new_label_class = getLabelClass(new_label);
        if(node->label_class != new_label_class) 
        {
           void *hash_key_1 = GINT_TO_POINTER(node->label_class);
@@ -767,7 +772,7 @@ void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root)
 }
 
 void relabelEdge(Graph *graph, Edge *edge, Label *new_label, 
-                 bool change_bidirectional)
+                 bool change_label, bool change_bidirectional)
 {		
     if(change_bidirectional) edge->bidirectional = !edge->bidirectional;
 
@@ -775,16 +780,25 @@ void relabelEdge(Graph *graph, Edge *edge, Label *new_label,
      * change created above. Otherwise, edge->label should be freed
      * before it is pointed to new_label. */
 
-    if(new_label == NULL) return;
+    if(change_label == false) return;
     else
     {
        /* edge->label is freed before being pointed to new_label. */
-       freeLabel(edge->label); 
-       edge->label = new_label; 
+       if(edge->label != &blank_label) freeLabel(edge->label); 
 
+       LabelClass new_label_class;
+       if(new_label == NULL)
+       {          
+          edge->label = &blank_label; 
+          new_label_class = EMPTY_L;
+       }
+       else
+       {
+          edge->label = new_label;
+          new_label_class = getLabelClass(new_label);
+       }
        /* If the label classes differ, the graph's edges_by_label table needs to
         * be updated. */
-       LabelClass new_label_class = getLabelClass(new_label);
        if(edge->label_class != new_label_class) 
        {
           void *hash_key_1 = GINT_TO_POINTER(edge->label_class);
@@ -1029,6 +1043,8 @@ void freeGraphStack(Stack *graph_stack)
 
 Label *copyLabel(Label *label)
 {
+   if(label == &blank_label) return &blank_label;
+
    Label *label_copy = malloc(sizeof(Label));
 
    if(label_copy == NULL) {
@@ -1036,25 +1052,27 @@ Label *copyLabel(Label *label)
       exit(1);
    }
 
-   GList *list_copy = NULL;
-
-   /* The list is copied in reverse order so that elements are prepended at
-    * each step. */
-   GList *list_to_copy = g_list_last(label->list);
-
-   while(list_to_copy != NULL)
+   if(label->list == NULL) label_copy->list = NULL;
+   else
    {
-      ListElement *atom = (ListElement*)list_to_copy->data;
-      ListElement *atom_copy = copyListElement(atom);
-      list_copy = g_list_prepend(list_copy, atom_copy);
-      list_to_copy = list_to_copy->prev;
+      GList *list_copy = NULL;
+      /* The list is copied in reverse order so that elements are prepended at
+      * each step. */
+      GList *list_to_copy = g_list_last(label->list);
+
+      while(list_to_copy != NULL)
+      {
+         ListElement *atom = (ListElement*)list_to_copy->data;
+         ListElement *atom_copy = copyListElement(atom);
+         list_copy = g_list_prepend(list_copy, atom_copy);
+         list_to_copy = list_to_copy->prev;
+      }
+
+      label_copy->mark = label->mark;
+      label_copy->list = list_copy;
+      label_copy->list_length = label->list_length;
+      label_copy->has_list_variable = label->has_list_variable;
    }
-
-   label_copy->mark = label->mark;
-   label_copy->list = list_copy;
-   label_copy->list_length = label->list_length;
-   label_copy->has_list_variable = label->has_list_variable;
-
    return label_copy;
 }
 
@@ -1075,10 +1093,6 @@ ListElement *copyListElement(ListElement *atom)
 
    switch(atom->type)
    {
-      case EMPTY:
-
-           break;
- 
       case VARIABLE:
 
            atom_copy->value.name = strdup(atom->value.name);
@@ -1261,6 +1275,7 @@ void printNode(Node *node)
     printf("Mark: %d\n", node->label->mark);
     printf("Label: ");
     if(node->label->list) printList(node->label->list);
+    else printf("empty\n");
     printf("\n");
     printf("Indegree: %d\nOutdegree: %d\n\n", node->indegree, node->outdegree);
 }
@@ -1273,6 +1288,7 @@ void printEdge (Edge *edge)
     printf("Mark: %d\n", edge->label->mark);
     printf("Label: ");
     if(edge->label->list) printList(edge->label->list);
+    else printf("empty\n");
     printf("\n");
     printf("Source: %d\n", edge->source->index);
     printf("Target: %d\n", edge->target->index);
@@ -1291,13 +1307,8 @@ void printList(GList *list)
 
 void printListElement(ListElement* elem) 
 {
-       
     switch(elem->type) 
     {
-        case EMPTY:
-             printf("empty");
-             break;
-
 	case VARIABLE: 
 	     printf("%s", elem->value.name);
 	     break;
@@ -1431,7 +1442,7 @@ void freeGraph(Graph *graph)
 void freeNode(Node *node) 
 {
    if(node == NULL) return;
-   if(node->label) freeLabel(node->label);
+   if(node->label && node->label != &blank_label) freeLabel(node->label);
    if(node->in_edges) free(node->in_edges);
    if(node->out_edges) free(node->out_edges);
    if(node->free_out_edge_slots) freeStack(node->free_out_edge_slots);
@@ -1442,7 +1453,7 @@ void freeNode(Node *node)
 void freeEdge(Edge *edge) 
 {
    if(edge == NULL) return;
-   if(edge->label) freeLabel(edge->label);
+   if(edge->label && edge->label != &blank_label) freeLabel(edge->label);
    free(edge);
 }
 
@@ -1455,8 +1466,7 @@ void freeGSList(gpointer key, gpointer value, gpointer data)
 void freeLabel(Label *label)
 {
    if(label == NULL) return;
-   if(label->list) 
-      g_list_free_full(label->list, freeListElement);
+   if(label->list) g_list_free_full(label->list, freeListElement);
    free(label);
 }
 
@@ -1468,11 +1478,6 @@ void freeListElement(void *atom)
 
    switch(elem->type) 
    {
-     case EMPTY:
-
-           break;
-
-
      case VARIABLE:
 
            if(elem->value.name)
