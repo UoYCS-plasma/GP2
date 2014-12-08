@@ -113,13 +113,13 @@ data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph)
 
 -- Rule graph labels are lists of expressions.
 type RuleGraph = Graph RuleNode RuleEdge
-data AstRuleGraph = AstRuleGraph [RuleNode] [AstRuleEdge] deriving Show
-data RuleNode = RuleNode NodeName Bool RuleLabel deriving Show
-data AstRuleEdge = AstRuleEdge EdgeName Bool NodeName NodeName RuleLabel deriving Show
+data AstRuleGraph = AstRuleGraph [RuleNode] [AstRuleEdge] deriving (Show,Eq)
+data RuleNode = RuleNode NodeName Bool RuleLabel deriving (Show, Eq)
+data AstRuleEdge = AstRuleEdge EdgeName Bool NodeName NodeName RuleLabel deriving (Show, Eq)
 data RuleEdge = RuleEdge EdgeName Bool RuleLabel deriving Show
 
 type GPList = [RuleAtom]
-data RuleLabel = RuleLabel GPList Colour deriving Show
+data RuleLabel = RuleLabel GPList Colour deriving (Show, Eq)
 
 data RuleAtom = Var Variable
               | Val HostAtom
@@ -134,7 +134,7 @@ data RuleAtom = Var Variable
               | Times RuleAtom RuleAtom
               | Div RuleAtom RuleAtom
               | Concat RuleAtom RuleAtom
-    deriving Show
+    deriving (Show, Eq)
 
 -- TODO: precedence of infix binary operators
 -- Is it possible to do BinOp Atom Atom and

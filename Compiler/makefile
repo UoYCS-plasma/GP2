@@ -35,12 +35,6 @@ test:		graph.o stack.o lhs.o
 
 test-debug:	graph.o stack.o lhs.o
 		$(CC) graph.o stack.o lhs.o $(LFLAGS) -o testGP
-
-test:		generate.o graph.o stack.o test.o
-		$(CC) generate.o graph.o stack.o test.o $(LFLAGS) -o testGP
-
-test-debug:	generate.o graph.o stack.o test.o
-		$(CC) generate.o graph.o stack.o test.o $(LFLAGS) -o testGP
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./testGP
 
 match:		runtime.o match_r1.o match.o graph.o stack.o 
@@ -97,6 +91,8 @@ runtime.o:	runtime.c globals.h graph.h match_r1.h runtime.h
 
 match_r1.o:	match_r1.c match_r1.h globals.h graph.h match.h
 		$(CC) $(CFLAGS) -c match_r1.c
+
+staticsearch.o:	staticsearch.c globals.h graph.h match.h rule.h staticsearch.h 
 
 lhs.o:		lhs.c generate.h graph.h
 		$(CC) $(CFLAGS) -c lhs.c

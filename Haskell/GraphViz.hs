@@ -12,7 +12,7 @@ showEdgeId :: EdgeId -> String
 showEdgeId = filter (/= ' ') . show
 
 drawGraph :: HostGraph -> String
-drawGraph g = "digraph {\n\tgraph [ autosize=false size=\"8,8!\" ratio=fill ];\n\n\t" ++ nodeStr ++ "\n\n\t" ++ edgeStr ++ "\n}"
+drawGraph g = "digraph {\n\tgraph [ autosize=false size=\"8,8!\" ratio=fill ];\nnode [ shape=circle ];\n\n\t" ++ nodeStr ++ "\n\n\t" ++ edgeStr ++ "\n}"
     where
         nodeStr = intercalate "\n\t" $ map (drawNode g) $ allNodes g
         edgeStr = intercalate "\n\t" $ map (drawEdge g) $ allEdges g
@@ -29,7 +29,7 @@ drawEdge g id = src ++ " -> " ++ dst ++ " [ " ++ drawLabel label ++ " ];"
 drawNode :: HostGraph -> NodeId -> String
 drawNode g id = case nLabel g id of
         HostNode _ False  label -> name ++ " [ " ++ drawLabel label ++ " ];"
-        HostNode _ True label -> name ++ " [ shape=diamond " ++ drawLabel label ++ " ];"
+        HostNode _ True label -> name ++ " [ penwidth=5 ; " ++ drawLabel label ++ " ];"
     where
         name = showNodeId id
 

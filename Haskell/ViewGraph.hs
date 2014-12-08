@@ -29,7 +29,7 @@ main = do
             hPutStr handle $ drawGraph hg1
             hFlush handle
             let outfile = tmp ++ ".pdf"
-            let dotCmd = "dot -Tpdf -o" ++ outfile ++ " " ++ tmp
+            let dotCmd = "neato -Tpdf -o" ++ outfile ++ " " ++ tmp
             putStrLn outfile
             putStrLn dotCmd
             s1 <- system dotCmd
