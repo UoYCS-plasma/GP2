@@ -110,6 +110,7 @@ void removeEdge(Graph *g, Edge *e) {
 	Edge *free = freeEdge;
 	Node *src = e->source, *tgt = e->target;
 	int i;
+	assert(e); assert(e->source); assert(e->target);
 	e->source = NULL;
 	e->target = NULL;
 	e->index = NULL;
@@ -303,8 +304,8 @@ void makeSearchSpace(Traverser *t) {
 				for (l=nt->l; l<nt->capl; l++) {
 					/* add all indices containing candidates to search space */
 					ind = &(gsp->indices[o][i][l][nt->r]);
-					if (ind->len == 0)
-						continue;
+					/* if (ind->len == 0)
+						continue; */
 					spc->index[pos++] = ind;
 					spc->size += ind->len;
 					/* TODO: special cases for spc->size == 1 and spc->size == 0 */
@@ -328,7 +329,8 @@ void disconnect(OilrNode *n) {
 	OilrNode *prev = prevInChain(n), *next = nextInChain(n);
 	n->chain.index->len--;
 	nextInChain(prev) = next;
-	prevInChain(next) = prev;
+	if (next)
+		prevInChain(next) = prev;
 	n->chain.index = NULL;
 	nextInChain(n) = NULL;
 	prevInChain(n) = NULL;
@@ -379,6 +381,7 @@ Edge *addNewEdge(NodeTraverser *src, NodeTraverser *tgt) {
 	/* bidirectional param has no meaning for host graph edges, so is always
 	 * false. TODO: NULL label pointer is not safe! Should be Label structure
 	 * containing a GList with one element of type EMPTY! */
+	assert(src); assert(src->oilrNode); assert(tgt); assert(tgt->oilrNode);
 	trace("Edge from %d to %d", src->oilrNode->node->index, tgt->oilrNode->node->index);
 	Edge *edge = newEdge(false, copyLabel(&emptyLabel), src->oilrNode->node, tgt->oilrNode->node);
 	//trace("Edge %d --> old outdegree: %d", getEdgeId(edge), getO(src->oilrNode->node));
@@ -394,6 +397,8 @@ Edge *addNewEdge(NodeTraverser *src, NodeTraverser *tgt) {
 void remOilrNode(NodeTraverser *nt) {
 	/* TODO: should this automatically remove all in- and out-bound edges? If
 	 * so, beware of double-freeing loops! TODO: remove from index Tables too! */
+	assert(nt); assert(nt->oilrNode); assert(nt->oilrNode->node);
+	
 	removeNode(gsp->graph, nt->oilrNode->node->index);
 	nt->oilrNode->node = NULL; /* mark for garbage collection */
 	disconnect(nt->oilrNode);
@@ -425,6 +430,7 @@ void deleteNonInterfaceNodes() {
 		if (t > tsp)
 			break;
 		if (isNodeTrav(t) && !t->n.isInterface && hasRealNode(t->n.oilrNode)) {
+			trace("Deleting node %d at ts[%d]", t->n.oilrNode->node->index, i);
 			remOilrNode(&(t->n));
 			t->type = InvalidTrav;
 		}
@@ -476,6 +482,7 @@ void clearTravs() {
 	trace("clearTravs() (success=%s):", success ? "true" : "false");
 	while (tsp >= travStack) {
 		if (isNodeTrav(tsp)) {
+			tsp->n.searchSpace.edgeFrom = NULL;
 			if (tsp->n.searchSpace.index)
 				free(tsp->n.searchSpace.index);
 			if (hasRealNode(tsp->n.oilrNode) ) {
@@ -565,9 +572,15 @@ OilrNode *nextUnmatchedNodeFromEdge(NodeTraverser *nt) {
 	if (hasRealNode(nt->oilrNode))
 		unmatch(nt->oilrNode);
 			
-	trace("%d %d", nt->searchSpace.pos, origin->node->outdegree);
 	for (pos=nt->searchSpace.pos; pos<origin->node->outdegree; pos++) {
 		n = origin->node->out_edges[pos]->target;
+		on = &(oilrNodePool[n->index]);
+		if (isMatched(on)) {
+			/* must never match an already matched node */
+			/* note: this also prevents matching loops */
+			on = NULL;
+			continue;
+		}
 		out  = getO(n);
 		in   = getI(n);
 		loop = getL(n);
@@ -579,7 +592,6 @@ OilrNode *nextUnmatchedNodeFromEdge(NodeTraverser *nt) {
 					&& out  >= nt->o
 					&& in   >= nt->i
 					&& loop >= nt->l ) {
-				on = &(oilrNodePool[n->index]);
 				match(on); /* Nodes and OilrNodes must have the same index */
 				break;
 			} else if ( out == nt->o
@@ -594,6 +606,7 @@ OilrNode *nextUnmatchedNodeFromEdge(NodeTraverser *nt) {
 	}
 
 	nt->searchSpace.pos = pos+1;
+	assert(on != origin);
 	return on;
 }
 
@@ -645,8 +658,9 @@ void runSearch() {
 			}
 		}
 #ifdef DYNAMIC_OPTS
-		else if (isEdgeTrav(txp) && txp->e.src <= txp->e.tgt) {
+		else if (isEdgeTrav(txp) && txp->e.src <= txp->e.tgt && !txp->e.tgt->searchSpace.edgeFrom && !txp->e.tgt->searchSpace.index) {
 			/* TODO: only works for out-edges currently. Needs to consider in-edges too */
+			/* TODO: handle multiple outgoing edges */
 			txp->e.tgt->searchSpace.edgeFrom = txp->e.src;
 			
 		} 

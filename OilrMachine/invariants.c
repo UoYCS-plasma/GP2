@@ -95,7 +95,7 @@ void INV_sum_of_outdegrees() {
 		if (isDeletedOilrNode(on))
 			continue;
 		n = on->node;
-		edgeCount += getO(n);
+		edgeCount += getO(n) + getL(n);
 		for (j=0; j<n->outdegree; j++) {
 			if (n->out_edges[j] < edgePool
 					|| n->out_edges[j] > &(edgePool[MAX_EDGES]))

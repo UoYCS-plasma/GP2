@@ -6,18 +6,22 @@
 #ifdef DEBUG
 #include <stdio.h>
 #define TEST_INVARIANTS
+#undef NDEBUG
 #define trace(...) do { printf("--> ") ; printf(__VA_ARGS__) ; printf("\n");} while (false);
 void testInvariants();
 #else
 #define trace(...)
+/* the following is needed for assert() */
+#define NDEBUG
 #define dumpTravStack(x)
 #define testInvariants()
 #endif
 
+#include <assert.h>
 
 #ifdef OILR_STANDALONE
 
-#define MAX_NODES 128
+#define MAX_NODES 2048
 #define MAX_EDGES 16184
 #define MAX_INCIDENT_EDGES 128
 
@@ -123,11 +127,13 @@ typedef enum {
 	/* Test for edge travs with "& 0x2" */
 	EdgeTrav    = 2,
 	XeTrav      = -2,
+	FixedNode   = 3,
 } TravType;
 
 #define isNodeTrav(t) ((t->type & 0x1) ? true : false)
 #define isEdgeTrav(t) ((t->type & 0x2) ? true : false)
 #define isNegated(t) ((t->type < 0) ? true : false)
+#define isFixed(t)  ((t->type == 3) ? true : false)
 
 #define getTravNode(someTrav) (trav->n->oilrNode)
 #define getTravEdge(someTrav) (trav->e->edge)

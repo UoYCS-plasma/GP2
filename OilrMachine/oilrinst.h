@@ -12,11 +12,12 @@ extern OilrGraph *gsp;
 #define RET clearTravs(); testInvariants(); return; \
 }
 
-#define CALL(label) label();
+#define CALL(label) label(); if (!success) return;
 #define LOOP(label) do { \
 	trace("[35mLooping PROC(%s)[0m\n", #label); \
 	label(); \
-	trace("[35mPROC(%s) %s[0m\n", #label, success ? "succeeded" : "failed"); } while (success);
+	trace("[35mPROC(%s) %s[0m\n", #label, success ? "succeeded" : "failed"); } while (success); \
+	success = true;
 #define ZTRF if (!success) { clearTravs(); testInvariants(); return; }
 
 #define TN(o,i,l)    newNodeTrav(false, o, i, l, false);
