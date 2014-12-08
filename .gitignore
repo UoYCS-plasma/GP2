@@ -1,7 +1,5 @@
 *.output
-*.txt
 *.pdf
-*.o
 *.hi
 *~
 TODO
@@ -11,3 +9,7 @@ TODO
 *.log
 gpparse
 lex.yy.c
+*.o
+a.out
+tmp/
+*.a

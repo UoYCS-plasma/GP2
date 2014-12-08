@@ -1,22 +1,21 @@
-DEFINES=-DDEBUG -DOILR_STANDALONE
+DEFS=-DDEBUG -DOILR_STANDALONE
 CFLAGS=
-CC=gcc -g -Wall -Werror $(DEFINES)
-OBJS=transitive_closure.o
-SRCS=transitive_closure.c
+CC=gcc -g -Wall -Werror $(DEFS)
 LIBS=oilrrt.a
-TARGETS=transitive_closure
+TARGETS=transitive_closure structural_sierpinski
 INCS=oilrrt.h oilrinst.h
 
-$(TARGETS) : $(OBJS) $(LIBS)
-	$(CC) -o $@ $^
+all : $(TARGETS)
 
-$(OBJS) : $(SRCS) $(INCS)
+% : %.o $(LIBS)
+	$(CC) -o $@ $< $(LIBS)
 
-%.o : %.c
+%.o : %.c $(INCS)
 	$(CC) -o $@ -c $<
 
 %.c : %.gp2 %.host
 	../gp2c $^
 
 
+.SECONDARY : %.c
 

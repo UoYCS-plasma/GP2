@@ -1,9 +1,12 @@
-DEFINES=-DOILR_STANDALONE -DDEBUG
-CC=gcc -g -Wall -Werror $(DEFINES)
+DEFS=-DOILR_STANDALONE -DDEBUG
+CC=gcc -g -Wall -Werror $(DEFS)
 
 TARGETS=oilrrt.a
 
 $(TARGETS) : $(OBJS)
+
+#../Compiler/oilrrc.o :
+#	$(MAKE) -C 
 
 oilrrt.a : oilrrt.o
 	ar rcs $@ $^
