@@ -50,19 +50,20 @@ typedef struct YYLTYPE {
 extern FILE *yyin; /* Created by Bison. */
 extern FILE *log_file; /* Created in main.c */
 
-
 /* Declarations for functions and variables defined in gplexer.l */
 extern int yylineno; 
 extern string yytext; 
 
+extern struct Stack *rule_stack;
 
 /* Declarations for functions and variables defined in gpparser.y */
 int yyparse(void);
-extern struct List *gp_program; 
 extern int yydebug;
+extern struct List *gp_program; 
+extern struct GPGraph *host_graph;
 
 /* Abstract data type for GP2's marks. */
-typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; 
+typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; 
 
 /* Abstract data type for conditions. */
 typedef enum {INT_CHECK = 0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,

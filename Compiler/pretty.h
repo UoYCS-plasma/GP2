@@ -169,6 +169,6 @@ void printASTGraph(GPGraph * const graph, FILE *dot_file);
 void printASTNode(GPNode * const node, FILE *dot_file);
 void printASTEdge(GPEdge * const edge, FILE *dot_file);
 void printASTLabel(GPLabel * const label, FILE *dot_file);
-void printASTPosition(GPPos * const pos, FILE *dot_file);
+/* void printASTPosition(GPPos * const pos, FILE *dot_file); */
 
 #endif /* INC_PRETTY_H */

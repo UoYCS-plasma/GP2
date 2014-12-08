@@ -199,4 +199,3 @@ computeInterface (AstRuleGraph lns _) (AstRuleGraph rns _) = interface
         interface = intersect lids rids
         extractNodeName :: RuleNode -> RuleName
         extractNodeName (RuleNode id _ _) = id
-

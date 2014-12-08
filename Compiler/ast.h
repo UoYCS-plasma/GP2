@@ -57,15 +57,13 @@ typedef struct List {
   struct List *next;
 } List;
 
-/* Constructors for struct List. */
-
 List *addASTDecl (ListType list_type, YYLTYPE location, 
-	struct GPDeclaration *declaration, struct List *next);
+	          struct GPDeclaration *declaration, struct List *next);
 List *addASTCommand (YYLTYPE location, struct GPStatement *command, 
-	struct List *next);
+                     struct List *next);
 List *addASTRule (YYLTYPE location, string rule_name, struct List *next);
 List *addASTVariableDecl (ListType list_type, YYLTYPE location, 
-	struct List *variables, struct List *next);
+                          struct List *variables, struct List *next);
 List *addASTVariable (YYLTYPE location, string variable_name, struct List *next);
 List *addASTNodeID (YYLTYPE location, string node_id, struct List *next);
 List *addASTNode (YYLTYPE location, struct GPNode *node, struct List *next);
@@ -88,8 +86,6 @@ typedef struct GPDeclaration {
     struct GPRule *rule; 		/* RULE_DECLARATION */
   } value;
 } GPDeclaration;
-
-/* Constructors for struct GPDeclaration. */
 
 GPDeclaration *newASTMainDecl (YYLTYPE location, struct GPStatement *main_program);
 GPDeclaration *newASTProcedureDecl (YYLTYPE location, struct GPProcedure *procedure);
@@ -129,18 +125,17 @@ typedef struct GPStatement {
   } value;
 } GPStatement;
 
-/* Constructors for struct GPStatement. */
-
 GPStatement *newASTCommandSequence(YYLTYPE location, struct List *cmd_seq);
 GPStatement *newASTRuleCall(YYLTYPE location, string rule_name);
 GPStatement *newASTRuleSetCall(YYLTYPE location, struct List *rule_set);
 GPStatement *newASTProcCall(YYLTYPE location, string proc_name);
 GPStatement *newASTCondBranch(StatementType statement_type, YYLTYPE location, 
-	      struct GPStatement *condition, struct GPStatement *then_stmt, 
-	      struct GPStatement *else_stmt);
+	                      struct GPStatement *condition, 
+                              struct GPStatement *then_stmt, 
+	                      struct GPStatement *else_stmt);
 GPStatement *newASTAlap(YYLTYPE location, struct GPStatement *loop_stmt);
 GPStatement *newASTOrStmt(YYLTYPE location, struct GPStatement *left_stmt, 
-	      struct GPStatement *right_stmt);
+	                  struct GPStatement *right_stmt);
 GPStatement *newASTSkip(YYLTYPE location);
 GPStatement *newASTFail(YYLTYPE location);
 
@@ -179,19 +174,20 @@ typedef struct GPCondExp {
   } value;
 } GPCondExp;
 
-/* Constructors for struct GPCondExp. */
-
-GPCondExp *newASTSubtypePred (CondExpType exp_type, YYLTYPE location, string var);
-GPCondExp *newASTEdgePred (YYLTYPE location, string source, string target,
-	    struct GPLabel *label);
-GPCondExp *newASTListComparison (CondExpType exp_type, YYLTYPE location, 
-	    struct List *left_list, struct List *right_list);
-GPCondExp *newASTAtomComparison (CondExpType exp_type, YYLTYPE location,
-	    struct GPAtomicExp *left_exp, struct GPAtomicExp *right_exp);
-GPCondExp *newASTNotExp (YYLTYPE location, struct GPCondExp *not_exp);
-GPCondExp *newASTBinaryExp (CondExpType exp_type, YYLTYPE location, 
-	    struct GPCondExp *left_exp, struct GPCondExp *right_exp);
-
+GPCondExp *newASTSubtypePred(CondExpType exp_type, YYLTYPE location, 
+                             string var);
+GPCondExp *newASTEdgePred(YYLTYPE location, string source, string target,
+	                  struct GPLabel *label);
+GPCondExp *newASTListComparison(CondExpType exp_type, YYLTYPE location, 
+	                        struct List *left_list, 
+                                struct List *right_list);
+GPCondExp *newASTAtomComparison(CondExpType exp_type, YYLTYPE location,
+	                        struct GPAtomicExp *left_exp, 
+                                struct GPAtomicExp *right_exp);
+GPCondExp *newASTNotExp(YYLTYPE location, struct GPCondExp *not_exp);
+GPCondExp *newASTBinaryExp(CondExpType exp_type, YYLTYPE location, 
+	                   struct GPCondExp *left_exp, 
+                           struct GPCondExp *right_exp);
 
 /* Definition of AST nodes representing integer or string expressions. */
 
@@ -214,23 +210,23 @@ typedef struct GPAtomicExp {
   } value;
 } GPAtomicExp;
 
-/* Constructors for struct GPAtomicExp. */
-
 GPAtomicExp *newASTVariable (YYLTYPE location, string name);
 GPAtomicExp *newASTNumber (YYLTYPE location, int number);
 GPAtomicExp *newASTCharacter (YYLTYPE location, string character);
 GPAtomicExp *newASTString (YYLTYPE location, string string);
-GPAtomicExp *newASTDegreeOp (AtomExpType exp_type, YYLTYPE location, string node_id);
+GPAtomicExp *newASTDegreeOp (AtomExpType exp_type, YYLTYPE location, 
+                             string node_id);
 GPAtomicExp *newASTListLength (YYLTYPE location, struct List *list_arg);
 GPAtomicExp *newASTStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);
 GPAtomicExp *newASTNegExp (YYLTYPE location, struct GPAtomicExp *exp);
 GPAtomicExp *newASTBinaryOp (AtomExpType exp_type, YYLTYPE location, 
-	      struct GPAtomicExp *left_exp, struct GPAtomicExp *right_exp);
+	                     struct GPAtomicExp *left_exp,
+                             struct GPAtomicExp *right_exp);
 
 
 /* Definition of the remaining AST node types. */
 
-typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, POSITION, LABEL} ASTNodeType;
+typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, LABEL} ASTNodeType;
 
 /* Root node for a procedure definition. */
 
@@ -243,10 +239,9 @@ typedef struct GPProcedure {
   struct GPStatement *cmd_seq; 
 } GPProcedure;
 
-/* Constructs a struct GPProcedure. */
-
-GPProcedure *newASTProcedure(YYLTYPE location, string name, struct List *local_decls, 
-              struct GPStatement *cmd_seq);
+GPProcedure *newASTProcedure(YYLTYPE location, string name, 
+                             struct List *local_decls, 
+                             struct GPStatement *cmd_seq);
 
 
 /* Root node for a rule definition. */
@@ -263,11 +258,9 @@ typedef struct GPRule {
   struct GPCondExp *condition;  
 } GPRule;
 
-/* Constructs a struct GPRule. */
-
 GPRule *newASTRule(YYLTYPE location, string name, struct List *variables, 
-         struct GPGraph *lhs, struct GPGraph *rhs, struct List *interface, 
-         struct GPCondExp *condition);
+                   struct GPGraph *lhs, struct GPGraph *rhs, 
+                   struct List *interface, struct GPCondExp *condition);
 
 
 /* Root node for a graph definition. This data structure is used for
@@ -277,15 +270,11 @@ typedef struct GPGraph {
   int node_id;
   ASTNodeType node_type;	
   YYLTYPE location;
-  struct GPPos *position;
   struct List *nodes;
   struct List *edges;
 } GPGraph;
 
-/* Constructs a struct GPGraph. */
-
-GPGraph *newASTGraph (YYLTYPE location, struct GPPos *position, 
-          struct List *nodes, struct List *edges);
+GPGraph *newASTGraph(YYLTYPE location, struct List *nodes, struct List *edges);
 
 
 typedef struct GPNode {
@@ -295,13 +284,10 @@ typedef struct GPNode {
   bool root;
   string name; 
   struct GPLabel *label; 
-  struct GPPos *position; 
 } GPNode;
 
-/* Constructs a struct GPNode. */
-
-GPNode *newASTNode (YYLTYPE location, bool root, string name, 
-                 struct GPLabel *label, struct GPPos *position);
+GPNode *newASTNode(YYLTYPE location, bool root, string name, 
+                   struct GPLabel *label);
 
 
 typedef struct GPEdge {
@@ -315,13 +301,11 @@ typedef struct GPEdge {
   struct GPLabel *label; 
 } GPEdge;
 
-/* Constructs a struct GPEdge. */
-
-GPEdge *newASTEdge (YYLTYPE location, bool bidirectional, string name, 
-                 string source, string target, struct GPLabel *label);
+GPEdge *newASTEdge(YYLTYPE location, bool bidirectional, string name, 
+                   string source, string target, struct GPLabel *label);
 
 
-/* AST node for specifying locations in the graphical editor. */
+/* AST node for specifying locations in the graphical editor. 
 
 typedef struct GPPos {
   int node_id;
@@ -331,9 +315,7 @@ typedef struct GPPos {
   int y;
 } GPPos;
 
-/* Constructs a struct GPPos. */
-
-GPPos *newASTPosition (YYLTYPE location, int x, int y);
+GPPos *newASTPosition (YYLTYPE location, int x, int y); */
 
 
 typedef struct GPLabel {
@@ -344,9 +326,7 @@ typedef struct GPLabel {
   struct List *gp_list;
 } GPLabel;
 
-/* Constructs a struct GPLabel */
-
-GPLabel *newASTLabel (YYLTYPE location, MarkType mark, struct List *gp_list);
+GPLabel *newASTLabel(YYLTYPE location, MarkType mark, struct List *gp_list);
 
 /* freeAST takes a pointer to the root of an AST and walks through the AST,
  * calling the other freeing functions depending on the subtrees it
