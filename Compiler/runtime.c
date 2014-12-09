@@ -47,25 +47,15 @@ int main() {
    label2->has_list_variable = false; */
 
 
-   Label *empty = newBlankLabel();  
-   Label *empty2 = newBlankLabel();  
-   Label *empty3 = newBlankLabel(); 
-   Label *empty4 = newBlankLabel();
-   Label *empty5 = newBlankLabel();
-   Label *empty6 = newBlankLabel();
-   Label *empty7 = newBlankLabel();
-   Label *empty8 = newBlankLabel();
-   Label *empty9 = newBlankLabel();
-
-   Node *hn1 = newNode(false, empty);
-   Node *hn2 = newNode(false, empty2);
-   Node *hn3 = newNode(true, empty3);
-   Node *hn4 = newNode(false, empty4);
-   Node *hn5 = newNode(false, empty5);
-   Edge *he1 = newEdge(false, empty6, hn1, hn2); 
-   Edge *he2 = newEdge(false, empty7, hn2, hn3); 
-   Edge *he3 = newEdge(false, empty8, hn3, hn4); 
-   Edge *he4 = newEdge(false, empty9, hn3, hn5); 
+   Node *hn1 = newNode(false, NULL);
+   Node *hn2 = newNode(false, NULL);
+   Node *hn3 = newNode(true, NULL);
+   Node *hn4 = newNode(false, NULL);
+   Node *hn5 = newNode(false, NULL);
+   Edge *he1 = newEdge(false, NULL, hn1, hn2); 
+   Edge *he2 = newEdge(false, NULL, hn2, hn3); 
+   Edge *he3 = newEdge(false, NULL, hn3, hn4); 
+   Edge *he4 = newEdge(false, NULL, hn3, hn5); 
 
    Graph *host = newGraph();
    addNode(host, hn1);

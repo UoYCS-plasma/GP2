@@ -8,8 +8,8 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#ifndef INC_GENRULE_H
-#define INC_GENRULE_H
+#ifndef INC_GENERATE_H
+#define INC_GENERATE_H
 
 #define printToHeader(code, ...)	              \
   do { fprintf(match_header, code, ##__VA_ARGS__); }  \
@@ -107,9 +107,12 @@ void traverseEdge(Edge *edge, char match_from, bool *discovered_item,
  * match_R. It creates the header file, calls generateSearchplan, and emits
  * the matching code (according to the searchplan) to the source file.
  * Four auxiliary functions emit a C function to execute a particular
- * kind of searchplan operation. */
-void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name,
-                          RuleData *rule_data);
+ * kind of searchplan operation.
+ *
+ * This should never be called with an empty LHS graph! If the LHS is empty, 
+ * the caller skips this function and just calls the rule application code
+ * generator. */
+void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name);
 void emitMainFunction(string rule_name, SearchOp *first_op);
 
 /* The four emitMatcher functions take an LHS item and emit code that searches
@@ -128,13 +131,13 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type, bool *dangling_nodes,
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op);
 void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op);
 
-void emitRuleApplicationCode(string rule_name, Graph *lhs, Graph *rhs,
-                             RuleData *rule_data);
+//void emitRuleApplicationCode(string rule_name, Graph *lhs, Graph *rhs,
+//                             RuleData *rule_data);
 
 /* emitNextMatcherCall writes a call to a matching function according to the
  * passed searchplan operation. If next_op is NULL, then 'return true;' is
  * written to the generated source file. */
 bool emitNextMatcherCall(SearchOp* next_op, int indent);
 
-#endif /* INC_GENRULE_H */
+#endif /* INC_GENERATE_H */
 

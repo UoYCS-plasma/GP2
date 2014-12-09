@@ -55,7 +55,7 @@ void transformAST(List *declarations, Stack *rule_stack)
     }
 }
 
-
+/* TODO: Empty graph on LHS?! */
 Rule *makeRule(GPRule *ast_rule)
 {
    Rule *rule = malloc(sizeof(Rule));
@@ -352,7 +352,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
 
 Label *transformLabel(GPLabel *label)
 {
-   return newBlankLabel();
+   return NULL;
 }
 
 
