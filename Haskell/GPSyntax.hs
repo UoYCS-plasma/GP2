@@ -14,7 +14,6 @@ keywords = map fst hostColours ++
             "and", "not", "edge", "empty", "indeg", "outdeg",
             "slength", "llength"]
 
-
 data Colour = Uncoloured
             | Red 
             | Green 
@@ -34,7 +33,6 @@ hostColours = [
 
 ruleColours :: [ (String, Colour) ]
 ruleColours = ("cyan", Cyan) : hostColours
-
 
 data VarType = IntVar
              | ChrVar
@@ -139,7 +137,6 @@ data RuleAtom = Var Variable
 -- TODO: precedence of infix binary operators
 -- Is it possible to do BinOp Atom Atom and
 -- data BinOp = Plus | Min | ... ?
-
 data Condition = NoCondition
                | TestInt VarName
                | TestChr VarName
@@ -157,7 +154,6 @@ data Condition = NoCondition
                | And Condition Condition
     deriving Show
 
-
 data HostNode = HostNode NodeName Bool HostLabel deriving Show
 -- For graph isomorphism checking.
 instance Eq HostNode where
@@ -173,7 +169,4 @@ data HostLabel = HostLabel [HostAtom] Colour deriving (Eq, Show)
 data HostAtom = Int Int
               | Str String 
               | Chr Char deriving (Eq, Show)
-
-
-
 

@@ -2,13 +2,13 @@
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
 
 module Graph (Graph, NodeId, EdgeId,
-               emptyGraph, newNode, newNodeList, newEdge, newEdgeList,
-               allNodes, allEdges, outEdges, inEdges, incidentEdges, joiningEdges,
-               maybeSource, source, maybeTarget, target, 
-               maybeNLabel, nLabel, maybeELabel, eLabel,
-               rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
-               graphToGP2, permutedSizedSubsets, generateMatches)
-               where
+              emptyGraph, newNode, newNodeList, newEdge, newEdgeList,
+              allNodes, allEdges, outEdges, outdegree, inEdges, indegree, 
+              incidentEdges, joiningEdges, maybeSource, source, maybeTarget,
+              target, maybeNLabel, nLabel, maybeELabel, eLabel,
+              rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
+              graphToGP2, permutedSizedSubsets, generateMatches)
+              where
 
 import Prelude 
 import ExAr
@@ -105,8 +105,14 @@ allEdges (Graph _ es) = map E (domain es)
 outEdges :: Graph a b -> NodeId -> [EdgeId]
 outEdges (Graph _ es) n  =  map E $ findAll (\(Edge n1 _ _) -> n1 == n) es
 
+outdegree :: Graph a b -> NodeId -> Int
+outdegree g n = length $ outEdges g n
+
 inEdges :: Graph a b -> NodeId -> [EdgeId]
 inEdges (Graph _ es) n  =  map E $ findAll (\(Edge _ n2 _) -> n2 == n) es
+
+indegree :: Graph a b -> NodeId -> Int
+indegree g n = length $ inEdges g n
 
 incidentEdges :: Graph a b -> NodeId -> [EdgeId]
 incidentEdges g n = outEdges g n `union` inEdges g n

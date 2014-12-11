@@ -20,7 +20,6 @@ colourMatch hc rc   = (hc == rc)
 atomsMatch :: [HostAtom] -> [RuleAtom] -> Maybe Environment
 atomsMatch = atomsMatchWith []
 
-
 {- 
 The core of the label matcher. There are a number of base cases:
 
@@ -46,8 +45,6 @@ to transform the expression into a list L of RuleAtoms. L is then compared
 with the current host atom with the stringsMatchWith function which operates
 analogously to atomsMatchWith,
 -}
-
-
 atomsMatchWith :: Environment -> [HostAtom] -> [RuleAtom] -> Maybe Environment
 atomsMatchWith env [] [] = Just env
 atomsMatchWith env _ [] = Nothing

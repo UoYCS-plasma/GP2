@@ -8,15 +8,13 @@ import Graph
 import ExAr
 import Mapping
 
-type Scope = String
-type RuleID = String
-
 -- A symbol's Scope is the procedure it is contained in. Global symbols
 -- have scope "Global".
 -- RuleId is used to distinguish between variables, nodes and edges who may
 -- have the same names in different rules. The field is the empty string
 -- for rule and procedure symbols.
-
+type Scope = String
+type RuleID = String
 type SymbolTable = Mapping String Symbol
 data Symbol = Symbol VarType Scope RuleID
 
