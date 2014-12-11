@@ -5,9 +5,9 @@ import Data.List
 import Data.Maybe
 import Control.Monad (guard)
 
-
 import ExAr
 import Graph
+import List
 import Mapping
 import LabelMatch
 import GPSyntax
@@ -62,57 +62,18 @@ matchGraphNodes h r = -- filter (\m -> case m of NM _ [] -> False ; _ -> True) $
    labelMatch :: (RuleNodeId, HostNodeId) -> Maybe Environment -> Maybe Environment
    labelMatch (rn, hn) menv = do
       env <- menv
-      mapping <- doNodesMatch h r hn rn
+      (RuleNode _ _ rlab) <- maybeNLabel r rn
+      (HostNode _ _ hlab) <- maybeNLabel h hn
+      mapping <- doLabelsMatch hlab rlab
       mergeMapping mapping env
 
 checkNodes :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool
-checkNodes h r nms = checkRootNodes h r nms && checkJoiningEdges h r nms && checkMarks h r nms
-
-checkRootNodes :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool
-checkRootNodes _ _ [] = True
-checkRootNodes h r ((rid, hid):nms) =
-    case (rb, hb) of
-    -- A node mapping is invalid only in the case where a LHS root node is 
-    -- mapped to a non-root host graph node.
-    (True, False) -> False
-    _ -> True && checkRootNodes h r nms 
-    where
-    RuleNode _ rb _ = nLabel r rid
-    HostNode _ hb _ = nLabel h hid
-
-checkDegrees :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool 
-checkDegrees h r ((rid, hid): nms) = 
-    indegree r rid <= indegree h hid &&  
-    outdegree r rid <= outdegree h hid
-
-checkJoiningEdges :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool
-checkJoiningEdges h r nms = all wiffle nms
-    where
-        wiffle :: (RuleNodeId, HostNodeId) -> Bool
-        wiffle (rid, hid) = lhes >= lres
-            where
-                lhes = length $ filter blah $ 
-                       [ (res, hes) | res <- outEdges r rid, hes <- outEdges h hid ]
-                lres = outdegree r rid
-
-        blah :: (RuleEdgeId, HostEdgeId) -> Bool
-        blah (reid, heid) = (target r reid, target h heid) `elem` nms
-
-checkMarks :: HostGraph -> RuleGraph -> [(RuleNodeId, HostNodeId)] -> Bool 
-checkMarks h r ((rid, hid): nms) = colourMatch hc rc
-    where
-        RuleNode _ _ (RuleLabel _ rc) = nLabel r rid
-        HostNode _ _ (HostLabel _ hc) = nLabel h hid
-
-doNodesMatch :: HostGraph -> RuleGraph -> HostNodeId -> RuleNodeId -> Maybe Environment
-doNodesMatch h r hid rid = 
-    let hnode = (maybeNLabel h hid)
-        rnode = (maybeNLabel r rid) in
-    case (hnode, rnode) of 
-         (Nothing, _) -> Nothing
-         (_, Nothing) -> Nothing
-         (Just (HostNode _ _ hlabel), Just (RuleNode _ _ rlabel)) 
-                      -> doLabelsMatch hlabel rlabel
+checkNodes h r nms = all compatible nms
+   where
+   compatible (rn, hn) = (not (isRootR r rn) || isRootH h hn) &&
+                          indegree r rn <= indegree h hn &&  
+                          outdegree r rn <= outdegree h hn &&
+                          colourMatch (colourR r rn) (colourH h hn)
 
 -- For each edge in the RuleGraph, we generate a pair of its source and target
 -- node (ruleEndPoints).
@@ -126,28 +87,26 @@ doNodesMatch h r hid rid =
 -- as in the node matcher.
 
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
-matchGraphEdges h r (NM env nodeMatches) = if null (allEdges r) then [GM env nodeMatches []] else
-   catMaybes [ gm | edgeMatch <- edgeMatches,
+matchGraphEdges h r (NM env nodeMatches) = {-if null (allEdges r) then [GM env nodeMatches []] else -}
+   catMaybes [ gm | edgeMatch <- map (zip ruleEdges) (choices hostEdges),
                 let maybeEnv = foldr labelMatch (Just env) edgeMatch
                     gm = maybe Nothing (\env -> Just (GM env nodeMatches edgeMatch) ) maybeEnv ]
    where 
      ruleEdges = allEdges r
-     ruleEndPoints = map (\e -> (e, source r e, target r e)) ruleEdges
-     hostEndPoints = map ruleEndsToHostEnds ruleEndPoints
-     hostEdges = map getCandidateEdges hostEndPoints
-
-     getCandidateEdges (eid, src, tgt) = case eLabel r eid of
-         RuleEdge _ False _ -> [heid | heid <- joiningEdges h src tgt]
-         RuleEdge _ True  _ -> [heid | heid <- joiningEdges h src tgt ++ joiningEdges h tgt src]
-
-     ruleEndsToHostEnds :: (RuleEdgeId, RuleNodeId, RuleNodeId) -> (RuleEdgeId, HostNodeId, HostNodeId)
-     ruleEndsToHostEnds (eid, src, tgt) = (eid, definiteLookup src nodeMatches, definiteLookup tgt nodeMatches)
+     hostEdges = [ joiningEdges h src tgt ++
+                   if isBidirectional r reid then joiningEdges h tgt src
+                   else []
+                 | reid <- ruleEdges,
+                   let src = definiteLookup (source r reid) nodeMatches,
+                   let tgt = definiteLookup (target r reid) nodeMatches ]
 
      labelMatch :: (RuleEdgeId, HostEdgeId) -> Maybe Environment -> Maybe Environment
      labelMatch (re, he) menv = do
-               env <- menv
-               mapping <- doEdgesMatch h r he re
-               mergeMapping mapping env
+        env <- menv
+        hlabel <- maybeELabel h he
+        RuleEdge _ _ rlabel <- maybeELabel r re
+        mapping <- doLabelsMatch hlabel rlabel
+        mergeMapping mapping env
             
      -- The kth edge ID in ruleEdges corresponds to the kth list of host edge
      -- IDs in hostEdges. They are combined into a list containing all possible
@@ -166,15 +125,6 @@ matchGraphEdges h r (NM env nodeMatches) = if null (allEdges r) then [GM env nod
      -- 
      -- Each inner list describes a mapping from the complete set of left-edges to
      -- an appropriate set of host-edges.
-     edgeMatches = generateMatches ruleEdges hostEdges
 
-doEdgesMatch :: HostGraph -> RuleGraph -> HostEdgeId -> RuleEdgeId -> Maybe Environment
-doEdgesMatch h r hid rid = 
-   let mhlabel = (maybeELabel h hid)
-       mrlabel = (maybeELabel r rid) in
-   case (mhlabel, mrlabel) of 
-        (Nothing, _) -> Nothing
-        (_, Nothing) -> Nothing
-        (Just hlabel, Just (RuleEdge _ _ rlabel)) -> doLabelsMatch hlabel rlabel
-        
+
 

@@ -108,12 +108,12 @@ data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) NodeInterface
 
 data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph) 
                Condition  deriving Show
+data AstRuleGraph = AstRuleGraph [RuleNode] [AstRuleEdge] deriving (Show,Eq)
+data AstRuleEdge = AstRuleEdge EdgeName Bool NodeName NodeName RuleLabel deriving (Show, Eq)
 
 -- Rule graph labels are lists of expressions.
 type RuleGraph = Graph RuleNode RuleEdge
-data AstRuleGraph = AstRuleGraph [RuleNode] [AstRuleEdge] deriving (Show,Eq)
 data RuleNode = RuleNode NodeName Bool RuleLabel deriving (Show, Eq)
-data AstRuleEdge = AstRuleEdge EdgeName Bool NodeName NodeName RuleLabel deriving (Show, Eq)
 data RuleEdge = RuleEdge EdgeName Bool RuleLabel deriving Show
 
 type GPList = [RuleAtom]
@@ -170,3 +170,17 @@ data HostAtom = Int Int
               | Str String 
               | Chr Char deriving (Eq, Show)
 
+colourH :: HostGraph -> NodeId -> Colour
+colourH h n = c where HostNode _ _ (HostLabel _ c) = nLabel h n 
+
+colourR :: RuleGraph -> NodeId -> Colour
+colourR r n = c where RuleNode _ _ (RuleLabel _ c) = nLabel r n 
+
+isRootH :: HostGraph -> NodeId -> Bool 
+isRootH h n = root where HostNode _ root _ = nLabel h n 
+
+isRootR :: RuleGraph -> NodeId -> Bool
+isRootR r n = root where RuleNode _ root _ = nLabel r n 
+
+isBidirectional :: RuleGraph -> EdgeId -> Bool
+isBidirectional r e = bi where RuleEdge _ bi _ = eLabel r e 
