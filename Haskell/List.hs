@@ -16,3 +16,8 @@ sublistsOf :: Int -> [a] -> [[a]]
 sublistsOf 0 _        = [[]]
 sublistsOf _ []       = []
 sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
+
+isSet :: Eq a => [a] -> Bool
+isSet [] = True
+isSet (x:xs) = x `notElem` xs && isSet xs
+

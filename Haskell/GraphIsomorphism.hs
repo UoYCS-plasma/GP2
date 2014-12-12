@@ -3,7 +3,7 @@
 
 module GraphIsomorphism (isomorphismCount) where
 
-import Data.List (permutations)
+import Data.List (permutations, groupBy)
 import Graph
 import Mapping
 

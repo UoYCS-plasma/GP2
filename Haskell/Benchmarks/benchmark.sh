@@ -1,7 +1,7 @@
 #!/bin/bash
 
-TIMEOUT=5m
-MAXAPPS=100
+TIMEOUT=2h
+MAXAPPS=1000000
 MAXGRAPHS=10
 
 while getopts ":a:g:t:" opt ; do

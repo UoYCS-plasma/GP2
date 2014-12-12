@@ -72,7 +72,7 @@ compatibleNodes h r (rn, hn) = (not (isRootR r rn) || isRootH h hn) &&
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
 matchGraphEdges h r (NM env nodeMatches) =
    [ GM labelEnv nodeMatches edgeMatch
-   | edgeMatch <- [zip ruleEdges hes | hes <- choices hostEdges],
+   | edgeMatch <- [zip ruleEdges hes | hes <- choices hostEdges, isSet hes],
      Just labelEnv <- [foldr labelMatch (Just env) edgeMatch] ]
    where 
    ruleEdges = allEdges r
