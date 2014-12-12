@@ -16,6 +16,7 @@ Date       Benchmark             Host   Time      Notes
 5/12/2014  Transitive closure    L100   4.56s     [^2]
 5/12/2014  Transitive closure    L100   4.37s     [^3]
 8/12/2014  Structural Sierpinski 5g     0.01s     [^2]
+8/12/2014  Structural Sierpinski 10g    1m12.7s   [^2]
 
 Table: Informal results from a single run of the `time` command, for OILR machine with static memory allocation and compiled-in host graph.
 

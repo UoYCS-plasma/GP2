@@ -336,7 +336,6 @@ void disconnect(OilrNode *n) {
 	prevInChain(n) = NULL;
 }
 
-/* When kind == RootTrav val is ignored! */
 void connect(OilrNode *n) {
 	OilrNode *next, *head;
 	Index *s;
@@ -569,8 +568,9 @@ OilrNode *nextUnmatchedNodeFromEdge(NodeTraverser *nt) {
 	if (origin == NULL)
 		error(1, 0, "NULL node as edge origin! Something went wrong!");
 
-	if (hasRealNode(nt->oilrNode))
+	if (hasRealNode(nt->oilrNode)) {
 		unmatch(nt->oilrNode);
+	}
 			
 	for (pos=nt->searchSpace.pos; pos<origin->node->outdegree; pos++) {
 		n = origin->node->out_edges[pos]->target;
@@ -640,6 +640,7 @@ bool findCandidateNode(NodeTraverser *nt) {
 
 void runSearch() {
 	Traverser *txp = tsp;
+	NodeTraverser *src, *tgt;
 	SearchSpace *spc;
 	bool found;
 
@@ -658,11 +659,17 @@ void runSearch() {
 			}
 		}
 #ifdef DYNAMIC_OPTS
-		else if (isEdgeTrav(txp) && txp->e.src <= txp->e.tgt && !txp->e.tgt->searchSpace.edgeFrom && !txp->e.tgt->searchSpace.index) {
-			/* TODO: only works for out-edges currently. Needs to consider in-edges too */
-			/* TODO: handle multiple outgoing edges */
-			txp->e.tgt->searchSpace.edgeFrom = txp->e.src;
-			
+		else if (isEdgeTrav(txp) && !isNegated(txp)) {
+			src = txp->e.src;
+			tgt = txp->e.tgt;
+			if (src < tgt  /* src must be on trav stack already */
+					&& !tgt->searchSpace.edgeFrom /* don't make this change if a previous edge already set edgeFrom */
+					&& !tgt->searchSpace.index) { /* or if we've already indexed it */
+				/* txp->e.src < txp->e.tgt (not <=) because we don't allow modifying
+				* node travs for loops */
+				/* TODO: only works for out-edges currently. Needs to consider in-edges too */
+				txp->e.tgt->searchSpace.edgeFrom = txp->e.src;
+			}
 		} 
 #endif
 		txp--;
