@@ -16,10 +16,10 @@ import PrintGraph
 import ProcessAst
 import RunProgram
 
-{-- Optional: For testing
-import GraphMatch
-import Graph
-import ParseRule-}
+-- Optional: For testing
+-- import GraphMatch
+-- import Graph
+-- import ParseRule
 
 import Debug.Trace
 

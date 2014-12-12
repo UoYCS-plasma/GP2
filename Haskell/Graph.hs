@@ -13,23 +13,6 @@ import ExAr
 import Data.Maybe
 import Data.List (union, intersect, permutations)
 
-{-
--- See function matchGraphEdges (GraphMatch.hs) for a description of the
--- use of generateMatches.
-generateMatches :: [a] -> [[b]] -> [[(a, b)]]
-generateMatches xs ys = makeCombinations $ zipWith pairUp xs ys
-
--- Returns the list containing all pairs whose first element is the first
--- argument and whose second element is an item from the second argument.
-pairUp :: a -> [b] -> [(a, b)]
-pairUp x ys = map (\y -> (x, y)) ys
-
-makeCombinations :: [[a]] -> [[a]]
-makeCombinations [] = []
-makeCombinations [xs] = [[x] | x <- xs]
-makeCombinations (xs:yss) = [x:ys | x <- xs, ys <- makeCombinations yss]
--}
-
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show
 
