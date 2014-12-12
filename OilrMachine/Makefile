@@ -1,15 +1,20 @@
-CC=gcc -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
+DEFS=-DOILR_STANDALONE -DDEBUG
+CC=gcc -g -Wall -Werror $(DEFS)
 
-OBJECTS=oilrruntime.o Compiler/graph.o Compiler/graph.o Compiler/stack.o
+TARGETS=oilrrt.a
 
-runtime.a : $(OBJECTS)
-	ar rcs $@ $(OBJECTS)
-	ranlib $@
+$(TARGETS) : $(OBJS)
 
-%.o : %.c
-	$(CC) -g -c $<
+#../Compiler/oilrrc.o :
+#	$(MAKE) -C 
+
+oilrrt.a : oilrrt.o
+	ar rcs $@ $^
+
+%.o : %.c oilrrt.h oilrinst.h invariants.c
+	$(CC) -c $<
 
 clean :
-	rm -f *.o runtime.a
+	rm -f *.o
 
 

@@ -6,20 +6,20 @@ import System.Console.GetOpt
 
 import ApplyRule
 import ExAr
-import Graph (graphToGP2)
+import Graph 
 import GraphIsomorphism
 import GPSyntax
 import ParseGraph
 import ParseLib
 import ParseProgram
-import PrintGraph
+import PrintGraph 
 import ProcessAst
 import RunProgram
 
-{-- Optional: For testing
-import GraphMatch
-import Graph
-import ParseRule-}
+-- Optional: For testing
+-- import GraphMatch
+-- import Graph
+-- import ParseRule
 
 import Debug.Trace
 

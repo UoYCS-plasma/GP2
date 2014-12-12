@@ -20,34 +20,29 @@ colourMatch hc rc   = (hc == rc)
 atomsMatch :: [HostAtom] -> [RuleAtom] -> Maybe Environment
 atomsMatch = atomsMatchWith []
 
-
-{- 
-The core of the label matcher. There are a number of base cases:
-
-(1) The end of both lists is reached at the same time. Return the 
-    current environment.
-(2) The end of the rule list has been reached but there are still unchecked
-    items in the host list. The labels do not match.
-(3) The end of the host list has been reached but there are still unchecked
-    items in the rule list. If the rule list contains only a list variable,
-    then assign it the empty list. Nothing else can match the empty list,
-    so any other remaining rule list means the labels do not match.
-
-The function compares atoms one at a time. Most of it is straightforward:
-constants are checked for equality and variable-value mappings are added
-to the environment provided they are of the correct type.
-
-GP2 semantics allow only one list variable in a list. Hence we use the 
-lengths of both lists to assign the list variable the list of appropriate 
-length, then recursively call atomsMatchWith on the remaining host list.
-
-Concat expressions are handled by calling the auxiliary function 'expand'
-to transform the expression into a list L of RuleAtoms. L is then compared
-with the current host atom with the stringsMatchWith function which operates
-analogously to atomsMatchWith,
--}
-
-
+-- The core of the label matcher. There are a number of base cases:
+-- 
+-- (1) The end of both lists is reached at the same time. Return the 
+--     current environment.
+-- (2) The end of the rule list has been reached but there are still unchecked
+--     items in the host list. The labels do not match.
+-- (3) The end of the host list has been reached but there are still unchecked
+--     items in the rule list. If the rule list contains only a list variable,
+--     then assign it the empty list. Nothing else can match the empty list,
+--     so any other remaining rule list means the labels do not match.
+-- 
+-- The function compares atoms one at a time. Most of it is straightforward:
+-- constants are checked for equality and variable-value mappings are added
+-- to the environment provided they are of the correct type.
+-- 
+-- GP2 semantics allow only one list variable in a list. Hence we use the 
+-- lengths of both lists to assign the list variable the list of appropriate 
+-- length, then recursively call atomsMatchWith on the remaining host list.
+-- 
+-- Concat expressions are handled by calling the auxiliary function 'expand'
+-- to transform the expression into a list L of RuleAtoms. L is then compared
+-- with the current host atom with the stringsMatchWith function which operates
+-- analogously to atomsMatchWith,
 atomsMatchWith :: Environment -> [HostAtom] -> [RuleAtom] -> Maybe Environment
 atomsMatchWith env [] [] = Just env
 atomsMatchWith env _ [] = Nothing

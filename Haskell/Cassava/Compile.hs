@@ -1,8 +1,10 @@
-module Cassava.Compile (compileGPProg) where
+module Cassava.Compile (compileGPProg, RegisterMap) where
 
 import GPSyntax
 import Cassava.Instructions
 import Data.List
+
+import Debug.Trace
 
 notImplemented s = error $ "Not implemented: " ++ s
 
@@ -54,13 +56,15 @@ compileRule (AstRule id _ (lhs, rhs) cond) =
         false -> compiledLhs ++ [RET]
     
     where
+        -- TODO: refactor this to eliminate all these primes and make the TRAV ordering less
+        -- dependent upon the type
         compiledLhs = (PROC id) : nodeTravs ++ edgeTravs ++ conditions ++ [GO, ZTRF]
-        compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap' rhs'
-        (nodeTravs, rmap)  = travsForLhsNodes interface lhs'
-        edgeTravs  = travsForLhsEdges rmap lhs'
-        conditions = compileCond rmap lhs' cond
+        compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap''' rhs'
+        (nodeTravs, rmap)    = travsForLhsNodes interface lhs'
+        (edgeTravs, rmap')   = travsForLhsEdges rmap lhs'
+        (conditions, rmap'') = compileCond rmap' lhs' cond
         interface  = computeInterface lhs' rhs'
-        (updatedNodes, rmap') = updateNodes interface rmap rhs'
+        (updatedNodes, rmap''') = updateNodes interface rmap'' rhs'
         changed    = lhs' /= rhs'
         (lhs', rhs') = sortNodes lhs rhs
 
@@ -81,8 +85,10 @@ travForLhsNode iface es (RuleNode id root _) =
     where
         (o, i, l) = classifyEdgesForNode id es
 
-travsForLhsEdges :: RegisterMap -> AstRuleGraph -> Prog
-travsForLhsEdges rmap (AstRuleGraph ns es) = map (travForLhsEdge rmap) es
+travsForLhsEdges :: RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
+travsForLhsEdges rmap (AstRuleGraph ns es) = (map (travForLhsEdge rmap) es, rmap')
+    where
+        rmap' = rmap ++ zip (map (\(AstRuleEdge id _ _ _ _) -> id) es) [length rmap..]
 
 travForLhsEdge :: RegisterMap -> AstRuleEdge -> Instr
 travForLhsEdge rmap e@(AstRuleEdge id bidi src tgt _) =
@@ -92,20 +98,22 @@ travForLhsEdge rmap e@(AstRuleEdge id bidi src tgt _) =
         _ -> error $ "Reference to a node without a traverser in edge " ++ id
 
 
+-- TODO: Incorrect behaviour. ROOT and TOOR should only be issued if root status changes
+-- between lhs and rhs
 updateNodes :: Interface -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
 updateNodes iface rmap (AstRuleGraph ns es) = (updated ++ created, rmap')
     where
         (updateMe, createMe) = partition (\(RuleNode id _ _) -> id `elem` iface) ns
         updated = concatMap updateNode updateMe
         (created, rmap') = createNodes rmap [] createMe
-        updateNode (RuleNode id root _) = case (lookup id rmap, root) of
+        updateNode (RuleNode id root _) = [] {- case (lookup id rmap, root) of
             (Just n, True)  -> [ROOT n]
             (Just n, False) -> [TOOR n]
-            _               -> error "Node not found!"
+            _               -> error "Node not found!" -}
         nids  = map (\(RuleNode id _ _) -> id) ns
 
 createNodes :: RegisterMap -> Prog -> [RuleNode] -> (Prog, RegisterMap)
-createNodes rmap prog [] = (prog, rmap)
+createNodes rmap prog [] = trace (show rmap) (prog, rmap)
 createNodes rmap prog (RuleNode id root _:ns) = createNodes rmap' prog' ns
     where
         prog' = prog ++ (if root then [NEWN, ROOT (length rmap)] else [NEWN])
@@ -138,11 +146,11 @@ simplifyConds c          = c
 
 -- TODO: fixing indeg/outdeg to non-zero or non-constant is not supported.
 
-compileCond :: RegisterMap -> AstRuleGraph -> Condition -> Prog
-compileCond rmap lhs NoCondition = []
+compileCond :: RegisterMap -> AstRuleGraph -> Condition -> (Prog, RegisterMap)
+compileCond rmap lhs NoCondition = ([], rmap)
 compileCond rmap lhs (Eq [Indeg n]  [Val (Int i)]) =
     if i == 0 then
-        [FIXI reg, FIXL reg]
+        ([FIXI reg, FIXL reg], rmap)
     else 
         notImplemented "Non-zero indegree."
     where
@@ -151,7 +159,7 @@ compileCond rmap lhs (Eq [Indeg n]  [Val (Int i)]) =
             _      -> error $ "Node specified in condition not found"
 compileCond rmap lhs (Eq [Outdeg n] [Val (Int i)]) =
     if i == 0 then
-        [FIXO reg, FIXL reg]
+        ([FIXO reg, FIXL reg], rmap)
     else 
         notImplemented "Non-zero indegree."
     where
@@ -160,9 +168,12 @@ compileCond rmap lhs (Eq [Outdeg n] [Val (Int i)]) =
             _      -> error $ "Node specified in condition not found"
 compileCond rmap lhs (Not (Edge a b _)) =
     case (lookup a rmap, lookup b rmap) of
-        (Just n, Just m) -> [XE n m]
+        (Just n, Just m) -> ([XE n m], ("cond", length rmap):rmap)
         _                -> error "Anti-traverser creation failed!"
-compileCond rmap lhs (And x y) = compileCond rmap lhs x ++ compileCond rmap lhs y
+compileCond rmap lhs (And x y) = (progl ++ progr, rmap'')
+    where
+        (progl, rmap') = compileCond rmap lhs x
+        (progr, rmap'') = compileCond rmap lhs y
 compileCond rmap lhs c = notImplemented $ "compileCond: " ++ show c
 
 
@@ -179,7 +190,7 @@ classifyEdgeForId id (AstRuleEdge _ _ i o _) =
         _            -> UninterestingEdge
 
 classifyEdgesForNode :: RuleName -> [AstRuleEdge] -> (Deg, Deg, Deg)
-classifyEdgesForNode id es = (ins, outs, loops)
+classifyEdgesForNode id es = (outs, ins, loops)
     where
         ins   = length $ filter (==InEdge) cs
         outs  = length $ filter (==OutEdge) cs
@@ -199,4 +210,3 @@ computeInterface (AstRuleGraph lns _) (AstRuleGraph rns _) = interface
         interface = intersect lids rids
         extractNodeName :: RuleNode -> RuleName
         extractNodeName (RuleNode id _ _) = id
-

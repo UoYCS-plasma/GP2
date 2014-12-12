@@ -4,14 +4,6 @@ import ParseLib
 import GPSyntax
 import ParseRule
 
-testProgram :: String
-testProgram = concat ["Main = rule1 rule1 (i:int; l:list) ",
-                      "[ (n1, i), (n2, l) | (e1, n1, n2, empty)]",
-                      "=> [ (n1, i), (n2, l:i) | (e1, n1, n2, empty) ]",
-                      "interface = {n1, n2}",
-                      "where edge (n1,n2)",
-                      "injective = true"]
-
 program :: Parser GPProgram
 program = optSpaces |> pure Program <*> atLeastOne declaration 
 

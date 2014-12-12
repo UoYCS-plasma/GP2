@@ -6,10 +6,6 @@ import ParseLib
 import GPSyntax
 import Graph
 
-
-testCase = "(n1, 2 # blue) (n2, \"3\" # red) (n3, 'x')"
-testEdge = "| (e1, n1, n2, \"cheese\" # red )"
-
 hostGraph :: Parser AstHostGraph
 hostGraph = optSpaces |> keyword "[" |> pure AstHostGraph 
         <*> maybeSome hostNode <*> keyword "|" 

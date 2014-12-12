@@ -1,9 +1,65 @@
-#ifndef INC_OIL_GRAPH_H
-#define INC_OIL_GRAPH_H
+#ifndef OILRRT_H
+#define OILRRT_H
 
 #include <stdbool.h>
 
-bool success;
+#ifdef DEBUG
+#include <stdio.h>
+#define TEST_INVARIANTS
+#undef NDEBUG
+#define trace(...) do { printf("--> ") ; printf(__VA_ARGS__) ; printf("\n");} while (false);
+void testInvariants();
+#else
+#define trace(...)
+/* the following is needed for assert() */
+#define NDEBUG
+#define dumpTravStack(x)
+#define testInvariants()
+#endif
+
+#include <assert.h>
+
+#ifdef OILR_STANDALONE
+
+#define MAX_NODES 300000
+#define MAX_EDGES 800000
+#define MAX_INCIDENT_EDGES 128
+
+/* dummy data structures for testing OILR in isolation */
+typedef void Label ;
+struct Edge;
+
+typedef struct Node {
+	bool root;
+	int index;
+	int outdegree, indegree;
+	int loopdegree;
+	struct Edge *out_edges[MAX_INCIDENT_EDGES];
+} Node;
+
+typedef struct Edge {
+	struct Edge *index;
+	Node *source, *target;
+} Edge;
+
+typedef struct Graph {
+	void *dummy;
+} Graph;
+
+extern Edge edgePool[];
+extern Node nodePool[];
+
+
+#else
+
+#include "graph.h"
+
+#endif
+
+
+
+
+extern bool success;
 
 struct OilrNode;
 
@@ -13,24 +69,11 @@ struct OilrNode;
 #define TOOMANYR 2
 
 
-#ifdef OILR_STANDALONE
-
-typedef struct Edge {
-	int index;
-	Node *src, *tgt;
-}
-
-typedef struct Node {
-	int index;
-	int out_edges;
-} Node;
-
-#endif
 
 
 typedef struct Link {
 	struct OilrNode *prev;
-	int val;
+	struct Index *index;
 	struct OilrNode *next;
 } Link;
 
@@ -40,27 +83,35 @@ typedef struct OilrNode {
 	Link chain;
 } OilrNode;
 
-typedef struct Shadow {
+typedef struct Index {
 	int len;
 	OilrNode head;
-} Shadow;
+} Index;
 
 typedef struct OilrGraph {
 	Graph *graph;
-	Shadow shadowTables[TOOMANYO][TOOMANYI][TOOMANYL][2];
+	Index indices[TOOMANYO][TOOMANYI][TOOMANYL][2];
 } OilrGraph;
 
 typedef struct OilrEdge {
 	Edge *edge;
 } OilrEdge;
 
+typedef struct SearchSpace {
+	int size, pos;
+	struct NodeTraverser *edgeFrom;
+	Index **index;
+} SearchSpace;
+
 
 typedef struct NodeTraverser {
 	OilrNode *oilrNode;
 	int o,i,l;
+	int fromo, fromi, froml;
 	int capo, capi, capl;
 	bool r;
 	bool isInterface;
+	SearchSpace searchSpace;
 } NodeTraverser;
 
 typedef struct EdgeTraverser {
@@ -76,11 +127,16 @@ typedef enum {
 	/* Test for edge travs with "& 0x2" */
 	EdgeTrav    = 2,
 	XeTrav      = -2,
+	FixedNode   = 3,
 } TravType;
 
 #define isNodeTrav(t) ((t->type & 0x1) ? true : false)
 #define isEdgeTrav(t) ((t->type & 0x2) ? true : false)
 #define isNegated(t) ((t->type < 0) ? true : false)
+#define isFixed(t)  ((t->type == 3) ? true : false)
+
+#define getTravNode(someTrav) (trav->n->oilrNode)
+#define getTravEdge(someTrav) (trav->e->edge)
 
 typedef struct Traverser {
 	TravType type;
@@ -153,9 +209,9 @@ OilrNode *next();
    node and edge stacks in reverse and clear the TRAV stack */
 void runSearch();
 
+void clearTravs();
 
 
 
 
-
-#endif /* INC_OIL_GRAPH_H */
+#endif /* OILRRT_H */

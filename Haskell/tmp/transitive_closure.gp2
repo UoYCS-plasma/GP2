@@ -1,9 +1,37 @@
-Main = link!
+Main = link! ; loop!
 
-link (a,b,x,y,z: list) [
-	(n1, x) (n2, y) (n3, z) | (e1, n1, n2, a) (e2, n2, n3, b)
+link () [
+	(n1, empty)
+	(n2, empty)
+	(n3, empty)
+	|
+	(e1, n1, n2, empty)
+	(e2, n2, n3, empty)
 ] => [
-	(n1, x) (n2, y) (n3, z) | (e1, n1, n2, a) (e2, n2, n3, b) (e3, n1, n3, empty)
+	(n1, empty)
+	(n2, empty)
+	(n3, empty)
+	|
+	(e1, n1, n2, empty)
+	(e2, n2, n3, empty)
+	(e3, n1, n3, empty)
 ]
 interface = {n1, n2, n3}
 where not edge(n1, n3)
+
+loop () [
+	(n1, empty)
+	(n2, empty)
+	|
+	(e1, n1, n2, empty)
+	(e2, n2, n1, empty)
+] => [
+	(n1, empty)
+	(n2, empty)
+	|
+	(e1, n1, n2, empty)
+	(e2, n2, n1, empty)
+	(e3, n2, n2, empty)
+]
+interface = {n1, n2}
+where not edge(n2, n2)
