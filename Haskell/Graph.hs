@@ -7,7 +7,8 @@ module Graph (Graph, NodeId, EdgeId,
                maybeSource, source, maybeTarget, target, 
                maybeNLabel, nLabel, maybeELabel, eLabel,
                rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
-               graphToGP2, permutedSizedSubsets, generateMatches)
+               sublistsOf, permutedSizedSubsets, 
+               graphToGP2, generateMatches)
                where
 
 import Prelude 
