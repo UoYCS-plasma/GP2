@@ -182,7 +182,6 @@ int printDotAST(List *const gp_ast, string file_name)
 
 int printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
 {
- 
      /* Assumes input file has no extension, but will be .gpg in the future. */
 
      /* The length of the new file name is the length of the old file name
@@ -1533,10 +1532,10 @@ void printASTGraph(GPGraph * const graph, FILE *dot_file)
                        graph->node_id, graph->node_id, 
                        LOCATION_ARGS(graph->location));
 
-     print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
+     /* print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
                        graph->node_id, next_node_id); 
 
-     /* prettyPrint(graph->position, Position); */
+      * prettyPrint(graph->position, Position); */
 
      prettyPrintList(graph->nodes, graph, nodes);
 
@@ -1573,9 +1572,9 @@ void printASTNode(GPNode * const node, FILE *dot_file)
                        node->node_id, next_node_id); 
      prettyPrint(node->label, Label);
 
-     print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
+     /* print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
                        node->node_id, next_node_id); 
-     /* prettyPrint(node->position, Position); */
+      * prettyPrint(node->position, Position); */
 }
 
 

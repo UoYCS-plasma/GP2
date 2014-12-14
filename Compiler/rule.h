@@ -67,6 +67,7 @@ typedef struct NodeList {
 } NodeList;
 
 NodeList *addNodeItem(NodeList *node_list, int index);
+bool queryNodeList(NodeList *node_list, int index);
 void freeNodeList(NodeList *node_list);
 
 /* A linked list of items that are preserved by the rule. It stores the 
@@ -141,20 +142,18 @@ typedef struct Rule {
    Graph *rhs; 
    PreservedItem *preserved_nodes;
    PreservedItem *preserved_edges;
+   /* Deleted LHS items are precisely those that do not occur in the 
+    * PreservedItems list. I explicitly store the deleted nodes because
+    * the dangling condition places a stronger requirement on the degrees
+    * of candidate host nodes which can be exploited in the rule matching
+    * code. */
    NodeList *deleted_nodes;
-   /* deleted_edges are implicit; worked out from edges not in preserved edges
-    * when generating mathcing code. This is because we will need to take an 
-    * edge index and search for whether it is in the deleted list (equivalently, 
-    * not in the preserved items list). A search is performed either way, no 
-    * point making an explicit data structure for deleted edges. */
    NodeList *added_nodes;
    NewEdgeList *added_edges;
    Condition *condition;
    struct {
       /* 1 if the rule does not change the host graph. */
       unsigned int is_predicate : 1;
-      /* 1 if the rule deletes any nodes. */
-      unsigned int deletes_nodes : 1;
       /* 1 if the rule is rooted. */
       unsigned int is_rooted : 1;
    } flags;

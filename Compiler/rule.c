@@ -149,6 +149,16 @@ NodeList *addNodeItem(NodeList *node_list, int index)
    return new_item;
 }
 
+bool queryNodeList(NodeList *node_list, int index)
+{
+   while(node_list != NULL)
+   {
+      if(index == node_list->index) return true;
+      else node_list = node_list->next;
+   }
+   return false;
+}
+
 void freeNodeList(NodeList *node_list)
 {
    if(node_list == NULL) return;
@@ -218,11 +228,16 @@ void printRule(Rule *rule, bool print_graphs)
       printf("printRule passed a NULL pointer.\n\n");
       return;
    }
-   printf("Rule %s\n", rule->name);
+   printf("Rule %s\n\n", rule->name);
    if(print_graphs)
    {
-      printGraph(rule->lhs);
-      printGraph(rule->rhs);
+      printf("LHS\n===\n");
+      if(rule->lhs) printGraph(rule->lhs);
+      else printf("Empty Graph\n\n");
+
+      printf("RHS\n===\n");
+      if(rule->rhs) printGraph(rule->rhs);
+      else printf("Empty Graph\n\n");
    }
    
    PreservedItem *item = rule->preserved_nodes;
@@ -271,7 +286,6 @@ void printRule(Rule *rule, bool print_graphs)
    }
 
    if(rule->flags.is_predicate) printf("Rule is a predicate.\n");
-   if(rule->flags.deletes_nodes) printf("Rule deletes nodes.\n");
    if(rule->flags.is_rooted) printf("Rule is rooted.\n");
    printf("\n");
 }

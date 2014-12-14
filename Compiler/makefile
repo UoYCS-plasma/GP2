@@ -1,5 +1,5 @@
 P = parseGP
-OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o transform.o graph.o rule.o match.o stack.o main.o
+OBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o transform.o graph.o rule.o match.o stack.o generate.o main.o
 PARSEOBJECTS = gpparser.tab.o lex.yy.o ast.o seman.o pretty.o main.o  
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
@@ -30,18 +30,18 @@ $(P)-debug:	$(PARSEOBJECTS)
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./$(P) $(F1) $(F2)
 
 # Testing file.
-test:		generate.o graph.o stack.o lhs.o
-		$(CC) generate.o graph.o stack.o lhs.o $(LFLAGS) -o testGP
+test:		generate.o graph.o rule.o stack.o lhs.o
+		$(CC) generate.o graph.o rule.o stack.o lhs.o $(LFLAGS) -o testGP
 
-test-debug:	generate.o graph.o stack.o lhs.o
-		$(CC) generate.o graph.o stack.o lhs.o $(LFLAGS) -o testGP
+test-debug:	generate.o graph.o rule.o stack.o lhs.o
+		$(CC) generate.o graph.o rule.o stack.o lhs.o $(LFLAGS) -o testGP
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./testGP
 
-match:		runtime.o match_r1.o match.o graph.o stack.o 
-		$(CC) runtime.o match_r1.o match.o graph.o stack.o  $(LFLAGS) -o match
+match:		runtime.o Rules/Global_rule1.o match.o graph.o stack.o 
+		$(CC) runtime.o Rules/Global_rule1.o match.o graph.o stack.o  $(LFLAGS) -o match
 
-match-debug:	runtime.o match_r1.o match.o graph.o stack.o 
-		$(CC) runtime.o match_r1.o match.o graph.o stack.o $(LFLAGS) -o match
+match-debug:	runtime.o Rules/Global_rule1.o match.o graph.o stack.o 
+		$(CC) runtime.o Rules/Global_rule1.o match.o graph.o stack.o $(LFLAGS) -o match
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./match
 
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
@@ -56,7 +56,7 @@ lex.yy.o: 	lex.yy.c
 lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
 		flex gplexer.lex
 
-main.o:         main.c ast.h globals.h pretty.h rule.h seman.h stack.h transform.h
+main.o:         main.c ast.h generate.h globals.h pretty.h rule.h seman.h stack.h transform.h
 		$(CC) $(CFLAGS) -c main.c
 
 ast.o: 		ast.c ast.h globals.h
@@ -83,14 +83,14 @@ match.o:	match.c globals.h graph.h rule.h match.h
 stack.o:	stack.c globals.h stack.h
 		$(CC) $(CFLAGS) -c stack.c
 
-generate.o:	generate.c globals.h match.h generate.h
+generate.o:	generate.c globals.h match.h rule.h generate.h
 		$(CC) $(CFLAGS) -c generate.c
 
-runtime.o:	runtime.c globals.h graph.h match_r1.h runtime.h
+runtime.o:	runtime.c globals.h graph.h Rules/Global_rule1.h runtime.h
 		$(CC) $(CFLAGS) -c runtime.c
 
-match_r1.o:	match_r1.c match_r1.h globals.h graph.h match.h
-		$(CC) $(CFLAGS) -c match_r1.c
+Rules/Global_rule1.o:	Rules/Global_rule1.c Rules/Global_rule1.h globals.h graph.h match.h
+			$(CC) $(CFLAGS) -c Rules/Global_rule1.c -o Rules/Global_rule1.o
 
 staticsearch.o:	staticsearch.c globals.h graph.h match.h rule.h staticsearch.h 
 

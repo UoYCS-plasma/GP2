@@ -2,8 +2,7 @@
 #include "graph.h"
 #include "match.h"
 /* #include all generated rule matchers. */
-#include "match_r1.h"
-
+#include "Rules/Global_rule1.h"
 
 
 

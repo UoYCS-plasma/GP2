@@ -34,7 +34,7 @@ Rule *makeRule(GPRule *rule);
  */
 Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
                IndexMap **edge_map, NodeList **deleted_nodes,
-               unsigned int *is_rooted, unsigned int *deletes_nodes);
+               unsigned int *is_rooted);
 
 /* scanRHSNodes does the following:
 * (1) Creates and returns the graph data structure for the graph containing

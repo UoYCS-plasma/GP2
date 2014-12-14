@@ -55,7 +55,6 @@ void transformAST(List *declarations, Stack *rule_stack)
     }
 }
 
-/* TODO: Empty graph on LHS?! */
 Rule *makeRule(GPRule *ast_rule)
 {
    Rule *rule = malloc(sizeof(Rule));
@@ -72,30 +71,33 @@ Rule *makeRule(GPRule *ast_rule)
    IndexMap *node_map = NULL;
    IndexMap *edge_map = NULL;
 
-   unsigned int deletes_nodes = 0, is_rooted = 0;
+   unsigned int is_rooted = 0;
 
    rule->preserved_nodes = NULL;
    rule->preserved_edges = NULL;
    rule->deleted_nodes = NULL;
    rule->added_nodes = NULL;
- 
-   rule->lhs = scanLHS(ast_rule->lhs, ast_rule->interface, &node_map,
-                       &edge_map, &(rule->deleted_nodes), &is_rooted,
-                       &deletes_nodes);
+   rule->added_edges = NULL;
 
-   rule->rhs = scanRHSNodes(ast_rule->rhs, ast_rule->interface, &node_map,
-                            &(rule->preserved_nodes), &(rule->added_nodes));
+   if(ast_rule->lhs->nodes == NULL && ast_rule->lhs->edges == NULL) rule->lhs = NULL;
+   else rule->lhs = scanLHS(ast_rule->lhs, ast_rule->interface, &node_map,
+                            &edge_map, &(rule->deleted_nodes), &is_rooted);
 
-   rule->added_edges = scanRHSEdges(ast_rule->rhs, rule->rhs,
-                                   ast_rule->interface, node_map, 
-                                   &edge_map, &(rule->preserved_edges));
+   if(ast_rule->rhs->nodes == NULL && ast_rule->rhs->edges == NULL) rule->rhs = NULL;
+   else
+   {
+      rule->rhs = scanRHSNodes(ast_rule->rhs, ast_rule->interface, &node_map,
+                               &(rule->preserved_nodes), &(rule->added_nodes));
+      rule->added_edges = scanRHSEdges(ast_rule->rhs, rule->rhs,
+                                      ast_rule->interface, node_map, 
+                                      &edge_map, &(rule->preserved_edges));
+   }
 
-   freeIndexMap(node_map);
-   freeIndexMap(edge_map);
+   if(node_map) freeIndexMap(node_map);
+   if(edge_map) freeIndexMap(edge_map);
 
    rule->condition = NULL;
    rule->flags.is_predicate = 0;
-   rule->flags.deletes_nodes = deletes_nodes;
    rule->flags.is_rooted = is_rooted;
 
    return rule;
@@ -103,7 +105,7 @@ Rule *makeRule(GPRule *ast_rule)
 
 Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
                IndexMap **edge_map, NodeList **deleted_nodes,
-               unsigned int *is_rooted, unsigned int *deletes_nodes)
+               unsigned int *is_rooted)
 {
    Graph *lhs = newGraph();
 
@@ -136,10 +138,8 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       }
 
       if(!node_in_interface) 
-      {
          *deleted_nodes = addNodeItem(*deleted_nodes, node->index);
-         *deletes_nodes = 1;
-      }
+      
       nodes = nodes->next;   
    }
 

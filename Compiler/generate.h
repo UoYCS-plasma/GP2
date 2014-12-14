@@ -11,23 +11,24 @@
 #ifndef INC_GENERATE_H
 #define INC_GENERATE_H
 
-#define printToHeader(code, ...)	              \
-  do { fprintf(match_header, code, ##__VA_ARGS__); }  \
+#define printToHeader(code, ...)	             \
+  do { fprintf(rule_header, code, ##__VA_ARGS__); }  \
   while(0) 
 
-#define printToSource(code, ...)	              \
-  do { fprintf(match_source, code, ##__VA_ARGS__); }  \
+#define printToSource(code, ...)	             \
+  do { fprintf(rule_source, code, ##__VA_ARGS__); }  \
   while(0) 
 
-#define printToSourceI(code, indent, ...)	              		 \
-  do { fprintf(match_source, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
+#define printToSourceI(code, indent, ...)	         		\
+  do { fprintf(rule_source, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
   while(0) 
 
 #include "globals.h"
 #include "match.h"
+#include "rule.h"
 
-extern FILE *match_header;
-extern FILE *match_source;
+extern FILE *rule_header;
+extern FILE *rule_source;
 extern struct Searchplan *searchplan;
 
 /* Search operations are categorised by a character as follows:
@@ -39,6 +40,7 @@ extern struct Searchplan *searchplan;
  * 'e': Edge.
  * 's': Edge matched from its source.
  * 't': Edge matched from its target.
+ * 'l': Looping edge matched from its node.
  *
  * The index of a search operation refers to the index of the node or edge
  * in the graph's corresponding pointer array. 
@@ -64,21 +66,7 @@ void addSearchOp(Searchplan *plan, char type, int index);
 void printSearchplan(Searchplan *searchplan);
 void freeSearchplan(Searchplan *searchplan);
 
-
-/* If k < |E_L| edges are to be deleted, I probably want an array whose
- * first k entries contain the indices of those edges, and the rest to
- * be -1. Then I do not have to iterate |E_L| times over the array
- * (stop when -1 is found). Ditto for the other arrays. */
-
-typedef struct RuleData {
-   int *deleted_edges; /* indexed from 0 to |E_L| */
-   int *deleted_nodes; /* indexed from 0 to |V_L| */
-   int *added_nodes; /* indexed from 0 to |V_R| */
-   int *added_edges; /* indexed from 0 to |E_R| */
-   int *preserved_nodes; /* indexed from 0 to |V_R| */  
-   int *preserved_edges; /* indexed from 0 to |E_R| */
-} RuleData;
-   
+void generateRuleCode(Rule *rule);
 
 /* generateSearchplan traverses a graph in order to create a searchplan
  * using the following algorithm:
@@ -103,18 +91,20 @@ void traverseNode(Node *node, char match_from, bool *discovered_item,
 void traverseEdge(Edge *edge, char match_from, bool *discovered_item,
 		  int offset);
 
-/* Called with rule_name R, generateMatchingCode creates a C module named
+/* Called with rule_name R, emitMatchingCode creates a C module named
  * match_R. It creates the header file, calls generateSearchplan, and emits
  * the matching code (according to the searchplan) to the source file.
  * Four auxiliary functions emit a C function to execute a particular
- * kind of searchplan operation.
+ * kind of searchplan operation. 
  *
  * This should never be called with an empty LHS graph! If the LHS is empty, 
  * the caller skips this function and just calls the rule application code
  * generator. */
-void generateMatchingCode(Graph *lhs, bool *dangling_nodes, string rule_name);
-void emitMainFunction(string rule_name, SearchOp *first_op);
+void emitMatchingCode(string rule_name, Graph *lhs, NodeList *deleted_nodes,
+                      bool is_predicate);
+void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs);
 
+void emitRuleMatcher(string rule_name, SearchOp *first_op, bool is_predicate);
 /* The four emitMatcher functions take an LHS item and emit code that searches
  * for a matching host item. The generated code queries the host graph for the
  * appropriate item or list of items from the host graph according to the LHS 
@@ -124,15 +114,13 @@ void emitMainFunction(string rule_name, SearchOp *first_op);
  * searchplan. The correct call is generated from the subsequent searchplan
  * operation next_op and the emitNextMatcherCall function.
  */
-void emitNodeMatcher(Node *left_node, bool is_root, bool *dangling_nodes,
+void emitNodeMatcher(Node *left_node, bool is_root, NodeList *deleted_nodes,
                      SearchOp *next_op);
-void emitNodeFromEdgeMatcher(Node *left_node, char type, bool *dangling_nodes,
-                             SearchOp *next_op);
+void emitNodeFromEdgeMatcher(Node *left_node, char type, 
+                             NodeList *deleted_nodes, SearchOp *next_op);
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op);
 void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op);
 
-//void emitRuleApplicationCode(string rule_name, Graph *lhs, Graph *rhs,
-//                             RuleData *rule_data);
 
 /* emitNextMatcherCall writes a call to a matching function according to the
  * passed searchplan operation. If next_op is NULL, then 'return true;' is
