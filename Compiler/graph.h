@@ -31,11 +31,18 @@ typedef struct Graph
    Stack *free_node_slots;
    Stack *free_edge_slots;
 
-   /* Refers to the first free index at the end of the array i.e. where no 
-    * nodes or edges have yet been allocated. */
+   /* These variables refer to the indices one entry beyond the furthest
+    * slot containing a live pointer. Items are added to this index if
+    * the free slots stack is empty. To be used as the termination index
+    * for code that iterates over the arrays. */
    int next_node_index;
    int next_edge_index;
 
+   /* The number of live pointers in the graph's nodes/edges array.
+    * Do NOT use these as a bound for an iterator over the arrays. Instead use
+    * next_node/edge_index. 
+    * number_of_nodes + size(free_node_slots) = next_node_index. 
+    * number_of_edges + size(free_edge_slots) = next_edge_index. */
    int number_of_nodes;
    int number_of_edges;
 
@@ -61,15 +68,16 @@ typedef struct Label {
    bool has_list_variable;
 } Label;
 
+/* Global structure for blank labels. */
+extern Label blank_label;
 
 /* Abstract data type for atomic expressions. From globals.h. 
-typedef enum {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, CHARACTER_CONSTANT,
+typedef enum {VARIABLE = 0, INTEGER_CONSTANT, CHARACTER_CONSTANT,
               STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
               NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType; */
 
 typedef struct ListElement {
    AtomExpType type;		  
-   /* The EMPTY type has no value. */
    union {
     string name;		  /* VARIABLE */
     int number; 	 	  /* INTEGER_CONSTANT */
@@ -101,21 +109,28 @@ typedef struct Node {
    LabelClass label_class;
    Label *label;
 
-   /* The node's indegree (outdegree) is the size (largest index) of the
-    * in_edges (out_edges) array. */
-   int indegree;
-   int outdegree;
-
    /* TODO: Check for overflow! */
    struct Edge **out_edges;
    struct Edge **in_edges;
 
+   /* These variables refer to the indices one entry beyond the furthest
+    * slot containing a live pointer. Items are added to this index if
+    * the free slots stack is empty. To be used as the termination index
+    * for code that iterates over the arrays. */
+   int next_out_edge_index;
+   int next_in_edge_index;
+
+   /* The number of live pointers in the node's inedges/outedges array.
+    * Do NOT use these as a bound for an iterator over the arrays. Instead use
+    * next_out/in_edge_index.
+    * indegree + size(free_in_edge_slots) = next_in_edge_index. 
+    * outdegree + size(free_out_edge_slots) = next_out_edge_index. */
+   int indegree;
+   int outdegree;
+
    /* Keeps track of the holes in the array whenever an item is removed. */
    Stack *free_out_edge_slots;
    Stack *free_in_edge_slots;
-
-   int next_out_edge_index;
-   int next_in_edge_index;
 } Node;
 
 
@@ -136,10 +151,13 @@ typedef struct Edge {
  * getLabelClass to generate label classes. The returned pointers can then be
  * added to a graph with the addNode and addEdge functions.
  * 
- * The relabel functions take a boolean argument to specify if the boolean flag
- * of the node should be changed. For nodes, this is the root flag. For edges,
- * this is the bidirectional flag. To modify the flag and not the label itself,
- * call the function with a NULL third argument.
+ * The relabel functions take boolean arguments to control if the label is 
+ * updated and if boolean flag of the item should be changed. For nodes, this 
+ * is the root flag. For edges, this is the bidirectional flag.
+ *
+ * To assign the global Label blank_label to a node or edge, pass the NULL
+ * pointer as the Label * argument of newNode, newEdge, relabelNode or 
+ * relabelEdge. 
  */
 
 /* Creates an empty graph. */
@@ -148,7 +166,6 @@ Graph *newGraph(void);
 /* Tests the passed graph to see if it satisfies the data invariants. */
 bool validGraph(Graph *graph);
 
-Label *newBlankLabel(void);
 LabelClass getLabelClass(Label *label);
 Node *newNode(bool root, Label *label);
 Edge *newEdge(bool bidirectional, Label *label, Node *source, 
@@ -157,8 +174,9 @@ void addNode(Graph *graph, Node *node);
 void addEdge(Graph *graph, Edge *edge);
 void removeNode(Graph *graph, int index);
 void removeEdge(Graph *graph, int index);
-void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root); 
-void relabelEdge(Graph *graph, Edge *edge, Label *new_label, 
+void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label, 
+                 bool change_root); 
+void relabelEdge(Graph *graph, Edge *edge, Label *new_label, bool change_label, 
                  bool change_bidirectional);
 
 
@@ -215,6 +233,7 @@ void printListElement(ListElement* elem);
  * node/edge structures themselves.
  */     
 void freeGraph(Graph *graph);
+
 void freeNode(Node *node);
 void freeEdge(Edge *edge);
 

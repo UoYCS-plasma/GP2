@@ -1,8 +1,23 @@
-module PrintGraph (makePrintableGraph) where
+module PrintGraph (graphToGP2, makePrintableGraph) where
 
 import Graph
 import GPSyntax
 import Mapping
+
+-- A graph of type Graph String String is generated from a host graph
+-- in the PrintGraph module.
+graphToGP2 :: Graph (Bool, String) String -> String
+graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]\n"
+    where
+        nodeList g   = concatMap prettyNode $ allNodes g
+        edgeList g   = concatMap prettyEdge $ allEdges g
+        prettyNode n = let (root, label) = nLabel g n in
+                       " (n" ++ show (nodeNumber n) ++ 
+                       (if root then " (R)" else "") ++ ", " ++ label ++ ")\n"
+        prettyEdge e = " (e" ++ show (edgeNumber e) ++ ", "
+                       ++ "n" ++ show (nodeNumber $ source g e) ++ ", "
+                       ++ "n" ++ show (nodeNumber $ target g e) ++ ", "
+                       ++ eLabel g e ++ ")\n"
 
 -- Converts a host graph to a "printable graph" G. G is identical to the host
 -- graph except that the node and edge labels have been converted to strings in

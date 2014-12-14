@@ -1,13 +1,8 @@
 module ParseLib where
 
-{- Chris Bak: to avoid "Local definition of ‘pure’ clashes with a future 
--- Prelude nameLocal definition of ‘pure’ clashes with a future Prelude name" error
--- Ditto with '<*>'
--- A consequence of me running the latest GHC on my laptop.
--- This is only a short-term fix. Better would be to rename pure and <*> in this module.
-import Prelude (String, Bool, not,  (.), elem, read, notElem, null, ($), take, (++), (==), map, error) -}
-import Data.Char
+-- CAUTION: 'pure' will soon clash with a Prelude function
 
+import Data.Char
 import GPSyntax
 
 infixr 3 <|>
@@ -15,9 +10,7 @@ infixl 4 <*>
 infixl 5 <|
 infixl 6 |>
 
-
 type Parser a = String -> [(String, a)]
-
 
 pure :: a -> Parser a
 pure a = \s -> [(s, a)]
@@ -43,7 +36,6 @@ pFst p = pure (\(a, b) -> a) <*> p
 pSnd :: Parser (a, b) -> Parser b
 pSnd p = pure (\(a, b) -> b) <*> p
 
-
 anyChar :: Parser Char
 anyChar "" = []
 anyChar (c:s) = [(s, c)]
@@ -53,9 +45,7 @@ satisfy f "" = []
 satisfy f (c:s) = [(s, c) | f c]
 
 anyCharExcept :: String -> Parser Char
-anyCharExcept s = satisfy (not . (elem' s) )
-    where
-        elem' a b = elem b a
+anyCharExcept s = satisfy (not . flip elem s)
 
 char :: Char -> Parser Char
 char c = satisfy ( == c )
@@ -63,8 +53,6 @@ char c = satisfy ( == c )
 string :: String -> Parser String
 string "" = pure ""
 string (c:cs) = pure (:) <*> char c <*> string cs
-
-
 
 maybeOne :: Parser a -> Parser [a]
 maybeOne p = pure (:) <*> p <*> pure []
@@ -78,7 +66,6 @@ atLeastOne p = pure (:) <*> p <*> maybeSome p
 
 exactlyOne :: Parser a -> Parser [a]
 exactlyOne p = pure (:) <*> p <*> pure []
-
 
 lower :: Parser Char
 lower = satisfy isLower
@@ -95,7 +82,6 @@ space = satisfy isSpace
 nonspace :: Parser Char
 nonspace = satisfy ( not . isSpace )
 
-
 spaces :: Parser String
 spaces = atLeastOne space
 
@@ -106,9 +92,6 @@ escape :: Parser Char
 escape = char '\\' |> anyChar
     where
         escapes = [ ('n', '\n'), ('r', '\r'), ('\\', '\\'), ('t', '\t'), ('"', '\"'), ('0', '\0') ]
-
--- stringQuotedString :: String -> String -> Parser String
--- stringQuotedString op cl = string op |> stringBody <| string cl
 
 charQuotedString :: Char -> Parser String
 charQuotedString c = char c |> maybeSome stringChar <| char c
@@ -168,11 +151,4 @@ parse p s =
         [("", x)] -> x
         [(s, x)]  -> error "Incomplete parse"
         _         -> error "Ambiguous parse. This shouldn't happen!"
-
--- bareString :: Parser String
--- bareString = token ( maybeSome $ satisfy (/= ']') )
-
--- bracketed :: Parser String -> Parser String
--- bracketed p = keyword "[" |> p <| keyword "]"
-
 

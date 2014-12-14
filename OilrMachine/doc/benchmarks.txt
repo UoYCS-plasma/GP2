@@ -1,0 +1,35 @@
+% OILR machine benchmarks
+% Glyn Faulkner
+% 2014-12-05
+
+Host Graphs
+===========
+
+L`n`
+  ~ A linear graph of `n-1` nodes, each with one out-going edge to the next node in sequence, and one terminating node. `o-->o-->o-->o`
+
+
+Date       Benchmark             Host   Time      Notes
+---------- --------------------- ------ --------- --------
+5/12/2014  Transitive closure    L100   2m4s      [^1]
+5/12/2014  Transitive closure    L100   10.85s
+5/12/2014  Transitive closure    L100   4.56s     [^2]
+5/12/2014  Transitive closure    L100   4.37s     [^3]
+8/12/2014  Structural Sierpinski 5g     0.01s     [^2]
+8/12/2014  Structural Sierpinski 10g    1m12.7s   [^2]
+
+Table: Informal results from a single run of the `time` command, for OILR machine with static memory allocation and compiled-in host graph.
+
+
+[^1]: Edge-following optimisation disabled.
+[^2]: gcc -O2
+[^3]: gcc -O3
+
+
+
+Reference interpreter for comparison...
+
+* Transitive closure with L100 host: 
+
+
+<!-- vim: set filetype=pandoc spell lbr : -->

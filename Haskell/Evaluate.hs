@@ -5,140 +5,101 @@ import Data.Maybe
 
 import GPSyntax
 import ProcessAst
+import Mapping
 import LabelMatch
 import GraphMatch
 import Graph
 import ExAr
 
+type EvalContext = (GraphMorphism, HostGraph, RuleGraph)
+
+-- LABEL EVALUATION
 -- Given a graph morphism (containing a variable-value mapping) and a host graph,
 -- a rule label is transformed into a host label (list of constants) by evaluating
--- any operators (degree, length) and substituting variables for their values
+-- any operators (degree, length,...) and substituting variables for their values
 -- according to the morphism.
 
-labelEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleLabel -> HostLabel
-labelEval m g r (RuleLabel list col) = HostLabel (concatMap (atomEval m g r) list) col
+labelEval :: EvalContext -> RuleLabel -> HostLabel
+labelEval ec (RuleLabel list col) = HostLabel (atomListEval ec list) col
 
-atomEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleAtom -> [HostAtom]
-atomEval m@(GM env _ _) g r a = case a of
-   Val ha -> [ha]
-   -- Returns the empty list if the variable is not in the environment.
-   Var (name, gpType) -> fromMaybe [] $ lookup name env 
-   -- Degree operators assume node exists in the morphism/LHS graph.
-   Indeg node -> [Int $ intExpEval m g r a]
-   Outdeg node -> [Int $ intExpEval m g r a]
-   Llength list -> [Int $ length list]
-   Slength exp -> [Int $ length $ stringExpEval env exp]
-   Neg exp -> [Int $ intExpEval m g r a]
-   Plus exp1 exp2 -> [Int $ intExpEval m g r a]
-   Minus exp1 exp2 -> [Int $ intExpEval m g r a]
-   Times exp1 exp2 -> [Int $ intExpEval m g r a]
-   Div exp1 exp2 ->  [Int $ intExpEval m g r a]
+atomEval :: EvalContext -> RuleAtom -> [HostAtom]
+atomEval ec@(GM env _ _, _, _) a = case a of
+   Val ha                 -> [ha]
+   Var (name,_)           -> definiteLookup name env 
+   Llength list           -> [Int $ length list]
+   Slength exp            -> [Int $ length $ stringExpEval env exp]
    exp@(Concat exp1 exp2) -> [Str $ stringExpEval env exp]
+   _                      -> [Int $ intExpEval ec a]
  
+atomListEval :: EvalContext -> [RuleAtom] -> [HostAtom]
+atomListEval ec ras = [ha | ra <- ras, ha <- atomEval ec ra]
+
 -- Expects a RuleAtom representing an integer expression. 
-intExpEval :: GraphMorphism -> HostGraph -> RuleGraph -> RuleAtom -> Int
-intExpEval m@(GM env nms _) g r a = case a of
-   Val (Int i) -> i
-   Var (name, IntVar) -> let Just [Int i] = lookup name env in i
-   Indeg node -> let hnode = lookup (getNodeId r node) nms in
-                 case hnode of
-                      Nothing -> error "Argument of indeg not in the LHS."
-                      (Just node) -> length $ inEdges g node
-   Outdeg node -> let hnode = lookup (getNodeId r node) nms in
-                  case hnode of
-                       Nothing -> error "Argument of outdeg not in the LHS."
-                       (Just node) -> length $ outEdges g node
-   Llength list -> length list
-   Slength exp -> length $ stringExpEval env exp
-   Neg exp -> 0 - intExpEval m g r exp
-   Plus exp1 exp2 -> intExpEval m g r exp1 + intExpEval m g r exp2
-   Minus exp1 exp2 -> intExpEval m g r exp1 - intExpEval m g r exp2
-   Times exp1 exp2 -> intExpEval m g r exp1 * intExpEval m g r exp2
+intExpEval :: EvalContext -> RuleAtom -> Int
+intExpEval ec@(GM env _ _, _, _) a = case a of
+   Val (Int i)        -> i
+   Var (name, IntVar) -> let [Int i] = definiteLookup name env in i
+   Indeg node         -> degExpEval ec node inEdges
+   Outdeg node        -> degExpEval ec node outEdges
+   Llength list       -> length list
+   Slength exp        -> length $ stringExpEval env exp
+   Neg exp            -> 0 - intExpEval ec exp
+   Plus exp1 exp2     -> intExpEval ec exp1 + intExpEval ec exp2
+   Minus exp1 exp2    -> intExpEval ec exp1 - intExpEval ec exp2
+   Times exp1 exp2    -> intExpEval ec exp1 * intExpEval ec exp2
    -- TODO: handle division by 0
-   Div exp1 exp2 -> intExpEval m g r exp1 `div` intExpEval m g r exp2
-   _ -> error "Expecting an integer expression."
+   Div exp1 exp2      -> intExpEval ec exp1 `div` intExpEval ec exp2
+   _                  -> error "Expecting an integer expression."
+
+degExpEval :: EvalContext -> NodeName -> (HostGraph -> NodeId -> [EdgeId]) -> Int
+degExpEval (GM _ nms _, g, r) node edges =
+   case lookup (getNodeId r node) nms of
+   Nothing     -> error "Argument of degree function not in the LHS."
+   (Just node) -> length $ edges g node
 
 -- Expects a RuleAtom representing a string expression. 
 stringExpEval :: Environment -> RuleAtom -> String
 stringExpEval env a = case a of
-   Var (name, ChrVar) -> let Just [Chr c] = lookup name env in "c"
-   Var (name, StrVar) -> let Just [Str s] = lookup name env in s
-   Val (Chr c) -> "c"
-   Val (Str s) -> s 
-   Concat exp1 exp2 -> stringExpEval env exp1 ++ stringExpEval env exp2
-   _ -> error "Expecting a string expression."
+   Var (name, ChrVar) -> let [Chr c] = definiteLookup name env in "c"
+   Var (name, StrVar) -> let [Str s] = definiteLookup name env in s
+   Val (Chr c)        -> "c"
+   Val (Str s)        -> s 
+   Concat exp1 exp2   -> stringExpEval env exp1 ++ stringExpEval env exp2
+   _                  -> error "Expecting a string expression."
 
-
-conditionEval :: Condition -> GraphMorphism -> HostGraph -> RuleGraph -> Bool
-conditionEval c m@(GM env nms _) g r = 
+-- CONDITION EVALUATION
+conditionEval :: EvalContext -> Condition -> Bool
+conditionEval ec@(GM env nms _, g, r) c = 
   case c of
-     NoCondition -> True
-     TestInt name -> 
-        let var = lookup name env in
-           case var of
-               Just ([Int _]) -> True
-               _             -> False
-     TestChr name -> 
-        let var = lookup name env in
-           case var of
-               Just ([Chr _]) -> True
-               _               -> False                         
-     TestStr name -> 
-        let var = lookup name env in
-           case var of
-               Just ([Str _]) -> True
-               _              -> False
-     TestAtom name -> 
-        let var = lookup name env in
-           case var of
-               Just ([_])   -> True
-               _            -> False
-     Edge src tgt Nothing      ->   not $ null $ edgeExistsInHostGraph src tgt
-     Edge src tgt (Just label) ->  
-           labelCompare hlabel $ edgeExistsInHostGraph src tgt
-        where 
-           hlabel = labelEval m g r label
-           labelCompare :: HostLabel -> [HostEdgeId] -> Bool
-           labelCompare hlabel es = foldr (\eid b -> b || (eLabel g eid == hlabel)) False es
-
-     Eq l1 l2 -> and $ zipWith (==) (concatMap (atomEval m g r) l1) (concatMap (atomEval m g r) l2)
-
-     NEq l1 l2 -> or $ zipWith (/=) (concatMap (atomEval m g r) l1) (concatMap (atomEval m g r) l2)
-
-     -- GP2 semantics requires atoms in relational conditions to be integer 
-     -- expressions. 
-
-     Greater a1 a2 -> intExpEval m g r a1 > intExpEval m g r a2
- 
-     GreaterEq a1 a2 -> intExpEval m g r a1 >= intExpEval m g r a2
- 
-     Less a1 a2 -> intExpEval m g r a1 < intExpEval m g r a2
-
-     LessEq a1 a2 -> intExpEval m g r a1 <= intExpEval m g r a2
-
-     Not cond -> not $ conditionEval cond m g r 
- 
-     Or cond1 cond2 -> (conditionEval cond1 m g r) || (conditionEval cond2 m g r)
-
-     And cond1 cond2 -> (conditionEval cond1 m g r) && (conditionEval cond2 m g r)
-
-   where
-        edgeExistsInHostGraph :: NodeName -> NodeName -> [HostEdgeId]
-        edgeExistsInHostGraph src tgt = case (hsrc, htgt) of
-            (Just s, Just t) -> joiningEdges g s t
-            _ -> []
-            where
-                hsrc = lookup (getNodeId r src) nms
-                htgt = lookup (getNodeId r tgt) nms
-
+  NoCondition   -> True
+  TestInt name  -> isJust $ do [Int _] <- lookup name env ; return ()
+  TestChr name  -> isJust $ do [Chr _] <- lookup name env ; return () 
+  TestStr name  -> isJust $ do [Str _] <- lookup name env ; return ()
+  TestAtom name -> isJust $ do [_]     <- lookup name env ; return ()
+  Edge src tgt Nothing      -> not $ null $ edgesInHostGraph src tgt
+  Edge src tgt (Just label) -> or [ eLabel g e == labelEval ec label
+                                  | e <- edgesInHostGraph src tgt]
+  Eq  l1 l2                 -> atomListEval ec l1 == atomListEval ec l2
+  NEq l1 l2                 -> atomListEval ec l1 /= atomListEval ec l2
+  -- Atoms in ordering conditions must be integer expressions. 
+  Greater a1 a2             -> intExpEval ec a1 > intExpEval ec a2
+  GreaterEq a1 a2           -> intExpEval ec a1 >= intExpEval ec a2
+  Less a1 a2                -> intExpEval ec a1 < intExpEval ec a2
+  LessEq a1 a2              -> intExpEval ec a1 <= intExpEval ec a2
+  Not cond                  -> not $ conditionEval ec cond 
+  Or cond1 cond2            -> conditionEval ec cond1 || conditionEval ec cond2 
+  And cond1 cond2           -> conditionEval ec cond1 && conditionEval ec cond2 
+  where
+  edgesInHostGraph :: NodeName -> NodeName -> [HostEdgeId]
+  edgesInHostGraph src tgt =
+     case (lookup (getNodeId r src) nms, lookup (getNodeId r tgt) nms) of
+     (Just s, Just t) -> joiningEdges g s t
+     _ -> []
 
 getNodeId :: RuleGraph -> NodeName -> NodeId
-getNodeId r id = case candidates of
-        [] -> error $ "ID " ++ id ++ " not found"
-        [nid] -> nid
-        _  -> error $ "Duplicate ID found."
-    where
-        candidates = filter (matchID . nLabel r) $ allNodes r
-        matchID :: RuleNode -> Bool
-        matchID (RuleNode i _ _) = i == id
+getNodeId r id = 
+   case [n | n <- allNodes r, let RuleNode i _ _ = nLabel r n, i == id] of
+   []    -> error $ "ID " ++ id ++ " not found"
+   [nid] -> nid
+   _     -> error $ "Duplicate ID found."
 

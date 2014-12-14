@@ -6,31 +6,32 @@ import System.Console.GetOpt
 
 import ApplyRule
 import ExAr
-import Graph (graphToGP2)
+import Graph 
 import GraphIsomorphism
 import GPSyntax
 import ParseGraph
 import ParseLib
 import ParseProgram
-import PrintGraph
+import PrintGraph 
 import ProcessAst
 import RunProgram
 
-{-- Optional: For testing
-import GraphMatch
-import Graph
-import ParseRule
+-- Optional: For testing
+-- import GraphMatch
+-- import Graph
+-- import ParseRule
 
-import Debug.Trace-}
+import Debug.Trace
 
 printGraph :: HostGraph -> String
 printGraph = graphToGP2 . makePrintableGraph
 
 
 printResult :: FilePath -> Result -> IO ()
-printResult fileName (gs, fc, uc) = do
+printResult fileName (gs, fc, uc, bds) = do
    putStrLn $ show fc ++ " fails."
    putStrLn $ show uc ++ " unfinished computations."
+   if length gs > 0 then putStrLn $ "Rule application bounds (low, high): " ++ show bds else putStrLn ""
    printGraphData fileName 1 gs
 
 -- It's better if this function creates files in a new directory,
@@ -48,10 +49,15 @@ printGraphData fileName k ((graph, count):gcs) = do
 -- TODO: convert progFile into a string of the actual program name
 -- i.e. trim off the file extension.
 
-data Flag = Single
+data Flag = MaxGraphs Int
+
+maxIso :: Maybe String -> Flag
+maxIso Nothing = MaxGraphs 1000
+maxIso (Just v) = (MaxGraphs . read) v
 
 options :: [ OptDescr Flag ]
-options = [ Option ['1'] ["one"] (NoArg Single) "output a single graph, instead of all possible graphs" ]
+options = [ Option ['1'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, instead of all possible graphs",
+            Option ['n'] ["no-iso"] (OptArg maxIso "MAX") "disable the isomorphism checker, limiting to a maximum of MAX result graphs" ]
 
 usage = "Usage: gp2 [flags] <prog> <hostGraph> <maxDepth>\nWhere [flags] can be:"
 
@@ -73,7 +79,7 @@ main = do
             let (prog, syms) = makeGPProgram $ parse program p
             putStrLn $ "Program execution will be stopped at " ++ show maxRules ++ " rule applications.\n"
             printResult progName $ case flags of
-                                        [ Single ] -> {- trace "single result mode" -} (firstSolution prog maxRules host)
+                                        [ MaxGraphs n ] -> trace (show n ++ " result mode") (nSolutions n prog maxRules host)
                                         _          -> runProgram prog maxRules host
         (_, _, errs) -> do
             error (concat errs ++ usageInfo usage options)

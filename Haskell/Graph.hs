@@ -1,59 +1,17 @@
 -- a simple implementation of labelled graphs using sparse arrays for node and edge sets
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
 
-module Graph (Graph, NodeId, EdgeId,
-               emptyGraph, newNode, newNodeList, newEdge, newEdgeList,
-               allNodes, allEdges, outEdges, inEdges, incidentEdges, joiningEdges,
-               maybeSource, source, maybeTarget, target, 
-               maybeNLabel, nLabel, maybeELabel, eLabel,
-               rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel,
-               graphToGP2, permutedSizedSubsets, generateMatches)
-               where
+module Graph (Graph, NodeId, EdgeId, nodeNumber, edgeNumber,
+              emptyGraph, newNode, newNodeList, newEdge, newEdgeList,
+              allNodes, allEdges, outEdges, outdegree, inEdges, indegree, 
+              incidentEdges, joiningEdges, maybeSource, source, maybeTarget,
+              target, maybeNLabel, nLabel, maybeELabel, eLabel,
+              rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel)
+              where
 
-import Prelude 
 import ExAr
 import Data.Maybe
 import Data.List (union, intersect, permutations)
-
--- A graph of type Graph String String is generated from a host graph
--- in the PrintGraph module.
-graphToGP2 :: Graph (Bool, String) String -> String
-graphToGP2 g = "[\n" ++ nodeList g ++ "|\n" ++ edgeList g ++ "]\n"
-    where
-        nodeList g = concatMap prettyNode $ allNodes g
-        edgeList g = concatMap prettyEdge $ allEdges g
-        prettyNode n@(N id) = let (root, label) = nLabel g n in
-             " (n" ++ show id ++ (if root then " (R)" else "") ++ ", " ++ label ++ ")\n"
-        prettyEdge e@(E id) = " (e" ++ show id ++ ", "
-                           ++ "n" ++ getNodeId (source g e) ++ ", "
-                           ++ "n" ++ getNodeId (target g e) ++ ", "
-                           ++ eLabel g e ++ ")\n"
-        getNodeId (N id) = show id
-
--- Utility functions for graph matching and graph isomorphism checking.
-permutedSizedSubsets :: Int -> [a] -> [[a]]
-permutedSizedSubsets k xs = concatMap permutations $ sublistsOf k xs
-
-sublistsOf :: Int -> [a] -> [[a]]
-sublistsOf 0 _        = [[]]
-sublistsOf _ []       = []
-sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
-
--- See function matchGraphEdges (GraphMatch.hs) for a description of the
--- use of generateMatches.
-generateMatches :: [a] -> [[b]] -> [[(a, b)]]
-generateMatches xs ys = makeCombinations $ zipWith pairUp xs ys
-
--- Returns the list containing all pairs whose first element is the first
--- argument and whose second element is an item from the second argument.
-pairUp :: a -> [b] -> [(a, b)]
-pairUp x ys = map (\y -> (x, y)) ys
-
-makeCombinations :: [[a]] -> [[a]]
-makeCombinations [] = []
-makeCombinations [xs] = [[x] | x <- xs]
-makeCombinations (xs:yss) = [x:ys | x <- xs, ys <- makeCombinations yss]
-
 
 -- labelled graphs
 data Graph a b = Graph (ExAr Int (Node a)) (ExAr Int (Edge b)) deriving Show
@@ -67,6 +25,12 @@ invGraph (Graph ns es)  =  null $ findAll invalidEdge es
 
 newtype NodeId = N Int deriving (Eq, Show)
 newtype EdgeId = E Int deriving (Eq, Show)
+
+nodeNumber :: NodeId -> Int
+nodeNumber (N i) = i
+
+edgeNumber :: EdgeId -> Int
+edgeNumber (E i) = i
 
 data Node a = Node a               deriving Show
 data Edge a = Edge NodeId NodeId a deriving Show
@@ -105,8 +69,14 @@ allEdges (Graph _ es) = map E (domain es)
 outEdges :: Graph a b -> NodeId -> [EdgeId]
 outEdges (Graph _ es) n  =  map E $ findAll (\(Edge n1 _ _) -> n1 == n) es
 
+outdegree :: Graph a b -> NodeId -> Int
+outdegree g n = length $ outEdges g n
+
 inEdges :: Graph a b -> NodeId -> [EdgeId]
 inEdges (Graph _ es) n  =  map E $ findAll (\(Edge _ n2 _) -> n2 == n) es
+
+indegree :: Graph a b -> NodeId -> Int
+indegree g n = length $ inEdges g n
 
 incidentEdges :: Graph a b -> NodeId -> [EdgeId]
 incidentEdges g n = outEdges g n `union` inEdges g n

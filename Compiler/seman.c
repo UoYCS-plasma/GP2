@@ -607,14 +607,14 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope)
 {   
    /* Augment the rule name: new rule name is <scope>-<rule_name> */
    int length = strlen(rule->name) + strlen(scope) + 2;
-   char *rule_name = calloc(length, sizeof(char));
+   char *rule_name = malloc(length);
    if(rule_name == NULL)
    {
       print_to_log("Error: Memory exhausted during rule name creation.\n");
       exit(1);
    }
-   rule_name = strcat(rule_name, scope);
-   rule_name = strcat(rule_name, "-");
+   rule_name = strcpy(rule_name, scope);
+   rule_name = strcat(rule_name, "_");
    rule_name = strcat(rule_name, rule->name);
    free(rule->name);
    rule->name = rule_name;

@@ -1,5 +1,6 @@
 module RunProgram where
 
+import Debug.Trace
 import ApplyRule
 import Graph (emptyGraph)
 import GraphIsomorphism
@@ -19,27 +20,30 @@ data GraphState = GS HostGraph Int
 type GraphData = (HostGraph, Int) 
  
 -- The output of the GP 2 interpreter is a list of output graphs, each with an 
--- isomorphism count; a failure count; and an unfinished execution count with
+-- isomorphism count; a failure count, and an unfinished execution count with
 -- respect to the bound on rule applications. 
-type Result = ([GraphData], Int, Int)
+type Result = ([GraphData], Int, Int, (Int, Int))
 
 runProgram :: GPProgram -> Int -> HostGraph -> Result
 runProgram (Program ds) max g = isoFilter $ processData $ evalMain max ds (findMain ds) g
-    where isoFilter :: ([HostGraph], Int, Int) -> Result
-          isoFilter (gs, fc, uc) = (isomorphismCount gs, fc, uc)
+    where isoFilter :: ([HostGraph], Int, Int, (Int, Int)) -> Result
+          isoFilter (gs, fc, uc, bds) = (isomorphismCount gs, fc, uc, bds)
 
-firstSolution :: GPProgram -> Int -> HostGraph -> Result
-firstSolution (Program ds) max g = makeResult $ processData [ head $ evalMain max ds (findMain ds) g ]
-    where makeResult :: ([HostGraph], Int, Int) -> Result
-          makeResult ([g], fc, uc) = ([(g, 0)], fc, uc)
+-- For use with --one commandline flag: only get first result
+nSolutions :: Int -> GPProgram -> Int -> HostGraph -> Result
+nSolutions n (Program ds) max g = makeResult $ processData $ take n $ evalMain max ds (findMain ds) g
+    where
+        makeResult :: ([HostGraph], Int, Int, (Int, Int)) -> Result
+        makeResult (gs, fc, uc, bds) = (take n $ zip gs [1,1..], fc, uc, bds)
 
 
-processData :: [GraphState] -> ([HostGraph], Int, Int)
-processData = foldr addGraphState ([], 0, 0)
-    where addGraphState :: GraphState -> ([HostGraph], Int, Int) -> ([HostGraph], Int, Int) 
-          addGraphState (GS g rc) (gs, fc, uc) = (g:gs, fc, uc)
-          addGraphState (Unfinished) (gs, fc, uc) = (gs, fc, uc+1)
-          addGraphState (Failure) (gs, fc, uc) = (gs, fc+1, uc)
+processData :: [GraphState] -> ([HostGraph], Int, Int, (Int, Int))
+processData = foldr addGraphState ([], 0, 0, (maxBound, 0))
+    where addGraphState :: GraphState -> ([HostGraph], Int, Int, (Int, Int)) -> ([HostGraph], Int, Int, (Int, Int)) 
+          addGraphState (GS g rc) (gs, fc, uc, (low, high)) =
+                (g:gs, fc, uc, (min rc low, max rc high))
+          addGraphState (Unfinished) (gs, fc, uc, bds) = (gs, fc, uc+1, bds)
+          addGraphState (Failure) (gs, fc, uc, bds) = (gs, fc+1, uc, bds)
         
 findMain :: [Declaration] -> Main
 findMain ((MainDecl m):ds) = m
@@ -54,40 +58,39 @@ evalCommandSequence _ _ _ Failure = [Failure]
 evalCommandSequence _ _ _ Unfinished = [Unfinished]
 evalCommandSequence max ds [] gs = [gs]
 evalCommandSequence max ds (c:cs) gs =
-    case evalCommand max ds c gs of 
-        [Unfinished] -> [Unfinished]
-        [Failure] -> [Failure]
-        hs -> concatMap (evalCommandSequence max ds cs) hs
+    concatMap handleCommSeq $ evalCommand max ds c gs
+    where handleCommSeq Unfinished = [Unfinished]
+          handleCommSeq Failure    = [Failure]
+          handleCommSeq gs'        = evalCommandSequence max ds cs gs'
 
 evalCommand :: Int -> [Declaration] -> Command -> GraphState -> [GraphState]
 evalCommand _ _ _ Failure = [Failure]
 evalCommand _ _ _ Unfinished = [Unfinished]
 evalCommand max ds (Block b) gs = evalBlock max ds b gs 
 evalCommand max ds (IfStatement cond pass fail) gs = 
-    case evalBlock max ds cond gs of 
-        [Unfinished] -> [Unfinished]
-        [Failure] -> evalBlock max ds fail gs
-        _        -> evalBlock max ds pass gs
+    concatMap handleIf $ evalBlock max ds cond gs
+    where handleIf Unfinished = [Unfinished]
+          handleIf Failure    = evalBlock max ds fail gs
+          handleIf _          = evalBlock max ds pass gs
 evalCommand max ds (TryStatement cond pass fail) gs = 
-    case evalBlock max ds cond gs of
-        [Unfinished] -> [Unfinished]
-        [Failure] -> evalBlock max ds fail gs
-        hs       -> concatMap (evalBlock max ds pass) hs
+    concatMap handleTry $ evalBlock max ds cond gs
+    where handleTry Unfinished = [Unfinished]
+          handleTry Failure    = evalBlock max ds fail gs
+          handleTry gs'        = evalBlock max ds pass gs'
 
 
 evalBlock :: Int -> [Declaration] -> Block -> GraphState -> [GraphState]
 evalBlock _ _ _ Failure = [Failure]
 evalBlock _ _ _ Unfinished = [Unfinished]
 evalBlock max ds (ComSeq cs) gs = evalCommandSequence max ds cs gs
-evalBlock max ds ls@(LoopedComSeq cs) gs = 
-    case evalCommandSequence max ds cs gs of
-        [Unfinished] -> [Unfinished]
-        -- Loop terminates, return input GraphState
-        [Failure] -> [gs]
-        hs     -> concatMap (evalBlock max ds ls) hs
+evalBlock max ds ls@(LoopedComSeq cs) gs@(GS g rc) =  
+    concatMap handleLoop $ evalCommandSequence max ds cs gs
+    where handleLoop Unfinished = [Unfinished]
+          handleLoop Failure    = [gs]
+          handleLoop gs'        = evalBlock max ds ls gs'
+
 evalBlock max ds (SimpleCommand sc) gs = evalSimpleCommand max ds sc gs
 evalBlock max ds (ProgramOr b1 b2) gs = evalBlock max ds b1 gs  ++ evalBlock max ds b2 gs
-
 
 evalSimpleCommand :: Int -> [Declaration] -> SimpleCommand -> GraphState -> [GraphState]
 evalSimpleCommand _ _ _ Failure = [Failure]
@@ -100,32 +103,21 @@ evalSimpleCommand max ds (RuleCall rs) (GS g rc) =
             case resultGraphs of
                 [] -> [Failure]
                 hs -> [GS h (rc+1) | h <- hs]
-                {- Isomorphism filtering performed after each rule application. 
-                 - Could not get this to work - abandoned for now.
-                hs -> [makeGS h (rc+1) | h <- getIsomorphismData (g, ic) hs]
-                -- TODO: the above only filters graphs that unchanged by the rule application
-                -- not those that are non-unique in the result set!
-                -- hs -> [makeGS h (rc+1) | h <- getIsomorphismData (head hs, ic) $ tail hs]
-                     where makeGS (x, y) z = GS x y z -}
-evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) =
+evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) = 
     if rc == max 
         then [Unfinished]
         else 
-            case evalSimpleCommand max ds (RuleCall rs) gs of
-                [Unfinished] -> [Unfinished]
-                -- Loop terminates, return input GraphState
-                [Failure] -> [gs]
-                -- One rule call successful. If the bound has been reached, stop and return hs,
-                -- otherwise continue with the loop.
-                hs -> concatMap (evalSimpleCommand max ds c) hs
+            concatMap handleLoopedRC $ evalSimpleCommand max ds (RuleCall rs) gs
+            where handleLoopedRC Unfinished = [Unfinished]
+                  handleLoopedRC Failure    = [gs]
+                  handleLoopedRC gs'        = evalSimpleCommand max ds c gs'
 evalSimpleCommand max ds (ProcedureCall proc) gs = evalCommandSequence max (decls++ds) cs gs
     where Procedure id decls cs = procLookup proc ds
-evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs = 
-    case evalSimpleCommand max ds (ProcedureCall proc) gs of
-        [Unfinished] -> [Unfinished]
-        -- Loop terminates, return input GraphState
-        [Failure] -> [gs]
-        hs     -> concatMap (evalSimpleCommand max ds c) hs
+evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs@(GS g rc) =  
+    concatMap handleLoopedProc $ evalSimpleCommand max ds (ProcedureCall proc) gs
+    where handleLoopedProc Unfinished = [Unfinished]
+          handleLoopedProc Failure    = [gs]
+          handleLoopedProc gs'        = evalSimpleCommand max ds c gs'
 evalSimpleCommand max ds Skip (GS g rc) = [GS g (rc+1)]
 evalSimpleCommand max ds Fail _ = [Failure]
 
@@ -148,6 +140,4 @@ ruleLookup id decls = case matches of
         p :: RuleName -> Declaration -> Bool
         p id (RuleDecl (Rule name _ _ _ _ _)) = id == name 
         p id _ = False
-
-
 

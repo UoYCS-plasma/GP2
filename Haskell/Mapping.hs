@@ -12,6 +12,11 @@ mergeMapping s ((k, v):kvs) = do
     s' <- extendMapping s k v
     mergeMapping s' kvs
 
+dom :: Mapping a b -> [a]
+dom = map fst
+
+rng :: Mapping a b -> [b]
+rng = map snd
 
 extendMapping :: ( Eq a, Eq b ) => Mapping a b -> a -> b -> Maybe (Mapping a b)
 extendMapping s key val = 

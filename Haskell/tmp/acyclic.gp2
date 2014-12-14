@@ -1,0 +1,15 @@
+Main = delete!; delete_isolated!
+
+delete (a, x, y: list) [
+	(n1, x) (n2, y) | (e1, n1, n2, a) 
+] => [
+	(n1, x) (n2, y) | 
+]
+interface = {n1, n2}
+where indeg(n1) = 0
+
+delete_isolated (x: list) [
+	(n1, x) | 
+] => [ | ]
+interface = {}
+
