@@ -100,7 +100,7 @@ void traverseEdge(Edge *edge, char match_from, bool *discovered_item,
  * This should never be called with an empty LHS graph! If the LHS is empty, 
  * the caller skips this function and just calls the rule application code
  * generator. */
-void emitMatchingCode(string rule_name, Graph *lhs, NodeList *deleted_nodes,
+void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
                       bool is_predicate);
 void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs);
 
@@ -114,10 +114,10 @@ void emitRuleMatcher(string rule_name, SearchOp *first_op, bool is_predicate);
  * searchplan. The correct call is generated from the subsequent searchplan
  * operation next_op and the emitNextMatcherCall function.
  */
-void emitNodeMatcher(Node *left_node, bool is_root, NodeList *deleted_nodes,
+void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
                      SearchOp *next_op);
 void emitNodeFromEdgeMatcher(Node *left_node, char type, 
-                             NodeList *deleted_nodes, SearchOp *next_op);
+                             ItemList *deleted_nodes, SearchOp *next_op);
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op);
 void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op);
 

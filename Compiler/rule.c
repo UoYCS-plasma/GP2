@@ -133,9 +133,9 @@ void freeIndexMap(IndexMap *map)
    free(map);
 }
 
-NodeList *addNodeItem(NodeList *node_list, int index)
+ItemList *addItem(ItemList *item_list, int index)
 {
-   NodeList *new_item = malloc(sizeof(PreservedItem));
+   ItemList *new_item = malloc(sizeof(ItemList));
 
    if(new_item == NULL) 
    {
@@ -144,52 +144,72 @@ NodeList *addNodeItem(NodeList *node_list, int index)
    }
 
    new_item->index = index;
-   new_item->next = node_list;
+   new_item->next = item_list;
 
    return new_item;
 }
 
-bool queryNodeList(NodeList *node_list, int index)
+bool queryItemList(ItemList *item_list, int index)
 {
-   while(node_list != NULL)
+   while(item_list != NULL)
    {
-      if(index == node_list->index) return true;
-      else node_list = node_list->next;
+      if(index == item_list->index) return true;
+      else item_list = item_list->next;
    }
    return false;
 }
 
-void freeNodeList(NodeList *node_list)
+void freeItemList(ItemList *item_list)
 {
-   if(node_list == NULL) return;
-   if(node_list->next) freeNodeList(node_list->next);
-   free(node_list);
+   if(item_list == NULL) return;
+   if(item_list->next) freeItemList(item_list->next);
+   free(item_list);
 }
 
-PreservedItem *addPreservedItem(PreservedItem *items, bool label_change,
-                                int left_index, int right_index)
+PreservedItemList *addPreservedItem(PreservedItemList *list, bool label_change,
+                                    int left_index, int right_index)
 {
-   PreservedItem *new_item = malloc(sizeof(PreservedItem));
+   PreservedItemList *new_list = malloc(sizeof(PreservedItemList));
 
-   if(new_item == NULL) 
+   if(new_list == NULL) 
    {
       print_to_log("Error: Memory exhausted during rule construction.\n");
       exit(1);
    }
 
-   new_item->label_change = label_change;
-   new_item->left_index = left_index;   
-   new_item->right_index = right_index;
-   new_item->next = items;
+   new_list->label_change = label_change;
+   new_list->left_index = left_index;   
+   new_list->right_index = right_index;
+   new_list->next = list;
 
-   return new_item;
+   return new_list;
 }
 
-void freePreservedItems(PreservedItem *items)
+PreservedItemList *queryPItemList(PreservedItemList *list, int left_index)
 {
-   if(items == NULL) return;
-   if(items->next) freePreservedItems(items->next);
-   free(items);
+   while(list != NULL)
+   {
+      if(left_index == list->left_index) return list;
+      else list = list->next;
+   }
+   return NULL;
+}
+
+int findRightIndex(PreservedItemList *list, int left_index)     
+{
+   while(list != NULL)
+   {
+      if(left_index == list->left_index) return list->right_index;
+      else list = list->next;
+   }
+   return -1;
+}
+
+void freePItemList(PreservedItemList *list)
+{
+   if(list == NULL) return;
+   if(list->next) freePItemList(list->next);
+   free(list);
 }
 
 NewEdgeList *addNewEdge(NewEdgeList *edge, int index, char source_loc, int source_index,
@@ -240,7 +260,7 @@ void printRule(Rule *rule, bool print_graphs)
       else printf("Empty Graph\n\n");
    }
    
-   PreservedItem *item = rule->preserved_nodes;
+   PreservedItemList *item = rule->preserved_nodes;
    printf("Preserved nodes: ");
    while(item != NULL)
    {
@@ -258,7 +278,7 @@ void printRule(Rule *rule, bool print_graphs)
       item = item->next;
    }
 
-   NodeList *iterator = rule->added_nodes;
+   ItemList *iterator = rule->added_nodes;
    printf("\nAdded nodes: ");
    while(iterator != NULL)
    {
@@ -297,10 +317,10 @@ void freeRule(Rule *rule)
    if(rule->variables) freeVariableList(rule->variables);
    if(rule->lhs) freeGraph(rule->lhs);
    if(rule->rhs) freeGraph(rule->rhs);
-   if(rule->preserved_nodes) freePreservedItems(rule->preserved_nodes);
-   if(rule->preserved_edges) freePreservedItems(rule->preserved_edges);
-   if(rule->deleted_nodes) freeNodeList(rule->deleted_nodes);
-   if(rule->added_nodes) freeNodeList(rule->added_nodes);
+   if(rule->preserved_nodes) freePItemList(rule->preserved_nodes);
+   if(rule->preserved_edges) freePItemList(rule->preserved_edges);
+   if(rule->deleted_nodes) freeItemList(rule->deleted_nodes);
+   if(rule->added_nodes) freeItemList(rule->added_nodes);
    if(rule->added_edges) freeNewEdgeList(rule->added_edges);
    /* Conditions currently ignored. No function exists to free a condition. */
    if(rule->condition) free(rule->condition);

@@ -33,7 +33,7 @@ Rule *makeRule(GPRule *rule);
  * (5) Sets the deletes_nodes flag if the rule deletes a node.
  */
 Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
-               IndexMap **edge_map, NodeList **deleted_nodes,
+               IndexMap **edge_map, ItemList **deleted_nodes,
                unsigned int *is_rooted);
 
 /* scanRHSNodes does the following:
@@ -48,7 +48,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
  *     node map) is added to the list. 
  */
 Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
-                    PreservedItem **nodes, NodeList **added_nodes);
+                    PreservedItemList **nodes, ItemList **added_nodes);
 
 /* scanRHSEdges does the following:
  * (1) Adds the RHS-edges to the RHS graph.
@@ -64,7 +64,7 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
  */
 NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface, 
                           IndexMap *node_map, IndexMap **edge_map,
-                          PreservedItem **edges);
+                          PreservedItemList **edges);
 
 Label *transformLabel(GPLabel *label);
 

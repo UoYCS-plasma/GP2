@@ -35,7 +35,7 @@ void freeVariableList(VariableList *variable_list);
 
 
 /* When processing a rule's AST, two lists of index maps (one for nodes and one 
- * for edges)are maintained. They store the ID of the item, its indices in the 
+ * for edges) are maintained. They store the ID of the item, its indices in the 
  * LHS and RHS graphs, and the source and target IDs of edges. 
  *
  * The lists of index maps are used to obtain the correct source and targets 
@@ -61,28 +61,30 @@ IndexMap *removeMap(IndexMap *map, IndexMap *map_to_remove);
 void freeIndexMap(IndexMap *map);
 
 /* A simple linked list to store node indices. */
-typedef struct NodeList {
+typedef struct ItemList {
    int index;
-   struct NodeList *next;
-} NodeList;
+   struct ItemList *next;
+} ItemList;
 
-NodeList *addNodeItem(NodeList *node_list, int index);
-bool queryNodeList(NodeList *node_list, int index);
-void freeNodeList(NodeList *node_list);
+ItemList *addItem(ItemList *item_list, int index);
+bool queryItemList(ItemList *item_list, int index);
+void freeItemList(ItemList *item_list);
 
 /* A linked list of items that are preserved by the rule. It stores the 
  * indices of the item in the LHS and RHS, and a flag set to true if the rule
  * changes the item's label. */
-typedef struct PreservedItem {
+typedef struct PreservedItemList {
    int left_index;
    int right_index;
    bool label_change;
-   struct PreservedItem *next;
-} PreservedItem;
+   struct PreservedItemList *next;
+} PreservedItemList;
 
-PreservedItem *addPreservedItem(PreservedItem *items, bool label_change,
-                                int left_index, int right_index);
-void freePreservedItems(PreservedItem *items);
+PreservedItemList *addPreservedItem(PreservedItemList *list, bool label_change,
+                                    int left_index, int right_index);
+PreservedItemList *queryPItemList(PreservedItemList *list, int left_index);                                
+int findRightIndex(PreservedItemList *list, int left_index);                                
+void freePItemList(PreservedItemList *list);
 
 
 /* A linked list of structures describing edges created by the rule. The 
@@ -140,15 +142,15 @@ typedef struct Rule {
    int number_of_variables;
    Graph *lhs;
    Graph *rhs; 
-   PreservedItem *preserved_nodes;
-   PreservedItem *preserved_edges;
+   PreservedItemList *preserved_nodes;
+   PreservedItemList *preserved_edges;
    /* Deleted LHS items are precisely those that do not occur in the 
     * PreservedItems list. I explicitly store the deleted nodes because
     * the dangling condition places a stronger requirement on the degrees
     * of candidate host nodes which can be exploited in the rule matching
     * code. */
-   NodeList *deleted_nodes;
-   NodeList *added_nodes;
+   ItemList *deleted_nodes;
+   ItemList *added_nodes;
    NewEdgeList *added_edges;
    Condition *condition;
    struct {

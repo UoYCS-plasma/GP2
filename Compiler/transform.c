@@ -104,7 +104,7 @@ Rule *makeRule(GPRule *ast_rule)
 } 
 
 Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
-               IndexMap **edge_map, NodeList **deleted_nodes,
+               IndexMap **edge_map, ItemList **deleted_nodes,
                unsigned int *is_rooted)
 {
    Graph *lhs = newGraph();
@@ -138,7 +138,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       }
 
       if(!node_in_interface) 
-         *deleted_nodes = addNodeItem(*deleted_nodes, node->index);
+         *deleted_nodes = addItem(*deleted_nodes, node->index);
       
       nodes = nodes->next;   
    }
@@ -182,7 +182,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
 }
 
 Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
-                    PreservedItem **nodes, NodeList **added_nodes)
+                    PreservedItemList **nodes, ItemList **added_nodes)
 {
    Graph *rhs = newGraph();
 
@@ -203,7 +203,7 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
           * left index -1, and add the node to the added nodes list. */
          *node_map = addIndexMap(*node_map, ast_node->name, -1, node->index,
                                  NULL, NULL);
-         *added_nodes = addNodeItem(*added_nodes, node->index);
+         *added_nodes = addItem(*added_nodes, node->index);
       }
       else
       {
@@ -226,7 +226,7 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
          if(interface_node)
             *nodes = addPreservedItem(*nodes, false, map->left_index, 
                                       node->index);
-         else *added_nodes = addNodeItem(*added_nodes, node->index);
+         else *added_nodes = addItem(*added_nodes, node->index);
         
          map->right_index = node->index;
       }
@@ -237,7 +237,7 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
 
 NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface, 
                           IndexMap *node_map, IndexMap **edge_map,
-                          PreservedItem **edges)
+                          PreservedItemList **edges)
 {
    NewEdgeList *added_edges = NULL;
 
@@ -318,7 +318,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
             /* A map has been found, therefore the edge is preserved by the
              * rule. */
             *edges = addPreservedItem(*edges, false, map->left_index, 
-                                       edge->index);
+                                      edge->index);
             /* The map is removed to ensure that a parallel RHS-edge is not
              * associated with this edge. */
             *edge_map = removeMap(*edge_map, map);     

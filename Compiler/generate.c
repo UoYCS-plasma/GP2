@@ -99,6 +99,9 @@ void generateRuleCode(Rule *rule)
 
 void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
 {
+   Graph *lhs = rule->lhs;
+   Graph *rhs = rule->rhs;
+
    if(empty_lhs)
    {
       PTH("void apply%s(Graph *host);\n", rule->name);
@@ -106,7 +109,6 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       PTS("{\n");
 
       /* Generate code to add the complete RHS graph to the host graph. */
-      Graph *rhs = rule->rhs;
       int index;
       PTS("   Node *host_node = NULL, *source = NULL, *target = NULL;\n"
           "   Edge *host_edge = NULL;\n\n"
@@ -148,6 +150,7 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
          iterator = iterator->next;
       }     
       PTS("   free(map);\n"
+          "   freeMorphism(morphism);\n"
           "   return;\n}\n\n");
       return;
    }
@@ -173,19 +176,161 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
           "   freeMorphism(morphism);\n"
           "   return;\n"
           "}\n\n");
+      return;
+   }
+   
+   /* Using preserved items lists, populate the maps in the generated code. */
+   PTS("   /* Array of LHS edges marking their status.\n"
+       "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
+       "   int *edge_map = calloc(%d, sizeof(int));\n"
+       "   if(edge_map == NULL)\n"
+       "   {\n"
+       "      print_to_log(\"Error: Memory exhausted during map construction.\\n\");\n"
+       "      exit(1);\n"
+       "   }\n\n", lhs->number_of_edges);
+  
+   int index;
+   for(index = 0; index < lhs->number_of_edges; index++)
+   {
+      PreservedItemList *item = queryPItemList(rule->preserved_edges, index);
+      if(item == NULL) 
+      {
+         PTSI("edge_map[%d] = -1;\n", 3, item->left_index);
+         continue;
+      }
+      else
+      {
+         if(item->label_change)
+              PTSI("edge_map[%d] = 1;\n", 3, item->left_index);
+         else PTSI("edge_map[%d] = 0;\n", 3, item->left_index);
+      }
+   }
+   
+   PTS("   /* Array of LHS nodes marking their status.\n"
+       "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
+       "   int *node_map = calloc(%d, sizeof(int));\n"
+       "   if(node_map == NULL)\n"
+       "   {\n"
+       "      print_to_log(\"Error: Memory exhausted during map construction.\\n\");\n"
+       "      exit(1);\n"
+       "   }\n\n", lhs->number_of_nodes);
+
+   PreservedItemList *iterator = rule->preserved_nodes;
+   while(iterator != NULL)
+   {
+      if(iterator->label_change)
+           PTSI("node_map[%d] = 1;\n", 3, iterator->left_index);
+      else PTSI("node_map[%d] = 0;\n", 3, iterator->left_index);
+      iterator = iterator->next;
+   }
+ 
+   ItemList *iterator2 = rule->deleted_nodes;
+   while(iterator2 != NULL)
+   {
+      PTSI("node_map[%d] = -1;\n", 3, iterator2->index);
+      iterator2 = iterator2->next;
    }
 
+   PTS("\n   StackData *data = NULL;\n"
+       "   while((data = pop(morphism->edge_images)) != NULL)\n"
+       "   {\n"
+       "      if(edge_map[data->map.left_index] == -1)\n"
+       "      {\n"
+       "         removeEdge(host, data->map.host_index);\n"
+       "         free(data);\n"
+       "         continue;\n"
+       "      }\n"
+       "      if(edge_map[data->map.left_index] == 1)\n"
+       "      {\n"
+       "         Edge *host_edge = getEdge(host, data->map.host_index);\n"
+       /* TODO: Pass label of RHS edge from rule->preserved_edges */
+       "         relabelEdge(host, host_edge, NULL, true, false);\n"
+       "         free(data);\n"
+       "         continue;\n"
+       "      }\n"
+       "      /* Otherwise the edge is preserved and keeps the same label. */\n"
+       "      free(data);\n"
+       "   }\n"   
+       "   free(edge_map);\n\n");
 
-   /*PTH("void apply_%s(Morphism *morphism, Graph *host);\n", rule_name);
-   PTS("void apply_%s(Morphism *morphism, Graph *host)\n", rule_name);
-   PTS("{\n");
+   PTS("   while((data = pop(morphism->node_images)) != NULL)\n"
+       "   {\n"
+       "      if(node_map[data->map.left_index] == -1)\n"
+       "      {\n"
+       "         removenode(host, data->map.host_index);\n"
+       "         free(data);\n"
+       "         continue;\n"
+       "      }\n"
+       "      if(node_map[data->map.left_index] == 1)\n"
+       "      {\n"
+       "         node *host_node = getnode(host, data->map.host_index);\n"
+       /* TODO: Pass label of RHS node from rule->preserved_nodes */
+       "         relabelnode(host, host_node, NULL, true, false);\n"
+       "         node_map[data->map.left_index] = host_node->index;\n"
+       "         free(data);\n"
+       "         continue;\n"
+       "      }\n"
+       "      /* Otherwise the node is preserved and keeps the same label. */\n"
+       "      node_map[data->map.left_index] = data->map.host_index;\n"
+       "      free(data);\n"
+       "   }\n\n");
+
+   /* Add nodes + create map */
+   PTS("   /* Array of host node pointers indexed by RHS node index. */\n"
+       "   Node **map = calloc(%d, sizeof(Node *));\n"
+       "   if(map == NULL)\n"
+       "   {\n"
+       "      print_to_log(\"Error: Memory exhausted during map construction.\\n\");\n"
+       "      exit(1);\n"
+       "   }\n\n", rhs->number_of_nodes);
+
+   ItemList *iterator_n = rule->added_nodes;
+   while(iterator_n != NULL)
+   {   
+      Node *rule_node = getNode(rhs, iterator_n->index);
+      /* TODO: Evaluate rule_node->label. */
+      PTSI("host_node = newNode(%d, NULL);\n", 3, rule_node->root);
+      PTSI("addNode(host, host_node);\n", 3);
+      PTSI("map[%d] = host_node;\n\n", 3, rule_node->index);
+      iterator_n = iterator_n->next;
+   }   
+  
+   PTS("   Node *source = NULL, *target = NULL;\n"
+       "   int source_index = 0, target_index = 0;\n\n");
+   
+   NewEdgeList *iterator_e = rule->added_edges;
+   while(iterator_e != NULL)
    {
-      Add the RHS graph to the host graph.
-      
-   } */
+      Edge *rule_edge = getEdge(rhs, iterator_e->edge_index);
+      if(iterator_e->source_location == 'l')
+      {
+         PTSI("source_index = node_map[%d];\n", 3, iterator_e->source_index);
+         PTSI("source = getNode(host, source_index);\n", 3);
+      }
+      else PTSI("source = map[%d];\n", 3, iterator_e->source_index);
+
+      if(iterator_e->target_location == 'l')
+      {
+         PTSI("target_index = node_map[%d];\n", 3, iterator_e->target_index);
+         PTSI("target = getNode(host, target_index);\n", 3);
+      }
+      else PTSI("target = map[%d];\n", 3, iterator_e->target_index);
+
+      /* TODO: Evaluate rule_edge->label. */
+      PTSI("host_edge = newEdge(false, NULL, source, target);\n", 3);
+      PTSI("addEdge(host, host_edge);\n\n", 3);
+   
+      iterator_e = iterator_e->next;      
+   }
+
+   PTS("   free(node_map);\n"
+       "   free(map);\n"
+       "   freeMorphism(morphism);\n"
+       "   return;\n"
+       "}\n\n");
 }
 
-void emitMatchingCode(string rule_name, Graph *lhs, NodeList *deleted_nodes,
+void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
                       bool is_predicate)
 {
    /* Create the searchplan. */
@@ -388,11 +533,11 @@ void emitRuleMatcher(string rule_name, SearchOp *first_op, bool is_predicate)
 }
 
 
-void emitNodeMatcher(Node *left_node, bool is_root, NodeList *deleted_nodes,
+void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
                      SearchOp *next_op)
 {
    int left_index = left_node->index;
-   bool dangling_node = queryNodeList(deleted_nodes, left_index);
+   bool dangling_node = queryItemList(deleted_nodes, left_index);
 
    PTS("static bool match_n%d(Graph *host, Morphism *morphism,\n"
        "                     bool *matched_nodes, bool *matched_edges)\n"
@@ -451,10 +596,10 @@ void emitNodeMatcher(Node *left_node, bool is_root, NodeList *deleted_nodes,
 
 
 void emitNodeFromEdgeMatcher(Node *left_node, char type,
-                             NodeList *deleted_nodes, SearchOp *next_op)
+                             ItemList *deleted_nodes, SearchOp *next_op)
 {
    int left_index = left_node->index;
-   bool dangling_node = queryNodeList(deleted_nodes, left_index);
+   bool dangling_node = queryItemList(deleted_nodes, left_index);
 
    PTS("static bool match_n%d(Graph *host, Edge *host_edge, Morphism *morphism,\n"
        "                     bool *matched_nodes, bool *matched_edges)\n"
