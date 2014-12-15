@@ -47,7 +47,7 @@ matchGraphNodes h r =
    [ NM labelEnv nodeMatches
    | nodeMatches <- [ nm | hns <- permutedSizedSubsets (length rns) (allNodes h),
                            let nm = zip rns hns,
-                           all (compatibleNodes h r) nm ],
+                           all (rootCompatible h r) nm ],
      Just labelEnv <- [foldr labelMatch (Just []) nodeMatches] ]
    where
    rns = allNodes r
@@ -59,11 +59,8 @@ matchGraphNodes h r =
       mapping <- doLabelsMatch hlab rlab
       mergeMapping mapping env
 
-compatibleNodes :: HostGraph -> RuleGraph -> (RuleNodeId, HostNodeId) -> Bool
-compatibleNodes h r (rn, hn) = (not (isRootR r rn) || isRootH h hn) &&
-                               indegree r rn <= indegree h hn &&  
-                               outdegree r rn <= outdegree h hn &&
-                               colourMatch (colourR r rn) (colourH h hn)
+rootCompatible :: HostGraph -> RuleGraph -> (RuleNodeId, HostNodeId) -> Bool
+rootCompatible h r (rn, hn) = not (isRootR r rn) || isRootH h hn
 
 -- For each edge in the RuleGraph, we determine the required source and
 -- target for a corresponding edge in the HostGraph using the node morphism.
@@ -72,8 +69,7 @@ compatibleNodes h r (rn, hn) = (not (isRootR r rn) || isRootH h hn) &&
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
 matchGraphEdges h r (NM env nodeMatches) =
    [ GM labelEnv nodeMatches edgeMatch
-   | [] `notElem` hostEdges,
-     edgeMatch <- [zip ruleEdges hes | hes <- choices hostEdges, isSet hes],
+   | edgeMatch <- [zip ruleEdges hes | hes <- choices hostEdges, isSet hes],
      Just labelEnv <- [foldr labelMatch (Just env) edgeMatch] ]
    where 
    ruleEdges = allEdges r
