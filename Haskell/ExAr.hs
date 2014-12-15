@@ -1,57 +1,42 @@
--- a simple implementation of extensible sparse arrays using ordered association lists
+-- An implementation of extensible sparse arrays using Data.Map.Lazy
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
 
-module ExAr (ExAr, empty, extend, idLookup, findAll, update, domain, removeAll, remove) where
+module ExAr (ExAr, ExAr.empty, extend, idLookup, findAll, ExAr.update, domain, removeAll, remove) where
 
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, filter)
 import Data.Maybe (listToMaybe)
+import Data.Map.Lazy
 
 -- extensible sparse arrays
-data ExAr a b = ExAr [(a,b)] Int deriving Show
+data ExAr a b = ExAr (Map a b) Int
 
--- intended data invariant for ExAr Int values
-invExAr :: ExAr Int b -> Bool
-invExAr ea@(ExAr _ i) = decreasing d && i > maximum d && minimum d >= 1
-  where
-  d = domain ea
-  decreasing (x:y:etc)  =  x > y && decreasing (y:etc)
-  decreasing _          =  True
+instance (Show a, Show b) => Show (ExAr a b) where
+  show (ExAr m i)  =  show (toList m) ++ " " ++ show i
 
 empty :: ExAr a b
-empty =  ExAr [] 1
+empty = ExAr Data.Map.Lazy.empty 1
 
 extend :: ExAr Int b -> b -> (ExAr Int b, Int)
-extend (ExAr ixs i) x  =  (ExAr ((i,x):ixs) (i+1), i)
+extend (ExAr m i) x  =  (ExAr (insert i x m) (i+1), i)
 
-
--- used to lookup a node or edge in a graph.
-idLookup :: Eq a => ExAr a b -> a -> Maybe b
-idLookup (ExAr ixs _) id  =  listToMaybe [x | (k,x) <- ixs, k == id]
+-- used to lookup value at an index
+idLookup :: Ord a => ExAr a b -> a -> Maybe b
+idLookup (ExAr m _) k  =  lookup k m
 
 findAll :: (b -> Bool) -> ExAr a b -> [a]
-findAll p (ExAr ixs _)  =  [id | (id,x) <- ixs, p x]
+findAll p (ExAr m _)  =  keys $ filter p m
 
 -- update outside domain is identity
-update :: Eq a => (b->b) -> ExAr a b -> a -> ExAr a b
-update f ea@(ExAr ixs i) id  =
-  case suff of
-  []          -> ea
-  (_,x):suff' -> ExAr (pref ++ (id, f x):suff') i
-  where
-  (pref, suff)  =  span (\(j,_) -> j /= id) ixs
+update :: Ord a => (b->b) -> ExAr a b -> a -> ExAr a b
+update f (ExAr m i) k  =  ExAr (adjust f k m) i
 
 domain :: ExAr a b -> [a]
-domain (ExAr ixs _)  =  [id | (id,_) <- ixs]
+domain (ExAr m _)  =  keys m
 
 removeAll :: (b -> Bool) -> ExAr a b -> ExAr a b
-removeAll p (ExAr ixs i)  =  ExAr (filter (\(id,x) -> not (p x)) ixs) i
+removeAll p (ExAr m i)  =  ExAr (filter (not . p) m) i
 
 -- removal outside domain is identity
-remove :: Eq a => ExAr a b -> a -> ExAr a b
-remove ea@(ExAr ixs i) id =
-  case suff of
-  []      -> ea
-  _:suff' -> ExAr (pref ++ suff') i
-  where
-  (pref, suff)  =  span (\(k,_) -> k /= id) ixs
+remove :: Ord a => ExAr a b -> a -> ExAr a b
+remove (ExAr m i) k  =  ExAr (delete k m) i
 
