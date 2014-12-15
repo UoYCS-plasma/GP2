@@ -2,6 +2,8 @@
 *.pdf
 *.hi
 *~
+*.cmx
+*.cmo
 TODO
 *.swp
 *.tab.c

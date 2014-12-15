@@ -324,8 +324,12 @@ void makeSearchSpace(Traverser *t) {
 	spc->index[pos+1] = NULL;
 }
 
+/* TODO: Moving nodes inspected prior to a successful match to the end of the
+ * chain may speed subsequent matching attempts for the same rule (i.e. should
+ * only be done during looped rules?) */
+
+
 void disconnect(OilrNode *n) {
-	/* TODO: not updating chain-length count! */
 	OilrNode *prev = prevInChain(n), *next = nextInChain(n);
 	n->chain.index->len--;
 	nextInChain(prev) = next;
