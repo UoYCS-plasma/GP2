@@ -20,6 +20,7 @@
 
 #include "ast.h" 
 #include "globals.h"
+#include "generate.h"
 #include "pretty.h"
 #include "rule.h"
 #include "seman.h" 
@@ -199,10 +200,11 @@ int main(int argc, char** argv)
    while((data = pop(rule_stack)) != NULL)
    {
       if(data->rule == NULL) continue;
-      printRule(data->rule, false);
+      printRule(data->rule, true);
+      validGraph(data->rule->lhs);
+      generateRuleCode(data->rule);
       freeRule(data->rule);
       free(data);
-      //generateMatchingCode(data->rule);
    }
   
    /* Garbage collection */

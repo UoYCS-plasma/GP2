@@ -59,7 +59,40 @@ void freeAssignment(Assignment *assignment)
 }
 
 
-/* Morphism functions. */
+Map *addMap(Map *map, int right_index, Node *host_node)
+{
+   Map *new_map = malloc(sizeof(Map));
+
+   if(new_map == NULL) 
+   {
+      print_to_log("Error: Memory exhausted during map construction.\n");
+      exit(1);
+   }
+
+   new_map->right_index = right_index;
+   new_map->host_node = host_node;
+   new_map->next = map;
+
+   return new_map;
+}
+
+Node *findHostNode(Map *map, int right_index)
+{
+   while(map != NULL)
+   {
+      if(right_index == map->right_index) return map->host_node;
+      else map = map->next;
+   }
+   return NULL;
+}
+
+void freeMap(Map *map)
+{
+   if(map == NULL) return;
+   if(map->next) freeMap(map->next);
+   free(map);
+}
+
 
 Morphism *makeMorphism(void)
 {
