@@ -1,7 +1,8 @@
 
 
 all :
-	./benchmark.sh
+	./benchmark.sh && ./tabulate.sh
+	
 
 clean :
-	rm -rf */*.d/
+	rm -rf *.tex */*.d/

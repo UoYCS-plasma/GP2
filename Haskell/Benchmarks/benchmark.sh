@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TIMEOUT=2h
+TIMEOUT=1h
 MAXAPPS=1000000
 MAXGRAPHS=10
 
@@ -52,6 +52,7 @@ for mode in "--one" "" ; do
 			echo "Max allowed time is: $TIMEOUT" >> test.log
 			/usr/bin/timeout --foreground $TIMEOUT $GP ../"$prog" ../"$host" $MAXAPPS >> test.log
 			state=$?
+			killall -HUP gp2  # clean-up possibly unterminated gp2 instances
 			if [ "$state" = "124" ] ; then
 				echo "$amber	Timed out$default"
 				echo "*** Timed out after" $TIMEOUT >> test.log

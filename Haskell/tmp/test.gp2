@@ -1,11 +1,14 @@
-Main = init ; id!
+Main = break
 
-init () [|] => [ (n1, empty) | (e1, n1, n1, empty) ]
-interface = {}
-
-id () [
-	(n1, empty) (n2 (R), empty) | (e1, n1, n1, empty) (e2, n1, n2, empty)
+break() [
+	(n1, empty)
+	(n2, empty)
+|
+	(e1, n1, n2, empty)
+	(e2, n1, n2, empty)
 ] => [
-	(n1, empty) |
+	(n1, empty)
+	(n2, empty)
+|
 ]
-interface = {n1}
+interface = {n1, n2}
