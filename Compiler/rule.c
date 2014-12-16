@@ -241,72 +241,81 @@ void freeNewEdgeList(NewEdgeList *edge)
 }
 
 
-void printRule(Rule *rule, bool print_graphs)
+void printRule(Rule *rule, bool verbose)
 {
    if(rule == NULL) 
    {
       printf("printRule passed a NULL pointer.\n\n");
       return;
    }
-   printf("Rule %s\n\n", rule->name);
-   if(print_graphs)
+
+   if(!verbose)
    {
+      printf("%s\n\n", rule->name);
+      printGraph(rule->lhs);
+      printf("=>\n\n");
+      printGraph(rule->rhs);
+   }
+   
+   else
+   {
+      printf("Rule %s\n\n", rule->name);
       printf("LHS\n===\n");
-      if(rule->lhs) printGraph(rule->lhs);
+      if(rule->lhs) printVerboseGraph(rule->lhs);
       else printf("Empty Graph\n\n");
 
       printf("RHS\n===\n");
-      if(rule->rhs) printGraph(rule->rhs);
+      if(rule->rhs) printVerboseGraph(rule->rhs);
       else printf("Empty Graph\n\n");
-   }
    
-   PreservedItemList *item = rule->preserved_nodes;
-   printf("Preserved nodes: ");
-   while(item != NULL)
-   {
-      printf("(%d, %d, %d) ", item->left_index, item->right_index, 
-             item->label_change);
-      item = item->next;
-   }
+      PreservedItemList *item = rule->preserved_nodes;
+      printf("Preserved nodes: ");
+      while(item != NULL)
+      {
+         printf("(%d, %d, %d) ", item->left_index, item->right_index, 
+               item->label_change);
+         item = item->next;
+      }
 
-   item = rule->preserved_edges;
-   printf("\nPreserved edges: ");
-   while(item != NULL)
-   {
-      printf("(%d, %d, %d) ", item->left_index, item->right_index, 
-             item->label_change);
-      item = item->next;
-   }
+      item = rule->preserved_edges;
+      printf("\nPreserved edges: ");
+      while(item != NULL)
+      {
+         printf("(%d, %d, %d) ", item->left_index, item->right_index, 
+               item->label_change);
+         item = item->next;
+      }
 
-   ItemList *iterator = rule->added_nodes;
-   printf("\nAdded nodes: ");
-   while(iterator != NULL)
-   {
-      printf("%d ", iterator->index);
-      iterator = iterator->next;
-   }
-   
-   iterator = rule->deleted_nodes;
-   printf("\nDeleted nodes: ");
-   while(iterator != NULL)
-   {
-      printf("%d ", iterator->index);
-      iterator = iterator->next;
-   }
+      ItemList *iterator = rule->added_nodes;
+      printf("\nAdded nodes: ");
+      while(iterator != NULL)
+      {
+         printf("%d ", iterator->index);
+         iterator = iterator->next;
+      }
+      
+      iterator = rule->deleted_nodes;
+      printf("\nDeleted nodes: ");
+      while(iterator != NULL)
+      {
+         printf("%d ", iterator->index);
+         iterator = iterator->next;
+      }
 
-   printf("\nAdded edges:\n");
+      printf("\nAdded edges:\n");
 
-   NewEdgeList *edge = rule->added_edges;
-   while(edge != NULL)
-   {
-      printf("Edge %d. Source %c-%d. Target %c-%d.\n",
-             edge->edge_index, edge->source_location, edge->source_index,
-             edge->target_location, edge->target_index);
-      edge = edge->next;
+      NewEdgeList *edge = rule->added_edges;
+      while(edge != NULL)
+      {
+         printf("Edge %d. Source %c-%d. Target %c-%d.\n",
+               edge->edge_index, edge->source_location, edge->source_index,
+               edge->target_location, edge->target_index);
+         edge = edge->next;
+      }
+
+      if(rule->flags.is_predicate) printf("Rule is a predicate.\n");
+      if(rule->flags.is_rooted) printf("Rule is rooted.\n");
    }
-
-   if(rule->flags.is_predicate) printf("Rule is a predicate.\n");
-   if(rule->flags.is_rooted) printf("Rule is rooted.\n");
    printf("\n");
 }
 

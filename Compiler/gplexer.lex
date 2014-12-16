@@ -147,7 +147,7 @@ any		    { yylval.mark = ANY; return ANY_MARK; }
  /* keywords for GP2 types */
 
 int		    return INT;  
-char		    return CHAR;
+char		    return CHARACTER;
 string		    return STRING;  
 atom     	    return ATOM;  
 list		    return LIST;  

@@ -161,7 +161,7 @@ typedef struct Rule {
    } flags;
 } Rule;
 
-void printRule(Rule *rule, bool print_graphs);
+void printRule(Rule *rule, bool verbose);
 void freeRule(Rule *rule);
 
 #endif /* INC_RULE_H */
