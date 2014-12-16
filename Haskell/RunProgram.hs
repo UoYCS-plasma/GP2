@@ -6,15 +6,9 @@ import Graph (emptyGraph)
 import GraphIsomorphism
 import GPSyntax
 
--- GS represents the state of a graph during the program execution.
--- First component is the working graph.
--- Second component is the number of isomorphic copies of the working graph 
--- generated during program execution.
--- Third component is the number of rules applied to reach the graph state.	
-data GraphState = GS HostGraph Int
-                | Failure 
-                | Unfinished
-    deriving Show
+-- GS represents a host-graph during program execution
+-- and the number of rules applied to reach it.
+data GraphState = GS HostGraph Int | Failure | Unfinished deriving Show
 
 -- A host graph and its isomorphism count.				
 type GraphData = (HostGraph, Int) 
@@ -25,25 +19,19 @@ type GraphData = (HostGraph, Int)
 type Result = ([GraphData], Int, Int, (Int, Int))
 
 runProgram :: GPProgram -> Int -> HostGraph -> Result
-runProgram (Program ds) max g = isoFilter $ processData $ evalMain max ds (findMain ds) g
-    where isoFilter :: ([HostGraph], Int, Int, (Int, Int)) -> Result
-          isoFilter (gs, fc, uc, bds) = (isomorphismCount gs, fc, uc, bds)
+runProgram (Program ds) max g = resultWith isomorphismCount $ evalMain max ds (findMain ds) g
 
 -- For use with --one commandline flag: only get first result
 nSolutions :: Int -> GPProgram -> Int -> HostGraph -> Result
-nSolutions n (Program ds) max g = makeResult $ processData $ take n $ evalMain max ds (findMain ds) g
+nSolutions n (Program ds) max g = resultWith (flip zip [1,1..]) $ take n $ evalMain max ds (findMain ds) g
+
+resultWith :: ([HostGraph] -> [(HostGraph,Int)]) -> [GraphState] -> Result
+resultWith f gs = let (gs',fc',uc',bds') = foldr add ([], 0, 0, (maxBound, 0)) gs in
+    (f gs',fc',uc',bds')
     where
-        makeResult :: ([HostGraph], Int, Int, (Int, Int)) -> Result
-        makeResult (gs, fc, uc, bds) = (take n $ zip gs [1,1..], fc, uc, bds)
-
-
-processData :: [GraphState] -> ([HostGraph], Int, Int, (Int, Int))
-processData = foldr addGraphState ([], 0, 0, (maxBound, 0))
-    where addGraphState :: GraphState -> ([HostGraph], Int, Int, (Int, Int)) -> ([HostGraph], Int, Int, (Int, Int)) 
-          addGraphState (GS g rc) (gs, fc, uc, (low, high)) =
-                (g:gs, fc, uc, (min rc low, max rc high))
-          addGraphState (Unfinished) (gs, fc, uc, bds) = (gs, fc, uc+1, bds)
-          addGraphState (Failure) (gs, fc, uc, bds) = (gs, fc+1, uc, bds)
+    add (GS g rc)  (gs, fc, uc, (low, high)) = (g:gs, fc, uc, (min rc low, max rc high))
+    add Unfinished (gs, fc, uc, bds)         = (gs, fc, uc+1, bds)
+    add Failure    (gs, fc, uc, bds)         = (gs, fc+1, uc, bds)
         
 findMain :: [Declaration] -> Main
 findMain ((MainDecl m):ds) = m
@@ -88,7 +76,6 @@ evalBlock max ds ls@(LoopedComSeq cs) gs@(GS g rc) =
     where handleLoop Unfinished = [Unfinished]
           handleLoop Failure    = [gs]
           handleLoop gs'        = evalBlock max ds ls gs'
-
 evalBlock max ds (SimpleCommand sc) gs = evalSimpleCommand max ds sc gs
 evalBlock max ds (ProgramOr b1 b2) gs = evalBlock max ds b1 gs  ++ evalBlock max ds b2 gs
 
@@ -96,48 +83,38 @@ evalSimpleCommand :: Int -> [Declaration] -> SimpleCommand -> GraphState -> [Gra
 evalSimpleCommand _ _ _ Failure = [Failure]
 evalSimpleCommand _ _ _ Unfinished = [Unfinished]
 evalSimpleCommand max ds (RuleCall rs) (GS g rc) = 
-    if rc == max 
-        then [Unfinished]
-        -- Apply all rules in the set at the same time.
-        else let resultGraphs = [h | r <- rs, h <- applyRule g $ ruleLookup r ds] in
-            case resultGraphs of
-                [] -> [Failure]
-                hs -> [GS h (rc+1) | h <- hs]
-evalSimpleCommand max ds c@(LoopedRuleCall rs) gs@(GS g rc) = 
-    if rc == max 
-        then [Unfinished]
-        else 
-            concatMap handleLoopedRC $ evalSimpleCommand max ds (RuleCall rs) gs
-            where handleLoopedRC Unfinished = [Unfinished]
-                  handleLoopedRC Failure    = [gs]
-                  handleLoopedRC gs'        = evalSimpleCommand max ds c gs'
+    if rc == max then [Unfinished]
+    else case [h | r <- rs, h <- applyRule g $ ruleLookup r ds] of
+         [] -> [Failure]
+         hs -> [GS h (rc+1) | h <- hs]
+evalSimpleCommand max ds c@(LoopedRuleCall rs) gs = 
+    evalLooped max ds (RuleCall rs) gs
 evalSimpleCommand max ds (ProcedureCall proc) gs = evalCommandSequence max (decls++ds) cs gs
     where Procedure id decls cs = procLookup proc ds
-evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs@(GS g rc) =  
-    concatMap handleLoopedProc $ evalSimpleCommand max ds (ProcedureCall proc) gs
-    where handleLoopedProc Unfinished = [Unfinished]
-          handleLoopedProc Failure    = [gs]
-          handleLoopedProc gs'        = evalSimpleCommand max ds c gs'
+evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs = 
+    evalLooped max ds (ProcedureCall proc) gs 
 evalSimpleCommand max ds Skip (GS g rc) = [GS g (rc+1)]
 evalSimpleCommand max ds Fail _ = [Failure]
 
+evalLooped :: Int -> [Declaration] -> SimpleCommand -> GraphState -> [GraphState]
+evalLooped max ds c gs  =
+    [ gsFinal 
+    | gsInter <- evalSimpleCommand max ds c gs,
+      gsFinal <- case gsInter of Unfinished -> [Unfinished]
+                                 Failure    -> [gs]
+                                 _          -> evalLooped max ds c gsInter ]
+
 procLookup :: ProcName -> [Declaration] -> Procedure
 procLookup id decls = case matches of
-    [] -> error $ "Reference to undefined procedure " ++ id
-    _  -> head matches
-    where
-        matches = map (\(ProcDecl d) -> d) $ filter (p id) decls
-        p :: ProcName -> Declaration -> Bool
-        p id (ProcDecl (Procedure name _ _)) = id == name 
-        p id _ = False
+   []  -> error $ "Reference to undefined procedure " ++ id
+   d:_ -> d
+   where
+   matches = [d | ProcDecl d@(Procedure name _ _) <- decls, name == id]
 
 ruleLookup :: RuleName -> [Declaration] -> Rule
 ruleLookup id decls = case matches of
-    [] -> error $ "Reference to undefined rule " ++ id
-    _  -> head matches
-    where
-        matches = map (\(RuleDecl d) -> d) $ filter (p id) decls
-        p :: RuleName -> Declaration -> Bool
-        p id (RuleDecl (Rule name _ _ _ _ _)) = id == name 
-        p id _ = False
+   []  -> error $ "Reference to undefined rule " ++ id
+   d:_ -> d
+   where
+   matches = [d | RuleDecl d@(Rule name _ _ _ _ _) <- decls, name == id]
 
