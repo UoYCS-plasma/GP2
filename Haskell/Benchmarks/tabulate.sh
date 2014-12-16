@@ -2,15 +2,15 @@
 
 # Tabulate results of running benchmark suite in gp2 reference interpreter
 
-outOne="$PWD/table_one.tex"
-outAll="$PWD/table_all.tex"
+outOne="$PWD/results_table_one.tex"
+outAll="$PWD/results_table_all.tex"
 
 function benchmarkName() {
 	basename $1 | sed -e 'y/-_/  /'
 }
 
 function graphCounts() {
-	awk -v "bm=`basename $PWD`" 'BEGIN { f=0; u=0; n=0 ; i=0 ; rmin=0 ; rmax=0 ; t=0 ; gsub(/\.host.*\.d/, "", bm)} \
+awk -v "bm=`basename $PWD`" 'BEGIN { f=0; u=0; n=0 ; i=0 ; rmin=0 ; rmax=0 ; t=0 ; gsub(/\.host.*\.d/, "", bm); gsub(/_/, " ", bm);} \
 		 /^[0-9]* fail/ { f+=$1 } \
 		 /^[0-9]* unfinished/ { u+=$1 } \
 		 /^[0-9]* occurrence/ { n+=$1 ; i+=1 } \
@@ -38,24 +38,25 @@ function heapProfile() {
 :>"$outOne"
 :>"$outAll"
 
-while pushd $1 ; do
-	benchmarkName `pwd` >> "$outAll"
-	for d in *.host.d/ ; do 
-		pushd $d >/dev/null
-		graphCounts ./ && heapProfile ./
-		echo '                  \cline{2-12}'
-		popd >/dev/null
-	done >> "$outAll"
-	echo '\hline' >> "$outAll"
-
+for d in */ ; do
+	pushd $d || break
 	benchmarkName `pwd` >> "$outOne"
 	for d in *.host--one.d/ ; do 
-		pushd $d >/dev/null
+		pushd $d >/dev/null || break
 		graphCounts ./ && heapProfile ./
 		echo '                  \cline{2-12}'
 		popd >/dev/null
 	done >> "$outOne"
 	echo '\hline' >> "$outOne"
+
+	benchmarkName `pwd` >> "$outAll"
+	for d in *.host.d/ ; do 
+		pushd $d >/dev/null || break
+		graphCounts ./ && heapProfile ./
+		echo '                  \cline{2-12}'
+		popd >/dev/null
+	done >> "$outAll"
+	echo '\hline' >> "$outAll"
 
 	popd
 	shift
