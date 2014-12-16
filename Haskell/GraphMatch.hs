@@ -54,8 +54,8 @@ matchGraphNodes h r =
    labelMatch :: (RuleNodeId, HostNodeId) -> Maybe Environment -> Maybe Environment
    labelMatch (rn, hn) menv = do
       env <- menv
-      (RuleNode _ _ rlab) <- maybeNLabel r rn
-      (HostNode _ _ hlab) <- maybeNLabel h hn
+      let RuleNode _ _ rlab  =  nLabel r rn
+      let HostNode _ _ hlab  =  nLabel h hn
       mapping <- doLabelsMatch hlab rlab
       mergeMapping mapping env
 
@@ -82,8 +82,7 @@ matchGraphEdges h r (NM env nodeMatches) =
    labelMatch :: (RuleEdgeId, HostEdgeId) -> Maybe Environment -> Maybe Environment
    labelMatch (re, he) menv = do
       env <- menv
-      hlabel <- maybeELabel h he
-      RuleEdge _ _ rlabel <- maybeELabel r re
-      mapping <- doLabelsMatch hlabel rlabel
+      let RuleEdge _ _ rlabel = eLabel r re
+      mapping <- doLabelsMatch (eLabel h he) rlabel
       mergeMapping mapping env
 
