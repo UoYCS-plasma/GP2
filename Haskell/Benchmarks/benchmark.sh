@@ -36,7 +36,7 @@ green="[32m"
 for mode in "--one" "" ; do
 	GPOPT="$mode"
 	[ "$mode" = "--no-iso" ] && GPOPT="--no-iso=$MAXGRAPHS"
-	GP="time -o test.log -a ../../../gp2 +RTS -p -sgc.prof -RTS $GPOPT "
+	GP="time ../../../gp2 +RTS -p -sgc.prof -RTS $GPOPT "
 	printf "=================================================% 10s ===\n" $mode
 	for b in $BMS ; do
 		pushd "$b" > /dev/null
@@ -50,9 +50,9 @@ for mode in "--one" "" ; do
 			echo "$wd" >> test.log
 			echo "$GP" >> test.log
 			echo "Max allowed time is: $TIMEOUT" >> test.log
-			/usr/bin/timeout --foreground $TIMEOUT $GP ../"$prog" ../"$host" $MAXAPPS >> test.log
+			/usr/bin/timeout -s HUP --foreground $TIMEOUT $GP ../"$prog" ../"$host" $MAXAPPS >> test.log 2>&1
 			state=$?
-			killall -HUP gp2  # clean-up possibly unterminated gp2 instances
+			killall -HUP gp2 2>/dev/null  # clean-up possibly unterminated gp2 instances
 			if [ "$state" = "124" ] ; then
 				echo "$amber	Timed out$default"
 				echo "*** Timed out after" $TIMEOUT >> test.log
@@ -62,6 +62,7 @@ for mode in "--one" "" ; do
 			else
 				echo "$red	Failure$default"
 				echo "*** Failure" >> test.log
+				tail -5 test.log
 			fi
 
 			popd > /dev/null
