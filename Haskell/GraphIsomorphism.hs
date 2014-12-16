@@ -4,6 +4,7 @@
 module GraphIsomorphism (isomorphismCount) where
 
 import Data.List (permutations, groupBy)
+import List (representBy)
 import Graph
 import Mapping
 
@@ -12,7 +13,7 @@ import Mapping
 -- the list and a count of how many isomorphic copies of that graph were in the
 -- input list.
 isomorphismCount :: (Eq a, Eq b) => [Graph a b] -> [(Graph a b, Int)]
-isomorphismCount graphs = [ (g, length (g:gs)) | (g:gs) <- groupBy isomorphic graphs] 
+isomorphismCount graphs = representBy isomorphic graphs
 
 isomorphic :: (Eq a, Eq b) => Graph a b -> Graph a b -> Bool
 isomorphic g1 g2 =

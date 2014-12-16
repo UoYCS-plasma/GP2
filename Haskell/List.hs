@@ -21,3 +21,8 @@ isSet :: Eq a => [a] -> Bool
 isSet [] = True
 isSet (x:xs) = x `notElem` xs && isSet xs
 
+representBy :: (a->a->Bool) -> [a] -> [(a,Int)]
+representBy equiv xs  =  foldl add [] xs
+  where
+  add []             y  =  [(y,1)]
+  add (xn@(x,n):xns) y  =  if x `equiv` y then ((x,n+1):xns) else xn : add xns y
