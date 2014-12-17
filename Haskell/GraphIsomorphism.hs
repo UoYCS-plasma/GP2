@@ -1,10 +1,9 @@
 -- labelled graph isomorphism test
--- Colin Runciman, July 2014
+-- Colin Runciman, July 2014; faster version December 2014
 
-module GraphIsomorphism (isomorphismCount) where
+module GraphIsomorphism (isomorphismCount, isomorphic) where
 
-import Data.List (permutations, groupBy)
-import List (representBy)
+import List (representBy, choices, nonEmpty, bijectionsWith)
 import Graph
 import Mapping
 
@@ -12,40 +11,31 @@ import Mapping
 -- Each pair contains a single representative of a set of isomorphic graphs in 
 -- the list and a count of how many isomorphic copies of that graph were in the
 -- input list.
-isomorphismCount :: (Eq a, Eq b) => [Graph a b] -> [(Graph a b, Int)]
+isomorphismCount :: (Ord a, Ord b) => [Graph a b] -> [(Graph a b, Int)]
 isomorphismCount graphs = representBy isomorphic graphs
 
-isomorphic :: (Eq a, Eq b) => Graph a b -> Graph a b -> Bool
+isomorphic :: (Ord a, Ord b) => Graph a b -> Graph a b -> Bool
 isomorphic g1 g2 =
   length ns1 == length ns2 &&
-  any (edgesIso g1 g2) (permutationsWrt nLabel g1 g2 ns1 ns2)
+  any (edgesIso g1 g2) (bijectionsWith (nodeKey g1) ns1 (nodeKey g2) ns2)
   where
   ns1 = allNodes g1
   ns2 = allNodes g2
 
-edgesIso :: (Eq a, Eq b) => Graph a b -> Graph a b -> Mapping NodeId NodeId -> Bool
+nodeKey :: Graph a b -> NodeId -> (a, Int, Int)
+nodeKey g n  =  (nLabel g n, outdegree g n, indegree g n)
+
+edgesIso :: Ord b => Graph a b -> Graph a b -> Mapping NodeId NodeId -> Bool
 edgesIso g1 g2 s = all (outEdgesIso g1 g2 s) (allNodes g1)
 
-outEdgesIso :: (Eq a, Eq b) => Graph a b -> Graph a b -> Mapping NodeId NodeId -> NodeId -> Bool
+outEdgesIso :: Ord b => Graph a b -> Graph a b -> Mapping NodeId NodeId -> NodeId -> Bool
 outEdgesIso g1 g2 s n1 =
-  length es1 == length es2 &&
-  any (targetsIso g1 g2 s) (permutationsWrt eLabel g1 g2 es1 es2) 
+  nonEmpty (bijectionsWith (edgeKey g1) es1 (edgeKey g2) es2) 
   where
   n2  = definiteLookup n1 s
   es1 = outEdges g1 n1
   es2 = outEdges g2 n2
 
-targetsIso :: Eq b => Graph a b -> Graph a b -> Mapping NodeId NodeId -> Mapping EdgeId EdgeId -> Bool
-targetsIso g1 g2 sn se = all sameTarget se
-  where
-  sameTarget (e1, e2) = definiteLookup t1 sn == t2
-    where
-    t1 = target g1 e1
-    t2 = target g2 e2
-
-permutationsWrt :: Eq d => (Graph a b -> c -> d) -> Graph a b -> Graph a b -> [c] -> [c] -> [Mapping c c]
-permutationsWrt f g1 g2 xs1 xs2 =
-  filter (all agree) [zip xs1 xs2' | xs2' <- permutations xs2]
-  where
-  agree (x1, x2)  =  f g1 x1 == f g2 x2
+edgeKey :: Graph a b -> EdgeId -> (b, NodeId)
+edgeKey g e  =  (eLabel g e, target g e)
 

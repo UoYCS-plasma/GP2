@@ -2,12 +2,10 @@ module ApplyRule where
 
 import Data.List
 import Data.Maybe
-import GraphMatch
 import GPSyntax
 import LabelMatch
 import GraphMatch
 import Graph
-import ExAr
 import Mapping
 import Evaluate 
 

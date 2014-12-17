@@ -5,7 +5,6 @@ import Data.List
 import Data.Maybe
 import GPSyntax
 import Graph
-import ExAr
 import Mapping
 
 -- A symbol's Scope is the procedure it is contained in. Global symbols
@@ -66,8 +65,8 @@ enterVariable :: Scope -> RuleID -> SymbolTable -> Variable -> SymbolTable
 enterVariable scope rule table (id, gpType) = addItem table id (Symbol gpType scope rule)
 
 -- NodeMap and EdgeMap keeps track of the correspondences between string IDs in 
--- the AstGraphs and the integer IDs in the ExAr graphs. Only bidirectional
--- edges are placed in the mapping.
+-- the AstGraphs and the integer node-id and edge-ids in graph data structures.
+-- Only bidirectional edges are placed in the mapping.
 type NodeMap = Mapping NodeName NodeId
 type EdgeMap = Mapping EdgeName EdgeId
 

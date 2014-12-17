@@ -14,7 +14,6 @@ import GPSyntax
 usage :: String
 usage = "Usage: IsoChecker <graph1> <graph2>"
 
-
 main :: IO ()
 main = do
     args <- getArgs
@@ -24,9 +23,7 @@ main = do
             g2 <- readFile gr2file
             let hg1 = makeHostGraph $ parse hostGraph g1
             let hg2 = makeHostGraph $ parse hostGraph g2
-            let n = length $ isomorphismCount [hg1, hg2]
-            case trace (show n) n of 
-                1 -> putStrLn $ "\ESC[032mISOMORPHIC: \ESC[0m" ++ gr1file ++ " and " ++ gr2file
-                _ -> putStrLn $ "\ESC[031mNON-ISOMORPHIC: \ESC[0m" ++ gr1file ++ " and " ++ gr2file
+            putStr $ (if isomorphic hg1 hg2 then "ISOMORPHIC: " else "NON-ISOMORPHIC")
+            putStrLn $ gr1file ++ " and " ++ gr2file
         (_, _, errs) -> do
             error (concat errs ++ usage)

@@ -20,7 +20,7 @@ data Colour = Uncoloured
             | Blue
             | Grey 
             | Dashed 
-            | Cyan deriving (Eq, Show)
+            | Cyan deriving (Ord, Eq, Show)
 
 hostColours :: [ (String, Colour) ]
 hostColours = [
@@ -80,14 +80,12 @@ data Command = Block Block
              | TryStatement Block Block Block
     deriving Show
 
-
 data Block = ComSeq [Command]
            | LoopedComSeq [Command]
            | SimpleCommand SimpleCommand
            | ProgramOr Block Block      
     deriving (Show)
       
-
 data SimpleCommand = RuleCall [RuleName]
                    | LoopedRuleCall [RuleName]
                    | ProcedureCall ProcName
@@ -95,7 +93,6 @@ data SimpleCommand = RuleCall [RuleName]
                    | Skip
                    | Fail
     deriving Show
-
 
 -- GP Rule ADTs
 type Variable = (VarName, VarType)
@@ -159,16 +156,17 @@ data HostNode = HostNode NodeName Bool HostLabel deriving Show
 instance Eq HostNode where
     HostNode _ isRoot1 label1 == HostNode _ isRoot2 label2 =
         isRoot1 == isRoot2 && label1 == label2
+instance Ord HostNode where
+    HostNode _ isRoot1 label1 `compare` HostNode _ isRoot2 label2 =
+        (isRoot1,label1) `compare` (isRoot2,label2)
 
 data HostEdge = HostEdge NodeName NodeName HostLabel deriving Show
 
 -- Host Graph ADTs
 type HostGraph = Graph HostNode HostLabel
 data AstHostGraph = AstHostGraph [HostNode] [HostEdge] deriving Show
-data HostLabel = HostLabel [HostAtom] Colour deriving (Eq, Show)
-data HostAtom = Int Int
-              | Str String 
-              | Chr Char deriving (Eq, Show)
+data HostLabel = HostLabel [HostAtom] Colour deriving (Ord, Eq, Show)
+data HostAtom = Int Int | Str String | Chr Char deriving (Ord, Eq, Show)
 
 colourH :: HostGraph -> NodeId -> Colour
 colourH h n = c where HostNode _ _ (HostLabel _ c) = nLabel h n 

@@ -2,14 +2,12 @@ module Evaluate where
 
 import Data.List
 import Data.Maybe
-
 import GPSyntax
 import ProcessAst
 import Mapping
 import LabelMatch
 import GraphMatch
 import Graph
-import ExAr
 
 type EvalContext = (GraphMorphism, HostGraph, RuleGraph)
 

@@ -23,8 +23,8 @@ data Graph a b = Graph (Map Int (Node a)) Int (Map Int (Edge b)) Int
 data Node a = Node a               deriving Show
 data Edge a = Edge NodeId NodeId a deriving Show
  
-newtype NodeId = N Int deriving (Eq, Show)
-newtype EdgeId = E Int deriving (Eq, Show)
+newtype NodeId = N Int deriving (Ord, Eq, Show)
+newtype EdgeId = E Int deriving (Ord, Eq, Show)
 
 nodeNumber :: NodeId -> Int
 nodeNumber (N i) = i
