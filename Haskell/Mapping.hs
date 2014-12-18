@@ -12,6 +12,12 @@ mergeMapping s ((k, v):kvs) = do
     s' <- extendMapping s k v
     mergeMapping s' kvs
 
+mergeMappings :: (Eq a, Eq b) => [Mapping a b] -> Maybe (Mapping a b)
+mergeMappings []      =  Just []
+mergeMappings (m:ms)  =  do
+    m' <- mergeMappings ms
+    mergeMapping m m'
+
 dom :: Mapping a b -> [a]
 dom = map fst
 

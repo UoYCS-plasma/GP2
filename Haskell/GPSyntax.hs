@@ -2,9 +2,8 @@ module GPSyntax where
 
 import Graph
 
-gpNumChars, gpChars :: [Char]
-gpNumChars = ['0'..'9']
-gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , gpNumChars , ['_'], ['-'] ]
+gpChars :: [Char]
+gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , ['0'..'9'] , ['_'], ['-'] ]
 
 keywords :: [String]
 keywords = map fst hostColours ++
@@ -14,13 +13,8 @@ keywords = map fst hostColours ++
             "and", "not", "edge", "empty", "indeg", "outdeg",
             "slength", "llength"]
 
-data Colour = Uncoloured
-            | Red 
-            | Green 
-            | Blue
-            | Grey 
-            | Dashed 
-            | Cyan deriving (Ord, Eq, Show)
+data Colour = Uncoloured | Red | Green | Blue | Grey | Dashed | Cyan
+  deriving (Ord, Eq, Show)
 
 hostColours :: [ (String, Colour) ]
 hostColours = [
@@ -34,12 +28,8 @@ hostColours = [
 ruleColours :: [ (String, Colour) ]
 ruleColours = ("cyan", Cyan) : hostColours
 
-data VarType = IntVar
-             | ChrVar
-             | StrVar
-             | AtomVar
-             | ListVar
-   deriving (Eq, Show)
+data VarType = IntVar | ChrVar | StrVar | AtomVar | ListVar
+  deriving (Eq, Show)
 
 instance Ord VarType where
     ListVar <= vt = vt == ListVar
@@ -132,8 +122,6 @@ data RuleAtom = Var Variable
     deriving (Show, Eq)
 
 -- TODO: precedence of infix binary operators
--- Is it possible to do BinOp Atom Atom and
--- data BinOp = Plus | Min | ... ?
 data Condition = NoCondition
                | TestInt VarName
                | TestChr VarName

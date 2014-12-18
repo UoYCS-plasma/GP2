@@ -1,9 +1,6 @@
 module ParseLib where
 
--- CAUTION: 'pure' will soon clash with a Prelude function
-
 import Data.Char
-import GPSyntax
 
 infixr 3 <|>
 infixl 4 <*>
@@ -30,22 +27,9 @@ a <| b = pure (\a b -> a) <*> a <*> b
 guarded :: (a -> Bool) -> Parser a -> Parser a
 guarded f p = \s -> [(s',a) | (s',a) <- p s, f a]
 
-pFst :: Parser (a, b) -> Parser a
-pFst p = pure (\(a, b) -> a) <*> p
-
-pSnd :: Parser (a, b) -> Parser b
-pSnd p = pure (\(a, b) -> b) <*> p
-
-anyChar :: Parser Char
-anyChar "" = []
-anyChar (c:s) = [(s, c)]
-
 satisfy :: (Char -> Bool) -> Parser Char
 satisfy f "" = []
 satisfy f (c:s) = [(s, c) | f c]
-
-anyCharExcept :: String -> Parser Char
-anyCharExcept s = satisfy (not . flip elem s)
 
 char :: Char -> Parser Char
 char c = satisfy ( == c )
@@ -55,8 +39,7 @@ string "" = pure ""
 string (c:cs) = pure (:) <*> char c <*> string cs
 
 maybeOne :: Parser a -> Parser [a]
-maybeOne p = pure (:) <*> p <*> pure []
-		 <|> pure []
+maybeOne p = pure (:) <*> p <*> pure [] <|> pure []
 
 maybeSome :: Parser a -> Parser [a]
 maybeSome p = atLeastOne p <|> pure []
@@ -88,67 +71,16 @@ spaces = atLeastOne space
 optSpaces :: Parser String
 optSpaces = maybeSome space
 
-escape :: Parser Char
-escape = char '\\' |> anyChar
-    where
-        escapes = [ ('n', '\n'), ('r', '\r'), ('\\', '\\'), ('t', '\t'), ('"', '\"'), ('0', '\0') ]
-
-charQuotedString :: Char -> Parser String
-charQuotedString c = char c |> maybeSome stringChar <| char c
-    where
-        stringChar = escape <|> anyCharExcept (c:"\\")
-
 token :: Parser a -> Parser a
 token p = p <| optSpaces
 
 keyword :: String -> Parser String
 keyword = token . string
 
-endPoints :: Parser (String, String)
-endPoints = label |> keyword "," |> pure (,) <*> ( label <| keyword "," ) <*> label
-
-value :: Parser HostAtom
-value = intLit
-    <|> strLit
-    <|> charLit
-
-numChar :: Parser Char
-numChar = satisfy (`elem` gpNumChars)
-
-charLit :: Parser HostAtom
-charLit = char '\'' |> pure Chr <*> gpChar <| char '\'' <| optSpaces
-
-strLit :: Parser HostAtom
-strLit = char '"' |> pure Str <*> maybeSome gpChar <| keyword "\""
-    <|>  char '\'' |> pure Str <*> exactlyOne gpChar <| keyword "'"
-
-gpChar :: Parser Char
-gpChar = satisfy (`elem` gpChars)
-
-intLit :: Parser HostAtom
-intLit = pure Int <*> ( pure read <*> atLeastOne numChar <| optSpaces )
-
-label :: Parser String
-label = token ( atLeastOne gpChar ) <| optSpaces
-
-identifier :: Parser Char -> Parser String
-identifier first = guarded g (pure (:) <*> first <*> maybeSome gpChar)
-  where g s = (map toLower s) `notElem` keywords
-
-lowerIdent :: Parser String
-lowerIdent = identifier lower <| optSpaces
-
-upperIdent :: Parser String
-upperIdent = identifier upper <| optSpaces
-
-root :: Parser Bool
-root = pure (not . null) <*> (maybeOne $ keyword "(R)")
-
 parse :: Parser a -> String -> a
-parse p s =
-    case p s of
-        []        -> error "Parse error"
-        [("", x)] -> x
-        [(s, x)]  -> error "Incomplete parse"
-        _         -> error "Ambiguous parse. This shouldn't happen!"
+parse p s = case p s of
+            []        -> error "Parse error"
+            [("", x)] -> x
+            [(s, x)]  -> error "Incomplete parse"
+            _         -> error "Ambiguous parse. This shouldn't happen!"
 

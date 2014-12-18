@@ -1,7 +1,7 @@
 module ParseGraph where
 
+import Data.Char (toLower, isDigit)
 import Data.Maybe
-
 import ParseLib
 import GPSyntax
 import Graph
@@ -40,4 +40,34 @@ hostColour = keyword "#" |> pure col <*> label
         <|> pure Uncoloured
     where
         col c = fromJust $ lookup c hostColours
+
+value :: Parser HostAtom
+value = intLit <|> strLit <|> charLit
+
+intLit :: Parser HostAtom
+intLit = pure (Int . read) <*> atLeastOne (satisfy isDigit) <| optSpaces
+
+charLit :: Parser HostAtom
+charLit = char '\'' |> pure Chr <*> gpChar <| char '\'' <| optSpaces
+
+strLit :: Parser HostAtom
+strLit = char '"' |> pure Str <*> maybeSome gpChar <| keyword "\""
+    <|>  char '\'' |> pure Str <*> exactlyOne gpChar <| keyword "'"
+
+gpChar :: Parser Char
+gpChar = satisfy (`elem` gpChars)
+
+identifier :: Parser Char -> Parser String
+identifier first = guarded g (pure (:) <*> first <*> maybeSome gpChar)
+  where g s = (map toLower s) `notElem` keywords
+
+lowerIdent :: Parser String
+lowerIdent = identifier lower <| optSpaces
+
+label :: Parser String
+label = token ( atLeastOne gpChar ) <| optSpaces
+
+root :: Parser Bool
+root = pure (not . null) <*> (maybeOne $ keyword "(R)")
+
 

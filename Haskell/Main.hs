@@ -5,7 +5,6 @@ import System.Environment
 import System.Console.GetOpt
 
 import ApplyRule
-import ExAr
 import Graph 
 import GraphIsomorphism
 import GPSyntax
@@ -15,11 +14,6 @@ import ParseProgram
 import PrintGraph 
 import ProcessAst
 import RunProgram
-
--- Optional: For testing
--- import GraphMatch
--- import Graph
--- import ParseRule
 
 import Debug.Trace
 
