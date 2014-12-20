@@ -94,6 +94,15 @@ Graph *newGraph(void)
 
 bool validGraph(Graph *graph)
 {
+   if(graph == NULL ||
+     (graph->number_of_edges == 0 && graph->number_of_nodes == 0)) 
+   {
+      print_to_console("You asked me to validate the empty graph.\n"
+                       "The empty graph trivially satisfies all the invariants.\n"
+                       "Have a nice day!\n\n");
+      return true;
+   }
+
    bool valid_graph = true, slot_found = false;
    int graph_index, node_index, free_slot, node_count = 0, edge_count = 0;
    StackNode *iterator = NULL;
@@ -1326,54 +1335,117 @@ int getOutdegree (Node *node)
 }
 
 
-void printGraph (Graph *graph) 
+void printGraph(Graph *graph) 
+{
+   int index, node_count = 0, edge_count = 0;
+
+   if(graph->number_of_nodes == 0) 
+   {
+      printf("[ | ]\n");
+      return;
+   }
+
+   printf("[ ");
+   for(index = 0; index < graph->next_node_index; index++)
+      if(graph->nodes[index]) 
+      {
+         /* Five nodes per line */
+         if(node_count != 0 && node_count % 5 == 0) printf("\n  ");
+         node_count++;
+
+         Node *node = getNode(graph, index);
+         if(node->root)
+              printf("(n%d(R), ", index);
+         else printf("(n%d, ", index);
+         if(node->label->list) printList(node->label->list);
+         else printf("empty");
+         printMark(node->label->mark, false);
+         printf(") ");
+      }
+ 
+   if(graph->number_of_edges == 0)
+   {
+      printf("| ]\n");
+      return;
+   }
+
+   printf("|\n  ");
+   for(index = 0; index < graph->next_edge_index; index++)
+      if(graph->edges[index]) 
+      {
+         /* Three edges per line */
+         if(edge_count != 0 && edge_count % 3 == 0) printf("\n  ");
+         edge_count++;
+
+         Edge *edge = getEdge(graph, index);
+         if(edge->bidirectional)
+              printf("(e%d(B), ", index);
+         else printf("(e%d, ", index);
+         printf("n%d, n%d, ", edge->source->index, edge->target->index);
+         if(edge->label->list) printList(edge->label->list);
+         else printf("empty");
+         printMark(edge->label->mark, false);
+         printf(") ");
+      }
+   printf("]\n\n");
+}
+
+void printVerboseGraph(Graph *graph) 
 {
     int index;
     printf("Nodes\n=====\n");
     for(index = 0; index < graph->next_node_index; index++)
-       if(graph->nodes[index]) printNode(graph->nodes[index]);
+       if(graph->nodes[index]) printVerboseNode(graph->nodes[index]);
  
     printf("Edges\n=====\n");
     for(index = 0; index < graph->next_edge_index; index++)
-       if(graph->edges[index]) printEdge(graph->edges[index]);
+       if(graph->edges[index]) printVerboseEdge(graph->edges[index]);
     printf("\n");
 
-    printf("Root Nodes\n==========\n");
+    printf("Root Node List\n==============\n");
     GSList *iterator = graph->root_nodes;
     while(iterator != NULL)
     {
        Node *node = (Node *)iterator->data;
-       printNode(node); 
+       printVerboseNode(node); 
        iterator = iterator->next;
     }
     printf("\n");
 }
 
-void printNode(Node *node)
+void printVerboseNode(Node *node)
 {
-    printf("Index: %d\n", node->index);
-    if(node->root) printf("Root\n");
-    printf("Label Class: %d\n", node->label_class);
-    printf("Mark: %d\n", node->label->mark);
-    printf("Label: ");
-    if(node->label->list) printList(node->label->list);
-    else printf("empty\n");
+    printf("Index: %d", node->index);
+    if(node->root) printf(" (Root)");
     printf("\n");
-    printf("Indegree: %d\nOutdegree: %d\n\n", node->indegree, node->outdegree);
+    printf("Label Class: %d\n", node->label_class);
+    printf("Label: ");
+    if(node->label->list) 
+    {
+       printList(node->label->list);
+       printf("\n");
+    }
+    else printf("empty\n");
+    printMark(node->label->mark, true);
+    printf("Indegree: %d. Outdegree: %d\n\n", node->indegree, node->outdegree);
 }
 
-void printEdge (Edge *edge) 
+void printVerboseEdge(Edge *edge) 
 {
-    printf("Index: %d\n", edge->index);
-    if(edge->bidirectional) printf("Bidirectional\n");
-    printf("Label Class: %d\n", edge->label_class);
-    printf("Mark: %d\n", edge->label->mark);
-    printf("Label: ");
-    if(edge->label->list) printList(edge->label->list);
-    else printf("empty\n");
+    printf("Index: %d", edge->index);
+    if(edge->bidirectional) printf(" (Bidirectional)");
     printf("\n");
-    printf("Source: %d\n", edge->source->index);
-    printf("Target: %d\n", edge->target->index);
+    printf("Label Class: %d\n", edge->label_class);
+    printf("Label: ");
+    if(edge->label->list) 
+    {
+       printList(edge->label->list);
+       printf("\n");
+    }
+    else printf("empty\n");
+    printMark(edge->label->mark, true);
+    printf("\n");
+    printf("Source: %d. Target: %d\n\n", edge->source->index, edge->target->index);
     printf("\n");
 }
 
@@ -1478,10 +1550,67 @@ void printListElement(ListElement* elem)
     }
 }
 
+void printMark(MarkType mark, bool verbose)
+{
+   switch(mark)
+   {
+      case NONE:
+
+           break;
+
+      case RED:
+         
+           if(verbose) printf("Mark: Red\n");
+           else printf(" # red");
+
+           break;
+
+      case GREEN:
+
+           if(verbose) printf("Mark: Green\n");
+           else printf(" # green");
+
+           break;
+
+      case BLUE:
+
+           if(verbose) printf("Mark: Blue\n");
+           else printf(" # blue");
+
+           break;
+
+      case GREY:
+
+           if(verbose) printf("Mark: Grey\n");
+           else printf(" # grey");
+
+           break;
+
+      case DASHED:
+
+           if(verbose) printf("Mark: Dashed\n");
+           else printf(" # dashed");
+
+           break;
+
+      case ANY:
+
+           if(verbose) printf("Mark: Any\n");
+           else printf(" # any");
+
+           break;
+
+      default:
+           print_to_log("Error (printMark): Unexpected mark type %d\n", mark);
+
+           break;
+   }
+}
 
 void freeGraph(Graph *graph) 
 {
    if(graph == NULL) return;
+
    int index;
 
    for(index = 0; index < graph->next_node_index; index++)

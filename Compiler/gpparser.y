@@ -25,8 +25,8 @@ bool is_bidir = false;
 
 extern List *gp_program; /* This will point to the root of the program AST.
 			  * Defined in main.c. */
-extern GPGraph *host_graph; /* This will point to the root of the host graph AST.
-			     * Defined in main.c */
+extern GPGraph *ast_host_graph; /* This will point to the root of the host graph AST.
+		                 * Defined in main.c */
 extern bool abort_scan; /* Defined in main.c */
 
 
@@ -46,7 +46,7 @@ extern bool abort_scan; /* Defined in main.c */
 %token MAIN IF TRY THEN ELSE SKIP FAIL                          
 %token WHERE EDGETEST  		               
 %token INDEG OUTDEG LLEN SLEN					
-%token INT STRING ATOM LIST 	                               
+%token INT CHARACTER STRING ATOM LIST 	                               
 %token INTERFACE _EMPTY INJECTIVE 	
 %token <mark> MARK ANY_MARK			                        
 %token ARROW					                
@@ -176,7 +176,7 @@ extern bool abort_scan; /* Defined in main.c */
 
 
 Initialise: GP_PROGRAM Program		{ gp_program = $2; }
-          | GP_GRAPH HostGraph          { host_graph = $2; }
+          | GP_GRAPH HostGraph          { ast_host_graph = $2; }
 
  /* Grammar for GP2 Program Text. */
 
@@ -334,7 +334,7 @@ NodeIDList: NodeID			{ $$ = addASTNodeID(@1, $1, NULL);
 					  if($3) free($3); }
 
 Type: INT				{ $$ = INT_DECLARATIONS; } 
-    | CHAR				{ $$ = CHAR_DECLARATIONS; }
+    | CHARACTER				{ $$ = CHAR_DECLARATIONS; }
     | STRING                            { $$ = STRING_DECLARATIONS; }
     | ATOM 	                        { $$ = ATOM_DECLARATIONS; }
     | LIST				{ $$ = LIST_DECLARATIONS; }
@@ -394,7 +394,7 @@ Condition: Subtype '(' Variable ')' 	{ $$ = newASTSubtypePred($1, @$, $3);
 	 | '(' Condition ')' 		{ $$ = $2; }
 
 Subtype: INT				{ $$ = INT_CHECK; } 
-       | CHAR				{ $$ = CHAR_CHECK; }
+       | CHARACTER			{ $$ = CHAR_CHECK; }
        | STRING                         { $$ = STRING_CHECK; }
        | ATOM 	                        { $$ = ATOM_CHECK; }
 

@@ -21,6 +21,7 @@
 #include "ast.h" 
 #include "globals.h"
 #include "generate.h"
+#include "graph.h"
 #include "pretty.h"
 #include "rule.h"
 #include "seman.h" 
@@ -57,7 +58,7 @@ bool abort_compilation = false; /* If set to true, code generation does not occu
 struct List *gp_program = NULL; 
 
 /* The parser points this to the root of the host graph's AST. */
-struct GPGraph *host_graph = NULL; 
+struct GPGraph *ast_host_graph = NULL; 
 
 /* The symbol table is created inside main. */
 GHashTable *gp_symbol_table = NULL;	
@@ -137,10 +138,10 @@ int main(int argc, char** argv)
    if(!yyparse()) {
       print_to_log("GP2 graph parse succeeded\n\n");    
    
-      reverseGraphAST(host_graph);
+      reverseGraphAST(ast_host_graph);
 
       #ifdef DRAW_HOST_GRAPH_AST
-         printDotHostGraph(host_graph, file_name);
+         printDotHostGraph(ast_host_graph, file_name);
       #endif
    }
    else print_to_log("GP2 graph parse failed.\n\n");     
@@ -200,18 +201,18 @@ int main(int argc, char** argv)
    while((data = pop(rule_stack)) != NULL)
    {
       if(data->rule == NULL) continue;
-      printRule(data->rule, true);
+      printRule(data->rule, false);
       validGraph(data->rule->lhs);
       generateRuleCode(data->rule);
       freeRule(data->rule);
       free(data);
-   }
+   } 
   
    /* Garbage collection */
    freeStack(rule_stack);
    fclose(yyin);
    if(gp_program) freeAST(gp_program); 
-   if(host_graph) freeASTGraph(host_graph); 
+   if(ast_host_graph) freeASTGraph(ast_host_graph); 
 
    /* The call to g_hash_table_foreeach frees all the hash table values,
     * linked lists of struct Symbols, with the function freeSymbolList 

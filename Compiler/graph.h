@@ -18,6 +18,9 @@
 #include "globals.h"
 #include "stack.h"
 
+/* Global structure for blank labels. */
+extern struct Label blank_label;
+
 typedef struct Graph 
 {
    /* The primary reference for a graph's nodes and edges. Indices for each 
@@ -55,6 +58,7 @@ typedef struct Graph
    GSList *root_nodes;
 } Graph;
 
+extern Graph *host;
 
 /* Abstract data type for GP2's marks defined in globals.h
  * typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; */
@@ -68,8 +72,6 @@ typedef struct Label {
    bool has_list_variable;
 } Label;
 
-/* Global structure for blank labels. */
-extern Label blank_label;
 
 /* Abstract data type for atomic expressions. From globals.h. 
 typedef enum {VARIABLE = 0, INTEGER_CONSTANT, CHARACTER_CONSTANT,
@@ -219,11 +221,13 @@ int getOutdegree(Node *node);
 
 /* Printing and freeing functions 
  * ============================== */
-void printGraph (Graph *graph);
-void printNode(Node *node);
-void printEdge(Edge *edge);
+void printGraph(Graph *graph);
+void printVerboseGraph(Graph *graph);
+void printVerboseNode(Node *node);
+void printVerboseEdge(Edge *edge);
 void printList(GList *list);
 void printListElement(ListElement* elem);
+void printMark(MarkType mark, bool verbose);
 
 /* The node and edge structures are freed in freeGraph when the graph's node 
  * and edge pointer arrays are freed. 
