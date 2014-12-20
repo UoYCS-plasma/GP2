@@ -159,23 +159,32 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
          exit(1);
       }
       Node *source = getNode(lhs, source_map->left_index);
-
-      IndexMap *target_map = findMapFromId(*node_map, ast_edge->target);
-      if(target_map == NULL)
-      {
-         printf("Error (scanLHS): Edge's target %s not found in the node map. "
-                "\n", ast_edge->target);
-         exit(1);
-      }
-      Node *target = getNode(lhs, target_map->left_index);
-
       Label *label = transformLabel(ast_edge->label);
-      Edge *edge = newEdge(ast_edge->bidirectional, label, source, target);
-      addEdge(lhs, edge);
 
-      *edge_map = addIndexMap(*edge_map, ast_edge->name, edge->index, -1,
-                              ast_edge->source, ast_edge->target);
+      if(ast_edge->source == ast_edge->target)
+      {
+         Edge *edge = newEdge(ast_edge->bidirectional, label, source, source);
+         addEdge(lhs, edge);
+         *edge_map = addIndexMap(*edge_map, ast_edge->name, edge->index, -1,
+                                 ast_edge->source, ast_edge->target);
+      }
 
+      else
+      {
+         IndexMap *target_map = findMapFromId(*node_map, ast_edge->target);
+         if(target_map == NULL)
+         {
+            printf("Error (scanLHS): Edge's target %s not found in the node map. "
+                  "\n", ast_edge->target);
+            exit(1);
+         }
+         Node *target = getNode(lhs, target_map->left_index);
+
+         Edge *edge = newEdge(ast_edge->bidirectional, label, source, target);
+         addEdge(lhs, edge);
+         *edge_map = addIndexMap(*edge_map, ast_edge->name, edge->index, -1,
+                                 ast_edge->source, ast_edge->target);
+      }
       edges = edges->next;   
    }
    return lhs;
@@ -259,17 +268,17 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
          exit(1);
       }
       Node *source = getNode(rhs, source_map->right_index);
+      Label *label = transformLabel(ast_edge->label);
 
       IndexMap *target_map = findMapFromId(node_map, target_id);
       if(target_map == NULL)
       {
-         printf("Error (scanRHS): Edge's target %s not found in the node map."
-                "\n", target_id);
+         printf("Error (scanRHS): Edge's target %s not found in the node "
+                  "map. \n", target_id);
          exit(1);
       }
       Node *target = getNode(rhs, target_map->right_index);
 
-      Label *label = transformLabel(ast_edge->label);
       Edge *edge = newEdge(ast_edge->bidirectional, label, source, target);
       addEdge(rhs, edge);
 
