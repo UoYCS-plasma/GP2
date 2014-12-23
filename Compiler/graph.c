@@ -1339,6 +1339,12 @@ void printGraph(Graph *graph)
 {
    int index, node_count = 0, edge_count = 0;
 
+   if(graph == NULL) 
+   {
+      printf("[ | ]\n");
+      return;
+   }
+
    if(graph->number_of_nodes == 0) 
    {
       printf("[ | ]\n");

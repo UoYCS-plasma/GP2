@@ -14,17 +14,25 @@
 #define printToHeader(code, ...)	             \
   do { fprintf(rule_header, code, ##__VA_ARGS__); }  \
   while(0) 
+#define PTH printToHeader
 
 #define printToSource(code, ...)	             \
   do { fprintf(rule_source, code, ##__VA_ARGS__); }  \
   while(0) 
+#define PTS printToSource
 
 #define printToSourceI(code, indent, ...)	         		\
   do { fprintf(rule_source, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
   while(0) 
+#define PTSI printToSourceI
 
+#define printToInitSource(code, ...)	        \
+  do { fprintf(source, code, ##__VA_ARGS__); }  \
+  while(0) 
+#define PTIS printToInitSource
+
+#include "ast.h"
 #include "globals.h"
-#include "match.h"
 #include "rule.h"
 
 extern FILE *rule_header;
@@ -66,6 +74,7 @@ void addSearchOp(Searchplan *plan, char type, int index);
 void printSearchplan(Searchplan *searchplan);
 void freeSearchplan(Searchplan *searchplan);
 
+void generateHostGraphCode(GPGraph *ast_host_graph);
 void generateRuleCode(Rule *rule);
 
 /* generateSearchplan traverses a graph in order to create a searchplan

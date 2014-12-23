@@ -1,8 +1,6 @@
-#include "globals.h"
-#include "graph.h"
-#include "match.h"
+#include "init_runtime.h"
 /* #include all generated rule matchers. */
-#include "Rules/Global_rule1.h"
+#include "Global_rule1.h"
 
 
 

@@ -14,9 +14,9 @@
 #ifndef INC_PRETTY_H
 #define INC_PRETTY_H
 
-#include "ast.h" /* AST structs */
+#include "ast.h"
 #include "globals.h"
-#include "seman.h" /* Symbol struct */
+#include "seman.h" 
 
 #define print_to_dot_file(text, ...)                  \
   do { fprintf(dot_file, text, ## __VA_ARGS__); }     \

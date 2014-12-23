@@ -6,10 +6,6 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#define PTH printToHeader
-#define PTS printToSource
-#define PTSI printToSourceI
-
 #include "generate.h"
 
 FILE *rule_header = NULL;
@@ -17,11 +13,82 @@ FILE *rule_source = NULL;
  
 Searchplan *searchplan = NULL;
 
+
+void generateHostGraphCode(GPGraph *ast_host_graph)
+{
+   FILE *header = fopen("init_runtime.h", "w");
+   if(header == NULL) { 
+     perror("init_runtime.h");
+     exit(1);
+   }  
+
+   FILE *source = fopen("init_runtime.c", "w");
+   if(source == NULL) { 
+     perror("init_runtime.c");
+     exit(1);
+   }
+     
+   fprintf(header, "#include \"graph.h\"\n"
+                   "#include \"macros.h\"\n"
+                   "#include \"rule.h\"\n\n"
+ 		   "Graph *makeHostGraph(void);\n");
+
+   PTIS("#include \"init_runtime.h\"\n\n"
+        "Graph *makeHostGraph(void)\n"
+        "{\n"
+        "   Graph *host = newGraph();\n"
+        "   Node *node, *source, *target = NULL;\n"
+        "   Edge *edge = NULL;\n"
+        "   IndexMap *node_map = NULL;\n\n");
+
+   List *nodes = ast_host_graph->nodes;
+
+   while(nodes != NULL)
+   {
+      GPNode *ast_node = nodes->value.node;
+      //TODO: Incorporate Label *label = transformLabel(ast_node->label);
+      PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, ast_node->name);
+      nodes = nodes->next;   
+   }
+   PTIS("\n");
+   List *edges = ast_host_graph->edges;
+
+   while(edges != NULL)
+   {
+      GPEdge *ast_edge = edges->value.edge;
+
+      //TODO: Incorporate Label *label = transformLabel(ast_edge->label);
+      PTIS("   GET_HOST_SOURCE(\"%s\")\n"
+           "   /* If the edge is a loop, no need to get the target node. */\n"
+           "   if(!strcmp(\"%s\", \"%s\"))\n"
+           "   {\n"
+           "      edge = newEdge(%d, NULL, source, source);\n"
+           "      addEdge(host, edge);\n"
+           "   }\n",
+           ast_edge->source, ast_edge->source, ast_edge->target, 
+           ast_edge->bidirectional);
+
+      PTIS("   else\n"
+           "   {\n"
+           "      GET_HOST_TARGET(\"%s\")\n"
+           "   }\n"
+           "   edge = newEdge(%d, NULL, source, target);\n"
+           "   addEdge(host, edge);\n\n",
+           ast_edge->target, ast_edge->bidirectional);
+
+      edges = edges->next;   
+   }
+   PTIS("   if(node_map) freeIndexMap(node_map);\n"
+        "   return host;\n"
+        "}\n");
+}
+
+
 void generateRuleCode(Rule *rule)
 {
    string rule_name = rule->name;
    /* Create files <rule_name>.h and <rule_name>.c */
-   int length = strlen(rule_name) + 9;
+   int length = strlen(rule_name) + 3;
 
    string header_name = malloc(length);
    if(header_name == NULL)
@@ -36,10 +103,12 @@ void generateRuleCode(Rule *rule)
       print_to_log("Error: Memory exhausted during file name creation.\n");
       exit(1);
    }
-   strcpy(header_name, "Rules/");
-   strcpy(source_name, "Rules/");
-   strcat(header_name, rule_name);
-   strcat(source_name, rule_name);
+   //strcpy(header_name, "runtime/");
+   //strcpy(source_name, "runtime/");
+   //strcat(header_name, rule_name);
+   //strcat(source_name, rule_name);
+   strcpy(header_name, rule_name);
+   strcpy(source_name, rule_name);
    strcat(header_name, ".h");
    strcat(source_name, ".c");
 
@@ -60,10 +129,10 @@ void generateRuleCode(Rule *rule)
    free(header_name);
    free(source_name);
 
-   PTH("#include \"../globals.h\"\n"
-       "#include \"../graph.h\"\n"
-       "#include \"../macros.h\"\n"
-       "#include \"../match.h\"\n\n");
+   PTH("#include \"globals.h\"\n"
+       "#include \"graph.h\"\n"
+       "#include \"macros.h\"\n"
+       "#include \"match.h\"\n\n");
    PTS("#include \"%s.h\"\n\n", rule_name);
 
    /* Assuming at least one of LHS and RHS is non-empty. */
@@ -237,7 +306,6 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
           "   int source_index = 0, target_index = 0;\n\n");
    while(iterator_e != NULL)
    {
-      Edge *rule_edge = getEdge(rhs, iterator_e->edge_index);
       if(iterator_e->source_location == 'l')
       {
          PTSI("source_index = node_map[%d];\n", 3, iterator_e->source_index);
@@ -512,9 +580,7 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
       PTSI("if(result) return true;\n", 9);
       PTSI("else\n", 9);
       PTSI("{\n", 9);
-      PTSI("StackData *data = pop(morphism->node_images);\n", 12);
-      PTSI("if(data) free(data);\n", 12);
-      PTSI("matched_nodes[index] = false;\n", 12);
+      PTSI("REMOVE_NODE_MAP\n", 12);
       PTSI("}\n", 9);
    }
    PTSI("}\n", 6);
@@ -546,10 +612,10 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
         "    * in one step.\n"
         "    * Arguments: label class, mark, indegree, outdegree. */\n", 3);
    if(dangling_node)
-        PTSI("IF_VALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
+        PTSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
              left_node->label_class, left_node->label->mark, 
              left_node->indegree, left_node->outdegree);
-   else PTSI("IF_VALID_NODE(%d, %d, %d, %d)\n", 3,
+   else PTSI("IF_INVALID_NODE(%d, %d, %d, %d)\n", 3,
              left_node->label_class, left_node->label->mark, 
              left_node->indegree, left_node->outdegree); 
 
@@ -562,31 +628,24 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
       PTSI("index = host_node->index;\n\n", 6);
       PTSI("*/ Arguments: label class, mark, indegree, outdegree. */\n", 3);
       if(dangling_node)
-           PTSI("IF_VALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
+           PTSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
                 left_node->label_class, left_node->label->mark, 
                 left_node->indegree, left_node->outdegree);
-      else PTSI("IF_VALID_NODE(%d, %d, %d, %d)\n", 3,
+      else PTSI("IF_INVALID_NODE(%d, %d, %d, %d)\n", 3,
                left_node->label_class, left_node->label->mark, 
                left_node->indegree, left_node->outdegree); 
       PTSI("{\n", 6); 
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 9);
-      PTSI("if(data) free(data);\n", 9);
-      PTSI("matched_edges[host_edge->index] = false;\n", 9);
-      PTSI("return false;\n", 9);
+      PTSI("REMOVE_EDGE_MAP_AND_RETURN_FALSE\n", 9);
       PTSI("}\n", 6);
       PTSI("}\n\n", 3);
    }
    else 
    {
       PTSI("{\n", 3); 
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 6);
-      PTSI("if(data) free(data);\n", 6);
-      PTSI("matched_edges[host_edge->index] = false;\n", 6);
-      PTSI("return false;\n", 6);
+      PTSI("REMOVE_EDGE_MAP_AND_RETURN_FALSE\n", 6);
       PTSI("}\n\n", 3);
    }
       
-
    /* TODO: Call to label matcher goes here. */
    PTSI("bool nodes_match = host_node->label->list_length == 0;\n", 3);
    PTSI("if(nodes_match)\n", 3);
@@ -601,9 +660,7 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
       PTSI("if(result) return true;\n", 6);
       PTSI("else\n", 6);
       PTSI("{\n", 6);
-      PTSI("StackData *data = pop(morphism->node_images);\n", 6);
-      PTSI("if(data) free(data);\n", 6);
-      PTSI("matched_nodes[index] = false;\n", 9);
+      PTSI("REMOVE_NODE_MAP\n", 6);
       PTSI("}\n", 6);
    }
    PTSI("}\n", 3);
@@ -645,9 +702,7 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
       PTSI("if(result) return true;\n", 9);
       PTSI("else\n", 9);
       PTSI("{\n", 9);
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 12);
-      PTSI("if(data) free(data);\n", 12);
-      PTSI("matched_edges[index] = false;\n", 12);
+      PTSI("REMOVE_EDGE_MAP\n", 12);
       PTSI("}\n", 9);
    }
    PTSI("}\n", 6);
@@ -728,9 +783,7 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
    {
       PTSI("else\n", 9);
       PTSI("{\n", 9);
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 12);
-      PTSI("if(data) free(data);\n", 12);
-      PTSI("matched_edges[index] = false;\n", 12);
+      PTSI("REMOVE_EDGE_MAP\n", 12);
       PTSI("}\n", 9);
    }
    PTSI("}\n", 6);

@@ -2,9 +2,9 @@
 
 FILE *log_file;
 
-
 int main() {
 
+   Graph *host = makeHostGraph();
    validGraph(host);
    printGraph(host);
    

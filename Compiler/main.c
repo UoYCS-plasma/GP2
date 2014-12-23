@@ -21,7 +21,6 @@
 #include "ast.h" 
 #include "globals.h"
 #include "generate.h"
-#include "graph.h"
 #include "pretty.h"
 #include "rule.h"
 #include "seman.h" 
@@ -31,9 +30,9 @@
 /* Macros to control debugging features. */
 #undef PARSER_TRACE 		/* Assign yydebug to 1 */
 #undef DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
-#define DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
-#define PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
-#define DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
+#undef DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
+#undef PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
+#undef DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
                                    yyparse. */
 
 
@@ -68,7 +67,7 @@ Stack *rule_stack = NULL;
 int main(int argc, char** argv)
 {
    if(argc != 3) {
-     print_to_console( "Usage: runGP <program_file> <host_graph_file>\n");
+     print_to_console( "Usage: GP2-compile <program_file> <host_graph_file>\n");
      return 1;
    }
 
@@ -196,6 +195,7 @@ int main(int argc, char** argv)
    /* Populate the rule stack. */
    rule_stack = newStack();
    transformAST(gp_program, rule_stack);
+   generateHostGraphCode(ast_host_graph);
 
    StackData *data = NULL;
    while((data = pop(rule_stack)) != NULL)

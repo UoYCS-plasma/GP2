@@ -1,6 +1,38 @@
 #ifndef INC_GEN_MACROS_H
 #define INC_GEN_MACROS_H
 
+#define ADD_HOST_NODE(is_root, node_name)                                      \
+   do {                                                                        \
+   node = newNode((is_root), NULL);                                            \
+   addNode(host, node);                                                        \
+   node_map = addIndexMap(node_map, node_name, node->index, -1, NULL, NULL);   \
+   } while(0);                                                                 \
+
+#define GET_HOST_SOURCE(source_name)                                    \
+   do {                                                                 \
+   IndexMap *source_map = findMapFromId(node_map, source_name);         \
+   if(source_map == NULL)                                               \
+   {                                                                    \
+      print_to_log("Error (makeHostGraph): Edge's source " source_name  \
+                   "not found in the node map.\n");                     \
+      exit(1);                                                          \
+   }                                                                    \
+   source = getNode(host, source_map->left_index);                      \
+   } while(0);                                                          \
+
+#define GET_HOST_TARGET(target_name)                                    \
+   do {                                                                 \
+   IndexMap *target_map = findMapFromId(node_map, target_name);         \
+   if(target_map == NULL)                                               \
+   {                                                                    \
+      print_to_log("Error (makeHostGraph): Edge's target " target_name  \
+                   "not found in the node map.\n");                     \
+      exit(1);                                                          \
+   }                                                                    \
+   target = getNode(host, target_map->left_index);                      \
+   } while(0);                                                          \
+
+
 #define MAKE_MATCHED_NODES_ARRAY                                   \
    do {                                                            \
    matched_nodes = calloc(host_nodes, sizeof(bool));               \
@@ -124,20 +156,20 @@
       continue;                                    \
    }                                               \
 
-#define IF_VALID_NODE(lclass, nmark, indeg, outdeg) \
-   if(matched_nodes[index] ||                       \
-      host_node->label_class != (lclass) ||         \
-      host_node->label->mark != (nmark) ||          \
-      host_node->indegree < (indeg) ||              \
-      host_node->outdegree < (outdeg))              \
+#define IF_INVALID_NODE(lclass, nmark, indeg, outdeg) \
+   if(matched_nodes[index] ||                         \
+      host_node->label_class != (lclass) ||           \
+      host_node->label->mark != (nmark) ||            \
+      host_node->indegree < (indeg) ||                \
+      host_node->outdegree < (outdeg))                \
 
 
-#define IF_VALID_DANGLING_NODE(lclass, nmark, indeg, outdeg) \
-   if(matched_nodes[index] ||                                \
-      host_node->label_class != (lclass) ||                  \
-      host_node->label->mark != (nmark) ||                   \
-      host_node->indegree != (indeg) ||                      \
-      host_node->outdegree != (outdeg))                      \
+#define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg) \
+   if(matched_nodes[index] ||                                  \
+      host_node->label_class != (lclass) ||                    \
+      host_node->label->mark != (nmark) ||                     \
+      host_node->indegree != (indeg) ||                        \
+      host_node->outdegree != (outdeg))                        \
 
 
 #define ADD_NODE_MAP(l_index)                                                 \
@@ -169,6 +201,27 @@
    matched_edges[index] = true;                                               \
    } while(0);                                                                \
 
+#define REMOVE_NODE_MAP                          \
+   do {                                          \
+   StackData *data = pop(morphism->node_images); \
+   if(data) free(data);                          \
+   matched_nodes[index] = false;                 \
+   } while(0);                                   \
+
+#define REMOVE_EDGE_MAP                          \
+   do {                                          \
+   StackData *data = pop(morphism->edge_images); \
+   if(data) free(data);                          \
+   matched_edges[index] = false;                 \
+   } while(0);                                   \
+
+#define REMOVE_EDGE_MAP_AND_RETURN_FALSE         \
+   do {                                          \
+   StackData *data = pop(morphism->edge_images); \
+   if(data) free(data);                          \
+   matched_edges[host_edge->index] = false;      \
+   return false;                                 \
+   } while(0);                                   \
 
 #define MAKE_NODE_POINTER_MAP(r_nodes)                                    \
    do {                                                                   \

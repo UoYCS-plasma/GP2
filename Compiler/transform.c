@@ -161,7 +161,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       Node *source = getNode(lhs, source_map->left_index);
       Label *label = transformLabel(ast_edge->label);
 
-      if(ast_edge->source == ast_edge->target)
+      if(!strcmp(ast_edge->source, ast_edge->target))
       {
          Edge *edge = newEdge(ast_edge->bidirectional, label, source, source);
          addEdge(lhs, edge);
