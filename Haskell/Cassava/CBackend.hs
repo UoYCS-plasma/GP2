@@ -15,6 +15,8 @@ cCompileI (TRIN o i l) = "    TRIN" ++ stringifyArgs [o, i, l]
 
 cCompileI (TE r s)  = "    TE"  ++ stringifyArgs [r, s]
 cCompileI (TBE r s) = "    TBE" ++ stringifyArgs [r, s]
+cCompileI (CE r s)  = "    CE"  ++ stringifyArgs [r, s]
+cCompileI (CBE r s) = "    CBE" ++ stringifyArgs [r, s]
 cCompileI (XE r s)  = "    XE"  ++ stringifyArgs [r, s]
 cCompileI (NEWE a b) = "    NEWE" ++ stringifyArgs [a, b]
 

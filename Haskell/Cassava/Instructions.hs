@@ -32,7 +32,8 @@ data Instr =
 
     -- Create an edge traverser for 
     -- any edge between traversers in
-    -- TRAV registers
+    -- TRAV registers ("Traverse bi-di 
+    -- edges")
     | TBE Int Int
 
     -- Create a traverser-like object

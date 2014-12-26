@@ -8,8 +8,15 @@ import Debug.Trace
 
 notImplemented s = error $ "Not implemented: " ++ s
 
-type Interface = [NodeName]
+type Interface = ([NodeName], [EdgeName])
 type RegisterMap = [(NodeName, Int)]
+
+nodeInterfaceElem :: NodeName -> Interface -> Bool
+nodeInterfaceElem n (ns, _) = n `elem` ns
+
+edgeInterfaceElem :: EdgeName -> Interface -> Bool
+edgeInterfaceElem e (_, es) = e `elem` es
+
 
 compileGPProg :: GPProgram -> Prog
 compileGPProg (Program ds) = concat $ reverse $ map compileDecl ds
@@ -61,7 +68,7 @@ compileRule (AstRule id _ (lhs, rhs) cond) =
         compiledLhs = (PROC id) : nodeTravs ++ edgeTravs ++ conditions ++ [GO, ZTRF]
         compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap''' rhs'
         (nodeTravs, rmap)    = travsForLhsNodes interface lhs'
-        (edgeTravs, rmap')   = travsForLhsEdges rmap lhs'
+        (edgeTravs, rmap')   = travsForLhsEdges interface rmap lhs'
         (conditions, rmap'') = compileCond rmap' lhs' cond
         interface  = computeInterface lhs' rhs'
         (updatedNodes, rmap''') = updateNodes interface rmap'' rhs'
@@ -77,7 +84,7 @@ travsForLhsNodes iface (AstRuleGraph ns es) = (map (travForLhsNode iface es) ns,
 
 travForLhsNode :: Interface -> [AstRuleEdge] -> RuleNode -> Instr
 travForLhsNode iface es (RuleNode id root _) =
-    case (root, id `elem` iface) of
+    case (root, id `nodeInterfaceElem` iface) of
         (True, True)   -> TRIN o i l
         (True, False)  -> TRN  o i l
         (False, True)  -> TIN  o i l
@@ -85,16 +92,18 @@ travForLhsNode iface es (RuleNode id root _) =
     where
         (o, i, l) = classifyEdgesForNode id es
 
-travsForLhsEdges :: RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
-travsForLhsEdges rmap (AstRuleGraph ns es) = (map (travForLhsEdge rmap) es, rmap')
+travsForLhsEdges :: Interface -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
+travsForLhsEdges iface rmap (AstRuleGraph ns es) = (map (travForLhsEdge iface rmap) es, rmap')
     where
         rmap' = rmap ++ zip (map (\(AstRuleEdge id _ _ _ _) -> id) es) [length rmap..]
 
-travForLhsEdge :: RegisterMap -> AstRuleEdge -> Instr
-travForLhsEdge rmap e@(AstRuleEdge id bidi src tgt _) =
-    case (bidi, lookup src rmap, lookup tgt rmap) of
-        (False, Just n, Just m)  -> TE n m
-        (True,  Just n, Just m)  -> TBE n m
+travForLhsEdge :: Interface -> RegisterMap -> AstRuleEdge -> Instr
+travForLhsEdge iface rmap e@(AstRuleEdge id bidi src tgt _) =
+    case (bidi, id `edgeInterfaceElem` iface, lookup src rmap, lookup tgt rmap) of
+        (False, False, Just n, Just m)  -> TE n m
+        (True,  False, Just n, Just m)  -> TBE n m
+        (False, True,  Just n, Just m)  -> CE n m
+        (True,  True,  Just n, Just m)  -> CBE n m
         _ -> error $ "Reference to a node without a traverser in edge " ++ id
 
 
@@ -103,7 +112,7 @@ travForLhsEdge rmap e@(AstRuleEdge id bidi src tgt _) =
 updateNodes :: Interface -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
 updateNodes iface rmap (AstRuleGraph ns es) = (updated ++ created, rmap')
     where
-        (updateMe, createMe) = partition (\(RuleNode id _ _) -> id `elem` iface) ns
+        (updateMe, createMe) = partition (\(RuleNode id _ _) -> id `nodeInterfaceElem` iface) ns
         updated = concatMap updateNode updateMe
         (created, rmap') = createNodes rmap [] createMe
         updateNode (RuleNode id root _) = [] {- case (lookup id rmap, root) of
@@ -189,7 +198,7 @@ classifyEdgeForId id (AstRuleEdge _ _ i o _) =
         (_, True)    -> InEdge
         _            -> UninterestingEdge
 
-classifyEdgesForNode :: RuleName -> [AstRuleEdge] -> (Deg, Deg, Deg)
+classifyEdgesForNode :: NodeName -> [AstRuleEdge] -> (Deg, Deg, Deg)
 classifyEdgesForNode id es = (outs, ins, loops)
     where
         ins   = length $ filter (==InEdge) cs
@@ -200,13 +209,26 @@ classifyEdgesForNode id es = (outs, ins, loops)
 -- TODO: replace null sort function with one that puts the most informative first.
 sortNodes :: AstRuleGraph -> AstRuleGraph -> (AstRuleGraph, AstRuleGraph)
 sortNodes lhs rhs = (lhs, rhs)
+{-sortNodes (AstRuleGraph ns es) rhs = (lhs', rhs)
+    where
+        lhs' = (sortBy () lhs
+        sorter :: 
+        -}
+ 
+
 
 -- Compute the interface
+-- TODO: simplification alert! Currently works by node- and edge-ids. Work can be
+-- saved by identifying nodes and edges which are preserved in a smarter way
 computeInterface :: AstRuleGraph -> AstRuleGraph -> Interface
-computeInterface (AstRuleGraph lns _) (AstRuleGraph rns _) = interface
+computeInterface (AstRuleGraph lns les) (AstRuleGraph rns res) = interface
     where
-        lids = map extractNodeName lns
-        rids = map extractNodeName rns
-        interface = intersect lids rids
+        lnids = map extractNodeName lns
+        rnids = map extractNodeName rns
         extractNodeName :: RuleNode -> RuleName
         extractNodeName (RuleNode id _ _) = id
+        leids = map extractEdgeName les
+        reids = map extractEdgeName res
+        extractEdgeName :: AstRuleEdge -> EdgeName
+        extractEdgeName (AstRuleEdge id _ _ _ _) = id
+        interface = (intersect lnids rnids, intersect leids reids)
