@@ -12,7 +12,7 @@
 #ifndef INC_SEMAN_H
 #define INC_SEMAN_H
 
-#include "ast.h" /* struct List */
+#include "ast.h"
 #include "globals.h"
 
 /* GP2 symbols are stored in struct Symbol. These are values of the

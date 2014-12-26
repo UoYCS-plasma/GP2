@@ -20,6 +20,9 @@ compiler = "cc"
 options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, instead of all possible graphs",
             Option ['n'] ["no-iso"] (OptArg maxIso "MAX") "disable the isomorphism checker, limiting to a maximum of MAX result graphs" ] -}
 
+getStem :: String -> String
+getStem = takeWhile (/= '.')
+
 main = do
     hSetBuffering stdout NoBuffering
     args <- getArgs
@@ -27,7 +30,7 @@ main = do
         (flags, [progFile], []) ->
             do
                 p <- readFile progFile
-                let stem = takeWhile (/= '.') progFile
+                let stem = getStem progFile
                 let targ = stem ++ ".c"
                 putStrLn $ "Parsing " ++ progFile
                 let prog = parse program p
@@ -42,7 +45,7 @@ main = do
                 putStrLn $ " ** Warning: host-graph burned into executable!"
                 p <- readFile progFile
                 h <- readFile hostFile
-                let stem = takeWhile (/= '.') progFile
+                let stem = getStem progFile
                 let targ = stem ++ ".c"
                 putStrLn $ "Parsing " ++ progFile
                 let prog = parse program p

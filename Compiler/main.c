@@ -30,9 +30,9 @@
 /* Macros to control debugging features. */
 #undef PARSER_TRACE 		/* Assign yydebug to 1 */
 #undef DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
-#define DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
-#define PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
-#define DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
+#undef DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
+#undef PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
+#undef DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
                                    yyparse. */
 
 
@@ -57,7 +57,7 @@ bool abort_compilation = false; /* If set to true, code generation does not occu
 struct List *gp_program = NULL; 
 
 /* The parser points this to the root of the host graph's AST. */
-struct GPGraph *host_graph = NULL; 
+struct GPGraph *ast_host_graph = NULL; 
 
 /* The symbol table is created inside main. */
 GHashTable *gp_symbol_table = NULL;	
@@ -67,7 +67,7 @@ Stack *rule_stack = NULL;
 int main(int argc, char** argv)
 {
    if(argc != 3) {
-     print_to_console( "Usage: runGP <program_file> <host_graph_file>\n");
+     print_to_console( "Usage: GP2-compile <program_file> <host_graph_file>\n");
      return 1;
    }
 
@@ -137,10 +137,10 @@ int main(int argc, char** argv)
    if(!yyparse()) {
       print_to_log("GP2 graph parse succeeded\n\n");    
    
-      reverseGraphAST(host_graph);
+      reverseGraphAST(ast_host_graph);
 
       #ifdef DRAW_HOST_GRAPH_AST
-         printDotHostGraph(host_graph, file_name);
+         printDotHostGraph(ast_host_graph, file_name);
       #endif
    }
    else print_to_log("GP2 graph parse failed.\n\n");     
@@ -195,23 +195,24 @@ int main(int argc, char** argv)
    /* Populate the rule stack. */
    rule_stack = newStack();
    transformAST(gp_program, rule_stack);
+   generateHostGraphCode(ast_host_graph);
 
    StackData *data = NULL;
    while((data = pop(rule_stack)) != NULL)
    {
       if(data->rule == NULL) continue;
-      printRule(data->rule, true);
+      printRule(data->rule, false);
       validGraph(data->rule->lhs);
       generateRuleCode(data->rule);
       freeRule(data->rule);
       free(data);
-   }
+   } 
   
    /* Garbage collection */
    freeStack(rule_stack);
    fclose(yyin);
    if(gp_program) freeAST(gp_program); 
-   if(host_graph) freeASTGraph(host_graph); 
+   if(ast_host_graph) freeASTGraph(ast_host_graph); 
 
    /* The call to g_hash_table_foreeach frees all the hash table values,
     * linked lists of struct Symbols, with the function freeSymbolList 

@@ -6,10 +6,6 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#define PTH printToHeader
-#define PTS printToSource
-#define PTSI printToSourceI
-
 #include "generate.h"
 
 FILE *rule_header = NULL;
@@ -17,11 +13,82 @@ FILE *rule_source = NULL;
  
 Searchplan *searchplan = NULL;
 
+
+void generateHostGraphCode(GPGraph *ast_host_graph)
+{
+   FILE *header = fopen("init_runtime.h", "w");
+   if(header == NULL) { 
+     perror("init_runtime.h");
+     exit(1);
+   }  
+
+   FILE *source = fopen("init_runtime.c", "w");
+   if(source == NULL) { 
+     perror("init_runtime.c");
+     exit(1);
+   }
+     
+   fprintf(header, "#include \"graph.h\"\n"
+                   "#include \"macros.h\"\n"
+                   "#include \"rule.h\"\n\n"
+ 		   "Graph *makeHostGraph(void);\n");
+
+   PTIS("#include \"init_runtime.h\"\n\n"
+        "Graph *makeHostGraph(void)\n"
+        "{\n"
+        "   Graph *host = newGraph();\n"
+        "   Node *node, *source, *target = NULL;\n"
+        "   Edge *edge = NULL;\n"
+        "   IndexMap *node_map = NULL;\n\n");
+
+   List *nodes = ast_host_graph->nodes;
+
+   while(nodes != NULL)
+   {
+      GPNode *ast_node = nodes->value.node;
+      //TODO: Incorporate Label *label = transformLabel(ast_node->label);
+      PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, ast_node->name);
+      nodes = nodes->next;   
+   }
+   PTIS("\n");
+   List *edges = ast_host_graph->edges;
+
+   while(edges != NULL)
+   {
+      GPEdge *ast_edge = edges->value.edge;
+
+      //TODO: Incorporate Label *label = transformLabel(ast_edge->label);
+      PTIS("   GET_HOST_SOURCE(\"%s\")\n"
+           "   /* If the edge is a loop, no need to get the target node. */\n"
+           "   if(!strcmp(\"%s\", \"%s\"))\n"
+           "   {\n"
+           "      edge = newEdge(%d, NULL, source, source);\n"
+           "      addEdge(host, edge);\n"
+           "   }\n",
+           ast_edge->source, ast_edge->source, ast_edge->target, 
+           ast_edge->bidirectional);
+
+      PTIS("   else\n"
+           "   {\n"
+           "      GET_HOST_TARGET(\"%s\")\n"
+           "   }\n"
+           "   edge = newEdge(%d, NULL, source, target);\n"
+           "   addEdge(host, edge);\n\n",
+           ast_edge->target, ast_edge->bidirectional);
+
+      edges = edges->next;   
+   }
+   PTIS("   if(node_map) freeIndexMap(node_map);\n"
+        "   return host;\n"
+        "}\n");
+}
+
+
 void generateRuleCode(Rule *rule)
 {
    string rule_name = rule->name;
    /* Create files <rule_name>.h and <rule_name>.c */
-   int length = strlen(rule_name) + 9;
+   int length = strlen(rule_name) + 3;
 
    string header_name = malloc(length);
    if(header_name == NULL)
@@ -36,10 +103,12 @@ void generateRuleCode(Rule *rule)
       print_to_log("Error: Memory exhausted during file name creation.\n");
       exit(1);
    }
-   strcpy(header_name, "Rules/");
-   strcpy(source_name, "Rules/");
-   strcat(header_name, rule_name);
-   strcat(source_name, rule_name);
+   //strcpy(header_name, "runtime/");
+   //strcpy(source_name, "runtime/");
+   //strcat(header_name, rule_name);
+   //strcat(source_name, rule_name);
+   strcpy(header_name, rule_name);
+   strcpy(source_name, rule_name);
    strcat(header_name, ".h");
    strcat(source_name, ".c");
 
@@ -60,10 +129,10 @@ void generateRuleCode(Rule *rule)
    free(header_name);
    free(source_name);
 
-   PTH("#include \"../globals.h\"\n"
-       "#include \"../graph.h\"\n"
-       "#include \"../macros.h\"\n"
-       "#include \"../match.h\"\n\n");
+   PTH("#include \"globals.h\"\n"
+       "#include \"graph.h\"\n"
+       "#include \"macros.h\"\n"
+       "#include \"match.h\"\n\n");
    PTS("#include \"%s.h\"\n\n", rule_name);
 
    /* Assuming at least one of LHS and RHS is non-empty. */
@@ -108,17 +177,12 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       PTS("void apply%s(Graph *host)\n", rule->name);
       PTS("{\n");
 
-      /* Generate code to add the complete RHS graph to the host graph. */
       int index;
       PTS("   Node *host_node = NULL, *source = NULL, *target = NULL;\n"
           "   Edge *host_edge = NULL;\n\n"
           "   /* Array of host node pointers indexed by RHS node index. */\n"
-          "   Node **map = calloc(%d, sizeof(Node *));\n"
-          "   if(map == NULL)\n"
-          "   {\n"
-          "      print_to_log(\"Error: Memory exhausted during map construction.\\n\");\n"
-          "      exit(1);\n"
-          "   }\n\n", rhs->number_of_nodes);
+          "   Node **map = NULL;\n"
+          "   MAKE_NODE_POINTER_MAP(%d)\n\n", rhs->number_of_nodes);
 
       for(index = 0; index < rhs->number_of_nodes; index++)
       {
@@ -132,7 +196,6 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       NewEdgeList *iterator = rule->added_edges;
       while(iterator != NULL)
       {
-         Edge *rule_edge = getEdge(rhs, iterator->edge_index);
          if(iterator->source_index == iterator->target_index)
          {
             PTSI("source = map[%d];\n", 3, iterator->source_index);
@@ -150,7 +213,6 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
          iterator = iterator->next;
       }     
       PTS("   free(map);\n"
-          "   freeMorphism(morphism);\n"
           "   return;\n}\n\n");
       return;
    }
@@ -161,18 +223,7 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
 
    if(empty_rhs)
    {
-      /* Generate code to remove the complete RHS graph from the host graph. */
-      PTS("   StackData *data = NULL;\n"
-          "   while((data = pop(morphism->edge_images)) != NULL)\n"
-          "   {\n"
-          "      removeEdge(host, data->map.host_index);\n"
-          "      free(data);\n"
-          "   }\n\n"
-          "   while((data = pop(morphism->node_images)) != NULL)\n"
-          "   {\n"
-          "      removeNode(host, data->map.host_index);\n"
-          "      free(data);\n"
-          "   }\n\n"     
+      PTS("   REMOVE_RHS\n" 
           "   freeMorphism(morphism);\n"
           "   return;\n"
           "}\n\n");
@@ -182,12 +233,8 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    /* Using preserved items lists, populate the maps in the generated code. */
    PTS("   /* Array of LHS edges marking their status.\n"
        "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
-       "   int *edge_map = calloc(%d, sizeof(int));\n"
-       "   if(edge_map == NULL)\n"
-       "   {\n"
-       "      print_to_log(\"Error: Memory exhausted during map construction.\\n\");\n"
-       "      exit(1);\n"
-       "   }\n\n", lhs->number_of_edges);
+       "   int *edge_map = NULL;\n"
+       "   MAKE_EDGE_MAP(%d)\n", lhs->number_of_edges);
   
    int index;
    for(index = 0; index < lhs->number_of_edges; index++)
@@ -195,25 +242,21 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       PreservedItemList *item = queryPItemList(rule->preserved_edges, index);
       if(item == NULL) 
       {
-         PTSI("edge_map[%d] = -1;\n", 3, item->left_index);
+         PTSI("edge_map[%d] = -1;\n", 3, index);
          continue;
       }
       else
       {
          if(item->label_change)
-              PTSI("edge_map[%d] = 1;\n", 3, item->left_index);
-         else PTSI("edge_map[%d] = 0;\n", 3, item->left_index);
+              PTSI("edge_map[%d] = 1;\n", 3, index);
+         else PTSI("edge_map[%d] = 0;\n", 3, index);
       }
    }
-   
-   PTS("   /* Array of LHS nodes marking their status.\n"
+
+   PTS("\n   /* Array of LHS nodes marking their status.\n"
        "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
-       "   int *node_map = calloc(%d, sizeof(int));\n"
-       "   if(node_map == NULL)\n"
-       "   {\n"
-       "      print_to_log(\"Error: Memory exhausted during map construction.\\n\");\n"
-       "      exit(1);\n"
-       "   }\n\n", lhs->number_of_nodes);
+       "   int *node_map = NULL;\n"
+       "   MAKE_NODE_MAP(%d)\n", lhs->number_of_nodes);
 
    PreservedItemList *iterator = rule->preserved_nodes;
    while(iterator != NULL)
@@ -231,60 +274,20 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       iterator2 = iterator2->next;
    }
 
-   PTS("\n   StackData *data = NULL;\n"
-       "   while((data = pop(morphism->edge_images)) != NULL)\n"
-       "   {\n"
-       "      if(edge_map[data->map.left_index] == -1)\n"
-       "      {\n"
-       "         removeEdge(host, data->map.host_index);\n"
-       "         free(data);\n"
-       "         continue;\n"
-       "      }\n"
-       "      if(edge_map[data->map.left_index] == 1)\n"
-       "      {\n"
-       "         Edge *host_edge = getEdge(host, data->map.host_index);\n"
-       /* TODO: Pass label of RHS edge from rule->preserved_edges */
-       "         relabelEdge(host, host_edge, NULL, true, false);\n"
-       "         free(data);\n"
-       "         continue;\n"
-       "      }\n"
-       "      /* Otherwise the edge is preserved and keeps the same label. */\n"
-       "      free(data);\n"
-       "   }\n"   
-       "   free(edge_map);\n\n");
-
-   PTS("   while((data = pop(morphism->node_images)) != NULL)\n"
-       "   {\n"
-       "      if(node_map[data->map.left_index] == -1)\n"
-       "      {\n"
-       "         removenode(host, data->map.host_index);\n"
-       "         free(data);\n"
-       "         continue;\n"
-       "      }\n"
-       "      if(node_map[data->map.left_index] == 1)\n"
-       "      {\n"
-       "         node *host_node = getnode(host, data->map.host_index);\n"
-       /* TODO: Pass label of RHS node from rule->preserved_nodes */
-       "         relabelnode(host, host_node, NULL, true, false);\n"
-       "         node_map[data->map.left_index] = host_node->index;\n"
-       "         free(data);\n"
-       "         continue;\n"
-       "      }\n"
-       "      /* Otherwise the node is preserved and keeps the same label. */\n"
-       "      node_map[data->map.left_index] = data->map.host_index;\n"
-       "      free(data);\n"
-       "   }\n\n");
-
-   /* Add nodes + create map */
-   PTS("   /* Array of host node pointers indexed by RHS node index. */\n"
-       "   Node **map = calloc(%d, sizeof(Node *));\n"
-       "   if(map == NULL)\n"
-       "   {\n"
-       "      print_to_log(\"Error: Memory exhausted during map construction.\\n\");\n"
-       "      exit(1);\n"
-       "   }\n\n", rhs->number_of_nodes);
+   /* TODO: Pass label of RHS items from rule->preserved_edges/nodes */
+   PTS("\n"
+       "   StackData *data = NULL;\n\n"
+       "   /* Pops all edges in the morphism stacks and deletes/preserves\n"
+       "    * host items according to the entries in edge_map and node_map. */\n"
+       "   PROCESS_EDGE_MORPHISMS\n" 
+       "   PROCESS_NODE_MORPHISMS\n\n"
+       "   /* Array of host node pointers indexed by RHS node index. */\n"
+       "   Node **map = NULL;\n"
+       "   MAKE_NODE_POINTER_MAP(%d)\n\n", rhs->number_of_nodes);
 
    ItemList *iterator_n = rule->added_nodes;
+   if(iterator_n != NULL)
+      PTS("   Node *host_node = NULL;\n");
    while(iterator_n != NULL)
    {   
       Node *rule_node = getNode(rhs, iterator_n->index);
@@ -295,13 +298,14 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       iterator_n = iterator_n->next;
    }   
   
-   PTS("   Node *source = NULL, *target = NULL;\n"
-       "   int source_index = 0, target_index = 0;\n\n");
    
    NewEdgeList *iterator_e = rule->added_edges;
+   if(iterator_e != NULL)
+      PTS("   Node *source = NULL, *target = NULL;\n"
+          "   Edge *host_edge = NULL;\n"
+          "   int source_index = 0, target_index = 0;\n\n");
    while(iterator_e != NULL)
    {
-      Edge *rule_edge = getEdge(rhs, iterator_e->edge_index);
       if(iterator_e->source_location == 'l')
       {
          PTSI("source_index = node_map[%d];\n", 3, iterator_e->source_index);
@@ -323,7 +327,8 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       iterator_e = iterator_e->next;      
    }
 
-   PTS("   free(node_map);\n"
+   PTS("   free(edge_map);\n"
+       "   free(node_map);\n"
        "   free(map);\n"
        "   freeMorphism(morphism);\n"
        "   return;\n"
@@ -489,20 +494,13 @@ void emitRuleMatcher(string rule_name, SearchOp *first_op, bool is_predicate)
    PTH("bool match%s(Graph *host);\n", rule_name);
    PTS("bool match%s(Graph *host)\n"
        "{\n" 
-       "   morphism = makeMorphism();\n\n"
        "   int host_nodes = host->number_of_nodes;\n"
        "   int host_edges = host->number_of_edges;\n\n"
-       "   if(LEFT_NODES > host_nodes || LEFT_EDGES > host_edges)\n"
-       "   {\n"
-       "      freeMorphism(morphism);\n"
-       "      return NULL;\n"
-       "   }\n\n"
+       "   if(LEFT_NODES > host_nodes || LEFT_EDGES > host_edges) return NULL;\n"
+       "   morphism = makeMorphism();\n\n"
        "   /* Initialise variables. */\n"
-       "   bool *matched_nodes = NULL;\n"
-       "   bool *matched_edges = NULL;\n\n"
-       "   /* Create and populate matched_nodes. */\n"
+       "   bool *matched_nodes = NULL, *matched_edges = NULL;\n"
        "   MAKE_MATCHED_NODES_ARRAY\n\n"
-       "   /* Create and populate matched_edges. */\n"
        "   MAKE_MATCHED_EDGES_ARRAY\n\n"
        "   bool match_found = match_%c%d(host, morphism, matched_nodes,\n"
        "                               matched_edges);\n\n"
@@ -582,9 +580,7 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
       PTSI("if(result) return true;\n", 9);
       PTSI("else\n", 9);
       PTSI("{\n", 9);
-      PTSI("StackData *data = pop(morphism->node_images);\n", 12);
-      PTSI("if(data) free(data);\n", 12);
-      PTSI("matched_nodes[index] = false;\n", 12);
+      PTSI("REMOVE_NODE_MAP\n", 12);
       PTSI("}\n", 9);
    }
    PTSI("}\n", 6);
@@ -616,10 +612,10 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
         "    * in one step.\n"
         "    * Arguments: label class, mark, indegree, outdegree. */\n", 3);
    if(dangling_node)
-        PTSI("IF_VALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
+        PTSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
              left_node->label_class, left_node->label->mark, 
              left_node->indegree, left_node->outdegree);
-   else PTSI("IF_VALID_NODE(%d, %d, %d, %d)\n", 3,
+   else PTSI("IF_INVALID_NODE(%d, %d, %d, %d)\n", 3,
              left_node->label_class, left_node->label->mark, 
              left_node->indegree, left_node->outdegree); 
 
@@ -632,31 +628,24 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
       PTSI("index = host_node->index;\n\n", 6);
       PTSI("*/ Arguments: label class, mark, indegree, outdegree. */\n", 3);
       if(dangling_node)
-           PTSI("IF_VALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
+           PTSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
                 left_node->label_class, left_node->label->mark, 
                 left_node->indegree, left_node->outdegree);
-      else PTSI("IF_VALID_NODE(%d, %d, %d, %d)\n", 3,
+      else PTSI("IF_INVALID_NODE(%d, %d, %d, %d)\n", 3,
                left_node->label_class, left_node->label->mark, 
                left_node->indegree, left_node->outdegree); 
       PTSI("{\n", 6); 
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 9);
-      PTSI("if(data) free(data);\n", 9);
-      PTSI("matched_edges[host_edge->index] = false;\n", 9);
-      PTSI("return false;\n", 9);
+      PTSI("REMOVE_EDGE_MAP_AND_RETURN_FALSE\n", 9);
       PTSI("}\n", 6);
       PTSI("}\n\n", 3);
    }
    else 
    {
       PTSI("{\n", 3); 
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 6);
-      PTSI("if(data) free(data);\n", 6);
-      PTSI("matched_edges[host_edge->index] = false;\n", 6);
-      PTSI("return false;\n", 6);
+      PTSI("REMOVE_EDGE_MAP_AND_RETURN_FALSE\n", 6);
       PTSI("}\n\n", 3);
    }
       
-
    /* TODO: Call to label matcher goes here. */
    PTSI("bool nodes_match = host_node->label->list_length == 0;\n", 3);
    PTSI("if(nodes_match)\n", 3);
@@ -671,9 +660,7 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
       PTSI("if(result) return true;\n", 6);
       PTSI("else\n", 6);
       PTSI("{\n", 6);
-      PTSI("StackData *data = pop(morphism->node_images);\n", 6);
-      PTSI("if(data) free(data);\n", 6);
-      PTSI("matched_nodes[index] = false;\n", 9);
+      PTSI("REMOVE_NODE_MAP\n", 6);
       PTSI("}\n", 6);
    }
    PTSI("}\n", 3);
@@ -715,9 +702,7 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
       PTSI("if(result) return true;\n", 9);
       PTSI("else\n", 9);
       PTSI("{\n", 9);
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 12);
-      PTSI("if(data) free(data);\n", 12);
-      PTSI("matched_edges[index] = false;\n", 12);
+      PTSI("REMOVE_EDGE_MAP\n", 12);
       PTSI("}\n", 9);
    }
    PTSI("}\n", 6);
@@ -798,9 +783,7 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
    {
       PTSI("else\n", 9);
       PTSI("{\n", 9);
-      PTSI("StackData *data = pop(morphism->edge_images);\n", 12);
-      PTSI("if(data) free(data);\n", 12);
-      PTSI("matched_edges[index] = false;\n", 12);
+      PTSI("REMOVE_EDGE_MAP\n", 12);
       PTSI("}\n", 9);
    }
    PTSI("}\n", 6);
