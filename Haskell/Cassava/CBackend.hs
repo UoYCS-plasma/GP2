@@ -8,6 +8,8 @@ stringifyArgs :: (Show a) => [a] -> String
 stringifyArgs vs = "(" ++ (concat . intersperse "," . map show) vs ++ ")"
 
 cCompileI :: Instr -> String
+cCompileI (OILR o i l r ) = "    OILR" ++ stringifyArgs [o, i, l, r]
+
 cCompileI (TN o i l)  = "    TN" ++ stringifyArgs [o, i, l]
 cCompileI (TRN o i l) = "    TRN" ++ stringifyArgs [o, i, l]
 cCompileI (TIN o i l) = "    TIN" ++ stringifyArgs [o, i, l]

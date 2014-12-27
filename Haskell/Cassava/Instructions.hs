@@ -10,8 +10,11 @@ data Instr =
     --  Node and edge finding prims
     ----------------------------------
 
+    -- Settings for OILR index creation.
+      OILR Deg Deg Deg Deg
+
     -- Create a non-interface node traverser
-      TN  Deg Deg Deg
+    | TN  Deg Deg Deg
     | TRN Deg Deg Deg
 
     -- Create an interface node traverser
