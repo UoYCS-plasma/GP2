@@ -2,20 +2,14 @@ module Cassava.Compile (compileGPProg, RegisterMap) where
 
 import GPSyntax
 import Cassava.Instructions
+import Cassava.Analysis
 import Data.List
 
 import Debug.Trace
 
 notImplemented s = error $ "Not implemented: " ++ s
 
-type Interface = ([NodeName], [EdgeName])
 type RegisterMap = [(NodeName, Int)]
-
-nodeInterfaceElem :: NodeName -> Interface -> Bool
-nodeInterfaceElem n (ns, _) = n `elem` ns
-
-edgeInterfaceElem :: EdgeName -> Interface -> Bool
-edgeInterfaceElem e (_, es) = e `elem` es
 
 
 compileGPProg :: GPProgram -> Prog
@@ -57,7 +51,7 @@ compileSimple Skip = notImplemented "compileSimple"
 compileSimple Fail = notImplemented "compileSimple"
 
 compileRule :: AstRule -> Prog
-compileRule (AstRule id _ (lhs, rhs) cond) =
+compileRule rule@(AstRule id _ (lhs, rhs) cond) =
     case changed of
         True  -> compiledLhs ++ compiledRhs ++ [RET]
         false -> compiledLhs ++ [RET]
@@ -66,25 +60,25 @@ compileRule (AstRule id _ (lhs, rhs) cond) =
         -- TODO: refactor this to eliminate all these primes and make the TRAV ordering less
         -- dependent upon the type
         compiledLhs = (PROC id) : nodeTravs ++ edgeTravs ++ conditions ++ [GO, ZTRF]
-        compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap''' rhs'
-        (nodeTravs, rmap)    = travsForLhsNodes interface lhs'
-        (edgeTravs, rmap')   = travsForLhsEdges interface rmap lhs'
+        compiledRhs = if modifies rc then DELE : DELN : updatedNodes ++ createEdges rmap''' rhs' else []
+        (nodeTravs, rmap)    = travsForLhsNodes rc lhs'
+        (edgeTravs, rmap')   = travsForLhsEdges rc rmap lhs'
         (conditions, rmap'') = compileCond rmap' lhs' cond
-        interface  = computeInterface lhs' rhs'
-        (updatedNodes, rmap''') = updateNodes interface rmap'' rhs'
+        rc  = characteriseRule rule
+        (updatedNodes, rmap''') = updateNodes rc rmap'' rhs'
         changed    = lhs' /= rhs'
         (lhs', rhs') = sortNodes lhs rhs
 
 
-travsForLhsNodes :: Interface -> AstRuleGraph -> (Prog, RegisterMap)
-travsForLhsNodes iface (AstRuleGraph ns es) = (map (travForLhsNode iface es) ns, rmap)
+travsForLhsNodes :: RuleCharacterisation -> AstRuleGraph -> (Prog, RegisterMap)
+travsForLhsNodes rc (AstRuleGraph ns es) = (map (travForLhsNode rc es) ns, rmap)
     where
         rmap = zip (map (\(RuleNode id _ _) -> id) ns) [0..]
 
 
-travForLhsNode :: Interface -> [AstRuleEdge] -> RuleNode -> Instr
-travForLhsNode iface es (RuleNode id root _) =
-    case (root, id `nodeInterfaceElem` iface) of
+travForLhsNode :: RuleCharacterisation -> [AstRuleEdge] -> RuleNode -> Instr
+travForLhsNode rc es (RuleNode id root _) =
+    case (root, id `nodeInterfaceElem` rc) of
         (True, True)   -> TRIN o i l
         (True, False)  -> TRN  o i l
         (False, True)  -> TIN  o i l
@@ -92,14 +86,14 @@ travForLhsNode iface es (RuleNode id root _) =
     where
         (o, i, l) = classifyEdgesForNode id es
 
-travsForLhsEdges :: Interface -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
-travsForLhsEdges iface rmap (AstRuleGraph ns es) = (map (travForLhsEdge iface rmap) es, rmap')
+travsForLhsEdges :: RuleCharacterisation -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
+travsForLhsEdges rc rmap (AstRuleGraph ns es) = (map (travForLhsEdge rc rmap) es, rmap')
     where
         rmap' = rmap ++ zip (map (\(AstRuleEdge id _ _ _ _) -> id) es) [length rmap..]
 
-travForLhsEdge :: Interface -> RegisterMap -> AstRuleEdge -> Instr
-travForLhsEdge iface rmap e@(AstRuleEdge id bidi src tgt _) =
-    case (bidi, id `edgeInterfaceElem` iface, lookup src rmap, lookup tgt rmap) of
+travForLhsEdge :: RuleCharacterisation -> RegisterMap -> AstRuleEdge -> Instr
+travForLhsEdge rc rmap e@(AstRuleEdge id bidi src tgt _) =
+    case (bidi, id `edgeInterfaceElem` rc, lookup src rmap, lookup tgt rmap) of
         (False, False, Just n, Just m)  -> TE n m
         (True,  False, Just n, Just m)  -> TBE n m
         (False, True,  Just n, Just m)  -> CE n m
@@ -109,10 +103,10 @@ travForLhsEdge iface rmap e@(AstRuleEdge id bidi src tgt _) =
 
 -- TODO: Incorrect behaviour. ROOT and TOOR should only be issued if root status changes
 -- between lhs and rhs
-updateNodes :: Interface -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
-updateNodes iface rmap (AstRuleGraph ns es) = (updated ++ created, rmap')
+updateNodes :: RuleCharacterisation -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
+updateNodes rc rmap (AstRuleGraph ns es) = (updated ++ created, rmap')
     where
-        (updateMe, createMe) = partition (\(RuleNode id _ _) -> id `nodeInterfaceElem` iface) ns
+        (updateMe, createMe) = partition (\(RuleNode id _ _) -> id `nodeInterfaceElem` rc) ns
         updated = concatMap updateNode updateMe
         (created, rmap') = createNodes rmap [] createMe
         updateNode (RuleNode id root _) = [] {- case (lookup id rmap, root) of
@@ -217,18 +211,3 @@ sortNodes lhs rhs = (lhs, rhs)
  
 
 
--- Compute the interface
--- TODO: simplification alert! Currently works by node- and edge-ids. Work can be
--- saved by identifying nodes and edges which are preserved in a smarter way
-computeInterface :: AstRuleGraph -> AstRuleGraph -> Interface
-computeInterface (AstRuleGraph lns les) (AstRuleGraph rns res) = interface
-    where
-        lnids = map extractNodeName lns
-        rnids = map extractNodeName rns
-        extractNodeName :: RuleNode -> RuleName
-        extractNodeName (RuleNode id _ _) = id
-        leids = map extractEdgeName les
-        reids = map extractEdgeName res
-        extractEdgeName :: AstRuleEdge -> EdgeName
-        extractEdgeName (AstRuleEdge id _ _ _ _) = id
-        interface = (intersect lnids rnids, intersect leids reids)
