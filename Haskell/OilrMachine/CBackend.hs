@@ -1,6 +1,6 @@
-module Cassava.CBackend where
+module OilrMachine.CBackend where
 
-import Cassava.Instructions
+import OilrMachine.Instructions
 import Data.List
 
 

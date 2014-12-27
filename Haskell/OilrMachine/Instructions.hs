@@ -1,4 +1,4 @@
-module Cassava.Instructions where
+module OilrMachine.Instructions where
 
 type Prog = [Instr]
 

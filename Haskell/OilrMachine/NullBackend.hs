@@ -1,6 +1,6 @@
-module Cassava.NullBackend where
+module OilrMachine.NullBackend where
 
-import Cassava.Instructions
+import OilrMachine.Instructions
 import Data.List
 
 codeGen :: Prog -> String

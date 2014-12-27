@@ -7,11 +7,11 @@ import System.Console.GetOpt
 import ParseProgram
 import ParseGraph
 import ParseLib
-import Cassava.Instructions
-import Cassava.Compile
-import Cassava.HostCompile
-import Cassava.NullBackend
-import Cassava.CBackend
+import OilrMachine.Instructions
+import OilrMachine.Compile
+import OilrMachine.HostCompile
+import OilrMachine.NullBackend
+import OilrMachine.CBackend
 
 
 compiler = "cc"

@@ -1,8 +1,8 @@
-module Cassava.Compile (compileGPProg, RegisterMap) where
+module OilrMachine.Compile (compileGPProg, RegisterMap) where
 
 import GPSyntax
-import Cassava.Instructions
-import Cassava.Analysis
+import OilrMachine.Instructions
+import OilrMachine.Analysis
 import Data.List
 
 import Debug.Trace

@@ -1,4 +1,4 @@
-module Cassava.Analysis (RuleCharacterisation, characteriseRule, nodeInterfaceElem, edgeInterfaceElem, modifies) where
+module OilrMachine.Analysis (RuleCharacterisation, characteriseRule, nodeInterfaceElem, edgeInterfaceElem, modifies) where
 
 import GPSyntax
 import Data.List

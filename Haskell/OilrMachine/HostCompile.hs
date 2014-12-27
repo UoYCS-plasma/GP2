@@ -1,8 +1,8 @@
-module Cassava.HostCompile where
+module OilrMachine.HostCompile where
 
 import GPSyntax
-import Cassava.Instructions
-import Cassava.Compile
+import OilrMachine.Instructions
+import OilrMachine.Compile
 
 
 compileHostGraph :: AstHostGraph -> Prog
