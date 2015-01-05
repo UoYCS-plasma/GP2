@@ -1,11 +1,10 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  =================================
-  pretty.h - Chris Bak (18/09/2013)
-  =================================
+  ======================
+  Pretty Printing Module
+  ======================
 
   Module for pretty printing the abstract syntax tree and the symbol table.
-
   Contains several macros to free the source file from clutter and prototypes
   for printing functions.                         
                       
@@ -14,7 +13,9 @@
 #ifndef INC_PRETTY_H
 #define INC_PRETTY_H
 
+#include <glib.h>
 #include "ast.h"
+#include "error.h"
 #include "globals.h"
 #include "seman.h" 
 

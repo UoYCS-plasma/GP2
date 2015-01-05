@@ -1,18 +1,20 @@
 /* ////////////////////////////////////////////////////////////////////////////
 
-  ================================
-  seman.h - Chris Bak (24/10/2013)      
-  ================================                        
+  ========================
+  Semantic Analysis Module  
+  ========================                        
  
-  Contains the interface for the symbol table and the declarations of
-  the semantic analysis functions.
+  Contains the interface for the symbol table and the semantic analysis 
+  functions.
 
 //////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_SEMAN_H
 #define INC_SEMAN_H
 
+#include <glib.h>
 #include "ast.h"
+#include "error.h"
 #include "globals.h"
 
 /* GP2 symbols are stored in struct Symbol. These are values of the

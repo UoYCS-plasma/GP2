@@ -1,11 +1,11 @@
 /*////////////////////////////////////////////////////////////////////////////
 
-  ====================================
-  gplexer.lex - Chris Bak (10/05/2013)
-  ====================================                                  
+  ====================
+  GP2 Lexical Analyser
+  ====================                            
 
-  The Flex lexical analyser for GP2. It scans the input files, sending tokens 
-  to the Bison parser when required.
+  The Flex specification for the GP2 lexical analyser for GP2.
+  Defines the tokens of GP2 and their associated regular expressions.
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
@@ -20,7 +20,7 @@
 %option noyywrap nodefault yylineno
 
 %{
-
+#include "error.h"
 #include "globals.h"
 #include "gpparser.tab.h" /* Token definitions */
 

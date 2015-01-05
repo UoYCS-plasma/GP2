@@ -1,8 +1,8 @@
 # Compile time object files
-COBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o transform.o graph.o rule.o stack.o generate.o main.o
+COBJECTS = gpparser.tab.o lex.yy.o debug.o error.o ast.o pretty.o seman.o transform.o label.o graph.o rule.o stack.o generate.o main.o
 
 # Runtime object files.
-ROBJECTS = runtime.o Global_rule1.o init_runtime.o match.o graph.o rule.o stack.o
+ROBJECTS = error.o runtime.o Global_rule1.o init_runtime.o match.o label.o graph.o rule.o stack.o
 
 OBJECTS = $(COBJECTS) $(ROBJECTS)
 
@@ -44,40 +44,49 @@ clean:
 		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c GP2-run GP2-compile
 
 # Compiler objects
+main.o:		main.c ast.h debug.h error.h globals.h generate.h pretty.h rule.h stack.h transform.h
+		$(CC) $(CFLAGS) -c main.c
+
 gpparser.tab.o: gpparser.tab.c gpparser.tab.h
 		$(CC) $(CFLAGS) -c gpparser.tab.c
 
-gpparser.tab.c gpparser.tab.h: gpparser.y ast.h
+gpparser.tab.c gpparser.tab.h: gpparser.y ast.h error.h
 		bison -dtv gpparser.y
 
 lex.yy.o: 	lex.yy.c 
 		$(CC) $(CFLAGS) -c lex.yy.c
 
-lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
+lex.yy.c:	gplexer.lex gpparser.tab.h ast.h error.h
 		flex gplexer.lex
 
-ast.o: 		ast.c ast.h globals.h
+debug.o:	debug.c error.h globals.h 
+		$(CC) $(CFLAGS) -c debug.c
+
+ast.o: 		ast.c ast.h error.h globals.h
 		$(CC) $(CFLAGS) -c ast.c
 
-pretty.o:       pretty.c pretty.h ast.h globals.h seman.h
+pretty.o:       pretty.c pretty.h ast.h error.h globals.h seman.h
 		$(CC) $(CFLAGS) -c pretty.c
 
-seman.o:	seman.c seman.h ast.h globals.h
+seman.o:	seman.c seman.h ast.h error.h globals.h
 		$(CC) $(CFLAGS) -c seman.c
 
-graph.o:	graph.c globals.h stack.h graph.h 
+label.o:	label.c label.h error.h globals.h
+		$(CC) $(CFLAGS) -c label.c
+
+graph.o:	graph.c error.h globals.h label.h stack.h graph.h 
 		$(CC) $(CFLAGS) -c graph.c
 
-rule.o:		rule.c globals.h graph.h rule.h
+rule.o:		rule.c error.h globals.h graph.h rule.h
 		$(CC) $(CFLAGS) -c rule.c
 
-transform.o:	transform.c ast.h globals.h graph.h rule.h transform.h 
+transform.o:	transform.c ast.h error.h globals.h graph.h rule.h transform.h 
 		$(CC) $(CFLAGS) -c transform.c
 
-stack.o:	stack.c globals.h stack.h
+stack.o:	stack.c error.h globals.h stack.h
 		$(CC) $(CFLAGS) -c stack.c
 
-generate.o:	generate.c ast.h globals.h rule.h generate.h
+generate.o:	generate.c ast.h error.h globals.h rule.h generate.h
 		$(CC) $(CFLAGS) -c generate.c
 
 

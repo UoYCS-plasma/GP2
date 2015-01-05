@@ -1,24 +1,22 @@
 /* ////////////////////////////////////////////////////////////////////////////
-
-  ===============================
-  main.c - Chris Bak (02/10/2013)
-  ===============================     
                                
-  This is the compiler for GP2, a graph programming language. It takes as input
-  two text files. One contains a GP2 graph program and the second contains a 
-  host graph. The program parses the files with a Bison parser, creates an
-  abstract syntax tree and a symbol table, and performs some semantic analysis.
-  Pretty printing of the AST and the symbol table is possible by defining the
+  This is the code generator for GP2, a graph programming language. It takes as
+  input two text files. The first is a textual specification of GP2 graph
+  program; the second contains a textual description of a host graph. 
+  The program parses the files with a Bison parser to creates two abstract
+  syntax trees and a symbol table for the program, and performs some semantic 
+  analysis.
+  If there are no significant syntactic or semantic faults with the program,
+  code is generated to execute the GP2 program on the input host graph.
+
+  Pretty printing of the AST and the symbol table is enabled by defining the
   appropriate macros.
-
-  The makefile for the project is in the same directory as this file. Build
-  with the command 'make gpparse.'
-
-  Compiled with GCC 4.6.4, GNU Bison 2.5 and Flex 2.5.35.
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
 #include "ast.h" 
+#include "debug.h"
+#include "error.h"
 #include "globals.h"
 #include "generate.h"
 #include "pretty.h"
@@ -34,7 +32,6 @@
 #undef PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
 #undef DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
                                    yyparse. */
-
 
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
  * determined by the first token it receives. If Bison receives GP_PROGRAM
@@ -72,23 +69,12 @@ int main(int argc, char** argv)
    }
 
    file_name = argv[1]; 
-   int length = strlen(file_name) + 4; 
-   char log_file_name[length];
-   strcpy(log_file_name, file_name);
-   strncat(log_file_name, ".log", 4);
-
-   log_file = fopen(log_file_name, "w");
-   if(log_file == NULL) { 
-      perror(log_file_name);
-      return 1;
-   }
-   print_to_log("%s\n\n",log_file_name);
+   openLogFile(file_name);
 
    /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
     * pointed to the file to be read by the parser. argv[1] is the file 
     * containing the GP program text file.
     */
-
    if(!(yyin = fopen(argv[1], "r"))) {  
       perror(argv[1]);
       yylineno = 1;	
@@ -201,7 +187,7 @@ int main(int argc, char** argv)
    while((data = pop(rule_stack)) != NULL)
    {
       if(data->rule == NULL) continue;
-      printRule(data->rule, false);
+      printRule(data->rule);
       validGraph(data->rule->lhs);
       generateRuleCode(data->rule);
       freeRule(data->rule);
@@ -224,7 +210,7 @@ int main(int argc, char** argv)
      g_hash_table_foreach(gp_symbol_table, freeSymbolList, NULL);
      g_hash_table_destroy(gp_symbol_table); 
    }
-   fclose(log_file);
+   closeLogFile();
 
    return 0;
 }

@@ -1,16 +1,18 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ================================
-  stack.h - Chris Bak (26/09/2014)
-  ================================
-                             
-  Contains an implementation of a stack via a linked list.
+  ============
+  Stack Module
+  ============
+
+  Contains an implementation of a stack as a linked list. All possible stack
+  values are wrapped in a union StackData.
 
 /////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_STACK_H
 #define INC_STACK_H
 
+#include "error.h"
 #include "globals.h"
 
 typedef union StackData {

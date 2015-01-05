@@ -1,11 +1,10 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ==================================
-  globals.h - Chris Bak (23/09/2013)
-  ==================================
-                             
-  Module to contain global variables and structures. 
-  All other headers include this file.
+  ==================
+  Global Header File
+  ==================
+
+  Includes C's standard libraries and contains global variables and structures. 
 
 /////////////////////////////////////////////////////////////////////////// */
 
@@ -13,23 +12,11 @@
 #define INC_GLOBALS_H
 
 #include <assert.h>
-#include <glib.h> 
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h> 
-
-/* Wrappers for frequently occurring calls to fprintf. */
-
-#define print_to_log(error_message, ...)                    \
-  do { fprintf(log_file, error_message, ##__VA_ARGS__); }   \
-  while(0)
-
-#define print_to_console(error_message, ...)                \
-  do { fprintf(stderr, error_message, ##__VA_ARGS__); }     \
-  while(0) 
-
 
 typedef char* string;
 
@@ -48,7 +35,6 @@ typedef struct YYLTYPE {
 # define YYLTYPE_IS_DECLARED 1 /* tells the parser that YYLTYPE is defined here */
 
 extern FILE *yyin; /* Created by Bison. */
-extern FILE *log_file; /* Created in main.c */
 
 /* Declarations for functions and variables defined in gplexer.l */
 extern int yylineno; 

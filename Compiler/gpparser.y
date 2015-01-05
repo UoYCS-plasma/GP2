@@ -1,19 +1,18 @@
 /* ////////////////////////////////////////////////////////////////////////////
 
-  ===================================
-  gpparser.y - Chris Bak (28/05/2013) 					
-  ===================================
+  ==========
+  GP2 Parser				
+  ==========
 
-  The Bison specification for GP2's parser. In combination with Flex, it 
-  performs syntax checking and generates an Abstract Syntax Tree for GP2
-  programs and host graphs
-
+  The Bison specification for GP2's parser. Defines GP2's abstract syntax
+  and calls the appropriate AST constructor for each rule.
+  
 //////////////////////////////////////////////////////////////////////////// */
 
 
 %{
-
 #include "ast.h"
+#include "error.h"
 #include "globals.h"
 
 int yyerror(const char *error_message);

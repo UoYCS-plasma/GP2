@@ -1,10 +1,10 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ================================
-  graph.h - Chris Bak (14/07/2014)
-  ================================
+  ============
+  Graph Module
+  ============
                              
-  Module for defining the graph data structure and its operations.
+  An API for GP2 graphs. Defines structures for graphs, nodes and edges.  
 
 /////////////////////////////////////////////////////////////////////////// */
 
@@ -15,11 +15,11 @@
 #define MAX_EDGES 128
 #define MAX_INCIDENT_EDGES 16
 
+#include <glib.h>
+#include "error.h"
 #include "globals.h"
+#include "label.h"
 #include "stack.h"
-
-/* Global structure for blank labels. */
-extern struct Label blank_label;
 
 typedef struct Graph 
 {
@@ -60,50 +60,6 @@ typedef struct Graph
 
 extern Graph *host;
 
-/* Abstract data type for GP2's marks defined in globals.h
- * typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType; */
-
-typedef struct Label {
-   MarkType mark; 
-   GList *list; /* The empty list is represented by a GList with one element with
-                 * type EMPTY. It has length 0 in the Label struct. */
-   /* Metadata set while the label is being constructed from the AST. */
-   int list_length; 
-   bool has_list_variable;
-} Label;
-
-
-/* Abstract data type for atomic expressions. From globals.h. 
-typedef enum {VARIABLE = 0, INTEGER_CONSTANT, CHARACTER_CONSTANT,
-              STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
-              NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType; */
-
-typedef struct ListElement {
-   AtomExpType type;		  
-   union {
-    string name;		  /* VARIABLE */
-    int number; 	 	  /* INTEGER_CONSTANT */
-    string string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
-    string node_id; 		  /* INDEGREE, OUTDEGREE */
-    GList *list_arg;	 	  /* LIST_LENGTH */
-    struct ListElement *str_arg;  /* STRING_LENGTH */
-    struct ListElement *exp; 	  /* NEG */
-    struct { 
-      struct ListElement *left_exp;
-      struct ListElement *right_exp;
-    } bin_op; 		   	  /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
-  } value;
-} ListElement;
-
-
-/* Classes of GP 2 labels for querying by label. This is a partition of the
- * set of all GP 2 labels. 
- * The label classes are the empty list, an integer constant, a string constant,
- * constant, a variable of atomic type (int, string, char or atom), 
- * fixed-length lists of length 2 up to a fixed bound, and any list containing 
- * a list variable. */
-typedef enum {EMPTY_L = 0, INT_L, STRING_L, ATOMIC_VAR_L, LIST2_L, LIST3_L,
-              LIST4_L, LIST5_L, LISTVAR_L} LabelClass;
 
 typedef struct Node {
    int index;
@@ -112,6 +68,9 @@ typedef struct Node {
    Label *label;
 
    /* TODO: Check for overflow! */
+   /* Be careful when iterating over these arrays. No free list is maintained,
+    * so the arrays contain NULL pointers, created when an edge is removed that
+    * is not at the last index. */
    struct Edge **out_edges;
    struct Edge **in_edges;
 
@@ -129,10 +88,6 @@ typedef struct Node {
     * outdegree + size(free_out_edge_slots) = next_out_edge_index. */
    int indegree;
    int outdegree;
-
-   /* Keeps track of the holes in the array whenever an item is removed. */
-   Stack *free_out_edge_slots;
-   Stack *free_in_edge_slots;
 } Node;
 
 
@@ -164,11 +119,6 @@ typedef struct Edge {
 
 /* Creates an empty graph. */
 Graph *newGraph(void);
-
-/* Tests the passed graph to see if it satisfies the data invariants. */
-bool validGraph(Graph *graph);
-
-LabelClass getLabelClass(Label *label);
 Node *newNode(bool root, Label *label);
 Edge *newEdge(bool bidirectional, Label *label, Node *source, 
               Node *target);
@@ -196,11 +146,6 @@ Graph *restoreGraph(Graph *graph);
 
 void freeGraphStack(Stack *graph_stack);
 
-/* Returns a dynamically-allocated copy of the passed label. */
-Label *copyLabel(Label *label);
-ListElement *copyListElement(ListElement *atom);
-
-
 /* Graph querying
  * ============== */
 Node *getNode(Graph *graph, int index);
@@ -217,17 +162,12 @@ Label *getEdgeLabel(Edge *edge);
 int getIndegree(Node *node);
 int getOutdegree(Node *node);
 
-
-
 /* Printing and freeing functions 
  * ============================== */
 void printGraph(Graph *graph);
 void printVerboseGraph(Graph *graph);
 void printVerboseNode(Node *node);
 void printVerboseEdge(Edge *edge);
-void printList(GList *list);
-void printListElement(ListElement* elem);
-void printMark(MarkType mark, bool verbose);
 
 /* The node and edge structures are freed in freeGraph when the graph's node 
  * and edge pointer arrays are freed. 
@@ -237,19 +177,11 @@ void printMark(MarkType mark, bool verbose);
  * node/edge structures themselves.
  */     
 void freeGraph(Graph *graph);
-
 void freeNode(Node *node);
 void freeEdge(Edge *edge);
-
 /* A wrapper for g_slist_free so that it can be called by g_hash_table_foreach
  * when freeing the hash tables indexed by label class. */
 void freeGSList(gpointer key, gpointer value, gpointer data); 
-
-void freeLabel(Label *label);
-
-/* freeListElement is passed to g_list_free_full, so it takes a void pointer. */
-void freeListElement(void *atom);
-
 
 /* structs placed on the graph change stack. It contains sufficient
  * information to undo any of the six types of graph change.
