@@ -14,13 +14,14 @@
 
 #include "globals.h"
 #include "graph.h"
+#include "label.h"
 #include "rule.h"
 
 /* Association list to represent variable-value mappings. */
 
 typedef struct Assignment {
   string variable;
-  GList *value;
+  GP2List *value;
   struct Assignment *next;
 } Assignment;
 
@@ -28,7 +29,7 @@ typedef struct Assignment {
  * to the assignment given by the first argument. Returns a pointer to the 
  * start of the new assignment.
  */
-Assignment *addAssignment(Assignment *assignment, string name, GList *value);
+Assignment *addAssignment(Assignment *assignment, string name, GP2List *value);
 
 /* Deletes and frees the first element of the assignment. */        
 Assignment *removeAssignment(Assignment *assignment);
@@ -36,7 +37,7 @@ Assignment *removeAssignment(Assignment *assignment);
 /* Given an assignment and the name of a variable, lookupValue returns the value
  * of the variable if it exists in the assignment. Otherwise it returns NULL.
  */
-GList *lookupValue(Assignment *assignment, string name);
+GP2List *lookupValue(Assignment *assignment, string name);
 
 void freeAssignment(Assignment *assignment);
 

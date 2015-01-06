@@ -1,13 +1,13 @@
 #include "runtime.h"
 
-FILE *log_file;
-
 int main() {
+
+   openLogFileR();
 
    Graph *host = makeHostGraph();
    validGraph(host);
    printGraph(host);
-   
+
    bool result = matchGlobal_rule1(host);
  
    if(result) 
@@ -16,7 +16,9 @@ int main() {
       printGraph(host);
    }
    else printf("Match failed.\n\n");
+
    freeGraph(host);
+   closeLogFile();
    
    return 0;
 }

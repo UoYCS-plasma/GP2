@@ -2,7 +2,7 @@
 COBJECTS = gpparser.tab.o lex.yy.o debug.o error.o ast.o pretty.o seman.o transform.o label.o graph.o rule.o stack.o generate.o main.o
 
 # Runtime object files.
-ROBJECTS = error.o runtime.o Global_rule1.o init_runtime.o match.o label.o graph.o rule.o stack.o
+ROBJECTS = debug.o error.o runtime.o Global_rule1.o init_runtime.o match.o label.o graph.o rule.o stack.o
 
 OBJECTS = $(COBJECTS) $(ROBJECTS)
 
@@ -15,11 +15,11 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --
 # Builds the parser and code generator, runs it on the passed GP2 program/host graph files,
 # and executes the generated code.
 # Usage: make all F1=<path_to_program_file> F2=<path_to_host_graph_file>
-all:		$(OBJECTS)
-		$(CC) $(COBJECTS) $(LFLAGS) -o GP2-compile
-		./GP2-compile $(F1) $(F2)
-		$(CC) $(ROBJECTS) $(LFLAGS) -o GP2-run
-		./GP2-run
+all:	
+		make compile && ./GP2-compile $(F1) $(F2) && make runtime && ./GP2-run
+
+debug:		
+		make compile-debug $(F1) $(F2) && make runtime-debug
 
 # Builds the parser and the code generator.
 compile:	$(COBJECTS)
@@ -91,10 +91,10 @@ generate.o:	generate.c ast.h error.h globals.h rule.h generate.h
 
 
 # Runtime objects
-runtime.o:	runtime.c globals.h graph.h Global_rule1.h init_runtime.h runtime.h
+runtime.o:	runtime.c error.h debug.h globals.h graph.h Global_rule1.h init_runtime.h label.h runtime.h
 		$(CC) $(CFLAGS) -c runtime.c
 
-match.o:	match.c globals.h graph.h match.h 
+match.o:	match.c globals.h graph.h label.h match.h 
 		$(CC) $(CFLAGS) -c match.c
 
 init_runtime.o:	init_runtime.c graph.h macros.h rule.h init_runtime.h 

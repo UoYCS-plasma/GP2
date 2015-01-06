@@ -67,8 +67,8 @@ bool validGraph(Graph *graph)
          if(!slot_found && graph->next_node_index > 0)
          {
             print_to_console("The graph does not satisfy the invariants.\n" 
-                             "Pointer at node array index %d is NULL but the "
-                             "index is not in the free node slot list.\n", 
+                             "(1) Pointer at node array index %d is NULL but "
+                             "the index is not in the free node slot list.\n", 
                              graph_index);
             valid_graph = false;
          }
@@ -92,9 +92,10 @@ bool validGraph(Graph *graph)
                /* Invariant (6) */
                if(node_edge != graph_edge) 
                {
-                  print_to_console("Graph does not satisfy the invariants.\nNode %d's"
-                                   "outedge %d is inconsistent with the graph's edge "
-                                   "table.\n", graph_index, node_edge->index);   
+                  print_to_console("Graph does not satisfy the invariants.\n"
+                                   "(6) Node %d's outedge %d is inconsistent "
+                                   "with the graph's edge table.\n",
+                                   graph_index, node_edge->index);   
                   valid_graph = false;
                }
             }
@@ -102,10 +103,10 @@ bool validGraph(Graph *graph)
          /* Invariant (4) */
          if(node->outdegree != edge_count)
          {
-            print_to_console("Graph does not satisfy the invariants.\nNode %d's"
-                             "outdegree %d is not equal to the number of edges "
-                             "%d in its outedges array.\n", node->index, 
-                             node->outdegree, edge_count);
+            print_to_console("Graph does not satisfy the invariants.\n"
+                             "(4) Node %d's outdegree %d is not equal to the "
+                             "number of edges %d in its outedges array.\n",
+                             node->index, node->outdegree, edge_count);
             valid_graph = false;
          }
          
@@ -125,8 +126,8 @@ bool validGraph(Graph *graph)
                if(node_edge != graph_edge) 
                {
                   print_to_console("The graph does not satisfy the invariants.\n"
-                                   "Node %d's outedge %d is inconsistent with the "
-                                   "graph's edge table.\n", 
+                                   "(6) Node %d's outedge %d is inconsistent with "
+                                   "the graph's edge table.\n", 
                                    graph_index, node_edge->index);   
                   valid_graph = false;
                }
@@ -135,10 +136,10 @@ bool validGraph(Graph *graph)
          /* Invariant (5) */
          if(node->indegree != edge_count)
          {
-            print_to_console("The graph does not satisfy the invariants.\nNode "
-                             "%d's indegree %d is not equal to the number of "
-                             "edges %d in its inedges array.\n", node->index, 
-                             node->indegree, edge_count);
+            print_to_console("The graph does not satisfy the invariants.\n"
+                             "(5) Node %d's indegree %d is not equal to the "
+                             "number of edges %d in its inedges array.\n",
+                             node->index, node->indegree, edge_count);
             valid_graph = false;
          } 
 
@@ -150,9 +151,9 @@ bool validGraph(Graph *graph)
          if(g_slist_find(node_list, node) == NULL)
          {
             print_to_console("The graph does not satisfy the invariants.\n"
-                             "Node %d does not occcur in the hash list of its "
-                             "label class %d.\n", graph_index, 
-                             node->label_class);   
+                             "(3) Node %d does not occcur in the hash list of "
+                             "its label class %d.\n", 
+                             graph_index, node->label_class);   
             valid_graph = false;
          }   
       }
@@ -160,9 +161,10 @@ bool validGraph(Graph *graph)
    /* Invariant (2) */
    if(node_count != graph->number_of_nodes)
    {
-      print_to_console("The graph does not satisfy the invariants.\nThe number "
-                       "of nodes %d is not equal to the number of nodes in its "
-                       "node array %d.\n", graph->number_of_nodes, node_count);
+      print_to_console("The graph does not satisfy the invariants.\n"
+                       "(2) The number of nodes %d is not equal to the "
+                       "number of nodes in its node array %d.\n",
+                       graph->number_of_nodes, node_count);
       valid_graph = false;
    }   
 
@@ -191,8 +193,8 @@ bool validGraph(Graph *graph)
          if(!slot_found && graph->next_edge_index > 0)
          {
             print_to_console("The graph does not satisfy the invariants.\n"
-                             "Pointer at edge array index %d is NULL but the "
-                             "index is not in free edge slot list.\n", 
+                             "(7) Pointer at edge array index %d is NULL but "
+                             "the index is not in free edge slot list.\n", 
                              graph_index);
             valid_graph = false;
          }
@@ -209,8 +211,8 @@ bool validGraph(Graph *graph)
          if(source != node) 
          {
             print_to_console("The graph does not satisfy the invariants.\n"
-                             "Edge %d's source %d is inconsistent with the "
-                             "graph's node array.\n", graph_index, 
+                             "(10) Edge %d's source %d is inconsistent with "
+                             "the graph's node array.\n", graph_index, 
                              source->index);   
             valid_graph = false;
          }   
@@ -219,7 +221,7 @@ bool validGraph(Graph *graph)
          bool edge_found = false;
 
          /* Search for edge in the out_edges array of its source.  */
-         for(counter = 0; counter < source->outdegree; counter++)
+         for(counter = 0; counter < source->next_out_edge_index; counter++)
          {
             Edge *out_edge = getOutEdge(source, counter);
             if(out_edge == edge)
@@ -233,7 +235,7 @@ bool validGraph(Graph *graph)
          if(!edge_found)
          {
             print_to_console("The graph does not satisfy the invariants.\n"
-                             "Edge %d does not occur in node %d's outedge"
+                             "(11) Edge %d does not occur in node %d's outedge "
                              "array.\n", graph_index, source->index);   
             valid_graph = false;
          }   
@@ -246,8 +248,8 @@ bool validGraph(Graph *graph)
          if(target != node) 
          {
             print_to_console("The graph does not satisfy the invariants.\n"
-                             "Edge %d's target %d is inconsistent with the "
-                             "graph's node array.\n", graph_index, 
+                             "(10) Edge %d's target %d is inconsistent with "
+                             "the graph's node array.\n", graph_index, 
                              target->index);   
             valid_graph = false;
          }   
@@ -255,7 +257,7 @@ bool validGraph(Graph *graph)
          edge_found = false;
 
          /* Search for edge in the in_edges array of its source.  */
-         for(counter = 0; counter < target->indegree; counter++)
+         for(counter = 0; counter < target->next_in_edge_index; counter++)
          {
             Edge *in_edge = getInEdge(target, counter);
             if(in_edge == edge)
@@ -269,7 +271,7 @@ bool validGraph(Graph *graph)
          if(!edge_found)
          {
             print_to_console("The graph does not satisfy the invariants.\n"
-                             "Edge %d does not occur in node %d's inedge "
+                             "(11) Edge %d does not occur in node %d's inedge "
                              "array.\n", graph_index, target->index);   
             valid_graph = false;
          }   
@@ -281,9 +283,9 @@ bool validGraph(Graph *graph)
          if(g_slist_find(edge_list, edge) == NULL)
          {
             print_to_console("The graph does not satisfy the invariants.\n"
-                             "Edge %d does not occcur in the hash list of its "
-                             "label class %d.\n", graph_index, 
-                             edge->label_class);   
+                             "(9) Edge %d does not occcur in the hash list of "
+                             "its label class %d.\n", 
+                             graph_index, edge->label_class);   
             valid_graph = false;
          }  
       }
@@ -291,9 +293,10 @@ bool validGraph(Graph *graph)
    /* Invariant (8) */
    if(edge_count != graph->number_of_edges)
    {
-      print_to_console("The graph does not satisfy the invariants.\nThe number "
-                       "of edges %d is not equal to the number of edges in its "
-                       "edge array %d.\n", graph->number_of_edges, edge_count);
+      print_to_console("The graph does not satisfy the invariants.\n"
+                       "(8) The number edges %d is not equal to the number of "
+                       "edges in its edge array %d.\n", 
+                       graph->number_of_edges, edge_count);
       valid_graph = false;
    }     
     
@@ -422,6 +425,5 @@ void printVerboseEdge(Edge *edge)
     printMark(edge->label->mark, true);
     printf("\n");
     printf("Source: %d. Target: %d\n\n", edge->source->index, edge->target->index);
-    printf("\n");
 }
 

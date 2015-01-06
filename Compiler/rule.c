@@ -243,8 +243,10 @@ void printRule(Rule *rule)
 
    printf("%s\n\n", rule->name);
    printGraph(rule->lhs);
+   printf("\n");
    printf("=>\n\n");
    printGraph(rule->rhs);
+   printf("\n");
 }
 
 

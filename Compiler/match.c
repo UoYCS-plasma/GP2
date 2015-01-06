@@ -10,7 +10,7 @@
 
 /* Assignment functions. */
 
-Assignment *addAssignment(Assignment *assignment, string name, GList *value)
+Assignment *addAssignment(Assignment *assignment, string name, GP2List *value)
 {
    Assignment *new_assignment = malloc(sizeof(Assignment));
 
@@ -32,13 +32,13 @@ Assignment *removeAssignment(Assignment *assignment)
 {
    Assignment *new_assignment = assignment->next;
    if(assignment->variable) free(assignment->variable); 
-   if(assignment->value) g_list_free_full(assignment->value, freeListElement);
+   if(assignment->value) freeGP2List(assignment->value);
    if(assignment) free(assignment);
    return new_assignment;
 }
 
 
-GList *lookupValue(Assignment *assignment, string name)
+GP2List *lookupValue(Assignment *assignment, string name)
 {
    while(assignment != NULL) 
    {
@@ -53,7 +53,7 @@ void freeAssignment(Assignment *assignment)
 {
    if(assignment == NULL) return;
    if(assignment->variable) free(assignment->variable); 
-   if(assignment->value) g_list_free_full(assignment->value, freeListElement);
+   if(assignment->value) freeGP2List(assignment->value);
    if(assignment->next) freeAssignment(assignment->next);
    free(assignment);
 }
@@ -149,7 +149,7 @@ void printMorphism(Morphism *morphism)
    while(assignment != NULL)
    {
       printf("Variable %s -> ", assignment->variable);
-      printList(assignment->value);
+      printGP2List(assignment->value);
       printf("\n");
       assignment = assignment->next;
    }

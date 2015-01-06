@@ -32,6 +32,7 @@
 #define PTIS printToInitSource
 
 #include "ast.h"
+#include "error.h"
 #include "globals.h"
 #include "rule.h"
 

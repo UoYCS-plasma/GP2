@@ -24,7 +24,10 @@
   while(0)
 
 extern FILE *log_file;
-void openLogFile(string file_name);
+/* Compile time log file with name <file_name>.log */
+void openLogFileC(string file_name);
+/* Runtime log file with name gp2.log */
+void openLogFileR(void);
 void closeLogFile(void);
 
 #endif /* INC_ERROR_H */

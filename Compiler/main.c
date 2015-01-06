@@ -69,7 +69,7 @@ int main(int argc, char** argv)
    }
 
    file_name = argv[1]; 
-   openLogFile(file_name);
+   openLogFileC(file_name);
 
    /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
     * pointed to the file to be read by the parser. argv[1] is the file 
@@ -188,7 +188,7 @@ int main(int argc, char** argv)
    {
       if(data->rule == NULL) continue;
       printRule(data->rule);
-      validGraph(data->rule->lhs);
+      //validGraph(data->rule->lhs);
       generateRuleCode(data->rule);
       freeRule(data->rule);
       free(data);

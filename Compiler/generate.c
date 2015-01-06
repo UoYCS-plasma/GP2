@@ -71,9 +71,9 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       PTIS("   else\n"
            "   {\n"
            "      GET_HOST_TARGET(\"%s\")\n"
-           "   }\n"
-           "   edge = newEdge(%d, NULL, source, target);\n"
-           "   addEdge(host, edge);\n\n",
+           "      edge = newEdge(%d, NULL, source, target);\n"
+           "      addEdge(host, edge);\n\n"
+           "   }\n",
            ast_edge->target, ast_edge->bidirectional);
 
       edges = edges->next;   
@@ -404,7 +404,7 @@ void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
          case 'l':
 
               edge = getEdge(lhs, operation->index);
-              PTS("static bool match_e%d(Graph *host, Node *host_node, Morphism *morphism,\n"
+              PTS("static bool match_e%d(Graph *host, Morphism *morphism,\n"
                   "                     bool *matched_nodes, bool *matched_edges);\n",
                   edge->index);
               break;
@@ -604,7 +604,8 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
    /* First trying the target of the image of a bidirectional edge is
     * completely arbitrary. Might be an idea to code a "coin flip" to
     * choose the incident node. */ 
-   if(type == 'i' || type == 'b') PTSI("Node *host_node = getTarget(host_edge);\n", 3);
+   if(type == 'i' || type == 'b') 
+        PTSI("Node *host_node = getTarget(host_edge);\n", 3);
    else PTSI("Node *host_node = getSource(host_edge);\n", 3);
    PTSI("int index = host_node->index;\n\n", 3);
 
@@ -660,7 +661,7 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
       PTSI("if(result) return true;\n", 6);
       PTSI("else\n", 6);
       PTSI("{\n", 6);
-      PTSI("REMOVE_NODE_MAP\n", 6);
+      PTSI("REMOVE_NODE_MAP\n", 9);
       PTSI("}\n", 6);
    }
    PTSI("}\n", 3);
@@ -715,14 +716,32 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 
 void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
 {
-   PTS("static bool match_e%d(Graph *host, Node *host_node, Morphism *morphism,\n"
+   PTS("static bool match_e%d(Graph *host, Morphism *morphism,\n"
        "                     bool *matched_nodes, bool *matched_edges)\n"
-       "{\n"
-       "   int counter;\n", left_edge->index);
+       "{\n", left_edge->index);
+
+   int node_index = 0;
 
    if(type == 's' || type == 'l')
-        PTSI("for(counter = 0; counter < host_node->outdegree; counter++)\n", 3);
-   else PTSI("for(counter = 0; counter < host_node->indegree; counter++)\n", 3);
+   {
+      node_index = left_edge->source->index;
+      PTSI("int host_node_index = findHostIndex(morphism->node_images, %d);\n",
+           3, node_index);
+      PTSI("if(host_node_index < 0) return false;\n", 3);
+      PTSI("Node *host_node = getNode(host, host_node_index);\n\n", 3);
+      PTSI("int counter;\n", 3);
+      PTSI("for(counter = 0; counter < host_node->outdegree; counter++)\n", 3);
+   }
+   else 
+   {
+      node_index = left_edge->target->index;
+      PTSI("int host_node_index = findHostIndex(morphism->node_images, %d);\n",
+           3, node_index);
+      PTSI("if(host_node_index < 0) return false;\n", 3);
+      PTSI("Node *host_node = getNode(host, host_node_index);\n", 3);
+      PTSI("int counter;\n", 3);
+      PTSI("for(counter = 0; counter < host_node->indegree; counter++)\n", 3);
+   }
 
    PTSI("{\n", 3);
    if(type == 's' || type == 'l')
@@ -837,8 +856,8 @@ bool emitNextMatcherCall(SearchOp *next_op, int indent)
 
       case 'l':
 
-           PTSI("bool result = match_e%d(host, host_node, morphism, matched_nodes,\n"
-                "                                matched_edges);\n", 
+           PTSI("bool result = match_e%d(host, morphism, matched_nodes,\n"
+                "                             matched_edges);\n", 
                 indent, next_op->index);
            break;
 

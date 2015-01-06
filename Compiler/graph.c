@@ -265,15 +265,20 @@ void removeEdge(Graph *graph, int index)
           source->outdegree--;
 
           /* If the source's index is the last index in the array, decrement
-           * next_out_edge_index until a non-NULL array entry is found. */
+           * next_out_edge_index until it refers to an index exactly one above
+           * a non-NULL pointer. */
           if(counter == source->next_out_edge_index - 1) 
           {
-             do 
+             source->next_out_edge_index--;
+
+             while(source->next_out_edge_index > 0)
              {
-                source->next_out_edge_index--;
+                if(source->out_edges[source->next_out_edge_index - 1] == NULL)
+                   source->next_out_edge_index--;
+                else break;
              }
-             while(source->out_edges[source->next_out_edge_index] == NULL);
           }
+          break;
        }
        else counter++;
     }
@@ -289,15 +294,20 @@ void removeEdge(Graph *graph, int index)
           target->indegree--;
 
           /* If the target's index is the last index in the array, decrement
-           * next_in_edge_index until a non-NULL array entry is found. */
+           * next_in_edge_index until it refers to an index exactly one above
+           * a non-NULL pointer. */
           if(counter == target->next_in_edge_index - 1) 
           {
-             do 
+             target->next_in_edge_index--;
+
+             while(target->next_in_edge_index > 0)
              {
-                target->next_in_edge_index--;
+                if(target->in_edges[target->next_in_edge_index - 1] == NULL)
+                   target->next_in_edge_index--;
+                else break;
              }
-             while(target->in_edges[target->next_in_edge_index] == NULL);
           }
+          break;
        }
        else counter++;
     }
