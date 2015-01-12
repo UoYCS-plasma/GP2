@@ -1,44 +1,80 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ===================================
-  generate.h - Chris Bak (27/10/2014)
-  ===================================
-                             
-  Module for generating C code to execute GP2 programs.
+  ===============
+  Generate Module
+  ===============    
+
+  The code generating module. Responsible for generating the following C 
+  modules:
+
+  Runtime 
+  =======
+  Contains the main function of the runtime system and functions for any
+  procedures in the GP2 program. Generated from the AST of the GP2 program.
+
+  Init-runtime
+  ============
+  Contains code to set up the runtime system, namely the construction of the
+  host graph. Generated from the host graph AST.
+
+  Rules
+  =====
+  For each rule, a C module is created. The module declares two functions:
+  match_<rule_name> and apply_<rule_name> which are called in the runtime
+  system. Each rule module contains other local functions.
 
 /////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_GENERATE_H
 #define INC_GENERATE_H
 
-#define printToHeader(code, ...)	             \
+#define printToMainHeader(code, ...)	             \
+  do { fprintf(main_header, code, ##__VA_ARGS__); }  \
+  while(0) 
+
+#define PTMH printToMainHeader
+
+#define printToMainSource(code, ...)	             \
+  do { fprintf(main_source, code, ##__VA_ARGS__); }  \
+  while(0) 
+
+#define PTMS printToMainSource
+
+#define printToRuleHeader(code, ...)	             \
   do { fprintf(rule_header, code, ##__VA_ARGS__); }  \
   while(0) 
-#define PTH printToHeader
 
-#define printToSource(code, ...)	             \
+#define PTRH printToRuleHeader
+
+#define printToRuleSource(code, ...)	             \
   do { fprintf(rule_source, code, ##__VA_ARGS__); }  \
   while(0) 
-#define PTS printToSource
 
-#define printToSourceI(code, indent, ...)	         		\
+#define PTRS printToRuleSource
+
+#define printToRuleSourceI(code, indent, ...)	         		\
   do { fprintf(rule_source, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
   while(0) 
-#define PTSI printToSourceI
+
+#define PTRSI printToRuleSourceI
 
 #define printToInitSource(code, ...)	        \
   do { fprintf(source, code, ##__VA_ARGS__); }  \
   while(0) 
+
 #define PTIS printToInitSource
 
 #include "ast.h"
 #include "error.h"
 #include "globals.h"
 #include "rule.h"
+#include "transform.h"
 
-extern FILE *rule_header;
-extern FILE *rule_source;
-extern struct Searchplan *searchplan;
+FILE *main_header;
+FILE *main_source;
+FILE *rule_header;
+FILE *rule_source;
+struct Searchplan *searchplan;
 
 /* Search operations are categorised by a character as follows:
  * 'n': Non-root node.
@@ -74,6 +110,10 @@ Searchplan *initialiseSearchplan(void);
 void addSearchOp(Searchplan *plan, char type, int index);
 void printSearchplan(Searchplan *searchplan);
 void freeSearchplan(Searchplan *searchplan);
+
+void generateRuntimeCode(List *declarations);
+void generateLocalDeclarationCode(List *declarations);
+void generateProgramCode(GPStatement *statement);
 
 void generateHostGraphCode(GPGraph *ast_host_graph);
 void generateRuleCode(Rule *rule);

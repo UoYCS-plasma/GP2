@@ -86,7 +86,7 @@ transform.o:	transform.c ast.h error.h globals.h graph.h rule.h transform.h
 stack.o:	stack.c error.h globals.h stack.h
 		$(CC) $(CFLAGS) -c stack.c
 
-generate.o:	generate.c ast.h error.h globals.h rule.h generate.h
+generate.o:	generate.c ast.h error.h globals.h rule.h transform.h generate.h
 		$(CC) $(CFLAGS) -c generate.c
 
 
