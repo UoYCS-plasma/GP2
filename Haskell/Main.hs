@@ -3,10 +3,6 @@ module Main where
 import System.IO
 import System.Environment
 import System.Console.GetOpt
-
-import ApplyRule
-import Graph 
-import GraphIsomorphism
 import GPSyntax
 import ParseGraph
 import ParseLib
@@ -14,12 +10,7 @@ import ParseProgram
 import PrintGraph 
 import ProcessAst
 import RunProgram
-
 import Debug.Trace
-
-printGraph :: HostGraph -> String
-printGraph = graphToGP2 . makePrintableGraph
-
 
 printResult :: FilePath -> Result -> IO ()
 printResult fileName (gs, fc, uc, bds) = do
@@ -34,7 +25,7 @@ printGraphData :: FilePath -> Int -> [GraphData] -> IO ()
 printGraphData _ _ [] = putStrLn ""
 printGraphData fileName k ((graph, count):gcs) = do
     let outputFile = fileName ++ show k 
-    writeFile outputFile $ printGraph graph
+    writeFile outputFile $ printHostGraph graph
     if count == 1 
         then putStrLn $ "1 occurrence of the graph in file " ++ outputFile
         else putStrLn $ show count ++ " occurrences of the graph in file " ++ outputFile 

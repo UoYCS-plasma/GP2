@@ -86,9 +86,9 @@ data SimpleCommand = RuleCall [RuleName]
 
 -- GP Rule ADTs
 type Variable = (VarName, VarType)
-type NodeInterface = [(NodeId, NodeId)]
+type NodeInterface = [(NodeKey, NodeKey)]
 -- For bidirectional edges
-type EdgeInterface = [(EdgeId, EdgeId)]
+type EdgeInterface = [(EdgeKey, EdgeKey)]
 
 data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) NodeInterface 
             EdgeInterface Condition deriving Show
@@ -156,17 +156,17 @@ data AstHostGraph = AstHostGraph [HostNode] [HostEdge] deriving Show
 data HostLabel = HostLabel [HostAtom] Colour deriving (Ord, Eq, Show)
 data HostAtom = Int Int | Str String | Chr Char deriving (Ord, Eq, Show)
 
-colourH :: HostGraph -> NodeId -> Colour
+colourH :: HostGraph -> NodeKey -> Colour
 colourH h n = c where HostNode _ _ (HostLabel _ c) = nLabel h n 
 
-colourR :: RuleGraph -> NodeId -> Colour
+colourR :: RuleGraph -> NodeKey -> Colour
 colourR r n = c where RuleNode _ _ (RuleLabel _ c) = nLabel r n 
 
-isRootH :: HostGraph -> NodeId -> Bool 
-isRootH h n = root where HostNode _ root _ = nLabel h n 
+-- isRootH :: HostGraph -> NodeId -> Bool 
+-- isRootH h n = root where HostNode _ root _ = nLabel h n 
 
-isRootR :: RuleGraph -> NodeId -> Bool
-isRootR r n = root where RuleNode _ root _ = nLabel r n 
-
-isBidirectional :: RuleGraph -> EdgeId -> Bool
-isBidirectional r e = bi where RuleEdge _ bi _ = eLabel r e 
+-- isRootR :: RuleGraph -> NodeId -> Bool
+-- isRootR r n = root where RuleNode _ root _ = nLabel r n 
+-- 
+-- isBidirectional :: RuleGraph -> EdgeId -> Bool
+-- isBidirectional r e = bi where RuleEdge _ bi _ = eLabel r e 

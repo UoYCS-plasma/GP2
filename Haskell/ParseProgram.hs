@@ -28,7 +28,7 @@ localDeclaration :: Parser [Declaration]
 localDeclaration = atLeastOne (pure AstRuleDecl <*> rule <|> pure ProcDecl <*> procedure)
 
 commandSequence :: Parser [Command] 
-commandSequence = pure (:) <*> command <*> maybeSome (keyword ";" |> command)
+commandSequence = atLeastOneSep command (keyword ";") 
 
 command :: Parser Command
 command = pure Block <*> block
@@ -55,9 +55,7 @@ simpleCommand = pure LoopedRuleCall <*> ruleSetCall <| keyword "!"
             <|> pure Fail <| keyword "fail"         
 
 ruleSetCall :: Parser [String]
-ruleSetCall =
-  keyword "{" |> pure (:) <*> lowerIdent <*> maybeSome (keyword "," |> lowerIdent) 
-           <| keyword "}" 
+ruleSetCall = keyword "{" |> atLeastOneSep lowerIdent (keyword ",") <| keyword "}" 
           <|> pure (:[]) <*> lowerIdent
 
 -- The interface is not used: it is valid GP 2 syntax, but it is
@@ -68,22 +66,19 @@ rule = pure AstRule
        <*> lowerIdent 
        <*> (pure concat <*> keyword "(" |> maybeOne parameters <| keyword ")" )
        <*> ruleGraphs 
-       <*> interface |> (pure head <*> exactlyOne ( keyword "where" |> condition ) <|> pure NoCondition)
+       <*> interface |> (keyword "where" |> condition <|> pure NoCondition)
 
 -- In a rule parameter declaration, multiple variables can be declared
 -- with a single type. 
 parameters :: Parser [Variable]
-parameters = pure (++) <*> varList <*> (pure concat <*> maybeSome (keyword ";" |> varList))
+parameters = pure concat <*> atLeastOneSep varList (keyword ";")
 
 varList :: Parser [Variable]
-varList = pure (\(ids,gptype) -> [(id,gptype) | id <- ids])
-      <*> ( pure (,)
-          <*> ( pure (:) <*> lowerIdent <*> maybeSome ( keyword "," |> lowerIdent ) ) 
-          <| keyword ":" <*> gpType )
+varList = pure (\ids gptype -> [(id,gptype) | id <- ids])
+          <*> atLeastOneSep lowerIdent (keyword ",") <| keyword ":" <*> gpType
           
 gpType :: Parser VarType
-gpType = pure gptype <*> label
-   where gptype t = definiteLookup t gpTypes
+gpType = pure (flip definiteLookup gpTypes) <*> label
 
 ruleGraphs :: Parser (AstRuleGraph, AstRuleGraph)
 ruleGraphs = pure (,) <*> ruleGraph <*> ( keyword "=>" |> ruleGraph )
@@ -124,8 +119,7 @@ gpLabel :: Parser RuleLabel
 gpLabel = pure RuleLabel <*> list <*> ruleColour
 
 list :: Parser GPList
-list =  pure (const []) <*> keyword "empty"
-    <|> pure (:) <*> atom <*> maybeSome (keyword ":" |> atom)
+list =  pure [] <| keyword "empty" <|> atLeastOneSep atom (keyword ":")
 
 -- Variable rule assigns a "temporary" ListVar to each rule to conform with the
 -- Haskell types. The variables are assigned their appropriate types during

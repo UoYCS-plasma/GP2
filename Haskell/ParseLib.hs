@@ -47,6 +47,9 @@ maybeSome p = atLeastOne p <|> pure []
 atLeastOne :: Parser a -> Parser [a]
 atLeastOne p = pure (:) <*> p <*> maybeSome p
 
+atLeastOneSep :: Parser a -> Parser b -> Parser [a]
+atLeastOneSep p s = pure (:) <*> p <*> maybeSome (s |> p)
+
 exactlyOne :: Parser a -> Parser [a]
 exactlyOne p = pure (:) <*> p <*> pure []
 
@@ -56,20 +59,8 @@ lower = satisfy isLower
 upper :: Parser Char
 upper = satisfy isUpper
 
-alphanum :: Parser Char
-alphanum = satisfy isAlphaNum
-
-space :: Parser Char
-space = satisfy isSpace
-
-nonspace :: Parser Char
-nonspace = satisfy ( not . isSpace )
-
-spaces :: Parser String
-spaces = atLeastOne space
-
 optSpaces :: Parser String
-optSpaces = maybeSome space
+optSpaces = maybeSome $ satisfy isSpace
 
 token :: Parser a -> Parser a
 token p = p <| optSpaces

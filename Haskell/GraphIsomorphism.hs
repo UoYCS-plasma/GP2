@@ -17,25 +17,20 @@ isomorphismCount graphs = representBy isomorphic graphs
 isomorphic :: (Ord a, Ord b) => Graph a b -> Graph a b -> Bool
 isomorphic g1 g2 =
   length ns1 == length ns2 &&
-  any (edgesIso g1 g2) (bijectionsWith (nodeKey g1) ns1 (nodeKey g2) ns2)
-  where
-  ns1 = allNodes g1
-  ns2 = allNodes g2
+  any (edgesIso g1 g2) (bijectionsWith (nodeAttribs g1) ns1 (nodeAttribs g2) ns2)
+  where ns1 = allNodeKeys g1 ; ns2 = allNodeKeys g2
 
-nodeKey :: Graph a b -> NodeId -> (a, Int, Int)
-nodeKey g n  =  (nLabel g n, outdegree g n, indegree g n)
+nodeAttribs :: Graph a b -> NodeKey -> (a, Int, Int)
+nodeAttribs g n  =  (nLabel g n, outdegree g n, indegree g n)
 
-edgesIso :: Ord b => Graph a b -> Graph a b -> Mapping NodeId NodeId -> Bool
-edgesIso g1 g2 s = all (outEdgesIso g1 g2 s) (allNodes g1)
+edgesIso :: Ord b => Graph a b -> Graph a b -> Mapping NodeKey NodeKey -> Bool
+edgesIso g1 g2 s = all (outEdgesIso g1 g2 s) (allNodeKeys g1)
 
-outEdgesIso :: Ord b => Graph a b -> Graph a b -> Mapping NodeId NodeId -> NodeId -> Bool
+outEdgesIso :: Ord b => Graph a b -> Graph a b -> Mapping NodeKey NodeKey -> NodeKey -> Bool
 outEdgesIso g1 g2 s n1 =
-  nonEmpty (bijectionsWith (edgeKey g1) es1 (edgeKey g2) es2) 
-  where
-  n2  = definiteLookup n1 s
-  es1 = outEdges g1 n1
-  es2 = outEdges g2 n2
+  nonEmpty (bijectionsWith edgeAttribs es1 edgeAttribs es2) 
+  where es1 = outEdges g1 n1 ; es2 = outEdges g2 $ definiteLookup n1 s
 
-edgeKey :: Graph a b -> EdgeId -> (b, NodeId)
-edgeKey g e  =  (eLabel g e, target g e)
+edgeAttribs:: (EdgeKey,b) -> (b, NodeKey)
+edgeAttribs (ek,elab)  =  (elab, target ek)
 

@@ -4,7 +4,6 @@ import Prelude hiding (lookup)
 import Data.List
 import Data.Maybe
 import Control.Monad (guard)
-
 import Mapping
 import GPSyntax
 
@@ -45,25 +44,17 @@ atomsMatch = atomsMatchWith []
 -- analogously to atomsMatchWith,
 atomsMatchWith :: Environment -> [HostAtom] -> [RuleAtom] -> Maybe Environment
 atomsMatchWith env [] [] = Just env
-atomsMatchWith env _ [] = Nothing
 atomsMatchWith env [] [Var (var, ListVar)] = extendMapping env var []
-atomsMatchWith env [] _ = Nothing
 atomsMatchWith env hall@(ha:has) (ra:ras) =
     case (ha, ra) of
         ( _    , Var (var, ListVar) ) ->
-            let hl = length hall
-                rl = length ras
-                d  = hl - rl 
-            in
-            case compare hl rl of
+            let hl = length hall ; rl = length ras ; d  = hl - rl 
+            in  case compare hl rl of
                 LT -> Nothing
-                EQ -> do 
-                    env' <- extendMapping env var []
-                    atomsMatchWith env' hall ras
-                GT -> do
-                    env' <- extendMapping env var $ take d hall
-                    atomsMatchWith env' (drop d hall) ras
-              
+                EQ -> do env' <- extendMapping env var []
+                         atomsMatchWith env' hall ras
+                GT -> do env' <- extendMapping env var (take d hall)
+                         atomsMatchWith env' (drop d hall) ras              
         ( Int i, Val (Int j) ) -> do
             guard $ i == j
             atomsMatchWith env has ras
@@ -79,8 +70,7 @@ atomsMatchWith env hall@(ha:has) (ra:ras) =
             env' <- extendMapping env var [ha]
             atomsMatchWith env' has ras
         ( Str str, Val (Chr c) ) -> do
-            guard $ str /= ""
-            guard $ head str == c
+            guard $ str /= "" && head str == c
             atomsMatchWith env has ras
         ( Str str, Val (Str s) ) -> do
             guard $ str == s
@@ -94,11 +84,10 @@ atomsMatchWith env hall@(ha:has) (ra:ras) =
             env' <- extendMapping env var [ha]
             atomsMatchWith env' has ras
         ( Str str, a@(Concat a1 a2) ) -> do
-            let as = expand a 
-            env' <- stringMatchWith env str as
+            env' <- stringMatchWith env str (expand a)
             atomsMatchWith env' has ras
         _ -> Nothing
-
+atomsMatchWith env _ _ = Nothing
 
 expand :: RuleAtom -> [RuleAtom]
 expand (Concat a1 a2) = expand a1 ++ expand a2
@@ -110,9 +99,7 @@ expand a = [a]
 
 stringMatchWith :: Environment -> String -> [RuleAtom] -> Maybe Environment
 stringMatchWith env [] [] = Just env
-stringMatchWith env _ [] = Nothing
 stringMatchWith env [] [Var (var, StrVar)] = extendMapping env var [Str ""] 
-stringMatchWith env [] _ = Nothing
 stringMatchWith env str@(c:cs) (a:as) = 
    case a of
         Val (Chr d) -> do
@@ -120,25 +107,18 @@ stringMatchWith env str@(c:cs) (a:as) =
            stringMatchWith env cs as
         Val (Str s) -> do
            guard $ s `isPrefixOf` str 
-           let rl = length s
-           stringMatchWith env (drop rl str) as
+           stringMatchWith env (drop (length s) str) as
         Var (var, ChrVar) -> do
            guard $ str /= ""
            env' <- extendMapping env var [(Chr c)]
            stringMatchWith env' cs as
         Var (var, StrVar) -> 
-           let sl = length str
-               al = length as
-               d = sl - al
-           in
-           case compare sl al of
+           let sl = length str ; al = length as ; d = sl - al
+           in case compare sl al of
               LT -> Nothing
-              EQ -> do
-                  env' <- extendMapping env var []
-                  stringMatchWith env' str as
-              GT -> do
-                  env' <- extendMapping env var [(Str $ take d str)]
-                  stringMatchWith env' (drop d str) as
+              EQ -> do env' <- extendMapping env var []
+                       stringMatchWith env' str as
+              GT -> do env' <- extendMapping env var [(Str $ take d str)]
+                       stringMatchWith env' (drop d str) as
         _ -> Nothing
-
-
+stringMatchWith env _ _ = Nothing

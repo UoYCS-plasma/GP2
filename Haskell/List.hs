@@ -11,11 +11,6 @@ choices :: [[a]] -> [[a]]
 choices []       = [[]]
 choices (xs:xss) = [c:cs | c <- xs, cs <- choices xss]
 
-sublistsOf :: Int -> [a] -> [[a]]
-sublistsOf 0 _        = [[]]
-sublistsOf _ []       = []
-sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
-
 isSet :: Eq a => [a] -> Bool
 isSet []      =  True
 isSet (x:xs)  =  x `notElem` xs && isSet xs
@@ -39,8 +34,8 @@ bijectionsWith f xs g ys =
                               | (b1,b2) <- zbs ] ] 
 
 blockZip :: [[a]] -> [[b]] -> Maybe [([a],[b])]
-blockZip [] [] = Just []
-blockZip (xs:xss) (ys:yss) = do
+blockZip []       []        =  Just []
+blockZip (xs:xss) (ys:yss)  =  do
   guard (length xs == length ys)
   xyss <- blockZip xss yss
   return ((xs,ys) : xyss) 
