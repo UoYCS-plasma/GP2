@@ -20,7 +20,7 @@ awk -v "bm=`basename $PWD`" 'BEGIN { f=0; u=0; n=0 ; i=0 ; rmin=0 ; rmax=0 ; t=0
 		 END { \
 			 rng=(rmin==rmax) ? rmin : (rmin "-" rmax) ; \
 			 if (failed) { \
-				 printf " & %20s & & - & - & - & & - & $>1h$ & & - & - \\\\\n", bm ; exit 1
+				 printf " & %20s & & - & - & - & & - & $>5m$ & & - & - \\\\\n", bm ; exit 1
 			 } else { \
 				 printf " & %20s & & %6d & %9d & %5d & & %5s & %7s & & ", bm, n, i, f, rng, t \
 			 }
@@ -44,7 +44,7 @@ for d in */ ; do
 	for d in *.host--one.d/ ; do 
 		pushd $d >/dev/null || break
 		graphCounts ./ && heapProfile ./
-		echo '                  \cline{2-12}'
+		#echo '                  \cline{2-12}'
 		popd >/dev/null
 	done >> "$outOne"
 	echo '\hline' >> "$outOne"
@@ -53,7 +53,7 @@ for d in */ ; do
 	for d in *.host.d/ ; do 
 		pushd $d >/dev/null || break
 		graphCounts ./ && heapProfile ./
-		echo '                  \cline{2-12}'
+		#echo '                  \cline{2-12}'
 		popd >/dev/null
 	done >> "$outAll"
 	echo '\hline' >> "$outAll"
