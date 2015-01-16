@@ -1,4 +1,4 @@
-Main = init; {add, reduce}!
+Main = init; add!; reduce!
 
 init (x: list) [
 (n1, x # grey) | 
