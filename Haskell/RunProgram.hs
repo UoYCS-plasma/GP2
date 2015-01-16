@@ -33,12 +33,12 @@ nSolutions :: Int -> GPProgram -> Int -> HostGraph -> Result
 nSolutions n (Program ds) max g = resultWith (flip zip [1,1..]) $ take n $ evalMain max ds (findMain ds) g
 
 resultWith :: ([HostGraph] -> [(HostGraph,Int)]) -> [GraphState] -> Result
-resultWith f gs = let (gs',fc',uc',bds') = foldr add ([], 0, 0, (maxBound, 0)) gs in
+resultWith f gs = let (gs',fc',uc',bds') = foldl add ([], 0, 0, (maxBound, 0)) gs in
     (f gs',fc',uc',bds')
     where
-    add (GS g rc)    (gs, fc, uc, (low, high)) = (g:gs, fc, uc, (min rc low, max rc high))
-    add Unfinished   (gs, fc, uc, bds)         = (gs, fc, uc+1, bds)
-    add (Failure rc) (gs, fc, uc, (low, high)) = (gs, fc+1, uc, (min rc low, max rc high))
+    add (gs, fc, uc, (low, high)) (GS g rc)    = (g:gs, fc, uc, (min rc low, max rc high))
+    add (gs, fc, uc, bds)         Unfinished   = (gs, fc, uc+1, bds)
+    add (gs, fc, uc, (low, high)) (Failure rc) = (gs, fc+1, uc, (min rc low, max rc high))
         
 findMain :: [Declaration] -> Main
 findMain ((MainDecl m):ds) = m
