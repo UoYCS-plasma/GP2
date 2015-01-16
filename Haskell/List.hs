@@ -1,6 +1,6 @@
 module List where
 
-import Data.List (permutations)
+import Data.List (permutations,foldl')
 import GHC.Exts (groupWith)
 import Control.Monad (guard)
 
@@ -15,11 +15,15 @@ isSet :: Eq a => [a] -> Bool
 isSet []      =  True
 isSet (x:xs)  =  x `notElem` xs && isSet xs
 
+-- NB. As the graph-isomorphism module applies representBy to potentially
+-- large lists of graphs, computation is forced to ease memory pressure.
 representBy :: (a->a->Bool) -> [a] -> [(a,Int)]
-representBy equiv xs  =  foldl add [] xs
+representBy equiv xs  =  foldl' add [] xs
   where
   add []             y  =  [(y,1)]
-  add (xn@(x,n):xns) y  =  if x `equiv` y then (x,n+1):xns else (xn : add xns y)
+  add (xn@(x,n):xns) y  =  if x `equiv` y
+                           then let n' = n+1 in n' `seq` (x,n'):xns
+                           else let a' = add xns y in a' `seq` (xn : a')
 
 nonEmpty :: [a] -> Bool
 nonEmpty []     =  False
