@@ -27,9 +27,9 @@ awk -v "bm=`basename $PWD`" -v "short=$2" 'BEGIN { f=0; u=0; n=0 ; i=0 ; rmin=0 
 				}
 			 } else {
 				if (failed) { \
-					printf " & %20s & & - & - & - & & - & $>5m$ & & - & - \\\\\n", bm ; exit 1
+					printf " & %20s & - & - & - & - & $>5m$ & & - & - \\\\\n", bm ; exit 1
 				} else { \
-					printf " & %20s & & %6d & %9d & %5d & & %5s & %7s & & ", bm, n, i, f, rng, t \
+					printf " & %20s & %6d & %9d & %5d & %5s & %7s & & ", bm, n, i, f, rng, t \
 				}
 			}
 		 }' $1/test.log
