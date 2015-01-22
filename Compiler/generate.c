@@ -24,6 +24,7 @@ void generateRuntimeCode(List *declarations)
    PTMH("#include \"error.h\"\n"
         "#include \"debug.h\"\n"
         "#include \"graph.h\"\n"
+        "#include \"macros.h\"\n"
         "#include \"init_runtime.h\"\n\n");
 
    PTMS("#include \"runtime.h\"\n\n");
@@ -37,10 +38,10 @@ void generateRuntimeCode(List *declarations)
          case MAIN_DECLARATION:
 
               PTMS("Graph *host = makeHostGraph();\n"
-                   "int fail_mode = 0;\n"
+                   "int fail_mode;\n"
                    "bool success = true;\n\n"
                    "int main(void)\n"
-                   "{\n"
+                   "{\n"               
                    "   openLogFileR();\n\n");
 
               generateProgramCode(decl->value.main_program);
@@ -88,6 +89,8 @@ void generateRuntimeCode(List *declarations)
       }
       declarations = declarations->next;
    }
+   fclose(main_header);
+   fclose(main_source);
 }
 
 

@@ -1,24 +1,34 @@
 #include "runtime.h"
 
-int main() {
+Graph *host = makeHostGraph();
+int fail_mode;
+bool success = true;
 
+int main(void)
+{
    openLogFileR();
 
-   Graph *host = makeHostGraph();
-   validGraph(host);
-   printGraph(host);
+   fail_mode = 1;
+   copyGraph(host);
 
-   bool result = matchGlobal_rule1(host);
- 
-   if(result) 
+   if(!matchMain_rule1(host)) FAILURE_ACTION
+   host = pop(graph_change_stack);
+   fail_mode = 0;
+   if(success)
    {
-      validGraph(host);
-      printGraph(host);
+   if(!matchMain_rule2(host)) FAILURE_ACTION
    }
-   else printf("Match failed.\n\n");
+   else
+   {
+   /* skip */
+   }
 
+   success = true;
+
+   printGraph(host);
    freeGraph(host);
    closeLogFile();
-   
+
    return 0;
 }
+

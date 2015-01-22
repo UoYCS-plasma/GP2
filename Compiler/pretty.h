@@ -50,9 +50,9 @@
          printAST ## TYPE (POINTER_ARG, dot_file);                            \
        else {                                                                 \
          print_to_dot_file("node%d[shape=plaintext,label=\"%d ERROR\"]\n",    \
-                 next_node_id, next_node_id);                                 \
+                           next_node_id, next_node_id);                       \
          print_to_log("Error: Unexpected NULL pointer at AST node %d\n",      \
-                 next_node_id);                                               \
+                           next_node_id);                                     \
        }            							      \
      }                                                                        \
   while (0)
@@ -81,14 +81,14 @@
    do {                                                                     \
         if(POINTER_ARG == NULL) {                                           \
           print_to_dot_file("node%d[shape=plaintext,label=\"%d NULL\"]\n",  \
-                  next_node_id, next_node_id);                              \
+                            next_node_id, next_node_id);                    \
           print_to_dot_file("node%d->node%d[label=\"" #EDGE_LABEL "\"]\n",  \
-                  NODE_TYPE->node_id, next_node_id);                        \
+                            NODE_TYPE->node_id, next_node_id);              \
           next_node_id += 1;                                                \
         }							            \
         else {                                                              \
           print_to_dot_file("node%d->node%d[label=\"" #EDGE_LABEL "\"]\n",  \
-                  NODE_TYPE->node_id, next_node_id);                        \
+                            NODE_TYPE->node_id, next_node_id);              \
           printASTList(POINTER_ARG, dot_file);                              \
         }                                                                   \
       } 			                                            \
@@ -102,51 +102,191 @@
 #define LOCATION_ARGS(LOC)    \
    LOC.first_line, LOC.first_column, LOC.last_line, LOC.last_column
 
+
+#define printListNode(NODE_LABEL)                                     \
+  do                                                                  \
+  {                                                                   \
+     print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n" \
+                       #NODE_LABEL "\"]\n",                           \
+                       list->node_id, list->node_id,                  \
+                       LOCATION_ARGS(list->location));                \
+     print_to_dot_file("node%d->node%d[label=\"value\"]\n",           \
+                       list->node_id, next_node_id);                  \
+  }                                                                   \
+  while(0)              
+
+#define printDeclarationNode(NODE_LABEL_1, NODE_LABEL_2)                \
+  do                                                                    \
+  {                                                                     \
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"             \
+                       #NODE_LABEL_1 "\"]\n",                           \
+                       decl->node_id, decl->node_id,                    \
+                       LOCATION_ARGS(decl->location));                  \
+     print_to_dot_file("node%d->node%d[label=\"" #NODE_LABEL_2 "\"]\n", \
+                       decl->node_id, next_node_id);                    \
+  }                                                                     \
+  while(0)     
+
+#define printConditionalNode(NODE_LABEL)                                  \
+  do                                                                      \
+  {                                                                       \
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"               \
+                       #NODE_LABEL "\"]\n", stmt->node_id, stmt->node_id, \
+                       LOCATION_ARGS(stmt->location));                    \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"condition\"]\n",           \
+                       stmt->node_id, next_node_id);                      \
+     prettyPrint(stmt->value.cond_branch.condition, Statement);           \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"then\"]\n",                \
+                       stmt->node_id, next_node_id);                      \
+     prettyPrint(stmt->value.cond_branch.then_stmt, Statement);           \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"else\"]\n",                \
+                       stmt->node_id, next_node_id);                      \
+     prettyPrint(stmt->value.cond_branch.else_stmt, Statement);           \
+  }                                                                       \
+  while(0)     
+
+#define printTypeCheckNode(NODE_LABEL_1, NODE_LABEL_2)                        \
+  do                                                                          \
+  {                                                                           \
+     if(cond->value.var != NULL)                                              \
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"                \
+                          #NODE_LABEL_1 "\\n Variable: %s\"]\n",              \
+                          cond->node_id, cond->node_id,                       \
+                          LOCATION_ARGS(cond->location), cond->value.var);    \
+     else                                                                     \
+     {                                                                        \
+        print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"                \
+                          "Variable: \\n UNDEFINED\"]\n",                     \
+                          cond->node_id, cond->node_id,                       \
+                          LOCATION_ARGS(cond->location));                     \
+        print_to_dot_file("Error (printASTCondition." #NODE_LABEL_2           \
+                          "): Undefined name at AST node %d", cond->node_id); \
+     }                                                                        \
+  }                                                                           \
+  while(0)                                                                    \
+
+#define printListEqualityNode(NODE_LABEL)                                 \
+  do                                                                      \
+  {                                                                       \
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"               \
+                       #NODE_LABEL "\"]\n", cond->node_id, cond->node_id, \
+                       LOCATION_ARGS(cond->location));                    \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"left list\"]\n",           \
+                       cond->node_id, next_node_id);                      \
+     prettyPrint(cond->value.list_cmp.left_list, List);                   \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"right list\"]\n",          \
+                       cond->node_id, next_node_id);                      \
+     prettyPrint(cond->value.list_cmp.right_list, List);                  \
+  }                                                                       \
+  while(0)  
+
+#define printRelationalNode(NODE_LABEL)                                   \
+  do                                                                      \
+  {                                                                       \
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"               \
+                       #NODE_LABEL "\"]\n", cond->node_id, cond->node_id, \
+                       LOCATION_ARGS(cond->location));                    \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",            \
+                       cond->node_id, next_node_id);                      \
+     prettyPrint(cond->value.atom_cmp.left_exp, Atom);                    \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",           \
+                       cond->node_id, next_node_id);                      \
+     prettyPrint(cond->value.atom_cmp.right_exp, Atom);                   \
+  }                                                                       \
+  while(0)  
+
+#define printBinaryBooleanNode(NODE_LABEL)                                \
+  do                                                                      \
+  {                                                                       \
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"               \
+                       #NODE_LABEL "\"]\n", cond->node_id, cond->node_id, \
+                       LOCATION_ARGS(cond->location));                    \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",            \
+                       cond->node_id, next_node_id);                      \
+     prettyPrint(cond->value.bin_exp.left_exp, Condition);                \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",           \
+                       cond->node_id, next_node_id);                      \
+     prettyPrint(cond->value.bin_exp.right_exp, Condition);               \
+  }                                                                       \
+  while(0)  
+
+#define printBinaryOperatorNode(NODE_LABEL)                               \
+  do                                                                      \
+  {                                                                       \
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"               \
+                       #NODE_LABEL "\"]\n", atom->node_id, atom->node_id, \
+                       LOCATION_ARGS(atom->location));                    \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"left exp\"]\n",            \
+                       atom->node_id, next_node_id);                      \
+     prettyPrint(atom->value.bin_op.left_exp, Atom);                      \
+                                                                          \
+     print_to_dot_file("node%d->node%d[label=\"right exp\"]\n",           \
+                       atom->node_id, next_node_id);                      \
+     prettyPrint(atom->value.bin_op.right_exp, Atom);                     \
+  }                                                                       \
+  while(0)  
+
+#define printDegreeOperatorNode(NODE_LABEL_1, NODE_LABEL_2)                 \
+  do                                                                        \
+  {                                                                         \
+     if(atom->value.name != NULL)                                           \
+     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n" #NODE_LABEL_1   \
+                       "(%s)\"]\n", atom->node_id, atom->node_id,           \
+                       LOCATION_ARGS(atom->location), atom->value.node_id); \
+     else                                                                   \
+     {                                                                      \
+        print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"    \
+                          #NODE_LABEL_1": \\n UNDEFINED\"]\n",              \
+                          atom->node_id, atom->node_id,                     \
+                          LOCATION_ARGS(atom->location));                   \
+        print_to_log("Error (printASTAtom." #NODE_LABEL_2 "): Undefined "   \
+                     "node name at AST node %d", atom->node_id);            \
+     }                                                                      \
+  }                                                                         \
+  while(0)  
+
 /* printSymbolTable creates the file <program>.tab, where <program> is the
  * name of the GP2 program file, and pretty prints the symbol table to that 
  * file. 
  *
  * Argument 1: The symbol table.
- * Argument 2: The name of the GP2 program file.
- */
+ * Argument 2: The name of the GP2 program file.*/
 
-int printSymbolTable(GHashTable *table, string const file_name);
+void printSymbolTable(GHashTable *table, string const file_name);
 
 
 /* printSymbolList is an auxiliary function called by printSymbolTable. It
- * iterates over a symbol list, pretty printing each symbol in the list.
- */
+ * iterates over a symbol list, pretty printing each symbol in the list. */
 
 void printSymbolList(gpointer key, gpointer value, gpointer user_data);
-
-
-/* symbolTypeToString is a helper function of printSymbolList. It returns the
- * corresponding to its argument.
- */
-
-string symbolTypeToString(SymbolType type);
-
 
 /* printDotAST creates a new file <source_name>.dot. It generates
  * a DOT text file that can be used to draw a picture of the AST via
  * graphviz. 
  * 
  * Argument 1: A pointer to the AST to be pretty printed.
- * Argument 2: The name of the GP2 program file.
- */
+ * Argument 2: The name of the GP2 program file. */
 
-int printDotAST(List * const gp_ast, string file_name);
+void printDotAST(List * const gp_ast, string file_name);
 
 
 /* Identical to printDotAST, except it calls printGraph instead of
  * printList.
  *
  * Argument 1: A pointer to the AST of the host graph to be pretty printed.
- * Argument 2: The name of the GP2 host graph file.
- *
- */
+ * Argument 2: The name of the GP2 host graph file. */
 
-int printDotHostGraph(GPGraph * const host_graph_ast, string file_name);
+void printDotHostGraph(GPGraph * const host_graph_ast, string file_name);
 
 /* printList is called by printDotAST. It walks through the AST, outputting
  * lines to dot_file and recursively calling printing functions at the
@@ -155,9 +295,7 @@ int printDotHostGraph(GPGraph * const host_graph_ast, string file_name);
  * Argument 1: A pointer to a List in the AST.
  * Argument 2: The .dot file created by printDotAST.
  * Argument 3: A variable to keep track of the current node number. Used
-               to uniquely identify nodes in the output.
- *
- */
+               to uniquely identify nodes in the output. */
 
 void printASTList(List * const list, FILE *dot_file);
 void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file);

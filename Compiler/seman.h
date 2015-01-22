@@ -16,12 +16,12 @@
 #include "ast.h"
 #include "error.h"
 #include "globals.h"
+#include "pretty.h"
 
-/* GP2 symbols are stored in struct Symbol. These are values of the
- * symbol table. The symbol's identifier, namely the identifier in GP2,
- * is the symbol's hash key.
+/* GP2 symbols are stored in struct Symbol. These are values of the symbol
+ * table. The hash key of each symbol is its name in the GP2 program text.
  *
- * GP2's symbols are as follows:
+ * GP2's symbols are:
  * - Procedures
  * - Rules
  * - Variables
@@ -42,7 +42,7 @@
  *                  for symbols of type 'rule' and 'procedure'. This field is
  *                  used to uniquely identify variables, nodes and edges as 
  *                  they can have the same name in different rules.
- * 
+ *       
  * Flags: is_var is set to true if the symbol represents a GP variable. This
  *        is for more concise code: better to compare to a single bool than to
  *        compare with each of the individual variable types.
@@ -58,13 +58,13 @@
  */
  
 typedef enum {PROCEDURE_S=0, RULE_S, INT_S, CHAR_S, STRING_S, ATOM_S,
-               LIST_S, LEFT_NODE_S, RIGHT_NODE_S, LEFT_EDGE_S, RIGHT_EDGE_S} 
-               SymbolType;
+              LIST_S, LEFT_NODE_S, RIGHT_NODE_S, LEFT_EDGE_S, RIGHT_EDGE_S} 
+              SymbolType;
 
 typedef struct Symbol {
   SymbolType type;
-  string scope; 
-  string containing_rule; 
+  string scope;
+  string containing_rule;
   bool is_var;
   bool in_lhs; 
   bool wildcard; 
@@ -92,10 +92,11 @@ typedef struct BiEdgeList {
   struct BiEdgeList *next;
 } BiEdgeList;
 
+void freeBiEdgeList(BiEdgeList *edge_list); 
+
 /* Always points to the start of BiEdgeList. Defined in seman.c */
 extern BiEdgeList *bidirectional_edges;
 
-extern bool abort_compilation; /* Defined in main.c */
 
 /* GLib's hashtable data structure is used to implement GP2's symbol table.
  * GP2 identifiers are the keys. The values are lists of struct Symbols,
@@ -138,118 +139,63 @@ extern bool abort_compilation; /* Defined in main.c */
  * objects with that name.
  */
 
-extern GHashTable *gp_symbol_table; /* Defined in main.c */
+/* The symbol table is a global variable in this module. It is accessed
+ * and updated by all of the semantic analysis functions. */
+extern GHashTable *symbol_table; 
 
-
-
-/* Function to reverse a sequence of List nodes in the AST. Given a
- * pointer to a List node representing the head of an AST list, it
- * reverses the list and returns a pointer to the new head. 
- *
- * This function is required as Bison generates lists in reverse order
- * due to left-recursive grammar rules. 
- */
-
-struct List *reverse (struct List * listHead);
-
-
-
-/* The host graph AST contains lists that need to be reversed.
- * First the node list and the edge list are reversed, then the function
- * iteratively steps through each node/edge list, reversing all the lists in 
- * the node and edge labels. 
- */
-
-void reverseGraphAST (GPGraph *graph); 
-
-
-
-/* glib requires the user to provide functions to free hash table values.
- * freeSymbolList frees a list of struct Symbols. This function is passed
- * to the glib through g_hash_table_new_full, called in main.c. 
- * freeSymbolList is called by glib's hashtable functions under the hood.
- */
-
-void freeSymbolList(gpointer key, gpointer value, gpointer data);
-
-
+/* The top level semantic analysis function. Creates the symbol table and
+ * calls declarationScan and semanticCheck with their initial arguments
+ * (gp_program and "Main"). If debug is set to true, it prints the AST before
+ * and after transformation, and it also prints the symbol table. */
+bool analyseProgram(List *gp_program, bool debug, string prefix);
 
 /* declarationScan traverses the global declaration list and any local 
  * declaration lists. It adds all procedure declarations and rule declarations
- * to the symbol table. 
+ * to the symbol table. Returns true if a name conflict is found, such as
+ * two procedures with the same name, or if there is not exactly one Main
+ * declaration. 
  *
  * Argument 1: The root of the AST which is the head of the global declaration
  *             list.
- * Argument 2: The global symbol table.
- * Argument 3: The scope of the declaration list the function is traversing.
- *             This is either "Main" (initial value) or a procedure name.
- *
- * declarationScan performs semantic checking. It searches for name clashes:
- * two procedures declared with the same name, or two rules declared with the
- * same name in the same scope. If a name clash is found, the function reports
- * error and returns true. This informs main.c to terminate semantic checking. 
- * It also checks that there is exactly one Main declaration.
- */
+ * Argument 2: The scope of the declaration list the function is traversing.
+ *             This is either "Main" (initial value) or a procedure name. */
 
-bool declarationScan(List * ast, GHashTable *table, string const scope);
-
-
+bool declarationScan(List *ast, string const scope);
 
 /* semanticCheck performs semantic analysis on a GP program after parsing. 
- * It uses the function reverse to reverse lists in the AST.
+ * Called after declarationScan because rule and procedure symbols in the
+ * symbol table are used to validate rule and procedure calls in the program
+ * text.
  *
- * Argument 1: A pointer to the abstract syntax tree of the input 
- *             program.
- * Argument 2: The symbol table. When called for the first time, it contains
- *             only rule and procedure identifiers added by declarationScan.
- *             semanticCheck will added other symbols to the symbol table and 
- *             use them for semantic analysis. This argument is passed to all
- *             subfunctions.
- * Argument 3: The current scope. semanticCheck is initially called with 
- *             scope "Global". 
- *
- */
+ * Argument 1: A pointer to the abstract syntax tree of the input program.
+ * Argument 2: The current scope. semanticCheck is initially called with "Main". */
 
-bool semanticCheck(List * declarations, GHashTable *table, string const scope);
-
-/* Called by semanticCheck, to free the list of struct BiEdges. */
-
-void freeBiEdgeList(BiEdgeList *edge_list); 
-
+bool semanticCheck(List *declarations, string const scope);
 
 
 /* statementScan is called whenever a GPStatement node is reached in the AST.
- * Called only by semanticCheck and itself. It searches for rule and 
- * procedure calls, and checks them for semantic correctness
- * with the auxiliary function validateCall.
+ * Called only by semanticCheck and itself. It searches for rule and procedure
+ * calls and checks them for semantic correctness with the auxiliary function 
+ * validateCall.
  *
  * Argument 1: A pointer to the GPStatement node.
- * Argument 2: The symbol table.
- * Argument 3: The current scope, passed from declarationScan.
- *
- */
+ * Argument 2: The current scope, passed from declarationScan. */
+
+void statementScan(GPStatement *const statement, string const scope);
 
 
-void statementScan(GPStatement * const statement, GHashTable *table, 
-                   string const scope);
-
-
-
-/* validateCall searches the symbol list with key <name> for a symbol with
- * the same type whose scope is either Global or <scope>. Called by 
- * statementScan when a RULE_CALL or PROCEDURE_CALL AST node is reached.
+/* The validateCall functions search the symbol table for a rule or procedure
+ * in either the passed scope or "Main" scope. Note that these could be equal.
+ * validateRuleCall returns a string created by makeRuleIdentifier if a rule
+ * symbol exists in a correct scope, or NULL otherwise. This return value
+ * is used to update the rule name of the AST node representing the rule call.
  *
  * Argument 1: The name of the rule or procedure in question. Used to hash
  *             into the symbol table.
- * Argument 2: The symbol table.
- * Argument 3: The current scope.
- * Argument 4: The type of call, either RULE_S or PROCEDURE_S. This argument
- *             is passed by statementScan.
- */
+ * Argument 2: The current scope. */
 
-void validateCall(string const name, GHashTable *table, string const scope, 
-                  SymbolType const type);
-
+string validateRuleCall(string const name, string const scope);
+void validateProcedureCall(string const name, string const scope);
 
 
 /* ruleScan processes a struct GPRule. First it reverses the rule's parameter
@@ -259,12 +205,9 @@ void validateCall(string const name, GHashTable *table, string const scope,
  * subfunctions. 
  *
  * Argument 1: A pointer to the GPRule node.
- * Argument 2: The symbol table.
- * Argument 3: The current scope.
- */
+ * Argument 2: The current scope. */
 
-void ruleScan(GPRule * const rule, GHashTable *table, string const scope);
-
+void ruleScan(GPRule *const rule, string const scope);
 
 
 /* enterVariables adds variable declarations from a rule's parameter list
@@ -276,15 +219,13 @@ void ruleScan(GPRule * const rule, GHashTable *table, string const scope);
  *             CHAR_S, STRING_S, ATOM_S, LIST_S.
  * Argument 2: Pointer to the list of variables declared with a specific type
  *             in the AST.
- * Argument 3: The symbol table.
- * Argument 4: The current scope.
- * Argument 5: The current rule being processed. This extra information
+ * Argument 3: The current scope.
+ * Argument 4: The current rule being processed. This extra information
  *             is required for variable symbols.
  */
 
-void enterVariables(SymbolType const type, List * variables, GHashTable *table, 
-		     string const scope, string const rule_name);
-
+void enterVariables(SymbolType const type, List *variables, 
+		    string const scope, string const rule_name);
 
 
 /* graphScan is responsible for adding nodes and edges to the symbol table.
@@ -293,16 +234,14 @@ void enterVariables(SymbolType const type, List * variables, GHashTable *table,
  * contain duplicates. This function is called only by ruleScan.
  *
  * Argument 1: A pointer to a struct GPGraph.
- * Argument 2: The symbol table.
- * Argument 3: The current scope.
- * Argument 4: The current rule being processed.
- * Argument 5: Either 'l' for the LHS graph or 'r' for the RHS graph.
+ * Argument 2: The current scope.
+ * Argument 3: The current rule being processed.
+ * Argument 4: Either 'l' for the LHS graph or 'r' for the RHS graph.
  *
  */
 
-void graphScan(GPGraph *graph, GHashTable *table, string const scope, 
-                string const rule_name, char const side);
-
+void graphScan(GPGraph *graph, string const scope, string const rule_name,
+               char const side);
 
 
 /* interfaceScan performs semantic checking on the interface list of a rule.
@@ -312,14 +251,11 @@ void graphScan(GPGraph *graph, GHashTable *table, string const scope,
  * list. This function is called only by ruleScan.
  *
  * Argument 1: Pointer to the head of an AST interface list.
- * Argument 2: The symbol table.
- * Argument 3: The current scope.
- * Argument 4: The current rule being processed.
+ * Argument 2: The current scope.
+ * Argument 3: The current rule being processed.
  */
 
-void interfaceScan(List *interface, GHashTable *table, string const scope,
-                    string const rule_name);
-
+void interfaceScan(List *interface, string const scope, string const rule_name);
 
 
 /* conditionScan navigates a subtree of the AST with a GPCondExp node
@@ -328,40 +264,18 @@ void interfaceScan(List *interface, GHashTable *table, string const scope,
  * is called only by ruleScan.
  *
  * Argument 1: Pointer to a struct GPCondExp.
- * Argument 2: The symbol table.
- * Argument 3: The current scope.
- * Argument 4: The current rule being processed.
+ * Argument 2: The current scope.
+ * Argument 3: The current rule being processed.
  */   
 
-
-void conditionScan(GPCondExp *const condition, GHashTable *table, string const scope,
-                    string const rule_name);
-
+void conditionScan(GPCondExp *const condition, string const scope,
+                   string const rule_name);
 
 
 /* gpListScan takes as input the head of a GP2 list expression in the AST.
- * It first reverses the list to place it in the correct order according
- * to the input file. Then the function traverses the list, calling 
- * atomicExpScan for each item in the list.
- *
- * The function removes unnecessary EMPTY_LIST nodes. EMPTY_LIST is
- * one of the types of struct GPAtomicExp. It is used only as a marker to
- * signify an empty list: a list with no proper GPAtomicExp nodes.
- * Explicitly, EMPTY_LIST should only appear as follows, where List is
- * the head of the list. 
- *			 List --[next]-->NULL
- *  		  	  |
- *  			[value]-->EMPTY_LIST
- * In other cases, an EMPTY_LIST node has no meaning, due to the following
- * GP2 law: empty:a = a = a:empty, where a is any atomic expression.
- *
- * Hence, if an EMPTY_LIST node occurs in the list but not in the above
- * scenario, they are removed by first redirecting pointers and then
- * freeing the memory.
- *
- * gpListScan uses atomicExpScan to check for semantic errors. In 
- * particular, expressions occurring in a LHS label must be simple.
- * An expression e is simple if:
+ * It reverses the list and calls atomicExpScan on each element to check 
+ * for semantic errors. In particular, expressions occurring in a LHS label 
+ * must be simple. An expression e is simple if:
  * (1) e contains no arithmetic operators.
  * (2) e contains at most one occurrence of a list variable.
  * (3) any string expression in e must contain at most one string variable.
@@ -369,8 +283,8 @@ void conditionScan(GPCondExp *const condition, GHashTable *table, string const s
  * Three file-scope variables are used to record the number of list variables,
  * the number of string variables, and whether an arithmetic expression occurs
  * in any label in the LHS of a rule in order to control error reporting. These
- * variables are set by atomicExpScan; gpListScan reads the variables and
- * reports an error if necessary.
+ * variables are set by the calls to atomicExpScan. gpListScan reads their
+ * values and reports an error if necessary.
  *
  * Argument 1: Pointer to the head of a list in the AST, passed by reference.
  *             If called from graphScan or case EDGE_PRED in conditionScan,
@@ -379,18 +293,17 @@ void conditionScan(GPCondExp *const condition, GHashTable *table, string const s
  *             If called from cases EQUAL or NOT_EQUAL in conditionScan,
  *             this argument is the address of a pointer in the struct list_cmp
  *             of a struct GPConditionExp.
- * Argument 2: The symbol table.
- * Argument 3: The current scope.
- * Argument 4: The current rule being processed.
- * Argument 5: The location of the list in the program.
+ * Argument 2: The current scope.
+ * Argument 3: The current rule being processed.
+ * Argument 4: The location of the list in the program.
  *             Either [l]eft-hand graph, [r]ight-hand graph or [c]ondition.
  *             If called from graphScan, this is the 'side' parameter
  *             passed to the graphScan call. If called from conditionScan,
  *             this is 'c'.
  */
 
-void gpListScan(List **gp_list, GHashTable *table, string const scope,
-                  string const rule_name, char const location);
+void gpListScan(List **gp_list, string const scope, string const rule_name,
+                char const location);
 
 
 /* atomicExpScan checks variables and nodes in expressions to see if they 
@@ -399,29 +312,44 @@ void gpListScan(List **gp_list, GHashTable *table, string const scope,
  * The function also performs type checking with the use of two flags to
  * designate when an expression should expect integer/string variables.
  * Specifically, the cases for arithmetic operators recursively call
- * atomicExpScan with int_exp (argument 6) set to true, while the cases for
+ * atomicExpScan with int_exp (argument 5) set to true, while the cases for
  * SLENGTH and CONCAT recursively call atomicExpScan with string_exp
- * (argument 7) set to true. This function should never be called with both
+ * (argument 6) set to true. This function should never be called with both
  * of these arguments set to true.
  *
  * Argument 1: Pointer to a struct GPAtomicExp
- * Argument 2: The symbol table.
- * Argument 3: The current scope.
- * Argument 4: The current rule being processed.
- * Argument 5: The location of the atomic expression in the program.
+ * Argument 2: The current scope.
+ * Argument 3: The current rule being processed.
+ * Argument 4: The location of the atomic expression in the program.
  *             Either [l]eft-hand graph, [r]ight-hand graph or [c]ondition.
  *             Passed from the caller.
- * Argument 6: If true, then the expression pointed to by atom_exp is an
+ * Argument 5: If true, then the expression pointed to by atom_exp is an
  *             integer expression. Erros are reported if string expressions
  *             are encountered.
- * Argument 7: If true, then the expression pointed to by atom_exp is a
+ * Argument 6: If true, then the expression pointed to by atom_exp is a
  *             string expression. Errors are reported if integer expressions 
  *             are encountered.
  */
 
-void atomicExpScan(GPAtomicExp * const atom_exp, GHashTable *table, 
-		   string const scope, string const rule_name, 
-	           char const location, bool const int_exp,
-		   bool const string_exp);
+void atomicExpScan(GPAtomicExp *const atom_exp, string const scope, 
+                   string const rule_name, char const location, 
+                   bool const int_exp, bool const string_exp);
+
+/* Reverses the passed list and returns its new head. Used because Bison 
+ * generates lists in reverse order due to left-recursive grammar rules. */
+struct List *reverse (struct List * listHead);
+void reverseGraphAST (GPGraph *graph); 
+
+/* Returns the string <scope>_<rule_name>. These strings are used to uniquely
+ * identify each rule since rules with the same name may occur in different
+ * scopes. */
+string makeRuleIdentifier(string rule_name, string scope);
+
+/* glib requires the user to provide functions to free hash table values.
+ * freeSymbolList frees a list of struct Symbols. This function is passed
+ * to the glib through g_hash_table_new_full, called in main.c. 
+ * freeSymbolList is called by glib's hashtable functions under the hood.
+ */
+void freeSymbolList(gpointer key, gpointer value, gpointer data);
 
 #endif /* INC_SEMAN_H */

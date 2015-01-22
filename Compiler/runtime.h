@@ -1,11 +1,8 @@
 #include "error.h"
 #include "debug.h"
 #include "graph.h"
+#include "macros.h"
 #include "init_runtime.h"
-/* #include all generated rule matchers. */
-#include "Global_rule1.h"
 
-
-
-
-      
+#include "Main_rule1.h"
+#include "Main_rule2.h"

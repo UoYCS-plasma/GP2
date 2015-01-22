@@ -1,7 +1,7 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
   ============
-  Debug Module 
+  Error Module 
   ============
 
   Module for error reporting macros and functions. 
@@ -13,8 +13,7 @@
 
 #include "globals.h"
 
-/* Wrapper for frequently occurring calls to fprintf. */
-
+/* Wrappers for frequently occurring calls to fprintf. */
 #define print_to_console(error_message, ...)                \
   do { fprintf(stderr, error_message, ##__VA_ARGS__); }     \
   while(0) 
