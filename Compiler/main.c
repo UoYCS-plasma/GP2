@@ -14,24 +14,14 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
-#include "ast.h" 
-#include "debug.h"
 #include "error.h"
 #include "globals.h"
 #include "generate.h"
-#include "parse.h"
-#include "rule.h"
+#include "parser.h"
 #include "seman.h" 
-#include "stack.h"
-#include "transform.h"
 
-/* Macros to control debugging features. */
-#undef PARSER_TRACE 		/* Assign yydebug to 1 */
-#undef DRAW_ORIGINAL_AST 	/* Call printDotAST before semanticCheck. */
-#undef DRAW_FINAL_AST 		/* Call printDotAST after semanticCheck. */
-#undef PRINT_SYMBOL_TABLE 	/* Call printSymbolTable after semanticCheck. */
-#undef DRAW_HOST_GRAPH_AST     /* Call printGraph after second call to 
-                                   yyparse. */
+#define DEBUG
+#undef PARSER_TRACE 	
 
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
  * determined by the first token it receives. If Bison receives GP_PROGRAM
@@ -45,16 +35,6 @@
 #define GP_GRAPH 2	
 int parse_target = 0; 
 
-bool abort_scan = false; /* If set to true, semantic checking does not occur. */
-
-/* The parser points this to the root of the program AST. */
-struct List *gp_program = NULL; 
-
-/* The parser points this to the root of the host graph's AST. */
-struct GPGraph *ast_host_graph = NULL; 
-
-Stack *rule_stack = NULL;
-
 int main(int argc, char** argv)
 {
    if(argc != 3) {
@@ -67,39 +47,29 @@ int main(int argc, char** argv)
     * pointed to the file to be read by the parser. argv[1] is the file 
     * containing the GP program text file.
     */
-
-   if(!(yyin = fopen(argv[1], "r"))) {  
+   if(!(yyin = fopen(argv[1], "r"))) 
+   {  
       perror(argv[1]);
       yylineno = 1;	
       return 1;
    }
 
-   #ifdef PARSER_TRACE
-   yydebug = 1; /* When yydebug is set to 1, Bison outputs a trace of its 
-                 * parse to stderr. */
+   #ifdef PARSER_TRACE 
+   yydebug = 1; /* Bison outputs a trace of its parse to stderr. */
    #endif
 
    /* Bison parses with the GP2 program grammar */
    parse_target = GP_PROGRAM;
-
    printf("\nProcessing %s...\n\n", argv[1]);
 
-   if(!yyparse()) {
-      print_to_log("GP2 program parse succeeded\n\n");
-      #ifdef DRAW_ORIGINAL_AST
-         /* create the string <>_first as an argument to printDotAST */
-         int length = strlen(argv[1])+6;
-         char alt_name[length];
-         strcpy(alt_name, argv[1]);
-         strcat(alt_name, "_first"); 
-         printDotAST(gp_program, alt_name);
-      #endif
+   if(yyparse() == 0) print_to_console("GP2 program parse succeeded\n\n");
+   else 
+   {
+      print_to_console("GP2 program parse failed.\n\n");
+      return 1;
    }
 
-   else print_to_log("GP2 program parse failed.\n\n");
-
    /* Point yyin to the file containing the host graph. */
-
    if(!(yyin = fopen(argv[2], "r"))) {  
       perror(argv[1]);
       yylineno = 1;	
@@ -108,22 +78,17 @@ int main(int argc, char** argv)
 
    /* Bison parses with the host graph grammar */
    parse_target = GP_GRAPH;
-
    printf("\nProcessing %s...\n\n", argv[2]);
   
-   if(!yyparse()) {
-      print_to_log("GP2 graph parse succeeded\n\n");    
-   
-      reverseGraphAST(ast_host_graph);
+   if(yyparse() == 0) print_to_console("GP2 graph parse succeeded\n\n");
+   else 
+   {
+      print_to_console("GP2 graph parse failed.\n\n");
+      return 1;
+   }   
 
-      #ifdef DRAW_HOST_GRAPH_AST
-         printDotHostGraph(ast_host_graph, argv[2]);
-      #endif
-   }
-   else print_to_log("GP2 graph parse failed.\n\n");     
-
-   /* Reverse the program's global declaration list. */
    gp_program = reverse(gp_program);
+   reverseGraphAST(ast_host_graph);
 
    #ifdef DEBUG
      bool valid_program = analyseProgram(gp_program, true, argv[1]);

@@ -1,5 +1,5 @@
 # Compile time object files
-COBJECTS = gpparser.tab.o lex.yy.o debug.o error.o ast.o pretty.o seman.o transform.o label.o graph.o rule.o stack.o generate.o main.o
+COBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o transform.o label.o graph.o rule.o stack.o generate.o main.o
 
 # Runtime object files.
 ROBJECTS = debug.o error.o runtime.o Global_rule1.o init_runtime.o match.o label.o graph.o rule.o stack.o
@@ -41,22 +41,22 @@ runtime-debug:	$(ROBJECTS)
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-run
 
 clean:
-		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c GP2-run GP2-compile
+		rm *.o *.output parser.c parser.h lex.yy.c GP2-run GP2-compile
 
 # Compiler objects
-main.o:		main.c ast.h debug.h error.h globals.h generate.h pretty.h rule.h stack.h transform.h
+main.o:		main.c error.h globals.h generate.h parser.h seman.h
 		$(CC) $(CFLAGS) -c main.c
 
-gpparser.tab.o: gpparser.tab.c gpparser.tab.h
-		$(CC) $(CFLAGS) -c gpparser.tab.c
+parser.o:	parser.c parser.h lex.yy.c
+		$(CC) $(CFLAGS) -c parser.c
 
-gpparser.tab.c gpparser.tab.h: gpparser.y ast.h error.h
-		bison -dtv gpparser.y
+parser.c parser.h: gpparser.y ast.h error.h
+		bison -tv gpparser.y
 
 lex.yy.o: 	lex.yy.c 
 		$(CC) $(CFLAGS) -c lex.yy.c
 
-lex.yy.c:	gplexer.lex gpparser.tab.h ast.h error.h
+lex.yy.c:	gplexer.lex parser.h ast.h error.h
 		flex gplexer.lex
 
 debug.o:	debug.c error.h globals.h 

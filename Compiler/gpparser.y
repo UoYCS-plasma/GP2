@@ -9,26 +9,40 @@
   
 //////////////////////////////////////////////////////////////////////////// */
 
+/* The names of the generated C files. */
+%defines "parser.h"
+%output "parser.c"
 
-%{
+/* Code placed at the top of parser.h. ast.h is included here so that the 
+ * types of gp_program and ast_host_graph are known when these variables
+ * are declared in parser.h. */
+%code requires {
 #include "ast.h"
-#include "error.h"
+}
+
+/* Declarations of global variables placed at the bottom of parser.h. */ 
+ %code provides {
+extern List *gp_program; 
+extern GPGraph *ast_host_graph; 
+extern int yylineno;
+extern string yytext;
+extern FILE *yyin;
+}
+
+/* Code placed in parser.c. */
+%{
 #include "globals.h"
 
-int yyerror(const char *error_message);
-int report_error(const char *error_message);
+void yyerror(const char *error_message);
+void report_error(const char *error_message);
 
 /* Flags used in the AST construction. */
 bool is_root = false;
 bool is_bidir = false;
 
-extern List *gp_program; /* This will point to the root of the program AST.
-			  * Defined in main.c. */
-extern GPGraph *ast_host_graph; /* This will point to the root of the host graph AST.
-		                 * Defined in main.c */
-extern bool abort_scan; /* Defined in main.c */
-
-
+/* Pointers to data structures constructed by the parser. */
+struct List *gp_program = NULL; 
+struct GPGraph *ast_host_graph = NULL;
 %}
 
 %locations /* Generates code to process locations of symbols in the source file. */
@@ -486,33 +500,23 @@ HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
 
 /* Bison calls yyerror whenever it encounters an error. It prints error
  * messages to stderr and log_file, and sets abort_scan to prevent the semantic
- * analysis functions from being called. 
- */
-
-int yyerror(const char *error_message)
+ * analysis functions from being called. */
+void yyerror(const char *error_message)
 {
-   if(yylloc.first_line)
-     fprintf(stderr, "Error at '%s': %s\n", yytext, error_message);
-     fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n", 
-             yylloc.first_line, yylloc.first_column, yylloc.last_line, 
-             yylloc.last_column, yytext, error_message);
-     abort_scan = true;
-   return 0;
+   fprintf(stderr, "Error at '%s': %s\n", yytext, error_message);
+   fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n", 
+           yylloc.first_line, yylloc.first_column, yylloc.last_line, 
+           yylloc.last_column, yytext, error_message);
 }
 
 /* report_error is identical to yyerror except that it doesn't refer to yytext.
  * This is called in the action code of error-catching Bison rules in which
- * the value of yytext may be misleading.
- */
-
-int report_error(const char *error_message)
+ * the value of yytext may be misleading.*/
+void report_error(const char *error_message)
 {
-   if(yylloc.first_line)
-     fprintf(stderr, "Error: %s\n", error_message);
-     fprintf(log_file, "%d.%d-%d.%d: Error: %s\n", 
-             yylloc.first_line, yylloc.first_column, yylloc.last_line, 
-             yylloc.last_column, error_message);
-     abort_scan = true;
-   return 0;
+   fprintf(stderr, "Error: %s\n", error_message);
+   fprintf(log_file, "%d.%d-%d.%d: Error: %s\n", 
+           yylloc.first_line, yylloc.first_column, yylloc.last_line, 
+           yylloc.last_column, error_message);
 }
         

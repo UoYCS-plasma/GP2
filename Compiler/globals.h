@@ -23,8 +23,7 @@ typedef char* string;
 /* Bison uses a global variable yylloc of type YYLTYPE to keep track of the 
  * locations of tokens and nonterminals. The scanner will set these values upon
  * reading each token. This is the standard YYLTYPE definition but I define it
- * here so it is seen by every file.
- */
+ * here so it is visible to the AST module. */
 typedef struct YYLTYPE {
   int first_line;
   int first_column;
@@ -32,21 +31,7 @@ typedef struct YYLTYPE {
   int last_column;
 } YYLTYPE;
 
-# define YYLTYPE_IS_DECLARED 1 /* tells the parser that YYLTYPE is defined here */
-
-extern FILE *yyin; /* Created by Bison. */
-
-/* Declarations for functions and variables defined in gplexer.l */
-extern int yylineno; 
-extern string yytext; 
-
-extern struct Stack *rule_stack;
-
-/* Declarations for functions and variables defined in gpparser.y */
-int yyparse(void);
-extern int yydebug;
-extern struct List *gp_program; 
-extern struct GPGraph *ast_host_graph;
+# define YYLTYPE_IS_DECLARED 1 /* Tells Bison that YYLTYPE is defined here. */
 
 /* Abstract data type for GP2's marks. */
 typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; 

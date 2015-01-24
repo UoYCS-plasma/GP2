@@ -17,8 +17,6 @@
 #include "graph.h"
 #include "rule.h"
 
-void transformAST(List *declarations, Stack *rule_stack);
-
 /* Creates the rule data structure from a pointer to a rule in the AST. */
 Rule *makeRule(GPRule *rule);
 
