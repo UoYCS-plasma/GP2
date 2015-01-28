@@ -1,4 +1,4 @@
-module PrintGraph (printHostGraph,printGraph) where
+module PrintGraph (printHostGraph,printGraph,printHostAtom) where
 
 import Graph
 import GPSyntax

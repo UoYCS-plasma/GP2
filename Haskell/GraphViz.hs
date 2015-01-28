@@ -3,6 +3,7 @@ module GraphViz where
 import Data.List
 import GPSyntax
 import Graph
+import PrintGraph
 
 showNodeKey :: NodeKey -> String
 showNodeKey nk  =  'N' : show (nodeNumber nk)
@@ -32,12 +33,9 @@ drawNode (nk, HostNode _ root label)  =
 
 -- data HostLabel = HostLabel [HostAtom] Colour deriving (Eq, Show)
 drawLabel :: HostLabel -> String
-drawLabel (HostLabel atoms Uncoloured) = "label=\"" ++ (intercalate ":" $ map drawAtom atoms) ++ "\""
-drawLabel (HostLabel atoms col) = "label=\"" ++ (intercalate ":" $ map drawAtom atoms )
+drawLabel (HostLabel atoms Uncoloured) = "label=\"" ++ (intercalate ":" $ map printHostAtom atoms) ++ "\""
+drawLabel (HostLabel atoms col) = "label=\"" ++ (intercalate ":" $ map printHostAtom atoms )
     ++ "\" " ++ " style=filled color=" ++ show col
-
-drawAtom :: HostAtom -> String
-drawAtom = show
 
 
 

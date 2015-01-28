@@ -6,9 +6,8 @@ gpChars :: [Char]
 gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , ['0'..'9'] , ['_'], ['-'] ]
 
 keywords :: [String]
-keywords = map fst hostColours ++
-           ["main", "if", "try", "then", "else", "or", "skip", 
-            "fail", "int", "char", "string", "atom", "list",
+keywords = map fst hostColours ++ map fst gpTypes ++
+           ["main", "if", "try", "then", "else", "or", "skip", "fail",
             "interface", "where", "injective", "true", "false",
             "and", "not", "edge", "empty", "indeg", "outdeg",
             "slength", "llength"]

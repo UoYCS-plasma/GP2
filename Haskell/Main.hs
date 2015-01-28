@@ -5,7 +5,7 @@ import System.Environment
 import System.Console.GetOpt
 import GPSyntax
 import ParseGraph
-import ParseLib
+import Text.Parsec
 import ParseProgram
 import PrintGraph 
 import ProcessAst
@@ -31,9 +31,6 @@ printGraphData fileName k ((graph, count):gcs) = do
         else putStrLn $ show count ++ " occurrences of the graph in file " ++ outputFile 
     printGraphData fileName (k+1) gcs
 
--- TODO: convert progFile into a string of the actual program name
--- i.e. trim off the file extension.
-
 data Flag = MaxGraphs Int
 
 maxIso :: Maybe String -> Flag
@@ -47,25 +44,35 @@ options = [ Option ['1'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, i
 usage = "Usage: gp2 [flags] <prog> <hostGraph> <maxDepth>\nWhere [flags] can be:"
 
 main = do
-    hSetBuffering stdout NoBuffering
-    args <- getArgs
-    case getOpt Permute options args of
-        (flags, [progFile, graphFile, max], []) -> do
-            p <- readFile progFile
-            g <- readFile graphFile
-            let progName = takeWhile (/= '.') progFile
-            let maxRules = read max
-            -- Debugging: print host graph parse output
-            -- putStrLn $ show $ hostGraph g
-            let host = makeHostGraph $ parse hostGraph g
-            putStrLn $ "\nGP 2 program " ++ progFile ++ " executed on host graph in " ++ graphFile ++ ".\n"
-            -- Debugging: print program parse output
-            -- putStrLn $ show $ program p
-            let (prog, syms) = makeGPProgram $ parse program p
-            putStrLn $ "Program execution will be stopped at " ++ show maxRules ++ " rule applications.\n"
-            printResult progName $ case flags of
-                                        [ MaxGraphs n ] -> trace (show n ++ " result mode") (nSolutions n prog maxRules host)
-                                        _          -> runProgram prog maxRules host
-        (_, _, errs) -> do
-            error (concat errs ++ usageInfo usage options)
+  hSetBuffering stdout NoBuffering
+  args <- getArgs
+  case getOpt Permute options args of
+    (flags, [progFile, graphFile, max], []) -> do
+      p <- readFile progFile
+      g <- readFile graphFile
+      let progName = takeWhile (/= '.') progFile
+      let maxRules = read max
+      -- Debugging: print host graph parse output
+      -- putStrLn $ show $ hostGraph g
+      case parse hostGraph graphFile g of
+        Left  e  -> print e
+        Right g' -> do
+          let host = makeHostGraph g'
+          -- Debugging: print program parse output
+          -- putStrLn $ show $ program p
+          case parse program progFile p of
+            Left  e  -> print e
+            Right p' -> do
+              let (prog, syms) = makeGPProgram p'
+              putStrLn $ "\nGP 2 program " ++ progFile ++
+                         " executed on host graph in " ++ graphFile ++ ".\n" ++
+                         "Program execution will be stopped at " ++
+                         show maxRules ++ " rule applications.\n"
+              printResult progName $
+                case flags of
+                  [ MaxGraphs n ] -> trace (show n ++ " result mode")
+                                           (nSolutions n prog maxRules host)
+                  _               -> runProgram prog maxRules host
+    (_, _, errs) -> do
+        error (concat errs ++ usageInfo usage options)
 
