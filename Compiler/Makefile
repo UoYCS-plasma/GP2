@@ -1,8 +1,8 @@
 # Compile time object files
-COBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o transform.o label.o graph.o rule.o stack.o generate.o main.o
+COBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o transform.o label.o graph.o rule.o stack.o searchplan.o genMatch.o genProgram.o main.o
 
 # Runtime object files.
-ROBJECTS = debug.o error.o runtime.o Global_rule1.o init_runtime.o match.o label.o graph.o rule.o stack.o
+ROBJECTS = debug.o error.o runtime.o Main_rule1.o init_runtime.o match.o label.o graph.o rule.o stack.o 
 
 OBJECTS = $(COBJECTS) $(ROBJECTS)
 
@@ -44,7 +44,7 @@ clean:
 		rm *.o *.output parser.c parser.h lex.yy.c GP2-run GP2-compile
 
 # Compiler objects
-main.o:		main.c error.h globals.h generate.h parser.h seman.h
+main.o:		main.c error.h globals.h genProgram.h parser.h seman.h
 		$(CC) $(CFLAGS) -c main.c
 
 parser.o:	parser.c parser.h lex.yy.c
@@ -86,12 +86,18 @@ transform.o:	transform.c ast.h error.h globals.h graph.h rule.h transform.h
 stack.o:	stack.c error.h globals.h stack.h
 		$(CC) $(CFLAGS) -c stack.c
 
-generate.o:	generate.c ast.h error.h globals.h rule.h transform.h generate.h
-		$(CC) $(CFLAGS) -c generate.c
+searchplan.o:	searchplan.c graph.h globals.h searchplan.h
+		$(CC) $(CFLAGS) -c searchplan.c
+
+genMatch.o:	genMatch.c error.h globals.h rule.h searchplan.h genMatch.h
+		$(CC) $(CFLAGS) -c genMatch.c
+
+genProgram.o:	genProgram.c ast.h error.h genMatch.h globals.h transform.h genProgram.h
+		$(CC) $(CFLAGS) -c genProgram.c
 
 
 # Runtime objects
-runtime.o:	runtime.c error.h debug.h globals.h graph.h Global_rule1.h init_runtime.h label.h runtime.h
+runtime.o:	runtime.c error.h debug.h globals.h graph.h Main_rule1.h init_runtime.h runtime.h
 		$(CC) $(CFLAGS) -c runtime.c
 
 match.o:	match.c globals.h graph.h label.h match.h 
@@ -100,6 +106,6 @@ match.o:	match.c globals.h graph.h label.h match.h
 init_runtime.o:	init_runtime.c graph.h macros.h rule.h init_runtime.h 
 		$(CC) $(CFLAGS) -c init_runtime.c
 		
-Global_rule1.o:	Global_rule1.c Global_rule1.h graph.h macros.h match.h
-		$(CC) $(CFLAGS) -c Global_rule1.c 
+Main_rule1.o:	Main_rule1.c Main_rule1.h graph.h macros.h match.h stack.h
+		$(CC) $(CFLAGS) -c Main_rule1.c 
 

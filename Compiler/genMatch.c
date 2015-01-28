@@ -1,368 +1,9 @@
-#include "generate.h"
+#include "genMatch.h"
 
-FILE *main_header = NULL;
-FILE *main_source = NULL;
 FILE *rule_header = NULL;
 FILE *rule_source = NULL;
  
 Searchplan *searchplan = NULL;
-
-void generateRuntimeCode(List *declarations)
-{
-   main_header = fopen("runtime.h", "w");
-   if(main_header == NULL) { 
-     perror("runtime.h");
-     exit(1);
-   }  
-
-   main_source = fopen("runtime.c", "w");
-   if(main_source == NULL) { 
-     perror("runtime.c");
-     exit(1);
-   }
-
-   PTMH("#include \"error.h\"\n"
-        "#include \"debug.h\"\n"
-        "#include \"graph.h\"\n"
-        "#include \"macros.h\"\n"
-        "#include \"init_runtime.h\"\n\n");
-
-   PTMS("#include \"runtime.h\"\n\n");
-
-   while(declarations != NULL)
-   {
-      GPDeclaration *decl = declarations->value.declaration;
-     
-      switch(decl->decl_type)
-      {
-         case MAIN_DECLARATION:
-
-              PTMS("Graph *host = makeHostGraph();\n"
-                   "int fail_mode;\n"
-                   "bool success = true;\n\n"
-                   "int main(void)\n"
-                   "{\n"               
-                   "   openLogFileR();\n\n");
-
-              generateProgramCode(decl->value.main_program);
-
-              PTMS("   printGraph(host);\n"
-                   "   freeGraph(host);\n"
-                   "   closeLogFile();\n\n"
-                   "   return 0;\n"
-                   "}\n\n");
-
-              break;
-
-         case PROCEDURE_DECLARATION:
-
-              PTMH("int procedure%s(void);\n", decl->value.procedure->name);
-              PTMS("int procedure%s(void)\n"
-                   "{\n", decl->value.procedure->name);
-
-              generateProgramCode(decl->value.procedure->cmd_seq);
-
-              PTMS("   return 1;\n"
-                   "}\n\n");
-
-              if(decl->value.procedure->local_decls != NULL)
-                 generateLocalDeclarationCode(decl->value.procedure->local_decls);
-              
-              break;
-
-         case RULE_DECLARATION:
-         {
-
-              PTMH("#include \"%s.h\"\n", decl->value.rule->name);
-
-              Rule *rule = makeRule(decl->value.rule);
-              generateRuleCode(rule);
-              freeRule(rule);
-
-              break;
-         }
-
-         default: print_to_log("Error (generateRuntimeCode): Unexpected "
-                               "declaration type %d at AST node %d\n", 
-                               decl->decl_type, decl->node_id);
-              break;
-      }
-      declarations = declarations->next;
-   }
-   fclose(main_header);
-   fclose(main_source);
-}
-
-
-void generateLocalDeclarationCode(List *declarations)
-{
-   while(declarations != NULL)
-   {
-      GPDeclaration *decl = declarations->value.declaration;
-     
-      switch(decl->decl_type)
-      {
-         case PROCEDURE_DECLARATION:
-
-              PTMH("int procedure%s(void);\n", decl->value.procedure->name);
-              PTMS("int procedure%s(void)\n"
-                   "{\n", decl->value.procedure->name);
-
-              generateProgramCode(decl->value.procedure->cmd_seq);
-
-              PTMS("   return 1;\n"
-                   "}\n\n");
-
-              if(decl->value.procedure->local_decls != NULL)
-                 generateLocalDeclarationCode(decl->value.procedure->local_decls);
-              
-              break;
-
-         case RULE_DECLARATION:
-         {
-              PTMH("#include \"%s.h\"\n", decl->value.rule->name);
-
-              Rule *rule = makeRule(decl->value.rule);
-              generateRuleCode(rule);
-              freeRule(rule);
-
-              break;
-         }
-
-         default: print_to_log("Error (generateLocalDeclarationCode): "
-                               "Unexpected declaration type %d at AST node %d\n", 
-                               decl->decl_type, decl->node_id);
-              break;
-      }
-      declarations = declarations->next;
-   }
-}
-
-/* TODO: Define macro FAILURE_ACTION */
-void generateProgramCode(GPStatement *statement)
-{
-   switch(statement->statement_type)
-   {
-      case COMMAND_SEQUENCE:
-      {
-           List *commands = statement->value.cmd_seq;
-
-           while(commands != NULL)
-           {
-              generateProgramCode(commands->value.command);
-              commands = commands->next;
-           }
-
-           break;
-      }
-
-      case RULE_CALL:
-           /* TODO: I'm not sure if statement->rule_name is
-            * <proc_name>_<rule_name> or just <rule_name>. 
-            * Check transform.c */
-           PTMS("   if(!match%s(host)) FAILURE_ACTION\n",
-                statement->value.rule_name);
-
-           break;
-
-      case RULE_SET_CALL:
-      {
-           List *rules = statement->value.rule_set;
-           /* In order to generate the correct number of
-            * closing braces. */
-           int counter, rule_count = 0;
-
-           PTMS("   while(true)\n"
-                "   {\n");
-
-           while(rules != NULL)
-           {  
-              /* TODO: Same as the above TODO regarding the rule name in the AST. */
-              PTMS("   if(match%s(host)) break;\n", rules->value.rule_name);
-              if(rules->next == NULL) 
-                   PTMS("   else\n"
-                        "   {\n"
-                        "   FAILURE_ACTION\n"
-                        "   }\n");
-              else PTMS("   else\n"
-                        "   {\n");
-              rule_count++;
-              rules = rules->next;
-           }
-
-           for(counter = 0; counter < rule_count-1; counter++)
-              PTMS("   {\n");
-
-           break;
-      }
-
-      case PROCEDURE_CALL:
-          
-           PTMS("   if(procedure%s(host)) == 0) FAILURE_ACTION\n",
-                statement->value.proc_name);
-
-           break;
-
-      case IF_STATEMENT:
-
-           PTMS("   fail_mode = 1;\n"
-                "   copyGraph(host);\n\n");
-           generateProgramCode(statement->value.cond_branch.condition);
-           /* calls to FAILURE_ACTION generated by the above. 
-            * FAILURE_ACTION will set the boolean value success to false. */
-           PTMS("   host = pop(graph_change_stack);\n");
-           PTMS("   fail_mode = 0;\n");
-           PTMS("   if(success)\n");
-           PTMS("   {\n");
-           generateProgramCode(statement->value.cond_branch.then_stmt);
-           PTMS("   }\n");
-           PTMS("   else\n");
-           PTMS("   {\n");
-           generateProgramCode(statement->value.cond_branch.else_stmt);
-           PTMS("   }\n\n");
-           PTMS("   success = true;\n\n");
-
-           break;
-
-      case TRY_STATEMENT:
-           PTMS("   fail_mode = 2;\n"
-                "   copyGraph(host);\n\n");
-           generateProgramCode(statement->value.cond_branch.condition);
-           /* calls to FAILURE_ACTION generated by the above. 
-            * FAILURE_ACTION will pop the graph change stack
-            * and set the boolean value success to false. */
-           PTMS("   fail_mode = 0;\n");
-           PTMS("   if(success)\n");
-           PTMS("   {\n");
-           generateProgramCode(statement->value.cond_branch.then_stmt);
-           PTMS("   }\n");
-           PTMS("   else\n");
-           PTMS("   {\n");
-           PTMS("   host = pop(graph_change_stack);\n");   
-           generateProgramCode(statement->value.cond_branch.else_stmt);
-           PTMS("   }\n\n");
-           PTMS("   success = true;\n\n");
-
-           break;
-
-      case ALAP_STATEMENT:
-           /* if loop statement is rule_call or rule_set_call, don't 
-            * copy graph. */
-           if(statement->value.loop_stmt->statement_type != RULE_CALL &&
-              statement->value.loop_stmt->statement_type != RULE_SET_CALL)
-              PTMS("   copyGraph(host);\n");
-              
-           PTMS("   fail_mode = 3;\n\n"
-                "   while(true)\n"
-                "   {\n");
-           generateProgramCode(statement->value.loop_stmt);
-           PTMS("   }\n\n");
-
-           break;
-
-      case PROGRAM_OR:
-           
-           PTMS("   fail_mode = 2;\n");
-           generateProgramCode(statement->value.or_stmt.left_stmt);
-           PTMS("   if(!success)\n"
-                "   {\n"
-                "   failure_mode = 0;\n\n");
-           generateProgramCode(statement->value.or_stmt.right_stmt);
-           PTMS("   }\n\n");
-
-           break;
-
-      case SKIP_STATEMENT:
-
-           PTMS("   /* skip */\n");
-
-           break;
-           
-      case FAIL_STATEMENT:
-
-           PTMS("   FAILURE_ACTION\n");
-
-           break;
-           
-      default: print_to_log("Error (generateProgramCode): Unexpected "
-                            "statement type %d at AST node %d\n", 
-                            statement->statement_type,
-                            statement->node_id);
-           break;
-   }
-}
- 
-
-
-void generateHostGraphCode(GPGraph *ast_host_graph)
-{
-   FILE *header = fopen("init_runtime.h", "w");
-   if(header == NULL) { 
-     perror("init_runtime.h");
-     exit(1);
-   }  
-
-   FILE *source = fopen("init_runtime.c", "w");
-   if(source == NULL) { 
-     perror("init_runtime.c");
-     exit(1);
-   }
-     
-   fprintf(header, "#include \"graph.h\"\n"
-                   "#include \"macros.h\"\n"
-                   "#include \"rule.h\"\n\n"
- 		   "Graph *makeHostGraph(void);\n");
-
-   PTIS("#include \"init_runtime.h\"\n\n"
-        "Graph *makeHostGraph(void)\n"
-        "{\n"
-        "   Graph *host = newGraph();\n"
-        "   Node *node, *source, *target = NULL;\n"
-        "   Edge *edge = NULL;\n"
-        "   IndexMap *node_map = NULL;\n\n");
-
-   List *nodes = ast_host_graph->nodes;
-
-   while(nodes != NULL)
-   {
-      GPNode *ast_node = nodes->value.node;
-      //TODO: Incorporate Label *label = transformLabel(ast_node->label);
-      PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, ast_node->name);
-      nodes = nodes->next;   
-   }
-   PTIS("\n");
-   List *edges = ast_host_graph->edges;
-
-   while(edges != NULL)
-   {
-      GPEdge *ast_edge = edges->value.edge;
-
-      //TODO: Incorporate Label *label = transformLabel(ast_edge->label);
-      PTIS("   GET_HOST_SOURCE(\"%s\")\n"
-           "   /* If the edge is a loop, no need to get the target node. */\n"
-           "   if(!strcmp(\"%s\", \"%s\"))\n"
-           "   {\n"
-           "      edge = newEdge(%d, NULL, source, source);\n"
-           "      addEdge(host, edge);\n"
-           "   }\n",
-           ast_edge->source, ast_edge->source, ast_edge->target, 
-           ast_edge->bidirectional);
-
-      PTIS("   else\n"
-           "   {\n"
-           "      GET_HOST_TARGET(\"%s\")\n"
-           "      edge = newEdge(%d, NULL, source, target);\n"
-           "      addEdge(host, edge);\n\n"
-           "   }\n",
-           ast_edge->target, ast_edge->bidirectional);
-
-      edges = edges->next;   
-   }
-   PTIS("   if(node_map) freeIndexMap(node_map);\n"
-        "   return host;\n"
-        "}\n");
-}
-
 
 void generateRuleCode(Rule *rule)
 {
@@ -383,16 +24,10 @@ void generateRuleCode(Rule *rule)
       print_to_log("Error: Memory exhausted during file name creation.\n");
       exit(1);
    }
-   //strcpy(header_name, "runtime/");
-   //strcpy(source_name, "runtime/");
-   //strcat(header_name, rule_name);
-   //strcat(source_name, rule_name);
    strcpy(header_name, rule_name);
    strcpy(source_name, rule_name);
    strcat(header_name, ".h");
    strcat(source_name, ".c");
-
-   /* TODO: open runtime.h and write include rule_name.h. */
 
    rule_header = fopen(header_name, "w");
    if(rule_header == NULL) { 
@@ -410,9 +45,10 @@ void generateRuleCode(Rule *rule)
    free(source_name);
 
    PTRH("#include \"globals.h\"\n"
-       "#include \"graph.h\"\n"
-       "#include \"macros.h\"\n"
-       "#include \"match.h\"\n\n");
+        "#include \"graph.h\"\n"
+        "#include \"macros.h\"\n"
+        "#include \"match.h\"\n"
+        "#include \"stack.h\"\n\n");
    PTRS("#include \"%s.h\"\n\n", rule_name);
 
    /* Assuming at least one of LHS and RHS is non-empty. */
@@ -420,9 +56,8 @@ void generateRuleCode(Rule *rule)
    else
    {
       PTRH("#define LEFT_NODES %d\n"
-          "#define LEFT_EDGES %d\n\n"
-          "extern Morphism *morphism;\n\n",
-          rule->lhs->number_of_nodes, rule->lhs->number_of_edges);
+           "#define LEFT_EDGES %d\n\n",
+           rule->lhs->number_of_nodes, rule->lhs->number_of_edges);
       if(rule->rhs == NULL)
       {
          emitMatchingCode(rule_name, rule->lhs, rule->deleted_nodes, false);
@@ -453,16 +88,16 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
 
    if(empty_lhs)
    {
-      PTRH("void apply%s(Graph *host);\n", rule->name);
-      PTRS("void apply%s(Graph *host)\n", rule->name);
+      PTRH("void apply%s(Morphism *morphism, Graph *host);\n", rule->name);
+      PTRS("void apply%s(Morphism *morphism, Graph *host)\n", rule->name);
       PTRS("{\n");
 
       int index;
       PTRS("   Node *host_node = NULL, *source = NULL, *target = NULL;\n"
-          "   Edge *host_edge = NULL;\n\n"
-          "   /* Array of host node pointers indexed by RHS node index. */\n"
-          "   Node **map = NULL;\n"
-          "   MAKE_NODE_POINTER_MAP(%d)\n\n", rhs->number_of_nodes);
+           "   Edge *host_edge = NULL;\n\n"
+           "   /* Array of host node pointers indexed by RHS node index. */\n"
+           "   Node **map = NULL;\n"
+           "   MAKE_NODE_POINTER_MAP(%d)\n\n", rhs->number_of_nodes);
 
       for(index = 0; index < rhs->number_of_nodes; index++)
       {
@@ -493,7 +128,7 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
          iterator = iterator->next;
       }     
       PTRS("   free(map);\n"
-          "   return;\n}\n\n");
+           "   return;\n}\n\n");
       return;
    }
 
@@ -504,17 +139,17 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    if(empty_rhs)
    {
       PTRS("   REMOVE_RHS\n" 
-          "   freeMorphism(morphism);\n"
-          "   return;\n"
-          "}\n\n");
+           "   freeMorphism(morphism);\n"
+           "   return;\n"
+           "}\n\n");
       return;
    }
    
    /* Using preserved items lists, populate the maps in the generated code. */
    PTRS("   /* Array of LHS edges marking their status.\n"
-       "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
-       "   int *edge_map = NULL;\n"
-       "   MAKE_EDGE_MAP(%d)\n", lhs->number_of_edges);
+        "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
+        "   int *edge_map = NULL;\n"
+        "   MAKE_EDGE_MAP(%d)\n", lhs->number_of_edges);
   
    int index;
    for(index = 0; index < lhs->number_of_edges; index++)
@@ -534,9 +169,9 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    }
 
    PTRS("\n   /* Array of LHS nodes marking their status.\n"
-       "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
-       "   int *node_map = NULL;\n"
-       "   MAKE_NODE_MAP(%d)\n", lhs->number_of_nodes);
+        "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
+        "   int *node_map = NULL;\n"
+        "   MAKE_NODE_MAP(%d)\n", lhs->number_of_nodes);
 
    PreservedItemList *iterator = rule->preserved_nodes;
    while(iterator != NULL)
@@ -556,14 +191,14 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
 
    /* TODO: Pass label of RHS items from rule->preserved_edges/nodes */
    PTRS("\n"
-       "   StackData *data = NULL;\n\n"
-       "   /* Pops all edges in the morphism stacks and deletes/preserves\n"
-       "    * host items according to the entries in edge_map and node_map. */\n"
-       "   PROCESS_EDGE_MORPHISMS\n" 
-       "   PROCESS_NODE_MORPHISMS\n\n"
-       "   /* Array of host node pointers indexed by RHS node index. */\n"
-       "   Node **map = NULL;\n"
-       "   MAKE_NODE_POINTER_MAP(%d)\n\n", rhs->number_of_nodes);
+        "   StackData *data = NULL;\n\n"
+        "   /* Pops all edges in the morphism stacks and deletes/preserves\n"
+        "    * host items according to the entries in edge_map and node_map. */\n"
+        "   PROCESS_EDGE_MORPHISMS\n" 
+        "   PROCESS_NODE_MORPHISMS\n\n"
+        "   /* Array of host node pointers indexed by RHS node index. */\n"
+        "   Node **map = NULL;\n"
+        "   MAKE_NODE_POINTER_MAP(%d)\n\n", rhs->number_of_nodes);
 
    ItemList *iterator_n = rule->added_nodes;
    if(iterator_n != NULL)
@@ -582,8 +217,8 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    NewEdgeList *iterator_e = rule->added_edges;
    if(iterator_e != NULL)
       PTRS("   Node *source = NULL, *target = NULL;\n"
-          "   Edge *host_edge = NULL;\n"
-          "   int source_index = 0, target_index = 0;\n\n");
+           "   Edge *host_edge = NULL;\n"
+           "   int source_index = 0, target_index = 0;\n\n");
    while(iterator_e != NULL)
    {
       if(iterator_e->source_location == 'l')
@@ -608,17 +243,17 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    }
 
    PTRS("   free(edge_map);\n"
-       "   free(node_map);\n"
-       "   free(map);\n"
-       "   return;\n"
-       "}\n\n");
+        "   free(node_map);\n"
+        "   free(map);\n"
+        "   freeMorphism(morphism);\n"
+        "   return;\n"
+        "}\n\n");
 }
 
 void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
                       bool is_predicate)
 {
-   /* Create the searchplan. */
-   generateSearchplan(lhs); 
+   searchplan = generateSearchplan(lhs); 
 
    if(searchplan->first == NULL)
    {
@@ -644,16 +279,16 @@ void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
 
               node = getNode(lhs, operation->index);
               PTRS("static bool match_n%d(Graph *host, Morphism *morphism,\n"
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
-                  node->index);
+                   "                     bool *matched_nodes, bool *matched_edges);\n",
+                   node->index);
               break;
 
          case 'r': 
 
               node = getNode(lhs, operation->index);
               PTRS("static bool match_n%d(Graph *host, Morphism *morphism,\n"
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
-                  node->index);
+                   "                     bool *matched_nodes, bool *matched_edges);\n",
+                   node->index);
               break;
 
          case 'i': 
@@ -664,8 +299,8 @@ void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
 
               node = getNode(lhs, operation->index);
               PTRS("static bool match_n%d(Graph *host, Edge *host_edge, Morphism *morphism,\n"
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
-                  node->index);
+                   "                     bool *matched_nodes, bool *matched_edges);\n",
+                   node->index);
               break;
 
          case 'e': 
@@ -673,7 +308,7 @@ void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
               edge = getEdge(lhs, operation->index);
               PTRS("static bool match_e%d(Graph *host, Morphism *morphism,\n"
                   "                     bool *matched_edges, bool *matched_edges);\n",
-                  edge->index);
+                   edge->index);
               break;
 
          case 's': 
@@ -684,8 +319,8 @@ void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
 
               edge = getEdge(lhs, operation->index);
               PTRS("static bool match_e%d(Graph *host, Morphism *morphism,\n"
-                  "                     bool *matched_nodes, bool *matched_edges);\n",
-                  edge->index);
+                   "                     bool *matched_nodes, bool *matched_edges);\n",
+                   edge->index);
               break;
  
          default:
@@ -696,7 +331,6 @@ void emitMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes,
       operation = operation->next;
    }
  
-   PTRS("\nMorphism *morphism = NULL;\n\n");
    emitRuleMatcher(rule_name, searchplan->first, is_predicate);
    PTRS("\n\n");
 
@@ -770,44 +404,31 @@ void emitRuleMatcher(string rule_name, SearchOp *first_op, bool is_predicate)
    if(first_op->is_node) item = 'n';
    else item = 'e';
 
-   PTRH("bool match%s(Graph *host);\n", rule_name);
-   PTRS("bool match%s(Graph *host)\n"
-       "{\n" 
-       "   int host_nodes = host->number_of_nodes;\n"
-       "   int host_edges = host->number_of_edges;\n\n"
-       "   if(LEFT_NODES > host_nodes || LEFT_EDGES > host_edges) return NULL;\n"
-       "   morphism = makeMorphism();\n\n"
-       "   /* Initialise variables. */\n"
-       "   bool *matched_nodes = NULL, *matched_edges = NULL;\n"
-       "   MAKE_MATCHED_NODES_ARRAY\n\n"
-       "   MAKE_MATCHED_EDGES_ARRAY\n\n"
-       "   bool match_found = match_%c%d(host, morphism, matched_nodes,\n"
-       "                               matched_edges);\n\n"
-       "   if(matched_nodes) free(matched_nodes);\n"
-       "   if(matched_edges) free(matched_edges);\n\n", 
+   PTRH("Morphism *match%s(Graph *host);\n", rule_name);
+   PTRS("\n"
+        "Morphism *match%s(Graph *host)\n"
+        "{\n" 
+        "   int host_nodes = host->number_of_nodes;\n"
+        "   int host_edges = host->number_of_edges;\n\n"
+        "   if(LEFT_NODES > host_nodes || LEFT_EDGES > host_edges) return false;\n\n"
+        "   Morphism *morphism = makeMorphism();\n\n"
+        "   /* Initialise variables. */\n"
+        "   bool *matched_nodes = NULL, *matched_edges = NULL;\n"
+        "   MAKE_MATCHED_NODES_ARRAY\n\n"
+        "   MAKE_MATCHED_EDGES_ARRAY\n\n"
+        "   bool match_found = match_%c%d(host, morphism, matched_nodes,\n"
+        "                               matched_edges);\n\n"
+        "   if(matched_nodes) free(matched_nodes);\n"
+        "   if(matched_edges) free(matched_edges);\n\n", 
        rule_name, item, first_op->index);
 
-   /* If the rule is a predicate, do not emit the call to apply_<rule_name> */
-   if(is_predicate) 
-   {
-      PTRS("   if(match_found)\n "
-          "   {\n"
-          "      freeMorphism(morphism);\n"
-          "      return true;\n"
-          "   }\n");
-   }
-   else
-   {
-      PTRS("   if(match_found)\n"
-          "   {\n"
-          "      apply%s(morphism, host);\n"
-          "      freeMorphism(morphism);\n"
-          "      return true;\n"
-          "   }\n", rule_name);
-   }
-   PTRS("   else freeMorphism(morphism);\n\n"
-       "   return false;\n"
-       "}\n");
+   PTRS("   if(match_found) return morphism;\n"
+        "   else\n"
+        "   {\n"
+        "      freeMorphism(morphism);\n"
+        "      return NULL;\n"
+        "   }\n"
+        "}\n");
 }
 
 
@@ -818,18 +439,18 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
    bool dangling_node = queryItemList(deleted_nodes, left_index);
 
    PTRS("static bool match_n%d(Graph *host, Morphism *morphism,\n"
-       "                     bool *matched_nodes, bool *matched_edges)\n"
-       "{\n", left_index);
+        "                     bool *matched_nodes, bool *matched_edges)\n"
+        "{\n", left_index);
 
    if(is_root) PTRSI("GSList *nodes = getRootNodes(host);\n", 3);
    else PTRSI("GSList *nodes = getNodesByLabel(host, %d);\n", 3,
              left_node->label_class);
 
    PTRS("   while(nodes != NULL)\n"
-       "   {\n"
-       "      Node *host_node = (Node *)nodes->data;\n"
-       "      int index = host_node->index;\n\n"
-       "      CHECK_NODE_MATCHED\n\n");
+        "   {\n"
+        "      Node *host_node = (Node *)nodes->data;\n"
+        "      int index = host_node->index;\n\n"
+        "      CHECK_NODE_MATCHED\n\n");
    
    /* If !is_root, then the candidate nodes are obtained by label class.
     * In that case, there is no need to explicitly check the label class
@@ -878,8 +499,8 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
    bool dangling_node = queryItemList(deleted_nodes, left_index);
 
    PTRS("static bool match_n%d(Graph *host, Edge *host_edge, Morphism *morphism,\n"
-       "                     bool *matched_nodes, bool *matched_edges)\n"
-       "{\n", left_index);
+        "                     bool *matched_nodes, bool *matched_edges)\n"
+        "{\n", left_index);
 
    /* First trying the target of the image of a bidirectional edge is
     * completely arbitrary. Might be an idea to code a "coin flip" to
@@ -890,8 +511,8 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
    PTRSI("int index = host_node->index;\n\n", 3);
 
    PTRSI("/* This is the only node to check, so perform all the preliminaries\n"
-        "    * in one step.\n"
-        "    * Arguments: label class, mark, indegree, outdegree. */\n", 3);
+         "    * in one step.\n"
+         "    * Arguments: label class, mark, indegree, outdegree. */\n", 3);
    if(dangling_node)
         PTRSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d)\n", 3,
              left_node->label_class, left_node->label->mark, 
@@ -1149,215 +770,5 @@ bool emitNextMatcherCall(SearchOp *next_op, int indent)
    
    }
    return false;
-}
-
-void generateSearchplan(Graph *lhs)
-{
-   int lhs_nodes = lhs->number_of_nodes;
-   int lhs_size = lhs_nodes + lhs->number_of_edges;
-   int index;
-
-   searchplan = initialiseSearchplan();
-
-   /* Indices 0 to |V_L|-1 are the nodes. Indices |V_L| to |V_L|+|E_L|-1 are the
-    * edges. Index |V_L| refers to the LHS edge with index 0. */
-   bool *tagged_items = calloc(lhs_size, sizeof(bool));
-   if(tagged_items == NULL)
-   {
-      print_to_log("Error: Memory exhausted during tagged items "
-                   "array construction.\n");
-      exit(1);
-   }
-   GSList *left_roots = getRootNodes(lhs); 
-   GSList *iterator = left_roots;
-   
-   /* Add the root nodes to the search plan before traversing the graph.
-    * Optimisation: if the rule has no root nodes, this and the next 
-    * while loop are unnecessary. */ 
-   while(iterator != NULL)
-   {
-      Node *root = (Node *)iterator->data;
-      addSearchOp(searchplan, 'r', root->index);      
-      iterator = iterator->next;
-   }  
- 
-   /* Perform a dePTRH-first traversal of the graph from its root nodes. */
-   while(left_roots != NULL)
-   {
-      Node *root = (Node *)left_roots->data;
-      if(!tagged_items[root->index]) 
-         traverseNode(root, 'r', tagged_items, lhs_nodes);
-      left_roots = left_roots->next;
-   }
-
-   /* Search for undiscovered nodes. These are nodes not reachable from a root
-    * node.
-    * Optimisation: check rules beforehand to see if they are left-root-connected.
-    * If so, this code fragment is unnecessary. */
-   for(index = 0; index < lhs->next_node_index; index++)
-   {
-      if(!tagged_items[index]) 
-      {
-         Node *node = getNode(lhs, index);
-         traverseNode(node, 'n', tagged_items, lhs_nodes);
-      }
-   }
-
-   free(tagged_items);      
-}
-
-void traverseNode(Node *node, char type, bool *tagged_items, int offset)
-{
-   tagged_items[node->index] = true;
-
-   /* Root nodes are already in the searchplan. */
-   if(type != 'r') 
-   {      
-      addSearchOp(searchplan, type, node->index);
-   }
-   
-   int index;
-   /* Search the node's incident edges for an untagged edge. Outedges
-    * are arbitrarily examined first. If no such edges exist, the function
-    * exits and control passes to the caller. */
-   for(index = 0; index < node->next_out_edge_index; index++)
-   {
-      Edge *edge = getOutEdge(node, index);
-      if(!tagged_items[offset + edge->index])
-      {
-         if(edge->source == edge->target)
-            traverseEdge(edge, 'l', tagged_items, offset);
-         else traverseEdge(edge, 's', tagged_items, offset);
-      }
-   }
-
-   for(index = 0; index < node->next_in_edge_index; index++)
-   {
-      Edge *edge = getInEdge(node, index);
-      if(!tagged_items[offset + edge->index]) 
-      {
-         if(edge->source == edge->target)
-            traverseEdge(edge, 'l', tagged_items, offset);
-         else traverseEdge(edge, 't', tagged_items, offset);
-      }
-   }
-}
-
-
-void traverseEdge(Edge *edge, char type, bool *tagged_items, int offset)
-{
-   tagged_items[offset + edge->index] = true;
-
-   addSearchOp(searchplan, type, edge->index);
-
-   /* If the edge is a loop, nothing is gained from examining the edge's
-    * incident node as it was examined by the caller. */
-   if(type == 'l') return;
-
-   /* Check if the edge's source and target are untagged. The target is
-    * arbitrarily examined first. If both nodes are tagged, the function exits
-    * and control passes to the caller. */
-   if(type == 's')
-   {
-      Node *target = edge->target;
-      if(!tagged_items[target->index])
-      {
-         if(edge->bidirectional) 
-              traverseNode(target, 'b', tagged_items, offset);
-         else traverseNode(target, 'i', tagged_items, offset);
-      }
-   }      
-   else 
-   {
-      Node *source = edge->source;
-      if(!tagged_items[source->index])
-      {
-         if(edge->bidirectional) 
-              traverseNode(source, 'b', tagged_items, offset);
-         else traverseNode(source, 'o', tagged_items, offset);  
-      }
-   }
-}
-
-
-Searchplan *initialiseSearchplan(void)
-{
-   Searchplan *new_plan = malloc(sizeof(Searchplan));
-
-   if(new_plan == NULL)
-   {
-     print_to_log("Error: Memory exhausted during searchplan "
-                  "construction.\n");
-     exit(1);
-   }   
-
-   new_plan->first = NULL;
-   new_plan->last = NULL;
-
-   return new_plan;
-}
-
-void addSearchOp(Searchplan *plan, char type, int index)
-{
-   SearchOp *new_op = malloc(sizeof(SearchOp));
-
-   if(new_op == NULL)
-   {
-     print_to_log("Error: Memory exhausted during search operation "
-                  "construction.\n");
-     exit(1);
-   }   
- 
-   if(type == 'e' || type == 's' || type == 't' || type == 'l')
-        new_op->is_node = false;
-   else new_op->is_node = true;
-   new_op->type = type;
-   new_op->index = index;
-
-   if(plan->last == NULL)
-   {
-      new_op->next = NULL;
-      plan->first = new_op;
-      plan->last = new_op;  
-   }
-   else
-   {
-      new_op->next = NULL;
-      plan->last->next = new_op;
-      plan->last = new_op;
-   }
-}  
-
-void printSearchplan(Searchplan *plan)
-{ 
-   if(plan->first == NULL) printf("Empty searchplan.\n");
-   else
-   {
-      SearchOp *iterator = plan->first;
-      while(iterator != NULL)
-      {
-         if(iterator->is_node) printf("Node\n");
-         else printf("Edge\n");
-         printf("Type: %c\nIndex: %d\n\n", iterator->type, iterator->index);
-         iterator = iterator->next;  
-      }
-   }
-}
-
-void freeSearchplan(Searchplan *plan)
-{
-   if(plan == NULL) return;
-   if(plan->first == NULL) free(plan);
-   else
-   {
-      SearchOp *iterator = plan->first;
-      while(iterator != NULL)
-      {
-         SearchOp *temp = iterator;
-         iterator = iterator->next;  
-         free(temp);
-      }
-      free(plan);
-   }
 }
 

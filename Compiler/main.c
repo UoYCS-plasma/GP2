@@ -16,7 +16,7 @@
 
 #include "error.h"
 #include "globals.h"
-#include "generate.h"
+#include "genProgram.h"
 #include "parser.h"
 #include "seman.h" 
 
