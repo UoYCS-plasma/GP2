@@ -64,9 +64,9 @@ ruleSetCall  =  between (symbol "{") (symbol "}") (sepBy1 lowerIdent (symbol ","
 
 rule :: Parser AstRule
 rule  =  do { id <- lowerIdent ; symbol "(" ; ps <- parameters ; symbol ")" ;
-              gs <- ruleGraphs ; interface ;
+              lhs <- ruleGraph ; symbol "=>" ; rhs <- ruleGraph ; interface ;
               c <- option NoCondition $ do { keyword "where" ; condition } ;
-              return $ AstRule id ps gs c }
+              return $ AstRule id ps (lhs,rhs) c }
 
 parameters :: Parser [Variable]
 parameters  =  do { vss <- sepBy varList (symbol ";") ; return $ concat vss }
@@ -78,10 +78,6 @@ varList  =  do { ids <- sepBy1 lowerIdent (symbol ",") ; symbol ":" ; t <- gpTyp
 gpType :: Parser VarType
 gpType  =  do { t <- many1 lower ; let { vt = lookup t gpTypes } ;
                 guard $ isJust vt ; return $ fromJust vt }
-
-ruleGraphs :: Parser (AstRuleGraph, AstRuleGraph)
-ruleGraphs  =  do { lhs <- ruleGraph ; symbol "=>" ; rhs <- ruleGraph ;
-                    return (lhs,rhs) }
 
 ruleGraph :: Parser AstRuleGraph
 ruleGraph  =  do { symbol "[" ; ns <- manyCommented node ;
