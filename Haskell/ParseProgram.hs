@@ -131,8 +131,8 @@ atom  =  do { op <- oneOf "+-*/." ; spaces ;
               { '+' -> Plus ; '-' -> Minus ; '*' -> Times ; '/' -> Div ; '.' -> Concat }
 
 ruleColour :: Parser Colour
-ruleColour  =  do { symbol "#" ; id <- lowerIdent ;
-                    let { rc = lookup id ruleColours } ;
+ruleColour  =  do { symbol "#" ; c <- many1 lower ;
+                    let { rc = lookup c ruleColours } ;
                     guard $ isJust rc ; return $ fromJust rc }
           <|>  return Uncoloured
 
