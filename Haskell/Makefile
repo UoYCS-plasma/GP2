@@ -14,6 +14,6 @@ gp2 : Main.hs
 	$(GHC) $<
 
 clean :
-	rm -f *.o $(TARGETS)
+	rm -f *.o OilrMachine/*.o $(TARGETS)
 
 .PHONY : gp2 gp2c
