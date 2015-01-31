@@ -47,62 +47,59 @@ compileSimple (RuleCall rs) = concatMap (\id -> [CALL id, ZTRF]) rs
 compileSimple (LoopedRuleCall rs) = map (\id -> LOOP id) rs
 compileSimple (ProcedureCall p) = [CALL p , ZTRF]
 compileSimple (LoopedProcedureCall p) = [LOOP p]
-compileSimple Skip = notImplemented "compileSimple"
-compileSimple Fail = notImplemented "compileSimple"
+compileSimple Skip = [NOP]
+compileSimple Fail = [FAIL]
 
 compileRule :: AstRule -> Prog
-compileRule rule@(AstRule id _ (lhs, rhs) cond) =
-    case changed of
-        True  -> compiledLhs ++ compiledRhs ++ [RET]
-        false -> compiledLhs ++ [RET]
-    
+compileRule rule@(AstRule id _ (lhs, rhs) cond) = 
+    (PROC id) : compiledLhs ++ compiledRhs ++ [RET]
     where
         -- TODO: refactor this to eliminate all these primes and make the TRAV ordering less
         -- dependent upon the type
-        compiledLhs = (PROC id) : nodeTravs ++ edgeTravs ++ conditions ++ [GO, ZTRF]
-        compiledRhs = if modifies rc then DELE : DELN : updatedNodes ++ createEdges rmap''' rhs' else []
-        (nodeTravs, rmap)    = travsForLhsNodes rc lhs'
-        (edgeTravs, rmap')   = travsForLhsEdges rc rmap lhs'
-        (conditions, rmap'') = compileCond rmap' lhs' cond
         rc  = characteriseRule rule
-        (updatedNodes, rmap''') = updateNodes rc rmap'' rhs'
-        changed    = lhs' /= rhs'
-        (lhs', rhs') = sortNodes lhs rhs
+        (compiledLhs, rmap)    = compileLhs rc lhs
+        (updatedNodes, rmap')    = updateNodes rc rmap rhs
+        compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap' rhs
+
+compileLhs :: RuleCharacterisation -> AstRuleGraph -> (Prog, RegisterMap)
+compileLhs rc g = (nodeTravs ++ edgeTravs ++ [GO, ZTRF], rmap)
+    where
+        (nodeTravs, nrmap)   = nodesToTravs rc g
+        (edgeTravs, ermap)   = edgesToTravs rc nrmap g
+        (condTravs, rmap)    = compileCond ermap g
+
+compileRhs :: RuleCharacterisation -> RegisterMap -> AstRuleGraph -> Prog
+compileRhs rc rmap g = error "not implemented"
 
 
-travsForLhsNodes :: RuleCharacterisation -> AstRuleGraph -> (Prog, RegisterMap)
-travsForLhsNodes rc (AstRuleGraph ns es) = (map (travForLhsNode rc es) ns, rmap)
+nodesToTravs :: RuleCharacterisation -> AstRuleGraph -> (Prog, RegisterMap)
+nodesToTravs rc (AstRuleGraph ns es) = (map nodeToTrav ns, rmap)
     where
         rmap = zip (map (\(RuleNode id _ _) -> id) ns) [0..]
+        nodeToTrav :: RuleNode -> Instr
+        nodeToTrav (RuleNode id root _) =
+            case (root, id `nodeInterfaceElem` rc) of
+                (True, True)   -> TRIN o i l
+                (True, False)  -> TRN  o i l
+                (False, True)  -> TIN  o i l
+                (False, False) -> TN   o i l
+            where
+                (o, i, l) = classifyEdgesForNode id es
 
-
-travForLhsNode :: RuleCharacterisation -> [AstRuleEdge] -> RuleNode -> Instr
-travForLhsNode rc es (RuleNode id root _) =
-    case (root, id `nodeInterfaceElem` rc) of
-        (True, True)   -> TRIN o i l
-        (True, False)  -> TRN  o i l
-        (False, True)  -> TIN  o i l
-        (False, False) -> TN   o i l
-    where
-        (o, i, l) = classifyEdgesForNode id es
-
-travsForLhsEdges :: RuleCharacterisation -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
-travsForLhsEdges rc rmap (AstRuleGraph ns es) = (map (travForLhsEdge rc rmap) es, rmap')
+edgesToTravs :: RuleCharacterisation -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
+edgesToTravs rc rmap (AstRuleGraph ns es) = (map edgeToTrav es, rmap')
     where
         rmap' = rmap ++ zip (map (\(AstRuleEdge id _ _ _ _) -> id) es) [length rmap..]
+        edgeToTrav :: AstRuleEdge -> Instr
+        edgeToTrav (AstRuleEdge id bidi src tgt _) =
+            case (bidi, id `edgeInterfaceElem` rc, lookup src rmap, lookup tgt rmap) of
+                (False, False, Just n, Just m)  -> TE n m
+                (True,  False, Just n, Just m)  -> TBE n m
+                (False, True,  Just n, Just m)  -> CE n m
+                (True,  True,  Just n, Just m)  -> CBE n m
+                _ -> error $ "Reference to a node without a traverser in edge " ++ id
 
-travForLhsEdge :: RuleCharacterisation -> RegisterMap -> AstRuleEdge -> Instr
-travForLhsEdge rc rmap e@(AstRuleEdge id bidi src tgt _) =
-    case (bidi, id `edgeInterfaceElem` rc, lookup src rmap, lookup tgt rmap) of
-        (False, False, Just n, Just m)  -> TE n m
-        (True,  False, Just n, Just m)  -> TBE n m
-        (False, True,  Just n, Just m)  -> CE n m
-        (True,  True,  Just n, Just m)  -> CBE n m
-        _ -> error $ "Reference to a node without a traverser in edge " ++ id
 
-
--- TODO: Incorrect behaviour. ROOT and TOOR should only be issued if root status changes
--- between lhs and rhs
 updateNodes :: RuleCharacterisation -> RegisterMap -> AstRuleGraph -> (Prog, RegisterMap)
 updateNodes rc rmap (AstRuleGraph ns es) = (updated ++ created, rmap')
     where
@@ -201,8 +198,8 @@ classifyEdgesForNode id es = (outs, ins, loops)
         cs = map (classifyEdgeForId id) es
 
 -- TODO: replace null sort function with one that puts the most informative first.
-sortNodes :: AstRuleGraph -> AstRuleGraph -> (AstRuleGraph, AstRuleGraph)
-sortNodes lhs rhs = (lhs, rhs)
+--sortNodes :: AstRuleGraph -> AstRuleGraph -> (AstRuleGraph, AstRuleGraph)
+--sortNodes lhs rhs = (lhs, rhs)
 {-sortNodes (AstRuleGraph ns es) rhs = (lhs', rhs)
     where
         lhs' = (sortBy () lhs

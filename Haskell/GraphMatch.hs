@@ -1,23 +1,19 @@
 module GraphMatch where
 
 import Data.List
-import Data.Maybe
+-- import Data.Maybe
 import Graph
 import List
 import Mapping
 import LabelMatch
 import GPSyntax
 
-type RuleNodeId = NodeId 
-type HostNodeId = NodeId
-type RuleEdgeId = EdgeId
-type HostEdgeId = EdgeId
-
-type NodeMatches = Mapping RuleNodeId HostNodeId
-type EdgeMatches = Mapping RuleEdgeId HostEdgeId
+-- Rule nodes are mapped to host nodes, and rule edges to host edges.
+type NodeMatches = Mapping NodeKey NodeKey
+type EdgeMatches = Mapping EdgeKey EdgeKey
 
 data GraphMorphism = GM Environment NodeMatches EdgeMatches deriving (Show) 
-data NodeMorphism = NM Environment NodeMatches deriving (Show)
+data NodeMorphism  = NM Environment NodeMatches deriving (Show)
 
 -- Graph-matching proceeds by finding a candidate node-matches,
 -- and for each of these the associated edge-matches, if any.
@@ -31,45 +27,37 @@ matchGraphs h r = [gm | nm <- matchGraphNodes h r, gm <- matchGraphEdges h r nm]
 -- across all nodes.
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
 matchGraphNodes h r =
-   [ NM env (zip ruleNodes hns) | hnenvs <- choices hostNodeMatches,
-                                  let (hns,envs) = unzip hnenvs,
-                                  isSet hns,
-                                  Just env <- [mergeMappings envs] ]
+   [ NM env (zip rns hns) | hnenvs <- choices hostNodeMatches,
+                            let (hns,envs) = unzip hnenvs,
+                            isSet hns,
+                            Just env <- [mergeMappings envs] ]
    where
-   ruleNodes            =  allNodes r
-   ruleNodesWithLabels  =  [   (rn,lab) | rn <- ruleNodes,
-                                          let RuleNode _ _ lab = nLabel r rn ]
-   hostNodesWithLabels  =  [   (hn,lab) | hn <- allNodes h,
-                                          let HostNode _ _ lab = nLabel h hn ]
-   hostNodeMatches      =  [ [ (hn,env) | (hn,hlab) <- hostNodesWithLabels,
-                                          rootCompatible h r (hn,rn),
-                                          Just env <- [doLabelsMatch hlab rlab] ]
-                           | (rn,rlab) <- ruleNodesWithLabels ]
-
-rootCompatible :: HostGraph -> RuleGraph -> (HostNodeId, RuleNodeId) -> Bool
-rootCompatible h r (hn, rn) = not (isRootR r rn) || isRootH h hn
+   (rns,ruleNodes)      =  unzip $ allNodes r
+   hostNodeMatches      =  [ [ (hnk,env)
+                             | (hnk,HostNode _ hroot hlab) <- allNodes h,
+                               not rroot || hroot,
+                               Just env <- [doLabelsMatch hlab rlab] ]
+                           | RuleNode _ rroot rlab <- ruleNodes ]
 
 -- For each edge in the RuleGraph, we determine the required source and
 -- target for a corresponding edge in the HostGraph using the node morphism.
 -- Candidate edges can then be found using joiningEdges.  Accepted candidates
 -- are those for which there is a consistent label-matching.
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
-matchGraphEdges h r (NM env nodeMatches) =
-   [ GM labelEnv nodeMatches edgeMatch
-   | edgeMatch <- [zip ruleEdges hes | hes <- choices hostEdges, isSet hes],
-     Just labelEnv <- [foldr labelMatch (Just env) edgeMatch] ]
+matchGraphEdges h r (NM env nmap) =
+   [ GM env' nmap (zip res hes) | heenvs <- choices hostEdgeMatches,
+                                  let (hes,envs) = unzip heenvs,
+                                  isSet [edgeNumber he | he <- hes],
+                                  Just env' <- [mergeMappings $ env : envs] ]
    where 
-   ruleEdges = allEdges r
-   hostEdges = [ joiningEdges h src tgt ++
-                 if isBidirectional r reid then joiningEdges h tgt src
-                 else []
-               | reid <- ruleEdges,
-                 let src = definiteLookup (source r reid) nodeMatches,
-                 let tgt = definiteLookup (target r reid) nodeMatches ]
-   labelMatch :: (RuleEdgeId, HostEdgeId) -> Maybe Environment -> Maybe Environment
-   labelMatch (re, he) menv = do
-      env <- menv
-      let RuleEdge _ _ rlabel = eLabel r re
-      mapping <- doLabelsMatch (eLabel h he) rlabel
-      mergeMapping mapping env
+   ruleEdges        =  allEdges r
+   (res,_)          =  unzip ruleEdges
+   hostEdgeMatches  =  [ [ (hek,env)
+                         | (hek,hlab) <-
+                             joiningEdges h src tgt ++
+                             if bidir then joiningEdges h tgt src else [],
+                             Just env <- [doLabelsMatch hlab rlab] ]
+                       | (rek,RuleEdge _ bidir rlab) <- ruleEdges,
+                         let src = definiteLookup (source rek) nmap,
+                         let tgt = definiteLookup (target rek) nmap ]
 

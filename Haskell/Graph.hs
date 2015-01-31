@@ -1,128 +1,115 @@
--- a simple implementation of labelled graphs using Data.Map
--- for integer-indexed sets of nodes and edges
+-- a simple implementation of labelled graphs using
+-- integer-indexed sets of nodes and edges
 -- Colin Runciman (colin.runciman@york.ac.uk) April 2014
+-- Nov 2014: use Data.Map instead of association lists 
+-- Jan 2015: allNodes and allEdges list key-data pairs
+-- not just keys; edges indexed by source,target,edge-no
 
-module Graph (Graph, NodeId, EdgeId, nodeNumber, edgeNumber,
+module Graph (Graph, NodeKey, EdgeKey, nodeNumber, source, target, edgeNumber,
               emptyGraph, newNode, newNodeList, newEdge, newEdgeList,
-              allNodes, allEdges, outEdges, outdegree, inEdges, indegree, 
-              incidentEdges, joiningEdges,
-              source, target, nLabel, eLabel,
+              allNodeKeys, allNodes, allEdgeKeys, allEdges, nLabel, eLabel,
+              outEdges, outdegree, inEdges, indegree, joiningEdges, incidentEdges, 
               rmNode, rmNodeList, rmEdge, rmEdgeList, eReLabel, nReLabel)
               where
 
-import Prelude hiding (lookup, filter)
-import Data.Map hiding (map, union, foldr)
-import Data.List (union)
+import qualified Data.Map as Map
 
--- labelled graphs: edges in the range of the edge map should
--- contain end-points in the range of the node map; the Int
--- values are next nodeNumber and next edgeNumber.
-data Graph a b = Graph (Map Int (Node a)) Int (Map Int (Edge b)) Int
+newtype NodeKey  =  N {nodeNumber :: Int}
+                    deriving (Ord, Eq, Show)
+data    EdgeKey  =  E {source, target :: NodeKey, edgeNumber :: Int}
+                    deriving (Ord, Show)
+
+instance Eq EdgeKey where (E _ _ i) == (E _ _ j)  =  i == j
+
+-- The Int values here are next nodeNumber and next edgeNumber.
+data Graph a b = Graph (Map.Map NodeKey a) Int (Map.Map EdgeKey b) Int
                  deriving Show
 
-data Node a = Node a               deriving Show
-data Edge a = Edge NodeId NodeId a deriving Show
- 
-newtype NodeId = N Int deriving (Ord, Eq, Show)
-newtype EdgeId = E Int deriving (Ord, Eq, Show)
-
-nodeNumber :: NodeId -> Int
-nodeNumber (N i) = i
-
-edgeNumber :: EdgeId -> Int
-edgeNumber (E i) = i
-
 emptyGraph :: Graph a b
-emptyGraph = Graph empty 1 empty 1
+emptyGraph = Graph Map.empty 1 Map.empty 1
 
-newNode :: Graph a b -> a -> (Graph a b, NodeId)
+newNode :: Graph a b -> a -> (Graph a b, NodeKey)
 newNode (Graph ns i es j) x  =
-  (Graph (insert i (Node x) ns) (i+1) es j, N i)
+  (Graph (Map.insert nk x ns) (i+1) es j, nk) where nk  =  N i
 
-newNodeList :: Graph a b -> [a] -> (Graph a b, [NodeId])
-newNodeList g xs = foldr addNode (g, []) xs
-  where 
-  addNode :: a -> (Graph a b, [NodeId]) -> (Graph a b, [NodeId])
-  addNode label (g, nids) = (g', nid:nids) where (g', nid) = newNode g label 
+newNodeList :: Graph a b -> [a] -> (Graph a b, [NodeKey])
+newNodeList g xs  =  foldr addNode (g, []) xs
+  where addNode label (g, nks)  =
+          (g', nk:nks) where (g', nk) = newNode g label 
 
-newEdge :: Graph a b -> NodeId -> NodeId -> b -> (Graph a b, EdgeId)
+newEdge :: Graph a b -> NodeKey -> NodeKey -> b -> (Graph a b, EdgeKey)
 newEdge (Graph ns i es j) n1 n2 x  =
-  (Graph ns i (insert j (Edge n1 n2 x) es) (j+1), E j)
+  (Graph ns i (Map.insert ek x es) (j+1), ek) where ek  =  E n1 n2 j
 
-newEdgeList :: Graph a b -> [(NodeId, NodeId, b)] -> (Graph a b, [EdgeId])
+newEdgeList :: Graph a b -> [(NodeKey, NodeKey, b)] -> (Graph a b, [EdgeKey])
 newEdgeList g xs = foldr addEdge (g, []) xs
-  where 
-  addEdge :: (NodeId, NodeId, b) -> (Graph a b, [EdgeId]) -> (Graph a b, [EdgeId])
-  addEdge (src, tgt, lab) (g, eids) = (g', eid:eids) where (g', eid) = newEdge g src tgt lab
+  where addEdge (src, tgt, lab) (g, eks)  =
+          (g', ek:eks) where (g', ek)  =  newEdge g src tgt lab
 
-allNodes :: Graph a b -> [NodeId]
-allNodes (Graph ns _ _ _)  =  map N (keys ns)
+allNodeKeys :: Graph a b -> [NodeKey]
+allNodeKeys (Graph ns _ _ _)  =  Map.keys ns
 
-allEdges :: Graph a b -> [EdgeId]
-allEdges (Graph _ _ es _)  =  map E (keys es)
+allNodes :: Graph a b -> [(NodeKey,a)]
+allNodes    (Graph ns _ _ _)  =  Map.assocs ns
 
-outEdges :: Graph a b -> NodeId -> [EdgeId]
-outEdges (Graph _ _ es _) n  =  map E $ keys $ filter (hasSrc n) es
-  where
-  hasSrc n (Edge n1 _ _)  =  n1 == n
+allEdgeKeys :: Graph a b -> [EdgeKey]
+allEdgeKeys (Graph _ _ es _)  =  Map.keys es
 
-outdegree :: Graph a b -> NodeId -> Int
-outdegree g n = length $ outEdges g n
+allEdges :: Graph a b -> [(EdgeKey,b)]
+allEdges    (Graph _ _ es _)  =  Map.assocs es
 
-inEdges :: Graph a b -> NodeId -> [EdgeId]
-inEdges (Graph _ _ es _) n  =  map E $ keys $ filter (hasTgt n) es
-  where
-  hasTgt n (Edge _ n2 _)  =  n2 == n
+-- internal auxiliary functions
+outMap,inMap :: Graph a b -> NodeKey -> Map.Map EdgeKey b
+outMap (Graph _ _ es _) n  =  Map.filterWithKey (\ek _ -> source ek == n) es
+inMap  (Graph _ _ es _) n  =  Map.filterWithKey (\ek _ -> target ek == n) es
 
-indegree :: Graph a b -> NodeId -> Int
-indegree g n = length $ inEdges g n
+outEdges :: Graph a b -> NodeKey -> [(EdgeKey,b)]
+outEdges  g n  =  Map.assocs $ outMap g n
 
-incidentEdges :: Graph a b -> NodeId -> [EdgeId]
-incidentEdges g n = outEdges g n `union` inEdges g n
+outdegree :: Graph a b -> NodeKey -> Int
+outdegree g n  =  Map.size $ outMap g n
 
-joiningEdges :: Graph a b -> NodeId -> NodeId -> [EdgeId]
-joiningEdges (Graph _ _ es _) src tgt  =
-  map E $ keys $ filter (hasSrcTgt src tgt) es
-  where
-  hasSrcTgt src tgt (Edge n1 n2 _)  =  n1 == src && n2 == tgt
+inEdges :: Graph a b -> NodeKey -> [(EdgeKey,b)]
+inEdges   g n  =  Map.assocs $ inMap g n
 
-source :: Graph a b -> EdgeId -> NodeId
-source (Graph _ _ es _) (E i)  =  let Edge src _ _ = es ! i in src
+indegree :: Graph a b -> NodeKey -> Int
+indegree  g n  =  Map.size $ inMap g n
 
-target :: Graph a b -> EdgeId -> NodeId
-target (Graph _ _ es _) (E i)  =  let Edge _ tgt _ = es ! i in tgt
+incidentEdges :: Graph a b -> NodeKey -> [(EdgeKey,b)]
+incidentEdges g n  =  outs ++ [e | e@(k,_) <- ins, source k /= n]
+  where outs  =  outEdges g n  ;  ins  =  inEdges g n
 
-eLabel :: Graph a b -> EdgeId -> b
-eLabel (Graph _ _ es _) (E i)  =  let Edge _ _ lab = es ! i in lab
+joiningEdges :: Graph a b -> NodeKey -> NodeKey -> [(EdgeKey,b)]
+joiningEdges (Graph _ _ es _) src tgt  =  after $ E src tgt 0
+  where after ek = case Map.lookupGT ek es of
+                   Nothing                 -> []
+                   Just e@(ek'@(E s t _),_) ->
+                     if t==tgt && s==src then e : after ek' else []
 
-nLabel :: Graph a b -> NodeId -> a
-nLabel (Graph ns _ _ _) (N i)  =  let Node lab = ns ! i in lab
+nLabel :: Graph a b -> NodeKey -> a
+nLabel (Graph ns _ _ _) nk  =  ns Map.! nk
+
+eLabel :: Graph a b -> EdgeKey -> b
+eLabel (Graph _ _ es _) ek  =  es Map.! ek
 
 -- removing a node also removes all edges incident to it
-rmNode :: Graph a b -> NodeId -> Graph a b
-rmNode (Graph ns i es j) n@(N k)  =
-  Graph (delete k ns) i (filter (not . incidentTo n) es) j
-  where
-  incidentTo n (Edge n1 n2 _)  =  n1 == n || n2 == n
+rmNode :: Graph a b -> NodeKey -> Graph a b
+rmNode (Graph ns i es j) nk  =
+  Graph (Map.delete nk ns) i (Map.filterWithKey notIncident es) j
+  where notIncident ek _  =  source ek /= nk && target ek /= nk
 
-rmNodeList :: Graph a b -> [NodeId] -> Graph a b
-rmNodeList g nids  =  foldr (flip rmNode) g nids
+rmNodeList :: Graph a b -> [NodeKey] -> Graph a b
+rmNodeList g nks  =  foldr (flip rmNode) g nks
 
-rmEdge :: Graph a b -> EdgeId -> Graph a b
-rmEdge (Graph ns i es j) (E k)  =  Graph ns i (delete k es) j
+rmEdge :: Graph a b -> EdgeKey -> Graph a b
+rmEdge (Graph ns i es j) ek  =  Graph ns i (Map.delete ek es) j
 
-rmEdgeList :: Graph a b -> [EdgeId] -> Graph a b
-rmEdgeList g eids  =  foldr (flip rmEdge) g eids
+rmEdgeList :: Graph a b -> [EdgeKey] -> Graph a b
+rmEdgeList g eks  =  foldr (flip rmEdge) g eks
 
-eReLabel :: Graph a b -> EdgeId -> b -> Graph a b
-eReLabel (Graph ns i es j) (E k) x  =
-  Graph ns i (adjust (relabel x) k es) j
-  where
-  relabel x (Edge n1 n2 _)  =  Edge n1 n2 x
+nReLabel :: Graph a b -> NodeKey -> a -> Graph a b
+nReLabel (Graph ns i es j) nk x  =  Graph (Map.insert nk x ns) i es j
 
-nReLabel :: Graph a b -> NodeId -> a -> Graph a b
-nReLabel (Graph ns i es j) (N k) x  =
-  Graph (adjust (relabel x) k ns) i es j
-  where
-  relabel x (Node _)  =  Node x
+eReLabel :: Graph a b -> EdgeKey -> b -> Graph a b
+eReLabel (Graph ns i es j) ek x  =  Graph ns i (Map.insert ek x es) j
 

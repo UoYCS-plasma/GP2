@@ -60,7 +60,8 @@ data Instr =
     -- TRAV registers
     | DELN
 
-    -- delete all edges on TRAV
+    -- delete all non-interface edges in TRAV
+    -- registers
     | DELE
     
     -- introduce a new edge between src and tgt
@@ -87,6 +88,17 @@ data Instr =
 
     -- Clear TRAV and return on fail
     | ZTRF
+
+    ----------------------------------
+    -- Miscellaneous prims
+    ----------------------------------
+
+    -- Unset success flag and return
+    | FAIL
+
+    -- Do nothing (i.e. "skip" in GP2 terms)
+    | NOP
+
 
 {-    ----------------------------------
     -- Stack management prims

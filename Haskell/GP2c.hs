@@ -6,13 +6,12 @@ import System.Console.GetOpt
 
 import ParseProgram
 import ParseGraph
-import ParseLib
+import Text.Parsec
 import OilrMachine.Instructions
 import OilrMachine.Compile
 import OilrMachine.HostCompile
 import OilrMachine.NullBackend
 import OilrMachine.CBackend
-
 
 compiler = "cc"
 
@@ -33,13 +32,12 @@ main = do
                 let stem = getStem progFile
                 let targ = stem ++ ".c"
                 putStrLn $ "Parsing " ++ progFile
-                let prog = parse program p
-                -- putStrLn $ show prog
-                -- putStrLn ""
-                putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
-                let code = cCompile $ compileGPProg prog
-                writeFile targ code
-                return ()
+                case parse program progFile p of
+                  Left  err  -> print err
+                  Right prog -> do
+                    putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
+                    let code = cCompile $ compileGPProg prog
+                    writeFile targ code
         (flags, [progFile, hostFile], []) ->
             do
                 putStrLn $ " ** Warning: host-graph burned into executable!"
@@ -48,15 +46,14 @@ main = do
                 let stem = getStem progFile
                 let targ = stem ++ ".c"
                 putStrLn $ "Parsing " ++ progFile
-                let prog = parse program p
-                -- putStrLn $ show prog
-                -- putStrLn ""
-                putStrLn $ "Parsing " ++ hostFile
-                let host = parse hostGraph h
-                putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
-                let code = cCompile $ compileHostGraph host ++ compileGPProg prog
-
-                writeFile targ code
-                return ()
-
+                case parse program progFile p of
+                  Left  err  -> print err
+                  Right prog -> do
+                    putStrLn $ "Parsing " ++ hostFile
+                    case parse hostGraph hostFile h of
+                      Left  err  -> print err
+                      Right host -> do
+                        putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
+                        let code = cCompile $ compileHostGraph host ++ compileGPProg prog
+                        writeFile targ code
 

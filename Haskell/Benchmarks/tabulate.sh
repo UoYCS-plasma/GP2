@@ -10,7 +10,7 @@ function benchmarkName() {
 }
 
 function graphCounts() {
-awk -v "bm=`basename $PWD`" 'BEGIN { f=0; u=0; n=0 ; i=0 ; rmin=0 ; rmax=0 ; t=0 ; gsub(/\.host.*\.d/, "", bm); gsub(/_/, " ", bm);} \
+awk -v "bm=`basename $PWD`" -v "short=$2" 'BEGIN { f=0; u=0; n=0 ; i=0 ; rmin=0 ; rmax=0 ; t=0 ; gsub(/\.host.*\.d/, "", bm); gsub(/_/, " ", bm);} \
 		 /^[0-9]* fail/ { f+=$1 } \
 		 /^[0-9]* unfinished/ { u+=$1 } \
 		 /^[0-9]* occurrence/ { n+=$1 ; i+=1 } \
@@ -19,11 +19,19 @@ awk -v "bm=`basename $PWD`" 'BEGIN { f=0; u=0; n=0 ; i=0 ; rmin=0 ; rmax=0 ; t=0
 		 /Timed out after/ { failed=1 }
 		 END { \
 			 rng=(rmin==rmax) ? rmin : (rmin "-" rmax) ; \
-			 if (failed) { \
-				 printf " & %20s & & - & - & - & & - & $>1h$ & & - & - \\\\\n", bm ; exit 1
-			 } else { \
-				 printf " & %20s & & %6d & %9d & %5d & & %5s & %7s & & ", bm, n, i, f, rng, t \
-			 }
+			 if (short) {
+				if (failed) { \
+					printf " & %20s & - & $>5m$ & & - & - \\\\\n", bm ; exit 1
+				} else { \
+					printf " & %20s & %5s & %7s & & ", bm, rng, t \
+				}
+			 } else {
+				if (failed) { \
+					printf " & %20s & - & - & - & - & $>5m$ & & - & - \\\\\n", bm ; exit 1
+				} else { \
+					printf " & %20s & %6d & %9d & %5d & %5s & %7s & & ", bm, n, i, f, rng, t \
+				}
+			}
 		 }' $1/test.log
 
 }
@@ -43,8 +51,8 @@ for d in */ ; do
 	benchmarkName `pwd` >> "$outOne"
 	for d in *.host--one.d/ ; do 
 		pushd $d >/dev/null || break
-		graphCounts ./ && heapProfile ./
-		echo '                  \cline{2-12}'
+		graphCounts ./ 1 && heapProfile ./ # output short format
+		#echo '                  \cline{2-12}'
 		popd >/dev/null
 	done >> "$outOne"
 	echo '\hline' >> "$outOne"
@@ -53,7 +61,7 @@ for d in */ ; do
 	for d in *.host.d/ ; do 
 		pushd $d >/dev/null || break
 		graphCounts ./ && heapProfile ./
-		echo '                  \cline{2-12}'
+		#echo '                  \cline{2-12}'
 		popd >/dev/null
 	done >> "$outAll"
 	echo '\hline' >> "$outAll"

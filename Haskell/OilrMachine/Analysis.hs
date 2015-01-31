@@ -13,9 +13,6 @@ data RuleCharacterisation = RuleCharacterisation {
         edgeInterface :: Interface }
 
 
-nullCharacterisation = RuleCharacterisation False False [] []
-
-
 nodeInterfaceElem :: NodeName -> RuleCharacterisation -> Bool
 nodeInterfaceElem n rc = n `elem` nodeInterface rc
 

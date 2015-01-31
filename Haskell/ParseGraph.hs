@@ -1,73 +1,85 @@
 module ParseGraph where
 
 import Data.Char (toLower, isDigit)
-import Data.Maybe
-import ParseLib
+import Data.Maybe (isJust, fromJust)
+import Control.Monad (guard)
+import Text.Parsec
 import GPSyntax
-import Graph
+import List
 
+type Parser a  =  Parsec String () a
+
+keyword :: String -> Parser ()
+keyword s  =  try $ do { string s ; notFollowedBy letter ; spaces } 
+
+symbol :: String -> Parser ()
+symbol  s  =  try $ do { string s ; spaces }
+
+comment :: Parser ()
+comment  =  do { string "//" ; skipMany (noneOf "\n") ; newline ; return () }
+
+manyCommented :: Parser a -> Parser [a]
+manyCommented p  =  do { xss <- many $ do {comment ; spaces ; return []}
+                                   <|> do {x <- p ; return [x]} ;
+                         return $ concat xss }
+
+many1Commented :: Parser a -> Parser [a]
+many1Commented p  =  do { xs <- manyCommented p ; guard $ nonEmpty xs ; return xs }
+ 
 hostGraph :: Parser AstHostGraph
-hostGraph = optSpaces |> keyword "[" |> pure AstHostGraph 
-        <*> maybeSome hostNode <*> keyword "|" 
-         |> maybeSome hostEdge <| keyword "]"
+hostGraph  =  do { many comment ; spaces ;
+                   symbol "[" ; ns <- manyCommented hostNode ;
+                   symbol "|" ; es <- manyCommented hostEdge ;
+                   symbol "]" ; return $ AstHostGraph ns es }
 
--- A node is a triple (Node ID, Root Node, Node Label)
--- The second component is "(R)" if root node, [] otherwise.
 hostNode :: Parser HostNode
-hostNode = keyword "(" |> pure HostNode
-       <*> label
-       <*> (root <| keyword ",") 
-       <*> (hostLabel <| keyword ")")
+hostNode  =  do { symbol "(" ;
+                  n <- lowerIdent ; r <- root ; symbol "," ; l <- hostLabel ;
+                  symbol ")" ; return $ HostNode n r l }
 
 hostEdge :: Parser HostEdge
-hostEdge = keyword "(" |> pure HostEdge
-       <| ( (lowerIdent <| keyword ",") )
-       <*> (lowerIdent <| keyword ",")
-       <*> (lowerIdent <| keyword ",")
-       <*> (hostLabel <| keyword ")")
+hostEdge  =  do { symbol "(" ; _ <- lowerIdent ; symbol "," ;
+                  s <- lowerIdent ; symbol "," ; t <- lowerIdent ; symbol "," ;
+                  l <- hostLabel ;
+                  symbol ")" ; return $ HostEdge s t l }
 
 hostLabel :: Parser HostLabel
-hostLabel = pure HostLabel <*> hostList <*> hostColour
+hostLabel  =  do { as <- hostList ; c <- hostColour ; return $ HostLabel as c }
 
 hostList :: Parser [HostAtom]
-hostList = pure f <*> keyword "empty"
-       <|> pure (:) <*> value <*> maybeSome (keyword ":" |> value)
-  where f "empty" = []
-
+hostList  =  do { keyword "empty" ; return [] } <|>  sepBy1 value (symbol ":")
 
 hostColour :: Parser Colour
-hostColour = keyword "#" |> pure col <*> label
-        <|> pure Uncoloured
-    where
-        col c = fromJust $ lookup c hostColours
+hostColour  =  do { symbol "#" ; c <- many1 lower ;
+                    let { hc = lookup c hostColours } ;
+                    guard $ isJust hc ; return $ fromJust hc }
+          <|>  return Uncoloured
 
 value :: Parser HostAtom
 value = intLit <|> strLit <|> charLit
 
 intLit :: Parser HostAtom
-intLit = pure (Int . read) <*> atLeastOne (satisfy isDigit) <| optSpaces
+intLit  =  do { ds <- many1 digit ; spaces ; return $ Int (read ds) }
 
 charLit :: Parser HostAtom
-charLit = char '\'' |> pure Chr <*> gpChar <| char '\'' <| optSpaces
+charLit  =  do { c <- between (char '\'') (char '\'') gpChar ;
+                 spaces ; return $ Chr c }
 
 strLit :: Parser HostAtom
-strLit = char '"' |> pure Str <*> maybeSome gpChar <| keyword "\""
-    <|>  char '\'' |> pure Str <*> exactlyOne gpChar <| keyword "'"
+strLit  =  do { s <- between (char '"') (char '"') (many gpChar) ;
+                spaces ; return $ Str s }
 
 gpChar :: Parser Char
-gpChar = satisfy (`elem` gpChars)
+gpChar  =  oneOf gpChars
 
 identifier :: Parser Char -> Parser String
-identifier first = guarded g (pure (:) <*> first <*> maybeSome gpChar)
-  where g s = (map toLower s) `notElem` keywords
+identifier first  =  do { c <- first ; cs <- many gpChar ; let { s = c:cs } ;
+                          guard $ map toLower s `notElem` keywords ; return s }
 
 lowerIdent :: Parser String
-lowerIdent = identifier lower <| optSpaces
-
-label :: Parser String
-label = token ( atLeastOne gpChar ) <| optSpaces
+lowerIdent  =  do { id <- identifier lower ; spaces; return id }
 
 root :: Parser Bool
-root = pure (not . null) <*> (maybeOne $ keyword "(R)")
+root  =  option False $ do { symbol "(R)" ; return True}
 
 

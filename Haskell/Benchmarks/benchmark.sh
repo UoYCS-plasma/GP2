@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TIMEOUT=1h
+TIMEOUT=5m
 MAXAPPS=1000000
 MAXGRAPHS=10
 
@@ -41,12 +41,13 @@ for mode in "--one" "" ; do
 	for b in $BMS ; do
 		pushd "$b" > /dev/null
 		prog=`ls *.gp2`
+		echo -- $amber$prog$default -----------------
 		for host in `ls *.host` ; do
 			wd="$host$mode.d"
 			rm -rf "$wd"
 			mkdir "$wd"
 			pushd "$wd" > /dev/null
-			echo -e "=== $bold$wd$default"
+			echo -e "   $bold$wd$default"
 			echo "$wd" >> test.log
 			echo "$GP" >> test.log
 			echo "Max allowed time is: $TIMEOUT" >> test.log

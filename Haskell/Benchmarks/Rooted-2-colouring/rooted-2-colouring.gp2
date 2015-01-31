@@ -4,127 +4,71 @@ Colour = ({mark_blue, mark_red}; Invalid)!; Back
 Invalid = {joined_reds, joined_blues}
 Back = {back_red, back_blue}
 
-init(x:atom)
-[
- ( n1(R), x ) |
-]
-
-=>
-
-[
- ( n1(R), x # red ) |
-]
-
-interface = { n1 }
+init(x:list) [
+	( n1(R), x ) |
+] => [
+	( n1(R), x # red ) |
+] interface = { n1 }
 
 
-unroot(x:atom)
-[
- ( n1(R), x # cyan ) |
-]
-
-=>
-
-[
- ( n1, x # cyan ) |
-]
-
-interface = { n1 }
+unroot(x:list) [
+	( n1(R), x # cyan ) |
+] => [
+	( n1, x # cyan ) |
+] interface = { n1 }
 
 
-mark_red(a,x,y:list)
-[
- ( n1(R), x # red ) ( n2, y ) |
- ( e1(B), n1, n2, a)
-]
-
-=>
-
-[
- ( n1, x # red ) ( n2(R), y # blue ) |
- ( e1(B), n1, n2, a #dashed)
-]
-
-interface = { n1, n2 }
+mark_red(a,x,y:list) [
+	( n1(R), x # red ) ( n2, y ) |
+	( e1(B), n1, n2, a)
+] => [
+	( n1, x # red ) ( n2(R), y # blue ) |
+	( e1(B), n1, n2, a #dashed)
+] interface = { n1, n2 }
 
 
-mark_blue(a,x,y:list)
-[
- ( n1(R), x # blue ) ( n2, y ) |
- ( e1(B), n1, n2, a)
-]
-
-=>
-
-[
- ( n1, x # blue ) ( n2(R), y # red ) |
- ( e1(B), n1, n2, a #dashed)
-]
-
-interface = { n1, n2 }
+mark_blue(a,x,y:list) [
+	( n1(R), x # blue ) ( n2, y ) |
+	( e1(B), n1, n2, a)
+] => [
+	( n1, x # blue ) ( n2(R), y # red ) |
+	( e1(B), n1, n2, a #dashed)
+] interface = { n1, n2 }
 
 
-joined_reds(a,x,y:list)
-[
- ( n1(R), x # red ) ( n2, y # red ) |
- ( e1, n1, n2, a)
-]
-
-=>
-
-[
- ( n1, x # red ) ( n2, y # red ) |
- ( e1, n1, n2, a)
-]
-
-interface = { n1, n2 }
+joined_reds(a,x,y:list) [
+	( n1(R), x # red ) ( n2, y # red ) |
+	( e1, n1, n2, a)
+] => [
+	( n1, x # red ) ( n2, y # red ) |
+	( e1, n1, n2, a)
+] interface = { n1, n2 }
 
 
-joined_blues(a,x,y:list)
-[
- ( n1(R), x # blue ) ( n2, y # blue ) |
- ( e1, n1, n2, a)
-]
-
-=>
-
-[
- ( n1, x # blue ) ( n2, y # blue ) |
- ( e1, n1, n2, a)
-]
-
-interface = { n1, n2 }
+joined_blues(a,x,y:list) [
+	( n1(R), x # blue ) ( n2, y # blue ) |
+	( e1, n1, n2, a)
+] => [
+	( n1, x # blue ) ( n2, y # blue ) |
+	( e1, n1, n2, a)
+] interface = { n1, n2 }
 
 
-back_red(a,x,y:list)
-[
- ( n1(R), x # red ) ( n2, y # blue ) |
- ( e1(B), n1, n2, a #dashed)
-]
+back_red(a,x,y:list) [
+	( n1(R), x # red ) ( n2, y # blue ) |
+	( e1(B), n1, n2, a #dashed)
+] => [
+	( n1, x # red ) ( n2(R), y # blue ) |
+	( e1(B), n1, n2, a)
+] interface = { n1, n2 }
 
-=>
-
-[
- ( n1, x # red ) ( n2(R), y # blue ) |
- ( e1(B), n1, n2, a)
-]
-
-interface = { n1, n2 }
-
-back_blue(a,x,y:list)
-[
- ( n1(R), x # blue ) ( n2, y # red ) |
- ( e1(B), n1, n2, a #dashed)
-]
-
-=>
-
-[
- ( n1, x # blue ) ( n2(R), y # red ) |
- ( e1(B), n1, n2, a)
-]
-
-interface = { n1, n2 }
+back_blue(a,x,y:list) [
+	( n1(R), x # blue ) ( n2, y # red ) |
+	( e1(B), n1, n2, a #dashed)
+] => [
+	( n1, x # blue ) ( n2(R), y # red ) |
+	( e1(B), n1, n2, a)
+] interface = { n1, n2 }
 
 
 
