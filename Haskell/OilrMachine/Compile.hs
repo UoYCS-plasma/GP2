@@ -71,6 +71,16 @@ compileLhs rc g = (nodeTravs ++ edgeTravs ++ [GO, ZTRF], rmap)
 compileRhs :: RuleCharacterisation -> RegisterMap -> AstRuleGraph -> Prog
 compileRhs rc rmap g = error "not implemented"
 
+{- travForLhsNode :: RuleCharacterisation -> [AstRuleEdge] -> RuleNode -> Instr
+travForLhsNode rc es (RuleNode id root _) =
+    case (root, id `nodeInterfaceElem` rc) of
+        (True, True)   -> TRIN o i l
+        (True, False)  -> TRN  o i l
+        (False, True)  -> TIN  o i l
+        (False, False) -> TN   o i l
+    where
+        (o, i, l) = edgeClassesFor rc id
+-}
 
 nodesToTravs :: RuleCharacterisation -> AstRuleGraph -> (Prog, RegisterMap)
 nodesToTravs rc (AstRuleGraph ns es) = (map nodeToTrav ns, rmap)
@@ -177,25 +187,6 @@ compileCond rmap lhs (And x y) = (progl ++ progr, rmap'')
 compileCond rmap lhs c = notImplemented $ "compileCond: " ++ show c
 
 
-
--- Classify edges as in out or loop
-data EdgeType = InEdge | OutEdge | LoopEdge | UninterestingEdge deriving Eq
-
-classifyEdgeForId :: NodeName -> AstRuleEdge -> EdgeType
-classifyEdgeForId id (AstRuleEdge _ _ i o _) =
-    case (i==id, o==id) of
-        (True, True) -> LoopEdge
-        (True, _)    -> OutEdge
-        (_, True)    -> InEdge
-        _            -> UninterestingEdge
-
-classifyEdgesForNode :: NodeName -> [AstRuleEdge] -> (Deg, Deg, Deg)
-classifyEdgesForNode id es = (outs, ins, loops)
-    where
-        ins   = length $ filter (==InEdge) cs
-        outs  = length $ filter (==OutEdge) cs
-        loops = length $ filter (==LoopEdge) cs
-        cs = map (classifyEdgeForId id) es
 
 -- TODO: replace null sort function with one that puts the most informative first.
 --sortNodes :: AstRuleGraph -> AstRuleGraph -> (AstRuleGraph, AstRuleGraph)
