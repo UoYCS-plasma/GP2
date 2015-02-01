@@ -62,11 +62,12 @@ compileRule rule@(AstRule id _ (lhs, rhs) cond) =
         compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap' rhs
 
 compileLhs :: RuleCharacterisation -> AstRuleGraph -> (Prog, RegisterMap)
-compileLhs rc g = (nodeTravs ++ edgeTravs ++ [GO, ZTRF], rmap)
+compileLhs = error "Not implemented"
+{-compileLhs rc g = (nodeTravs ++ edgeTravs ++ [GO, ZTRF], rmap)
     where
         (nodeTravs, nrmap)   = nodesToTravs rc g
         (edgeTravs, ermap)   = edgesToTravs rc nrmap g
-        (condTravs, rmap)    = compileCond ermap g
+        (condTravs, rmap)    = compileCond ermap g -}
 
 compileRhs :: RuleCharacterisation -> RegisterMap -> AstRuleGraph -> Prog
 compileRhs rc rmap g = error "not implemented"
@@ -81,6 +82,8 @@ travForLhsNode rc es (RuleNode id root _) =
     where
         (o, i, l) = edgeClassesFor rc id
 -}
+
+classifyEdgesForNode = error "function has been removed!"
 
 nodesToTravs :: RuleCharacterisation -> AstRuleGraph -> (Prog, RegisterMap)
 nodesToTravs rc (AstRuleGraph ns es) = (map nodeToTrav ns, rmap)

@@ -9,9 +9,12 @@ import ParseGraph
 import Text.Parsec
 import OilrMachine.Instructions
 import OilrMachine.Compile
+import OilrMachine.Analysis
 import OilrMachine.HostCompile
 import OilrMachine.NullBackend
 import OilrMachine.CBackend
+
+import GPSyntax -- debug code
 
 compiler = "cc"
 
@@ -21,6 +24,9 @@ options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, i
 
 getStem :: String -> String
 getStem = takeWhile (/= '.')
+
+extractDecls :: GPProgram -> [AstRule]
+extractDecls (Program decls) = map (\(AstRuleDecl r) -> r) $ filter (\d -> case d of { (AstRuleDecl _) -> True ; _ -> False} ) decls
 
 main = do
     hSetBuffering stdout NoBuffering
@@ -36,8 +42,11 @@ main = do
                   Left  err  -> print err
                   Right prog -> do
                     putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
-                    let code = cCompile $ compileGPProg prog
-                    writeFile targ code
+                    -- putStrLn $ show prog
+                    _ <- mapM putStrLn $ map show $ map characteriseRule $ extractDecls prog
+                    putStrLn ""
+                    -- let code = cCompile $ compileGPProg prog
+                    -- writeFile targ code
         (flags, [progFile, hostFile], []) ->
             do
                 putStrLn $ " ** Warning: host-graph burned into executable!"

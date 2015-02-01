@@ -6,8 +6,6 @@ import Data.List
 
 type Interface = [String]
 
-data Characteristic = Unused | MinMax Int Int
-
 -- (indeg, outdeg, loopdeg)
 type NodeDegreeClassification = (Deg, Deg, Deg)
 
@@ -16,6 +14,7 @@ data RuleCharacterisation = RuleCharacterisation {
         nodeInterface :: Interface,
         edgeInterface :: Interface,
         structure :: [(NodeName, NodeDegreeClassification)]}
+    deriving Show
 
 
 nodeInterfaceElem :: NodeName -> RuleCharacterisation -> Bool
