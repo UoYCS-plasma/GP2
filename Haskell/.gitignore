@@ -1,3 +1,7 @@
 *.hi
 *.o
 Benchmarks/*/*.d/
+IsoChecker
+ViewGraph
+gp2
+gp2c
