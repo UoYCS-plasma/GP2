@@ -788,7 +788,7 @@ void printGraph(Graph *graph)
  
    if(graph->number_of_edges == 0)
    {
-      printf("| ]\n");
+      printf("| ]\n\n");
       return;
    }
 

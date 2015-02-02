@@ -149,8 +149,7 @@ typedef struct Rule {
    /* Deleted LHS items are precisely those that do not occur in the 
     * PreservedItems list. I explicitly store the deleted nodes because
     * the dangling condition places a stronger requirement on the degrees
-    * of candidate host nodes which can be exploited in the rule matching
-    * code. */
+    * of candidate host nodes which is exploited in the rule matching code. */
    ItemList *deleted_nodes;
    ItemList *added_nodes;
    NewEdgeList *added_edges;

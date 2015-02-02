@@ -62,11 +62,12 @@ int main(int argc, char** argv)
    parse_target = GP_PROGRAM;
    printf("\nProcessing %s...\n\n", argv[1]);
 
-   if(yyparse() == 0) print_to_console("GP2 program parse succeeded\n\n");
+   if(yyparse() == 0) print_to_console("GP2 program parse succeeded.\n\n");
    else 
    {
-      print_to_console("GP2 program parse failed.\n\n");
-      return 1;
+      print_to_console("GP2 program parse failed.\n\n");     
+      fclose(yyin);
+      return 0;
    }
 
    /* Point yyin to the file containing the host graph. */
@@ -80,11 +81,13 @@ int main(int argc, char** argv)
    parse_target = GP_GRAPH;
    printf("\nProcessing %s...\n\n", argv[2]);
   
-   if(yyparse() == 0) print_to_console("GP2 graph parse succeeded\n\n");
+   if(yyparse() == 0) print_to_console("GP2 graph parse succeeded.\n\n");
    else 
    {
       print_to_console("GP2 graph parse failed.\n\n");
-      return 1;
+      fclose(yyin);
+      if(gp_program) freeAST(gp_program); 
+      return 0;
    }   
 
    gp_program = reverse(gp_program);
@@ -96,7 +99,7 @@ int main(int argc, char** argv)
      bool valid_program = analyseProgram(gp_program, false, NULL);
    #endif
 
-   if(valid_program) 
+   if(valid_program && !syntax_error) 
    {
       print_to_console("Generating code...\n\n"); 
       generateRuntimeCode(gp_program);

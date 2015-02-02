@@ -27,6 +27,7 @@ extern GPGraph *ast_host_graph;
 extern int yylineno;
 extern string yytext;
 extern FILE *yyin;
+extern bool syntax_error;
 }
 
 /* Code placed in parser.c. */
@@ -34,7 +35,7 @@ extern FILE *yyin;
 #include "globals.h"
 
 void yyerror(const char *error_message);
-void report_error(const char *error_message);
+void report_warning(const char *error_message);
 
 /* Flags used in the AST construction. */
 bool is_root = false;
@@ -43,6 +44,8 @@ bool is_bidir = false;
 /* Pointers to data structures constructed by the parser. */
 struct List *gp_program = NULL; 
 struct GPGraph *ast_host_graph = NULL;
+
+bool syntax_error = false;
 %}
 
 %locations /* Generates code to process locations of symbols in the source file. */
@@ -216,7 +219,7 @@ ProcDecl: ProcID '=' ComSeq 		{ $$ = newASTProcedure(@1, $1, NULL,
 	| RuleID '=' '[' LocalDecls ']' ComSeq
 				        { $$ = newASTProcedure(@1, $1, $4, 
                                                newASTCommandSequence(@6, $6));
-                                          report_error("Procedure names must "
+                                          report_warning("Procedure names must "
  					   "start with an upper-case letter."); 
 					  if($1) free($1); }
 
@@ -230,7 +233,7 @@ ComSeq: Command 			{ $$ = addASTCommand(@1, $1, NULL); }
       | ComSeq ';' Command  		{ $$ = addASTCommand(@3, $3, $1); }
       /* Error-catching production */
       | ComSeq ',' Command		{ $$ = addASTCommand(@3, $3, $1);
-                                          report_error("Incorrect use of comma "
+                                          report_warning("Incorrect use of comma "
 					    "to separate commands. Perhaps you "
 					    "meant to use a semicolon?"); }
 
@@ -242,8 +245,8 @@ Command: Block 				/* default $$ = $1 */
        /* Error-catching production */
        | IF Block ELSE Block	   	{ $$ = newASTCondBranch(IF_STATEMENT, @$,
                                                $2, NULL, $4);
-                                          report_error("No 'then' clause in if "
-						       "statement."); }
+                                          report_warning("No 'then' clause in if "
+						         "statement."); }
        | TRY Block 			{ $$ = newASTCondBranch(TRY_STATEMENT, @$,
                                                $2, newASTSkip(@$), newASTSkip(@$)); }
        | TRY Block THEN Block		{ $$ = newASTCondBranch(TRY_STATEMENT, @$,
@@ -281,15 +284,15 @@ IDList: RuleID				{ $$ = addASTRule(@1, $1, NULL);
 					  if($3) free($3);} 
       /* Error-catching productions */
       | ProcID	 			{ $$ = addASTRule(@1, $1, NULL);
-                                          report_error("Procedure name used in "
+                                          report_warning("Procedure name used in "
 					   "a rule set. Rule names must start "
 					   "with a lower-case letter.");
 				          if($1) free($1); }
       | IDList ';' RuleID		{ $$ = addASTRule(@3, $3, $1);
-                                          report_error("Semicolon used in a "
-					   "rule set. Perhaps you meant to "
+                                          report_warning("Incorrect use of semicolon "
+					   "in a rule set. Perhaps you meant to "
 					   "use a comma?"); 
-					  if($1) free($1); }
+					  if($3) free($3); }
 
 
  /* Grammar for GP2 Rule Definitions. */
@@ -303,7 +306,7 @@ RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl
         /* Error-catching productions */
 	| ProcID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl
 				        { $$ = newASTRule(@1, $1, $3, $5, $7, $8, $9); 
-                                          report_error("Rule names must "
+                                          report_warning("Rule names must "
  					   "start with a lower-case letter."
 				 	   "letter.");
 					  if($1) free($1); }
@@ -312,7 +315,7 @@ RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl
          */
         | RuleID '(' VarDecls ';' ')' Graph ARROW Graph Inter CondDecl
 					{ $$ = newASTRule(@1, $1, $3, $6, $8, $9, $10);  
-                                          report_error("Semicolon at the end "
+                                          report_warning("Semicolon at the end "
 					    "of a rule's variable list");
 					  if($1) free($1); }	
 
@@ -337,8 +340,7 @@ Inter: INTERFACE '=' '{' '}'   		{ $$ = NULL; }
      | INTERFACE '=' '{' NodeIDList '}' { $$ = $4; }
      /* If an error is found in an interface list, continue parsing after the 
       * interface list. */
-     | error '}'			{ report_error("Error in an interface "
-                                                       " list.");  
+     | error '}'			{ report_warning("Error in an interface list.");  
                                           $$ = NULL; }
 
 NodeIDList: NodeID			{ $$ = addASTNodeID(@1, $1, NULL); 
@@ -499,24 +501,24 @@ HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
 %%
 
 /* Bison calls yyerror whenever it encounters an error. It prints error
- * messages to stderr and log_file, and sets abort_scan to prevent the semantic
- * analysis functions from being called. */
+ * messages to stderr and log_file. */
 void yyerror(const char *error_message)
 {
    fprintf(stderr, "Error at '%s': %s\n", yytext, error_message);
-   fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n", 
+   fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, yytext, error_message);
 }
 
-/* report_error is identical to yyerror except that it doesn't refer to yytext.
+/* report_warning is identical to yyerror except that it doesn't refer to yytext.
  * This is called in the action code of error-catching Bison rules in which
- * the value of yytext may be misleading.*/
-void report_error(const char *error_message)
+ * the value of yytext may be misleading. */
+void report_warning(const char *error_message)
 {
-   fprintf(stderr, "Error: %s\n", error_message);
-   fprintf(log_file, "%d.%d-%d.%d: Error: %s\n", 
+   fprintf(stderr, "Warning: %s\n", error_message);
+   fprintf(log_file, "%d.%d-%d.%d: Error: %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, error_message);
+   syntax_error = true;
 }
         

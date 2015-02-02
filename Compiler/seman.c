@@ -448,15 +448,17 @@ void statementScan(GPStatement *const statement, string const scope)
       }
 }             
 
-
+/* Searches for a rule name in the appropriate scope. 
+ * If the passed scope is not "Main", first search for a rule symbol in the
+ * passed scope. If such a symbol exists, we return the local rule name.
+ * If the function does not return at this point, the code continues
+ * by searching for the symbol in "Main" scope after the if statement. 
+ * This code is also executed if "Main" is the passed scope. */
 string validateRuleCall(string const name, string const scope)
 {
    string global_rule_name = makeRuleIdentifier(name, "Main");
    GSList *symbol_list = NULL;
 
-   /* If the passed scope is not "Main", we first search for a rule symbol
-    * in the passed scope. If such a symbol exists, we return the local rule
-    * name and return. Otherwise, search for a rule symbol in "Main" scope. */
    if(strcmp(scope, "Main"))
    {
       string local_rule_name = makeRuleIdentifier(name, scope);
@@ -475,19 +477,20 @@ string validateRuleCall(string const name, string const scope)
       /* Rule symbol not found in local scope. */
       free(local_rule_name);
    }
-   else
+
+   /* No else statement: this is "fall through" code in case the code
+    * in the if statement does not return. */
+   symbol_list = g_hash_table_lookup(symbol_table, global_rule_name);
+   while(symbol_list != NULL)
    {
-      symbol_list = g_hash_table_lookup(symbol_table, global_rule_name);
-      while(symbol_list != NULL)
-      {
-         Symbol *current_symbol = (Symbol*)(symbol_list->data);
-         if(current_symbol->type == RULE_S && 
-            !strcmp(current_symbol->scope, "Main")) return global_rule_name;
-         else symbol_list = symbol_list->next;
-      }
-      /* Rule symbol not found in global scope. */
-      free(global_rule_name);
+      Symbol *current_symbol = (Symbol*)(symbol_list->data);
+      if(current_symbol->type == RULE_S && 
+         !strcmp(current_symbol->scope, "Main")) return global_rule_name;
+      else symbol_list = symbol_list->next;
    }
+   /* Rule symbol not found in global scope. */
+   free(global_rule_name);
+
    print_to_console("Error: Rule %s called but not declared in a "
                     "visible scope.\n", name);     
    print_to_log("Error: Rule %s called but not declared in a "

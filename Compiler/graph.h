@@ -58,9 +58,6 @@ typedef struct Graph
    GSList *root_nodes;
 } Graph;
 
-extern Graph *host;
-
-
 typedef struct Node {
    int index;
    bool root;

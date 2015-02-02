@@ -2,9 +2,12 @@
 COBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o transform.o label.o graph.o rule.o stack.o searchplan.o genMatch.o genProgram.o main.o
 
 # Runtime object files.
-ROBJECTS = debug.o error.o runtime.o Main_rule1.o init_runtime.o match.o label.o graph.o rule.o stack.o 
+RULEOBJECTS = Main_r1.o Main_r2.o DeleteNode_r1.o
+ROBJECTS = debug.o error.o runtime.o init_runtime.o match.o label.o graph.o rule.o stack.o $(RULEOBJECTS)
 
-OBJECTS = $(COBJECTS) $(ROBJECTS)
+RULEHEADERS = Main_r1.h Main_r2.h DeleteNode_r1.h
+
+OBJECTS = $(COBJECTS) $(ROBJECTS) 
 
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
@@ -97,7 +100,7 @@ genProgram.o:	genProgram.c ast.h error.h genMatch.h globals.h transform.h genPro
 
 
 # Runtime objects
-runtime.o:	runtime.c error.h debug.h globals.h graph.h Main_rule1.h init_runtime.h runtime.h
+runtime.o:	runtime.c error.h debug.h graph.h init_runtime.h $(RULEHEADERS) stack.h runtime.h
 		$(CC) $(CFLAGS) -c runtime.c
 
 match.o:	match.c globals.h graph.h label.h match.h 
@@ -106,6 +109,11 @@ match.o:	match.c globals.h graph.h label.h match.h
 init_runtime.o:	init_runtime.c graph.h macros.h rule.h init_runtime.h 
 		$(CC) $(CFLAGS) -c init_runtime.c
 		
-Main_rule1.o:	Main_rule1.c Main_rule1.h graph.h macros.h match.h stack.h
-		$(CC) $(CFLAGS) -c Main_rule1.c 
+Main_r1.o:	Main_r1.c Main_r1.h graph.h macros.h match.h stack.h
+		$(CC) $(CFLAGS) -c Main_r1.c 
 
+Main_r2.o:	Main_r2.c Main_r2.h graph.h macros.h match.h stack.h
+		$(CC) $(CFLAGS) -c Main_r2.c 
+
+DeleteNode_r1.o:	DeleteNode_r1.c DeleteNode_r1.h graph.h macros.h match.h stack.h
+		 	$(CC) $(CFLAGS) -c DeleteNode_r1.c 

@@ -82,7 +82,7 @@ extern int parse_target;
 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
-<IN_STRING>[a-zA-Z0-9_-]{0,63} 	 { yylval.str = strdup(yytext); 
+<IN_STRING>[a-zA-Z0-9_]{0,63} 	 { yylval.str = strdup(yytext); 
                                    if(yyleng == 1) return CHAR; else return STR; }
 <IN_STRING>(\n)                  { print_to_log("%d.%d-%d.%d: String "
           				         "continues on new line.\n", 
@@ -176,15 +176,15 @@ list		    return LIST;
   * All other identifiers start with a lowercase letter.
   * Identifier names are retained with strdup which itself calls malloc,
   * so these strings need to be explicitly freed. */  
-[A-Z][a-zA-Z0-9_-]{0,63}  { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
-[a-z][a-zA-Z0-9_-]{0,63}  { yylval.id = strdup(yytext); return ID; }
+[A-Z][a-zA-Z0-9_]{0,63}  { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
+[a-z][a-zA-Z0-9_]{0,63}  { yylval.id = strdup(yytext); return ID; }
 
  /* This rule catches an invalid identifier: a sequence of digits followed
   * by one valid non-numeric identifier character followed by any valid 
   * identifier character. In this case, token ID is returned to continue
   * the parse and potentially catch more invalid identifiers. abort_scan is 
   * also set to prevent semantic checking from starting. */
-[0-9]+[a-zA-Z_-][a-zA-Z0-9_-]*  { print_to_console("Error (%s): Identifiers must "
+[0-9]+[a-zA-Z_-][a-zA-Z0-9_]*  { print_to_console("Error (%s): Identifiers must "
      			              	"start with a letter.\n", yytext); 
 		                print_to_log("%d.%d-%d.%d: Invalid identifier: "
 				             "%s.\n",

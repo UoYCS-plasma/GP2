@@ -93,11 +93,13 @@ void generateRuntimeCode(List *declarations)
      exit(1);
    }
 
-   PTMH("#include \"error.h\"\n"
+   PTMH("#include <time.h>\n"
+        "#include \"error.h\"\n"
         "#include \"debug.h\"\n"
         "#include \"graph.h\"\n"
+        "#include \"init_runtime.h\"\n"
         "#include \"match.h\"\n"
-        "#include \"init_runtime.h\"\n\n");
+        "#include \"stack.h\"\n\n");
 
    PTMS("#include \"runtime.h\"\n\n");
 
@@ -123,16 +125,19 @@ void generateDeclarationCode(List *declarations)
               PTMS("Graph *host = NULL;\n"
                    "Morphism *morphism = NULL;\n"
                    "string result = NULL;\n"
-                   "bool success = true, copy = false;\n\n"
+                   "bool success = true;\n"
+                   "int copy_count = 0;\n\n"
                    "int main(void)\n"
                    "{\n"               
+                   "   srand(time(NULL));\n"
                    "   openLogFileR();\n"
                    "   host = makeHostGraph();\n\n");
 
-              generateProgramCode(decl->value.main_program, TOP_LEVEL, 3);
+              generateProgramCode(decl->value.main_program, MAIN_BODY, 3);
 
               PTMS("   printGraph(host);\n"
                    "   freeGraph(host);\n"
+                   "   if(graph_stack) freeGraphStack(graph_stack);\n"
                    "   closeLogFile();\n\n"
                    "   return 0;\n"
                    "}\n\n");
@@ -141,13 +146,13 @@ void generateDeclarationCode(List *declarations)
 
          case PROCEDURE_DECLARATION:
 
-              PTMH("int proc_%s(void);\n", decl->value.procedure->name);
-              PTMS("int proc_%s(void)\n"
+              PTMH("string proc_%s(void);\n", decl->value.procedure->name);
+              PTMS("string proc_%s(void)\n"
                    "{\n", decl->value.procedure->name);
 
               generateProgramCode(decl->value.procedure->cmd_seq, PROC_BODY, 3);
 
-              PTMS("   return 0;\n"
+              PTMS("   return NULL;\n"
                    "}\n\n");
 
               if(decl->value.procedure->local_decls != NULL)
@@ -157,7 +162,6 @@ void generateDeclarationCode(List *declarations)
 
          case RULE_DECLARATION:
          {
-
               PTMH("#include \"%s.h\"\n", decl->value.rule->name);
 
               Rule *rule = makeRule(decl->value.rule);
@@ -187,11 +191,13 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
 
       case RULE_CALL:
 
+           PTMSI("/* Rule Call */\n", indent);
            generateRuleCall(statement->value.rule_name, context, indent);
            break;
 
       case RULE_SET_CALL:
 
+           PTMSI("/* Rule Set Call */\n", indent);
            generateRuleSetCall(statement->value.rule_set, context, indent);
            break;
 
@@ -202,42 +208,64 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
 
       case IF_STATEMENT:
 
+           PTMSI("/* If Statement */\n", indent);
+           PTMSI("/* Condition */\n", indent);
            generateProgramCode(statement->value.cond_branch.condition, 
                                IF_BODY, indent);
-           PTMSI("if(copy)\n", indent);
+           PTMSI("\n", indent);
+           /* In an if statement, the then/else command sequence is executed on
+            * the host graph state before the execution of the condition. If 
+            * the graph was copied in the condition, restore the graph before
+            * taking the branch. */
+           PTMSI("if(copy_count > 0)\n", indent);
            PTMSI("{\n", indent);
-           PTMSI("host = restoreGraph;\n", indent + 3);
-           PTMSI("copy = false;\n", indent + 3);
+           PTMSI("host = restoreGraph(host);\n", indent + 3);
+           PTMSI("copy_count--;\n", indent + 3);
            PTMSI("}\n", indent);
+           PTMSI("/* Then Branch */\n", indent);
            PTMSI("if(success)\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.then_stmt, 
                                context, indent + 3);
            PTMSI("}\n", indent);
+           PTMSI("/* Else Branch */\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.else_stmt, 
                                context, indent + 3);
-           PTMSI("}\n\n", indent);
+           PTMSI("}\n", indent);
            PTMSI("success = true;\n\n", indent);
            break;
 
       case TRY_STATEMENT:
 
+           PTMSI("/* Try Statement */\n", indent);
+           PTMSI("/* Condition */\n", indent);
            generateProgramCode(statement->value.cond_branch.condition,
                                TRY_BODY, indent);
+           /* In a try statement, only the else command sequence is executed on
+            * the host graph state before the execution of the condition. If
+            * the condition succeeds, the graph resulting from the execution
+            * of the condition is the new working graph for the then branch.
+            * Hence the restoreGraph code is emitted within the else branch of
+            * the generated code. */
+           PTMSI("/* Then Branch */\n", indent);
            PTMSI("if(success)\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.then_stmt, 
                                context, indent + 3);
            PTMSI("}\n", indent);
+           PTMSI("/* Else Branch */\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
-           PTMSI("if(copy) host = restoreGraph;\n", indent + 3);
+           PTMSI("if(copy_count > 0)\n", indent + 3);
+           PTMSI("{\n", indent + 3);
+           PTMSI("host = restoreGraph(host);\n", indent + 6);
+           PTMSI("copy_count--;\n", indent + 6);
+           PTMSI("}\n", indent + 3);
            generateProgramCode(statement->value.cond_branch.else_stmt,
                                context, indent + 3);
-           PTMSI("}\n\n", indent);
-           PTMSI("copy = false;\n", indent);
+           PTMSI("}\n", indent);
            PTMSI("success = true;\n\n", indent);
            break;
 
@@ -246,24 +274,40 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
             * copy the graph. */
            if(statement->value.loop_stmt->statement_type != RULE_CALL &&
               statement->value.loop_stmt->statement_type != RULE_SET_CALL)
+           {
                 PTMSI("copyGraph(host);\n", indent);
-
-           PTMSI("while(true)\n", indent);
+                PTMSI("copy_count++;\n", indent);
+           }
+           PTMSI("/* Looped Statement */\n", indent);
+           PTMSI("while(success)\n", indent);
            PTMSI("{\n", indent);
-           generateProgramCode(statement->value.loop_stmt, LOOP_BODY, indent);
-           PTMSI("}\n\n", indent);
+           generateProgramCode(statement->value.loop_stmt, LOOP_BODY, 
+                              indent + 3);
+           PTMSI("}\n", indent);
+           PTMSI("success = true;\n", indent);
            break;
 
       case PROGRAM_OR:
-           
-           /* TODO: random seed thingy */
-           generateProgramCode(statement->value.or_stmt.left_stmt, context, indent);
-           generateProgramCode(statement->value.or_stmt.right_stmt, context, indent);
+
+           /* Emit code to nondeterministically choose between the two 
+            * subprograms. */
+           PTMSI("/* OR Statement */\n", indent);
+           PTMSI("int random = rand();\n", indent);
+           PTMSI("if((random %% 2) == 0)\n", indent);
+           PTMSI("{\n", indent);
+           generateProgramCode(statement->value.or_stmt.left_stmt, context, 
+                               indent + 3);
+           PTMSI("}\n", indent);
+           PTMSI("else\n", indent);
+           PTMSI("{\n", indent);
+           generateProgramCode(statement->value.or_stmt.right_stmt, context, 
+                               indent + 3);
+           PTMSI("}\n", indent);
            break;
 
       case SKIP_STATEMENT:
 
-           PTMSI("/* skip */\n\n", indent);
+           PTMSI("/* skip */\n", indent);
            break;
            
       case FAIL_STATEMENT:
@@ -282,8 +326,8 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
 void generateCommandSequence(List *commands, ContextType context, int indent)
 {
    /* Nothing special to be done for top level and procedure body context:
-    * just generate the commands in sequence/ */
-   if(context == TOP_LEVEL || context == PROC_BODY)
+    * just generate the commands in sequence. */
+   if(context == MAIN_BODY || context == PROC_BODY)
    {
       while(commands != NULL)
       {
@@ -291,10 +335,15 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
          commands = commands->next;
       }
    }
-   /* In other contexts, the graph may need to be copied. The else branch
-    * manually generates code for the first command depending its type,
-    * then it generates code with generateProgramCode for the remainder of 
-    * the command list. */
+   /* In other contexts, the graph may need to be copied. The else branch 
+    * first emits tailored code to process the first command. It then iterates
+    * over the rest of the command sequence, calling generateProgramCode on
+    * each command.
+    *
+    * If the first command in the sequence is a rule call or a rule set call, 
+    * the graph is copied only when necessary, namely if a match is found for
+    * a rule. For other first commands, the graph is copied without any 
+    * preliminary tests. */
    else
    {
       string rule_name = commands->value.command->value.rule_name;
@@ -305,8 +354,8 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
          PTMSI("if(morphism != NULL)\n", indent);
          PTMSI("{\n", indent);
          PTMSI("copyGraph(host);\n", indent + 3);
-         PTMSI("copy = true;\n", indent + 3);
-         PTMSI("apply%s(host);\n", indent + 3, rule_name);
+         PTMSI("copy_count++;\n", indent + 3);
+         PTMSI("apply%s(morphism, host);\n", indent + 3, rule_name);
          PTMSI("}\n", indent);
          PTMSI("else\n", indent);
          PTMSI("{\n", indent);
@@ -327,8 +376,8 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
             PTMSI("if(morphism != NULL)\n", indent);
             PTMSI("{\n", indent);
             PTMSI("copyGraph(host);\n", indent + 3);
-            PTMSI("copy = true;\n", indent + 3);
-            PTMSI("apply%s(host);\n", indent + 3, rules->value.rule_name);
+            PTMSI("copy_count++;\n", indent + 3);
+            PTMSI("apply%s(morphism, host);\n", indent + 3, rules->value.rule_name);
             PTMSI("break;\n", indent + 3);
             PTMSI("}\n", indent);
             
@@ -348,7 +397,7 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
          commands->value.command->statement_type != RULE_SET_CALL)
       {
          PTMSI("copyGraph(host);\n", indent);
-         PTMSI("copy = true;\n", indent);
+         PTMSI("copy_count++;\n", indent);
          generateProgramCode(commands->value.command, context, indent);
       }
 
@@ -368,10 +417,10 @@ void generateRuleCall(string rule_name, ContextType context, int indent)
 
    /* No need to apply the rule in an if statement since the original graph is
     * kept for the then or else branch. */
-   if(context == IF_BODY) 
+   if(context == IF_BODY)
    {
-      PTMSI("if(morphism == NULL)\n", indent);
-      generateFailureCode(NULL, IF_BODY, indent + 3);
+      PTMSI("if(morphism == NULL) success = false;\n", indent);
+      PTMSI("else freeMorphism(morphism);\n", indent);
    }
    /* In all other contexts, the rule is applied. In particular, the try statement
     * retains changes made to the host graph by the condition when taking the 
@@ -382,7 +431,7 @@ void generateRuleCall(string rule_name, ContextType context, int indent)
       PTMSI("else\n", indent);
       PTMSI("{\n", indent);
       generateFailureCode(rule_name, context, indent + 3);
-      PTMSI("}\n\n", indent);
+      PTMSI("}\n", indent);
    }
 }
 
@@ -398,7 +447,11 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
        * kept for the then or else branch. */
       if(context == IF_BODY)
       {
-         PTMSI("if(morphism != NULL) break;\n", indent + 3);
+         PTMSI("if(morphism != NULL)\n", indent + 3);
+         PTMSI("{\n", indent + 3);
+         PTMSI("freeMorphism(morphism);\n", indent + 6);
+         PTMSI("break;\n", indent + 6);
+         PTMSI("}\n", indent + 3);
       }
       /* In all other contexts, the rule is applied. In particular, the try statement
        * retains changes made to the host graph by the condition when taking the 
@@ -410,7 +463,7 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
          PTMSI("apply%s(morphism, host);\n", indent + 6,
                rules->value.rule_name);
          PTMSI("break;\n", indent + 6);
-         PTMSI("}\n", indent + 3);
+         PTMSI("}\n\n", indent + 3);
       }
       if(rules->next == NULL) 
       {
@@ -422,22 +475,29 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
       }
       rules = rules->next;
    }
+   PTMSI("}\n", indent);
 }
 
 void generateProcedureCall(string proc_name, ContextType context, int indent)
 {
-   PTMSI("result = proc_%s(host);\n", indent, proc_name);
-
-   if(context == TOP_LEVEL)
+   /* In some contexts, the graph is copied before entering a procedure call. */
+   if(context == IF_BODY || context == TRY_BODY || context == LOOP_BODY)
    {
-      PTMSI("if(!success)", indent);
+      PTMSI("copyGraph(host);\n", indent);
+      PTMSI("copy_count++;\n", indent);
+   }
+   PTMSI("result = proc_%s();\n", indent, proc_name);
+
+   if(context == MAIN_BODY)
+   {
+      PTMSI("if(!success)\n", indent);
       PTMSI("{\n", indent);
-      PTMSI("print_to_console(\"No output graph: rule \%s not applicable.\\n\", "
+      PTMSI("print_to_console(\"No output graph: rule %%s not applicable.\\n\", "
             "result);\n", indent + 3);
       PTMSI("if(graph_stack) freeGraphStack(graph_stack);\n", indent + 3);
       PTMSI("freeGraph(host);\n", indent + 3);
       PTMSI("return 0;\n", indent + 3);
-      PTMSI("}\n\n", indent);
+      PTMSI("}\n", indent);
    }
 
    if(context == PROC_BODY) PTMSI("return result;\n", indent);
@@ -447,7 +507,9 @@ void generateProcedureCall(string proc_name, ContextType context, int indent)
 
 void generateFailureCode(string rule_name, ContextType context, int indent)
 {
-   if(context == TOP_LEVEL)
+   /* A failure in the main body ends the execution. Emit code to report the 
+    * failure, garbage collect and return 0. */
+   if(context == MAIN_BODY)
    {
       if(rule_name != NULL)
          PTMSI("print_to_console(\"No output graph: rule %s not "
@@ -458,15 +520,16 @@ void generateFailureCode(string rule_name, ContextType context, int indent)
       PTMSI("freeGraph(host);\n", indent);
       PTMSI("return 0;\n", indent);
    }
+      
+   /* In other contexts, set the success flag to false. Nothing more needs
+    * to be done in an IF_BODY and a TRY_BODY. */
+   PTMSI("success = false;\n", indent);
 
-   if(context == PROC_BODY)
+   if(context == PROC_BODY) 
    {
-      PTMSI("success = false;\n", indent);
-      PTMSI("return \"%s\";\n", indent, rule_name);
+      if(rule_name == NULL) PTMSI("return NULL;\n", indent);
+      else PTMSI("return \"%s\";\n", indent, rule_name);
    }
-
-   if(context == IF_BODY || context == TRY_BODY) 
-      PTMSI("success = false;\n", indent);
 
    if(context == LOOP_BODY) PTMSI("break;\n", indent);
 }
