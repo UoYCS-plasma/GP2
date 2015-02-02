@@ -58,6 +58,22 @@ StackData *pop (Stack *stack)
    return data;
 }
 
+int findHostIndex(Stack *stack, int left_index)
+{
+   if(stack == NULL) return -1;
+
+   StackNode *iterator = stack->top;
+
+   while(iterator != NULL)
+   {
+      if(iterator->data->map.left_index == left_index)
+         return iterator->data->map.host_index;
+      iterator = iterator->next;
+   }
+   return -1;
+}
+
+
 void freeStack(Stack *stack)
 {
    if(stack == NULL) return;

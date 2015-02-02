@@ -8,53 +8,6 @@
 
 #include "transform.h"
 
-void transformAST(List *declarations, Stack *rule_stack)
-{
-   /* For now, locate the rules and call makeRule on them. */
-   while(declarations != NULL)
-   {
-      GPDeclaration *current_declaration = declarations->value.declaration;
-
-      switch(current_declaration->decl_type)
-      {
-         case MAIN_DECLARATION:
-             
-              break;
-
-         case PROCEDURE_DECLARATION: 
-
-              transformAST(current_declaration->value.procedure->local_decls,
-                           rule_stack);
-
-              break;
-	 
-         case RULE_DECLARATION:   
-         {
-              Rule *rule = makeRule(current_declaration->value.rule);
-
-              StackData *data = malloc(sizeof(StackData));
-              if(data == NULL)
-              {
-                 print_to_log("Error (transformAST): Memory exhausted during "
-                              "rule stack construction.\n");
-                 exit(1);
-              }
-              data->rule = rule;
-              push(rule_stack, data);
-
-              break;  
-         }
-
-         default: print_to_log("Error (transformAST): Unexpected declaration "
-                               "type %d at AST node %d\n", 
-                               current_declaration->decl_type,
-                               current_declaration->node_id);
-              break;
-       }
-       declarations = declarations->next;
-    }
-}
-
 Rule *makeRule(GPRule *ast_rule)
 {
    Rule *rule = malloc(sizeof(Rule));

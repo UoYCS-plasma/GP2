@@ -171,7 +171,8 @@
       host_node->indegree != (indeg) ||                        \
       host_node->outdegree != (outdeg))                        \
 
-
+/* Creates a (left_index, host_index) pair and pushes it to the node images
+ * stack of the morphism. Called when a node match is found. */
 #define ADD_NODE_MAP(l_index)                                                 \
    do {                                                                       \
    StackData *mapping = malloc(sizeof(StackData));                            \
@@ -186,7 +187,8 @@
    matched_nodes[index] = true;                                               \
    } while(0);                                                                \
 
-
+/* Creates a (left_index, host_index) pair and pushes it to the edge images
+ * stack of the morphism. Called when a edge match is found. */
 #define ADD_EDGE_MAP(l_index)                                                 \
    do {                                                                       \
    StackData *mapping = malloc(sizeof(StackData));                            \
@@ -234,12 +236,15 @@
    } while(0);                                                            \
 
 
+/* Deletes all the host items in the morphism from the host graph. Edges are
+ * deleted first so that there is no chance of dangling edges from node
+ * deletion. Called when the RHS of a rule is the empty graph. */
 #define REMOVE_RHS                                    \
    do {                                               \
    StackData *data = NULL;                            \
    while((data = pop(morphism->edge_images)) != NULL) \
    {                                                  \
-   removeEdge(host, data->map.host_index);            \
+      removeEdge(host, data->map.host_index);         \
       free(data);                                     \
    }                                                  \
    while((data = pop(morphism->node_images)) != NULL) \
@@ -310,7 +315,8 @@
          free(data);                                                 \
          continue;                                                   \
       }                                                              \
-      node_map[data->map.left_index] = data->map.host_index;         \
+      if(node_map[data->map.left_index] == 0)                        \
+         node_map[data->map.left_index] = data->map.host_index;      \
       free(data);                                                    \
    }                                                                 \
    } while(0);                                                       \

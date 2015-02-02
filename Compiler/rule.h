@@ -1,17 +1,19 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ===============================
-  rule.h - Chris Bak (23/08/2014)
-  ===============================
-                             
-  Contains definitions for the structures necessary for rule application
-  except for graphs: rules, conditions, stacks and association lists.
-  
+  ===========
+  Rule Module 
+  ===========
+
+  Defines an intermediate structure for rules along with data structures
+  used during the transformation of rules and their graphs from the AST
+  to the intermediate form.
+
 /////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_STRUCTURES_H
 #define INC_STRUCTURES_H
 
+#include "error.h"
 #include "globals.h"
 #include "graph.h"
 
@@ -147,8 +149,7 @@ typedef struct Rule {
    /* Deleted LHS items are precisely those that do not occur in the 
     * PreservedItems list. I explicitly store the deleted nodes because
     * the dangling condition places a stronger requirement on the degrees
-    * of candidate host nodes which can be exploited in the rule matching
-    * code. */
+    * of candidate host nodes which is exploited in the rule matching code. */
    ItemList *deleted_nodes;
    ItemList *added_nodes;
    NewEdgeList *added_edges;
@@ -161,7 +162,7 @@ typedef struct Rule {
    } flags;
 } Rule;
 
-void printRule(Rule *rule, bool verbose);
+void printRule(Rule *rule);
 void freeRule(Rule *rule);
 
 #endif /* INC_RULE_H */

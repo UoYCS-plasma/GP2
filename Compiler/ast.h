@@ -1,19 +1,19 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ==============================
-  ast.h - Chris Bak (28/05/2013)
-  ==============================
+  ==========
+  AST Module
+  ==========
                              
-  Module for creating and processing GP2's abstract syntax tree.  
-
-  Contains enum type definitions, AST node definitions, prototypes for AST 
-  constructors and prototypes for AST freeing functions.
+  Module for creating and processing GP2's abstract syntax tree. Contains enum 
+  type definitions, AST node definitions, prototypes for AST constructors and 
+  prototypes for AST freeing functions.
 
 /////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_AST_H
 #define INC_AST_H 
 
+#include "error.h"
 #include "globals.h"
 
 /* The functions after each struct definition are AST node constructors. The
