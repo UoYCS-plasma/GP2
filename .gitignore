@@ -9,7 +9,6 @@ TODO
 *.tab.c
 *.tab.h
 *.log
-gpparse
 lex.yy.c
 *.o
 a.out
@@ -28,3 +27,5 @@ root
 Definition
 YAM
 *.supp
+Main*
+Test*

@@ -460,7 +460,7 @@ Stack *graph_stack = NULL;
 
 void copyGraph (Graph *graph)
 {
-   /* Need to check if arrays in the original graph have increased in size. */
+   /* TODO: check if arrays in the original graph have increased in size. */
    Graph *graph_copy = newGraph();
 
    graph_copy->next_node_index = graph->next_node_index;
@@ -608,13 +608,16 @@ void copyGraph (Graph *graph)
    {
       Edge *edge_copy = getEdge(graph_copy, index);
 
-      Node *source = getSource(edge_copy);
-      Node *source_copy = getNode(graph_copy, source->index);
-      edge_copy->source = source_copy;
+      if(edge_copy != NULL)
+      {
+         Node *source = getSource(edge_copy);
+         Node *source_copy = getNode(graph_copy, source->index);
+         edge_copy->source = source_copy;
 
-      Node *target = getTarget(edge_copy);
-      Node *target_copy = getNode(graph_copy, target->index);
-      edge_copy->target = target_copy;
+         Node *target = getTarget(edge_copy);
+         Node *target_copy = getNode(graph_copy, target->index);
+         edge_copy->target = target_copy;
+      }
    }  
  
    if(graph_stack == NULL) graph_stack = newStack();

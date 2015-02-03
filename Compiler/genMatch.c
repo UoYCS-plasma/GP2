@@ -68,7 +68,7 @@ void generateRuleCode(Rule *rule)
       }
       else
       {
-         generateMatchingCode(rule_name, rule->lhs, rule->deleted_nodes, false);
+         generateMatchingCode(rule_name, rule->lhs, rule->deleted_nodes);
          generateApplicationCode(rule, false, false);
       }
    }
@@ -233,13 +233,11 @@ void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes,
    PTRS("\n"
         "Morphism *match%s(Graph *host)\n"
         "{\n" 
-        "   int host_nodes = host->number_of_nodes;\n"
-        "   int host_edges = host->number_of_edges;\n\n"
-        "   if(%d > host_nodes || %d > host_edges) return false;\n\n"
+        "   if(%d > host->number_of_nodes || %d > host->number_of_edges)\n"
+        "      return false;\n\n"
         "   Morphism *morphism = makeMorphism();\n\n"
-        "   /* Initialise variables. */\n"
         "   bool *matched_nodes = NULL, *matched_edges = NULL;\n"
-        "   MAKE_MATCHED_NODES_ARRAY\n\n"
+        "   MAKE_MATCHED_NODES_ARRAY\n"
         "   MAKE_MATCHED_EDGES_ARRAY\n\n"
         "   bool match_found = match_%c%d(host, morphism, matched_nodes,\n"
         "                               matched_edges);\n\n"
@@ -450,8 +448,6 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
        "                     bool *matched_nodes, bool *matched_edges)\n"
        "{\n", left_edge->index);
 
-   int node_index = 0;
-
    if(type == 's' || type == 'l')
    {
       PTRSI("int host_node_index = findHostIndex(morphism->node_images, %d);\n",
@@ -459,22 +455,23 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
       PTRSI("if(host_node_index < 0) return false;\n", 3);
       PTRSI("Node *host_node = getNode(host, host_node_index);\n\n", 3);
       PTRSI("int counter;\n", 3);
-      PTRSI("for(counter = 0; counter < host_node->outdegree; counter++)\n", 3);
+      PTRSI("for(counter = 0; counter < host_node->next_out_edge_index; counter++)\n", 3);
    }
    else 
    {
       PTRSI("int host_node_index = findHostIndex(morphism->node_images, %d);\n",
             3, left_edge->target->index);
       PTRSI("if(host_node_index < 0) return false;\n", 3);
-      PTRSI("Node *host_node = getNode(host, host_node_index);\n", 3);
+      PTRSI("Node *host_node = getNode(host, host_node_index);\n\n", 3);
       PTRSI("int counter;\n", 3);
-      PTRSI("for(counter = 0; counter < host_node->indegree; counter++)\n", 3);
+      PTRSI("for(counter = 0; counter < host_node->next_in_edge_index; counter++)\n", 3);
    }
 
    PTRSI("{\n", 3);
    if(type == 's' || type == 'l')
         PTRSI("Edge *host_edge = getOutEdge(host_node, counter);\n", 6);
    else PTRSI("Edge *host_edge = getInEdge(host_node, counter);\n", 6);
+   PTRSI("if(host_edge == NULL) continue;\n", 6);
    PTRSI("int index = host_edge->index;\n\n", 6);
 
    PTRSI("CHECK_EDGE_MATCHED_I\n\n", 6);
@@ -597,7 +594,7 @@ bool emitNextMatcherCall(SearchOp *next_op, int indent)
    return false;
 }
 
-void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
+void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
 {
    Graph *lhs = rule->lhs;
    Graph *rhs = rule->rhs;
@@ -688,7 +685,6 @@ void emitApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
         "    * -1 -> delete; 0 -> do nothing; 1 -> relabel */\n"
         "   int *node_map = NULL;\n"
         "   MAKE_NODE_MAP(%d)\n", lhs->number_of_nodes);
-   int index;
    for(index = 0; index < lhs->number_of_nodes; index++)
    {
       PreservedItemList *item = queryPItemList(rule->preserved_nodes, index);

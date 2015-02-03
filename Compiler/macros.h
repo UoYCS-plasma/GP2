@@ -35,7 +35,7 @@
 
 #define MAKE_MATCHED_NODES_ARRAY                                   \
    do {                                                            \
-   matched_nodes = calloc(host_nodes, sizeof(bool));               \
+   matched_nodes = calloc(host->next_node_index, sizeof(bool));    \
    if(matched_nodes == NULL)                                       \
    {                                                               \
       print_to_log("Error: Memory exhausted during matched nodes " \
@@ -46,9 +46,9 @@
 
 #define MAKE_MATCHED_EDGES_ARRAY                                      \
    do {                                                               \
-   if(host_edges > 0)                                                 \
+   if(host->number_of_edges > 0)                                      \
    {                                                                  \
-      matched_edges = calloc(host_edges, sizeof(bool));               \
+      matched_edges = calloc(host->next_edge_index, sizeof(bool));    \
       if(matched_edges == NULL)                                       \
       {                                                               \
          print_to_log("Error: Memory exhausted during matched edges " \
