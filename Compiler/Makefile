@@ -1,10 +1,13 @@
 # Compile time object files
-COBJECTS = gpparser.tab.o lex.yy.o ast.o pretty.o seman.o transform.o graph.o rule.o stack.o generate.o main.o
+COBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o transform.o label.o graph.o rule.o stack.o searchplan.o genMatch.o genProgram.o main.o
 
 # Runtime object files.
-ROBJECTS = runtime.o Global_rule1.o init_runtime.o match.o graph.o rule.o stack.o
+RULEOBJECTS = Main_r1.o Main_r2.o DeleteNode_r1.o
+ROBJECTS = debug.o error.o runtime.o init_runtime.o match.o label.o graph.o rule.o stack.o $(RULEOBJECTS)
 
-OBJECTS = $(COBJECTS) $(ROBJECTS)
+RULEHEADERS = Main_r1.h Main_r2.h DeleteNode_r1.h
+
+OBJECTS = $(COBJECTS) $(ROBJECTS) 
 
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
@@ -15,11 +18,11 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck --
 # Builds the parser and code generator, runs it on the passed GP2 program/host graph files,
 # and executes the generated code.
 # Usage: make all F1=<path_to_program_file> F2=<path_to_host_graph_file>
-all:		$(OBJECTS)
-		$(CC) $(COBJECTS) $(LFLAGS) -o GP2-compile
-		./GP2-compile $(F1) $(F2)
-		$(CC) $(ROBJECTS) $(LFLAGS) -o GP2-run
-		./GP2-run
+all:	
+		make compile && ./GP2-compile $(F1) $(F2) && make runtime && ./GP2-run
+
+debug:		
+		make compile-debug $(F1) $(F2) && make runtime-debug
 
 # Builds the parser and the code generator.
 compile:	$(COBJECTS)
@@ -41,56 +44,76 @@ runtime-debug:	$(ROBJECTS)
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-run
 
 clean:
-		rm *.o gpparser.tab.c gpparser.tab.h lex.yy.c GP2-run GP2-compile
+		rm *.o *.output parser.c parser.h lex.yy.c GP2-run GP2-compile
 
 # Compiler objects
-gpparser.tab.o: gpparser.tab.c gpparser.tab.h
-		$(CC) $(CFLAGS) -c gpparser.tab.c
+main.o:		main.c error.h globals.h genProgram.h parser.h seman.h
+		$(CC) $(CFLAGS) -c main.c
 
-gpparser.tab.c gpparser.tab.h: gpparser.y ast.h
-		bison -dtv gpparser.y
+parser.o:	parser.c parser.h lex.yy.c
+		$(CC) $(CFLAGS) -c parser.c
+
+parser.c parser.h: gpparser.y ast.h error.h
+		bison -tv gpparser.y
 
 lex.yy.o: 	lex.yy.c 
 		$(CC) $(CFLAGS) -c lex.yy.c
 
-lex.yy.c:	gplexer.lex gpparser.tab.h ast.h 
+lex.yy.c:	gplexer.lex parser.h ast.h error.h
 		flex gplexer.lex
 
-ast.o: 		ast.c ast.h globals.h
+debug.o:	debug.c error.h globals.h 
+		$(CC) $(CFLAGS) -c debug.c
+
+ast.o: 		ast.c ast.h error.h globals.h
 		$(CC) $(CFLAGS) -c ast.c
 
-pretty.o:       pretty.c pretty.h ast.h globals.h seman.h
+pretty.o:       pretty.c pretty.h ast.h error.h globals.h seman.h
 		$(CC) $(CFLAGS) -c pretty.c
 
-seman.o:	seman.c seman.h ast.h globals.h
+seman.o:	seman.c seman.h ast.h error.h globals.h
 		$(CC) $(CFLAGS) -c seman.c
 
-graph.o:	graph.c globals.h stack.h graph.h 
+label.o:	label.c label.h error.h globals.h
+		$(CC) $(CFLAGS) -c label.c
+
+graph.o:	graph.c error.h globals.h label.h stack.h graph.h 
 		$(CC) $(CFLAGS) -c graph.c
 
-rule.o:		rule.c globals.h graph.h rule.h
+rule.o:		rule.c error.h globals.h graph.h rule.h
 		$(CC) $(CFLAGS) -c rule.c
 
-transform.o:	transform.c ast.h globals.h graph.h rule.h transform.h 
+transform.o:	transform.c ast.h error.h globals.h graph.h rule.h transform.h 
 		$(CC) $(CFLAGS) -c transform.c
 
-stack.o:	stack.c globals.h stack.h
+stack.o:	stack.c error.h globals.h stack.h
 		$(CC) $(CFLAGS) -c stack.c
 
-generate.o:	generate.c ast.h globals.h rule.h generate.h
-		$(CC) $(CFLAGS) -c generate.c
+searchplan.o:	searchplan.c graph.h globals.h searchplan.h
+		$(CC) $(CFLAGS) -c searchplan.c
+
+genMatch.o:	genMatch.c error.h globals.h rule.h searchplan.h genMatch.h
+		$(CC) $(CFLAGS) -c genMatch.c
+
+genProgram.o:	genProgram.c ast.h error.h genMatch.h globals.h transform.h genProgram.h
+		$(CC) $(CFLAGS) -c genProgram.c
 
 
 # Runtime objects
-runtime.o:	runtime.c globals.h graph.h Global_rule1.h init_runtime.h runtime.h
+runtime.o:	runtime.c error.h debug.h graph.h init_runtime.h $(RULEHEADERS) stack.h runtime.h
 		$(CC) $(CFLAGS) -c runtime.c
 
-match.o:	match.c globals.h graph.h match.h 
+match.o:	match.c globals.h graph.h label.h match.h 
 		$(CC) $(CFLAGS) -c match.c
 
 init_runtime.o:	init_runtime.c graph.h macros.h rule.h init_runtime.h 
 		$(CC) $(CFLAGS) -c init_runtime.c
 		
-Global_rule1.o:	Global_rule1.c Global_rule1.h graph.h macros.h match.h
-		$(CC) $(CFLAGS) -c Global_rule1.c 
+Main_r1.o:	Main_r1.c Main_r1.h graph.h macros.h match.h stack.h
+		$(CC) $(CFLAGS) -c Main_r1.c 
 
+Main_r2.o:	Main_r2.c Main_r2.h graph.h macros.h match.h stack.h
+		$(CC) $(CFLAGS) -c Main_r2.c 
+
+DeleteNode_r1.o:	DeleteNode_r1.c DeleteNode_r1.h graph.h macros.h match.h stack.h
+		 	$(CC) $(CFLAGS) -c DeleteNode_r1.c 

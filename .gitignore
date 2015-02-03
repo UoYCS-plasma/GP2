@@ -15,3 +15,16 @@ lex.yy.c
 a.out
 tmp/
 *.a
+*.txt
+*.bkp
+CaseStudies
+runtime*
+GP2-*
+GRIT
+Graphite*
+init_*
+parser*
+root
+Definition
+YAM
+*.supp

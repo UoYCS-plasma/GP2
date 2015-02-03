@@ -1,11 +1,11 @@
 /*////////////////////////////////////////////////////////////////////////////
 
-  ====================================
-  gplexer.lex - Chris Bak (10/05/2013)
-  ====================================                                  
+  ====================
+  GP2 Lexical Analyser
+  ====================                            
 
-  The Flex lexical analyser for GP2. It scans the input files, sending tokens 
-  to the Bison parser when required.
+  The Flex specification for the GP2 lexical analyser for GP2.
+  Defines the tokens of GP2 and their associated regular expressions.
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
@@ -20,14 +20,11 @@
 %option noyywrap nodefault yylineno
 
 %{
-
+#include "error.h"
 #include "globals.h"
-#include "gpparser.tab.h" /* Token definitions */
+#include "parser.h" 
 
 int yycolumn = 1;
-
-extern int abort_scan; /* Defined in main.c */
-extern FILE *log_file; /* Defined in main.c */
 
 /* Defined in main.c according to which parser should be invoked. */
 extern int parse_target;
@@ -45,13 +42,10 @@ extern int parse_target;
 
 %}
 
- /* Exclusive start state for ignoring GP2 comments. */
+ /* Exclusive start states for comments, string literals, and character 
+  * constants. */
 %x IN_COMMENT	
-
- /* Exclusive start state for discarding double quotes in string constants. */
 %x IN_STRING    
-
- /* Exclusive start state for discarding single quotes in character constants. */
 %x IN_CHAR 
 
 %%
@@ -75,28 +69,26 @@ extern int parse_target;
 
 "/*"		  		 BEGIN(IN_COMMENT);
 <IN_COMMENT>"*/"      		 BEGIN(INITIAL);
-<IN_COMMENT>([^*\n])+|.  	 /* ignore all characters except '*' */
-<IN_COMMENT>(\n)	  	 { yycolumn = 1; } /* reset yycolumn on newline */
+<IN_COMMENT>([^*\n])+|.  	 /* Ignore characters except '*' and newline. */
+<IN_COMMENT>(\n)	  	 { yycolumn = 1; } 
 <IN_COMMENT><<EOF>>  		 { print_to_console("Warning: Unterminated "
                                                     "comment.\n");
 			           print_to_log("Line %d: Unterminated comment", 
                                                 yylineno); 
-				   abort_scan = true;
-				   yyterminate(); }
+				   return 0; }
 
  /* The empty string is valid GP2 syntax. */
 "\"\""				 { yylval.str = NULL; return STR; } 
 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
-<IN_STRING>[a-zA-Z0-9_-]{0,63} 	 { yylval.str = strdup(yytext); 
+<IN_STRING>[a-zA-Z0-9_]{0,63} 	 { yylval.str = strdup(yytext); 
                                    if(yyleng == 1) return CHAR; else return STR; }
 <IN_STRING>(\n)                  { print_to_log("%d.%d-%d.%d: String "
           				         "continues on new line.\n", 
                                         yylloc.first_line, yylloc.first_column, 
                                         yylloc.last_line, yylloc.last_column); 	
-				   abort_scan = true;
-                                   yyterminate(); }
+                                   return 0; }
 <IN_STRING>[^\"a-zA-Z0-9_]       { print_to_console("Warning: Invalid character "
                                                 "in string: '%c'.\n", yytext[0]); 
 			           print_to_log("%d.%d-%d.%d: Invalid character: "
@@ -107,13 +99,11 @@ extern int parse_target;
 				   yylval.str = strdup(yytext); return STR; }
 <IN_STRING><<EOF>>   		 { print_to_log("Line %d: Unterminated "
           				        "string.\n", yylineno);                   
-				   abort_scan = true; 
-                                   yyterminate(); }  
+                                   return 0; }  
 
 [0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
  /* GP2 keywords */ 
-
 Main		    return MAIN;
 if	            return IF;
 try		    return TRY;
@@ -185,35 +175,29 @@ list		    return LIST;
  /* Procedure identifiers must start with a capital letter.
   * All other identifiers start with a lowercase letter.
   * Identifier names are retained with strdup which itself calls malloc,
-  * so these strings need to be explicitly freed. 
-  */  
-
-[A-Z][a-zA-Z0-9_-]{0,63}  { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
-[a-z][a-zA-Z0-9_-]{0,63}  { yylval.id = strdup(yytext); return ID; }
+  * so these strings need to be explicitly freed. */  
+[A-Z][a-zA-Z0-9_]{0,63}  { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
+[a-z][a-zA-Z0-9_]{0,63}  { yylval.id = strdup(yytext); return ID; }
 
  /* This rule catches an invalid identifier: a sequence of digits followed
   * by one valid non-numeric identifier character followed by any valid 
   * identifier character. In this case, token ID is returned to continue
   * the parse and potentially catch more invalid identifiers. abort_scan is 
-  * also set to prevent semantic checking from starting. 
-  */
-
-[0-9]+[a-zA-Z_-][a-zA-Z0-9_-]*  { print_to_console("Error (%s): Identifiers must "
+  * also set to prevent semantic checking from starting. */
+[0-9]+[a-zA-Z_-][a-zA-Z0-9_]*  { print_to_console("Error (%s): Identifiers must "
      			              	"start with a letter.\n", yytext); 
 		                print_to_log("%d.%d-%d.%d: Invalid identifier: "
 				             "%s.\n",
 			                yylloc.first_line, yylloc.first_column,
 			                yylloc.last_line, yylloc.last_column,
 					yytext);
-			        abort_scan = true;
-			        yylval.id = strdup(yytext);
-			        return ID; }
+			        return 0; }
 
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1; }  /* reset yycolumn on newline */
-<<EOF>>		      { yyterminate(); }
+<<EOF>>		      { return 0; }
 .                     { printf("Error: Invalid symbol '%c'\n", yytext[0]);
-			abort_scan = true; }
+			return 0; }
 
 
 %%

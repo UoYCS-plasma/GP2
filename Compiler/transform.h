@@ -1,8 +1,8 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ====================================
-  transform.h - Chris Bak (01/12/2014)
-  ====================================
+  =========================
+  AST Transformation Module
+  =========================
                              
   Module for transforming the AST into intermediate data structures.
 
@@ -12,11 +12,10 @@
 #define INC_TRANSFORM_H 
 
 #include "ast.h"
+#include "error.h"
 #include "globals.h"
 #include "graph.h"
 #include "rule.h"
-
-void transformAST(List *declarations, Stack *rule_stack);
 
 /* Creates the rule data structure from a pointer to a rule in the AST. */
 Rule *makeRule(GPRule *rule);
@@ -37,7 +36,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
                unsigned int *is_rooted);
 
 /* scanRHSNodes does the following:
-* (1) Creates and returns the graph data structure for the graph containing
+ * (1) Creates and returns the graph data structure for the graph containing
  *     the nodes of the RHS graph.
  * (2) Updates the node map with the RHS-node indices. New node maps are 
  *     introduced for nodes which do not exist in the LHS.
