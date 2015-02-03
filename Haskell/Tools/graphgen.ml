@@ -1,7 +1,7 @@
-type mode  = Grid of int * int | Linear of int | Cyclic of int
+type mode  = Grid of int * int | Linear of int | Cyclic of int | SeriesParallel of int
 type label = Empty | Int of int
 type graph = Node of int * label | Edge of int * int * int * label
-type settings = { mutable random_edge_labels:bool ; mutable random_node_labels:bool ; }
+type settings = { mutable random_edge_labels:bool ; mutable random_node_labels:bool ; mutable tangle_factor:int }
 
 open Printf
 
@@ -87,6 +87,49 @@ let grid x y =
     (List.flatten nss, List.flatten ess @ ves)
 ;;
 
+let parallel (ns, es) = match es with
+    | Edge (e, s, t, lab) :: es ->
+            (ns, nextEdge s t :: Edge (e, s, t, lab) :: es)
+    | [] ->
+            let ns = [nextNode (); nextNode ()] in
+            let es = [nextEdge 1 0 ; nextEdge 1 0] in
+            ( ns, es )
+    | _ ->
+            failwith "Nodes in the edge-list!"
+;;
+
+let settings = {
+    random_edge_labels = false ;
+    random_node_labels = false ;
+    tangle_factor = 2 ;
+}
+
+let series (ns, es) = 
+    match es with
+    | Edge (e, s, t, lab) :: es' ->
+            let Node (s', _) as n = nextNode () in
+            begin match Random.int settings.tangle_factor with
+            | 0 -> 
+                (n :: ns, nextEdge s' s :: Edge (e, s, t, lab) :: es')
+            | _ -> 
+                (n :: ns, nextEdge s s' :: Edge (e, s', t, lab) :: es')
+            end
+    | [] ->
+            let ns = [nextNode (); nextNode ()] in
+            let es = [nextEdge 1 0] in
+            (ns, es)
+    | _ -> failwith "Edges in the node list!"
+;;
+
+let rec seriesParallel g = function
+    | 0 -> g
+    | n -> begin
+        match Random.int 2 with
+        | 0 -> seriesParallel (parallel g) (n-1)
+        | _ -> seriesParallel (series g) (n-1)
+    end
+;;
+
 let printGraph (ns, es) =
     let lines = List.flatten [["["]
         ; List.map strOfGraph ns
@@ -107,20 +150,18 @@ let randomLabel bound = function
     | g  -> g
 ;;
 
-let settings = {
-    random_edge_labels = false ;
-    random_node_labels = false ;
-}
-
 let rec parseArgs = function
     | "-re" :: args -> settings.random_edge_labels <- true ; parseArgs args
     | "-rn" :: args -> settings.random_node_labels <- true ; parseArgs args
+    | "-t"  :: v :: args -> settings.tangle_factor <- int_of_string v ; parseArgs args
     | "grid" :: x :: y :: [] ->
             Grid (int_of_string x, int_of_string y)
     | "linear" :: l :: [] ->
             Linear (int_of_string l)
     | "cyclic" :: c :: [] ->
             Cyclic (int_of_string c)
+    | "sp" :: c :: [] ->
+            SeriesParallel (int_of_string c)
     | _ -> failwith "You're doing it all wrong"
 ;;
 
@@ -140,6 +181,8 @@ let main () =
             linear l
     | Cyclic c ->
             cyclic c
+    | SeriesParallel n ->
+            seriesParallel ([], []) n
     in
     printGraph (applyFilters graph)
 ;;
