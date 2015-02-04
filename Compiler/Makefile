@@ -34,7 +34,7 @@ compile-debug:	$(OBJECTS)
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-compile $(F1) $(F2)
 
 clean:
-		rm *.o parser.c parser.h lex.yy.c 
+		rm *.o parser.c parser.h lex.yy.c GP2-compile
 		cd runtime && make clean
 
 parser.c parser.h: gpparser.y ast.h error.h
