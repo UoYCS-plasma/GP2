@@ -15,8 +15,8 @@ Searchplan *searchplan = NULL;
 void generateRuleCode(Rule *rule)
 {
    string rule_name = rule->name;
-   /* Create files <rule_name>.h and <rule_name>.c */
-   int length = strlen(rule_name) + 3;
+   /* Create files runtime/<rule_name>.h and runtime/<rule_name>.c */
+   int length = strlen(rule_name) + 11;
 
    string header_name = malloc(length);
    if(header_name == NULL)
@@ -31,8 +31,10 @@ void generateRuleCode(Rule *rule)
       print_to_log("Error: Memory exhausted during file name creation.\n");
       exit(1);
    }
-   strcpy(header_name, rule_name);
-   strcpy(source_name, rule_name);
+   strcpy(header_name, "runtime/");
+   strcpy(source_name, "runtime/");
+   strcat(header_name, rule_name);
+   strcat(source_name, rule_name);
    strcat(header_name, ".h");
    strcat(source_name, ".c");
 
@@ -51,11 +53,11 @@ void generateRuleCode(Rule *rule)
    free(header_name);
    free(source_name);
 
-   PTRH("#include \"globals.h\"\n"
-        "#include \"graph.h\"\n"
-        "#include \"macros.h\"\n"
+   PTRH("#include \"../globals.h\"\n"
+        "#include \"../graph.h\"\n"
+        "#include \"../macros.h\"\n"
         "#include \"match.h\"\n"
-        "#include \"stack.h\"\n\n");
+        "#include \"../stack.h\"\n\n");
    PTRS("#include \"%s.h\"\n\n", rule_name);
 
    if(rule->lhs == NULL) generateApplicationCode(rule, true, false);

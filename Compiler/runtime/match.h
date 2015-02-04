@@ -12,10 +12,10 @@
 #ifndef INC_MATCH_H
 #define INC_MATCH_H
 
-#include "globals.h"
-#include "graph.h"
-#include "label.h"
-#include "rule.h"
+#include "../globals.h"
+#include "../graph.h"
+#include "../label.h"
+#include "../rule.h"
 
 /* Association list to represent variable-value mappings. */
 

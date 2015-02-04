@@ -2,21 +2,21 @@
 
 void generateHostGraphCode(GPGraph *ast_host_graph)
 {
-   FILE *header = fopen("init_runtime.h", "w");
+   FILE *header = fopen("runtime/init_runtime.h", "w");
    if(header == NULL) { 
      perror("init_runtime.h");
      exit(1);
    }  
 
-   FILE *source = fopen("init_runtime.c", "w");
+   FILE *source = fopen("runtime/init_runtime.c", "w");
    if(source == NULL) { 
      perror("init_runtime.c");
      exit(1);
    }
      
-   fprintf(header, "#include \"graph.h\"\n"
-                   "#include \"macros.h\"\n"
-                   "#include \"rule.h\"\n\n"
+   fprintf(header, "#include \"../graph.h\"\n"
+                   "#include \"../macros.h\"\n"
+                   "#include \"../rule.h\"\n\n"
  		   "Graph *makeHostGraph(void);\n");
 
    PTIS("#include \"init_runtime.h\"\n\n"
@@ -80,25 +80,25 @@ static FILE *main_source = NULL;
 
 void generateRuntimeCode(List *declarations)
 {
-   main_header = fopen("runtime.h", "w");
+   main_header = fopen("runtime/runtime.h", "w");
    if(main_header == NULL) { 
      perror("runtime.h");
      exit(1);
    }  
 
-   main_source = fopen("runtime.c", "w");
+   main_source = fopen("runtime/runtime.c", "w");
    if(main_source == NULL) { 
      perror("runtime.c");
      exit(1);
    }
 
    PTMH("#include <time.h>\n"
-        "#include \"error.h\"\n"
-        "#include \"debug.h\"\n"
-        "#include \"graph.h\"\n"
-        "#include \"init_runtime.h\"\n"
+        "#include \"../error.h\"\n"
+        "#include \"../debug.h\"\n"
+        "#include \"../graph.h\"\n"
         "#include \"match.h\"\n"
-        "#include \"stack.h\"\n\n");
+        "#include \"../stack.h\"\n"
+        "#include \"init_runtime.h\"\n\n");
 
    PTMS("#include \"runtime.h\"\n\n");
 
@@ -504,8 +504,11 @@ void generateProcedureCall(string proc_name, ContextType context, int indent)
       PTMSI("{\n", indent);
       /* Debug code: print the graph before announcing failure. */
       PTMSI("printGraph(host);\n", indent + 3);
+      PTMSI("if(result != NULL)\n", indent + 3);
       PTMSI("print_to_console(\"No output graph: rule %%s not applicable.\\n\", "
-            "result);\n", indent + 3);
+            "result);\n", indent + 8);
+      PTMSI("else print_to_console(\"No output graph: Fail statement "
+            "invoked.\\n\");\n", indent + 3);
       PTMSI("if(graph_stack) freeGraphStack(graph_stack);\n", indent + 3);
       PTMSI("freeGraph(host);\n", indent + 3);
       PTMSI("return 0;\n", indent + 3);

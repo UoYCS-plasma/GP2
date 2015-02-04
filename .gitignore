@@ -15,9 +15,7 @@ a.out
 tmp/
 *.a
 *.txt
-*.bkp
 CaseStudies
-runtime*
 GP2-*
 GRIT
 Graphite*
