@@ -21,8 +21,8 @@ typedef union NodeSignature {
 #define DEF_NODE_POOL 100
 
 typedef struct Edge {
-	NodeSignature otherEnd;
-	unsigned int matched;
+	unsigned int tgt:NODE_ID_BITS;
+	unsigned int matched:1;
 } Edge;
 
 typedef struct Node {
@@ -32,7 +32,6 @@ typedef struct Node {
 	unsigned int root:1;
 	unsigned int matched:1;
 	unsigned int edgePoolSize:10;
-	unsigned int outEdgeCount:10;
 	unsigned int matchedLoops:10;
 	Edge *outEdges;
 } Node;
