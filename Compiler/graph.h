@@ -11,9 +11,9 @@
 #ifndef INC_GRAPH_H
 #define INC_GRAPH_H
 
-#define MAX_NODES 64
-#define MAX_EDGES 128
-#define MAX_INCIDENT_EDGES 16
+#define MAX_NODES 520
+#define MAX_EDGES 1024
+#define MAX_INCIDENT_EDGES 128
 
 #include <glib.h>
 #include "error.h"

@@ -9,16 +9,13 @@ TODO
 *.tab.c
 *.tab.h
 *.log
-gpparse
 lex.yy.c
 *.o
 a.out
 tmp/
 *.a
 *.txt
-*.bkp
 CaseStudies
-runtime*
 GP2-*
 GRIT
 Graphite*
@@ -28,3 +25,5 @@ root
 Definition
 YAM
 *.supp
+Main*
+Test*
