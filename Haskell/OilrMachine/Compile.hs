@@ -9,29 +9,45 @@ import Debug.Trace
 
 notImplemented s = error $ "Not implemented: " ++ s
 
-type RegisterMap = [(NodeName, Int)]
-
 
 compileGPProg :: GPProgram -> Prog
 compileGPProg (Program ds) = concat $ reverse $ map compileDecl ds
 
-
 compileDecl :: Declaration -> Prog
 compileDecl (MainDecl m) = compileMain m
 compileDecl (ProcDecl p) = compileProc p
-compileDecl (AstRuleDecl r) = compileRule r
+compileDecl (RuleDecl r) = compileRule r
 compileDecl _ = notImplemented "compileDecl"
 
 compileMain :: Main -> Prog
 compileMain (Main cs) = PROC "Main" : concatMap compileComm cs ++ [RET]
 
 compileProc :: Procedure -> Prog
-compileProc (Procedure id ds cs) = PROC id : concatMap compileDecl ds ++ concatMap compileComm cs ++ [RET]
+compileProc (Procedure id ds cs) =
+    PROC id : concatMap compileDecl ds ++ concatMap compileComm cs ++ [RET]
 
 compileComm :: Command -> Prog
 compileComm (Block b) = compileBlock b
 compileComm (IfStatement _ _ _) = notImplemented "compileComm"
 compileComm (TryStatement _ _ _) = notImplemented "compileComm"
+
+-- data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) NodeInterface 
+            -- EdgeInterface Condition deriving Show
+
+compileRule :: Rule -> Prog
+compileRule rule@(Rule id _ (lhs, rhs) nif eif cond) = 
+    (PROC id) : compiledLhs ++ compiledRhs ++ [RET]
+    where
+        -- TODO: refactor this to eliminate all these primes and make the TRAV ordering less
+        -- dependent upon the type
+        rc  = characteriseRule rule
+        (compiledLhs, rmap)    = compileLhs rc lhs
+        (updatedNodes, rmap')    = updateNodes rc rmap rhs
+        compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap' rhs
+
+
+compileTrav :: RuleGraph -> Prog
+compileTrav = notImplemented "compileTrav"
 
 compileBlock :: Block -> Prog
 compileBlock (ComSeq cs) = concatMap compileComm cs
@@ -42,6 +58,7 @@ compileBlock (SimpleCommand s) = compileSimple s
 compileBlock (ProgramOr _ _) = notImplemented "compileBlock"
 
 
+
 compileSimple :: SimpleCommand -> Prog
 compileSimple (RuleCall rs) = concatMap (\id -> [CALL id, ZTRF]) rs
 compileSimple (LoopedRuleCall rs) = map (\id -> LOOP id) rs
@@ -50,16 +67,18 @@ compileSimple (LoopedProcedureCall p) = [LOOP p]
 compileSimple Skip = [NOP]
 compileSimple Fail = [FAIL]
 
-compileRule :: AstRule -> Prog
-compileRule rule@(AstRule id _ (lhs, rhs) cond) = 
-    (PROC id) : compiledLhs ++ compiledRhs ++ [RET]
-    where
-        -- TODO: refactor this to eliminate all these primes and make the TRAV ordering less
-        -- dependent upon the type
-        rc  = characteriseRule rule
-        (compiledLhs, rmap)    = compileLhs rc lhs
-        (updatedNodes, rmap')    = updateNodes rc rmap rhs
-        compiledRhs = DELE : DELN : updatedNodes ++ createEdges rmap' rhs
+
+updateNodes = notImplemented "blah"
+createEdges = notImplemented "blah"
+compileRhs = notImplemented "blah"
+compileLhs = notImplemented "blah"
+
+{-
+
+
+
+type RegisterMap = [(NodeName, Int)]
+
 
 compileLhs :: RuleCharacterisation -> AstRuleGraph -> (Prog, RegisterMap)
 compileLhs = error "Not implemented"
@@ -201,4 +220,5 @@ compileCond rmap lhs c = notImplemented $ "compileCond: " ++ show c
         -}
  
 
+-}
 

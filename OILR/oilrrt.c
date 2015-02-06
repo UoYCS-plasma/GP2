@@ -31,6 +31,26 @@ void failWith(const char *fmt, ...) {
 	exit(1);
 }
 
+
+void dumpGraph(Graph *g) {
+	Node *n;
+	Edge *e;
+	int i,j, edgeCount=0;
+	printf("[\n");
+	for (i=0; i<g->free; i++)
+		printf("\t(n%d, empty)\n", i);
+	printf("|\n");
+	for (i=0; i<g->free; i++) {
+		n = &(g->nodes[i]);
+		for (j=0; j<n->outEdgeCount; j++) {
+			e = &(n->outEdges[j]);
+			printf("\t(e%d, %d, %d, empty)\n", edgeCount++, i, e->otherEnd.id);
+		}
+	}
+	
+	printf("]\n");
+}
+
 NodeSignature signatureFor(Node *n) {
 	NodeSignature sig;
 	sig.o = twoBitInt(n->out);
@@ -94,15 +114,16 @@ void addNode(Graph *g) {
 
 void addEdge(Graph *g, int src, int tgt) {
 	Node *s=&(g->nodes[src]), *t=&(g->nodes[tgt]);
+	int ec = s->outEdgeCount;
 	Edge *e;
 	if (s->outEdgeCount == s->edgePoolSize)
 		growEdgePool(s);
 	assert(s->outEdges && s->edgePoolSize > s->outEdgeCount);
-	e = &(s->outEdges[s->outEdgeCount]);
+	e = &(s->outEdges[s->outEdgeCount++]);
 	e->otherEnd = signatureFor(t);
 	e->otherEnd.id = tgt;
 	e->matched = 0;
-	assert(e->matched == 0);
+	assert(e->matched == 0 && ec+1 == s->outEdgeCount);
 }
 
 int main(int argc, char **argv) {
@@ -119,6 +140,7 @@ int main(int argc, char **argv) {
 			(int) sizeof(Node),
 			(int) sizeof(Edge),
 			(int) sizeof(Graph));
+	dumpGraph(g);
 
 	deleteGraph(g);
 	return 0;
