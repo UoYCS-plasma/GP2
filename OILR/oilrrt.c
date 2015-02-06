@@ -9,7 +9,7 @@
 const Node nullNode = {
 	.s.sig = 0,
 	.s.id  = 0,
-	.outEdges = -1,
+	.s.flag = 0,
 };
 
 Node testNode;
@@ -17,7 +17,12 @@ Node testNode;
 #define checkNodeId(i) do { if (MAX_NODES-1 & i) error("Invalid node id"); };
 #define twoBitInt(i) (~0x3 & i ? 0x3 : i)
 
+#define node(g, n) (&(g)->nodePool[n])
+#define getSig(n) ((n)->s.sig)
+
 #define isRoot(n) ((n)->r)
+
+
 
 void failWith(const char *fmt, ...) {
 	va_list argp;
@@ -50,7 +55,7 @@ void deleteGraph(Graph *g) {
 	int i;
 	free(g->nodePool);
 	free(g->edgePools);
-
+	free(g);
 }
 
 void doublePools(Graph *g) {
@@ -69,22 +74,20 @@ void addNode(Graph *g) {
 	g->nodePool[i]  = nullNode;
 }
 
-
 int main(int argc, char **argv) {
+	int i;
 	Graph *g = newGraph(DEF_NODE_POOL);
-	testNode.s.o = twoBitInt(2);
-	testNode.s.i = twoBitInt(3);
-	testNode.s.l = twoBitInt(4);
-	testNode.s.r = 1;
+	for (i=0; i<MAX_NODES; i++) {
+		addNode(g);
+		assert(g->free == i+1);
+	}
 
-	printf("node-sig: %d, node: %d, edge-pool: %d, graph: %d\n",
+	printf("node-sig: %d, node: %d, edge: %d, edge-pool: %d, graph: %d\n",
 			(int) sizeof(NodeSignature),
 			(int) sizeof(Node),
+			(int) sizeof(Edge),
 			(int) sizeof(EdgePool),
 			(int) sizeof(Graph));
-	printf("O: %d, I: %d, L: %d, R:%d, sig: %d\n",
-			testNode.s.o, testNode.s.i, testNode.s.l, testNode.s.r,
-			testNode.s.sig);
 
 	deleteGraph(g);
 	return 0;
