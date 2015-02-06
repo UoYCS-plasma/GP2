@@ -1,3 +1,5 @@
+#ifndef GRAPH_H
+#define GRAPH_H
 
 #define NODE_ID_BITS 24
 #define MAX_NODES (1<<NODE_ID_BITS)
@@ -42,3 +44,19 @@ typedef struct Graph {
 	Node *nodes;
 } Graph;
 
+
+
+/* API functions */
+
+void printGraph(Graph *g);
+Graph *newGraph(int nNodes);
+Graph *cloneGraph(Graph *g);
+void deleteGraph(Graph *g);
+
+void addNode(Graph *g);
+void addEdge(Graph *g, int src, int tgt);
+
+void deleteEdge(Graph *g, int nid, int eid);
+void deleteNode(Graph *g, int id);
+
+#endif

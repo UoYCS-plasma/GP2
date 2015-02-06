@@ -131,14 +131,15 @@ void addEdge(Graph *g, int src, int tgt) {
 }
 
 void deleteEdge(Graph *g, int nid, int eid) {
-	Node *n = &node(g, nid);
-	int last = n->out-1;
-	Node *tgt = &node(g, n->outEdges[eid].tgt);
+	Node *src = &node(g, nid);
+	int last = src->out-1;
+	Node *tgt = &node(g, src->outEdges[eid].tgt);
 	if (nid != last) {
-		n->outEdges[eid] = n->outEdges[last];
+		src->outEdges[eid] = src->outEdges[last];
 	}
-	n->out--;
-	assert(n->out == last);
+	src->out--;
+	tgt->in--;
+	assert(src->out == last);
 }
 void deleteNode(Graph *g, int id) {
 	int i, last = g->free-1;
@@ -155,25 +156,3 @@ void deleteNode(Graph *g, int id) {
 	assert(g->free == last);
 }
 
-int main(int argc, char **argv) {
-	int i;
-	Graph *g = newGraph(DEF_NODE_POOL);
-	int howMany = DEF_NODE_POOL+1;
-	for (i=0; i<howMany; i++) {
-		addNode(g);
-		assert(g->free == i+1);
-	}
-	for (i=0; i<howMany; i++) {
-		addEdge(g, i, (i+1)%howMany);
-	}
-
-	fprintf(stderr,"node-sig: %d, node: %d, edge: %d, graph: %d\n",
-			(int) sizeof(NodeSignature),
-			(int) sizeof(Node),
-			(int) sizeof(Edge),
-			(int) sizeof(Graph));
-	printGraph(g);
-
-	deleteGraph(g);
-	return 0;
-}
