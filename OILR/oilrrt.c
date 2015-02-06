@@ -7,22 +7,16 @@
 
 
 const Node nullNode = {
-	.s.sig = 0,
-	.s.id  = 0,
-	.s.flag = 0,
+	.in = 0,
+	.out = 0,
+	.loop = 0,
+	.root = 0,
+	.outEdges = NULL,
 };
 
 Node testNode;
 
-#define checkNodeId(i) do { if (MAX_NODES-1 & i) error("Invalid node id"); };
 #define twoBitInt(i) (~0x3 & i ? 0x3 : i)
-
-#define node(g, n) (&(g)->nodePool[n])
-#define getSig(n) ((n)->s.sig)
-
-#define isRoot(n) ((n)->r)
-
-
 
 void failWith(const char *fmt, ...) {
 	va_list argp;

@@ -1,5 +1,5 @@
 
-#define NODE_ID_BITS 23
+#define NODE_ID_BITS 24
 #define MAX_NODES (1<<NODE_ID_BITS)
 
 typedef union NodeSignature {
@@ -8,12 +8,11 @@ typedef union NodeSignature {
 		unsigned int i:2;
 		unsigned int l:2;
 		unsigned int r:1;
+		unsigned int pad: 1;
 	} ;
 	struct {
-		unsigned int sig:7;
-		unsigned int blur:1;
+		unsigned int sig:8;
 		unsigned int id:NODE_ID_BITS;
-		unsigned int flag:1; /* flag-bit (for identifying in-edges) */
 	} ;
 } NodeSignature;
 
@@ -26,16 +25,16 @@ typedef struct EdgePool {
 	unsigned int next:32; /* index of next block of four edges */
 } EdgePool;
 
-typedef struct Node {
-	NodeSignature s;
-} Node;
 
 typedef struct Edge {
-	unsigned int src:NODE_ID_BITS;
-	unsigned int flag:1;
-	unsigned int pad:8;
-	unsigned int tgt:NODE_ID_BITS;
+	NodeSignature otherEnd;
 } Edge;
+
+typedef struct Node {
+	int in, out, loop, root;
+	int outEdgeCount;
+	Edge *outEdges;
+} Node;
 
 typedef struct Graph {
 	int free;
