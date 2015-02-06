@@ -18,29 +18,28 @@ typedef union NodeSignature {
 
 
 #define DEF_EDGE_POOL 4
-#define DEF_NODE_POOL MAX_NODES
-
-typedef struct EdgePool {
-	NodeSignature tgts[DEF_EDGE_POOL];
-	unsigned int next:32; /* index of next block of four edges */
-} EdgePool;
-
+#define DEF_NODE_POOL 100
 
 typedef struct Edge {
 	NodeSignature otherEnd;
+	unsigned int matched;
 } Edge;
 
 typedef struct Node {
-	int in, out, loop, root;
-	int outEdgeCount;
+	unsigned int in:10;
+	unsigned int out:10;
+	unsigned int loop:10;
+	unsigned int root:1;
+	unsigned int matched:1;
+	unsigned int edgePoolSize:10;
+	unsigned int outEdgeCount:10;
+	unsigned int matchedLoops:10;
 	Edge *outEdges;
 } Node;
 
 typedef struct Graph {
 	int free;
 	int poolSize;
-	Node *nodePool;
-	int freeEdgePool;
-	EdgePool *edgePools;
+	Node *nodes;
 } Graph;
 

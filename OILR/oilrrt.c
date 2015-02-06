@@ -11,12 +11,15 @@ const Node nullNode = {
 	.out = 0,
 	.loop = 0,
 	.root = 0,
+	.matched = 0,
+	.edgePoolSize = 0,
+	.outEdgeCount = 0,
 	.outEdges = NULL,
 };
 
 Node testNode;
 
-#define twoBitInt(i) (~0x3 & i ? 0x3 : i)
+#define twoBitInt(i) (~0x3 & (i) ? 0x3 : (i))
 
 void failWith(const char *fmt, ...) {
 	va_list argp;
@@ -28,59 +31,93 @@ void failWith(const char *fmt, ...) {
 	exit(1);
 }
 
+NodeSignature signatureFor(Node *n) {
+	NodeSignature sig;
+	sig.o = twoBitInt(n->out);
+	sig.i = twoBitInt(n->in);
+	sig.l = twoBitInt(n->loop);
+	sig.r = n->root;
+	sig.pad = 0;
+}
+
+
 Graph *newGraph(int nNodes) {
 	Graph *g;
 	Node *np;
-	EdgePool *eps;
 	g = malloc(sizeof(Graph));
-	np = calloc(nNodes, sizeof(Node)); /* nodePool and edgePools */
-	eps = calloc(nNodes, sizeof(EdgePool)); /* share a common index   */
-	if (g == NULL || np == NULL || eps == NULL )
+	np = calloc(nNodes, sizeof(Node));
+	if (g == NULL || np == NULL )
 		failWith("Unable to allocate new graph structures.");
 
 	g->free = 0;
 	g->poolSize = nNodes;
-	g->nodePool = np;
-	g->edgePools = eps;
-	assert(g->free == 0 && g->nodePool && g->edgePools);
+	g->nodes = np;
+	assert(g->free == 0 && g->nodes);
 	return g;
 }
 void deleteGraph(Graph *g) {
 	int i;
-	free(g->nodePool);
-	free(g->edgePools);
+	Node *n;
+	for (i=0; i<g->free; i++) {
+		n = &(g->nodes[i]);
+		if (n->outEdges != NULL)
+			free(n->outEdges);
+	}
+
+	free(g->nodes);
 	free(g);
 }
 
 void doublePools(Graph *g) {
 	failWith("Resizing not yet implemented");
-	/* int sz = g->poolSize * 2;
-	g->nodePool = realloc(sz, sizeof(Node));
-	g->edgePools = */
+	int sz = g->poolSize * 2;
+	g->nodes = realloc(g->nodes, sz*sizeof(Node));
+}
+
+void growEdgePool(Node *n) {
+	int sz = n->edgePoolSize * 2;
+	if (sz == 0)
+		sz = DEF_NODE_POOL;
+	n->outEdges = realloc(n->outEdges, sz * sizeof(Edge));
+	n->edgePoolSize = sz;
+	assert(n->outEdges != NULL);
 }
 
 void addNode(Graph *g) {
 	int i = g->free;
 	if (i == g->poolSize)
 		doublePools(g);
-
+	assert(i<g->poolSize);
 	g->free++;
-	g->nodePool[i]  = nullNode;
+	g->nodes[i] = nullNode;
+}
+
+void addEdge(Graph *g, int src, int tgt) {
+	Node *s=&(g->nodes[src]), *t=&(g->nodes[tgt]);
+	Edge *e;
+	if (s->outEdgeCount == s->edgePoolSize)
+		growEdgePool(s);
+	assert(s->outEdges && s->edgePoolSize > s->outEdgeCount);
+	e = &(s->outEdges[s->outEdgeCount]);
+	e->otherEnd = signatureFor(t);
+	e->otherEnd.id = tgt;
+	e->matched = 0;
+	assert(e->matched == 0);
 }
 
 int main(int argc, char **argv) {
 	int i;
 	Graph *g = newGraph(DEF_NODE_POOL);
-	for (i=0; i<MAX_NODES; i++) {
+	for (i=0; i<DEF_NODE_POOL; i++) {
 		addNode(g);
 		assert(g->free == i+1);
 	}
+	addEdge(g, 0, 1);
 
-	printf("node-sig: %d, node: %d, edge: %d, edge-pool: %d, graph: %d\n",
+	printf("node-sig: %d, node: %d, edge: %d, graph: %d\n",
 			(int) sizeof(NodeSignature),
 			(int) sizeof(Node),
 			(int) sizeof(Edge),
-			(int) sizeof(EdgePool),
 			(int) sizeof(Graph));
 
 	deleteGraph(g);
