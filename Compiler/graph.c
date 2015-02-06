@@ -1,198 +1,181 @@
 #include "graph.h"
 
+Node null_node = {-1, false, EMPTY_L, NULL, NULL, NULL, 0, 0, 0, 0};
+Edge null_edge = {-1, false, EMPTY_L, NULL, NULL, NULL};
+
 Graph *newGraph(void) 
 {
-    Graph *new_graph = malloc(sizeof(Graph));
+    Graph *graph = malloc(sizeof(Graph));
 
-    if(new_graph == NULL) 
+    if(graph == NULL) 
     {
       printf("Memory exhausted during graph construction.\n");
       exit(1);
     }
-    
-    new_graph->nodes = calloc(MAX_NODES, sizeof(Node *));
-    if(new_graph->nodes == NULL)
+     
+    int index;
+
+    graph->nodes = calloc(MAX_NODES, sizeof(Node));
+    if(graph->nodes == NULL)
     {
       printf("Memory exhausted during graph construction.\n");
       exit(1);
     }
+    for(index = 0; index < MAX_NODES; index ++)
+       graph->nodes[index] = null_node;
  
-    new_graph->edges = calloc(MAX_EDGES, sizeof(Edge *));
-    if(new_graph->edges == NULL)
+    graph->edges = calloc(MAX_EDGES, sizeof(Edge));
+    if(graph->edges == NULL)
     {
       printf("Memory exhausted during graph construction.\n");
       exit(1);
     }
+    for(index = 0; index < MAX_EDGES; index ++)
+       graph->edges[index] = null_edge;
 
-    new_graph->free_node_slots = newStack(); 
-    new_graph->free_edge_slots = newStack();
+    graph->free_node_slots = newStack(); 
+    graph->free_edge_slots = newStack();
   
-    new_graph->next_node_index = 0;
-    new_graph->next_edge_index = 0;
+    graph->next_node_index = 0;
+    graph->next_edge_index = 0;
 
-    new_graph->number_of_nodes = 0;
-    new_graph->number_of_edges = 0;
+    graph->number_of_nodes = 0;
+    graph->number_of_edges = 0;
 
     /* Hash tables indexed by label class. g_direct_hash generates hash keys
      * from void pointers. Label classes are converted to pointers with the
      * G_INT_TO_POINTER macro so that they can be used as hash keys. It is
      * done this way because the integer hashing functions did not function
      * properly. */
-    new_graph->nodes_by_label = g_hash_table_new(g_direct_hash, g_direct_equal);    
-    new_graph->edges_by_label = g_hash_table_new(g_direct_hash, g_direct_equal);    
+    graph->nodes_by_label = g_hash_table_new(g_direct_hash, g_direct_equal);    
+    graph->edges_by_label = g_hash_table_new(g_direct_hash, g_direct_equal);    
 
-    new_graph->root_nodes = NULL;
+    graph->root_nodes = NULL;
  
-    return new_graph;
+    return graph;
 }
 
-Node *newNode(bool root, Label *label)
+int addNode(Graph *graph, bool root, Label *label) 
 {
-   Node *node = malloc(sizeof(Node));
+   int index;
 
-   if(node == NULL) 
+   /* Get the index of the added node by examining the free node slots stack. */
+   StackData *data = pop(graph->free_node_slots);
+   if(data == NULL) 
    {
-      print_to_log("Memory exhausted during node construction.\n");
-      exit(1);
+      index = graph->next_node_index;
+      graph->next_node_index++;
    }
- 
-   node->index = 0;
-   node->root = root;
-   if(label == NULL)
+   else 
    {
-      node->label_class = EMPTY_L;
-      node->label = &blank_label;
-   }
-   else
-   { 
-      node->label_class = getLabelClass(label);
-      node->label = label;
-   }
-   node->indegree = 0;
-   node->outdegree = 0;
-
-   node->out_edges = calloc(MAX_INCIDENT_EDGES, sizeof(Edge *));
-
-   if(node->out_edges == NULL)
-   {
-      printf("Memory exhausted during node construction.\n");
-      exit(1);
+      index = data->free_slot;
+      free(data);
    }
 
-   node->in_edges = calloc(MAX_INCIDENT_EDGES, sizeof(Edge *));
-
-   if(node->in_edges == NULL)
-   {
-      printf("Memory exhausted during node construction.\n");
-      exit(1);
-   }
-
-   node->next_out_edge_index = 0;
-   node->next_in_edge_index = 0;
-
-   return node;
-}
-
-
-Edge *newEdge(bool bidirectional, Label *label, Node *source,
-              Node *target)
-{
-   Edge *edge = malloc(sizeof(Edge));
-
-   if(edge == NULL) {
-      print_to_log("Memory exhausted during node construction.\n");
-      exit(1);
-   }
-	
-   edge->index = 0;
-   edge->bidirectional = bidirectional;
-   if(label == NULL)
-   {
-      edge->label_class = EMPTY_L;
-      edge->label = &blank_label;
-   }
-   else
-   { 
-      edge->label_class = getLabelClass(label);
-      edge->label = label;
-   }
-   edge->source = source;
-   edge->target = target;
+   /* Initialise the node's index, root status, next edge array indices and 
+    * degrees. The label class, label and edge arrays are initialised after. */
+   graph->nodes[index].index = index;
+   graph->nodes[index].root = root;
+   graph->nodes[index].next_out_edge_index = 0;
+   graph->nodes[index].next_in_edge_index = 0;
+   graph->nodes[index].outdegree = 0;
+   graph->nodes[index].indegree= 0;
    
-   return edge;
-}
-	
+   if(label == NULL)
+   {
+      graph->nodes[index].label_class = EMPTY_L;
+      graph->nodes[index].label = &blank_label;
+   }
+   else
+   { 
+      graph->nodes[index].label_class = getLabelClass(label);
+      graph->nodes[index].label = label;
+   }
 
-void addNode(Graph *graph, Node *node) 
-{
-    /* Add the node to the pointer array. First check the free node slots stack
-     * to see if there are any holes in the node array. */
-    StackData *data = pop(graph->free_node_slots);
-    if(data == NULL) 
-    {
-       graph->nodes[graph->next_node_index] = node;
-       node->index = graph->next_node_index;
-       graph->next_node_index++;
-    }
-    else 
-    {
-       graph->nodes[data->free_slot] = node;
-       node->index = data->free_slot;
-       free(data);
-    }
+   graph->nodes[index].out_edges = calloc(MAX_INCIDENT_EDGES, sizeof(Edge *));
+   if(graph->nodes[index].out_edges == NULL)
+   {
+      printf("Memory exhausted during node construction.\n");
+      exit(1);
+   }
 
-    /* Update graph->nodes_by_label by adding the new node to the appropriate
-     * node list and inserting the updated list into the hash table. */
-    void *label_key = GINT_TO_POINTER(node->label_class);
-    GSList *node_list = g_hash_table_lookup(graph->nodes_by_label, label_key);
-    node_list = g_slist_prepend(node_list, node);
-    g_hash_table_insert(graph->nodes_by_label, label_key, node_list);
+   graph->nodes[index].in_edges = calloc(MAX_INCIDENT_EDGES, sizeof(Edge *));
+   if(graph->nodes[index].in_edges == NULL)
+   {
+      printf("Memory exhausted during node construction.\n");
+      exit(1);
+   }
+
+   /* Update graph->nodes_by_label by adding the new node to the appropriate
+    * node list and inserting the updated list into the hash table. */
+   void *label_key = GINT_TO_POINTER(graph->nodes[index].label_class);
+   GSList *node_list = g_hash_table_lookup(graph->nodes_by_label, label_key);
+   node_list = g_slist_prepend(node_list, &(graph->nodes[index]));
+   g_hash_table_insert(graph->nodes_by_label, label_key, node_list);
     
-    /* Update graph->root_nodes. */
-    if(node->root) graph->root_nodes = g_slist_prepend(graph->root_nodes, node);
+   /* Update graph->root_nodes. */
+   if(root) graph->root_nodes = g_slist_prepend(graph->root_nodes, 
+                                                &(graph->nodes[index]));
+   graph->number_of_nodes++;
 
-    graph->number_of_nodes++;
+   return index; 
 }
 
-
-void addEdge(Graph *graph, Edge *edge) 
+int addEdge(Graph *graph, bool bidirectional, Label *label, Node *source,
+            Node *target) 
 {
-    /* Add the edge to the pointer array. First check the free edge slots stack
-     * to see if there are any holes in the edge array. */
-    StackData *data = pop(graph->free_edge_slots);
-    if(data == NULL) 
-    {
-       graph->edges[graph->next_edge_index] = edge;
-       edge->index = graph->next_edge_index;
-       graph->next_edge_index++;
-    }
-    else
-    { 
-       graph->edges[data->free_slot] = edge;    
-       edge->index = data->free_slot;
-       free(data);
-    }
+   int index;
 
-    /* Update the source and target nodes with the new edge: add the
-     * edge to the out_edges/in_edges array and then update the degree. */ 
-    Node *source = edge->source, *target = edge->target;
+   /* Get the index of the added node by examining the free node slots stack. */
+   StackData *data = pop(graph->free_edge_slots);
+   if(data == NULL) 
+   {
+      index = graph->next_edge_index;
+      graph->next_edge_index++;
+   }
+   else 
+   {
+      index = data->free_slot;
+      free(data);
+   }
 
-    source->out_edges[source->next_out_edge_index++] = edge;
-    source->outdegree++;
+   /* Initialise the edge's index, bidirectional status, source and target 
+    * The label class and label are initialised after. */
+   graph->edges[index].index = index;
+   graph->edges[index].bidirectional = bidirectional;
+   graph->edges[index].source = source;
+   graph->edges[index].target = target;
 
-    target->in_edges[target->next_in_edge_index++] = edge;
-    target->indegree++;
+   if(label == NULL)
+   {
+      graph->edges[index].label_class = EMPTY_L;
+      graph->edges[index].label = &blank_label;
+   }
+   else
+   { 
+      graph->edges[index].label_class = getLabelClass(label);
+      graph->edges[index].label = label;
+   }
 
-    /* Update graph->nodes_by_label by adding the new edge to the appropriate
-     * edge list and inserting the updated list into the hash table. */
-    void *label_key = GINT_TO_POINTER(edge->label_class);
-    GSList *edge_list = g_hash_table_lookup(graph->edges_by_label, label_key);
-    edge_list = g_slist_prepend(edge_list, edge);
-    g_hash_table_insert(graph->edges_by_label, label_key, edge_list);
+   /* Update the source and target nodes with the new edge: add the
+    * edge to the out_edges/in_edges array and then update the degree. */ 
+   source->out_edges[source->next_out_edge_index++] = &(graph->edges[index]);
+   source->outdegree++;
 
-    graph->number_of_edges++;
+   target->in_edges[target->next_in_edge_index++] = &(graph->edges[index]);
+   target->indegree++;
+
+   /* Update graph->nodes_by_label by adding the new edge to the appropriate
+    * edge list and inserting the updated list into the hash table. */
+   void *label_key = GINT_TO_POINTER(graph->edges[index].label_class);
+   GSList *edge_list = g_hash_table_lookup(graph->edges_by_label, label_key);
+   edge_list = g_slist_prepend(edge_list, &(graph->edges[index]));
+   g_hash_table_insert(graph->edges_by_label, label_key, edge_list);
+
+   graph->number_of_edges++;
+
+   return index;
 }
-
 
 void removeNode(Graph *graph, int index)
 {   
@@ -219,16 +202,15 @@ void removeNode(Graph *graph, int index)
     if(node_list == NULL) g_hash_table_remove(graph->nodes_by_label, label_key);
     else g_hash_table_insert(graph->nodes_by_label, label_key, node_list); 
 
-    /* Remove the node from the root node list if necessary. */
     if(node->root) graph->root_nodes = g_slist_remove(graph->root_nodes, node); 
-
-    /* Remove the node from the pointer array and set the pointer to NULL. */
-    freeNode(node);
-    graph->nodes[index] = NULL;
+ 
+    if(node->label && node->label != &blank_label) freeLabel(node->label);
+    if(node->in_edges) free(node->in_edges);
+    if(node->out_edges) free(node->out_edges);    
+    graph->nodes[index] = null_node;
 
     /* If the node's index is the last index in the array, it is not 
-     * necessary to create a free slot: only decrement next_node_index.
-     */
+     * necessary to create a free slot: only decrement next_node_index. */
     if(index == graph->next_node_index - 1) graph->next_node_index--;
     else
     {
@@ -318,16 +300,15 @@ void removeEdge(Graph *graph, int index)
      * edge from the edge list and inserting the updated list into
      * the hash table. */
     GSList *edge_list = g_hash_table_lookup(graph->edges_by_label, label_key);
-    edge_list = g_slist_remove(edge_list,edge);
+    edge_list = g_slist_remove(edge_list, edge);
 
     /* If the edge list is empty, remove the key from the hash table. Otherwise
      * overwrite the hash table entry with the updated edge list. */
     if(edge_list == NULL) g_hash_table_remove(graph->edges_by_label, label_key);
     else g_hash_table_insert(graph->edges_by_label, label_key, edge_list); 
 
-    /* Remove the edge from the pointer array and set the pointer to NULL. */
-    freeEdge(edge);
-    graph->edges[index] = NULL;
+    if(edge->label && edge->label != &blank_label) freeLabel(edge->label);
+    graph->edges[index] = null_edge;
 
     /* If the edge's index is the last index in the array, it is not 
      * necessary to create a free slot: only decrement next_edge_index.
@@ -369,7 +350,7 @@ void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label,
     if(change_label == false) return;
     else
     {  
-       /* node->label is freed before being pointed to new_label. */
+       /* node.label is freed before being pointed to new_label. */
        if(node->label != &blank_label) freeLabel(node->label); 
 
        LabelClass new_label_class;
@@ -411,14 +392,10 @@ void relabelEdge(Graph *graph, Edge *edge, Label *new_label,
 {		
     if(change_bidirectional) edge->bidirectional = !edge->bidirectional;
 
-    /* If record is true, then edge->label is pointed to by the graph
-     * change created above. Otherwise, edge->label should be freed
-     * before it is pointed to new_label. */
-
     if(change_label == false) return;
     else
     {
-       /* edge->label is freed before being pointed to new_label. */
+       /* edge.label is freed before being pointed to new_label. */
        if(edge->label != &blank_label) freeLabel(edge->label); 
 
        LabelClass new_label_class;
@@ -458,7 +435,7 @@ void relabelEdge(Graph *graph, Edge *edge, Label *new_label,
 
 Stack *graph_stack = NULL;
 
-void copyGraph (Graph *graph)
+void copyGraph(Graph *graph)
 {
    /* TODO: check if arrays in the original graph have increased in size. */
    Graph *graph_copy = newGraph();
@@ -469,56 +446,19 @@ void copyGraph (Graph *graph)
    graph_copy->number_of_nodes = graph->number_of_nodes;
    graph_copy->number_of_edges = graph->number_of_edges;
 
+   memcpy(graph_copy->nodes, graph->nodes, MAX_NODES * sizeof(Node));
+   memcpy(graph_copy->edges, graph->edges, MAX_EDGES * sizeof(Edge));
+
    int index;
 
    /* Copy all nodes and edges with their labels. Note that the index of each
     * node and edge copy is the same as the index of the original. This is
-    * important for copying the rest of the graph structure.
-
-    * Edges are copied first so that the node's incident edge arrays can
-    * be populated with the pointers to the edge copies. */
-   for(index = 0; index < graph->next_edge_index; index++)
+    * important for copying the rest of the graph structure. */
+   for(index = 0; index < graph_copy->next_node_index; index++)
    {
-      Edge *edge = getEdge(graph, index);
-
-      if(edge == NULL) 
-      {
-         StackData *data = malloc(sizeof(StackData));
-         if(data == NULL)
-         {
-            print_to_log("Error (copyGraph): Memory exhausted during free edge "
-                         "slot construction.\n");
-            exit(1);
-         }
-         data->free_slot = index;
-         push(graph_copy->free_edge_slots, data);
-      }
-      else
-      {
-         Edge *edge_copy = malloc(sizeof(Edge));
-         if(edge_copy == NULL)
-         {
-            print_to_log("Memory exhausted during graph copying.\n");
-            exit(1);
-         }    
-         edge_copy = memcpy(edge_copy, edge, sizeof(Edge));
-         edge_copy->label = copyLabel(edge->label);
-         graph_copy->edges[index] = edge_copy;
-
-         /* Populate the edge-by-label-class hash table of the graph copy. */
-         void *hash_key = GINT_TO_POINTER(edge_copy->label_class);
-
-         GSList *edge_list = getEdgesByLabel(graph_copy, edge_copy->label_class);
-         edge_list = g_slist_prepend(edge_list, edge_copy);
-         g_hash_table_insert(graph_copy->edges_by_label, hash_key, edge_list);     
-      }
-   }
-
-   for(index = 0; index < graph->next_node_index; index++)
-   {
-      Node *node = getNode(graph, index);
+      Node *node = getNode(graph_copy, index);
       
-      if(node == NULL)
+      if(node->index == -1)
       {
          StackData *data = malloc(sizeof(StackData));
          if(data == NULL)
@@ -532,73 +472,54 @@ void copyGraph (Graph *graph)
       }
       else 
       {
-         Node *node_copy = malloc(sizeof(Node)); 
-         if(node_copy == NULL)
-         {
-            print_to_log("Memory exhausted during graph copying.\n");
-            exit(1);
-         }   
-         node_copy = memcpy(node_copy, node, sizeof(Node));
-         node_copy->label = copyLabel(node->label);
+         Node *original_node = getNode(graph, index);
+         node->label = copyLabel(original_node->label);
 
          /* Create and populate a new out_edge array since the node copy points
           * to the same array as the original node. */
          int counter;
 
-         node_copy->out_edges = calloc(MAX_INCIDENT_EDGES, sizeof(Edge *));
+         node->out_edges = calloc(MAX_INCIDENT_EDGES, sizeof(Edge *));
          if(node->out_edges == NULL)
          {
-            printf("Memory exhausted during graph copying.\n");
+            print_to_log("Memory exhausted during graph copying.\n");
             exit(1);
          }
 
-         for(counter = 0; counter < node->next_out_edge_index; counter++)
+         for(counter = 0; counter < original_node->next_out_edge_index; counter++)
          {
-            Edge *edge = getOutEdge(node, counter);
-
-            if(edge != NULL) 
-            {
-               Edge *edge_copy = getEdge(graph_copy, edge->index);
-               node_copy->out_edges[counter] = edge_copy;
-            }
+            Edge *original_edge = getOutEdge(original_node, counter);
+            if(original_edge->index >= 0) 
+               node->out_edges[counter] = getEdge(graph_copy, original_edge->index);
          }
-         node_copy->next_out_edge_index = counter;
+         node->next_out_edge_index = counter;
 
          /* Create and populate a new in_edge array. */
-         node_copy->in_edges = calloc(MAX_INCIDENT_EDGES, sizeof(Edge *));
+         node->in_edges = calloc(MAX_INCIDENT_EDGES, sizeof(Edge *));
          if(node->in_edges == NULL)
          {
             printf("Memory exhausted during graph copying.\n");
             exit(1);
          }
 
-         for(counter = 0; counter < node->next_in_edge_index; counter++)
+         for(counter = 0; counter < original_node->next_in_edge_index; counter++)
          {
-            Edge *edge = getInEdge(node, counter);
-
-            if(edge != NULL) 
-            {
-               Edge *edge_copy = getEdge(graph_copy, edge->index);
-               node_copy->in_edges[counter] = edge_copy;
-            }
+            Edge *original_edge = getInEdge(original_node, counter);
+            if(original_edge->index >= 0) 
+               node->in_edges[counter] = getEdge(graph_copy, original_edge->index);
          }
-         node_copy->next_in_edge_index = counter;
-
-         graph_copy->nodes[index] = node_copy;
+         node->next_in_edge_index = counter;
 
          /* Populate the node-by-label-class hash table of the graph copy. */
-         void *hash_key = GINT_TO_POINTER(node_copy->label_class);
+         void *hash_key = GINT_TO_POINTER(node->label_class);
 
-         GSList *node_list = getNodesByLabel(graph_copy, node_copy->label_class);
-         node_list = g_slist_prepend(node_list, node_copy);
+         GSList *node_list = getNodesByLabel(graph_copy, node->label_class);
+         node_list = g_slist_prepend(node_list, node);
          g_hash_table_insert(graph_copy->nodes_by_label, hash_key, node_list);     
 
          /* Populate the root nodes list. */
-         if(node_copy->root)
-         {
-            graph_copy->root_nodes = g_slist_prepend(graph_copy->root_nodes, 
-                                                     node_copy);
-         }
+         if(node->root)
+            graph_copy->root_nodes = g_slist_prepend(graph_copy->root_nodes, node);
       }
    }
 
@@ -606,17 +527,33 @@ void copyGraph (Graph *graph)
     * pointers. */
    for(index = 0; index < graph_copy->next_edge_index; index++)
    {
-      Edge *edge_copy = getEdge(graph_copy, index);
+      Edge *edge = getEdge(graph_copy, index);
 
-      if(edge_copy != NULL)
+      if(edge->index == -1) 
       {
-         Node *source = getSource(edge_copy);
-         Node *source_copy = getNode(graph_copy, source->index);
-         edge_copy->source = source_copy;
+         StackData *data = malloc(sizeof(StackData));
+         if(data == NULL)
+         {
+            print_to_log("Error (copyGraph): Memory exhausted during free edge "
+                         "slot construction.\n");
+            exit(1);
+         }
+         data->free_slot = index;
+         push(graph_copy->free_edge_slots, data);
+      }
 
-         Node *target = getTarget(edge_copy);
-         Node *target_copy = getNode(graph_copy, target->index);
-         edge_copy->target = target_copy;
+      else
+      {
+         Edge *original_edge = getEdge(graph, index);
+         edge->label = copyLabel(original_edge->label);
+         edge->source = getNode(graph_copy, original_edge->source->index);
+         edge->target = getNode(graph_copy, original_edge->target->index);
+
+         /* Populate the edge-by-label-class hash table of the graph copy. */
+         void *hash_key = GINT_TO_POINTER(edge->label_class);
+         GSList *edge_list = getEdgesByLabel(graph_copy, edge->label_class);
+         edge_list = g_slist_prepend(edge_list, edge);
+         g_hash_table_insert(graph_copy->edges_by_label, hash_key, edge_list);     
       }
    }  
  
@@ -661,22 +598,22 @@ Node *getNode(Graph *graph, int index)
 {
    if(index > graph->next_node_index) 
    {
-      print_to_log("Error (getNode): Passed index exceeds node size of the "
-                   "graph.\n");
+      print_to_log("Error (getNode): Passed index exceeds node size "
+                   "of the graph.\n");
       return NULL;
    }
-   else return graph->nodes[index];
+   else return &(graph->nodes[index]);
 }
 
 Edge *getEdge(Graph *graph, int index)
 {
    if(index > graph->next_edge_index) 
    {
-      print_to_log("Error (getEdge): Passed index exceeds edge size of the "
-                   "graph.\n");
+      print_to_log("Error (getEdgePointer): Passed index exceeds node size "
+                   "of the graph.\n");
       return NULL;
    }
-   else return graph->edges[index];
+   else return &(graph->edges[index]);
 }
 
 GSList *getRootNodes(Graph *graph)
@@ -744,12 +681,12 @@ Label *getEdgeLabel(Edge *edge)
    return edge->label;
 }
 
-int getIndegree (Node *node) 
+int getIndegree(Node *node) 
 {
    return node->indegree;
 }
 
-int getOutdegree (Node *node) 
+int getOutdegree(Node *node) 
 {
    return node->outdegree;
 }
@@ -759,13 +696,7 @@ void printGraph(Graph *graph)
 {
    int index, node_count = 0, edge_count = 0;
 
-   if(graph == NULL) 
-   {
-      printf("[ | ]\n");
-      return;
-   }
-
-   if(graph->number_of_nodes == 0) 
+   if(graph == NULL || graph->number_of_nodes == 0) 
    {
       printf("[ | ]\n");
       return;
@@ -773,21 +704,24 @@ void printGraph(Graph *graph)
 
    printf("[ ");
    for(index = 0; index < graph->next_node_index; index++)
-      if(graph->nodes[index]) 
+   {
+      Node *node = getNode(graph, index);
+      if(node->index >= 0) 
       {
          /* Five nodes per line */
          if(node_count != 0 && node_count % 5 == 0) printf("\n  ");
          node_count++;
 
-         Node *node = getNode(graph, index);
-         if(node->root)
-              printf("(n%d(R), ", index);
+         if(node->root) printf("(n%d(R), ", index);
          else printf("(n%d, ", index);
+
          if(node->label->list) printGP2List(node->label->list);
          else printf("empty");
+
          printMark(node->label->mark, false);
          printf(") ");
       }
+   }
  
    if(graph->number_of_edges == 0)
    {
@@ -797,22 +731,26 @@ void printGraph(Graph *graph)
 
    printf("|\n  ");
    for(index = 0; index < graph->next_edge_index; index++)
-      if(graph->edges[index]) 
+   {
+      Edge *edge = getEdge(graph, index);
+      if(edge->index >= 0) 
       {
          /* Three edges per line */
          if(edge_count != 0 && edge_count % 3 == 0) printf("\n  ");
          edge_count++;
 
-         Edge *edge = getEdge(graph, index);
-         if(edge->bidirectional)
-              printf("(e%d(B), ", index);
+         if(edge->bidirectional) printf("(e%d(B), ", index);
          else printf("(e%d, ", index);
+
          printf("n%d, n%d, ", edge->source->index, edge->target->index);
+
          if(edge->label->list) printGP2List(edge->label->list);
          else printf("empty");
+
          printMark(edge->label->mark, false);
          printf(") ");
       }
+   }
    printf("]\n\n");
 }
 
@@ -823,12 +761,26 @@ void freeGraph(Graph *graph)
    int index;
 
    for(index = 0; index < graph->next_node_index; index++)
-      if(graph->nodes[index]) freeNode(graph->nodes[index]);
-   if(graph->nodes) free(graph->nodes);
+   {
+      Node *node = getNode(graph, index);
+      if(node->index >= 0)
+      {
+         if(node->label && node->label != &blank_label) freeLabel(node->label);
+         free(node->in_edges);
+         free(node->out_edges);
+      }  
+   }
+   free(graph->nodes);
 
    for(index = 0; index < graph->next_edge_index; index++)
-      if(graph->edges[index]) freeEdge(graph->edges[index]);
-   if(graph->edges) free(graph->edges);
+   {
+      Edge *edge = getEdge(graph, index);
+      if(edge->index >= 0)
+      {
+         if(edge->label && edge->label != &blank_label) freeLabel(edge->label);
+      }  
+   }
+   free(graph->edges);
 
    if(graph->free_node_slots) freeStack(graph->free_node_slots);
    if(graph->free_edge_slots) freeStack(graph->free_edge_slots);
@@ -858,23 +810,6 @@ void freeGraph(Graph *graph)
    }*/
    free(graph);
 }
-
-void freeNode(Node *node) 
-{
-   if(node == NULL) return;
-   if(node->label && node->label != &blank_label) freeLabel(node->label);
-   if(node->in_edges) free(node->in_edges);
-   if(node->out_edges) free(node->out_edges);
-   free(node);
-}
-
-void freeEdge(Edge *edge) 
-{
-   if(edge == NULL) return;
-   if(edge->label && edge->label != &blank_label) freeLabel(edge->label);
-   free(edge);
-}
-
 
 void freeGSList(gpointer key, gpointer value, gpointer data) 
 {

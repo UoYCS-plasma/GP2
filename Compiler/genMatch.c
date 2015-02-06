@@ -607,9 +607,8 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       {
          Node *rule_node = getNode(rhs, index);
          /* TODO: Evaluate rule_node->label. */
-         PTRSI("host_node = newNode(%d, NULL);\n", 3, rule_node->root);
-         PTRSI("addNode(host, host_node);\n", 3);
-         PTRSI("map[%d] = host_node;\n\n", 3, rule_node->index);
+         PTRSI("int index = addNode(host, %d, NULL);\n", 3, rule_node->root);
+         PTRSI("map[%d] = getNode(host, index);\n\n", 3, rule_node->index);
       }
 
       NewEdgeList *iterator = rule->added_edges;
@@ -618,16 +617,14 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
          if(iterator->source_index == iterator->target_index)
          {
             PTRSI("source = map[%d];\n", 3, iterator->source_index);
-            PTRSI("host_edge = newEdge(false, NULL, source, source);\n", 3);
-            PTRSI("addEdge(host, host_edge);\n\n", 3);
+            PTRSI("addEdge(host, false, NULL, source, source);\n", 3);
          }
          else
          {
             PTRSI("source = map[%d];\n", 3, iterator->source_index);
             PTRSI("target = map[%d];\n", 3, iterator->target_index);
             /* TODO: Evaluate rule_edge->label. */
-            PTRSI("host_edge = newEdge(false, NULL, source, target);\n", 3);
-            PTRSI("addEdge(host, host_edge);\n\n", 3);
+            PTRSI("addEdge(host, false, NULL, source, target);\n", 3);
          }
          iterator = iterator->next;
       }     
@@ -730,9 +727,8 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    {   
       Node *rule_node = getNode(rhs, iterator_n->index);
       /* TODO: Evaluate rule_node->label. */
-      PTRSI("host_node = newNode(%d, NULL);\n", 3, rule_node->root);
-      PTRSI("addNode(host, host_node);\n", 3);
-      PTRSI("map[%d] = host_node;\n\n", 3, rule_node->index);
+      PTRSI("int index = addNode(host, %d, NULL);\n", 3, rule_node->root);
+      PTRSI("map[%d] = getNode(host, index);\n\n", 3, rule_node->index);
       iterator_n = iterator_n->next;
    }   
      
@@ -766,8 +762,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       else PTRSI("target = map[%d];\n", 3, iterator_e->target_index);
 
       /* TODO: Evaluate rule_edge->label. */
-      PTRSI("host_edge = newEdge(false, NULL, source, target);\n", 3);
-      PTRSI("addEdge(host, host_edge);\n\n", 3);
+      PTRSI("addEdge(host, false, NULL, source, target);\n", 3);
    
       iterator_e = iterator_e->next;      
    }

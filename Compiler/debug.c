@@ -9,9 +9,9 @@
  * (3) A node with label class L is in the nodes_by_label table entry indexed
  *      by the hash key L.
  * (4) The number of non-NULL pointers in the outedges array is equal to 
- *     node->outdegree.
+ *     node.outdegree.
  * (5) The number of non-NULL pointers in the inedges array is equal to 
- *     node->indegree.
+ *     node.indegree.
  * (6) Edge consistency: For all edges E referred to outside of the graph's
  *     edge array (i.e. in a node's inedge/outedge list), E is the edge pointed
  *     to by the (E.index)th pointer of the edge array.
@@ -49,7 +49,7 @@ bool validGraph(Graph *graph)
       Node *node = getNode(graph, graph_index);
     
       /* Invariant (1) */
-      if(node == NULL) 
+      if(node->index == -1) 
       { 
          iterator = graph->free_node_slots->top;
 
@@ -83,7 +83,7 @@ bool validGraph(Graph *graph)
          {
             Edge *node_edge = getOutEdge(node, node_index);
 
-            if(node_edge != NULL) 
+            if(node_edge->index >= 0) 
             {
                /* Keep a count of the number of outedges in the array. */
                edge_count++;
@@ -116,7 +116,7 @@ bool validGraph(Graph *graph)
          {
             Edge *node_edge = getInEdge(node, node_index);
 
-            if(node_edge != NULL) 
+            if(node_edge->index >= -1) 
             {
                /* Keep a count of the number of inedges in the array. */
                edge_count++;
@@ -175,7 +175,7 @@ bool validGraph(Graph *graph)
       slot_found = false;
 
       /* Invariant (7) */
-      if(edge == NULL) 
+      if(edge->index == -1) 
       { 
          StackNode *iterator = graph->free_edge_slots->top;
 
@@ -374,11 +374,17 @@ void printVerboseGraph(Graph *graph)
     int index;
     printf("Nodes\n=====\n");
     for(index = 0; index < graph->next_node_index; index++)
-       if(graph->nodes[index]) printVerboseNode(graph->nodes[index]);
+    {
+       Node *node = getNode(graph, index);
+       if(node->index >= 0) printVerboseNode(node);
+    }    
  
     printf("Edges\n=====\n");
     for(index = 0; index < graph->next_edge_index; index++)
-       if(graph->edges[index]) printVerboseEdge(graph->edges[index]);
+    {
+       Edge *edge = getEdge(graph, index);
+       if(edge->index >= 0) printVerboseEdge(edge);
+    } 
     printf("\n");
 
     printf("Root Node List\n==============\n");

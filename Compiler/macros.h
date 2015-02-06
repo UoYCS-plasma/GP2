@@ -1,12 +1,11 @@
 #ifndef INC_GEN_MACROS_H
 #define INC_GEN_MACROS_H
 
-#define ADD_HOST_NODE(is_root, node_name)                                      \
-   do {                                                                        \
-   node = newNode((is_root), NULL);                                            \
-   addNode(host, node);                                                        \
-   node_map = addIndexMap(node_map, node_name, node->index, -1, NULL, NULL);   \
-   } while(0);                                                                 \
+#define ADD_HOST_NODE(is_root, node_name)                                \
+   do {                                                                  \
+   int index = addNode(host, (is_root), NULL);                           \
+   node_map = addIndexMap(node_map, node_name, index, -1, NULL, NULL);   \
+   } while(0);                                                           \
 
 #define GET_HOST_SOURCE(source_name)                                    \
    do {                                                                 \
@@ -156,20 +155,20 @@
       continue;                                    \
    }                                               \
 
-#define IF_INVALID_NODE(lclass, nmark, indeg, outdeg) \
-   if(matched_nodes[index] ||                         \
-      host_node->label_class != (lclass) ||           \
-      host_node->label->mark != (nmark) ||            \
-      host_node->indegree < (indeg) ||                \
-      host_node->outdegree < (outdeg))                \
+#define IF_INVALID_NODE(lclass, nmark, indeg, outdeg)  \
+   if(matched_nodes[index] ||                          \
+      host_node->label_class != (lclass) ||            \
+      host_node->label->mark != (nmark) ||             \
+      host_node->indegree < (indeg) ||                 \
+      host_node->outdegree < (outdeg))                 \
 
 
-#define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg) \
-   if(matched_nodes[index] ||                                  \
-      host_node->label_class != (lclass) ||                    \
-      host_node->label->mark != (nmark) ||                     \
-      host_node->indegree != (indeg) ||                        \
-      host_node->outdegree != (outdeg))                        \
+#define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg)  \
+   if(matched_nodes[index] ||                                   \
+      host_node->label_class != (lclass) ||                     \
+      host_node->label->mark != (nmark) ||                      \
+      host_node->indegree != (indeg) ||                         \
+      host_node->outdegree != (outdeg))                         \
 
 /* Creates a (left_index, host_index) pair and pushes it to the node images
  * stack of the morphism. Called when a node match is found. */

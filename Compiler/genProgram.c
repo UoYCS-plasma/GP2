@@ -23,8 +23,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
         "Graph *makeHostGraph(void)\n"
         "{\n"
         "   Graph *host = newGraph();\n"
-        "   Node *node, *source, *target = NULL;\n"
-        "   Edge *edge = NULL;\n"
+        "   Node *source, *target;\n"
         "   IndexMap *node_map = NULL;\n\n");
 
    List *nodes = ast_host_graph->nodes;
@@ -54,8 +53,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       PTIS("   GET_HOST_SOURCE(\"%s\")\n"
            "   if(!strcmp(\"%s\", \"%s\"))\n"
            "   {\n"
-           "      edge = newEdge(%d, NULL, source, source);\n"
-           "      addEdge(host, edge);\n"
+           "      addEdge(host, %d, NULL, source, source);\n"
            "   }\n",
            ast_edge->source, ast_edge->source, ast_edge->target, 
            ast_edge->bidirectional);
@@ -63,8 +61,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       PTIS("   else\n"
            "   {\n"
            "      GET_HOST_TARGET(\"%s\")\n"
-           "      edge = newEdge(%d, NULL, source, target);\n"
-           "      addEdge(host, edge);\n"
+           "      addEdge(host, %d, NULL, source, target);\n"
            "   }\n\n",
            ast_edge->target, ast_edge->bidirectional);
            
