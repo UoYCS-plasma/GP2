@@ -4,6 +4,10 @@
 #define NODE_ID_BITS 24
 #define MAX_NODES (1<<NODE_ID_BITS)
 
+#define twoBitInt(i) (~0x3 & (i) ? 0x3 : (i))
+#define node(g, id) ((g)->nodes[id])
+#define edge(n, id) ((n)->outEdges[id])
+
 typedef union NodeSignature {
 	struct {
 		unsigned int o:2;
@@ -28,8 +32,8 @@ typedef struct Edge {
 } Edge;
 
 typedef struct Node {
-	unsigned int in:10;
 	unsigned int out:10;
+	unsigned int in:10;
 	unsigned int loop:10;
 	unsigned int root:1;
 	unsigned int matched:1;

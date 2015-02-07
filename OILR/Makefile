@@ -1,14 +1,20 @@
-CC=gcc -g -Wall -Werror $(DEFS)
+CC=gcc -g -Wall -Werror
 
 TARGETS=oilrrt.a
-OBJS=graph.o oilrrt.o
+OBJS=graph.o
 HEADERS=graph.h
 
 # $(TARGETS) : $(OBJS)
 
 
-oilrrt.a : $(OBJS)
+oilrrt.a : oilrrt.o $(OBJS)
 	ar rcs $@ $^
+
+oilrrt : oilrrt.o $(OBJS)
+	$(CC) -o $@ $^
+
+testGraph : testGraph.o $(OBJS)
+	$(CC) -o $@ $^
 
 %.o : %.c $(HEADERS)
 	$(CC) -c $<

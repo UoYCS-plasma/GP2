@@ -19,9 +19,6 @@ const Node nullNode = {
 
 Node testNode;
 
-#define twoBitInt(i) (~0x3 & (i) ? 0x3 : (i))
-#define node(g, id) ((g)->nodes[id])
-
 void failWith(const char *fmt, ...) {
 	va_list argp;
 	fprintf(stderr, "error: ");
@@ -66,8 +63,17 @@ Graph *newGraph(int nNodes) {
 }
 Graph *cloneGraph(Graph *g) {
 	Graph *clone = newGraph(g->poolSize);
+	Node *n, *cln; int i;
 	clone->free = g->free;
 	memcpy(clone->nodes, g->nodes, clone->free*sizeof(Node));
+	for (i=0; i<g->free; i++) {
+		n   = &node(g, i);
+		cln = &node(clone, i);
+		if (n->outEdges != NULL) {
+			cln->outEdges = malloc(n->edgePoolSize*sizeof(Edge));
+			memcpy(cln->outEdges, n->outEdges, n->edgePoolSize*sizeof(Edge));
+		}
+	}
 	assert(g->free == clone->free
 			&& g->poolSize == clone->poolSize
 			&& g->nodes    != clone->nodes);
@@ -83,6 +89,7 @@ void deleteGraph(Graph *g) {
 	}
 	free(g->nodes);
 	free(g);
+	g = NULL;
 }
 
 void growNodePool(Graph *g) {
@@ -148,6 +155,7 @@ void deleteNode(Graph *g, int id) {
 		for (i=0; i<n->out; i++)
 			deleteEdge(g, id, i);
 		free(n->outEdges);
+		n->outEdges = NULL;
 	}
 	if (id != last) {
 		g->nodes[id] = node(g, last);
