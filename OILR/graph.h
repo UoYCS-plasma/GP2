@@ -26,6 +26,16 @@ typedef union NodeSignature {
 #define DEF_EDGE_POOL 4
 #define DEF_NODE_POOL 100
 
+#define O_SZ 3
+#define I_SZ 3
+#define L_SZ 3
+#define R_SZ 2
+
+typedef struct Link {
+	int next;
+	int prev;
+} Link;
+
 typedef struct Edge {
 	unsigned int tgt:NODE_ID_BITS;
 	unsigned int matched:1;
@@ -39,15 +49,27 @@ typedef struct Node {
 	unsigned int matched:1;
 	unsigned int edgePoolSize:10;
 	unsigned int matchedLoops:10;
+	unsigned int pos;
 	Edge *outEdges;
+	Link chain;
 } Node;
+
+typedef struct Index {
+	int *index;
+	unsigned int len:NODE_ID_BITS;
+	unsigned int pool:NODE_ID_BITS;
+} Index;
+
+typedef struct Indices {
+	Index index[O_SZ][I_SZ][L_SZ][R_SZ];
+} Indices;
 
 typedef struct Graph {
 	int free;
 	int poolSize;
 	Node *nodes;
+	Indices *indices;
 } Graph;
-
 
 
 /* API functions */

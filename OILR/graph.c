@@ -47,23 +47,82 @@ void printGraph(Graph *g) {
 	printf("]\n");
 }
 
+
+void growIndex(Index *idx) {
+	int sz = idx->pool * 2;
+	if (sz == 0)
+		sz = DEF_EDGE_POOL;
+	idx->index = realloc(idx->index, sz * sizeof(int));
+	if (idx->index == NULL)
+		failWith("Failed to allocate an index");
+	idx->pool = sz;
+	assert(idx->index != NULL && idx->pool > 0);
+}
+
+void initIndices(Graph *g) {
+	int o,i,l,r;
+	Index *idx;
+	for (o=0; o<O_SZ; o++) {
+		for (i=0; i<I_SZ; i++) {
+			for (l=0; l<L_SZ; l++) {
+				for (r=0; r<R_SZ; r++) {
+					idx = &(g->indices->index[o][i][l][r]);
+					idx->len = 0;
+					idx->pool = 0;
+					idx->index = NULL;
+				}
+			}
+		}
+	}
+}
+
+
+#define indexFor(g, n) ( &((g)->indices->index[(n)->out][(n)->in][(n)->loop][(n)->root]) )
+
+void indexNode(Graph *g, int id) {
+	Node *n = &node(g, id);
+	Index *idx = indexFor(g, n);
+	n->pos = idx->len++;
+	if (idx->index == NULL || idx->len == idx->pool)
+		growIndex(idx);
+
+	idx->index[idx->len] = id;
+	fprintf(stderr, "  %d, %d", idx->pool, idx->len);
+	assert(idx->index && idx->len < idx->pool);
+}
+void unindexNode(Graph *g, int id) {
+	Node *n = &node(g, id);
+	Index *idx = indexFor(g, n);
+	idx->len--;
+	assert(idx->len != MAX_NODES-1);
+	if (n->pos != idx->len) {
+		fprintf(stderr, " (%d) ", idx->len);
+		idx->index[n->pos] = idx->index[idx->len];
+	}
+}
+
 Graph *newGraph(int nNodes) {
 	Graph *g;
 	Node *np;
+	Indices *ind;
 	g = malloc(sizeof(Graph));
 	np = calloc(nNodes, sizeof(Node));
+	ind = malloc(sizeof(Indices));
 	if (g == NULL || np == NULL )
 		failWith("Unable to allocate new graph structures.");
 
 	g->free = 0;
 	g->poolSize = nNodes;
 	g->nodes = np;
-	assert(g->free == 0 && g->nodes);
+	g->indices = ind;
+	initIndices(g);
+	assert(g->free == 0 && g->nodes && g->indices);
 	return g;
 }
 Graph *cloneGraph(Graph *g) {
 	Graph *clone = newGraph(g->poolSize);
-	Node *n, *cln; int i;
+	Index *ind, *clind;
+	Node *n, *cln; int o, i, l, r;
 	clone->free = g->free;
 	memcpy(clone->nodes, g->nodes, clone->free*sizeof(Node));
 	for (i=0; i<g->free; i++) {
@@ -72,6 +131,19 @@ Graph *cloneGraph(Graph *g) {
 		if (n->outEdges != NULL) {
 			cln->outEdges = malloc(n->edgePoolSize*sizeof(Edge));
 			memcpy(cln->outEdges, n->outEdges, n->edgePoolSize*sizeof(Edge));
+		}
+	}
+	memcpy(clone->indices, g->indices, sizeof(Indices));
+	for (o=0; o<O_SZ; o++) {
+		for (i=0; i<I_SZ; i++) {
+			for (l=0; l<L_SZ; l++) {
+				for (r=0; r<R_SZ; r++) {
+					ind   =     &(g->indices->index[o][i][l][r]);
+					clind = &(clone->indices->index[o][i][l][r]);
+					clind->index = malloc(ind->pool*sizeof(int));
+					memcpy(clind->index, ind->index, ind->len);
+				}
+			}
 		}
 	}
 	assert(g->free == clone->free
@@ -104,7 +176,7 @@ void growNodePool(Graph *g) {
 void growEdgePool(Node *n) {
 	int sz = n->edgePoolSize * 2;
 	if (sz == 0)
-		sz = DEF_NODE_POOL;
+		sz = DEF_EDGE_POOL;
 	n->outEdges = realloc(n->outEdges, sz * sizeof(Edge));
 	n->edgePoolSize = sz;
 	assert(n->outEdges != NULL);
@@ -114,6 +186,7 @@ void addNode(Graph *g) {
 	int i = g->free;
 	if (i == g->poolSize)
 		growNodePool(g);
+	indexNode(g, i);
 	assert(i<g->poolSize && g->free < MAX_NODES);
 	g->free++;
 	node(g,i) = nullNode;
@@ -123,6 +196,8 @@ void addEdge(Graph *g, int src, int tgt) {
 	Node *s=&node(g, src), *t=&node(g, tgt);
 	int sOut = s->out, tIn = t->in;
 	Edge *e;
+	unindexNode(g, src);
+	unindexNode(g, tgt);
 	if (src == tgt) {
 		s->loop++;
 	} else {
@@ -134,6 +209,8 @@ void addEdge(Graph *g, int src, int tgt) {
 		e->matched = 0;
 		t->in++;
 	}
+	indexNode(g, src);
+	indexNode(g, tgt);
 	assert(e->matched == 0 && sOut+1 == s->out && tIn+1 == t->in);
 }
 
