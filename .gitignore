@@ -27,3 +27,5 @@ YAM
 *.supp
 Main*
 Test*
+runtime.c
+runtime.h

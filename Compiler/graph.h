@@ -27,12 +27,13 @@ typedef struct Graph
     * node and edge remain constant. next_node_index and next_edge_index
     * always store the smallest free index in the array.
     * TODO: bounds checking. */
-   struct Node **nodes;
-   struct Edge **edges;
+   struct Node *nodes;
+   struct Edge *edges;
    
-   /* Keeps track of holes in the arrays when a node or edge is removed. */
-   Stack *free_node_slots;
-   Stack *free_edge_slots;
+   /* Keeps track of holes in the arrays when a node or edge is removed.
+    * free_node/edge_index is the index of the newest free slot created, or 0
+    * if no free slots exist. */
+   int *free_node_slots, free_node_index, *free_edge_slots, free_edge_index;
 
    /* These variables refer to the indices one entry beyond the furthest
     * slot containing a live pointer. Items are added to this index if
@@ -81,12 +82,13 @@ typedef struct Node {
    /* The number of live pointers in the node's inedges/outedges array.
     * Do NOT use these as a bound for an iterator over the arrays. Instead use
     * next_out/in_edge_index.
-    * indegree + size(free_in_edge_slots) = next_in_edge_index. 
-    * outdegree + size(free_out_edge_slots) = next_out_edge_index. */
-   int indegree;
+    * outdegree + size(free_out_edge_slots) = next_out_edge_index. 
+    * indegree + size(free_in_edge_slots) = next_in_edge_index. */
    int outdegree;
+   int indegree;
 } Node;
 
+extern struct Node null_node;
 
 typedef struct Edge {
    int index;
@@ -97,6 +99,7 @@ typedef struct Edge {
    struct Node *target;
 } Edge;
 
+extern struct Edge null_edge;
 
 /* Graph operations
  * ================
@@ -116,11 +119,12 @@ typedef struct Edge {
 
 /* Creates an empty graph. */
 Graph *newGraph(void);
-Node *newNode(bool root, Label *label);
+/* Node *newNode(bool root, Label *label);
 Edge *newEdge(bool bidirectional, Label *label, Node *source, 
-              Node *target);
-void addNode(Graph *graph, Node *node); 
-void addEdge(Graph *graph, Edge *edge);
+              Node *target); */
+int addNode(Graph *graph, bool root, Label *label); 
+int addEdge(Graph *graph, bool bidirectional, Label *label, Node *source, 
+            Node *target);
 void removeNode(Graph *graph, int index);
 void removeEdge(Graph *graph, int index);
 void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label, 
@@ -162,9 +166,6 @@ int getOutdegree(Node *node);
 /* Printing and freeing functions 
  * ============================== */
 void printGraph(Graph *graph);
-void printVerboseGraph(Graph *graph);
-void printVerboseNode(Node *node);
-void printVerboseEdge(Edge *edge);
 
 /* The node and edge structures are freed in freeGraph when the graph's node 
  * and edge pointer arrays are freed. 
@@ -174,8 +175,8 @@ void printVerboseEdge(Edge *edge);
  * node/edge structures themselves.
  */     
 void freeGraph(Graph *graph);
-void freeNode(Node *node);
-void freeEdge(Edge *edge);
+/* void freeNode(Node *node);
+void freeEdge(Edge *edge); */
 /* A wrapper for g_slist_free so that it can be called by g_hash_table_foreach
  * when freeing the hash tables indexed by label class. */
 void freeGSList(gpointer key, gpointer value, gpointer data); 

@@ -1,7 +1,6 @@
 #include "label.h"
 
-Label blank_label = { .mark = NONE, .list = NULL, .list_length = 0, 
-                      .has_list_variable = false };
+Label blank_label = {NONE, NULL, 0, false};
 
 LabelClass getLabelClass(Label *label)
 {

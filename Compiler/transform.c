@@ -69,10 +69,9 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       GPNode *ast_node = nodes->value.node;
       if(ast_node->root) *is_rooted = 1;
       Label *label = transformLabel(ast_node->label);
-      Node *node = newNode(ast_node->root, label);
-      addNode(lhs, node);
+      int node_index = addNode(lhs, ast_node->root, label);
 
-      *node_map = addIndexMap(*node_map, ast_node->name, node->index, -1, 
+      *node_map = addIndexMap(*node_map, ast_node->name, node_index, -1, 
                               NULL, NULL);
 
       bool node_in_interface = false;
@@ -91,7 +90,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       }
 
       if(!node_in_interface) 
-         *deleted_nodes = addItem(*deleted_nodes, node->index);
+         *deleted_nodes = addItem(*deleted_nodes, node_index);
       
       nodes = nodes->next;   
    }
@@ -116,12 +115,10 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
 
       if(!strcmp(ast_edge->source, ast_edge->target))
       {
-         Edge *edge = newEdge(ast_edge->bidirectional, label, source, source);
-         addEdge(lhs, edge);
-         *edge_map = addIndexMap(*edge_map, ast_edge->name, edge->index, -1,
+         int edge_index = addEdge(lhs, ast_edge->bidirectional, label, source, source);
+         *edge_map = addIndexMap(*edge_map, ast_edge->name, edge_index, -1,
                                  ast_edge->source, ast_edge->target);
       }
-
       else
       {
          IndexMap *target_map = findMapFromId(*node_map, ast_edge->target);
@@ -133,9 +130,8 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
          }
          Node *target = getNode(lhs, target_map->left_index);
 
-         Edge *edge = newEdge(ast_edge->bidirectional, label, source, target);
-         addEdge(lhs, edge);
-         *edge_map = addIndexMap(*edge_map, ast_edge->name, edge->index, -1,
+         int edge_index = addEdge(lhs, ast_edge->bidirectional, label, source, target);
+         *edge_map = addIndexMap(*edge_map, ast_edge->name, edge_index, -1,
                                  ast_edge->source, ast_edge->target);
       }
       edges = edges->next;   
@@ -154,8 +150,7 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
    {
       GPNode *ast_node = ast_nodes->value.node;
       Label *label = transformLabel(ast_node->label);
-      Node *node = newNode(ast_node->root, label);
-      addNode(rhs, node);
+      int node_index = addNode(rhs, ast_node->root, label);
 
       IndexMap *map = findMapFromId(*node_map, ast_node->name);
       
@@ -163,9 +158,9 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
       {
          /* If the node is not in the map, add a new map for this node with
           * left index -1, and add the node to the added nodes list. */
-         *node_map = addIndexMap(*node_map, ast_node->name, -1, node->index,
+         *node_map = addIndexMap(*node_map, ast_node->name, -1, node_index,
                                  NULL, NULL);
-         *added_nodes = addItem(*added_nodes, node->index);
+         *added_nodes = addItem(*added_nodes, node_index);
       }
       else
       {
@@ -187,10 +182,10 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
 
          if(interface_node)
             *nodes = addPreservedItem(*nodes, false, map->left_index, 
-                                      node->index);
-         else *added_nodes = addItem(*added_nodes, node->index);
+                                      node_index);
+         else *added_nodes = addItem(*added_nodes, node_index);
         
-         map->right_index = node->index;
+         map->right_index = node_index;
       }
       ast_nodes = ast_nodes->next;   
    }
@@ -232,8 +227,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
       }
       Node *target = getNode(rhs, target_map->right_index);
 
-      Edge *edge = newEdge(ast_edge->bidirectional, label, source, target);
-      addEdge(rhs, edge);
+      int edge_index = addEdge(rhs, ast_edge->bidirectional, label, source, target);
 
       /* Flags to signify whether the source and target nodes exist in the
        * interface. This is used to create the NewEdge structure with the
@@ -272,7 +266,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
             /* No such map exists, thus the edge is added by the rule. Both
              * source and target come from the LHS because they are both in
              * the interface. */
-            added_edges = addNewEdge(added_edges, edge->index,
+            added_edges = addNewEdge(added_edges, edge_index,
                                      'l', source_map->left_index, 
                                      'l', target_map->left_index);
          else 
@@ -280,7 +274,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
             /* A map has been found, therefore the edge is preserved by the
              * rule. */
             *edges = addPreservedItem(*edges, false, map->left_index, 
-                                      edge->index);
+                                      edge_index);
             /* The map is removed to ensure that a parallel RHS-edge is not
              * associated with this edge. */
             *edge_map = removeMap(*edge_map, map);     
@@ -291,19 +285,19 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
          /* At most one of interface_source and interface_target is true. */
          if(interface_source)
             /* The source node is preserved and the target is created. */
-            added_edges = addNewEdge(added_edges, edge->index, 
+            added_edges = addNewEdge(added_edges, edge_index, 
                                     'l', source_map->left_index,
                                     'r', target->index);
          else
          {
             if(interface_target)
             /* The target node is preserved and the source is created. */
-               added_edges = addNewEdge(added_edges, edge->index, 
+               added_edges = addNewEdge(added_edges, edge_index, 
                                        'r', source->index,
                                        'l', target_map->left_index);
             else 
                /* Both the source and the target are created. */
-               added_edges = addNewEdge(added_edges, edge->index, 'r', 
+               added_edges = addNewEdge(added_edges, edge_index, 'r', 
                                         source->index, 'r', target->index);
          }
       }

@@ -159,7 +159,7 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op);
 /* emitNextMatcherCall writes a call to a matching function according to the
  * passed searchplan operation. If next_op is NULL, then 'return true;' is
  * emitted. */
-bool emitNextMatcherCall(SearchOp* next_op, int indent);
+bool emitNextMatcherCall(SearchOp* next_operation, int indent);
 
 /* Emits the function apply_<rule_name> that makes the necessary changes to
  * the host graph according to the rule and morphism. apply_<rule_name>

@@ -23,8 +23,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
         "Graph *makeHostGraph(void)\n"
         "{\n"
         "   Graph *host = newGraph();\n"
-        "   Node *node, *source, *target = NULL;\n"
-        "   Edge *edge = NULL;\n"
+        "   Node *source, *target;\n"
         "   IndexMap *node_map = NULL;\n\n");
 
    List *nodes = ast_host_graph->nodes;
@@ -54,8 +53,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       PTIS("   GET_HOST_SOURCE(\"%s\")\n"
            "   if(!strcmp(\"%s\", \"%s\"))\n"
            "   {\n"
-           "      edge = newEdge(%d, NULL, source, source);\n"
-           "      addEdge(host, edge);\n"
+           "      addEdge(host, %d, NULL, source, source);\n"
            "   }\n",
            ast_edge->source, ast_edge->source, ast_edge->target, 
            ast_edge->bidirectional);
@@ -63,8 +61,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       PTIS("   else\n"
            "   {\n"
            "      GET_HOST_TARGET(\"%s\")\n"
-           "      edge = newEdge(%d, NULL, source, target);\n"
-           "      addEdge(host, edge);\n"
+           "      addEdge(host, %d, NULL, source, target);\n"
            "   }\n\n",
            ast_edge->target, ast_edge->bidirectional);
            
@@ -80,15 +77,23 @@ static FILE *main_source = NULL;
 
 void generateRuntimeCode(List *declarations)
 {
+   FILE *host_file = fopen("runtime/host.h", "w");
+   if(host_file == NULL) { 
+     perror("runtime/host.h");
+     exit(1);
+   }  
+   fprintf(host_file, "extern Graph *host;\n");
+   fclose(host_file);
+
    main_header = fopen("runtime/runtime.h", "w");
    if(main_header == NULL) { 
-     perror("runtime.h");
+     perror("runtime/runtime.h");
      exit(1);
    }  
 
-   main_source = fopen("runtime/runtime.c", "w");
+   main_source = fopen("runtime/main.c", "w");
    if(main_source == NULL) { 
-     perror("runtime.c");
+     perror("runtime/main.c");
      exit(1);
    }
 
@@ -96,6 +101,7 @@ void generateRuntimeCode(List *declarations)
         "#include \"../error.h\"\n"
         "#include \"../debug.h\"\n"
         "#include \"../graph.h\"\n"
+        "#include \"host.h\"\n"
         "#include \"match.h\"\n"
         "#include \"../stack.h\"\n"
         "#include \"init_runtime.h\"\n\n");
@@ -360,14 +366,14 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
 
       if(commands->value.command->statement_type == RULE_CALL)
       {
-         PTMSI("morphism = match%s(host);\n", indent, rule_name);
+         PTMSI("morphism = match%s();\n", indent, rule_name);
          PTMSI("if(morphism != NULL)\n", indent);
          PTMSI("{\n", indent);
          PTMSI("copyGraph(host);\n", indent + 3);
          PTMSI("copy_count++;\n", indent + 3);
          if(context == IF_BODY || context == TRY_BODY)
             PTMSI("copy = true;\n", indent + 3);
-         PTMSI("apply%s(morphism, host);\n", indent + 3, rule_name);
+         PTMSI("apply%s(morphism);\n", indent + 3, rule_name);
          PTMSI("}\n", indent);
          PTMSI("else\n", indent);
          PTMSI("{\n", indent);
@@ -384,14 +390,14 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
 
          while(rules != NULL)
          {  
-            PTMSI("morphism = match%s(host);\n", indent, rules->value.rule_name);
+            PTMSI("morphism = match%s();\n", indent, rules->value.rule_name);
             PTMSI("if(morphism != NULL)\n", indent);
             PTMSI("{\n", indent);
             PTMSI("copyGraph(host);\n", indent + 3);
             PTMSI("copy_count++;\n", indent + 3);
             if(context == IF_BODY || context == TRY_BODY)
                PTMSI("copy = true;\n", indent + 3);
-            PTMSI("apply%s(morphism, host);\n", indent + 3, rules->value.rule_name);
+            PTMSI("apply%s(morphism);\n", indent + 3, rules->value.rule_name);
             PTMSI("break;\n", indent + 3);
             PTMSI("}\n", indent);
             
@@ -429,7 +435,7 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
 
 void generateRuleCall(string rule_name, ContextType context, int indent)
 {
-   PTMSI("morphism = match%s(host);\n", indent, rule_name);
+   PTMSI("morphism = match%s();\n", indent, rule_name);
 
    /* No need to apply the rule in an if statement since the original graph is
     * kept for the then or else branch. */
@@ -443,7 +449,7 @@ void generateRuleCall(string rule_name, ContextType context, int indent)
     * then branch. */
    else 
    {
-      PTMSI("if(morphism != NULL) apply%s(morphism, host);\n", indent, rule_name);
+      PTMSI("if(morphism != NULL) apply%s(morphism);\n", indent, rule_name);
       PTMSI("else\n", indent);
       PTMSI("{\n", indent);
       generateFailureCode(rule_name, context, indent + 3);
@@ -457,7 +463,7 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
    PTMSI("{\n", indent);
    while(rules != NULL)
    {  
-      PTMSI("morphism = match%s(host);\n", indent + 3, rules->value.rule_name);
+      PTMSI("morphism = match%s();\n", indent + 3, rules->value.rule_name);
       
       /* No need to apply the rule in an if statement since the original graph is
        * kept for the then or else branch. */
@@ -476,7 +482,7 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
       {
          PTMSI("if(morphism != NULL)\n", indent + 3);
          PTMSI("{\n", indent + 3);
-         PTMSI("apply%s(morphism, host);\n", indent + 6,
+         PTMSI("apply%s(morphism);\n", indent + 6,
                rules->value.rule_name);
          PTMSI("break;\n", indent + 6);
          PTMSI("}\n\n", indent + 3);
