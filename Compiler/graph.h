@@ -30,9 +30,10 @@ typedef struct Graph
    struct Node *nodes;
    struct Edge *edges;
    
-   /* Keeps track of holes in the arrays when a node or edge is removed. */
-   Stack *free_node_slots;
-   Stack *free_edge_slots;
+   /* Keeps track of holes in the arrays when a node or edge is removed.
+    * free_node/edge_index is the index of the newest free slot created, or 0
+    * if no free slots exist. */
+   int *free_node_slots, free_node_index, *free_edge_slots, free_edge_index;
 
    /* These variables refer to the indices one entry beyond the furthest
     * slot containing a live pointer. Items are added to this index if

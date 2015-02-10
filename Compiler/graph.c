@@ -33,8 +33,26 @@ Graph *newGraph(void)
     for(index = 0; index < MAX_EDGES; index ++)
        graph->edges[index] = null_edge;
 
-    graph->free_node_slots = newStack(); 
-    graph->free_edge_slots = newStack();
+    graph->free_node_slots = calloc(MAX_NODES, sizeof(int));
+    if(graph->free_node_slots == NULL)
+    {
+      printf("Memory exhausted during graph construction.\n");
+      exit(1);
+    }
+    for(index = 0; index < MAX_NODES; index ++)
+       graph->free_node_slots[index] = -1;
+ 
+    graph->free_edge_slots = calloc(MAX_EDGES, sizeof(int));
+    if(graph->free_edge_slots == NULL)
+    {
+      printf("Memory exhausted during graph construction.\n");
+      exit(1);
+    }
+    for(index = 0; index < MAX_EDGES; index ++)
+       graph->free_edge_slots[index] = -1;
+
+    graph->free_node_index = 0;
+    graph->free_edge_index = 0;
   
     graph->next_node_index = 0;
     graph->next_edge_index = 0;
@@ -57,19 +75,17 @@ Graph *newGraph(void)
 
 int addNode(Graph *graph, bool root, Label *label) 
 {
-   int index;
-
-   /* Get the index of the added node by examining the free node slots stack. */
-   StackData *data = pop(graph->free_node_slots);
-   if(data == NULL) 
+   /* Get the index of the new node by examining the free node slots array. */
+   int index = graph->free_node_slots[graph->free_node_index];
+   if(index == -1) 
    {
       index = graph->next_node_index;
       graph->next_node_index++;
    }
    else 
    {
-      index = data->free_slot;
-      free(data);
+      graph->free_node_slots[graph->free_node_index] = -1;
+      graph->free_node_index--;
    }
 
    /* Initialise the node's index, root status, next edge array indices and 
@@ -124,19 +140,17 @@ int addNode(Graph *graph, bool root, Label *label)
 int addEdge(Graph *graph, bool bidirectional, Label *label, Node *source,
             Node *target) 
 {
-   int index;
-
-   /* Get the index of the added node by examining the free node slots stack. */
-   StackData *data = pop(graph->free_edge_slots);
-   if(data == NULL) 
+   /* Get the index of the new edge by examining the free edge slots array. */
+   int index = graph->free_edge_slots[graph->free_edge_index];
+   if(index == -1) 
    {
       index = graph->next_edge_index;
       graph->next_edge_index++;
    }
-   else 
+   else
    {
-      index = data->free_slot;
-      free(data);
+      graph->free_edge_slots[graph->free_edge_index] = -1;
+      graph->free_edge_index--;
    }
 
    /* Initialise the edge's index, bidirectional status, source and target 
@@ -214,15 +228,12 @@ void removeNode(Graph *graph, int index)
     if(index == graph->next_node_index - 1) graph->next_node_index--;
     else
     {
-       StackData *data = malloc(sizeof(StackData));
-       if(data == NULL)
-       {
-          print_to_log("Error (removeNode): Memory exhausted during free slot "
-                       "construction.\n");
-          exit(1);
-       }
-       data->free_slot = index;
-       push(graph->free_node_slots, data);
+       /* Only increment the free node index if the array entry at that index
+        * is not -1. This is not the case when this array contains no free
+        * slots. */
+       if(graph->free_node_slots[graph->free_node_index] >= 0)
+          graph->free_node_index++;
+       graph->free_node_slots[graph->free_node_index] = index;
     }
     graph->number_of_nodes--;
 }
@@ -316,15 +327,12 @@ void removeEdge(Graph *graph, int index)
     if(index == graph->next_edge_index - 1) graph->next_edge_index--;
     else
     {
-       StackData *data = malloc(sizeof(StackData));
-       if(data == NULL)
-       {
-          print_to_log("Error (removeEdge): Memory exhausted during free slot "
-                       "construction.\n");
-          exit(1);
-       }
-       data->free_slot = index;
-       push(graph->free_edge_slots, data);
+       /* Only increment the free edge index if the array entry at that index
+        * is not -1. This is not the case when this array contains no free
+        * slots. */
+       if(graph->free_edge_slots[graph->free_edge_index] >= 0)
+          graph->free_edge_index++;
+       graph->free_edge_slots[graph->free_edge_index] = index;
     }
     graph->number_of_edges--;
 }
@@ -440,37 +448,37 @@ void copyGraph(Graph *graph)
    /* TODO: check if arrays in the original graph have increased in size. */
    Graph *graph_copy = newGraph();
 
+   memcpy(graph_copy->nodes, graph->nodes, MAX_NODES * sizeof(Node));
+   memcpy(graph_copy->edges, graph->edges, MAX_EDGES * sizeof(Edge));
+
+   memcpy(graph_copy->free_node_slots, graph->free_node_slots,
+          MAX_NODES * sizeof(int));
+   memcpy(graph_copy->free_edge_slots, graph->free_edge_slots, 
+          MAX_EDGES * sizeof(int));
+   
+   graph_copy->free_node_index = graph->free_node_index;
+   graph_copy->free_edge_index = graph->free_edge_index;
+
    graph_copy->next_node_index = graph->next_node_index;
    graph_copy->next_edge_index = graph->next_edge_index;
 
    graph_copy->number_of_nodes = graph->number_of_nodes;
    graph_copy->number_of_edges = graph->number_of_edges;
 
-   memcpy(graph_copy->nodes, graph->nodes, MAX_NODES * sizeof(Node));
-   memcpy(graph_copy->edges, graph->edges, MAX_EDGES * sizeof(Edge));
-
    int index;
 
-   /* Copy all nodes and edges with their labels. Note that the index of each
-    * node and edge copy is the same as the index of the original. This is
-    * important for copying the rest of the graph structure. */
+   /* Update the internal data structures of each node. This involves coping
+    * its label and updating the incident edge arrays with pointers to the 
+    * copied edges.
+    * Note that the index of each node and edge copy is the same as the index 
+    * of the original. This is important for copying the rest of the graph 
+    * structure. */
    for(index = 0; index < graph_copy->next_node_index; index++)
    {
       Node *node = getNode(graph_copy, index);
-      
-      if(node->index == -1)
-      {
-         StackData *data = malloc(sizeof(StackData));
-         if(data == NULL)
-         {
-            print_to_log("Error (copyGraph): Memory exhausted during free node "
-                         "slot construction.\n");
-            exit(1);
-         }
-         data->free_slot = index;
-         push(graph_copy->free_node_slots, data);
-      }
-      else 
+      /* The entry in the node array may be a null node, in which case nothing
+       * needs to be done. This is tested by checking the node's index. */
+      if(node->index >= 0)
       {
          Node *original_node = getNode(graph, index);
          node->label = copyLabel(original_node->label);
@@ -523,26 +531,17 @@ void copyGraph(Graph *graph)
       }
    }
 
-   /* Iterate through the copied edges to update their source and target
-    * pointers. */
+   /* Update the internal data structures of each node. This involves coping
+    * its label and updating the source and target pointers.
+    * Note that the index of each node and edge copy is the same as the index 
+    * of the original. This is important for copying the rest of the graph 
+    * structure. */
    for(index = 0; index < graph_copy->next_edge_index; index++)
    {
       Edge *edge = getEdge(graph_copy, index);
-
-      if(edge->index == -1) 
-      {
-         StackData *data = malloc(sizeof(StackData));
-         if(data == NULL)
-         {
-            print_to_log("Error (copyGraph): Memory exhausted during free edge "
-                         "slot construction.\n");
-            exit(1);
-         }
-         data->free_slot = index;
-         push(graph_copy->free_edge_slots, data);
-      }
-
-      else
+      /* The entry in the edge array may be a edge node, in which case nothing
+       * needs to be done. This is tested by checking the edge's index. */
+      if(edge->index >= 0)
       {
          Edge *original_edge = getEdge(graph, index);
          edge->label = copyLabel(original_edge->label);
@@ -770,7 +769,7 @@ void freeGraph(Graph *graph)
          free(node->out_edges);
       }  
    }
-   free(graph->nodes);
+   if(graph->nodes) free(graph->nodes);
 
    for(index = 0; index < graph->next_edge_index; index++)
    {
@@ -780,10 +779,10 @@ void freeGraph(Graph *graph)
          if(edge->label && edge->label != &blank_label) freeLabel(edge->label);
       }  
    }
-   free(graph->edges);
+   if(graph->edges) free(graph->edges);
 
-   if(graph->free_node_slots) freeStack(graph->free_node_slots);
-   if(graph->free_edge_slots) freeStack(graph->free_edge_slots);
+   if(graph->free_node_slots) free(graph->free_node_slots);
+   if(graph->free_edge_slots) free(graph->free_edge_slots);
 
    if(graph->nodes_by_label) 
    {

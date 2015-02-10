@@ -31,32 +31,17 @@
    target = getNode(host, target_map->left_index);                      \
    } while(0);                                                          \
 
+#define MAKE_MATCHED_NODES_ARRAY                   \
+   int count;                                      \
+   bool matched_nodes[host_nodes];                 \
+   for(count = 0; count < host_nodes; count ++)    \
+      matched_nodes[count] = false;                
 
-#define MAKE_MATCHED_NODES_ARRAY                                   \
-   do {                                                            \
-   matched_nodes = calloc(host->next_node_index, sizeof(bool));    \
-   if(matched_nodes == NULL)                                       \
-   {                                                               \
-      print_to_log("Error: Memory exhausted during matched nodes " \
-                   "table construction.\n");                       \
-      exit(1);                                                     \
-   }                                                               \
-   } while(0);                                                     \
+#define MAKE_MATCHED_EDGES_ARRAY                   \
+   bool matched_edges[host_edges];                 \
+   for(count = 0; count < host_edges; count ++)    \
+      matched_edges[count] = false;                
 
-#define MAKE_MATCHED_EDGES_ARRAY                                      \
-   do {                                                               \
-   if(host->number_of_edges > 0)                                      \
-   {                                                                  \
-      matched_edges = calloc(host->next_edge_index, sizeof(bool));    \
-      if(matched_edges == NULL)                                       \
-      {                                                               \
-         print_to_log("Error: Memory exhausted during matched edges " \
-                      "table construction.\n");                       \
-         exit(1);                                                     \
-      }                                                               \
-   }                                                                  \
-   } while(0);                                                        \
-  
 #define CHECK_NODE_MATCHED   \
    if(matched_nodes[index])  \
    {                         \
@@ -224,17 +209,6 @@
    return false;                                 \
    } while(0);                                   \
 
-#define MAKE_NODE_POINTER_MAP(r_nodes)                                    \
-   do {                                                                   \
-   map = calloc((r_nodes), sizeof(Node *));                               \
-   if(map == NULL)                                                        \
-   {                                                                      \
-      print_to_log("Error: Memory exhausted during map construction.\n"); \
-      exit(1);                                                            \
-   }                                                                      \
-   } while(0);                                                            \
-
-
 /* Deletes all the host items in the morphism from the host graph. Edges are
  * deleted first so that there is no chance of dangling edges from node
  * deletion. Called when the RHS of a rule is the empty graph. */
@@ -252,27 +226,6 @@
       free(data);                                     \
    }                                                  \
    } while(0);                                        \
-
-
-#define MAKE_NODE_MAP(num_items)                                          \
-   do {                                                                   \
-   node_map = calloc((num_items), sizeof(int));                           \
-   if(node_map == NULL)                                                   \
-   {                                                                      \
-      print_to_log("Error: Memory exhausted during map construction.\n"); \
-      exit(1);                                                            \
-   }                                                                      \
-   } while(0);                                                            \
-
-#define MAKE_EDGE_MAP(num_items)                                          \
-   do {                                                                   \
-   edge_map = calloc((num_items), sizeof(int));                           \
-   if(edge_map == NULL)                                                   \
-   {                                                                      \
-      print_to_log("Error: Memory exhausted during map construction.\n"); \
-      exit(1);                                                            \
-   }                                                                      \
-   } while(0);                                                            \
 
 #define PROCESS_EDGE_MORPHISMS                                       \
    do {                                                              \
