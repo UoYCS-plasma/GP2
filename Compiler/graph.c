@@ -254,19 +254,19 @@ void removeEdge(Graph *graph, int index)
     {
        if(source->out_edges[counter] == edge) 
        {
-          source->out_edges[counter] = NULL;
+          source->out_edges[counter] = &null_edge;
           source->outdegree--;
 
           /* If the source's index is the last index in the array, decrement
            * next_out_edge_index until it refers to an index exactly one above
-           * a non-NULL pointer. */
+           * a non-null node. */
           if(counter == source->next_out_edge_index - 1) 
           {
              source->next_out_edge_index--;
 
              while(source->next_out_edge_index > 0)
              {
-                if(source->out_edges[source->next_out_edge_index - 1] == NULL)
+                if(source->out_edges[source->next_out_edge_index - 1]->index == -1)
                    source->next_out_edge_index--;
                 else break;
              }
@@ -283,7 +283,7 @@ void removeEdge(Graph *graph, int index)
     {
        if(target->in_edges[counter] == edge) 
        {
-          target->in_edges[counter] = NULL;
+          target->in_edges[counter] = &null_edge;
           target->indegree--;
 
           /* If the target's index is the last index in the array, decrement
@@ -295,7 +295,7 @@ void removeEdge(Graph *graph, int index)
 
              while(target->next_in_edge_index > 0)
              {
-                if(target->in_edges[target->next_in_edge_index - 1] == NULL)
+                if(target->in_edges[target->next_in_edge_index - 1]->index == -1)
                    target->next_in_edge_index--;
                 else break;
              }

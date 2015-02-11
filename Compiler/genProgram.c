@@ -543,10 +543,9 @@ void generateFailureCode(string rule_name, ContextType context, int indent)
       PTMSI("freeGraph(host);\n", indent);
       PTMSI("return 0;\n", indent);
    }
-      
    /* In other contexts, set the success flag to false. Nothing more needs
     * to be done in an IF_BODY and a TRY_BODY. */
-   PTMSI("success = false;\n", indent);
+   else PTMSI("success = false;\n", indent);
 
    if(context == PROC_BODY) 
    {
