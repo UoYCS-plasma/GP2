@@ -31,16 +31,16 @@ nonEmpty (_:_)  =  True
 
 bijectionsWith :: Ord c => (a->c) -> [a] -> (b->c) -> [b] -> [[(a,b)]]
 bijectionsWith f xs g ys =
-  case blockZip (groupWith f xs) (groupWith g ys) of
+  case blockZip f g (groupWith f xs) (groupWith g ys) of
   Nothing  -> []
   Just zbs -> [ concat bp
               | bp <- choices [ [zip b1 b2' | b2' <- permutations b2]
                               | (b1,b2) <- zbs ] ] 
 
-blockZip :: [[a]] -> [[b]] -> Maybe [([a],[b])]
-blockZip []       []        =  Just []
-blockZip (xs:xss) (ys:yss)  =  do
-  guard (length xs == length ys)
-  xyss <- blockZip xss yss
+blockZip :: Ord c => (a->c) -> (b->c) -> [[a]] -> [[b]] -> Maybe [([a],[b])]
+blockZip f g []       []        =  Just []
+blockZip f g (xs:xss) (ys:yss)  =  do
+  guard (length xs == length ys && f (head xs) == g (head ys))
+  xyss <- blockZip f g xss yss
   return ((xs,ys) : xyss) 
 

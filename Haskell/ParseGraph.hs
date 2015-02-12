@@ -16,18 +16,18 @@ symbol :: String -> Parser ()
 symbol  s  =  try $ do { string s ; spaces }
 
 comment :: Parser ()
-comment  =  do { string "//" ; skipMany (noneOf "\n") ; newline ; return () }
+comment  =  do { string "//" ; skipMany (noneOf "\n") ; newline ; spaces ; return () }
 
 manyCommented :: Parser a -> Parser [a]
-manyCommented p  =  do { xss <- many $ do {comment ; spaces ; return []}
-                                   <|> do {x <- p ; return [x]} ;
-                         return $ concat xss }
-
+manyCommented p  =  do { xs <- many $ do {skipMany comment ; p} ;
+                         skipMany comment ; return xs }
+ 
 many1Commented :: Parser a -> Parser [a]
-many1Commented p  =  do { xs <- manyCommented p ; guard $ nonEmpty xs ; return xs }
+many1Commented p  =  do { xs <- many1 $ do {skipMany comment ; p} ;
+                         skipMany comment ; return xs }
  
 hostGraph :: Parser AstHostGraph
-hostGraph  =  do { many comment ; spaces ;
+hostGraph  =  do { skipMany comment ;
                    symbol "[" ; ns <- manyCommented hostNode ;
                    symbol "|" ; es <- manyCommented hostEdge ;
                    symbol "]" ; return $ AstHostGraph ns es }

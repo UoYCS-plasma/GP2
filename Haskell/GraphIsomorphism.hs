@@ -4,6 +4,7 @@
 module GraphIsomorphism (isomorphismCount, isomorphic) where
 
 import List (representBy, choices, nonEmpty, bijectionsWith)
+import Data.Maybe (maybe)
 import Graph
 import Mapping
 
@@ -28,9 +29,10 @@ edgesIso g1 g2 s = all (outEdgesIso g1 g2 s) (allNodeKeys g1)
 
 outEdgesIso :: Ord b => Graph a b -> Graph a b -> Mapping NodeKey NodeKey -> NodeKey -> Bool
 outEdgesIso g1 g2 s n1 =
-  nonEmpty (bijectionsWith edgeAttribs es1 edgeAttribs es2) 
+  nonEmpty (bijectionsWith (edgeAttribs Nothing) es1 (edgeAttribs $ Just s) es2) 
   where es1 = outEdges g1 n1 ; es2 = outEdges g2 $ definiteLookup n1 s
 
-edgeAttribs:: (EdgeKey,b) -> (b, NodeKey)
-edgeAttribs (ek,elab)  =  (elab, target ek)
+edgeAttribs:: Maybe (Mapping NodeKey NodeKey) -> (EdgeKey,b) -> (b, NodeKey)
+edgeAttribs ms (ek,elab)  =  (elab, maybe t (definiteLookup t) ms)
+  where t = target ek
 
