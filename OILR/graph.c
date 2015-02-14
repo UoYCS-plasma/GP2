@@ -6,18 +6,21 @@
 
 #include "graph.h"
 
+Graph graphs[DEF_GRAPH_POOL];
+Graph *gsp = graphs;
+
+Node *nodePool;
+int nodePoolSize = 0;
+NodeId nextNode = 0;
+Node *freeNodes = NULL;
 
 const Node nullNode = {
-	.in = 0,
-	.out = 0,
-	.loop = 0,
-	.root = 0,
-	.matched = 0,
-	.edgePoolSize = 0,
-	.outEdges = NULL,
+	.loop=0, .root=0,
+	.matchedLoops=0, 
+	.outEdges = {
+		.pool=0, .len=0, .nodes=NULL
+	}
 };
-
-Node testNode;
 
 void failWith(const char *fmt, ...) {
 	va_list argp;
@@ -31,213 +34,185 @@ void failWith(const char *fmt, ...) {
 
 void printGraph(Graph *g) {
 	Node *n;
-	Edge *e;
+	NodeId tgt;
 	int i,j, edgeCount=0;
 	printf("[\n");
-	for (i=0; i<g->free; i++)
-		printf("\t(n%d, empty)\n", i);
+	for (i=0; i<g->nodes.len; i++)
+		printf("\t(n%d, empty)\n", g->nodes.nodes[i]);
 	printf("|\n");
-	for (i=0; i<g->free; i++) {
-		n = &node(g, i);
-		for (j=0; j<n->out; j++) {
-			e = &(n->outEdges[j]);
-			printf("\t(e%d, n%d, n%d, empty)\n", edgeCount++, i, e->tgt);
+	for (i=0; i<g->nodes.len; i++) {
+		n = &node(i);
+		for (j=0; j<outdeg(n); j++) {
+			tgt = edge(n, j);
+			printf("\t(e%d, n%d, n%d, empty)\n", edgeCount++, i, tgt);
 		}
 	}
 	printf("]\n");
 }
 
-
-void growIndex(Index *idx) {
-	int sz = idx->pool * 2;
-	if (sz == 0)
-		sz = DEF_EDGE_POOL;
-	idx->index = realloc(idx->index, sz * sizeof(int));
-	if (idx->index == NULL)
-		failWith("Failed to allocate an index");
-	idx->pool = sz;
-	assert(idx->index != NULL && idx->pool > 0);
+void resizeNodeList(NodeList *nl, int sz) {
+	sz = (sz<DEF_EDGE_POOL) ? DEF_EDGE_POOL : sz;
+	// fprintf(stderr, " %d ", sz);
+	assert(sz > nl->len);
+	nl->nodes = realloc(nl->nodes, sz * sizeof(NodeId));
+	if (nl->nodes == NULL)
+		failWith("Failed to allocate space for a NodeList");
+	nl->pool = sz;
+	assert(nl->nodes != NULL && nl->pool > 0 && nl->len < nl->pool);
 }
 
-void initIndices(Graph *g) {
-	int o,i,l,r;
-	Index *idx;
-	for (o=0; o<O_SZ; o++) {
-		for (i=0; i<I_SZ; i++) {
-			for (l=0; l<L_SZ; l++) {
-				for (r=0; r<R_SZ; r++) {
-					idx = &(g->indices->index[o][i][l][r]);
-					idx->len = 0;
-					idx->pool = 0;
-					idx->index = NULL;
-				}
-			}
+#define growNodeList(nl)   resizeNodeList((nl), (nl)->pool * 2)
+#define shrinkNodeList(nl) resizeNodeList((nl), (nl)->pool / 2)
+
+void dupGraph() {
+	Graph *parent = gsp++;
+	int nGraphs = gsp - graphs;
+	if (nGraphs >= DEF_GRAPH_POOL)
+		failWith("Too many clones: %d", nGraphs);
+	*gsp = *parent;
+}
+void dropGraph() {
+	gsp--;
+}
+
+
+int listNode(NodeList *nl, NodeId id) {
+	int pos = nl->len++;
+	if (pos == nl->pool)
+		growNodeList(nl);
+	nl->nodes[pos] = id;
+	return pos;
+}
+void unlistNode(NodeList *nl, NodeId id) {
+	int pos = nl->len--;
+	while (pos-- > 0) {
+		if (nl->nodes[pos] == id) {
+			nl->nodes[pos] = nl->nodes[nl->len];
+			if (nl->len < nl->pool >> 2)
+				shrinkNodeList(nl);
+			return;
 		}
 	}
+	assert(pos>=0);
+	failWith("Node ID not found");
+}
+
+#define indexFor(g, n) ( &((g)->indices[outdeg(n)][indeg(n)][loopdeg(n)][rooted(n)]) )
+
+void indexNode(NodeId id) {
+	Node *n = &node(id);
+	NodeList *idx = indexFor(gsp, n);
+	listNode(idx, id);
+}
+void unindexNode(NodeId id) {
+	Node *n = &node(id);
+	NodeList *idx = indexFor(gsp, n);
+	unlistNode(idx, id);
 }
 
 
-#define indexFor(g, n) ( &((g)->indices->index[(n)->out][(n)->in][(n)->loop][(n)->root]) )
-
-void indexNode(Graph *g, int id) {
-	Node *n = &node(g, id);
-	Index *idx = indexFor(g, n);
-	n->pos = idx->len++;
-	if (idx->index == NULL || idx->len == idx->pool)
-		growIndex(idx);
-
-	idx->index[idx->len] = id;
-	fprintf(stderr, "  %d, %d", idx->pool, idx->len);
-	assert(idx->index && idx->len < idx->pool);
+void addNode() {
+	int id;
+	if (nextNode == nodePoolSize && freeNodes == NULL) {
+		nodePoolSize = nodePoolSize * 2;
+		nodePool = realloc(nodePool, nodePoolSize *sizeof(Node));
+	}
+	if (freeNodes != NULL) {
+		id = freeNodes->id;
+		freeNodes = freeNodes->free;
+	} else {
+		id = nextNode++;
+	}
+	nodePool[id] = nullNode;
+	memset(&(nodePool[id]), 0, sizeof(Node)); // = nullNode;
+	listNode(&(gsp->nodes), id);
+	indexNode(id);
 }
-void unindexNode(Graph *g, int id) {
-	Node *n = &node(g, id);
-	Index *idx = indexFor(g, n);
-	idx->len--;
-	assert(idx->len != MAX_NODES-1);
-	if (n->pos != idx->len) {
-		fprintf(stderr, " (%d) ", idx->len);
-		idx->index[n->pos] = idx->index[idx->len];
+void deleteNode(NodeId id) {
+	Node *n = &(nodePool[id]);
+	if (outdeg(n) + indeg(n) + loopdeg(n) > 0)
+		failWith("Deleting node %d violates dangling condition: O%d I%d L%d", id, outdeg(n), indeg(n), loopdeg(n));
+
+	unlistNode(&(gsp->nodes), id);
+	unindexNode(id);
+	if (id == nextNode-1)
+		nextNode--;
+	else {
+		n->id = id;
+		n->free = freeNodes;
+		freeNodes = n;
 	}
 }
 
-Graph *newGraph(int nNodes) {
-	Graph *g;
-	Node *np;
-	Indices *ind;
-	g = malloc(sizeof(Graph));
-	np = calloc(nNodes, sizeof(Node));
-	ind = malloc(sizeof(Indices));
-	if (g == NULL || np == NULL )
-		failWith("Unable to allocate new graph structures.");
 
-	g->free = 0;
-	g->poolSize = nNodes;
-	g->nodes = np;
-	g->indices = ind;
-	initIndices(g);
-	assert(g->free == 0 && g->nodes && g->indices);
-	return g;
+void addEdge(NodeId src, NodeId tgt) {
+	Node *s=&node(src), *t=&node(tgt);
+	unindexNode(src);
+	unindexNode(tgt);
+	listNode(outEdgeList(s), tgt);
+	listNode(inEdgeList(t), src);
+	indexNode(src);
+	indexNode(tgt);
 }
-Graph *cloneGraph(Graph *g) {
-	Graph *clone = newGraph(g->poolSize);
-	Index *ind, *clind;
-	Node *n, *cln; int o, i, l, r;
-	clone->free = g->free;
-	memcpy(clone->nodes, g->nodes, clone->free*sizeof(Node));
-	for (i=0; i<g->free; i++) {
-		n   = &node(g, i);
-		cln = &node(clone, i);
-		if (n->outEdges != NULL) {
-			cln->outEdges = malloc(n->edgePoolSize*sizeof(Edge));
-			memcpy(cln->outEdges, n->outEdges, n->edgePoolSize*sizeof(Edge));
-		}
-	}
-	memcpy(clone->indices, g->indices, sizeof(Indices));
-	for (o=0; o<O_SZ; o++) {
-		for (i=0; i<I_SZ; i++) {
-			for (l=0; l<L_SZ; l++) {
-				for (r=0; r<R_SZ; r++) {
-					ind   =     &(g->indices->index[o][i][l][r]);
-					clind = &(clone->indices->index[o][i][l][r]);
-					clind->index = malloc(ind->pool*sizeof(int));
-					memcpy(clind->index, ind->index, ind->len);
-				}
-			}
-		}
-	}
-	assert(g->free == clone->free
-			&& g->poolSize == clone->poolSize
-			&& g->nodes    != clone->nodes);
-	return clone;
+
+void deleteEdge(NodeId src, NodeId tgt) {
+	/* TODO: this only works because parallel edges are 
+	 * identical. Labels and dashed edge support will break. */
+	Node *s=&node(src), *t=&node(tgt);
+	unindexNode(src);
+	unindexNode(tgt);
+	unlistNode(outEdgeList(s), tgt);
+	unlistNode(inEdgeList(t), src);
+	indexNode(src);
+	indexNode(tgt);
+
 }
-void deleteGraph(Graph *g) {
+
+void initialise() {
+	NodeList emptyIndex = {.len=0, .pool=0, .nodes=NULL};
+	int i;
+	for (i=0; i<INDEX_COUNT; i++)
+		gsp->flat[i] = emptyIndex;
+	nodePool = malloc(DEF_NODE_POOL * sizeof(Node));
+	nodePoolSize = DEF_NODE_POOL;
+	if (nodePool == NULL)
+		failWith("Failed to allocate a node pool");
+}
+void finalise() {
 	int i;
 	Node *n;
-	for (i=0; i<g->free; i++) {
-		n = &node(g, i);
-		if (n->outEdges != NULL)
-			free(n->outEdges);
+	for (i=0; i<nextNode; i++) {
+		n = &(nodePool[i]);
+		if (outEdgeList(n)->nodes != NULL)
+			free(outEdgeList(n)->nodes);
 	}
-	free(g->nodes);
-	free(g);
-	g = NULL;
+	for (i=0; i<INDEX_COUNT; i++) {
+		if (gsp->flat[i].nodes != NULL)
+			free(gsp->flat[i].nodes);
+	}
+
+	free(nodePool);
 }
 
-void growNodePool(Graph *g) {
-	int sz = g->poolSize * 2;
-	g->nodes = realloc(g->nodes, sz*sizeof(Node));
-	if (g->nodes == NULL)
-		failWith("Failed to allocate space for node pool.");
-	g->poolSize = sz;
-	assert(g->free < g->poolSize && g->poolSize == sz);
-}
-
-void growEdgePool(Node *n) {
-	int sz = n->edgePoolSize * 2;
-	if (sz == 0)
-		sz = DEF_EDGE_POOL;
-	n->outEdges = realloc(n->outEdges, sz * sizeof(Edge));
-	n->edgePoolSize = sz;
-	assert(n->outEdges != NULL);
-}
-
-void addNode(Graph *g) {
-	int i = g->free;
-	if (i == g->poolSize)
-		growNodePool(g);
-	indexNode(g, i);
-	assert(i<g->poolSize && g->free < MAX_NODES);
-	g->free++;
-	node(g,i) = nullNode;
-}
-
-void addEdge(Graph *g, int src, int tgt) {
-	Node *s=&node(g, src), *t=&node(g, tgt);
-	int sOut = s->out, tIn = t->in;
-	Edge *e;
-	unindexNode(g, src);
-	unindexNode(g, tgt);
-	if (src == tgt) {
-		s->loop++;
-	} else {
-		if (s->out == s->edgePoolSize)
-			growEdgePool(s);
-		assert(s->outEdges && s->edgePoolSize > s->out);
-		e = &(s->outEdges[s->out++]);
-		e->tgt = tgt;
-		e->matched = 0;
-		t->in++;
+int main(int argc, char **argv) {
+	int i;
+	initialise();
+	dupGraph();
+	dropGraph();
+	addNode();
+	for (i=1; i<10; i++) {
+		addNode();
+		addEdge(i-1, i);
 	}
-	indexNode(g, src);
-	indexNode(g, tgt);
-	assert(e->matched == 0 && sOut+1 == s->out && tIn+1 == t->in);
-}
-
-void deleteEdge(Graph *g, int nid, int eid) {
-	Node *src = &node(g, nid);
-	int last = src->out-1;
-	Node *tgt = &node(g, src->outEdges[eid].tgt);
-	if (nid != last) {
-		src->outEdges[eid] = src->outEdges[last];
-	}
-	src->out--;
-	tgt->in--;
-	assert(src->out == last);
-}
-void deleteNode(Graph *g, int id) {
-	int i, last = g->free-1;
-	Node *n = &(g->nodes[id]);
-	if (n->outEdges != NULL) {
-		for (i=0; i<n->out; i++)
-			deleteEdge(g, id, i);
-		free(n->outEdges);
-		n->outEdges = NULL;
-	}
-	if (id != last) {
-		g->nodes[id] = node(g, last);
-	}
-	g->free--;
-	assert(g->free == last);
+	addEdge(9, 0);
+	printGraph(gsp);
+	deleteEdge(0, 1);
+	deleteEdge(1, 2);
+	deleteNode(1);
+	addNode();
+	addNode();
+	printGraph(gsp);
+	finalise();
+	return 0;
 }
 
