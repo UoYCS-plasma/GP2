@@ -56,6 +56,7 @@ typedef struct IndexMap {
  * a pointer to the new first map in the list. */
 IndexMap *addIndexMap(IndexMap *map, string id, int left_index, 
                       int right_index, string source_id, string target_id);
+int findLeftIndexFromId(IndexMap *map, string id);                      
 IndexMap *findMapFromId(IndexMap *map, string id);
 /* Used to find a map for an edge with the passed source and target IDs. */
 IndexMap *findMapFromSrcTgt(IndexMap *map, string source, string target);

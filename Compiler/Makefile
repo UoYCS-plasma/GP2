@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 LFLAGS = -lglib-2.0
 VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
-           --leak-check=full --leak-resolution=high --track-origins=yes
+           --leak-check=full --leak-resolution=high --track-origins=yes \
 
 # Builds the parser and code generator, runs it on the passed GP2 program/host graph files,
 # and executes the generated code.

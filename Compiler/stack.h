@@ -46,7 +46,7 @@ void push (Stack *stack, StackData *data);
  * and updates stack->top. */
 StackData *pop (Stack *stack);
 
-int findHostIndex(Stack *stack, int left_index);
+/* int findHostIndex(Stack *stack, int left_index); */
 
 /* Frees all StackData and StackNode structs and the Stack itself. If the 
  * StackData contains a pointers to heap memory, it needs to be freed 

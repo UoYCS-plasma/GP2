@@ -58,7 +58,7 @@ StackData *pop (Stack *stack)
    return data;
 }
 
-int findHostIndex(Stack *stack, int left_index)
+/* int findHostIndex(Stack *stack, int left_index)
 {
    if(stack == NULL) return -1;
 
@@ -71,7 +71,7 @@ int findHostIndex(Stack *stack, int left_index)
       iterator = iterator->next;
    }
    return -1;
-}
+} */
 
 
 void freeStack(Stack *stack)
