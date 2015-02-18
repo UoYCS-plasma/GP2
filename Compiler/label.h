@@ -12,6 +12,8 @@
 #ifndef INC_LABEL_H
 #define INC_LABEL_H
 
+#define LABEL_CLASSES 9
+
 #include "error.h"
 #include "globals.h"
 
@@ -25,7 +27,6 @@
 typedef enum {EMPTY_L = 0, INT_L, STRING_L, ATOMIC_VAR_L, LIST2_L, LIST3_L,
               LIST4_L, LIST5_L, LISTVAR_L} LabelClass;
 
-              
 /* Abstract data type for GP2's marks defined in globals.h.
  * typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, CYAN} MarkType;
  * list is the NULL pointer for the empty list. Otherwise, the list contains

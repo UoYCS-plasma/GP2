@@ -22,15 +22,16 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    PTIS("#include \"init_runtime.h\"\n\n"
         "Graph *makeHostGraph(void)\n"
         "{\n"
-        "   Graph *host = newGraph();\n"
-        "   Node *source, *target;\n"
-        "   IndexMap *node_map = NULL;\n\n");
+        "   Graph *host = newGraph(MAX_NODES, MAX_EDGES);\n"
+        "   IndexMap *node_map = NULL;\n");
+   PTIS("\n");
 
-   List *nodes = ast_host_graph->nodes;
-
+   List *nodes = ast_host_graph->nodes, *edges = ast_host_graph->edges;
    /* For each node in the AST, create a data structure for its label and
     * call ADD_HOST_NODE. ADD_HOST_NODE is a macro that creates the node,
     * adds it to the graph, and adds a new record to the node index map. */
+   PTIS("   /* Add the host nodes to the graph and record their host indices\n" 
+        "    * in the node map. */\n"); 
    while(nodes != NULL)
    {
       GPNode *ast_node = nodes->value.node;
@@ -38,9 +39,8 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, ast_node->name);
       nodes = nodes->next;   
    }
-   PTIS("\n");
-   List *edges = ast_host_graph->edges;
-
+   PTIS("\n   /* Add the host edges to the graph, getting source and target\n"
+        "    * indices from the node ID/host index pairs in the node map. */\n"); 
    /* For each edge in the AST, look up its source and target. For loops,
     * only the source needs to be looked up. GET_HOST_SOURCE and 
     * GET_HOST_TARGET are macros that search node_map for a node with the 
@@ -48,28 +48,21 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    while(edges != NULL)
    {
       GPEdge *ast_edge = edges->value.edge;
-
       //TODO: Incorporate Label *label = transformLabel(ast_edge->label);
-      PTIS("   GET_HOST_SOURCE(\"%s\")\n"
-           "   if(!strcmp(\"%s\", \"%s\"))\n"
-           "   {\n"
-           "      addEdge(host, %d, NULL, source, source);\n"
-           "   }\n",
-           ast_edge->source, ast_edge->source, ast_edge->target, 
-           ast_edge->bidirectional);
-
-      PTIS("   else\n"
-           "   {\n"
-           "      GET_HOST_TARGET(\"%s\")\n"
-           "      addEdge(host, %d, NULL, source, target);\n"
-           "   }\n\n",
-           ast_edge->target, ast_edge->bidirectional);
-           
+      if(!strcmp(ast_edge->source, ast_edge->target))
+         PTIS("   ADD_HOST_LOOP_EDGE(\"%s\", %d);\n",
+              ast_edge->source, ast_edge->bidirectional);
+      else
+         PTIS("   ADD_HOST_EDGE(\"%s\", \"%s\", %d);\n",
+              ast_edge->source, ast_edge->target, ast_edge->bidirectional);
       edges = edges->next;   
    }
-   PTIS("   if(node_map) freeIndexMap(node_map);\n"
+   PTIS("\n   if(node_map) freeIndexMap(node_map);\n"
         "   return host;\n"
         "}\n");
+
+   fclose(header);
+   fclose(source);
 }
 
 static FILE *main_header = NULL;
@@ -517,6 +510,7 @@ void generateProcedureCall(string proc_name, ContextType context, int indent)
             "invoked.\\n\");\n", indent + 3);
       PTMSI("if(graph_stack) freeGraphStack(graph_stack);\n", indent + 3);
       PTMSI("freeGraph(host);\n", indent + 3);
+      PTMSI("closeLogFile();\n", indent + 3);
       PTMSI("return 0;\n", indent + 3);
       PTMSI("}\n", indent);
    }
@@ -541,6 +535,7 @@ void generateFailureCode(string rule_name, ContextType context, int indent)
                  "invoked.\\n\");\n", indent);
       PTMSI("if(graph_stack) freeGraphStack(graph_stack);\n", indent);
       PTMSI("freeGraph(host);\n", indent);
+      PTMSI("closeLogFile();\n", indent);
       PTMSI("return 0;\n", indent);
    }
    /* In other contexts, set the success flag to false. Nothing more needs

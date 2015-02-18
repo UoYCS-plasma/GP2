@@ -210,12 +210,20 @@ void generateMatchingCode(string rule_name, int number_of_variables,
 
          case 's': 
 
+              edge = getEdge(lhs, operation->index);
+              emitEdgeFromNodeMatcher(edge, false, operation->next);
+              break;
+
          case 't':
+         
+              edge = getEdge(lhs, operation->index);
+              emitEdgeToNodeMatcher(edge, operation->next);
+              break;
 
          case 'l':
 
               edge = getEdge(lhs, operation->index);
-              emitEdgeFromNodeMatcher(edge, type, operation->next);
+              emitEdgeFromNodeMatcher(edge, true, operation->next);
               break;
          
          default:
@@ -284,39 +292,49 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
            "bool *matched_edges)\n"
            "{\n", left_index);
 
-   /* The candidate list of host nodes is determined by the root status of 
-    * left_node. */
-   if(is_root) PTRSI("GSList *nodes = getRootNodes(host);\n", 3);
-   else PTRSI("GSList *nodes = getNodesByLabel(host, %d);\n", 3,
-             left_node->label_class);
+   /* Emit code to initialise the iteration over the candidate nodes. 
+    * If the left node is rooted, interrogate the root node list of the host
+    * graph, otherwise we query the appropriate nodes-by-label-class list. */
+    if(is_root) 
+       PTRS("   NodeList *nodes = getRootNodeList(host);\n"
+            "   while(nodes != NULL)\n"
+            "   {\n"
+            "      Node *host_node = getNode(host, nodes->index);\n"
+            "      if(host_node == NULL)\n"
+            "      {\n"
+            "         nodes = nodes->next;\n"
+            "         continue;\n"
+            "      }\n");
+    else
+       PTRS("   LabelClassTable nodes = getNodesByLabel(host, %d);\n"
+            "   int count;\n"
+            "   for(count = 0; count < nodes.index; count++)\n"
+            "   {\n"
+            "      Node *host_node = getNode(host, nodes.items[count]);\n"
+            "      if(host_node == NULL) continue;\n", left_node->label_class);
 
-   PTRS("   while(nodes != NULL)\n"
-        "   {\n"
-        "      Node *host_node = (Node *)nodes->data;\n"
-        "      int index = host_node->index;\n\n"
-        "      CHECK_NODE_MATCHED\n\n");
-   
-   /* If left_node is not rooted, then the candidate nodes are obtained by 
-    * label class. In that case, there is no need to explicitly check the 
-    * label class of the host node. */
-   if(is_root)
-      PTRSI("CHECK_NODE_LABEL_CLASS(%d)\n\n", 6, left_node->label_class);
-
-   PTRSI("CHECK_NODE_MARK(%d)\n\n", 6, left_node->label->mark);
-
+   /* Emit code to test whether the candidate host node is consistent with the
+    * left node with respect to label class, mark, and degrees. If not, the
+    * loop will continue without entering the potentially expensive label 
+    * matching code. */
+   PTRSI("/* Arguments: label class, mark, indegree, outdegree. */\n", 6);
    if(dangling_node)
-        PTRSI("CHECK_DANGLING_NODE_DEGREES(%d, %d);\n\n",
-             6, left_node->indegree, left_node->outdegree);   
-   else PTRSI("CHECK_NODE_DEGREES(%d, %d);\n\n", 
-             6, left_node->indegree, left_node->outdegree);
+        PTRSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d)\n", 6,
+              left_node->label_class, left_node->label->mark, 
+              left_node->indegree, left_node->outdegree);
+   else PTRSI("IF_INVALID_NODE(%d, %d, %d, %d)\n", 6,
+              left_node->label_class, left_node->label->mark, 
+              left_node->indegree, left_node->outdegree); 
+   if(is_root) PTRSI("nodes = nodes->next;\n", 6);
+   PTRSI("continue;\n\n", 6);
 
    PTRSI("/* Label matching code does not exist yet. */\n", 6);
    /* TODO: Call to label matcher goes here. */
    PTRSI("bool nodes_match = host_node->label->list_length == 0;\n", 6);
    PTRSI("if(nodes_match)\n", 6);
    PTRSI("{\n", 6);
-   PTRSI("addNodeMap(morphism, %d, index);\n", 9, left_index);
-   PTRSI("matched_nodes[index] = true;\n", 9);
+   PTRSI("addNodeMap(morphism, %d, host_node->index);\n", 9, left_index);
+   PTRSI("matched_nodes[host_node->index] = true;\n", 9);
 
    bool total_match = emitNextMatcherCall(next_op, 9);
    if(!total_match) 
@@ -325,11 +343,11 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
       PTRSI("else\n", 9);
       PTRSI("{\n", 9);
       PTRSI("removeNodeMap(morphism);\n", 12);
-      PTRSI("matched_nodes[index] = false;\n", 12);
+      PTRSI("matched_nodes[host_node->index] = false;\n", 12);
       PTRSI("}\n", 9);
    }
    PTRSI("}\n", 6);
-   PTRSI("nodes = nodes->next;\n", 6);
+   if(is_root) PTRSI("nodes = nodes->next;\n", 6);
    PTRSI("}\n", 3);
    PTRSI("return false;\n", 3);
    PTRS("}\n\n");
@@ -356,36 +374,38 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
            "{\n", left_index);
 
    if(type == 'i' || type == 'b') 
-        PTRSI("Node *host_node = getTarget(host_edge);\n", 3);
-   else PTRSI("Node *host_node = getSource(host_edge);\n", 3);
-   PTRSI("int index = host_node->index;\n\n", 3);
+        PTRSI("Node *host_node = getNode(host, getTarget(host_edge));\n", 3);
+   else PTRSI("Node *host_node = getNode(host, getSource(host_edge));\n", 3);
 
-   PTRSI("/* This is the only node to check, so perform all the preliminaries "
-         "in one step.\n", 3);
-   PTRSI(" * Arguments: label class, mark, indegree, outdegree. */\n", 3);
+   /* Emit code to test whether the candidate host node is consistent with the
+    * left node with respect to label class, mark, and degrees. If not, the
+    * generated code returns false (or tests the other incident node in the
+    * case of a bidirectional edge) before having to enter the label matching
+    * phase. */
+   PTRSI(" /* Arguments: label class, mark, indegree, outdegree. */\n", 3);
    if(dangling_node)
         PTRSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d)", 3,
-             left_node->label_class, left_node->label->mark, 
-             left_node->indegree, left_node->outdegree);
+              left_node->label_class, left_node->label->mark, 
+              left_node->indegree, left_node->outdegree);
    else PTRSI("IF_INVALID_NODE(%d, %d, %d, %d)", 3,
-             left_node->label_class, left_node->label->mark, 
-             left_node->indegree, left_node->outdegree); 
+              left_node->label_class, left_node->label->mark, 
+              left_node->indegree, left_node->outdegree); 
 
    if(type == 'b')
    {
       PTRSI("\n{\n", 3); 
       PTRSI("/* Matching from bidirectional edge: check the second incident node. */\n", 6);
-      if(type == 'i' || type == 'b') PTRSI("host_node = getSource(host_edge);\n", 6);
-      else PTRSI("host_node = getTarget(host_edge);\n", 6);
-      PTRSI("index = host_node->index;\n\n", 6);
-      PTRSI("*/ Arguments: label class, mark, indegree, outdegree. */\n", 3);
+      if(type == 'i' || type == 'b') 
+           PTRSI("host_node = getNode(host, getSource(host_edge));\n", 6);
+      else PTRSI("host_node = getNode(host, getTarget(host_edge));\n", 6);
+      PTRSI(" /* Arguments: label class, mark, indegree, outdegree. */\n", 3);
       if(dangling_node)
            PTRSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d) return false;", 3,
-                left_node->label_class, left_node->label->mark, 
-                left_node->indegree, left_node->outdegree);
+                 left_node->label_class, left_node->label->mark, 
+                 left_node->indegree, left_node->outdegree);
       else PTRSI("IF_INVALID_NODE(%d, %d, %d, %d) return false;", 3,
-               left_node->label_class, left_node->label->mark, 
-               left_node->indegree, left_node->outdegree); 
+                 left_node->label_class, left_node->label->mark, 
+                 left_node->indegree, left_node->outdegree); 
       PTRSI("}\n\n", 3);
    }
    else PTRS(" return false;\n");
@@ -394,8 +414,8 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
    PTRSI("bool nodes_match = host_node->label->list_length == 0;\n", 3);
    PTRSI("if(nodes_match)\n", 3);
    PTRSI("{\n", 3);
-   PTRSI("addNodeMap(morphism, %d, index);\n", 6, left_index);
-   PTRSI("matched_nodes[index] = true;\n", 6);
+   PTRSI("addNodeMap(morphism, %d, host_node->index);\n", 6, left_index);
+   PTRSI("matched_nodes[host_node->index] = true;\n", 6);
 
    bool total_match = emitNextMatcherCall(next_op, 6); 
    if(!total_match)
@@ -404,7 +424,7 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
       PTRSI("else\n", 6);
       PTRSI("{\n", 6);
       PTRSI("removeNodeMap(morphism);\n", 9);
-      PTRSI("matched_nodes[index] = false;\n", 9);
+      PTRSI("matched_nodes[host_node->index] = false;\n", 9);
       PTRSI("}\n", 6);
    }
    PTRSI("}\n", 3);
@@ -423,26 +443,37 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
            "bool *matched_edges)\n"
            "{\n", left_edge->index);
 
-   PTRSI("GSList *edges = getEdgesByLabel(host, %d);\n", 3,
+   PTRS("   LabelClassTable edges = getEdgesByLabel(host, %d);\n"
+        "   int count;\n"
+        "   for(count = 0; count < edges.index; count++)"
+        "   {\n"
+        "      Edge *host_edge = getEdge(host, edges.items[count];\n",
         left_edge->label_class);
 
-   PTRSI("while(edges != NULL)\n", 3);
-   PTRSI("{\n", 3);
-   PTRSI("Edge *host_edge = (Edge *)edges->data;\n", 6);
-   PTRSI("int index = host_edge->index;\n\n", 6);
-
-   PTRSI("CHECK_EDGE_MATCHED\n\n", 6);
-
-   PTRSI("CHECK_EDGE_LABEL_CLASS(%d)\n\n", 6, left_edge->label_class);
-
-   PTRSI("CHECK_EDGE_MARK(%d)\n\n", 6, left_edge->label->mark);
+   /* Emit code to test whether the candidate host edge is consistent with the
+    * left edge with respect to label class, mark, and loopiness. If not, the
+    * loop will continue without entering the potentially expensive label 
+    * matching code. */
+   PTRSI(" /* Arguments: label class, mark. */\n", 6);
+   if(left_edge->source == left_edge->target) 
+        PTRSI("IF_INVALID_LOOP_EDGE(%d, %d)\n", 6,
+              left_edge->label_class, left_edge->label->mark);
+   else PTRSI("IF_INVALID_EDGE(%d, %d)\n", 6, 
+              left_edge->label_class, left_edge->label->mark);
+   PTRSI("/* If either endpoint has been matched, check that the corresponding\n", 6);
+   PTRSI(" * endpoint of the host edge is the image of the node in question. */\n", 6);
+   PTRSI("continue;\n\n", 6);
+   PTRSI("int source_index = findHostIndex(morphism, %d);\n", left_edge->source, 6);
+   PTRSI("if(source_index >= 0 && host_edge->source != source_index) continue;\n", 6);
+   PTRSI("int target_index = findHostIndex(morphism, %d);\n", left_edge->target, 6);
+   PTRSI("if(target_index >= 0 && host_edge->target != target_index) continue;\n", 6);
 
    /* TODO: Call to label matcher goes here. */
    PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
    PTRSI("if(edges_match)\n", 6);
    PTRSI("{\n", 6);
-   PTRSI("addEdgeMap(morphism, %d, index);\n", 9, left_edge->index);
-   PTRSI("matched_edges[index] = true;\n", 9);
+   PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
+   PTRSI("matched_edges[host_edge->index] = true;\n", 9);
 
    bool total_match = emitNextMatcherCall(next_op, 9);
    if(!total_match)
@@ -451,24 +482,22 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
       PTRSI("else\n", 9);
       PTRSI("{\n", 9);
       PTRSI("removeEdgeMap(morphism);\n", 12);
-      PTRSI("matched_edges[index] = false;\n", 12);
+      PTRSI("matched_edges[host_edge->index] = false;\n", 12);
       PTRSI("}\n", 9);
    }
    PTRSI("}\n", 6);
-   PTRSI("else edges = edges->next;\n", 6);
    PTRSI("}\n", 3);
    PTRSI("return false;\n", 3);
    PTRS("}\n\n");
 }
 
 /* Unlike matching a node from an edge, the LHS-node from which this LHS-edge
- * is matched may not necessarily be the previous matched node in the 
- * searchplan. The operation type is used to find the appropriate left-node.
- * The generated code uses the index of this node to find the host node to
- * which it has been matched (findHostIndex). Edges in the inedge list or 
- * outedge list of the host node are the candidate edges to match left_edge. */
-
-void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
+ * is matched may not necessarily be the previously matched node in the 
+ * searchplan. The generated code uses the index of the source of the LHS-edge 
+ * to find the host node to which it has been matched (findHostIndex). Edges 
+ * in the outedge list of that host node are the candidate edges to match 
+ * left_edge. */
+void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
 {
    if(next_op == NULL)
       PTRS("static bool match_e%d(Morphism *morphism, bool *matched_edges)\n"
@@ -478,38 +507,27 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
            "bool *matched_edges)\n"
            "{\n", left_edge->index);
 
-   if(type == 's' || type == 'l')
-   {
-      PTRSI("int host_node_index = findHostIndex(morphism, %d);\n",
-            3, left_edge->source->index);
-      PTRSI("if(host_node_index < 0) return false;\n", 3);
-      PTRSI("Node *host_node = getNode(host, host_node_index);\n\n", 3);
-      PTRSI("int counter;\n", 3);
-      PTRSI("for(counter = 0; counter < host_node->next_out_edge_index; counter++)\n", 3);
-   }
-   else 
-   {
-      PTRSI("int host_node_index = findHostIndex(morphism, %d);\n",
-            3, left_edge->target->index);
-      PTRSI("if(host_node_index < 0) return false;\n", 3);
-      PTRSI("Node *host_node = getNode(host, host_node_index);\n\n", 3);
-      PTRSI("int counter;\n", 3);
-      PTRSI("for(counter = 0; counter < host_node->next_in_edge_index; counter++)\n", 3);
-   }
+   PTRS("   int source_index = findHostIndex(morphism, %d);\n"
+        "   if(source_index < 0) return false;\n"
+        "   Node *host_node = getNode(host, source_index);\n\n"
+        "   int target_index = findHostIndex(morphism, %d);\n"
+        "   int counter;\n\n"
+        "   for(counter = host_node->out_index - 1; counter >= 0; counter--)\n",
+        left_edge->source, left_edge->target);
 
    PTRSI("{\n", 3);
-   if(type == 's' || type == 'l')
-        PTRSI("Edge *host_edge = getOutEdge(host_node, counter);\n", 6);
-   else PTRSI("Edge *host_edge = getInEdge(host_node, counter);\n", 6);
-   PTRSI("if(host_edge->index == -1) continue;\n\n", 6);
+   PTRSI("Edge *host_edge = getEdge(host, getOutEdge(host_node, counter));\n", 6);
+   PTRSI("if(host_edge == NULL) continue;\n\n", 6);
 
-   PTRSI("/* Check all the preliminaries in one step.\n", 6);
-   PTRSI(" * Arguments: label class, mark. */\n", 6);
-   if(type == 'l') 
+   PTRSI(" /* Arguments: label class, mark. */\n", 6);
+   if(is_loop) 
         PTRSI("IF_INVALID_LOOP_EDGE(%d, %d) continue;\n", 6,
               left_edge->label_class, left_edge->label->mark);
    else PTRSI("IF_INVALID_EDGE(%d, %d) continue;\n", 6, 
               left_edge->label_class, left_edge->label->mark);
+   PTRSI("/* If the rule edge's target has been matched, check that the target\n", 6);
+   PTRSI(" * of the host edge is the image of the rule edge's target. */\n", 6);
+   PTRSI("if(target_index >= 0 && host_edge->target != target_index) continue;\n", 6);
 
    /* TODO: Call to label matcher goes here. */
    PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
@@ -525,23 +543,20 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
    {
       PTRSI("}\n", 6);
       PTRSI("}\n\n", 3);
-      if(type == 's' || type == 'l')
-           PTRSI("for(counter = 0; counter < host_node->indegree; counter++)\n", 3);
-      else PTRSI("for(counter = 0; counter < host_node->outdegree; counter++)\n", 3);
-
+      PTRSI("for(counter = host_node->in_index - 1; counter >= 0; counter--)\n", 3);
       PTRSI("{\n", 3);
-      if(type == 's' || type == 'l')
-           PTRSI("Edge *host_edge = getInEdge(host_node, counter);\n", 6);
-      else PTRSI("Edge *host_edge = getOutEdge(host_node, counter);\n", 6);
-      PTRSI("if(host_edge->index == -1) continue;\n\n", 6);
+      PTRSI("Edge *host_edge = getEdge(host, getInEdge(host_node, counter));\n", 6);
+      PTRSI("if(host_edge == NULL) continue;\n\n", 6);
 
-      PTRSI("/* Check all the preliminaries in one step.\n", 6);
-      PTRSI(" * Arguments: label class, mark. */\n", 6);
-      if(type == 'l')
+      PTRSI(" /* Arguments: label class, mark. */\n", 6);
+      if(is_loop)
            PTRSI("IF_INVALID_LOOP_EDGE(%d, %d) continue;\n", 6,
                  left_edge->label_class, left_edge->label->mark);
       else PTRSI("IF_INVALID_EDGE(%d, %d) continue;\n", 6, 
                  left_edge->label_class, left_edge->label->mark);
+      PTRSI("/* If the rule edge's source has been matched, check that the source\n", 6);
+      PTRSI(" * of the host edge is the image of the rule edge's source. */\n", 6);
+      PTRSI("if(source_index >= 0 && host_edge->source != source_index) continue;\n", 6);
 
       /* TODO: Call to label matcher goes here. */
       PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
@@ -567,6 +582,90 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, char type, SearchOp *next_op)
    PTRS("}\n\n");
 }
 
+/* Unlike matching a node from an edge, the LHS-node from which this LHS-edge
+ * is matched may not necessarily be the previously matched node in the 
+ * searchplan. The generated code uses the index of the target of the LHS-edge 
+ * to find the host node to which it has been matched (findHostIndex). Edges 
+ * in the inedge list of that host node are the candidate edges to match 
+ * left_edge. */
+void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
+{
+   if(next_op == NULL)
+      PTRS("static bool match_e%d(Morphism *morphism, bool *matched_edges)\n"
+           "{\n", left_edge->index);
+   else
+      PTRS("static bool match_e%d(Morphism *morphism, bool *matched_nodes, "
+           "bool *matched_edges)\n"
+           "{\n", left_edge->index);
+
+   PTRS("   int target_index = findHostIndex(morphism, %d);\n"
+        "   if(target_index < 0) return false;\n"
+        "   Node *host_node = getNode(host, target_index);\n\n"
+        "   int source_index = findHostIndex(morphism, %d);\n"
+        "   int counter;\n\n"
+        "   for(counter = host_node->in_index - 1; counter >= 0; counter--)\n",
+        left_edge->target, left_edge->source);
+
+   PTRSI("{\n", 3);
+   PTRSI("Edge *host_edge = getEdge(host, getInEdge(host_node, counter));\n", 6);
+   PTRSI("if(host_edge == NULL) continue;\n\n", 6);
+
+   PTRSI(" /* Arguments: label class, mark. */\n", 6);
+   PTRSI("IF_INVALID_EDGE(%d, %d) continue;\n", 6, 
+         left_edge->label_class, left_edge->label->mark);
+   PTRSI("/* If the rule edge's source has been matched, check that the source\n", 6);
+   PTRSI(" * of the host edge is the image of the rule edge's source. */\n", 6);
+   PTRSI("if(source_index >= 0 && host_edge->source != source_index) continue;\n", 6);
+
+   /* TODO: Call to label matcher goes here. */
+   PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+   PTRSI("if(edges_match)\n", 6);
+   PTRSI("{\n", 6);
+   PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
+   PTRSI("matched_edges[host_edge->index] = true;\n", 9);
+   bool total_match = emitNextMatcherCall(next_op, 9);
+   if(!total_match) PTRSI("if(result) return true;\n", 9);
+
+   if(left_edge->bidirectional)
+   /* Emit code to try and match an edge in the opposite direction. */
+   {
+      PTRSI("}\n", 6);
+      PTRSI("}\n\n", 3);
+      PTRSI("for(counter = host_node->out_index - 1; counter >= 0; counter--)\n", 3);
+      PTRSI("{\n", 3);
+      PTRSI("Edge *host_edge = getEdge(host, getOutEdge(host_node, counter));\n", 6);
+      PTRSI("if(host_edge == NULL) continue;\n\n", 6);
+
+      PTRSI(" /* Arguments: label class, mark. */\n", 6);
+      PTRSI("IF_INVALID_EDGE(%d, %d) continue;\n", 6, 
+            left_edge->label_class, left_edge->label->mark);
+      PTRSI("/* If the rule edge's target has been matched, check that the target\n", 6);
+      PTRSI(" * of the host edge is the image of the rule edge's target. */\n", 6);
+      PTRSI("if(target_index >= 0 && host_edge->target != target_index) continue;\n", 6);
+
+      /* TODO: Call to label matcher goes here. */
+      PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+      PTRSI("if(edges_match)\n", 6);
+      PTRSI("{\n", 6);
+      PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
+      PTRSI("matched_edges[host_edge->index] = true;\n", 9);
+   
+      bool total_match = emitNextMatcherCall(next_op, 9);
+      if(!total_match) PTRSI("if(result) return true;\n", 9);
+   }
+   if(!total_match)
+   {
+      PTRSI("else\n", 9);
+      PTRSI("{\n", 9);
+      PTRSI("removeEdgeMap(morphism);\n", 12);
+      PTRSI("matched_edges[host_edge->index] = false;\n", 12);
+      PTRSI("}\n", 9);
+   }   
+   PTRSI("}\n", 6);
+   PTRSI("}\n", 3);
+   PTRSI("return false;\n", 3);
+   PTRS("}\n\n");
+}
 
 bool emitNextMatcherCall(SearchOp *next_operation, int indent)
 {
@@ -645,33 +744,25 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    if(empty_lhs)
    {
       int index;
-      PTRS("   Node *host_node = NULL, *source = NULL, *target = NULL;\n\n"
-           "   /* Array of host node pointers indexed by RHS node index. */\n"
+      PTRS("   /* Array of host node indices indexed by RHS node index. */\n"
            "   Node *map[%d];\n", rhs->number_of_nodes);
-
       for(index = 0; index < rhs->number_of_nodes; index++)
       {
          Node *rule_node = getNode(rhs, index);
          /* TODO: Evaluate rule_node->label. */
-         PTRSI("int index = addNode(host, %d, NULL);\n", 3, rule_node->root);
-         PTRSI("map[%d] = getNode(host, index);\n\n", 3, rule_node->index);
+         PTRSI("map[%d] = addNode(host, %d, NULL);\n", 3, rule_node->index,
+               rule_node->root);
       }
-
       NewEdgeList *iterator = rule->added_edges;
+      /* TODO: Evaluate rule_edge->label. */
       while(iterator != NULL)
       {
          if(iterator->source_index == iterator->target_index)
-         {
-            PTRSI("source = map[%d];\n", 3, iterator->source_index);
-            PTRSI("addEdge(host, false, NULL, source, source);\n", 3);
-         }
+            PTRSI("addEdge(host, false, NULL, map[%d], map[%d]);\n", 3,
+                  iterator->source_index, iterator->source_index);
          else
-         {
-            PTRSI("source = map[%d];\n", 3, iterator->source_index);
-            PTRSI("target = map[%d];\n", 3, iterator->target_index);
-            /* TODO: Evaluate rule_edge->label. */
-            PTRSI("addEdge(host, false, NULL, source, target);\n", 3);
-         }
+            PTRSI("addEdge(host, false, NULL, map[%d], map[%d]);\n", 3,
+                  iterator->source_index, iterator->target_index);
          iterator = iterator->next;
       }     
       PTRS("   free(map);\n"
@@ -748,21 +839,18 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    ItemList *iterator_n = rule->added_nodes;
    if(iterator_n != NULL)
       PTRS("   /* Array of host node pointers indexed by RHS node index. */\n"
-           "   Node *map[%d];\n\n"
-           "   Node *host_node = NULL;\n", rhs->number_of_nodes);
+           "   Node *map[%d];\n\n", rhs->number_of_nodes);
    while(iterator_n != NULL)
    {   
       Node *rule_node = getNode(rhs, iterator_n->index);
       /* TODO: Evaluate rule_node->label. */
-      PTRSI("int index = addNode(host, %d, NULL);\n", 3, rule_node->root);
-      PTRSI("map[%d] = getNode(host, index);\n\n", 3, rule_node->index);
+      PTRSI("map[%d] = addNode(host, %d, NULL);\n", 3, rule_node->index, rule_node->root);
       iterator_n = iterator_n->next;
    }   
      
    NewEdgeList *iterator_e = rule->added_edges;
    if(iterator_e != NULL)
-      PTRS("   Node *source = NULL, *target = NULL;\n"
-           "   int source_index = 0, target_index = 0;\n\n");
+      PTRS("int source = 0, target = 0;\n\n");
    while(iterator_e != NULL)
    {
       /* The source and target edges may be nodes preserved by the rule or 
@@ -774,19 +862,12 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
        * host graph node pointer array. For added nodes, the pointer is 
        * obtained directly from map. */
       if(iterator_e->source_location == 'l')
-      {
-         PTRSI("source_index = node_map[%d];\n", 3, iterator_e->source_index);
-         PTRSI("source = getNode(host, source_index);\n", 3);
-      }
+           PTRSI("source = node_map[%d];\n", 3, iterator_e->source_index);
       else PTRSI("source = map[%d];\n", 3, iterator_e->source_index);
 
       if(iterator_e->target_location == 'l')
-      {
-         PTRSI("target_index = node_map[%d];\n", 3, iterator_e->target_index);
-         PTRSI("target = getNode(host, target_index);\n", 3);
-      }
+           PTRSI("target = node_map[%d];\n", 3, iterator_e->target_index);
       else PTRSI("target = map[%d];\n", 3, iterator_e->target_index);
-
       /* TODO: Evaluate rule_edge->label. */
       PTRSI("addEdge(host, false, NULL, source, target);\n", 3);
    

@@ -57,7 +57,17 @@ IndexMap *addIndexMap(IndexMap *map, string id, int left_index,
 
    return new_map;
 }
-  
+
+int findLeftIndexFromId(IndexMap *map, string id)
+{
+   while(map != NULL)
+   {
+      if(!strcmp(map->id, id)) return map->left_index;
+      else map = map->next;
+   }
+   return -1; 
+}
+
 IndexMap *findMapFromId(IndexMap *map, string id)
 {
    while(map != NULL)

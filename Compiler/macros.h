@@ -7,126 +7,57 @@
    node_map = addIndexMap(node_map, node_name, index, -1, NULL, NULL);   \
    } while(0);                                                           \
 
-#define GET_HOST_SOURCE(source_name)                                    \
+#define ADD_HOST_LOOP_EDGE(source_name, bidirectional)                  \
    do {                                                                 \
-   IndexMap *source_map = findMapFromId(node_map, source_name);         \
-   if(source_map == NULL)                                               \
+   int source = findLeftIndexFromId(node_map, source_name);             \
+   if(source == -1)                                                     \
    {                                                                    \
       print_to_log("Error (makeHostGraph): Edge's source " source_name  \
                    "not found in the node map.\n");                     \
       exit(1);                                                          \
    }                                                                    \
-   source = getNode(host, source_map->left_index);                      \
-   } while(0);                                                          \
+   addEdge(host, bidirectional, NULL, source, source);                  \
+   } while(0);
 
-#define GET_HOST_TARGET(target_name)                                    \
+#define ADD_HOST_EDGE(source_name, target_name, bidirectional)          \
    do {                                                                 \
-   IndexMap *target_map = findMapFromId(node_map, target_name);         \
-   if(target_map == NULL)                                               \
+   int source = findLeftIndexFromId(node_map, source_name);             \
+   if(source == -1)                                                     \
+   {                                                                    \
+      print_to_log("Error (makeHostGraph): Edge's source " source_name  \
+                   "not found in the node map.\n");                     \
+      exit(1);                                                          \
+   }                                                                    \
+   int target = findLeftIndexFromId(node_map, target_name);             \
+   if(target == -1)                                                     \
    {                                                                    \
       print_to_log("Error (makeHostGraph): Edge's target " target_name  \
                    "not found in the node map.\n");                     \
       exit(1);                                                          \
    }                                                                    \
-   target = getNode(host, target_map->left_index);                      \
-   } while(0);                                                          \
+   addEdge(host, bidirectional, NULL, source, target);                  \
+   } while(0);
 
-#define MAKE_MATCHED_NODES_ARRAY                           \
-   int count;                                              \
-   bool matched_nodes[host->next_node_index];              \
-   for(count = 0; count < host->next_node_index; count ++) \
-      matched_nodes[count] = false;                
+#define MAKE_MATCHED_NODES_ARRAY                      \
+   int count;                                         \
+   bool matched_nodes[host->node_index];              \
+   for(count = 0; count < host->node_index; count ++) \
+       matched_nodes[count] = false;                
 
-#define MAKE_MATCHED_EDGES_ARRAY                           \
-   bool matched_edges[host->next_edge_index];              \
-   for(count = 0; count < host->next_edge_index; count ++) \
-      matched_edges[count] = false;                
-
-#define CHECK_NODE_MATCHED   \
-   if(matched_nodes[index])  \
-   {                         \
-      nodes = nodes->next;   \
-      continue;              \
-   }                         \
-
-#define CHECK_EDGE_MATCHED   \
-   if(matched_edges[index])  \
-   {                         \
-      edges = edges->next;   \
-      continue;              \
-   }                         \
-
-#define CHECK_EDGE_IS_LOOP                     \
-   if(host_edge->source != host_edge->target)  \
-   {                                           \
-      index++;                                 \
-      continue;                                \
-   }                                           \
-
-#define CHECK_NODE_LABEL_CLASS(lclass)    \
-   if(host_node->label_class != (lclass)) \
-   {                                      \
-      nodes = nodes->next;                \
-      continue;                           \
-   }                                      \
-
-#define CHECK_EDGE_LABEL_CLASS(lclass)    \
-   if(host_edge->label_class != (lclass)) \
-   {                                      \
-      edges = edges->next;                \
-      continue;                           \
-   }                                      \
-
-#define CHECK_NODE_MARK(nmark)           \
-   if(host_node->label->mark != (nmark)) \
-   {                                     \
-      nodes = nodes->next;               \
-      continue;                          \
-   }                                     \
-
-#define CHECK_EDGE_MARK(emark)           \
-   if(host_edge->label->mark != (emark)) \
-   {                                     \
-      edges = edges->next;               \
-      continue;                          \
-   }                                     \
-
-#define CHECK_NODE_DEGREES(indeg, outdeg) \
-   if(host_node->indegree < (indeg))      \
-   {                                      \
-      nodes = nodes->next;                \
-      continue;                           \
-   }                                      \
-                                          \
-   if(host_node->outdegree < (outdeg))    \
-   {                                      \
-      nodes = nodes->next;                \
-      continue;                           \
-   }                                      \
-
-
-#define CHECK_DANGLING_NODE_DEGREES(indeg, outdeg) \
-   if(host_node->indegree != (indeg))              \
-   {                                               \
-      nodes = nodes->next;                         \
-      continue;                                    \
-   }                                               \
-                                                   \
-   if(host_node->outdegree != (outdeg))            \
-   {                                               \
-      nodes = nodes->next;                         \
-      continue;                                    \
-   }                                               \
+#define MAKE_MATCHED_EDGES_ARRAY                      \
+   bool matched_edges[host->edge_index];              \
+   for(count = 0; count < host->edge_index; count ++) \
+       matched_edges[count] = false;                
 
 #define IF_INVALID_NODE(lclass, nmark, indeg, outdeg)  \
-   if(matched_nodes[index] ||                          \
+   if(matched_nodes[host_node->index] ||               \
       host_node->label_class != (lclass) ||            \
       host_node->label->mark != (nmark) ||             \
       host_node->indegree < (indeg) ||                 \
       host_node->outdegree < (outdeg))                 \
 
 #define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg)  \
-   if(matched_nodes[index] ||                                   \
+   if(matched_nodes[host_node->index] ||                        \
       host_node->label_class != (lclass) ||                     \
       host_node->label->mark != (nmark) ||                      \
       host_node->indegree != (indeg) ||                         \

@@ -92,92 +92,81 @@ Searchplan *generateSearchplan(Graph *lhs)
 
    /* Indices 0 to |V_L|-1 are the nodes. Indices |V_L| to |V_L|+|E_L|-1 are the
     * edges. Index |V_L| refers to the LHS edge with index 0. */
-   bool *tagged_items = calloc(lhs_size, sizeof(bool));
-   if(tagged_items == NULL)
-   {
-      print_to_log("Error: Memory exhausted during tagged items "
-                   "array construction.\n");
-      exit(1);
-   }
-   GSList *left_roots = getRootNodes(lhs); 
-   GSList *iterator = left_roots;
-   
-   /* Add the root nodes to the search plan before traversing the graph.
-    * Optimisation: if the rule has no root nodes, this and the next 
-    * while loop are unnecessary. */ 
+   bool tagged_items[lhs_size];
+   for(index = 0; index < lhs_size; index++) tagged_items[index] = false;
+
+   RootNodes *iterator = getRootNodeList(lhs);
+   RootNodes *left_roots = iterator; 
    while(iterator != NULL)
    {
-      Node *root = (Node *)iterator->data;
-      addSearchOp(searchplan, 'r', root->index);      
+      addSearchOp(searchplan, 'r', iterator->index);      
       iterator = iterator->next;
    }  
- 
-   /* Perform a dePTRH-first traversal of the graph from its root nodes. */
+   /* Perform a depth-first traversal of the graph from its root nodes. */
    while(left_roots != NULL)
    {
-      Node *root = (Node *)left_roots->data;
-      if(!tagged_items[root->index]) 
-         traverseNode(searchplan, root, 'r', tagged_items, lhs_nodes);
+      if(!tagged_items[left_roots->index]) 
+      {
+         Node *root = getNode(lhs, left_roots->index);
+         traverseNode(searchplan, lhs, root, 'r', tagged_items, lhs_nodes);
+      }
       left_roots = left_roots->next;
    }
 
    /* Search for undiscovered nodes. These are nodes not reachable from a root
     * node.
-    * Optimisation: check rules beforehand to see if they are left-root-connected.
-    * If so, this code fragment is unnecessary. */
-   for(index = 0; index < lhs->next_node_index; index++)
+    * TODO (optimisation): check rules beforehand to see if they are 
+    * left-root-connected. If so, this code fragment is unnecessary. */
+   for(index = 0; index < lhs->node_index; index++)
    {
       if(!tagged_items[index]) 
       {
          Node *node = getNode(lhs, index);
-         traverseNode(searchplan, node, 'n', tagged_items, lhs_nodes);
+         traverseNode(searchplan, lhs, node, 'n', tagged_items, lhs_nodes);
       }
    }
-   free(tagged_items);
-
    return searchplan;
 }
 
-void traverseNode(Searchplan *searchplan, Node *node, char type, 
+void traverseNode(Searchplan *searchplan, Graph *lhs, Node *node, char type, 
                   bool *tagged_items, int offset)
 {
    tagged_items[node->index] = true;
 
    /* Root nodes are already in the searchplan. */
-   if(type != 'r') 
-   {      
-      addSearchOp(searchplan, type, node->index);
-   }
+   if(type != 'r') addSearchOp(searchplan, type, node->index);
    
    int index;
    /* Search the node's incident edges for an untagged edge. Outedges
     * are arbitrarily examined first. If no such edges exist, the function
     * exits and control passes to the caller. */
-   for(index = 0; index < node->next_out_edge_index; index++)
+   for(index = 0; index < node->out_index; index++)
    {
-      Edge *edge = getOutEdge(node, index);
+      Edge *edge = getEdge(lhs, getOutEdge(node, index));
+      if(edge == NULL) continue;
       if(!tagged_items[offset + edge->index])
       {
          if(edge->source == edge->target)
-            traverseEdge(searchplan, edge, 'l', tagged_items, offset);
-         else traverseEdge(searchplan, edge, 's', tagged_items, offset);
+            traverseEdge(searchplan, lhs, edge, 'l', tagged_items, offset);
+         else traverseEdge(searchplan, lhs, edge, 's', tagged_items, offset);
       }
    }
 
-   for(index = 0; index < node->next_in_edge_index; index++)
+   for(index = 0; index < node->in_index; index++)
    {
-      Edge *edge = getInEdge(node, index);
+      Edge *edge = getEdge(lhs, getInEdge(node, index));
+      if(edge == NULL) continue;
       if(!tagged_items[offset + edge->index]) 
       {
          if(edge->source == edge->target)
-            traverseEdge(searchplan, edge, 'l', tagged_items, offset);
-         else traverseEdge(searchplan, edge, 't', tagged_items, offset);
+            traverseEdge(searchplan, lhs, edge, 'l', tagged_items, offset);
+         else traverseEdge(searchplan, lhs, edge, 't', tagged_items, offset);
       }
    }
 }
 
 
-void traverseEdge(Searchplan *searchplan, Edge *edge, char type, 
+void traverseEdge(Searchplan *searchplan, Graph *lhs, Edge *edge, char type, 
                   bool *tagged_items, int offset)
 {
    tagged_items[offset + edge->index] = true;
@@ -193,22 +182,22 @@ void traverseEdge(Searchplan *searchplan, Edge *edge, char type,
     * and control passes to the caller. */
    if(type == 's')
    {
-      Node *target = edge->target;
+      Node *target = getNode(lhs, edge->target);
       if(!tagged_items[target->index])
       {
          if(edge->bidirectional) 
-              traverseNode(searchplan, target, 'b', tagged_items, offset);
-         else traverseNode(searchplan, target, 'i', tagged_items, offset);
+              traverseNode(searchplan, lhs, target, 'b', tagged_items, offset);
+         else traverseNode(searchplan, lhs, target, 'i', tagged_items, offset);
       }
    }      
    else 
    {
-      Node *source = edge->source;
+      Node *source = getNode(lhs, edge->source);
       if(!tagged_items[source->index])
       {
          if(edge->bidirectional) 
-              traverseNode(searchplan, source, 'b', tagged_items, offset);
-         else traverseNode(searchplan, source, 'o', tagged_items, offset);  
+              traverseNode(searchplan, lhs, source, 'b', tagged_items, offset);
+         else traverseNode(searchplan, lhs, source, 'o', tagged_items, offset);  
       }
    }
 }

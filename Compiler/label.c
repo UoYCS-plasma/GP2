@@ -55,7 +55,7 @@ LabelClass getLabelClass(Label *label)
 
 Label *copyLabel(Label *label)
 {
-   if(label == &blank_label) return &blank_label;
+   if(label == NULL || label == &blank_label) return label;
 
    Label *label_copy = malloc(sizeof(Label));
 

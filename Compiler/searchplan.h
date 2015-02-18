@@ -69,9 +69,9 @@ void freeSearchplan(Searchplan *searchplan);
  * are tagged, tagging items, and adding new operations to the searchplan.
  */     
 Searchplan *generateSearchplan(Graph *lhs);
-void traverseNode(Searchplan *searchplan, Node *node, char match_from, 
+void traverseNode(Searchplan *searchplan, Graph *lhs, Node *node, char type, 
                   bool *discovered_item, int offset);
-void traverseEdge(Searchplan *searchplan, Edge *edge, char match_from, 
+void traverseEdge(Searchplan *searchplan, Graph *lhs, Edge *edge, char type, 
                   bool *discovered_item, int offset);
 
 #endif /* INC_SEARCHPLAN_H */
