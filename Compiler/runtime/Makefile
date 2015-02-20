@@ -7,7 +7,7 @@ CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 LFLAGS = -lglib-2.0
 
 default:	$(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-run 
+		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-run 		
 
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<

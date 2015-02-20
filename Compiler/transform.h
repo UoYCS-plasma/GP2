@@ -20,6 +20,11 @@
 /* Creates the rule data structure from a pointer to a rule in the AST. */
 Rule *makeRule(GPRule *rule);
 
+/* Returns the maximum of minimum_size and the smallest power of 2 greater 
+ * than the number of nodes or edges in the passed graph. */
+int getNodeSize(GPGraph *graph, int minimum_size);
+int getEdgeSize(GPGraph *graph, int minimum_size);
+
 /* scanLHS does the following:
  * (1) Creates and returns the graph data structure for the LHS graph.
  * (2) Adds all LHS-nodes and LHS-edges to node and edge maps. Each map is an

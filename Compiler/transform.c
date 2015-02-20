@@ -32,35 +32,70 @@ Rule *makeRule(GPRule *ast_rule)
    rule->added_nodes = NULL;
    rule->added_edges = NULL;
 
-   if(ast_rule->lhs->nodes == NULL && ast_rule->lhs->edges == NULL) rule->lhs = NULL;
+   if(ast_rule->lhs->nodes == NULL) rule->lhs = NULL;
    else rule->lhs = scanLHS(ast_rule->lhs, ast_rule->interface, &node_map,
                             &edge_map, &(rule->deleted_nodes), &is_rooted);
 
-   if(ast_rule->rhs->nodes == NULL && ast_rule->rhs->edges == NULL) rule->rhs = NULL;
+   if(ast_rule->rhs->nodes == NULL) rule->rhs = NULL;
    else
    {
       rule->rhs = scanRHSNodes(ast_rule->rhs, ast_rule->interface, &node_map,
                                &(rule->preserved_nodes), &(rule->added_nodes));
       rule->added_edges = scanRHSEdges(ast_rule->rhs, rule->rhs,
-                                      ast_rule->interface, node_map, 
-                                      &edge_map, &(rule->preserved_edges));
-   }
-
+                                       ast_rule->interface, node_map, 
+                                       &edge_map, &(rule->preserved_edges));
+   } 
    if(node_map) freeIndexMap(node_map);
    if(edge_map) freeIndexMap(edge_map);
-
    rule->condition = NULL;
    rule->flags.is_predicate = 0;
    rule->flags.is_rooted = is_rooted;
-
    return rule;
-} 
+}
+
+int getNodeSize(GPGraph *graph, int minimum_size)
+{
+   int nodes = 0;
+   List *iterator;
+   for(iterator = graph->nodes; iterator != NULL; iterator = iterator->next)
+       nodes++;
+   if(nodes < minimum_size) return minimum_size;
+   if(nodes == 0) return 0;
+   /* Return the smallest power of 2 greater than nodes. */
+   nodes--;
+   nodes |= nodes >> 1;
+   nodes |= nodes >> 2;
+   nodes |= nodes >> 4;
+   nodes |= nodes >> 8;
+   nodes |= nodes >> 16;
+   return nodes + 1;
+}
+
+int getEdgeSize(GPGraph *graph, int minimum_size)
+{
+   int edges = 0;
+   List *iterator;
+   for(iterator = graph->edges; iterator != NULL; iterator = iterator->next)
+      edges++;
+   if(edges < minimum_size) return minimum_size;
+   if(edges == 0) return 0;
+   /* Return the smallest power of 2 greater than edges. */
+   edges--;
+   edges |= edges >> 1;
+   edges |= edges >> 2;
+   edges |= edges >> 4;
+   edges |= edges >> 8;
+   edges |= edges >> 16;
+   return edges + 1;
+}
 
 Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
                IndexMap **edge_map, ItemList **deleted_nodes,
                unsigned int *is_rooted)
 {
-   Graph *lhs = newGraph(MAX_NODES, MAX_EDGES);
+   int lhs_nodes = getNodeSize(ast_lhs, 0);
+   int lhs_edges = getEdgeSize(ast_lhs, 0);
+   Graph *lhs = newGraph(lhs_nodes, lhs_edges);
 
    List *nodes = ast_lhs->nodes;
 
@@ -142,7 +177,9 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
 Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
                     PreservedItemList **nodes, ItemList **added_nodes)
 {
-   Graph *rhs = newGraph(MAX_NODES, MAX_EDGES);
+   int rhs_nodes = getNodeSize(ast_rhs, 0);
+   int rhs_edges = getEdgeSize(ast_rhs, 0);
+   Graph *rhs = newGraph(rhs_nodes, rhs_edges);
 
    List *ast_nodes = ast_rhs->nodes;
 

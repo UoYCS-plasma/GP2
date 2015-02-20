@@ -1,18 +1,20 @@
 #ifndef INC_GEN_MACROS_H
 #define INC_GEN_MACROS_H
 
-#define ADD_HOST_NODE(is_root, node_name)                                \
-   do {                                                                  \
-   int index = addNode(host, (is_root), NULL);                           \
-   node_map = addIndexMap(node_map, node_name, index, -1, NULL, NULL);   \
-   } while(0);                                                           \
+#define ADD_HOST_NODE(is_root, node_name)                               \
+   do {                                                                 \
+   node_index = addNode(host, (is_root), NULL);                         \
+   map_index = (int)strtol(node_name, NULL, 0);                         \
+   node_map[map_index] = node_index;                                    \
+   } while(0);                                                          \
 
 #define ADD_HOST_LOOP_EDGE(source_name, bidirectional)                  \
    do {                                                                 \
-   int source = findLeftIndexFromId(node_map, source_name);             \
+   map_index = (int)strtol(source_name, NULL, 0);                       \
+   source = node_map[map_index];                                        \
    if(source == -1)                                                     \
    {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's source " source_name  \
+      print_to_log("Error (makeHostGraph): Edge's source n" source_name \
                    "not found in the node map.\n");                     \
       exit(1);                                                          \
    }                                                                    \
@@ -21,17 +23,19 @@
 
 #define ADD_HOST_EDGE(source_name, target_name, bidirectional)          \
    do {                                                                 \
-   int source = findLeftIndexFromId(node_map, source_name);             \
+   map_index = (int)strtol(source_name, NULL, 0);                       \
+   source = node_map[map_index];                                        \
    if(source == -1)                                                     \
    {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's source " source_name  \
+      print_to_log("Error (makeHostGraph): Edge's source n" source_name \
                    "not found in the node map.\n");                     \
       exit(1);                                                          \
    }                                                                    \
-   int target = findLeftIndexFromId(node_map, target_name);             \
+   map_index = (int)strtol(target_name, NULL, 0);                       \
+   target = node_map[map_index];                                        \
    if(target == -1)                                                     \
    {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's target " target_name  \
+      print_to_log("Error (makeHostGraph): Edge's target n" target_name \
                    "not found in the node map.\n");                     \
       exit(1);                                                          \
    }                                                                    \

@@ -14,7 +14,7 @@
 #define INC_GEN_PROGRAM_H
 
 /* main_header and main_source are the file handles for runtime.h
- * and runtime.c respectively. */
+ * and main.c respectively. */
 #define printToMainHeader(code, ...)	             \
   do { fprintf(main_header, code, ##__VA_ARGS__); }  \
   while(0) 
@@ -39,6 +39,11 @@
   while(0) 
 
 #define PTIS printToInitSource
+
+/* If the host graph contains fewer than MIN_HOST_NODE_SIZE nodes, the host
+ * graph is allocated memory for that number of nodes. Similarly for edges. */
+#define MIN_HOST_NODE_SIZE 256
+#define MIN_HOST_EDGE_SIZE 256
 
 #include "ast.h"
 #include "error.h"

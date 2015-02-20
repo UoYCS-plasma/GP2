@@ -42,7 +42,7 @@ bool validGraph(Graph *graph)
       if(node->index == -1) 
       {
          int count;
-         for(count = 0; count < MAX_NODES; count++)
+         for(count = 0; count < graph->node_pool_size; count++)
          {
             if(graph->free_node_slots[count] == graph_index) 
             {
@@ -135,7 +135,7 @@ bool validGraph(Graph *graph)
       if(edge->index == -1) 
       { 
          int count;
-         for(count = 0; count < MAX_EDGES; count++)
+         for(count = 0; count < graph->edge_pool_size; count++)
          {
             if(graph->free_edge_slots[count] == graph_index) 
             {

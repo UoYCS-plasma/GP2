@@ -13,17 +13,23 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
      perror("init_runtime.c");
      exit(1);
    }
-     
+   
    fprintf(header, "#include \"../graph.h\"\n"
                    "#include \"../macros.h\"\n"
                    "#include \"../rule.h\"\n\n"
  		   "Graph *makeHostGraph(void);\n");
 
+   int host_node_size = getNodeSize(ast_host_graph, MIN_HOST_NODE_SIZE);
+   int host_edge_size = getNodeSize(ast_host_graph, MIN_HOST_EDGE_SIZE);
+ 
    PTIS("#include \"init_runtime.h\"\n\n"
         "Graph *makeHostGraph(void)\n"
         "{\n"
-        "   Graph *host = newGraph(MAX_NODES, MAX_EDGES);\n"
-        "   IndexMap *node_map = NULL;\n");
+        "   Graph *host = newGraph(%d, %d);\n", 
+        host_node_size, host_edge_size);
+   PTIS("   int node_map[%d], map_index, node_index, source, target, count;\n"
+        "   for(count = 0; count < %d; count ++)\n"
+        "      node_map[count] = -1;\n", host_node_size, host_node_size);
    PTIS("\n");
 
    List *nodes = ast_host_graph->nodes, *edges = ast_host_graph->edges;
@@ -36,7 +42,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    {
       GPNode *ast_node = nodes->value.node;
       //TODO: Incorporate Label *label = transformLabel(ast_node->label);
-      PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, ast_node->name);
+      PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, (ast_node->name)+1);
       nodes = nodes->next;   
    }
    PTIS("\n   /* Add the host edges to the graph, getting source and target\n"
@@ -51,14 +57,14 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       //TODO: Incorporate Label *label = transformLabel(ast_edge->label);
       if(!strcmp(ast_edge->source, ast_edge->target))
          PTIS("   ADD_HOST_LOOP_EDGE(\"%s\", %d);\n",
-              ast_edge->source, ast_edge->bidirectional);
+              (ast_edge->source)+1, ast_edge->bidirectional);
       else
          PTIS("   ADD_HOST_EDGE(\"%s\", \"%s\", %d);\n",
-              ast_edge->source, ast_edge->target, ast_edge->bidirectional);
+              (ast_edge->source)+1, (ast_edge->target)+1, 
+              ast_edge->bidirectional);
       edges = edges->next;   
    }
-   PTIS("\n   if(node_map) freeIndexMap(node_map);\n"
-        "   return host;\n"
+   PTIS("\n  return host;\n"
         "}\n");
 
    fclose(header);
