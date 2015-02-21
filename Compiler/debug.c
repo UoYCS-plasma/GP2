@@ -356,7 +356,8 @@ void printVerboseNode(Node *node)
     }
     else printf("empty\n");
     printMark(node->label->mark, true);
-    printf("Indegree: %d. Outdegree: %d\n\n", node->indegree, node->outdegree);
+    printf("Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
+           node->indegree, node->outdegree, node->bidegree);
 }
 
 void printVerboseEdge(Edge *edge) 

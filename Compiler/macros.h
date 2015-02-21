@@ -42,40 +42,61 @@
    addEdge(host, bidirectional, NULL, source, target);                  \
    } while(0);
 
-#define MAKE_MATCHED_NODES_ARRAY                      \
-   int count;                                         \
-   bool matched_nodes[host->node_index];              \
-   for(count = 0; count < host->node_index; count ++) \
-       matched_nodes[count] = false;                
+#define MAKE_MATCHED_NODES_ARRAY                \
+   int count;                                   \
+   int matched_nodes[left_nodes];               \
+   for(count = 0; count < left_nodes; count++)  \
+       matched_nodes[count] = -1;                
 
-#define MAKE_MATCHED_EDGES_ARRAY                      \
-   bool matched_edges[host->edge_index];              \
-   for(count = 0; count < host->edge_index; count ++) \
-       matched_edges[count] = false;                
+#define MAKE_MATCHED_EDGES_ARRAY                \
+   int matched_edges[left_edges];               \
+   for(count = 0; count < left_edges; count++)  \
+       matched_edges[count] = -1;                
 
-#define IF_INVALID_NODE(lclass, nmark, indeg, outdeg)  \
-   if(matched_nodes[host_node->index] ||               \
-      host_node->label_class != (lclass) ||            \
-      host_node->label->mark != (nmark) ||             \
-      host_node->indegree < (indeg) ||                 \
-      host_node->outdegree < (outdeg))                 \
+#define CHECK_MATCHED_NODE                         \
+   int index;                                      \
+   for(index = 0; index < left_nodes; index++)     \
+   {                                               \
+      if(matched_nodes[index] == host_node->index) \
+         node_matched = true;                      \
+   }                                               \
+      
+#define CHECK_MATCHED_EDGE                         \
+   int index;                                      \
+   for(index = 0; index < left_edges; index++)     \
+   {                                               \
+      if(matched_edges[index] == host_edge->index) \
+         edge_matched = true;                      \
+   }                                               \
 
-#define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg)  \
-   if(matched_nodes[host_node->index] ||                        \
-      host_node->label_class != (lclass) ||                     \
-      host_node->label->mark != (nmark) ||                      \
-      host_node->indegree != (indeg) ||                         \
-      host_node->outdegree != (outdeg))                         \
+#define IF_INVALID_NODE(lclass, nmark, indeg, outdeg, bideg)  \
+   if(node_matched ||                                         \
+      host_node->label_class != (lclass) ||                   \
+      host_node->label->mark != (nmark) ||                    \
+      host_node->indegree < (indeg) ||                        \
+      host_node->outdegree < (outdeg) ||                      \
+      ((host_node->outdegree + host_node->indegree            \
+        - (indeg) - (outdeg)) < (bideg)))                     \
+
+#define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg, bideg)  \
+   if(node_matched ||                                                  \
+      host_node->label_class != (lclass) ||                            \
+      host_node->label->mark != (nmark) ||                             \
+      host_node->indegree != (indeg) ||                                \
+      host_node->outdegree != (outdeg)                                 \
+      ((host_node->outdegree + host_node->indegree                     \
+        - (indeg) - (outdeg)) != (bideg)))                             \
+
 
 #define IF_INVALID_EDGE(lclass, emark)       \
-   if(matched_edges[host_edge->index] ||     \
+   if(edge_matched ||                        \
       host_edge->label_class != (lclass) ||  \
       host_edge->label->mark != (emark))
 
-#define IF_INVALID_LOOP_EDGE(lclass, emark)     \
-   if(matched_edges[host_edge->index] ||        \
-      host_edge->source != host_edge->target || \
-      host_edge->label_class != (lclass) ||     \
+#define IF_INVALID_LOOP_EDGE(lclass, emark)      \
+   if(edge_matched ||                            \
+      host_edge->source != host_edge->target ||  \
+      host_edge->label_class != (lclass) ||      \
       host_edge->label->mark != (emark))
 
 /* Deletes all the host items in the morphism from the host graph. Edges are

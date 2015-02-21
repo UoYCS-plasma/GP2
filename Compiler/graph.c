@@ -1,6 +1,6 @@
 #include "graph.h"
 
-Node dummy_node = {-1, false, EMPTY_L, NULL, {-1}, {-1}, NULL, NULL, 0, 0, 0, 0, 0, 0};
+Node dummy_node = {-1, false, EMPTY_L, NULL, {-1}, {-1}, NULL, NULL, 0, 0, 0, 0, 0, 0, 0};
 Edge dummy_edge = {-1, false, EMPTY_L, NULL, -1, -1};
 
 Graph *newGraph(int nodes, int edges) 
@@ -115,6 +115,7 @@ int addNode(Graph *graph, bool root, Label *label)
    graph->nodes[index].in_pool_size = 0;
    graph->nodes[index].outdegree = 0;
    graph->nodes[index].indegree= 0;
+   graph->nodes[index].bidegree= 0;
    
    int count;
    for(count = 0; count < MAX_INCIDENT_EDGES; count++)
@@ -245,7 +246,7 @@ int addEdge(Graph *graph, bool bidirectional, Label *label, int source_index,
    }
    else source->out_edges[source->out_index] = index;
    source->out_index++;
-   source->outdegree++;
+   if(bidirectional) source->bidegree++; else source->outdegree++;
 
    Node *target = getNode(graph, target_index);
    if(target->in_index >= target->in_pool_size + MAX_INCIDENT_EDGES)
@@ -273,7 +274,7 @@ int addEdge(Graph *graph, bool bidirectional, Label *label, int source_index,
    }
    else target->in_edges[target->in_index] = index;
    target->in_index++;
-   target->indegree++;
+   if(bidirectional) target->bidegree++; else target->indegree++;
 
    graph->number_of_edges++;
    return index;
@@ -479,6 +480,9 @@ void removeEdge(Graph *graph, int index)
          break;
       }
    }
+   /* Rule graphs are not modified after their creation. Specifically,
+    * removeEdge is never called on a rule graph, so there is no need to
+    * check whether to decrement the bidegrees. */
    source->outdegree--;
    target->indegree--;
 

@@ -96,24 +96,28 @@ void freeMap(Map *map)
 Morphism *makeMorphism(int nodes, int edges, int variables)
 {
    Morphism *morphism = malloc(sizeof(Morphism));
-
    if(morphism == NULL)
    {
       print_to_log("Memory exhausted during morphism construction.\n");
       exit(1);
    }
-
    morphism->nodes = nodes;
    morphism->node_map_index = 0;
 
+   int count;
    if(nodes > 0) 
    {
       morphism->node_map = calloc(nodes, sizeof(Map));
-
       if(morphism->node_map == NULL)
       {
          print_to_log("Memory exhausted during morphism construction.\n");
          exit(1);
+      }
+      for(count = 0; count < nodes; count++)
+      {
+         morphism->node_map[count].left_index = -1;
+         morphism->node_map[count].host_index = -1;
+         morphism->node_map[count].added_variables = -1;
       }
    }
    else morphism->node_map = NULL;
@@ -130,6 +134,12 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
          print_to_log("Memory exhausted during morphism construction.\n");
          exit(1);
       }
+      for(count = 0; count < edges; count++)
+      {
+         morphism->edge_map[count].left_index = -1;
+         morphism->edge_map[count].host_index = -1;
+         morphism->edge_map[count].added_variables = -1;
+      }
    }
    else morphism->edge_map = NULL;
 
@@ -145,6 +155,12 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
          print_to_log("Memory exhausted during morphism construction.\n");
          exit(1);
       }
+      for(count = 0; count < variables; count++)
+      {
+         morphism->assignment[count].variable = NULL;
+         morphism->assignment[count].value = NULL;
+      }
+
    }
    else morphism->assignment = NULL;
 

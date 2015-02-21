@@ -100,10 +100,20 @@ typedef struct Node {
     * extra edge array. */
    int out_index, in_index;
 
-   /* The number of non-dummy items in the node's inedges/outedges array.
-    * Do NOT use these as a bound for an iterator over the arrays. Instead use
-    * out_index and in_index. */
-   int outdegree, indegree;
+   /* Bidirectional edges, and hence bidegrees, exist only in rule graphs.
+    * A bidirectional edge is internally represented as either a single outedge
+    * or a single inedge, but it contributes only to the node's bidegree. In
+    * other words, adding a bidirectional edge increments the bidegree but does
+    * not change the indegree or the outdegree.
+    *
+    * For host graphs, and for rule graphs with bidegree 0, the out(in)degree
+    * is the number of non-negative indices in the node's out(in)edge arrays.
+    * For rule graphs with bidegree > 0, the invariant is less strict, since 
+    * a bidirectional edge may lie in either the outedge array or the inedge
+    * array. All that can be said for certain is that the sum of the three
+    * degrees is the number of non-negative indices in all of the node's edge
+    * arrays. */
+   int outdegree, indegree, bidegree;
 } Node;
 
 extern struct Node dummy_node;
