@@ -1,12 +1,7 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
-/* we leave the top two bits for flags */
-#define NODE_ID_BITS 30
-#define MAX_NODES (1<<NODE_ID_BITS)
-#define NODE_ID_MASK (~(-1 << NODE_ID_BITS))
-
-#define node(id) (nodePool[(id)&NODE_ID_MASK])
+#define node(id) (nodePool[(id)])
 #define edge(n, id) ((n)->outEdges.nodes[id])
 
 #define outdeg(n)  ((n)->outEdges.len)
@@ -16,6 +11,22 @@
 
 #define outEdgeList(n) (&((n)->outEdges))
 #define inEdgeList(n)  (&((n)->inEdges))
+
+#define match(n) do {(n)->matched = 1;} while (0);  
+#define unmatch(n) do {(n)->matched = 0;} while (0);
+
+#define index(g, id) ( &((g)->indices[id]) )
+#define indexFor(g, n) ( index((g), (n)->sig) )
+
+/* BEWARE: double-evaluation risk -- no ++! */
+#define min(a, b) ((a)<(b)?(a):(b))
+
+#define scaleToIndexSize(o, i, l, r) do { \
+	(o) = min((o), O_SZ); \
+	(i) = min((i), I_SZ); \
+	(l) = min((l), L_SZ); \
+	(r) = min((r), R_SZ); \
+} while (0);
 
 /*typedef union NodeSignature {
 	struct {
@@ -38,23 +49,41 @@
 
 #ifndef O_SZ
 
-#define O_SZ 3
-#define I_SZ 3
-#define L_SZ 3
-#define R_SZ 2
+#define O_BITS 2
+#define I_BITS 2
+#define L_BITS 2
+#define R_BITS 1
 
 #endif
 
-#define INDEX_COUNT (O_SZ*I_SZ*L_SZ*R_SZ)
+#define OILR_BITS (O_BITS+I_BITS+L_BITS+R_BITS)
+
+#define O_SZ (1<<O_BITS)
+#define I_SZ (1<<I_BITS)
+#define L_SZ (1<<L_BITS)
+#define R_SZ (1<<R_BITS)
+
+#define INDEX_COUNT (1<<OILR_BITS)
+
+typedef struct NodeSignature {
+	unsigned int o:O_BITS;
+	unsigned int i:I_BITS;
+	unsigned int l:L_BITS;
+	unsigned int r:R_BITS;
+	// unsigned int n:N_BITS;
+} NodeSignature;
+
 
 
 typedef int NodeId;
 
 typedef struct NodeList {
 	unsigned int pool;
-	unsigned int len:NODE_ID_BITS;
+	unsigned int len;
 	NodeId *nodes;
 } NodeList;
+
+
 
 
 typedef union Node {
@@ -62,6 +91,11 @@ typedef union Node {
 	/* .out is part of outEdges */
 		int loop, root;
 		int matchedLoops;
+		int matched;
+		union {
+			NodeSignature oilr;
+			int sig;
+		};
 		NodeList outEdges;
 		NodeList inEdges;
 	};
@@ -73,13 +107,14 @@ typedef union Node {
 
 typedef struct Graph {
 	NodeList nodes;
-	union {
-		NodeList flat[INDEX_COUNT];
-		NodeList indices[O_SZ][I_SZ][L_SZ][R_SZ];
-	};
+	NodeList indices[INDEX_COUNT];
 } Graph;
 
 /* Global vars */
+
+Node *nodePool;
+Graph graphs[DEF_GRAPH_POOL];
+Graph *gsp = graphs;
 
 
 /* API functions */

@@ -6,10 +6,6 @@
 
 #include "graph.h"
 
-Graph graphs[DEF_GRAPH_POOL];
-Graph *gsp = graphs;
-
-Node *nodePool;
 int nodePoolSize = 0;
 NodeId nextNode = 0;
 Node *freeNodes = NULL;
@@ -97,11 +93,23 @@ void unlistNode(NodeList *nl, NodeId id) {
 	failWith("Node ID not found");
 }
 
-#define indexFor(g, n) ( &((g)->indices[outdeg(n)][indeg(n)][loopdeg(n)][rooted(n)]) )
+void sign(Node *n) {
+	int o = outdeg(n);
+	int i = indeg(n);
+	int l = loopdeg(n);
+	int r = rooted(n);
+	scaleToIndexSize(o, i, l, r);
+	n->oilr.o = o;
+	n->oilr.i = i;
+	n->oilr.l = l;
+	n->oilr.r = r;
+}
 
 void indexNode(NodeId id) {
 	Node *n = &node(id);
-	NodeList *idx = indexFor(gsp, n);
+	NodeList *idx;
+	sign(n);
+	idx = indexFor(gsp, n);
 	listNode(idx, id);
 }
 void unindexNode(NodeId id) {
@@ -172,7 +180,7 @@ void initialise() {
 	NodeList emptyIndex = {.len=0, .pool=0, .nodes=NULL};
 	int i;
 	for (i=0; i<INDEX_COUNT; i++)
-		gsp->flat[i] = emptyIndex;
+		gsp->indices[i] = emptyIndex;
 	nodePool = malloc(DEF_NODE_POOL * sizeof(Node));
 	nodePoolSize = DEF_NODE_POOL;
 	if (nodePool == NULL)
@@ -187,8 +195,8 @@ void finalise() {
 			free(outEdgeList(n)->nodes);
 	}
 	for (i=0; i<INDEX_COUNT; i++) {
-		if (gsp->flat[i].nodes != NULL)
-			free(gsp->flat[i].nodes);
+		if (gsp->indices[i].nodes != NULL)
+			free(gsp->indices[i].nodes);
 	}
 
 	free(nodePool);
