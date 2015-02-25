@@ -18,7 +18,7 @@ typedef struct Trav {
 	const int first;
 	const int last;
 	int cur;
-	int pos;
+	int next;
 
 	int o, i, l, r;
 	NodeId match;
@@ -26,7 +26,7 @@ typedef struct Trav {
 } Trav;
 
 
-Trav searchPlans[MAX_TRAVS];
+Trav travs[MAX_TRAVS];
 int success;
 
 #endif
