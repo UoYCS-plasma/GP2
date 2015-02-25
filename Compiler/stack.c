@@ -8,23 +8,29 @@
 
 #include "stack.h"
 
-Stack *newStack()
+Stack *newStack(int size)
 {
-   Stack *new_stack = malloc(sizeof(Stack));
-
-   if(new_stack == NULL) 
+   Stack *stack = malloc(sizeof(Stack));
+   if(stack == NULL) 
    {
       print_to_log("Error: Memory exhausted during stack construction.\n");
       exit(1);
    }
 
-   new_stack->top = NULL;
-  
-   return new_stack;
+   stack->top = 0;
+   stack->size = size;
+   stack->data = calloc(size, sizeof(StackData));
+   
+   if(stack->data == NULL) 
+   {
+      print_to_log("Error: Memory exhausted during stack construction.\n");
+      exit(1);
+   }
+   return stack;
 }
 
 
-void push (Stack *stack, StackData *data) 
+void push(Stack *stack, StackData data) 
 {
    if(stack == NULL) 
    {
@@ -32,61 +38,29 @@ void push (Stack *stack, StackData *data)
       exit(1);
    }
 
-   StackNode *new_node = malloc(sizeof(StackNode));
-
-   if(new_node == NULL) 
+   if(stack->top == stack->size) 
    {
-      print_to_log("Error: Memory exhausted during stack node construction.\n");
+      print_to_console("Warning: Push called on full stack. No data pushed.\n");
+      return;
+   }
+   stack->data[stack->top++] = data;
+}
+
+StackData pop(Stack *stack) 
+{
+   if(stack->top == 0) 
+   {
+      print_to_console("Warning: Pop called on empty stack.\n");
       exit(1);
    }
-  
-   new_node->data = data;
-   new_node->next = stack->top;
-   stack->top = new_node;
+   stack->top--;
+   return stack->data[stack->top];
 }
-
-StackData *pop (Stack *stack) 
-{
-   if(stack == NULL || stack->top == NULL) return NULL;
-
-   StackData *data = stack->top->data;
-   StackNode *node = stack->top;
-   stack->top = stack->top->next;
-
-   free(node);
-   
-   return data;
-}
-
-/* int findHostIndex(Stack *stack, int left_index)
-{
-   if(stack == NULL) return -1;
-
-   StackNode *iterator = stack->top;
-
-   while(iterator != NULL)
-   {
-      if(iterator->data->map.left_index == left_index)
-         return iterator->data->map.host_index;
-      iterator = iterator->next;
-   }
-   return -1;
-} */
-
 
 void freeStack(Stack *stack)
 {
    if(stack == NULL) return;
-
-   StackNode *iterator = stack->top;
-
-   while(iterator != NULL)
-   {
-      if(iterator->data != NULL) free(iterator->data);
-      StackNode *temp = iterator;
-      iterator = iterator->next;
-      free(temp);
-   }
+   free(stack->data);
    free(stack);
 }
 

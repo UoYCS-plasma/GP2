@@ -20,7 +20,7 @@
 #include "parser.h"
 #include "seman.h" 
 
-#define DEBUG
+#undef DEBUG
 #undef PARSER_TRACE 	
 
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
@@ -30,7 +30,6 @@
  * The variable parse_target is passed to the lexer which in turn sends
  * the appropriate token to the parser. 
  */ 
-
 #define GP_PROGRAM 1 		
 #define GP_GRAPH 2	
 int parse_target = 0; 

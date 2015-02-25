@@ -344,7 +344,6 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
       PTRSI("}\n", 9);
    }
    PTRSI("}\n", 6);
-   if(is_root) PTRSI("nodes = nodes->next;\n", 6);
    PTRSI("}\n", 3);
    PTRSI("return false;\n", 3);
    PTRS("}\n\n");

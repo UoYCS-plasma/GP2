@@ -1,6 +1,15 @@
 #ifndef INC_GEN_MACROS_H
 #define INC_GEN_MACROS_H
 
+#define GET_GRAPH_AT_RESTORE_POINT                              \
+   do {                                                         \
+   if(stack_depth > restore_point)                              \
+   {                                                            \
+      host = restoreGraph(host, stack_depth - restore_point);   \
+      stack_depth--;                                            \
+   }                                                            \
+   } while(0);
+      
 #define ADD_HOST_NODE(is_root, node_name)                               \
    do {                                                                 \
    node_index = addNode(host, (is_root), NULL);                         \
@@ -15,7 +24,7 @@
    if(source == -1)                                                     \
    {                                                                    \
       print_to_log("Error (makeHostGraph): Edge's source n" source_name \
-                   "not found in the node map.\n");                     \
+                   " not found in the node map.\n");                    \
       exit(1);                                                          \
    }                                                                    \
    addEdge(host, bidirectional, NULL, source, source);                  \
@@ -28,7 +37,7 @@
    if(source == -1)                                                     \
    {                                                                    \
       print_to_log("Error (makeHostGraph): Edge's source n" source_name \
-                   "not found in the node map.\n");                     \
+                   " not found in the node map.\n");                    \
       exit(1);                                                          \
    }                                                                    \
    map_index = (int)strtol(target_name, NULL, 0);                       \
@@ -36,7 +45,7 @@
    if(target == -1)                                                     \
    {                                                                    \
       print_to_log("Error (makeHostGraph): Edge's target n" target_name \
-                   "not found in the node map.\n");                     \
+                   " not found in the node map.\n");                    \
       exit(1);                                                          \
    }                                                                    \
    addEdge(host, bidirectional, NULL, source, target);                  \
@@ -83,7 +92,7 @@
       host_node->label_class != (lclass) ||                            \
       host_node->label->mark != (nmark) ||                             \
       host_node->indegree != (indeg) ||                                \
-      host_node->outdegree != (outdeg)                                 \
+      host_node->outdegree != (outdeg) ||                              \
       ((host_node->outdegree + host_node->indegree                     \
         - (indeg) - (outdeg)) != (bideg)))                             \
 

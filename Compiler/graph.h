@@ -158,9 +158,9 @@ void relabelEdge(Graph *graph, Edge *edge, Label *new_label, bool change_label,
 extern Stack *graph_stack;
 /* Creates a memory copy of the passed graph and pushes it to graph_stack. */
 void copyGraph(Graph *graph);
-/* restoreGraph is passed the current graph. It frees its argument before 
- * returning the top graph from graph_stack. */
-Graph *restoreGraph(Graph *graph);
+/* restoreGraph frees the passed graph and returns the graph <depth> items
+ * down the stack. All intermediate graphs are freed. */
+Graph *restoreGraph(Graph *graph, int depth);
 void freeGraphStack(Stack *graph_stack);
 
 

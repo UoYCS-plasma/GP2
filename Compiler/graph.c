@@ -102,7 +102,7 @@ int addNode(Graph *graph, bool root, Label *label)
    else 
    {
       graph->free_node_slots[graph->free_node_index] = -1;
-      graph->free_node_index--;
+      if(graph->free_node_index > 0) graph->free_node_index--;
    }
 
    graph->nodes[index].index = index;
@@ -189,7 +189,7 @@ int addEdge(Graph *graph, bool bidirectional, Label *label, int source_index,
    else
    {
       graph->free_edge_slots[graph->free_edge_index] = -1;
-      graph->free_edge_index--;
+      if(graph->free_edge_index > 0) graph->free_edge_index--;
    }
 
    graph->edges[index].index = index;
@@ -711,38 +711,30 @@ void copyGraph(Graph *graph)
       }
    }  
  
-   if(graph_stack == NULL) graph_stack = newStack();
-   
-   StackData *data = malloc(sizeof(StackData));
-   if(data == NULL)
-   {
-      print_to_log("Error (copyGraph): Memory exhausted during graph "
-                   "construction.\n");
-      exit(1);
-   }
-   data->graph = graph_copy;
+   if(graph_stack == NULL) graph_stack = newStack(STACK_SIZE);
+   StackData data;
+   data.graph = graph_copy;
    push(graph_stack, data);
 }
 
-Graph *restoreGraph(Graph *graph)
+Graph *restoreGraph(Graph *graph, int depth)
 { 
    freeGraph(graph);
-   StackData *data = pop(graph_stack);
-   Graph *output = data->graph;
-   free(data);
-   return output;
+   int count;
+   for(count = 0; count < depth; count++)
+   {
+      StackData data = pop(graph_stack);
+      if(count != depth - 1) freeGraph(data.graph);
+      else return data.graph;
+   }
 }
 
 void freeGraphStack(Stack *graph_stack)
 {
-   /* Before calling freeStack, free all the pointers to graphs. */
-   StackNode *iterator = graph_stack->top;
-
-   while(iterator != NULL)
-   {
-      if(iterator->data->graph) freeGraph(iterator->data->graph);
-      iterator = iterator->next;
-   }
+   int count;
+   for(count = 0; count < graph_stack->top; count++)
+      if(graph_stack->data[count].graph) 
+         freeGraph(graph_stack->data[count].graph);
    freeStack(graph_stack);
 }
 
