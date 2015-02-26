@@ -218,8 +218,7 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
          }
 
          if(interface_node)
-            *nodes = addPreservedItem(*nodes, false, map->left_index, 
-                                      node_index);
+            *nodes = addPreservedItem(*nodes, map->left_index, label);
          else *added_nodes = addItem(*added_nodes, node_index);
         
          map->right_index = node_index;
@@ -253,7 +252,6 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
          exit(1);
       }
       Node *source = getNode(rhs, source_map->right_index);
-      Label *label = transformLabel(ast_edge->label);
 
       IndexMap *target_map = findMapFromId(node_map, target_id);
       if(target_map == NULL)
@@ -264,6 +262,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
       }
       Node *target = getNode(rhs, target_map->right_index);
 
+      Label *label = transformLabel(ast_edge->label);
       int edge_index = addEdge(rhs, ast_edge->bidirectional, label, 
                                source->index, target->index);
 
@@ -311,8 +310,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
          {
             /* A map has been found, therefore the edge is preserved by the
              * rule. */
-            *edges = addPreservedItem(*edges, false, map->left_index, 
-                                      edge_index);
+            *edges = addPreservedItem(*edges, map->left_index, label);
             /* The map is removed to ensure that a parallel RHS-edge is not
              * associated with this edge. */
             *edge_map = removeMap(*edge_map, map);     
@@ -344,9 +342,24 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
    return added_edges;
 }
 
-Label *transformLabel(GPLabel *label)
+Label *transformLabel(GPLabel *ast_label)
 {
-   return NULL;
+   if(ast_label->gp_list->list_type == EMPTY_LIST) 
+      return makeEmptyList(ast_label->mark);
+
+   /* For now this is the same as makeEmptyList. */
+   Label *label = malloc(sizeof(label));
+   if(label == NULL)
+   {
+      print_to_log("Error: Memory exhausted during label creation.\n");
+      exit(1);
+   }
+   label->mark = ast_label->mark;
+   label->list.first = NULL;
+   label->list.last = NULL;
+   label->list_length = 0;
+   label->list_variable = false;
+   return label;
 }
 
 

@@ -266,8 +266,8 @@ void printVerboseRule(Rule *rule)
    printf("Preserved nodes: ");
    while(item != NULL)
    {
-      printf("(%d, %d, %d) ", item->left_index, item->right_index, 
-            item->label_change);
+      printf("%d", item->left_index);
+      if(item->next != NULL) printf(", ");
       item = item->next;
    }
 
@@ -275,8 +275,8 @@ void printVerboseRule(Rule *rule)
    printf("\nPreserved edges: ");
    while(item != NULL)
    {
-      printf("(%d, %d, %d) ", item->left_index, item->right_index, 
-            item->label_change);
+      printf("%d", item->left_index);
+      if(item->next != NULL) printf(", ");
       item = item->next;
    }
 
@@ -349,12 +349,8 @@ void printVerboseNode(Node *node)
     printf("\n");
     printf("Label Class: %d\n", node->label_class);
     printf("Label: ");
-    if(node->label->list) 
-    {
-       printGP2List(node->label->list);
-       printf("\n");
-    }
-    else printf("empty\n");
+    printGP2List(node->label->list);
+    printf("\n");
     printMark(node->label->mark, true);
     printf("Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
            node->indegree, node->outdegree, node->bidegree);
@@ -367,14 +363,9 @@ void printVerboseEdge(Edge *edge)
     printf("\n");
     printf("Label Class: %d\n", edge->label_class);
     printf("Label: ");
-    if(edge->label->list) 
-    {
-       printGP2List(edge->label->list);
-       printf("\n");
-    }
-    else printf("empty\n");
-    printMark(edge->label->mark, true);
+    printGP2List(edge->label->list);
     printf("\n");
+    printMark(edge->label->mark, true);
     printf("Source: %d. Target: %d\n\n", edge->source, edge->target);
 }
 

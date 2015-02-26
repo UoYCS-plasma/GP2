@@ -70,6 +70,6 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
                           IndexMap *node_map, IndexMap **edge_map,
                           PreservedItemList **edges);
 
-Label *transformLabel(GPLabel *label);
+Label *transformLabel(GPLabel *ast_label);
 
 #endif /* INC_TRANSFORM_H */

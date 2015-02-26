@@ -12,7 +12,7 @@
       
 #define ADD_HOST_NODE(is_root, node_name)                               \
    do {                                                                 \
-   node_index = addNode(host, (is_root), NULL);                         \
+   node_index = addNode(host, (is_root), label);                        \
    map_index = (int)strtol(node_name, NULL, 0);                         \
    node_map[map_index] = node_index;                                    \
    } while(0);                                                          \
@@ -27,7 +27,7 @@
                    " not found in the node map.\n");                    \
       exit(1);                                                          \
    }                                                                    \
-   addEdge(host, bidirectional, NULL, source, source);                  \
+   addEdge(host, bidirectional, label, source, source);                 \
    } while(0);
 
 #define ADD_HOST_EDGE(source_name, target_name, bidirectional)          \
@@ -48,7 +48,7 @@
                    " not found in the node map.\n");                    \
       exit(1);                                                          \
    }                                                                    \
-   addEdge(host, bidirectional, NULL, source, target);                  \
+   addEdge(host, bidirectional, label, source, target);                 \
    } while(0);
 
 #define MAKE_MATCHED_NODES_ARRAY                \
@@ -126,41 +126,43 @@
    {                                                         \
       left_index = morphism->edge_map[count].left_index;     \
       host_index = morphism->edge_map[count].host_index;     \
-      if(edge_map[left_index] == -1)                         \
+      if(edge_map[left_index].remove_item == true)           \
       {                                                      \
          removeEdge(host, host_index);                       \
          continue;                                           \
       }                                                      \
-      if(edge_map[left_index] == 1)                          \
+      if(edge_map[left_index].relabel_item == true)          \
       {                                                      \
          Edge *host_edge = getEdge(host, host_index);        \
-         relabelEdge(host, host_edge, NULL, true, false);    \
+         Label *label = edge_map[left_index].new_label;      \
+         relabelEdge(host, host_edge, label, true, false);   \
          continue;                                           \
       }                                                      \
    }                                                         \
    } while(0);                                               
 
 
-#define PROCESS_NODE_MORPHISMS                                          \
-   do {                                                                 \
-   for(count = 0; count < morphism->nodes; count++)                     \
-   {                                                                    \
-      left_index = morphism->node_map[count].left_index;                \
-      host_index = morphism->node_map[count].host_index;                \
-      if(node_map[left_index] == -1)                                    \
-      {                                                                 \
-         removeNode(host, host_index);                                  \
-         continue;                                                      \
-      }                                                                 \
-      if(node_map[left_index] == 1)                                     \
-      {                                                                 \
-         Node *host_node = getNode(host, host_index);                   \
-         relabelNode(host, host_node, NULL, true, false);               \
-         node_map[left_index] = host_node->index;                       \
-         continue;                                                      \
-      }                                                                 \
-      if(node_map[left_index] == 0) node_map[left_index] = host_index;  \
-   }                                                                    \
+#define PROCESS_NODE_MORPHISMS                                 \
+   do {                                                        \
+   for(count = 0; count < morphism->nodes; count++)            \
+   {                                                           \
+      left_index = morphism->node_map[count].left_index;       \
+      host_index = morphism->node_map[count].host_index;       \
+      if(node_map[left_index].remove_item == true)             \
+      {                                                        \
+         removeNode(host, host_index);                         \
+         continue;                                             \
+      }                                                        \
+      if(node_map[left_index].relabel_item == true)            \
+      {                                                        \
+         Node *host_node = getNode(host, host_index);          \
+         Label *label = node_map[left_index].new_label;        \
+         relabelNode(host, host_node, label, true, false);     \
+         node_map[left_index].host_index = host_index;         \
+         continue;                                             \
+      }                                                        \
+      else node_map[left_index].host_index = host_index;       \
+   }                                                           \
    } while(0);                                               
 
 #endif /* INC_GEN_MACROS */

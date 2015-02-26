@@ -325,9 +325,10 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
               left_node->label_class, left_node->label->mark, 
               left_node->indegree, left_node->outdegree, left_node->bidegree); 
 
-   PTRSI("/* Label matching code does not exist yet. */\n", 6);
    /* TODO: Call to label matcher goes here. */
-   PTRSI("bool nodes_match = host_node->label->list_length == 0;\n", 6);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_node->label->mark);
+   PTRSI("bool nodes_match = labelMatch(label, host_node->label);\n", 6);
+   PTRSI("if(label != NULL) freeLabel(label);\n", 6);
    PTRSI("if(nodes_match)\n", 6);
    PTRSI("{\n", 6);
    PTRSI("addNodeMap(morphism, %d, host_node->index);\n", 9, left_index);
@@ -409,9 +410,11 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
       PTRSI("}\n\n", 3);
    }
    else PTRS(" return false;\n\n");
-      
+ 
    /* TODO: Call to label matcher goes here. */
-   PTRSI("bool nodes_match = host_node->label->list_length == 0;\n", 3);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_node->label->mark);
+   PTRSI("bool nodes_match = labelMatch(label, host_node->label);\n", 6);
+   PTRSI("if(label != NULL) freeLabel(label);\n", 6);
    PTRSI("if(nodes_match)\n", 3);
    PTRSI("{\n", 3);
    PTRSI("addNodeMap(morphism, %d, host_node->index);\n", 6, left_index);
@@ -472,7 +475,9 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
    PTRSI("if(target_index >= 0 && host_edge->target != target_index) continue;\n", 6);
 
    /* TODO: Call to label matcher goes here. */
-   PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+   PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
+   PTRSI("if(label != NULL) freeLabel(label);\n", 6);
    PTRSI("if(edges_match)\n", 6);
    PTRSI("{\n", 6);
    PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
@@ -548,7 +553,9 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
    }
  
    /* TODO: Call to label matcher goes here. */
-   PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+   PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
+   PTRSI("if(label != NULL) freeLabel(label);\n", 6);
    PTRSI("if(edges_match)\n", 6);
    PTRSI("{\n", 6);
    PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
@@ -598,7 +605,9 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
       }
 
       /* TODO: Call to label matcher goes here. */
-      PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+      PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+      PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
+      PTRSI("if(label != NULL) freeLabel(label);\n", 6);
       PTRSI("if(edges_match)\n", 6);
       PTRSI("{\n", 6);
       PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
@@ -671,7 +680,9 @@ void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
    }
 
    /* TODO: Call to label matcher goes here. */
-   PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+   PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
+   PTRSI("if(label != NULL) freeLabel(label);\n", 6);
    PTRSI("if(edges_match)\n", 6);
    PTRSI("{\n", 6);
    PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
@@ -717,7 +728,9 @@ void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
       }
 
       /* TODO: Call to label matcher goes here. */
-      PTRSI("bool edges_match = host_edge->label->list_length == 0;\n", 6);
+      PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+      PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
+      PTRSI("if(label != NULL) freeLabel(label);\n", 6);
       PTRSI("if(edges_match)\n", 6);
       PTRSI("{\n", 6);
       PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
@@ -816,30 +829,35 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
     * to the host graph. */
    if(empty_lhs)
    {
+      PTRS("   Label *label;\n");
       int index;
-      PTRS("   /* Array of host node indices indexed by RHS node index. */\n"
-           "   Node *map[%d];\n", rhs->number_of_nodes);
+      NewEdgeList *iterator = rule->added_edges;
+      if(iterator != NULL)
+         PTRS("   /* Array of host node indices indexed by RHS node index. */\n"
+              "   Node *map[%d];\n", rhs->number_of_nodes);
       for(index = 0; index < rhs->number_of_nodes; index++)
       {
          Node *rule_node = getNode(rhs, index);
-         /* TODO: Evaluate rule_node->label. */
-         PTRSI("map[%d] = addNode(host, %d, NULL);\n", 3, rule_node->index,
-               rule_node->root);
+         PTRS("   label = makeEmptyList(%d);\n", rule_node->label->mark);
+         if(iterator != NULL)
+              PTRSI("map[%d] = addNode(host, %d, label);\n", 3, rule_node->index,
+                    rule_node->root);
+         else PTRSI("addNode(host, %d, label);\n", 3, rule_node->root);
       }
-      NewEdgeList *iterator = rule->added_edges;
       /* TODO: Evaluate rule_edge->label. */
       while(iterator != NULL)
       {
+         Edge *rule_edge = getEdge(rhs, iterator->edge_index);
+         PTRS("   label = makeEmptyList(%d);\n", rule_edge->label->mark);
          if(iterator->source_index == iterator->target_index)
-            PTRSI("addEdge(host, false, NULL, map[%d], map[%d]);\n", 3,
+            PTRSI("addEdge(host, false, label, map[%d], map[%d]);\n", 3,
                   iterator->source_index, iterator->source_index);
          else
-            PTRSI("addEdge(host, false, NULL, map[%d], map[%d]);\n", 3,
+            PTRSI("addEdge(host, false, label, map[%d], map[%d]);\n", 3,
                   iterator->source_index, iterator->target_index);
          iterator = iterator->next;
       }     
-      PTRS("   free(map);\n"
-           "   return;\n}\n\n");
+      PTRS("   return;\n}\n\n");
       return;
    }
 
@@ -855,44 +873,64 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       return;
    }
    
-   /* Using preserved items lists, populate the maps in the generated code. */
-   PTRS("   /* Array of LHS nodes marking their status.\n"
-        "    * -1 -> Delete; 0 -> Do nothing; 1 -> Relabel */\n"
-        "   int node_map[%d];\n", lhs->number_of_nodes);
+   /* Using the preserved items lists, populate the runtime arrays. */
+   PTRS("   RewriteData node_map[%d];\n", lhs->number_of_nodes);
    int index;
    for(index = 0; index < lhs->number_of_nodes; index++)
    {
       PreservedItemList *item = queryPItemList(rule->preserved_nodes, index);
       if(item == NULL) 
       {
-         PTRSI("node_map[%d] = -1;\n", 3, index);
+         PTRSI("node_map[%d].remove_item = true;\n", 3, index);
+         PTRSI("node_map[%d].relabel_item = false;\n", 3, index);
+         PTRSI("node_map[%d].new_label = NULL;\n", 3, index);
          continue;
       }
       else
       {
-         if(item->label_change)
-              PTRSI("node_map[%d] = 1;\n", 3, index);
-         else PTRSI("node_map[%d] = 0;\n", 3, index);
+         PTRSI("node_map[%d].remove_item = false;\n", 3, index);
+         if(item->new_label != NULL)
+         {
+            PTRSI("node_map[%d].relabel_item = true;\n", 3, index);
+            PTRSI("node_map[%d].new_label = makeEmptyList(%d);\n", 3, index,
+                  item->new_label->mark);
+         }
+         else
+         {
+            PTRSI("node_map[%d].relabel_item = false;\n", 3, index);
+            PTRSI("node_map[%d].new_label = NULL;\n", 3, index);
+         }
       }
+      PTRSI("node_map[%d].host_index = -1;\n\n", 3, index);
    } 
 
-   PTRS("\n   /* Array of LHS edges marking their status.\n"
-        "    * -1 -> Delete; 0 -> Do nothing; 1 -> Relabel */\n"
-        "   int edge_map[%d];\n", lhs->number_of_edges);
+   PTRS("\n   RewriteData edge_map[%d];\n", lhs->number_of_edges);
    for(index = 0; index < lhs->number_of_edges; index++)
    {
       PreservedItemList *item = queryPItemList(rule->preserved_edges, index);
       if(item == NULL) 
       {
-         PTRSI("edge_map[%d] = -1;\n", 3, index);
+         PTRSI("edge_map[%d].remove_item = true;\n", 3, index);
+         PTRSI("edge_map[%d].relabel_item = false;\n", 3, index);
+         PTRSI("edge_map[%d].new_label = NULL;\n", 3, index);
          continue;
       }
       else
       {
-         if(item->label_change)
-              PTRSI("edge_map[%d] = 1;\n", 3, index);
-         else PTRSI("edge_map[%d] = 0;\n", 3, index);
+         PTRSI("edge_map[%d].remove_item = false;\n", 3, index);
+         if(item->new_label != NULL)
+         {
+            PTRSI("edge_map[%d].relabel_item = true;\n", 3, index);
+            PTRSI("edge_map[%d].new_label = makeEmptyList(%d);\n", 3, index,
+                  item->new_label->mark);
+         }
+         else
+         {
+            PTRSI("edge_map[%d].relabel_item = false;\n", 3, index);
+            PTRSI("edge_map[%d].new_label = NULL;\n", 3, index);
+         }
       }
+      PTRSI("edge_map[%d].host_index = -1;\n\n", 3, index);
    }
 
    /* TODO: Pass label of RHS items from rule->preserved_edges/nodes */
@@ -910,20 +948,21 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
         "   PROCESS_NODE_MORPHISMS\n\n");
 
    ItemList *iterator_n = rule->added_nodes;
-   if(iterator_n != NULL)
+   NewEdgeList *iterator_e = rule->added_edges;
+   if(iterator_n != NULL && iterator_e != NULL)
       PTRS("   /* Array of host node pointers indexed by RHS node index. */\n"
            "   Node *map[%d];\n\n", rhs->number_of_nodes);
    while(iterator_n != NULL)
    {   
       Node *rule_node = getNode(rhs, iterator_n->index);
-      /* TODO: Evaluate rule_node->label. */
-      PTRSI("map[%d] = addNode(host, %d, NULL);\n", 3, rule_node->index, rule_node->root);
+      PTRSI("label = makeEmptyList(%d);\n", 3, rule_node->label->mark);
+      if(iterator_e != NULL)
+         PTRSI("map[%d] = addNode(host, %d, label);\n", 3, rule_node->index, 
+               rule_node->root);
+      else PTRSI("addNode(host, %d, label);\n", 3, rule_node->root);
       iterator_n = iterator_n->next;
    }   
-     
-   NewEdgeList *iterator_e = rule->added_edges;
-   if(iterator_e != NULL)
-      PTRS("int source = 0, target = 0;\n\n");
+   if(iterator_e != NULL) PTRSI("int source = 0, target = 0;\n\n", 3);
    while(iterator_e != NULL)
    {
       /* The source and target edges may be nodes preserved by the rule or 
@@ -935,14 +974,18 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
        * host graph node pointer array. For added nodes, the pointer is 
        * obtained directly from map. */
       if(iterator_e->source_location == 'l')
-           PTRSI("source = node_map[%d];\n", 3, iterator_e->source_index);
+           PTRSI("source = node_map[%d].host_index;\n", 3, 
+                 iterator_e->source_index);
       else PTRSI("source = map[%d];\n", 3, iterator_e->source_index);
 
       if(iterator_e->target_location == 'l')
-           PTRSI("target = node_map[%d];\n", 3, iterator_e->target_index);
+           PTRSI("target = node_map[%d].host_index;\n", 3,
+                 iterator_e->target_index);
       else PTRSI("target = map[%d];\n", 3, iterator_e->target_index);
-      /* TODO: Evaluate rule_edge->label. */
-      PTRSI("addEdge(host, false, NULL, source, target);\n", 3);
+
+      Edge *rule_edge = getEdge(rhs, iterator_e->edge_index);
+      PTRSI("Label *label = makeEmptyList(%d);\n", 3, rule_edge->label->mark);
+      PTRSI("addEdge(host, false, label, source, target);\n", 3);
    
       iterator_e = iterator_e->next;      
    }

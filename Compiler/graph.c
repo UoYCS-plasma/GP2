@@ -863,13 +863,9 @@ void printGraph(Graph *graph)
          /* Five nodes per line */
          if(node_count != 0 && node_count % 5 == 0) printf("\n  ");
          node_count++;
-
          if(node->root) printf("(n%d(R), ", index);
          else printf("(n%d, ", index);
-
-         if(node->label->list) printGP2List(node->label->list);
-         else printf("empty");
-
+         printGP2List(node->label->list);
          printMark(node->label->mark, false);
          printf(") ");
       }
@@ -890,15 +886,10 @@ void printGraph(Graph *graph)
          /* Three edges per line */
          if(edge_count != 0 && edge_count % 3 == 0) printf("\n  ");
          edge_count++;
-
          if(edge->bidirectional) printf("(e%d(B), ", index);
          else printf("(e%d, ", index);
-
          printf("n%d, n%d, ", edge->source, edge->target);
-
-         if(edge->label->list) printGP2List(edge->label->list);
-         else printf("empty");
-
+         printGP2List(edge->label->list);
          printMark(edge->label->mark, false);
          printf(") ");
       }

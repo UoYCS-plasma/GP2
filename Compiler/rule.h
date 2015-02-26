@@ -73,20 +73,18 @@ ItemList *addItem(ItemList *item_list, int index);
 bool queryItemList(ItemList *item_list, int index);
 void freeItemList(ItemList *item_list);
 
-/* A linked list of items that are preserved by the rule. It stores the 
- * indices of the item in the LHS and RHS, and a flag set to true if the rule
- * changes the item's label. */
+/* A linked list of items that are preserved by the rule. If the preserved
+ * item's label does not change on rule application, new_label is NULL,
+ * otherwise it is the label of the corresponding RHS item. */
 typedef struct PreservedItemList {
    int left_index;
-   int right_index;
-   bool label_change;
+   Label *new_label;
    struct PreservedItemList *next;
 } PreservedItemList;
 
-PreservedItemList *addPreservedItem(PreservedItemList *list, bool label_change,
-                                    int left_index, int right_index);
+PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index, 
+                                    Label *new_label);
 PreservedItemList *queryPItemList(PreservedItemList *list, int left_index);                                
-int findRightIndex(PreservedItemList *list, int left_index);                                
 void freePItemList(PreservedItemList *list);
 
 

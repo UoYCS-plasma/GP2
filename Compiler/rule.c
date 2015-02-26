@@ -168,8 +168,8 @@ void freeItemList(ItemList *item_list)
    free(item_list);
 }
 
-PreservedItemList *addPreservedItem(PreservedItemList *list, bool label_change,
-                                    int left_index, int right_index)
+PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index, 
+                                    Label *new_label)
 {
    PreservedItemList *new_list = malloc(sizeof(PreservedItemList));
 
@@ -179,9 +179,8 @@ PreservedItemList *addPreservedItem(PreservedItemList *list, bool label_change,
       exit(1);
    }
 
-   new_list->label_change = label_change;
    new_list->left_index = left_index;   
-   new_list->right_index = right_index;
+   new_list->new_label = new_label;
    new_list->next = list;
 
    return new_list;
@@ -195,16 +194,6 @@ PreservedItemList *queryPItemList(PreservedItemList *list, int left_index)
       else list = list->next;
    }
    return NULL;
-}
-
-int findRightIndex(PreservedItemList *list, int left_index)     
-{
-   while(list != NULL)
-   {
-      if(left_index == list->left_index) return list->right_index;
-      else list = list->next;
-   }
-   return -1;
 }
 
 void freePItemList(PreservedItemList *list)

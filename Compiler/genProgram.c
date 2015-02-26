@@ -20,53 +20,61 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
  		   "Graph *makeHostGraph(void);\n");
 
    int host_node_size = getNodeSize(ast_host_graph, MIN_HOST_NODE_SIZE);
-   int host_edge_size = getNodeSize(ast_host_graph, MIN_HOST_EDGE_SIZE);
+   int host_edge_size = getEdgeSize(ast_host_graph, MIN_HOST_EDGE_SIZE);
+
+   List *nodes = ast_host_graph->nodes, *edges = ast_host_graph->edges;
  
    PTIS("#include \"init_runtime.h\"\n\n"
         "Graph *makeHostGraph(void)\n"
         "{\n"
-        "   Graph *host = newGraph(%d, %d);\n", 
-        host_node_size, host_edge_size);
-   PTIS("   int node_map[%d], map_index, node_index, source, target, count;\n"
-        "   for(count = 0; count < %d; count ++)\n"
-        "      node_map[count] = -1;\n", host_node_size, host_node_size);
+        "   Graph *host = newGraph(%d, %d);\n"
+        "   Label *label;\n", host_node_size, host_edge_size);
+   if(edges != NULL)
+      PTIS("   int node_map[%d], map_index, node_index, source, target, count;\n"
+           "   for(count = 0; count < %d; count++)\n"
+           "      node_map[count] = -1;\n", host_node_size, host_node_size);
    PTIS("\n");
 
-   List *nodes = ast_host_graph->nodes, *edges = ast_host_graph->edges;
    /* For each node in the AST, create a data structure for its label and
     * call ADD_HOST_NODE. ADD_HOST_NODE is a macro that creates the node,
     * adds it to the graph, and adds a new record to the node index map. */
-   PTIS("   /* Add the host nodes to the graph and record their host indices\n" 
-        "    * in the node map. */\n"); 
+   if(edges != NULL) 
+      PTIS("   /* Add the host nodes to the graph and record their host indices\n" 
+           "    * in the node map. */\n"); 
    while(nodes != NULL)
    {
       GPNode *ast_node = nodes->value.node;
-      //TODO: Incorporate Label *label = transformLabel(ast_node->label);
-      PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, (ast_node->name)+1);
+      PTIS("   label = makeEmptyList(%d);\n", ast_node->label->mark);
+      if(edges == NULL) PTIS("   addNode(host, %d, label);\n", ast_node->root);
+      else PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, 
+                (ast_node->name) + 1);
       nodes = nodes->next;   
    }
-   PTIS("\n   /* Add the host edges to the graph, getting source and target\n"
-        "    * indices from the node ID/host index pairs in the node map. */\n"); 
-   /* For each edge in the AST, look up its source and target. For loops,
-    * only the source needs to be looked up. GET_HOST_SOURCE and 
-    * GET_HOST_TARGET are macros that search node_map for a node with the 
-    * appropriate string ID. */
-   while(edges != NULL)
+
+   if(edges != NULL)
    {
-      GPEdge *ast_edge = edges->value.edge;
-      //TODO: Incorporate Label *label = transformLabel(ast_edge->label);
-      if(!strcmp(ast_edge->source, ast_edge->target))
-         PTIS("   ADD_HOST_LOOP_EDGE(\"%s\", %d)\n",
-              (ast_edge->source)+1, ast_edge->bidirectional);
-      else
-         PTIS("   ADD_HOST_EDGE(\"%s\", \"%s\", %d)\n",
-              (ast_edge->source)+1, (ast_edge->target)+1, 
-              ast_edge->bidirectional);
-      edges = edges->next;   
+      PTIS("\n   /* Add the host edges to the graph, getting source and target\n"
+         "    * indices from the node ID/host index pairs in the node map. */\n"); 
+      /* For each edge in the AST, look up its source and target. For loops,
+      * only the source needs to be looked up. GET_HOST_SOURCE and 
+      * GET_HOST_TARGET are macros that search node_map for a node with the 
+      * appropriate string ID. */
+      while(edges != NULL)
+      {
+         GPEdge *ast_edge = edges->value.edge;
+         PTIS("   label = makeEmptyList(%d);\n", ast_edge->label->mark);
+         if(!strcmp(ast_edge->source, ast_edge->target))
+            PTIS("   ADD_HOST_LOOP_EDGE(\"%s\", %d)\n",
+               (ast_edge->source) + 1, ast_edge->bidirectional);
+         else
+            PTIS("   ADD_HOST_EDGE(\"%s\", \"%s\", %d)\n",
+               (ast_edge->source) + 1, (ast_edge->target) + 1, 
+               ast_edge->bidirectional);
+         edges = edges->next;   
+      }
    }
    PTIS("\n  return host;\n"
         "}\n");
-
    fclose(header);
    fclose(source);
 }

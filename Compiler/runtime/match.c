@@ -158,7 +158,8 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
       for(count = 0; count < variables; count++)
       {
          morphism->assignment[count].variable = NULL;
-         morphism->assignment[count].value = NULL;
+         morphism->assignment[count].value.first = NULL;
+         morphism->assignment[count].value.last = NULL;
       }
 
    }
@@ -181,7 +182,7 @@ void addEdgeMap(Morphism *morphism, int left_index, int host_index)
    morphism->edge_map_index++;
 }
 
-void addAssignment(Morphism *morphism, string variable, GP2List *value)
+void addAssignment(Morphism *morphism, string variable, GP2List value)
 {
    morphism->assignment[morphism->assignment_index].variable = variable;
    morphism->assignment[morphism->assignment_index].value = value;
@@ -206,7 +207,8 @@ void removeAssignment(Morphism *morphism)
 {
    morphism->assignment_index--;
    morphism->assignment[morphism->assignment_index].variable = NULL;
-   morphism->assignment[morphism->assignment_index].value = NULL;
+   morphism->assignment[morphism->assignment_index].value.first = NULL;
+   morphism->assignment[morphism->assignment_index].value.last = NULL;
 }
 
 
