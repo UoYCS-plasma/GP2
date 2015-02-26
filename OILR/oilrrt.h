@@ -1,14 +1,8 @@
 #ifndef OILRRT_H
 #define OILRRT_H
 
-
-#ifndef MAX_TRAVS
-#define MAX_TRAVS 128
-#endif
-
-
-extern int searchSpaces[];
-
+extern void _HOST();
+extern void GPMAIN();
 
 typedef struct Trav {
 	union {
@@ -22,11 +16,21 @@ typedef struct Trav {
 
 	int o, i, l, r;
 	NodeId match;
+	NodeList *locn;
 
 } Trav;
 
+typedef struct SearchPlan {
+	const int first;
+	const int last;
+} SearchPlan;
 
-Trav travs[MAX_TRAVS];
+typedef int TravId;
+
+extern int searchSpaces[];
+extern Trav travs[];
+
+
 int success;
 
 #endif

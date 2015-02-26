@@ -173,10 +173,9 @@ void deleteEdge(NodeId src, NodeId tgt) {
 	unlistNode(inEdgeList(t), src);
 	indexNode(src);
 	indexNode(tgt);
-
 }
 
-void initialise() {
+void initGraphEngine() {
 	NodeList emptyIndex = {.len=0, .pool=0, .nodes=NULL};
 	int i;
 	for (i=0; i<INDEX_COUNT; i++)
@@ -186,7 +185,7 @@ void initialise() {
 	if (nodePool == NULL)
 		failWith("Failed to allocate a node pool");
 }
-void finalise() {
+void destroyGraphEngine() {
 	int i;
 	Node *n;
 	for (i=0; i<nextNode; i++) {
@@ -198,29 +197,6 @@ void finalise() {
 		if (gsp->indices[i].nodes != NULL)
 			free(gsp->indices[i].nodes);
 	}
-
 	free(nodePool);
-}
-
-int main(int argc, char **argv) {
-	int i;
-	initialise();
-	dupGraph();
-	dropGraph();
-	addNode();
-	for (i=1; i<10; i++) {
-		addNode();
-		addEdge(i-1, i);
-	}
-	addEdge(9, 0);
-	printGraph(gsp);
-	deleteEdge(0, 1);
-	deleteEdge(1, 2);
-	deleteNode(1);
-	addNode();
-	addNode();
-	printGraph(gsp);
-	finalise();
-	return 0;
 }
 

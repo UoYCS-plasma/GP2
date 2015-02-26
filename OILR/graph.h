@@ -73,8 +73,6 @@ typedef struct NodeSignature {
 	// unsigned int n:N_BITS;
 } NodeSignature;
 
-
-
 typedef int NodeId;
 
 typedef struct NodeList {
@@ -82,9 +80,6 @@ typedef struct NodeList {
 	unsigned int len;
 	NodeId *nodes;
 } NodeList;
-
-
-
 
 typedef union Node {
 	struct {
@@ -112,9 +107,9 @@ typedef struct Graph {
 
 /* Global vars */
 
-Node *nodePool;
-Graph graphs[DEF_GRAPH_POOL];
-Graph *gsp = graphs;
+extern Node *nodePool;
+extern Graph graphs[];
+extern Graph *gsp;
 
 
 /* API functions */
@@ -130,4 +125,6 @@ void addEdge(NodeId src, NodeId tgt);
 void deleteEdge(NodeId src, NodeId tgt);
 void deleteNode(NodeId id);
 
+void initGraphEngine();
+void destroyGraphEngine();
 #endif
