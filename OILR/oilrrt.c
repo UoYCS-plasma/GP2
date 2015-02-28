@@ -4,65 +4,57 @@
 #include "graph.h"
 #include "oilrrt.h"
 
-Node *nodePool;
+Elem *elemPool;
 Graph graphs[DEF_GRAPH_POOL];
 Graph *gsp = graphs;
 
-#define MATCHED_EDGE (1<<31)
+typedef Pred (*)(int)(Trav *t, Elem *e);
 
-#define available(n) (!(n)->matched)
-
-#define willItMatch(t, n) \
-	(  available(n)        && \
-	outdeg(n)  == (t)->o   && \
-	indeg(n)    == (t)->i  && \
-	loopdeg(n)  == (t)->l  && \
-	rooted(n)   >= (t)->r )
-
-#define trav(n) (travs[n])
-
-#define matchEdge(idx, e) do { \
-	(idx)->nodes[e] |= MATCHED_EDGE; } while (0)
-#define unmatchEdge(idx, e) do { \
-	(idx)->nodes[e] &= ~MATCHED_EDGE; } while (0)
-#define matchLoop(n) do { (n)->matchedLoops++; } while (0)
-#define unmatchLoop(n) do { (n)->matchedLoops--; } while (0)
-#define availableLoops(n) (loopdeg(n) - (n)->matchedLoops)
+int testNode(Trav *t, Node *n) {
+	return (outdeg(n)  >= t->o &&
+			indeg(n)   >= t->i &&
+			loopdeg(n) >= t->l && 
+			rooted(n)  >= t->r);
+}
+int testOutEdge(Trav *t, Edge *e) {
+	Node *n = &elem(e->tgt);
+	return testNode(t, n);
+}
+int testInEdge(Trav *t, Edge *e) {
+	Node *n = &elem(e->src);
+	return testNode(t, n);
+}
 
 void reset(Trav *t) {
-	Node *n = &node(t->match);
+	Node *n = &elem(t->match);
 	unmatch(n);
 	t->match = -1;
 	t->cur = t->first;
 	t->next = 0;
 }
 
-int traverse(NodeList *l, Trav *t) {
-	Node *cnd;
-	int n, nid;
+int traverse(ElemList *l, Trav *t, Pred p) {
+	Elem *cnd;
+	int i, id;
 	success = 0;
-	for (n=t->next; n<l->len; n++) {
-		nid = l->nodes[n];
-		if ( (nid & MATCHED_EDGE) )
-			continue; /* skip already matched edges */
-		cnd = &node(nid);
-		if (willItMatch(t, cnd)) {
+	for (i=t->next; i<l->len; i++) {
+		id = l->elems[i];
+		cnd = &elem(id);
+		if (p(t, cnd)) {
 			match(cnd);
-			t->match = nid;
-			t->next = n+1;
+			t->match = id;
+			t->next = i+1;
 			success = 1;
-			return n;
+			return i;
 		}
 	}
 	return -1;
 }
 
-int edgeExistsTo(NodeList *l, NodeId tgt) {
+int edgeExistsTo(ElemList *l, NodeId tgt) {
 	int i;
 	success = 0;
 	for (i=0; i<l->len; i++) {
-		/* a set MATCHED_EDGE bit prevents matching
-		 * an already claimed edge */
 		if (tgt == l->nodes[i]) {
 			success = 1;
 			return i;
@@ -71,14 +63,13 @@ int edgeExistsTo(NodeList *l, NodeId tgt) {
 	return -1;
 }
 
-
 void search(Trav *t) {
-	NodeList *idx;
+	ElemList *idx;
 	int i;
 
 	for (i=t->cur; i<=t->last; i++) {
 		idx = index(gsp, searchSpaces[i]);
-		traverse(idx, t);
+		traverse(idx, t, testNode);
 		if (success) {
 			//t->locn = idx;
 			t->cur = i;
@@ -87,33 +78,38 @@ void search(Trav *t) {
 	}
 }
 
-void followOutEdge(TravId from, Trav *to) {
-	Node *src = &node(travs[from].match);
-	NodeList *edges = &(src->outEdges);
-	int e = traverse(edges, to);
+void followOutEdge(Trav *from, Trav *to) {
+	Node *n = &elem(from->match);
+	ElemList *edges = outEdgeList(n);
+	int e = traverse(edges, to, testOutEdge);
 	if (success) {
-		matchEdge(edges, e);
-		return;
+		matchTarget( &elem(e) );
+	}
+}
+void followInEdge(Trav *to, Trav *from) {
+	Node *n = &elem(to->match);
+	ElemList *edges = inEdgeList(n);
+	int e = traverse(edges, from, testInEdge);
+	if (success) {
+		matchSource( &elem(e) );
 	}
 }
 
-void edgeBetween(TravId from, TravId to, int negate) {
-	Trav *src = &trav(from), *tgt = &trav(to);
-	NodeId t = tgt->match;
-	NodeList *es = &(node(src->match).outEdges);
-	int e = edgeExistsTo(es, t);
+void edgeBetween(Trav *from, Trav *to, int negate) {
+	NodeId src = from->match;
+	ElemList *es = outEdgeList(&elem(src));
+	int e = edgeExistsTo(es, to->match);
 	if (success) {
 		if (negate)
 			success = 0;
 		else
-			matchEdge(es, e);
+			match(&elem(e));
 	}
 	return;
 }
 
-
-void hasLoop(Trav *t) {
-	Node *n = &node(t->match);
+void loopExists(Trav *t) {
+	Node *n = &elem(t->match);
 	success = 0;
 	if (availableLoops(n) > 0) {
 		matchLoop(n);

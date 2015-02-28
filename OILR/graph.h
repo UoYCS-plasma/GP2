@@ -1,8 +1,8 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
-#define node(id) (nodePool[(id)])
-#define edge(n, id) ((n)->outEdges.nodes[id])
+#define elem(id) (elemPool[(id)])
+#define edge(n, pos) ((n)->outEdges.nodes[pos])
 
 #define outdeg(n)  ((n)->outEdges.len)
 #define indeg(n)   ((n)->inEdges.len)
@@ -11,9 +11,6 @@
 
 #define outEdgeList(n) (&((n)->outEdges))
 #define inEdgeList(n)  (&((n)->inEdges))
-
-#define match(n) do {(n)->matched = 1;} while (0);  
-#define unmatch(n) do {(n)->matched = 0;} while (0);
 
 #define index(g, id) ( &((g)->indices[id]) )
 #define indexFor(g, n) ( index((g), (n)->sig) )
@@ -45,7 +42,7 @@
 
 #define DEF_GRAPH_POOL 4
 #define DEF_EDGE_POOL 4
-#define DEF_NODE_POOL 100
+#define DEF_ELEM_POOL 100
 
 #ifndef O_SZ
 
@@ -73,20 +70,25 @@ typedef struct NodeSignature {
 	// unsigned int n:N_BITS;
 } NodeSignature;
 
+typedef int ElemId;
 typedef int NodeId;
+typedef int EdgeId;
 
-typedef struct NodeList {
+typedef struct ElemList {
 	unsigned int pool;
 	unsigned int len;
-	NodeId *nodes;
-} NodeList;
+	ElemId *elems;
+} ElemList;
 
-typedef union Node {
-	struct {
+typedef union Elem {
+	struct { /* edge structure */
+		NodeId src, tgt;
+	};
+	struct { /* node structure */
 	/* .out is part of outEdges */
 		int loop, root;
-		int matchedLoops;
 		int matched;
+		int matchedLoops;
 		union {
 			NodeSignature oilr;
 			int sig;
@@ -94,11 +96,13 @@ typedef union Node {
 		NodeList outEdges;
 		NodeList inEdges;
 	};
-	struct {
-		NodeId id;
-		union Node *free;
+	struct { /* free-list */
+		ElemId id;
+		union Elem *next;
 	};
-} Node;
+} Elem;
+typedef Elem Node;
+typedef Elem Edge;
 
 typedef struct Graph {
 	NodeList nodes;
@@ -107,7 +111,7 @@ typedef struct Graph {
 
 /* Global vars */
 
-extern Node *nodePool;
+extern Elem *elemPool;
 extern Graph graphs[];
 extern Graph *gsp;
 
