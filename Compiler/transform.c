@@ -217,6 +217,8 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
             else iterator = iterator->next;
          }
 
+         /* TODO: Test label equality here. Pass NULL to addPreservedItem if the
+          * labels match. */
          if(interface_node)
             *nodes = addPreservedItem(*nodes, map->left_index, label);
          else *added_nodes = addItem(*added_nodes, node_index);
@@ -303,6 +305,8 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
             /* No such map exists, thus the edge is added by the rule. Both
              * source and target come from the LHS because they are both in
              * the interface. */
+            /* TODO: Test label equality here. Pass NULL to addPreservedItem if the
+             * labels match. */
             added_edges = addNewEdge(added_edges, edge_index,
                                      'l', source_map->left_index, 
                                      'l', target_map->left_index);
@@ -348,7 +352,7 @@ Label *transformLabel(GPLabel *ast_label)
       return makeEmptyList(ast_label->mark);
 
    /* For now this is the same as makeEmptyList. */
-   Label *label = malloc(sizeof(label));
+   Label *label = malloc(sizeof(Label));
    if(label == NULL)
    {
       print_to_log("Error: Memory exhausted during label creation.\n");

@@ -10,27 +10,34 @@
    }                                                            \
    } while(0);
       
-#define ADD_HOST_NODE(is_root, node_name)                               \
+#define ADD_UNLABELLED_HOST_NODE(is_root, node_name)                    \
    do {                                                                 \
-   node_index = addNode(host, (is_root), label);                        \
+   node_index = addNode(host, (is_root), NULL);                         \
    map_index = (int)strtol(node_name, NULL, 0);                         \
    node_map[map_index] = node_index;                                    \
    } while(0);                                                          \
 
-#define ADD_HOST_LOOP_EDGE(source_name, bidirectional)                  \
+#define ADD_HOST_NODE(is_root, node_name, number)                       \
+   do {                                                                 \
+   node_index = addNode(host, (is_root), label ## number);              \
+   map_index = (int)strtol(node_name, NULL, 0);                         \
+   node_map[map_index] = node_index;                                    \
+   } while(0);                                                          \
+
+#define GET_HOST_LOOP_ENDPOINT(source_name)                             \
    do {                                                                 \
    map_index = (int)strtol(source_name, NULL, 0);                       \
    source = node_map[map_index];                                        \
+   target = node_map[map_index];                                        \
    if(source == -1)                                                     \
    {                                                                    \
       print_to_log("Error (makeHostGraph): Edge's source n" source_name \
                    " not found in the node map.\n");                    \
       exit(1);                                                          \
    }                                                                    \
-   addEdge(host, bidirectional, label, source, source);                 \
    } while(0);
 
-#define ADD_HOST_EDGE(source_name, target_name, bidirectional)          \
+#define GET_HOST_EDGE_ENDPOINTS(source_name, target_name)               \
    do {                                                                 \
    map_index = (int)strtol(source_name, NULL, 0);                       \
    source = node_map[map_index];                                        \
@@ -48,7 +55,6 @@
                    " not found in the node map.\n");                    \
       exit(1);                                                          \
    }                                                                    \
-   addEdge(host, bidirectional, label, source, target);                 \
    } while(0);
 
 #define MAKE_MATCHED_NODES_ARRAY                \
@@ -91,10 +97,10 @@
    if(node_matched ||                                                  \
       host_node->label_class != (lclass) ||                            \
       host_node->label->mark != (nmark) ||                             \
-      host_node->indegree != (indeg) ||                                \
-      host_node->outdegree != (outdeg) ||                              \
-      ((host_node->outdegree + host_node->indegree                     \
-        - (indeg) - (outdeg)) != (bideg)))                             \
+      host_node->indegree < (indeg) ||                                 \
+      host_node->outdegree < (outdeg) ||                               \
+      ((host_node->outdegree - (outdeg) != (bideg)) &&                 \
+       (host_node->indegree - (indeg) != (bideg))))                    \
 
 
 #define IF_INVALID_EDGE(lclass, emark)       \

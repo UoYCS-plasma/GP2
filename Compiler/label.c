@@ -16,7 +16,7 @@ bool marksMatch(MarkType rule_mark, MarkType host_mark)
 
 Label *makeEmptyList(MarkType mark)
 {
-   if(mark == NONE) return NULL;
+   if(mark == NONE) return &blank_label;
    
    Label *label = malloc(sizeof(Label));
    if(label == NULL)

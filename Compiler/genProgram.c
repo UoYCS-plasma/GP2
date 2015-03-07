@@ -27,8 +27,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    PTIS("#include \"init_runtime.h\"\n\n"
         "Graph *makeHostGraph(void)\n"
         "{\n"
-        "   Graph *host = newGraph(%d, %d);\n"
-        "   Label *label;\n", host_node_size, host_edge_size);
+        "   Graph *host = newGraph(%d, %d);\n", host_node_size, host_edge_size);
    if(edges != NULL)
       PTIS("   int node_map[%d], map_index, node_index, source, target, count;\n"
            "   for(count = 0; count < %d; count++)\n"
@@ -41,20 +40,34 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    if(edges != NULL) 
       PTIS("   /* Add the host nodes to the graph and record their host indices\n" 
            "    * in the node map. */\n"); 
+   int label_count = 0;        
    while(nodes != NULL)
-   {
+   { 
       GPNode *ast_node = nodes->value.node;
-      PTIS("   label = makeEmptyList(%d);\n", ast_node->label->mark);
-      if(edges == NULL) PTIS("   addNode(host, %d, label);\n", ast_node->root);
-      else PTIS("   ADD_HOST_NODE(%d, \"%s\")\n", ast_node->root, 
-                (ast_node->name) + 1);
+      if(ast_node->label->mark == NONE &&
+         ast_node->label->gp_list->list_type == EMPTY_LIST)
+      {
+         if(edges == NULL) PTIS("   addNode(host, %d, NULL);", ast_node->root);
+         else PTIS("   ADD_UNLABELLED_HOST_NODE(%d, \"%s\")", ast_node->root,
+                   (ast_node->name) + 1);
+      }
+      else
+      {
+         PTIS("\n   Label *label%d = makeEmptyList(%d);", label_count, 
+              ast_node->label->mark);
+         if(edges == NULL) PTIS("   addNode(host, %d, label%d);", 
+                                ast_node->root, label_count);
+         else PTIS("   ADD_HOST_NODE(%d, \"%s\", %d)", ast_node->root,
+                   (ast_node->name) + 1, label_count);
+         label_count++;
+      }
+      PTIS("\n");
       nodes = nodes->next;   
    }
-
    if(edges != NULL)
    {
       PTIS("\n   /* Add the host edges to the graph, getting source and target\n"
-         "    * indices from the node ID/host index pairs in the node map. */\n"); 
+           "    * indices from the node ID/host index pairs in the node map. */\n"); 
       /* For each edge in the AST, look up its source and target. For loops,
       * only the source needs to be looked up. GET_HOST_SOURCE and 
       * GET_HOST_TARGET are macros that search node_map for a node with the 
@@ -62,18 +75,29 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       while(edges != NULL)
       {
          GPEdge *ast_edge = edges->value.edge;
-         PTIS("   label = makeEmptyList(%d);\n", ast_edge->label->mark);
-         if(!strcmp(ast_edge->source, ast_edge->target))
-            PTIS("   ADD_HOST_LOOP_EDGE(\"%s\", %d)\n",
-               (ast_edge->source) + 1, ast_edge->bidirectional);
+         bool loop = !strcmp(ast_edge->source, ast_edge->target);
+         if(loop)
+            PTIS("   GET_HOST_LOOP_ENDPOINT(\"%s\")\n", (ast_edge->source) + 1);
          else
-            PTIS("   ADD_HOST_EDGE(\"%s\", \"%s\", %d)\n",
-               (ast_edge->source) + 1, (ast_edge->target) + 1, 
-               ast_edge->bidirectional);
+            PTIS("   GET_HOST_EDGE_ENDPOINTS(\"%s\", \"%s\")\n",
+                 (ast_edge->source) + 1, (ast_edge->target) + 1);
+         if(ast_edge->label->mark == NONE &&
+            ast_edge->label->gp_list->list_type == EMPTY_LIST)
+            PTIS("   addEdge(host, %d, NULL, source, target);\n",
+                 ast_edge->bidirectional);
+         else
+         {         
+            PTIS("   Label *label%d = makeEmptyList(%d);\n", label_count, 
+                 ast_edge->label->mark);
+            PTIS("   addEdge(host, %d, label%d, source, target);\n", 
+                 ast_edge->bidirectional, label_count);
+            label_count++;
+         }
+         PTIS("\n");
          edges = edges->next;   
       }
    }
-   PTIS("\n  return host;\n"
+   PTIS("   return host;\n"
         "}\n");
    fclose(header);
    fclose(source);
@@ -296,9 +320,7 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
            PTMSI("/* Loop Statement */\n", indent);
            PTMSI("while(success)\n", indent);
            PTMSI("{\n", indent);
-           if(statement->value.loop_stmt->statement_type != RULE_CALL &&
-              statement->value.loop_stmt->statement_type != RULE_SET_CALL) 
-              PTMSI("int restore_point = stack_depth;\n", indent + 3);
+           PTMSI("int restore_point = stack_depth;\n", indent + 3);
            generateProgramCode(statement->value.loop_stmt, LOOP_BODY, 
                                indent + 3);
            PTMSI("}\n", indent);
