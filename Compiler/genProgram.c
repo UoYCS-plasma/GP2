@@ -247,7 +247,8 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
 
       case PROCEDURE_CALL:
           
-           generateProcedureCall(statement->value.proc_name, context, indent);
+           generateProcedureCall(statement->value.proc_call.proc_name, 
+                                 context, indent);
            break;
 
       case IF_STATEMENT:
@@ -545,7 +546,14 @@ void generateProcedureCall(string proc_name, ContextType context, int indent)
 
    if(context == PROC_BODY) PTMSI("return result;\n", indent);
 
-   if(context == LOOP_BODY) PTMSI("if(!success) break;\n", indent);
+   if(context == LOOP_BODY) 
+   {
+      PTMSI("if(!success)\n", indent);
+      PTMSI("{\n", indent);
+      PTMSI("GET_GRAPH_AT_RESTORE_POINT\n", indent + 3);
+      PTMSI("break;\n", indent + 3);
+      PTMSI("}\n", indent);
+   }
 }
 
 void generateFailureCode(string rule_name, ContextType context, int indent)

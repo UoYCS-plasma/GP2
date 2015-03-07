@@ -74,6 +74,7 @@ LabelClass getLabelClass(Label *label)
 
 Label *copyLabel(Label *label)
 {
+   if(label == &blank_label) return &blank_label;
    Label *label_copy = malloc(sizeof(Label));
    if(label_copy == NULL)
    {
@@ -81,7 +82,7 @@ Label *copyLabel(Label *label)
       exit(1);
    }
    label_copy->mark = label->mark;
-   copyGP2List(label->list, label_copy->list);
+   copyGP2List(label->list, &label_copy->list);
    label_copy->list_length = label->list_length;
    label_copy->list_variable = label->list_variable;
    return label_copy;
@@ -94,10 +95,10 @@ void freeLabel(Label *label)
    free(label);
 }
 
-void copyGP2List(GP2List source, GP2List destination)
+void copyGP2List(GP2List source, GP2List *destination)
 {
-   destination.first = NULL;
-   destination.last = NULL;
+   destination->first = NULL;
+   destination->last = NULL;
 
    GP2Atom *iterator = source.first;
    while(iterator != NULL)
@@ -108,12 +109,12 @@ void copyGP2List(GP2List source, GP2List destination)
    }
 }
 
-void append(GP2List list, GP2Atom *atom)
+void append(GP2List *list, GP2Atom *atom)
 {
-   if(list.first == NULL) list.first = atom;
-   if(list.last != NULL) list.last->next = atom;
-   atom->prev = list.last;
-   list.last = atom;
+   if(list->first == NULL) list->first = atom;
+   if(list->last != NULL) list->last->next = atom;
+   atom->prev = list->last;
+   list->last = atom;
 }
 
 

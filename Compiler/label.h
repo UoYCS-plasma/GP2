@@ -55,10 +55,10 @@ typedef struct GP2List {
    struct GP2Atom *last;
 } GP2List;
 
-void append(GP2List list, GP2Atom *atom);
+void append(GP2List *list, GP2Atom *atom);
 /* Cleans <destination> by NULLing its first and last pointers, then walks
  * <source>, copying the atoms and appending them to <destination>. */
-void copyGP2List(GP2List source, GP2List destination);
+void copyGP2List(GP2List source, GP2List *destination);
 /* Only called when copying the host graph, hence this function only concerns
  * atoms with constant values. */
 GP2Atom *copyGP2Atom(GP2Atom *atom);
