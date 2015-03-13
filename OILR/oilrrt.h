@@ -10,13 +10,10 @@ extern void GPMAIN();
 #define match(n) do {(n)->matched = 1;} while (0);  
 #define unmatch(n) do {(n)->matched = 0;} while (0);
 
-#define source(e) (&elem(e)->src)
-#define target(e) (&elem(e)->tgt)
-
-#define matchTarget(e) do { match( target(e) ); } while (0)
-#define unmatchTarget(e) do { unmatch( target(e) ); } while (0)
-#define matchSource(e) do { match( source(e) ); } while (0)
-#define unmatchSource(e) do { unmatch( source(e) ); } while (0)
+#define matchTarget(e) do { match( &elem(target(e)) ); } while (0)
+#define unmatchTarget(e) do { unmatch( &elem(target(e)) ); } while (0)
+#define matchSource(e) do { match( &elem(source(e)) ); } while (0)
+#define unmatchSource(e) do { unmatch( &elem(source(e)) ); } while (0)
 
 #define matchLoop(n) do { \
 	(n)->matchedLoops++; } while (0)
@@ -36,7 +33,7 @@ typedef struct Trav {
 
 	int o, i, l, r;
 	NodeId match;
-	NodeList *locn;
+	ElemList *locn;
 
 } Trav;
 

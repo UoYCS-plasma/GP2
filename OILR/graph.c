@@ -16,10 +16,10 @@ const Node nullElem = {
 	.matchedLoops=0, 
 	.sig = 0,
 	.outEdges = {
-		.pool=0, .len=0, .nodes=NULL
+		.pool=0, .len=0, .elems=NULL
 	},
 	.inEdges = {
-		.pool=0, .len=0, .nodes=NULL
+		.pool=0, .len=0, .elems=NULL
 	},
 };
 
@@ -35,16 +35,18 @@ void failWith(const char *fmt, ...) {
 
 void printGraph(Graph *g) {
 	Node *n;
+	Edge *e;
 	NodeId tgt;
 	int i,j, edgeCount=0;
 	printf("[\n");
 	for (i=0; i<g->nodes.len; i++)
-		printf("\t(n%d, empty)\n", g->nodes.nodes[i]);
+		printf("\t(n%d, empty)\n", g->nodes.elems[i]);
 	printf("|\n");
 	for (i=0; i<g->nodes.len; i++) {
 		n = &elem(i);
 		for (j=0; j<outdeg(n); j++) {
-			tgt = edge(n, j);
+			e = &edge(n, j);
+			tgt = target(e);
 			printf("\t(e%d, n%d, n%d, empty)\n", edgeCount++, i, tgt);
 		}
 	}
@@ -55,11 +57,11 @@ void resizeElemList(ElemList *nl, int sz) {
 	sz = (sz<DEF_EDGE_POOL) ? DEF_EDGE_POOL : sz;
 	// fprintf(stderr, " %d ", sz);
 	assert(sz > nl->len);
-	nl->nodes = realloc(nl->nodes, sz * sizeof(NodeId));
-	if (nl->nodes == NULL)
+	nl->elems = realloc(nl->elems, sz * sizeof(NodeId));
+	if (nl->elems == NULL)
 		failWith("Failed to allocate space for a ElemList");
 	nl->pool = sz;
-	assert(nl->nodes != NULL && nl->pool > 0 && nl->len < nl->pool);
+	assert(nl->elems != NULL && nl->pool > 0 && nl->len < nl->pool);
 }
 
 #define growElemList(nl)   resizeElemList((nl), (nl)->pool * 2)
@@ -80,14 +82,14 @@ int listElem(ElemList *nl, NodeId id) {
 	int pos = nl->len++;
 	if (pos == nl->pool)
 		growElemList(nl);
-	nl->nodes[pos] = id;
+	nl->elems[pos] = id;
 	return pos;
 }
 void unlistElem(ElemList *nl, NodeId id) {
 	int pos = nl->len--;
 	while (pos-- > 0) {
-		if (nl->nodes[pos] == id) {
-			nl->nodes[pos] = nl->nodes[nl->len];
+		if (nl->elems[pos] == id) {
+			nl->elems[pos] = nl->elems[nl->len];
 			if (nl->len < nl->pool >> 2)
 				shrinkElemList(nl);
 			return;
@@ -192,7 +194,7 @@ void deleteEdge(EdgeId eid) {
 }
 
 void initGraphEngine() {
-	ElemList emptyIndex = {.len=0, .pool=0, .nodes=NULL};
+	ElemList emptyIndex = {.len=0, .pool=0, .elems=NULL};
 	int i;
 	for (i=0; i<INDEX_COUNT; i++)
 		gsp->indices[i] = emptyIndex;
@@ -206,12 +208,12 @@ void destroyGraphEngine() {
 	Node *n;
 	for (i=0; i<nextElem; i++) {
 		n = &(elemPool[i]);
-		if (outEdgeList(n)->nodes != NULL)
-			free(outEdgeList(n)->nodes);
+		if (outEdgeList(n)->elems != NULL)
+			free(outEdgeList(n)->elems);
 	}
 	for (i=0; i<INDEX_COUNT; i++) {
-		if (gsp->indices[i].nodes != NULL)
-			free(gsp->indices[i].nodes);
+		if (gsp->indices[i].elems != NULL)
+			free(gsp->indices[i].elems);
 	}
 	free(elemPool);
 }

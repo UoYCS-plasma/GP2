@@ -8,7 +8,7 @@ Elem *elemPool;
 Graph graphs[DEF_GRAPH_POOL];
 Graph *gsp = graphs;
 
-typedef Pred (*)(int)(Trav *t, Elem *e);
+typedef int (*Pred)(Trav *t, Elem *e);
 
 int testNode(Trav *t, Node *n) {
 	return (outdeg(n)  >= t->o &&
@@ -16,11 +16,11 @@ int testNode(Trav *t, Node *n) {
 			loopdeg(n) >= t->l && 
 			rooted(n)  >= t->r);
 }
-int testOutEdge(Trav *t, Edge *e) {
+int testOutEdge(Trav *t, Elem *e) {
 	Node *n = &elem(e->tgt);
 	return testNode(t, n);
 }
-int testInEdge(Trav *t, Edge *e) {
+int testInEdge(Trav *t, Elem *e) {
 	Node *n = &elem(e->src);
 	return testNode(t, n);
 }
@@ -55,7 +55,7 @@ int edgeExistsTo(ElemList *l, NodeId tgt) {
 	int i;
 	success = 0;
 	for (i=0; i<l->len; i++) {
-		if (tgt == l->nodes[i]) {
+		if (tgt == l->elems[i]) {
 			success = 1;
 			return i;
 		}

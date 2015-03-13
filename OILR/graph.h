@@ -2,7 +2,7 @@
 #define GRAPH_H
 
 #define elem(id) (elemPool[(id)])
-#define edge(n, pos) ((n)->outEdges.nodes[pos])
+#define edge(n, pos) (elem((n)->outEdges.elems[pos]))
 
 #define outdeg(n)  ((n)->outEdges.len)
 #define indeg(n)   ((n)->inEdges.len)
@@ -14,6 +14,9 @@
 
 #define index(g, id) ( &((g)->indices[id]) )
 #define indexFor(g, n) ( index((g), (n)->sig) )
+
+#define source(e) ((e)->src)
+#define target(e) ((e)->tgt)
 
 /* BEWARE: double-evaluation risk -- no ++! */
 #define min(a, b) ((a)<(b)?(a):(b))
@@ -93,8 +96,8 @@ typedef union Elem {
 			NodeSignature oilr;
 			int sig;
 		};
-		NodeList outEdges;
-		NodeList inEdges;
+		ElemList outEdges;
+		ElemList inEdges;
 	};
 	struct { /* free-list */
 		ElemId id;
@@ -105,8 +108,8 @@ typedef Elem Node;
 typedef Elem Edge;
 
 typedef struct Graph {
-	NodeList nodes;
-	NodeList indices[INDEX_COUNT];
+	ElemList nodes;
+	ElemList indices[INDEX_COUNT];
 } Graph;
 
 /* Global vars */
@@ -126,7 +129,7 @@ void deleteGraph(Graph *g);
 void addNode();
 void addEdge(NodeId src, NodeId tgt);
 
-void deleteEdge(NodeId src, NodeId tgt);
+void deleteEdge(EdgeId e);
 void deleteNode(NodeId id);
 
 void initGraphEngine();
