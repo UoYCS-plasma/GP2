@@ -10,18 +10,7 @@ int elemPoolSize = 0;
 ElemId nextElem = 0;
 Elem *freeElems = NULL;
 
-const Node nullElem = {
-	.loop=0, .root=0,
-	.matched=0,
-	.matchedLoops=0, 
-	.sig = 0,
-	.outEdges = {
-		.pool=0, .len=0, .elems=NULL
-	},
-	.inEdges = {
-		.pool=0, .len=0, .elems=NULL
-	},
-};
+const Node nullElem = {{0}};
 
 void failWith(const char *fmt, ...) {
 	va_list argp;
@@ -49,6 +38,9 @@ void printGraph(Graph *g) {
 			tgt = target(e);
 			printf("\t(e%d, n%d, n%d, empty)\n", edgeCount++, i, tgt);
 		}
+		for (j=0; j<loopdeg(n); j++) {
+			printf("\t(e%d, n%d, n%d, empty)\n", edgeCount++, i, i);
+		}
 	}
 	printf("]\n");
 }
@@ -56,6 +48,9 @@ void printGraph(Graph *g) {
 void resizeElemList(ElemList *nl, int sz) {
 	sz = (sz<DEF_EDGE_POOL) ? DEF_EDGE_POOL : sz;
 	// fprintf(stderr, " %d ", sz);
+	fprintf(stderr, "resize: 0x%lx, from %d to %d\n", (unsigned long) nl, nl->pool, sz);
+	if (sz == nl->pool)
+		return;
 	assert(sz > nl->len);
 	nl->elems = realloc(nl->elems, sz * sizeof(NodeId));
 	if (nl->elems == NULL)
@@ -80,18 +75,23 @@ void dropGraph() {
 
 int listElem(ElemList *nl, NodeId id) {
 	int pos = nl->len++;
+	assert(pos <= nl->pool && pos >= 0);
 	if (pos == nl->pool)
 		growElemList(nl);
+	assert(pos < nl->pool && nl->elems != NULL);
 	nl->elems[pos] = id;
 	return pos;
 }
-void unlistElem(ElemList *nl, NodeId id) {
-	int pos = nl->len--;
+void unlistElem(ElemList *el, NodeId id) {
+	int pos = el->len--;
+	assert(pos > 0 && el->elems != NULL);
+	//fprintf(stderr, "%d", pos);
 	while (pos-- > 0) {
-		if (nl->elems[pos] == id) {
-			nl->elems[pos] = nl->elems[nl->len];
-			if (nl->len < nl->pool >> 2)
-				shrinkElemList(nl);
+		if (el->elems[pos] == id) {
+			el->elems[pos] = el->elems[el->len];
+			if (el->len < el->pool >> 3)
+				shrinkElemList(el);
+			assert(pos < el->pool && pos >= 0);
 			return;
 		}
 	}
@@ -105,10 +105,18 @@ void sign(Node *n) {
 	int l = loopdeg(n);
 	int r = rooted(n);
 	scaleToIndexSize(o, i, l, r);
+#if O_BITS
 	n->oilr.o = o;
+#endif
+#if I_BITS
 	n->oilr.i = i;
+#endif
+#if L_BITS
 	n->oilr.l = l;
+#endif
+#if R_BITS
 	n->oilr.r = r;
+#endif
 }
 
 void indexNode(NodeId id) {
@@ -129,10 +137,12 @@ ElemId allocElem() {
 	if (freeElems != NULL) {
 		id = freeElems->id;
 		freeElems = freeElems->next;
-	} else if (nextElem == elemPoolSize) {
-		elemPoolSize = elemPoolSize * 2;
-		elemPool = realloc(elemPool, elemPoolSize *sizeof(Elem));
 	} else {
+		if (nextElem == elemPoolSize) {
+			elemPoolSize = elemPoolSize << 1;
+			elemPool = realloc(elemPool, elemPoolSize *sizeof(Elem));
+			assert(elemPool != NULL);
+		} 
 		id = nextElem++;
 	}
 	elemPool[id] = nullElem;
@@ -150,13 +160,20 @@ void freeElem(ElemId id) {
 	}
 }
 
+void setRootedness(NodeId id, int r) {
+	Node *n = &elem(id);
+	unindexNode(id);
+	n->root = r;
+	indexNode(id);
+}
 void addNode() {
 	int id = allocElem();
 	listElem(&(gsp->nodes), id);
 	indexNode(id);
+	fprintf(stderr, "elemPool[%d] (node): 0x%lx of size %d\n", id, (unsigned long) elemPool, elemPoolSize);
 }
 void deleteNode(NodeId id) {
-	Node *n = &(elemPool[id]);
+	Node *n = &elem(id);
 	if (outdeg(n) + indeg(n) + loopdeg(n) > 0)
 		failWith("Deleting node %d violates dangling condition: O%d I%d L%d", id, outdeg(n), indeg(n), loopdeg(n));
 
@@ -166,9 +183,10 @@ void deleteNode(NodeId id) {
 }
 
 void addEdge(NodeId src, NodeId tgt) {
-	Node *s=&elem(src), *t=&elem(tgt);
 	EdgeId eid = allocElem();
+	Node *s=&elem(src), *t=&elem(tgt);
 	Edge *e = &elem(eid);
+	fprintf(stderr, "elemPool[%d] (edge): 0x%lx of size %d\n", eid, (unsigned long) elemPool, elemPoolSize);
 	unindexNode(src);
 	unindexNode(tgt);
 	e->src = src;
@@ -177,6 +195,12 @@ void addEdge(NodeId src, NodeId tgt) {
 	listElem(inEdgeList(t), eid);
 	indexNode(src);
 	indexNode(tgt);
+}
+void addLoop(NodeId id) {
+	Node *n = &elem(id);
+	unindexNode(id);
+	n->loop++;
+	indexNode(id);
 }
 
 void deleteEdge(EdgeId eid) {
@@ -192,13 +216,19 @@ void deleteEdge(EdgeId eid) {
 	indexNode(tgt);
 	freeElem(eid);
 }
+void deleteLoop(NodeId id) {
+	Node *n = &elem(id);
+	unindexNode(id);
+	n->loop--;
+	indexNode(id);
+}
 
 void initGraphEngine() {
-	ElemList emptyIndex = {.len=0, .pool=0, .elems=NULL};
+	ElemList emptyIndex = {0};
 	int i;
 	for (i=0; i<INDEX_COUNT; i++)
 		gsp->indices[i] = emptyIndex;
-	elemPool = malloc(DEF_ELEM_POOL * sizeof(Node));
+	elemPool = malloc(DEF_ELEM_POOL * sizeof(Elem));
 	elemPoolSize = DEF_ELEM_POOL;
 	if (elemPool == NULL)
 		failWith("Failed to allocate a node pool");
@@ -210,6 +240,8 @@ void destroyGraphEngine() {
 		n = &(elemPool[i]);
 		if (outEdgeList(n)->elems != NULL)
 			free(outEdgeList(n)->elems);
+		if (inEdgeList(n)->elems != NULL)
+			free(inEdgeList(n)->elems);
 	}
 	for (i=0; i<INDEX_COUNT; i++) {
 		if (gsp->indices[i].elems != NULL)

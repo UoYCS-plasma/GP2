@@ -11,6 +11,8 @@
 
 #define outEdgeList(n) (&((n)->outEdges))
 #define inEdgeList(n)  (&((n)->inEdges))
+#define outEdge(n, i) ((n)->outEdges[i])
+#define inEdge(n, i)  ((n)->inEdges[i])
 
 #define index(g, id) ( &((g)->indices[id]) )
 #define indexFor(g, n) ( index((g), (n)->sig) )
@@ -44,10 +46,10 @@
 */
 
 #define DEF_GRAPH_POOL 4
-#define DEF_EDGE_POOL 4
+#define DEF_EDGE_POOL 16
 #define DEF_ELEM_POOL 100
 
-#ifndef O_SZ
+#ifndef O_BITS
 
 #define O_BITS 2
 #define I_BITS 2
@@ -66,10 +68,18 @@
 #define INDEX_COUNT (1<<OILR_BITS)
 
 typedef struct NodeSignature {
+#if O_BITS
 	unsigned int o:O_BITS;
+#endif
+#if I_BITS
 	unsigned int i:I_BITS;
+#endif
+#if L_BITS
 	unsigned int l:L_BITS;
+#endif
+#if R_BITS
 	unsigned int r:R_BITS;
+#endif
 	// unsigned int n:N_BITS;
 } NodeSignature;
 
@@ -78,8 +88,8 @@ typedef int NodeId;
 typedef int EdgeId;
 
 typedef struct ElemList {
-	unsigned int pool;
-	unsigned int len;
+	int pool;
+	int len;
 	ElemId *elems;
 } ElemList;
 

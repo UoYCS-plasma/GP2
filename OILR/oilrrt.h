@@ -4,6 +4,9 @@
 extern void _HOST();
 extern void GPMAIN();
 
+void trace(int a, int b, int here);
+typedef void (*Tracer)();
+
 #define trav(n) (travs[n])
 #define available(n) (!((n)->matched))
 
@@ -22,18 +25,15 @@ extern void GPMAIN();
 #define availableLoops(n) (loopdeg(n) - (n)->matchedLoops)
 
 typedef struct Trav {
-	union {
-		NodeSignature oilr;
-		int sig;
-	};
 	const int first;
 	const int last;
+	int o, i, l, r;
+
 	int cur;
 	int next;
 
-	int o, i, l, r;
+	EdgeId edge;
 	NodeId match;
-	ElemList *locn;
 
 } Trav;
 
@@ -46,8 +46,12 @@ typedef int TravId;
 
 extern int searchSpaces[];
 extern Trav travs[];
+extern int success;
 
-
-int success;
+void search(Trav *t);
+void followOutEdge(Trav *from, Trav *to);
+void followInEdge(Trav *to, Trav *from);
+void edgeBetween(Trav *from, Trav *to, int negate);
+void reset(Trav *t);
 
 #endif

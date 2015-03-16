@@ -8,7 +8,29 @@ Elem *elemPool;
 Graph graphs[DEF_GRAPH_POOL];
 Graph *gsp = graphs;
 
+int success = 0; 
+
 typedef int (*Pred)(Trav *t, Elem *e);
+
+#ifndef NDEBUG
+extern Tracer tracers[];
+void trace(int a, int b, int here) {
+	int i;
+	printf("  ");
+
+	for (i=a; i<=b; i++) {
+		if (i == here)
+			printf(">");
+		else
+			printf(" ");
+		tracers[i]();
+	}
+	printf("\n");
+}
+#else
+#define trace()
+#endif
+
 
 int testNode(Trav *t, Node *n) {
 	return (outdeg(n)  >= t->o &&
@@ -16,11 +38,11 @@ int testNode(Trav *t, Node *n) {
 			loopdeg(n) >= t->l && 
 			rooted(n)  >= t->r);
 }
-int testOutEdge(Trav *t, Elem *e) {
+int testOutEdge(Trav *t, Edge *e) {
 	Node *n = &elem(e->tgt);
 	return testNode(t, n);
 }
-int testInEdge(Trav *t, Elem *e) {
+int testInEdge(Trav *t, Edge *e) {
 	Node *n = &elem(e->src);
 	return testNode(t, n);
 }
@@ -28,7 +50,7 @@ int testInEdge(Trav *t, Elem *e) {
 void reset(Trav *t) {
 	Node *n = &elem(t->match);
 	unmatch(n);
-	t->match = -1;
+	//t->match = -1;
 	t->cur = t->first;
 	t->next = 0;
 }
@@ -40,7 +62,7 @@ int traverse(ElemList *l, Trav *t, Pred p) {
 	for (i=t->next; i<l->len; i++) {
 		id = l->elems[i];
 		cnd = &elem(id);
-		if (p(t, cnd)) {
+		if (!cnd->matched && p(t, cnd)) {
 			match(cnd);
 			t->match = id;
 			t->next = i+1;
@@ -51,11 +73,13 @@ int traverse(ElemList *l, Trav *t, Pred p) {
 	return -1;
 }
 
-int edgeExistsTo(ElemList *l, NodeId tgt) {
+int edgeExistsTo(ElemList *l, NodeId tgt, int back) {
 	int i;
+	Edge *e;
 	success = 0;
 	for (i=0; i<l->len; i++) {
-		if (tgt == l->elems[i]) {
+		e = &elem(l->elems[i]);
+		if (  back && e->tgt == tgt ) {
 			success = 1;
 			return i;
 		}
@@ -71,7 +95,6 @@ void search(Trav *t) {
 		idx = index(gsp, searchSpaces[i]);
 		traverse(idx, t, testNode);
 		if (success) {
-			//t->locn = idx;
 			t->cur = i;
 			return;
 		}
@@ -98,7 +121,7 @@ void followInEdge(Trav *to, Trav *from) {
 void edgeBetween(Trav *from, Trav *to, int negate) {
 	NodeId src = from->match;
 	ElemList *es = outEdgeList(&elem(src));
-	int e = edgeExistsTo(es, to->match);
+	int e = edgeExistsTo(es, to->match, 0);
 	if (success) {
 		if (negate)
 			success = 0;
@@ -118,6 +141,8 @@ void loopExists(Trav *t) {
 }
 
 int main(int argc, char **argv) {
+	argc = argc;
+	argv = argv;
 	initGraphEngine();
 	_HOST();
 	GPMAIN();
