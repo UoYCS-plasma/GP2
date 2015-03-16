@@ -1,17 +1,19 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ===============================
-  rule.h - Chris Bak (23/08/2014)
-  ===============================
-                             
-  Contains definitions for the structures necessary for rule application
-  except for graphs: rules, conditions, stacks and association lists.
-  
+  ===========
+  Rule Module 
+  ===========
+
+  Defines an intermediate structure for rules along with data structures
+  used during the transformation of rules and their graphs from the AST
+  to the intermediate form.
+
 /////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_STRUCTURES_H
 #define INC_STRUCTURES_H
 
+#include "error.h"
 #include "globals.h"
 #include "graph.h"
 
@@ -54,6 +56,7 @@ typedef struct IndexMap {
  * a pointer to the new first map in the list. */
 IndexMap *addIndexMap(IndexMap *map, string id, int left_index, 
                       int right_index, string source_id, string target_id);
+int findLeftIndexFromId(IndexMap *map, string id);                      
 IndexMap *findMapFromId(IndexMap *map, string id);
 /* Used to find a map for an edge with the passed source and target IDs. */
 IndexMap *findMapFromSrcTgt(IndexMap *map, string source, string target);
@@ -70,20 +73,18 @@ ItemList *addItem(ItemList *item_list, int index);
 bool queryItemList(ItemList *item_list, int index);
 void freeItemList(ItemList *item_list);
 
-/* A linked list of items that are preserved by the rule. It stores the 
- * indices of the item in the LHS and RHS, and a flag set to true if the rule
- * changes the item's label. */
+/* A linked list of items that are preserved by the rule. If the preserved
+ * item's label does not change on rule application, new_label is NULL,
+ * otherwise it is the label of the corresponding RHS item. */
 typedef struct PreservedItemList {
    int left_index;
-   int right_index;
-   bool label_change;
+   Label *new_label;
    struct PreservedItemList *next;
 } PreservedItemList;
 
-PreservedItemList *addPreservedItem(PreservedItemList *list, bool label_change,
-                                    int left_index, int right_index);
+PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index, 
+                                    Label *new_label);
 PreservedItemList *queryPItemList(PreservedItemList *list, int left_index);                                
-int findRightIndex(PreservedItemList *list, int left_index);                                
 void freePItemList(PreservedItemList *list);
 
 
@@ -147,8 +148,7 @@ typedef struct Rule {
    /* Deleted LHS items are precisely those that do not occur in the 
     * PreservedItems list. I explicitly store the deleted nodes because
     * the dangling condition places a stronger requirement on the degrees
-    * of candidate host nodes which can be exploited in the rule matching
-    * code. */
+    * of candidate host nodes which is exploited in the rule matching code. */
    ItemList *deleted_nodes;
    ItemList *added_nodes;
    NewEdgeList *added_edges;
@@ -161,7 +161,7 @@ typedef struct Rule {
    } flags;
 } Rule;
 
-void printRule(Rule *rule, bool verbose);
+void printRule(Rule *rule);
 void freeRule(Rule *rule);
 
 #endif /* INC_RULE_H */

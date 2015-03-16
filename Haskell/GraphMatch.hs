@@ -1,92 +1,63 @@
 module GraphMatch where
 
 import Data.List
-import Data.Maybe
-
-import ExAr
+-- import Data.Maybe
 import Graph
 import List
 import Mapping
 import LabelMatch
 import GPSyntax
 
-type RuleNodeId = NodeId 
-type HostNodeId = NodeId
-type RuleEdgeId = EdgeId
-type HostEdgeId = EdgeId
-
-type NodeMatches = Mapping RuleNodeId HostNodeId
-type EdgeMatches = Mapping RuleEdgeId HostEdgeId
+-- Rule nodes are mapped to host nodes, and rule edges to host edges.
+type NodeMatches = Mapping NodeKey NodeKey
+type EdgeMatches = Mapping EdgeKey EdgeKey
 
 data GraphMorphism = GM Environment NodeMatches EdgeMatches deriving (Show) 
-data NodeMorphism = NM Environment NodeMatches deriving (Show)
+data NodeMorphism  = NM Environment NodeMatches deriving (Show)
 
--- matchGraphEdges h r generates a list of GraphMorphisms from a single
--- NodeMorphism. In order to generate the complete list of GraphMorphisms,
--- we concatMap matchGraphEdges h r over the NodeMorphism list obtained
--- from the call to matchGraphNodes.
--- In the case that the rule graph is the empty graph, we immediately
--- return the empty morphism.
+-- Graph-matching proceeds by finding a candidate node-matches,
+-- and for each of these the associated edge-matches, if any.
 matchGraphs :: HostGraph -> RuleGraph -> [GraphMorphism]
 matchGraphs h r = [gm | nm <- matchGraphNodes h r, gm <- matchGraphEdges h r nm]
 
--- Outputs all valid (w.r.t labels) injective morphisms (node morphisms)
--- from the nodes of LHS to the nodes of the host graph.
---
--- We generate all candidate sets of nodes in the host graph. For an LHS with
--- k nodes, this is the set of size-k subsets of the node set of the host graph,
--- including permutations.
---
--- These subsets are zipped with the node set of the LHS to create the complete
--- set of candidate node morphisms. Accepted candidates are those for which
--- (1) rule nodes are mapped to compatible host nodes that agree wrt
--- rootedness, in-degree, out-degree and colour, and
--- (2) a consistent label-matching can be found.
+-- Candidate node matches are those for which the rule-node labels
+-- match the host-node labels; and if any rule-node is a root
+-- the matching host-node must be a root.
+-- It must also be possible to merge the results of label-matching
+-- across all nodes.
 matchGraphNodes :: HostGraph -> RuleGraph -> [NodeMorphism]
 matchGraphNodes h r =
-   [ NM labelEnv nodeMatches
-   | nodeMatches <- [ nm | hns <- permutedSizedSubsets (length rns) (allNodes h),
-                           let nm = zip rns hns,
-                           all (compatibleNodes h r) nm ],
-     Just labelEnv <- [foldr labelMatch (Just []) nodeMatches] ]
+   [ NM env (zip rns hns) | hnenvs <- choices hostNodeMatches,
+                            let (hns,envs) = unzip hnenvs,
+                            isSet hns,
+                            Just env <- [mergeMappings envs] ]
    where
-   rns = allNodes r
-   labelMatch :: (RuleNodeId, HostNodeId) -> Maybe Environment -> Maybe Environment
-   labelMatch (rn, hn) menv = do
-      env <- menv
-      (RuleNode _ _ rlab) <- maybeNLabel r rn
-      (HostNode _ _ hlab) <- maybeNLabel h hn
-      mapping <- doLabelsMatch hlab rlab
-      mergeMapping mapping env
-
-compatibleNodes :: HostGraph -> RuleGraph -> (RuleNodeId, HostNodeId) -> Bool
-compatibleNodes h r (rn, hn) = (not (isRootR r rn) || isRootH h hn) &&
-                               indegree r rn <= indegree h hn &&  
-                               outdegree r rn <= outdegree h hn &&
-                               colourMatch (colourR r rn) (colourH h hn)
+   (rns,ruleNodes)      =  unzip $ allNodes r
+   hostNodeMatches      =  [ [ (hnk,env)
+                             | (hnk,HostNode _ hroot hlab) <- allNodes h,
+                               not rroot || hroot,
+                               Just env <- [doLabelsMatch hlab rlab] ]
+                           | RuleNode _ rroot rlab <- ruleNodes ]
 
 -- For each edge in the RuleGraph, we determine the required source and
 -- target for a corresponding edge in the HostGraph using the node morphism.
 -- Candidate edges can then be found using joiningEdges.  Accepted candidates
 -- are those for which there is a consistent label-matching.
 matchGraphEdges :: HostGraph -> RuleGraph -> NodeMorphism -> [GraphMorphism]
-matchGraphEdges h r (NM env nodeMatches) =
-   [ GM labelEnv nodeMatches edgeMatch
-   | edgeMatch <- [zip ruleEdges hes | hes <- choices hostEdges],
-     Just labelEnv <- [foldr labelMatch (Just env) edgeMatch] ]
+matchGraphEdges h r (NM env nmap) =
+   [ GM env' nmap (zip res hes) | heenvs <- choices hostEdgeMatches,
+                                  let (hes,envs) = unzip heenvs,
+                                  isSet [edgeNumber he | he <- hes],
+                                  Just env' <- [mergeMappings $ env : envs] ]
    where 
-   ruleEdges = allEdges r
-   hostEdges = [ joiningEdges h src tgt ++
-                 if isBidirectional r reid then joiningEdges h tgt src
-                 else []
-               | reid <- ruleEdges,
-                 let src = definiteLookup (source r reid) nodeMatches,
-                 let tgt = definiteLookup (target r reid) nodeMatches ]
-   labelMatch :: (RuleEdgeId, HostEdgeId) -> Maybe Environment -> Maybe Environment
-   labelMatch (re, he) menv = do
-      env <- menv
-      hlabel <- maybeELabel h he
-      RuleEdge _ _ rlabel <- maybeELabel r re
-      mapping <- doLabelsMatch hlabel rlabel
-      mergeMapping mapping env
+   ruleEdges        =  allEdges r
+   (res,_)          =  unzip ruleEdges
+   hostEdgeMatches  =  [ [ (hek,env)
+                         | (hek,hlab) <-
+                             joiningEdges h src tgt ++
+                             if bidir then joiningEdges h tgt src else [],
+                             Just env <- [doLabelsMatch hlab rlab] ]
+                       | (rek,RuleEdge _ bidir rlab) <- ruleEdges,
+                         let src = definiteLookup (source rek) nmap,
+                         let tgt = definiteLookup (target rek) nmap ]
 

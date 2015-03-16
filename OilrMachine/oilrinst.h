@@ -26,7 +26,9 @@ extern OilrGraph *gsp;
 #define TRIN(o,i,l)  newNodeTrav(true, o, i, l, true);
 
 #define TE(src, tgt) newEdgeTrav(&(travStack[src].n), &(travStack[tgt].n));
-
+/* TODO: don't use a standard edge trav for this, to prevent unnecessary edge deletions */
+#define CE(src, tgt) newEdgeTrav(&(travStack[src].n), &(travStack[tgt].n));
+/* #define CE(src, tgt) newEdgeCheck(&(travStack[src].n), &(travStack[tgt].n)); */
 #define XE(src, tgt) newNegatedEdgeTrav(&(travStack[src].n), &(travStack[tgt].n));
 
 #define FIXO(r) constrainO(&(travStack[r].n));

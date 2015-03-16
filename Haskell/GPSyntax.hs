@@ -2,25 +2,18 @@ module GPSyntax where
 
 import Graph
 
-gpNumChars, gpChars :: [Char]
-gpNumChars = ['0'..'9']
-gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , gpNumChars , ['_'], ['-'] ]
+gpChars :: [Char]
+gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , ['0'..'9'] , ['_'], ['-'] ]
 
 keywords :: [String]
-keywords = map fst hostColours ++
-           ["main", "if", "try", "then", "else", "or", "skip", 
-            "fail", "int", "char", "string", "atom", "list",
+keywords = map fst hostColours ++ map fst gpTypes ++
+           ["main", "if", "try", "then", "else", "or", "skip", "fail",
             "interface", "where", "injective", "true", "false",
             "and", "not", "edge", "empty", "indeg", "outdeg",
             "slength", "llength"]
 
-data Colour = Uncoloured
-            | Red 
-            | Green 
-            | Blue
-            | Grey 
-            | Dashed 
-            | Cyan deriving (Eq, Show)
+data Colour = Uncoloured | Red | Green | Blue | Grey | Dashed | Cyan
+  deriving (Ord, Eq, Show)
 
 hostColours :: [ (String, Colour) ]
 hostColours = [
@@ -34,12 +27,8 @@ hostColours = [
 ruleColours :: [ (String, Colour) ]
 ruleColours = ("cyan", Cyan) : hostColours
 
-data VarType = IntVar
-             | ChrVar
-             | StrVar
-             | AtomVar
-             | ListVar
-   deriving (Eq, Show)
+data VarType = IntVar | ChrVar | StrVar | AtomVar | ListVar
+  deriving (Eq, Show)
 
 instance Ord VarType where
     ListVar <= vt = vt == ListVar
@@ -80,14 +69,12 @@ data Command = Block Block
              | TryStatement Block Block Block
     deriving Show
 
-
 data Block = ComSeq [Command]
            | LoopedComSeq [Command]
            | SimpleCommand SimpleCommand
            | ProgramOr Block Block      
     deriving (Show)
       
-
 data SimpleCommand = RuleCall [RuleName]
                    | LoopedRuleCall [RuleName]
                    | ProcedureCall ProcName
@@ -96,12 +83,11 @@ data SimpleCommand = RuleCall [RuleName]
                    | Fail
     deriving Show
 
-
 -- GP Rule ADTs
 type Variable = (VarName, VarType)
-type NodeInterface = [(NodeId, NodeId)]
+type NodeInterface = [(NodeKey, NodeKey)]
 -- For bidirectional edges
-type EdgeInterface = [(EdgeId, EdgeId)]
+type EdgeInterface = [(EdgeKey, EdgeKey)]
 
 data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) NodeInterface 
             EdgeInterface Condition deriving Show
@@ -135,8 +121,6 @@ data RuleAtom = Var Variable
     deriving (Show, Eq)
 
 -- TODO: precedence of infix binary operators
--- Is it possible to do BinOp Atom Atom and
--- data BinOp = Plus | Min | ... ?
 data Condition = NoCondition
                | TestInt VarName
                | TestChr VarName
@@ -159,28 +143,29 @@ data HostNode = HostNode NodeName Bool HostLabel deriving Show
 instance Eq HostNode where
     HostNode _ isRoot1 label1 == HostNode _ isRoot2 label2 =
         isRoot1 == isRoot2 && label1 == label2
+instance Ord HostNode where
+    HostNode _ isRoot1 label1 `compare` HostNode _ isRoot2 label2 =
+        (isRoot1,label1) `compare` (isRoot2,label2)
 
 data HostEdge = HostEdge NodeName NodeName HostLabel deriving Show
 
 -- Host Graph ADTs
 type HostGraph = Graph HostNode HostLabel
 data AstHostGraph = AstHostGraph [HostNode] [HostEdge] deriving Show
-data HostLabel = HostLabel [HostAtom] Colour deriving (Eq, Show)
-data HostAtom = Int Int
-              | Str String 
-              | Chr Char deriving (Eq, Show)
+data HostLabel = HostLabel [HostAtom] Colour deriving (Ord, Eq, Show)
+data HostAtom = Int Int | Str String | Chr Char deriving (Ord, Eq, Show)
 
-colourH :: HostGraph -> NodeId -> Colour
+colourH :: HostGraph -> NodeKey -> Colour
 colourH h n = c where HostNode _ _ (HostLabel _ c) = nLabel h n 
 
-colourR :: RuleGraph -> NodeId -> Colour
+colourR :: RuleGraph -> NodeKey -> Colour
 colourR r n = c where RuleNode _ _ (RuleLabel _ c) = nLabel r n 
 
-isRootH :: HostGraph -> NodeId -> Bool 
-isRootH h n = root where HostNode _ root _ = nLabel h n 
+-- isRootH :: HostGraph -> NodeId -> Bool 
+-- isRootH h n = root where HostNode _ root _ = nLabel h n 
 
-isRootR :: RuleGraph -> NodeId -> Bool
-isRootR r n = root where RuleNode _ root _ = nLabel r n 
-
-isBidirectional :: RuleGraph -> EdgeId -> Bool
-isBidirectional r e = bi where RuleEdge _ bi _ = eLabel r e 
+-- isRootR :: RuleGraph -> NodeId -> Bool
+-- isRootR r n = root where RuleNode _ root _ = nLabel r n 
+-- 
+-- isBidirectional :: RuleGraph -> EdgeId -> Bool
+-- isBidirectional r e = bi where RuleEdge _ bi _ = eLabel r e 

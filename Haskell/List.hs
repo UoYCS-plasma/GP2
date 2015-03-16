@@ -1,6 +1,8 @@
 module List where
 
-import Data.List (permutations)
+import Data.List (permutations,foldl')
+import GHC.Exts (groupWith)
+import Control.Monad (guard)
 
 -- Given a list of lists, compute all ways of choosing a single item
 -- from each inner list to obtain a list of choices.
@@ -9,10 +11,36 @@ choices :: [[a]] -> [[a]]
 choices []       = [[]]
 choices (xs:xss) = [c:cs | c <- xs, cs <- choices xss]
 
-permutedSizedSubsets :: Int -> [a] -> [[a]]
-permutedSizedSubsets k xs = concatMap permutations $ sublistsOf k xs
+isSet :: Eq a => [a] -> Bool
+isSet []      =  True
+isSet (x:xs)  =  x `notElem` xs && isSet xs
 
-sublistsOf :: Int -> [a] -> [[a]]
-sublistsOf 0 _        = [[]]
-sublistsOf _ []       = []
-sublistsOf n (x:xs)   = map (x:) (sublistsOf (n-1) xs) ++ sublistsOf n xs
+-- NB. As the graph-isomorphism module applies representBy to potentially
+-- large lists of graphs, computation is forced to ease memory pressure.
+representBy :: (a->a->Bool) -> [a] -> [(a,Int)]
+representBy equiv xs  =  foldl' add [] xs
+  where
+  add []             y  =  [(y,1)]
+  add (xn@(x,n):xns) y  =  if x `equiv` y
+                           then let n' = n+1 in n' `seq` (x,n'):xns
+                           else let a' = add xns y in a' `seq` (xn : a')
+
+nonEmpty :: [a] -> Bool
+nonEmpty []     =  False
+nonEmpty (_:_)  =  True
+
+bijectionsWith :: Ord c => (a->c) -> [a] -> (b->c) -> [b] -> [[(a,b)]]
+bijectionsWith f xs g ys =
+  case blockZip f g (groupWith f xs) (groupWith g ys) of
+  Nothing  -> []
+  Just zbs -> [ concat bp
+              | bp <- choices [ [zip b1 b2' | b2' <- permutations b2]
+                              | (b1,b2) <- zbs ] ] 
+
+blockZip :: Ord c => (a->c) -> (b->c) -> [[a]] -> [[b]] -> Maybe [([a],[b])]
+blockZip f g []       []        =  Just []
+blockZip f g (xs:xss) (ys:yss)  =  do
+  guard (length xs == length ys && f (head xs) == g (head ys))
+  xyss <- blockZip f g xss yss
+  return ((xs,ys) : xyss) 
+

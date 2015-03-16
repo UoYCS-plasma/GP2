@@ -1,11 +1,3 @@
-/* ///////////////////////////////////////////////////////////////////////////
-
-  =====================================
-  rule.c - Chris Bak (23/08/2014)
-  =====================================
-
-/////////////////////////////////////////////////////////////////////////// */
-
 #include "rule.h"
 
 VariableList *addVariable(VariableList *variable_list, string name, GPType type) 
@@ -65,7 +57,17 @@ IndexMap *addIndexMap(IndexMap *map, string id, int left_index,
 
    return new_map;
 }
-  
+
+int findLeftIndexFromId(IndexMap *map, string id)
+{
+   while(map != NULL)
+   {
+      if(!strcmp(map->id, id)) return map->left_index;
+      else map = map->next;
+   }
+   return -1; 
+}
+
 IndexMap *findMapFromId(IndexMap *map, string id)
 {
    while(map != NULL)
@@ -166,8 +168,8 @@ void freeItemList(ItemList *item_list)
    free(item_list);
 }
 
-PreservedItemList *addPreservedItem(PreservedItemList *list, bool label_change,
-                                    int left_index, int right_index)
+PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index, 
+                                    Label *new_label)
 {
    PreservedItemList *new_list = malloc(sizeof(PreservedItemList));
 
@@ -177,9 +179,8 @@ PreservedItemList *addPreservedItem(PreservedItemList *list, bool label_change,
       exit(1);
    }
 
-   new_list->label_change = label_change;
    new_list->left_index = left_index;   
-   new_list->right_index = right_index;
+   new_list->new_label = new_label;
    new_list->next = list;
 
    return new_list;
@@ -193,16 +194,6 @@ PreservedItemList *queryPItemList(PreservedItemList *list, int left_index)
       else list = list->next;
    }
    return NULL;
-}
-
-int findRightIndex(PreservedItemList *list, int left_index)     
-{
-   while(list != NULL)
-   {
-      if(left_index == list->left_index) return list->right_index;
-      else list = list->next;
-   }
-   return -1;
 }
 
 void freePItemList(PreservedItemList *list)
@@ -241,7 +232,7 @@ void freeNewEdgeList(NewEdgeList *edge)
 }
 
 
-void printRule(Rule *rule, bool verbose)
+void printRule(Rule *rule)
 {
    if(rule == NULL) 
    {
@@ -249,75 +240,15 @@ void printRule(Rule *rule, bool verbose)
       return;
    }
 
-   if(!verbose)
-   {
-      printf("%s\n\n", rule->name);
-      printGraph(rule->lhs);
-      printf("=>\n\n");
-      printGraph(rule->rhs);
-   }
-   
-   else
-   {
-      printf("Rule %s\n\n", rule->name);
-      printf("LHS\n===\n");
-      if(rule->lhs) printVerboseGraph(rule->lhs);
-      else printf("Empty Graph\n\n");
-
-      printf("RHS\n===\n");
-      if(rule->rhs) printVerboseGraph(rule->rhs);
-      else printf("Empty Graph\n\n");
-   
-      PreservedItemList *item = rule->preserved_nodes;
-      printf("Preserved nodes: ");
-      while(item != NULL)
-      {
-         printf("(%d, %d, %d) ", item->left_index, item->right_index, 
-               item->label_change);
-         item = item->next;
-      }
-
-      item = rule->preserved_edges;
-      printf("\nPreserved edges: ");
-      while(item != NULL)
-      {
-         printf("(%d, %d, %d) ", item->left_index, item->right_index, 
-               item->label_change);
-         item = item->next;
-      }
-
-      ItemList *iterator = rule->added_nodes;
-      printf("\nAdded nodes: ");
-      while(iterator != NULL)
-      {
-         printf("%d ", iterator->index);
-         iterator = iterator->next;
-      }
-      
-      iterator = rule->deleted_nodes;
-      printf("\nDeleted nodes: ");
-      while(iterator != NULL)
-      {
-         printf("%d ", iterator->index);
-         iterator = iterator->next;
-      }
-
-      printf("\nAdded edges:\n");
-
-      NewEdgeList *edge = rule->added_edges;
-      while(edge != NULL)
-      {
-         printf("Edge %d. Source %c-%d. Target %c-%d.\n",
-               edge->edge_index, edge->source_location, edge->source_index,
-               edge->target_location, edge->target_index);
-         edge = edge->next;
-      }
-
-      if(rule->flags.is_predicate) printf("Rule is a predicate.\n");
-      if(rule->flags.is_rooted) printf("Rule is rooted.\n");
-   }
+   printf("%s\n\n", rule->name);
+   printGraph(rule->lhs);
+   printf("\n");
+   printf("=>\n\n");
+   printGraph(rule->rhs);
    printf("\n");
 }
+
+
 
 void freeRule(Rule *rule)
 {

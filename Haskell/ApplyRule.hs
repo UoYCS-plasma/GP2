@@ -2,12 +2,10 @@ module ApplyRule where
 
 import Data.List
 import Data.Maybe
-import GraphMatch
 import GPSyntax
 import LabelMatch
 import GraphMatch
 import Graph
-import ExAr
 import Mapping
 import Evaluate 
 
@@ -18,17 +16,19 @@ import Evaluate
 -- Valid morphisms are used to generate host graphs by applying transform.
 applyRule :: HostGraph -> Rule -> [HostGraph]
 applyRule h r@(Rule _ _ (lhs, _) ni _ cond) =
-        [ transform m r h deletedNodes
-        | m@(GM _ nms ems) <- matchGraphs h lhs,
-          let deletedNodes = [definiteLookup lnid nms | lnid <- allNodes lhs \\ dom ni],
-          danglingCondition h ems deletedNodes,
-          conditionEval (m, h, lhs) cond ]
+  [ transform m r h deletedNodes
+  | m@(GM _ nms ems) <- matchGraphs h lhs,
+    let deletedNodes = [ definiteLookup nk nms
+                       | nk <- allNodeKeys lhs, nk `notElem` dom ni],
+    danglingCondition h ems deletedNodes,
+    conditionEval (m, h, lhs) cond ]
 
 -- The dangling condition restricts valid matches.  There must not be any
 -- host edges that would be preserved though they are incident to nodes that
 -- would be deleted.
-danglingCondition :: HostGraph -> EdgeMatches -> [NodeId] -> Bool
-danglingCondition h ems delns = null [e | hn <- delns, e <- incidentEdges h hn \\ rng ems]
+danglingCondition :: HostGraph -> EdgeMatches -> [NodeKey] -> Bool
+danglingCondition h ems delns = 
+  null [ek | hn <- delns, (ek,_) <- incidentEdges h hn, ek `notElem` rng ems]
 
 -- Creates the new host graph from the old host graph H in three steps:
 -- (1) Remove the images of all LHS edges and any deleted nodes from H.
@@ -39,13 +39,13 @@ danglingCondition h ems delns = null [e | hn <- delns, e <- incidentEdges h hn \
 --     host graph and a mapping from RHS NodeIds to Host NodeIds to
 --     facilitate the next step.
 -- (3) Add the edges to the graph. 
-transform :: GraphMorphism -> Rule -> HostGraph -> [NodeId] -> HostGraph
+transform :: GraphMorphism -> Rule -> HostGraph -> [NodeKey] -> HostGraph
 transform m@(GM _ _ ems) r@(Rule _ _ (lhs, rhs) ni ei _) h hns = 
    addEdgesToHost m rhs ei rhsToHostMap addedNodesGraph   
    where 
    (addedNodesGraph, rhsToHostMap) = addNodesToHost m rhs ni removedItemsGraph
    removedItemsGraph = rmNodeList (rmEdgeList h deletedHostEdges) hns                 
-   deletedHostEdges  = [ definiteLookup leid ems | leid <- allEdges lhs \\ dom ei ]
+   deletedHostEdges  = [ definiteLookup leid ems | leid <- allEdgeKeys lhs \\ dom ei ]
 
 -- We generate a mapping from all NodeIds in the RHS, including freshly 
 -- created nodes, to their NodeIDs in the host graph. This mapping is used 
@@ -62,10 +62,10 @@ addNodesToHost m@(GM _ nms _) rhs ni h =
     (h', insertedHostNodes) = newNodeList h [ nodeEval (m, h, rhs) (nLabel rhs n)
                                             | n <- insertedRhsNodes ]
     relabelMapping          = [ (ri, definiteLookup li nms) | (li, ri) <- ni]
-    insertedRhsNodes        = allNodes rhs \\ rng ni
+    insertedRhsNodes        = allNodeKeys rhs \\ rng ni
 
-relabelNode :: GraphMorphism -> RuleGraph -> (RuleNodeId, HostNodeId) -> HostGraph -> HostGraph
-relabelNode m rhs (rid, hid) h = nReLabel h hid $ nodeEval (m, h, rhs) $ nLabel rhs rid 
+relabelNode :: GraphMorphism -> RuleGraph -> (NodeKey, NodeKey) -> HostGraph -> HostGraph
+relabelNode m rhs (rnk, hnk) h = nReLabel h hnk $ nodeEval (m, h, rhs) $ nLabel rhs rnk 
 
 nodeEval :: EvalContext -> RuleNode -> HostNode
 nodeEval ec (RuleNode name isRoot label) = HostNode name isRoot $ labelEval ec label
@@ -76,14 +76,14 @@ addEdgesToHost :: GraphMorphism -> RuleGraph -> EdgeInterface -> NodeMatches -> 
 addEdgesToHost m@(GM _ _ ems) rhs ei nms h = 
     foldr (relabelEdge m rhs)  h' [(ri, definiteLookup li ems) | (li, ri) <- ei]
     where
-    (h',_) = newEdgeList h [ (hsrc, htgt, labelEval (m, h, rhs) rlabel)
-                           | re <- allEdges rhs \\ rng ei, 
-                             let hsrc = definiteLookup (source rhs re) nms,
-                             let htgt = definiteLookup (target rhs re) nms,
-                             let RuleEdge _ _ rlabel = eLabel rhs re ]
+    (h',_) = newEdgeList h [ (hsrc, htgt, labelEval (m, h, rhs) label)
+                           | (ek,RuleEdge _ _ label) <- allEdges rhs,
+                             ek `notElem` rng ei, 
+                             let hsrc = definiteLookup (source ek) nms,
+                             let htgt = definiteLookup (target ek) nms ]
 
-relabelEdge :: GraphMorphism -> RuleGraph -> (RuleEdgeId,HostEdgeId) -> HostGraph -> HostGraph
-relabelEdge m rhs (rid, hid) h = eReLabel h hid $ edgeEval (m, h, rhs) $ eLabel rhs rid 
+relabelEdge :: GraphMorphism -> RuleGraph -> (EdgeKey,EdgeKey) -> HostGraph -> HostGraph
+relabelEdge m rhs (rek, hek) h = eReLabel h hek $ edgeEval (m, h, rhs) $ eLabel rhs rek 
 
 edgeEval :: EvalContext -> RuleEdge -> HostLabel
 edgeEval ec re@(RuleEdge _ _ label) = labelEval ec label

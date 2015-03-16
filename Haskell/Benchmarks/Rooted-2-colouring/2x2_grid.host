@@ -1,0 +1,11 @@
+[
+    (n0 (R), empty)
+    (n1, empty)
+    (n2, empty)
+    (n3, empty)
+|
+    (e0, n0, n1, empty)
+    (e1, n2, n3, empty)
+    (e2, n0, n2, empty)
+    (e3, n1, n3, empty)
+]

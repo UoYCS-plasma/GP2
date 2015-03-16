@@ -1,8 +1,8 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  ====================================
-  transform.h - Chris Bak (01/12/2014)
-  ====================================
+  =========================
+  AST Transformation Module
+  =========================
                              
   Module for transforming the AST into intermediate data structures.
 
@@ -12,14 +12,18 @@
 #define INC_TRANSFORM_H 
 
 #include "ast.h"
+#include "error.h"
 #include "globals.h"
 #include "graph.h"
 #include "rule.h"
 
-void transformAST(List *declarations, Stack *rule_stack);
-
 /* Creates the rule data structure from a pointer to a rule in the AST. */
 Rule *makeRule(GPRule *rule);
+
+/* Returns the maximum of minimum_size and the smallest power of 2 greater 
+ * than the number of nodes or edges in the passed graph. */
+int getNodeSize(GPGraph *graph, int minimum_size);
+int getEdgeSize(GPGraph *graph, int minimum_size);
 
 /* scanLHS does the following:
  * (1) Creates and returns the graph data structure for the LHS graph.
@@ -37,7 +41,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
                unsigned int *is_rooted);
 
 /* scanRHSNodes does the following:
-* (1) Creates and returns the graph data structure for the graph containing
+ * (1) Creates and returns the graph data structure for the graph containing
  *     the nodes of the RHS graph.
  * (2) Updates the node map with the RHS-node indices. New node maps are 
  *     introduced for nodes which do not exist in the LHS.
@@ -66,6 +70,6 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
                           IndexMap *node_map, IndexMap **edge_map,
                           PreservedItemList **edges);
 
-Label *transformLabel(GPLabel *label);
+Label *transformLabel(GPLabel *ast_label);
 
 #endif /* INC_TRANSFORM_H */

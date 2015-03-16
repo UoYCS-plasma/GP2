@@ -1,11 +1,8 @@
 module ProcessAst where
 
-import Prelude 
 import Data.List
-import Data.Maybe
 import GPSyntax
 import Graph
-import ExAr
 import Mapping
 
 -- A symbol's Scope is the procedure it is contained in. Global symbols
@@ -32,7 +29,6 @@ symbolInScope name scope rule table = find (checkScope scope rule) $ lookupSymbo
   -- checkScope :: String -> String -> Symbol -> Bool
      checkScope scope rule (Symbol _ symbolScope symbolRule) = 
         scope == symbolScope && rule == symbolRule
-
 
 -- Transforms the GP program AST into a data structure suitable for rule application.
 -- The only transformations are performed on rule declarations: the rule's graphs are
@@ -66,10 +62,10 @@ enterVariable :: Scope -> RuleID -> SymbolTable -> Variable -> SymbolTable
 enterVariable scope rule table (id, gpType) = addItem table id (Symbol gpType scope rule)
 
 -- NodeMap and EdgeMap keeps track of the correspondences between string IDs in 
--- the AstGraphs and the integer IDs in the ExAr graphs. Only bidirectional
--- edges are placed in the mapping.
-type NodeMap = Mapping NodeName NodeId
-type EdgeMap = Mapping EdgeName EdgeId
+-- the AstGraphs and the integer node-id and edge-ids in graph data structures.
+-- Only bidirectional edges are placed in the mapping.
+type NodeMap = Mapping NodeName NodeKey
+type EdgeMap = Mapping EdgeName EdgeKey
 
 -- makeHostGraph first generates all the nodes so that the node map is available
 -- for edge creation. It uses the node map to ensure that the edges are assigned
@@ -79,8 +75,8 @@ makeHostGraph (AstHostGraph hns hes) = fst $ foldr addHEdge (nodeGraph,nodeMaps)
     where (nodeGraph, nodeMaps) = foldr addHNode (emptyGraph, []) hns
 
 addHNode :: HostNode -> (HostGraph, NodeMap) -> (HostGraph, NodeMap)
-addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, newId):nm)
-    where (g', newId) = newNode g hn
+addHNode hn@(HostNode id _ _ ) (g, nm) = (g', (id, nk):nm)
+    where (g', nk) = newNode g hn
 
 -- Uses the node map to lookup the appropriate node IDs from the HostEdge's
 -- source and target nodes, and creates the appropriate edge in the HostGraph.
@@ -95,7 +91,6 @@ addHEdge (HostEdge src tgt label) (g, nm) =
         (Nothing, _) -> error $ "Edge source " ++ show src ++ " undefined."
         (_, Nothing) -> error $ "Edge target " ++ show tgt ++ " undefined."
         (Just srcId, Just tgtId) -> (fst $ newEdge g srcId tgtId label, nm)
-
 
 makeRule :: AstRule -> Scope -> SymbolTable -> Rule
 makeRule (AstRule name vars (lhs, rhs) cond) scope table =
@@ -123,26 +118,24 @@ makeRuleGraph (AstRuleGraph rns res) scope rule table = foldr addREdge (nodeGrap
           res' = map (updateEdge scope rule table) res
 
 addRNode :: RuleNode -> (RuleGraph, NodeMap) -> (RuleGraph, NodeMap)
-addRNode hn@(RuleNode id _ _ ) (g, nm) = (g', (id, newId):nm)
-    where (g', newId) = newNode g hn
+addRNode hn@(RuleNode id _ _ ) (g, nm) = (g', (id, nk):nm)
+    where (g', nk) = newNode g hn
 
 addREdge :: AstRuleEdge -> (RuleGraph, NodeMap, EdgeMap) -> (RuleGraph, NodeMap, EdgeMap)
 addREdge (AstRuleEdge id bidir src tgt label) (g, nm, em) = 
-    let srcId = lookup src nm
-        tgtId = lookup tgt nm in
+    let srcId = lookup src nm;  tgtId = lookup tgt nm in
     case (srcId, tgtId) of
-        (Nothing, Nothing) -> error $ "Edge source " ++ show src ++ " and target " ++ show tgt ++ " undefined."
-        (Nothing, _) -> error $ "Edge source " ++ show src ++ " undefined."
-        (_, Nothing) -> error $ "Edge target " ++ show tgt ++ " undefined."
-        (Just srcId, Just tgtId) -> (g', nm, if bidir then ((id, newId):em) else em)
-            where (g', newId) = newEdge g srcId tgtId (RuleEdge id bidir label)
+    (Nothing, Nothing) -> error $ "Edge source " ++ show src ++ " and target " ++ show tgt ++ " undefined."
+    (Nothing, _) -> error $ "Edge source " ++ show src ++ " undefined."
+    (_, Nothing) -> error $ "Edge target " ++ show tgt ++ " undefined."
+    (Just srcId, Just tgtId) -> (g', nm, if bidir then ((id, ek):em) else em)
+      where (g', ek) = newEdge g srcId tgtId (RuleEdge id bidir label)
 
 updateNode :: Scope -> RuleID -> SymbolTable -> RuleNode -> RuleNode
 updateNode scope rule table (RuleNode id isRoot ( RuleLabel list mark ) ) =
     let newList = assignTypes scope rule table list 
     in (RuleNode id isRoot ( RuleLabel newList mark ) ) 
       
-
 updateEdge :: Scope -> RuleID -> SymbolTable -> AstRuleEdge -> AstRuleEdge
 updateEdge scope rule table (AstRuleEdge id bidir src tgt ( RuleLabel list mark ) ) =
     let newList = assignTypes scope rule table list
@@ -158,9 +151,9 @@ makeNodeInterface lnm rnm = [ (definiteLookup name lnm, definiteLookup name rnm)
         interfaceNames = map fst lnm `intersect` map fst rnm
 
 makeEdgeInterface :: EdgeMap -> EdgeMap -> EdgeInterface
-makeEdgeInterface lem rem = [ (definiteLookup name lem, definiteLookup name rem) | name <- interfaceNames ]
-    where
-        interfaceNames = map fst lem `intersect` map fst rem
+makeEdgeInterface lem rem = [ (definiteLookup name lem, definiteLookup name rem)
+                            | name <- interfaceNames ]
+    where interfaceNames = map fst lem `intersect` map fst rem
 
 -- Finds variables in the condition and assigns them their correct types
 -- according to the symbol table.

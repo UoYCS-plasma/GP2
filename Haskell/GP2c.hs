@@ -6,19 +6,27 @@ import System.Console.GetOpt
 
 import ParseProgram
 import ParseGraph
-import ParseLib
-import Cassava.Instructions
-import Cassava.Compile
-import Cassava.HostCompile
-import Cassava.NullBackend
-import Cassava.CBackend
+import Text.Parsec
+import OilrMachine.Instructions
+import OilrMachine.Compile
+import OilrMachine.Analysis
+import OilrMachine.HostCompile
+import OilrMachine.NullBackend
+import OilrMachine.CBackend
 
+import GPSyntax -- debug code
 
 compiler = "cc"
 
 {- options :: [ OptDescr Flag ]
 options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, instead of all possible graphs",
             Option ['n'] ["no-iso"] (OptArg maxIso "MAX") "disable the isomorphism checker, limiting to a maximum of MAX result graphs" ] -}
+
+getStem :: String -> String
+getStem = takeWhile (/= '.')
+
+extractDecls :: GPProgram -> [AstRule]
+extractDecls (Program decls) = map (\(AstRuleDecl r) -> r) $ filter (\d -> case d of { (AstRuleDecl _) -> True ; _ -> False} ) decls
 
 main = do
     hSetBuffering stdout NoBuffering
@@ -27,33 +35,34 @@ main = do
         (flags, [progFile], []) ->
             do
                 p <- readFile progFile
-                let stem = takeWhile (/= '.') progFile
+                let stem = getStem progFile
                 let targ = stem ++ ".c"
                 putStrLn $ "Parsing " ++ progFile
-                let prog = parse program p
-                -- putStrLn $ show prog
-                -- putStrLn ""
-                putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
-                let code = cCompile $ compileGPProg prog
-                writeFile targ code
-                return ()
+                case parse program progFile p of
+                  Left  err  -> print err
+                  Right prog -> do
+                    putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
+                    -- putStrLn $ show prog
+                    _ <- mapM putStrLn $ map show $ map characteriseRule $ extractDecls prog
+                    putStrLn ""
+                    -- let code = cCompile $ compileGPProg prog
+                    -- writeFile targ code
         (flags, [progFile, hostFile], []) ->
             do
                 putStrLn $ " ** Warning: host-graph burned into executable!"
                 p <- readFile progFile
                 h <- readFile hostFile
-                let stem = takeWhile (/= '.') progFile
+                let stem = getStem progFile
                 let targ = stem ++ ".c"
                 putStrLn $ "Parsing " ++ progFile
-                let prog = parse program p
-                -- putStrLn $ show prog
-                -- putStrLn ""
-                putStrLn $ "Parsing " ++ hostFile
-                let host = parse hostGraph h
-                putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
-                let code = cCompile $ compileHostGraph host ++ compileGPProg prog
-
-                writeFile targ code
-                return ()
-
+                case parse program progFile p of
+                  Left  err  -> print err
+                  Right prog -> do
+                    putStrLn $ "Parsing " ++ hostFile
+                    case parse hostGraph hostFile h of
+                      Left  err  -> print err
+                      Right host -> do
+                        putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
+                        let code = cCompile $ compileHostGraph host ++ compileGPProg prog
+                        writeFile targ code
 
