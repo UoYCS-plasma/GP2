@@ -1,9 +1,9 @@
 OBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o \
           transform.o label.o graph.o rule.o stack.o searchplan.o \
-          genMatch.o genProgram.o main.o
+          genHost.o genMatch.o genProgram.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
-LFLAGS = -lglib-2.0
+LFLAGS = -lglib-2.0 
 VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
            --leak-check=full --leak-resolution=high --track-origins=yes \
 
@@ -47,7 +47,7 @@ lex.yy.c:	gplexer.lex parser.h ast.h error.h
 		$(CC) -c $(CFLAGS) -o $@ $<
 
 # Dependencies
-main.o:		error.h globals.h genProgram.h parser.h seman.h
+main.o:		error.h globals.h genHost.h genProgram.h parser.h seman.h
 parser.o:	parser.h lex.yy.c
 debug.o:	error.h globals.h 
 ast.o: 		ast.h error.h globals.h
@@ -59,6 +59,7 @@ rule.o:		error.h globals.h graph.h rule.h
 transform.o:	ast.h error.h globals.h graph.h rule.h transform.h 
 stack.o:	error.h globals.h stack.h
 searchplan.o:	graph.h globals.h searchplan.h
+genHost.o:	ast.h error.h globals.h transform.h genHost.h
 genMatch.o:	error.h globals.h rule.h searchplan.h genMatch.h
 genProgram.o:	ast.h error.h genMatch.h globals.h transform.h genProgram.h
 

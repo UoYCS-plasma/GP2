@@ -1,6 +1,20 @@
 #include "label.h"
 
 Label blank_label = {NONE, {NULL, NULL}, 0, false};
+Label red_label = {RED, {NULL, NULL}, 0, false};
+Label green_label = {GREEN, {NULL, NULL}, 0, false};
+Label blue_label = {BLUE, {NULL, NULL}, 0, false};
+Label grey_label = {GREY, {NULL, NULL}, 0, false};
+Label dashed_label = {DASHED, {NULL, NULL}, 0, false};
+
+bool isConstantLabel(Label *label)
+{
+   if(label == NULL) return true;
+   if(label == &blank_label || label == &red_label || label == &green_label ||
+      label == &blue_label || label == &grey_label || label == &dashed_label)
+      return true;
+   else return false;
+}
 
 bool labelMatch(Label *rule_label, Label *host_label)
 {
@@ -17,14 +31,20 @@ bool marksMatch(MarkType rule_mark, MarkType host_mark)
 Label *makeEmptyList(MarkType mark)
 {
    if(mark == NONE) return &blank_label;
+   if(mark == RED) return &red_label;
+   if(mark == GREEN) return &green_label;
+   if(mark == BLUE) return &blue_label;
+   if(mark == GREY) return &grey_label;
+   if(mark == DASHED) return &dashed_label;
    
+   /* Otherwise, create the empty label with the ANY mark. */
    Label *label = malloc(sizeof(Label));
    if(label == NULL)
    {
       print_to_log("Error: Memory exhausted during label creation.\n");
       exit(1);
    }
-   label->mark = mark;
+   label->mark = ANY;
    label->list.first = NULL;
    label->list.last = NULL;
    label->list_length = 0;
@@ -61,7 +81,7 @@ LabelClass getLabelClass(Label *label)
       case CHARACTER_CONSTANT:
       case STRING_CONSTANT:
       case CONCAT:
-          return STRING_L;
+           return STRING_L;
 
       default:
            print_to_log("Error (getLabelClass): First element of passed list "

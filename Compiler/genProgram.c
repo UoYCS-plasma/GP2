@@ -1,108 +1,5 @@
 #include "genProgram.h"
 
-void generateHostGraphCode(GPGraph *ast_host_graph)
-{
-   FILE *header = fopen("runtime/init_runtime.h", "w");
-   if(header == NULL) { 
-     perror("init_runtime.h");
-     exit(1);
-   }  
-
-   FILE *source = fopen("runtime/init_runtime.c", "w");
-   if(source == NULL) { 
-     perror("init_runtime.c");
-     exit(1);
-   }
-   
-   fprintf(header, "#include \"../graph.h\"\n"
-                   "#include \"../macros.h\"\n"
-                   "#include \"../rule.h\"\n\n"
- 		   "Graph *makeHostGraph(void);\n");
-
-   int host_node_size = getNodeSize(ast_host_graph, MIN_HOST_NODE_SIZE);
-   int host_edge_size = getEdgeSize(ast_host_graph, MIN_HOST_EDGE_SIZE);
-
-   List *nodes = ast_host_graph->nodes, *edges = ast_host_graph->edges;
- 
-   PTIS("#include \"init_runtime.h\"\n\n"
-        "Graph *makeHostGraph(void)\n"
-        "{\n"
-        "   Graph *host = newGraph(%d, %d);\n", host_node_size, host_edge_size);
-   if(edges != NULL)
-      PTIS("   int node_map[%d], map_index, node_index, source, target, count;\n"
-           "   for(count = 0; count < %d; count++)\n"
-           "      node_map[count] = -1;\n", host_node_size, host_node_size);
-   PTIS("\n");
-
-   /* For each node in the AST, create a data structure for its label and
-    * call ADD_HOST_NODE. ADD_HOST_NODE is a macro that creates the node,
-    * adds it to the graph, and adds a new record to the node index map. */
-   if(edges != NULL) 
-      PTIS("   /* Add the host nodes to the graph and record their host indices\n" 
-           "    * in the node map. */\n"); 
-   int label_count = 0;        
-   while(nodes != NULL)
-   { 
-      GPNode *ast_node = nodes->value.node;
-      if(ast_node->label->mark == NONE &&
-         ast_node->label->gp_list->list_type == EMPTY_LIST)
-      {
-         if(edges == NULL) PTIS("   addNode(host, %d, NULL);", ast_node->root);
-         else PTIS("   ADD_UNLABELLED_HOST_NODE(%d, \"%s\")", ast_node->root,
-                   (ast_node->name) + 1);
-      }
-      else
-      {
-         PTIS("\n   Label *label%d = makeEmptyList(%d);", label_count, 
-              ast_node->label->mark);
-         if(edges == NULL) PTIS("   addNode(host, %d, label%d);", 
-                                ast_node->root, label_count);
-         else PTIS("   ADD_HOST_NODE(%d, \"%s\", %d)", ast_node->root,
-                   (ast_node->name) + 1, label_count);
-         label_count++;
-      }
-      PTIS("\n");
-      nodes = nodes->next;   
-   }
-   if(edges != NULL)
-   {
-      PTIS("\n   /* Add the host edges to the graph, getting source and target\n"
-           "    * indices from the node ID/host index pairs in the node map. */\n"); 
-      /* For each edge in the AST, look up its source and target. For loops,
-      * only the source needs to be looked up. GET_HOST_SOURCE and 
-      * GET_HOST_TARGET are macros that search node_map for a node with the 
-      * appropriate string ID. */
-      while(edges != NULL)
-      {
-         GPEdge *ast_edge = edges->value.edge;
-         bool loop = !strcmp(ast_edge->source, ast_edge->target);
-         if(loop)
-            PTIS("   GET_HOST_LOOP_ENDPOINT(\"%s\")\n", (ast_edge->source) + 1);
-         else
-            PTIS("   GET_HOST_EDGE_ENDPOINTS(\"%s\", \"%s\")\n",
-                 (ast_edge->source) + 1, (ast_edge->target) + 1);
-         if(ast_edge->label->mark == NONE &&
-            ast_edge->label->gp_list->list_type == EMPTY_LIST)
-            PTIS("   addEdge(host, %d, NULL, source, target);\n",
-                 ast_edge->bidirectional);
-         else
-         {         
-            PTIS("   Label *label%d = makeEmptyList(%d);\n", label_count, 
-                 ast_edge->label->mark);
-            PTIS("   addEdge(host, %d, label%d, source, target);\n", 
-                 ast_edge->bidirectional, label_count);
-            label_count++;
-         }
-         PTIS("\n");
-         edges = edges->next;   
-      }
-   }
-   PTIS("   return host;\n"
-        "}\n");
-   fclose(header);
-   fclose(source);
-}
-
 static FILE *main_header = NULL;
 static FILE *main_source = NULL;
 
@@ -162,7 +59,8 @@ void generateDeclarationCode(List *declarations)
                    "Morphism *morphism = NULL;\n"
                    "string result = NULL;\n"
                    "bool success = true;\n"
-                   "int stack_depth = 0;\n\n"
+                   "int stack_depth = 0;\n"
+                   "int restore_points[STACK_SIZE] = {0}, restore_index = 0;\n\n"
                    "int main(void)\n"
                    "{\n"               
                    "   srand(time(NULL));\n"
@@ -171,7 +69,7 @@ void generateDeclarationCode(List *declarations)
                    /* Debug code 
                    "   printGraph(host);\n\n"); */
 
-              generateProgramCode(decl->value.main_program, MAIN_BODY, 3);
+              generateProgramCode(decl->value.main_program, MAIN_BODY, false, 3);
 
               PTMS("   printGraph(host);\n"
                    "   freeGraph(host);\n"
@@ -188,7 +86,7 @@ void generateDeclarationCode(List *declarations)
               PTMS("string proc_%s(void)\n"
                    "{\n", decl->value.procedure->name);
 
-              generateProgramCode(decl->value.procedure->cmd_seq, PROC_BODY, 3);
+              generateProgramCode(decl->value.procedure->cmd_seq, PROC_BODY, false, 3);
 
               PTMS("   return NULL;\n"
                    "}\n\n");
@@ -218,7 +116,8 @@ void generateDeclarationCode(List *declarations)
    }
 }
 
-void generateProgramCode(GPStatement *statement, ContextType context, int indent)
+void generateProgramCode(GPStatement *statement, ContextType context, 
+                         bool copy_before_condition, int indent)
 {
    switch(statement->statement_type)
    {
@@ -228,7 +127,7 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
             * generateProgramCode, otherwise call generateCommandSequence. */
            if(statement->value.cmd_seq->next == NULL)
               generateProgramCode(statement->value.cmd_seq->value.command,
-                                  context, indent);
+                                  context, false, indent);
            else generateCommandSequence(statement->value.cmd_seq, context, 
                                         indent);
            break;
@@ -236,7 +135,9 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
       case RULE_CALL:
 
            PTMSI("/* Rule Call */\n", indent);
-           generateRuleCall(statement->value.rule_name, context, indent);
+           generateRuleCall(statement->value.rule_call.rule_name, 
+                            statement->value.rule_call.empty_lhs, 
+                            context, indent);
            break;
 
       case RULE_SET_CALL:
@@ -247,64 +148,95 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
 
       case PROCEDURE_CALL:
           
-           generateProcedureCall(statement->value.proc_call.proc_name, 
-                                 context, indent);
+           generateProcedureCall(statement->value.proc_name, context, indent);
            break;
 
       case IF_STATEMENT:
 
-           PTMSI("int restore_point = stack_depth;\n", indent);
+           PTMSI("restore_points[restore_index++] = stack_depth;\n", indent);
            PTMSI("/* If Statement */\n", indent);
+           /* Cannot guarantee that the predicate will copy the graph. In some
+            * situations, we always need to copy the graph before entering the
+            * if statement (e.g. if the if statement is in a looped command
+            * seqyence). */
+           if(copy_before_condition)
+           { 
+              PTMSI("/* In the midst of a command sequence. Copy the graph. */\n",
+                    indent);
+              PTMSI("copyGraph(host);\n", indent);
+              PTMSI("stack_depth++;\n", indent);
+           }
            PTMSI("/* Condition */\n", indent);
+           PTMSI("do\n", indent);
+           PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.condition, 
-                               IF_BODY, indent);
+                               IF_BODY, false, indent + 3);
            /* In an if statement, the then/else command sequence is executed on
             * the host graph state before the execution of the condition. If 
             * the graph was copied in the condition, restore the graph before
             * taking the branch. */
-           PTMSI("GET_GRAPH_AT_RESTORE_POINT\n\n", indent);
+           PTMSI("} while(false);\n\n", indent);
+           PTMSI("GET_GRAPH_AT_RESTORE_POINT\n", indent);
+           PTMSI("restore_index--;\n\n", indent);
            PTMSI("/* Then Branch */\n", indent);
            PTMSI("if(success)\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.then_stmt, 
-                               context, indent + 3);
+                               context, false, indent + 3);
            PTMSI("}\n", indent);
            PTMSI("/* Else Branch */\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.else_stmt, 
-                               context, indent + 3);
+                               context, false, indent + 3);
            PTMSI("}\n", indent);
-           PTMSI("success = true;\n\n", indent);
+           if(context == IF_BODY || context == TRY_BODY) 
+              PTMSI("break;\n", indent);
            break;
 
       case TRY_STATEMENT:
 
-           PTMSI("int restore_point = stack_depth;\n", indent);
+           PTMSI("restore_points[restore_index++] = stack_depth;\n", indent);
            PTMSI("/* Try Statement */\n", indent);
+           /* Cannot guarantee that the predicate will copy the graph. In some
+            * situations, we always need to copy the graph before entering the
+            * try statement (e.g. if the try statement is in a looped command
+            * seqyence). */
+           if(copy_before_condition)
+           { 
+              PTMSI("/* In the midst of a command sequence. Copy the graph. */\n",
+                    indent);
+              PTMSI("copyGraph(host);\n", indent);
+              PTMSI("stack_depth++;\n", indent);
+           }
            PTMSI("/* Condition */\n", indent);
+           PTMSI("do\n", indent);
+           PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.condition,
-                               TRY_BODY, indent);
+                               TRY_BODY, false, indent + 3);
            /* In a try statement, only the else command sequence is executed on
             * the host graph state before the execution of the condition. If
             * the condition succeeds, the graph resulting from the execution
             * of the condition is the new working graph for the then branch.
             * Hence the restoreGraph code is emitted within the else branch of
             * the generated code. */
+           PTMSI("} while(false);\n\n", indent);
            PTMSI("/* Then Branch */\n", indent);
            PTMSI("if(success)\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.then_stmt, 
-                               context, indent + 3);
+                               context, false, indent + 3);
            PTMSI("}\n", indent);
            PTMSI("/* Else Branch */\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
-           PTMSI("GET_GRAPH_AT_RESTORE_POINT\n\n", indent + 3);
+           PTMSI("GET_GRAPH_AT_RESTORE_POINT\n", indent + 3);
+           PTMSI("restore_index--;\n\n", indent + 3);
            generateProgramCode(statement->value.cond_branch.else_stmt,
-                               context, indent + 3);
-           PTMSI("}\n", indent);
-           PTMSI("success = true;\n\n", indent);
+                               context, false, indent + 3);
+           PTMSI("}\n\n", indent);
+           if(context == IF_BODY || context == TRY_BODY) 
+              PTMSI("break;\n", indent);
            break;
 
       case ALAP_STATEMENT:
@@ -315,16 +247,30 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
               statement->value.loop_stmt->statement_type == TRY_STATEMENT ||
               statement->value.loop_stmt->statement_type == ALAP_STATEMENT)
            {
-              PTMSI("copyGraph(host);\n", indent);
-              PTMSI("stack_depth++;\n", indent);
+              if(context == IF_BODY || context == TRY_BODY)
+              {
+                 PTMSI("if(restore_points[restore_index - 1] < stack_depth)\n",
+                       indent);
+                 PTMSI("{\n", indent);
+                 PTMSI("copyGraph(host);\n", indent + 3);
+                 PTMSI("stack_depth++;\n", indent + 3);
+                 PTMSI("}\n", indent);
+              }
+              else
+              {
+                 PTMSI("copyGraph(host);\n", indent);
+                 PTMSI("stack_depth++;\n", indent);
+              }
            }
            PTMSI("/* Loop Statement */\n", indent);
+           PTMSI("restore_index++;\n", indent);
            PTMSI("while(success)\n", indent);
            PTMSI("{\n", indent);
-           PTMSI("int restore_point = stack_depth;\n", indent + 3);
+           PTMSI("restore_points[restore_index - 1] = stack_depth;\n", indent + 3);
            generateProgramCode(statement->value.loop_stmt, LOOP_BODY, 
-                               indent + 3);
+                               false, indent + 3);
            PTMSI("}\n", indent);
+           PTMSI("restore_index--;\n", indent);
            PTMSI("success = true;\n\n", indent);
            break;
 
@@ -337,18 +283,21 @@ void generateProgramCode(GPStatement *statement, ContextType context, int indent
            PTMSI("if((random %% 2) == 0)\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.or_stmt.left_stmt, context, 
-                               indent + 3);
+                               false, indent + 3);
            PTMSI("}\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.or_stmt.right_stmt, context, 
-                               indent + 3);
+                               false, indent + 3);
            PTMSI("}\n", indent);
+           if(context == IF_BODY || context == TRY_BODY) 
+              PTMSI("break;\n", indent);
            break;
 
       case SKIP_STATEMENT:
 
            PTMSI("/* Skip Statement */\n", indent);
+           PTMSI("success = true;\n", indent);
            break;
            
       case FAIL_STATEMENT:
@@ -369,11 +318,11 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
 {
    /* Nothing special to be done for the main body: just generate the commands 
     * in sequence. */
-   if(context == MAIN_BODY)
+   if(context == MAIN_BODY || context == PROC_BODY)
    {
       while(commands != NULL)
       {
-         generateProgramCode(commands->value.command, context, indent);
+         generateProgramCode(commands->value.command, context, false, indent);
          commands = commands->next;
       }
    }
@@ -388,16 +337,29 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
     * preliminary tests. */
    else
    {
-      string rule_name = commands->value.command->value.rule_name;
+      string rule_name = commands->value.command->value.rule_call.rule_name;
 
       if(commands->value.command->statement_type == RULE_CALL)
       {
+         /* TODO: empty_lhs rule code. */
          PTMSI("/* Rule Call */\n", indent);
          PTMSI("morphism = match%s();\n", indent, rule_name);
          PTMSI("if(morphism != NULL)\n", indent);
          PTMSI("{\n", indent);
-         PTMSI("copyGraph(host);\n", indent + 3);
-         PTMSI("stack_depth++;\n", indent + 3);
+         if(context == IF_BODY || context == TRY_BODY)
+         {
+            PTMSI("if(restore_points[restore_index - 1] < stack_depth)\n",
+                  indent + 3);
+            PTMSI("{\n", indent + 3);
+            PTMSI("copyGraph(host);\n", indent + 6);
+            PTMSI("stack_depth++;\n", indent + 6);
+            PTMSI("}\n", indent + 3);
+         }
+         else
+         {
+            PTMSI("copyGraph(host);\n", indent + 3);
+            PTMSI("stack_depth++;\n", indent + 3);
+         }
          PTMSI("apply%s(morphism);\n", indent + 3, rule_name);
          PTMSI("}\n", indent);
          PTMSI("else\n", indent);
@@ -415,13 +377,28 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
 
          while(rules != NULL)
          {  
+            /* TODO: empty_lhs rule code. */
             PTMSI("/* Rule Call */\n", indent);
-            PTMSI("morphism = match%s();\n", indent, rules->value.rule_name);
+            PTMSI("morphism = match%s();\n", indent, 
+                  rules->value.rule_call.rule_name);
             PTMSI("if(morphism != NULL)\n", indent);
             PTMSI("{\n", indent);
-            PTMSI("copyGraph(host);\n", indent + 3);
-            PTMSI("stack_depth++;\n", indent + 3);
-            PTMSI("apply%s(morphism);\n", indent + 3, rules->value.rule_name);
+            if(context == IF_BODY || context == TRY_BODY)
+            {
+               PTMSI("if(restore_points[restore_index - 1] < stack_depth)\n",
+                     indent + 3);
+               PTMSI("{\n", indent + 3);
+               PTMSI("copyGraph(host);\n", indent + 6);
+               PTMSI("stack_depth++;\n", indent + 6);
+               PTMSI("}\n", indent + 3);
+            }
+            else
+            {
+               PTMSI("copyGraph(host);\n", indent + 3);
+               PTMSI("stack_depth++;\n", indent + 3);
+            }
+            PTMSI("apply%s(morphism);\n", indent + 3, 
+                  rules->value.rule_call.rule_name);
             PTMSI("break;\n", indent + 3);
             PTMSI("}\n", indent);
             
@@ -429,7 +406,8 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
             {
                PTMSI("else\n", indent + 3);
                PTMSI("{\n", indent + 3);
-               generateFailureCode(rules->value.rule_name, context, indent + 6);         
+               generateFailureCode(rules->value.rule_call.rule_name, context,
+                                   indent + 6);         
                PTMSI("}\n", indent + 3);
                break;
             }
@@ -442,28 +420,38 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
       {
          PTMSI("copyGraph(host);\n", indent);
          PTMSI("stack_depth++;\n", indent);
-         generateProgramCode(commands->value.command, context, indent);
+         generateProgramCode(commands->value.command, context, false, indent);
       }
 
       commands = commands->next;
       while(commands != NULL)
       {
-         generateProgramCode(commands->value.command, context, indent);
+         generateProgramCode(commands->value.command, context, true, indent);
          commands = commands->next;
       }
    }
 }
 
 
-void generateRuleCall(string rule_name, ContextType context, int indent)
+void generateRuleCall(string rule_name, bool empty_lhs, ContextType context,
+                      int indent)
 {
+   if(empty_lhs) 
+   {
+      PTMSI("apply%s();\n\n", indent, rule_name);
+      return;
+   }
    PTMSI("morphism = match%s();\n", indent, rule_name);
 
    /* No need to apply the rule in an if statement since the original graph is
     * kept for the then or else branch. */
    if(context == IF_BODY)
    {
-      PTMSI("if(morphism == NULL) success = false;\n", indent);
+      PTMSI("if(morphism == NULL)\n", indent);
+      PTMSI("{\n", indent);
+      PTMSI("success = false;\n", indent + 3);
+      PTMSI("break;\n", indent + 3);
+      PTMSI("}\n", indent);
       PTMSI("else freeMorphism(morphism);\n", indent);
    }
    /* In all other contexts, the rule is applied. In particular, the try statement
@@ -485,7 +473,12 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
    PTMSI("{\n", indent);
    while(rules != NULL)
    {  
-      PTMSI("morphism = match%s();\n", indent + 3, rules->value.rule_name);
+      if(rules->value.rule_call.empty_lhs) 
+      {
+         PTMSI("apply%s();\n\n", indent, rules->value.rule_call.rule_name);
+         continue;
+      }
+      PTMSI("morphism = match%s();\n", indent + 3, rules->value.rule_call.rule_name);
       
       /* No need to apply the rule in an if statement since the original graph is
        * kept for the then or else branch. */
@@ -505,7 +498,7 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
          PTMSI("if(morphism != NULL)\n", indent + 3);
          PTMSI("{\n", indent + 3);
          PTMSI("apply%s(morphism);\n", indent + 6,
-               rules->value.rule_name);
+               rules->value.rule_call.rule_name);
          PTMSI("break;\n", indent + 6);
          PTMSI("}\n\n", indent + 3);
       }
@@ -513,7 +506,7 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
       {
          PTMSI("else\n", indent + 3);
          PTMSI("{\n", indent + 3);
-         generateFailureCode(rules->value.rule_name, context, indent + 6);         
+         generateFailureCode(rules->value.rule_call.rule_name, context, indent + 6);         
          PTMSI("}\n", indent + 3);
          break;
       }
@@ -524,6 +517,7 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
 
 void generateProcedureCall(string proc_name, ContextType context, int indent)
 {
+   PTMSI("/* Procedure Call */\n", indent);
    PTMSI("result = proc_%s();\n", indent, proc_name);
 
    if(context == MAIN_BODY)
@@ -544,7 +538,10 @@ void generateProcedureCall(string proc_name, ContextType context, int indent)
       PTMSI("}\n", indent);
    }
 
-   if(context == PROC_BODY) PTMSI("return result;\n", indent);
+   if(context == PROC_BODY) PTMSI("return result;\n\n", indent);
+
+   if(context == IF_BODY || context == TRY_BODY) 
+     PTMSI("if(!success) break;\n\n", indent);
 
    if(context == LOOP_BODY) 
    {
@@ -552,7 +549,7 @@ void generateProcedureCall(string proc_name, ContextType context, int indent)
       PTMSI("{\n", indent);
       PTMSI("GET_GRAPH_AT_RESTORE_POINT\n", indent + 3);
       PTMSI("break;\n", indent + 3);
-      PTMSI("}\n", indent);
+      PTMSI("}\n\n", indent);
    }
 }
 
@@ -574,16 +571,18 @@ void generateFailureCode(string rule_name, ContextType context, int indent)
       PTMSI("closeLogFile();\n", indent);
       PTMSI("return 0;\n", indent);
    }
-   /* In other contexts, set the success flag to false. Nothing more needs
-    * to be done in an IF_BODY and a TRY_BODY. */
+   /* In other contexts, set the success flag to false. */
    else PTMSI("success = false;\n", indent);
+
+   if(context == IF_BODY || context == TRY_BODY) PTMSI("break;\n", indent);
 
    if(context == PROC_BODY) 
    {
       if(rule_name == NULL) PTMSI("return NULL;\n", indent);
       else PTMSI("return \"%s\";\n", indent, rule_name);
    }
-   if(context == LOOP_BODY) PTMSI("GET_GRAPH_AT_RESTORE_POINT\n", indent);
+   if(context == LOOP_BODY) 
+      PTMSI("GET_GRAPH_AT_RESTORE_POINT\n", indent);
 }
 
 

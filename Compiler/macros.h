@@ -1,62 +1,16 @@
 #ifndef INC_GEN_MACROS_H
 #define INC_GEN_MACROS_H
 
-#define GET_GRAPH_AT_RESTORE_POINT                              \
-   do {                                                         \
-   if(stack_depth > restore_point)                              \
-   {                                                            \
-      host = restoreGraph(host, stack_depth - restore_point);   \
-      stack_depth--;                                            \
-   }                                                            \
+#define GET_GRAPH_AT_RESTORE_POINT                                         \
+   do {                                                                    \
+   if(restore_index > 0)                                                   \
+   {                                                                       \
+      int restore_depth = stack_depth - restore_points[restore_index - 1]; \
+      host = restoreGraph(host, restore_depth);                            \
+      stack_depth -= restore_depth;                                        \
+   }                                                                       \
    } while(0);
-      
-#define ADD_UNLABELLED_HOST_NODE(is_root, node_name)                    \
-   do {                                                                 \
-   node_index = addNode(host, (is_root), NULL);                         \
-   map_index = (int)strtol(node_name, NULL, 0);                         \
-   node_map[map_index] = node_index;                                    \
-   } while(0);                                                          \
-
-#define ADD_HOST_NODE(is_root, node_name, number)                       \
-   do {                                                                 \
-   node_index = addNode(host, (is_root), label ## number);              \
-   map_index = (int)strtol(node_name, NULL, 0);                         \
-   node_map[map_index] = node_index;                                    \
-   } while(0);                                                          \
-
-#define GET_HOST_LOOP_ENDPOINT(source_name)                             \
-   do {                                                                 \
-   map_index = (int)strtol(source_name, NULL, 0);                       \
-   source = node_map[map_index];                                        \
-   target = node_map[map_index];                                        \
-   if(source == -1)                                                     \
-   {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's source n" source_name \
-                   " not found in the node map.\n");                    \
-      exit(1);                                                          \
-   }                                                                    \
-   } while(0);
-
-#define GET_HOST_EDGE_ENDPOINTS(source_name, target_name)               \
-   do {                                                                 \
-   map_index = (int)strtol(source_name, NULL, 0);                       \
-   source = node_map[map_index];                                        \
-   if(source == -1)                                                     \
-   {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's source n" source_name \
-                   " not found in the node map.\n");                    \
-      exit(1);                                                          \
-   }                                                                    \
-   map_index = (int)strtol(target_name, NULL, 0);                       \
-   target = node_map[map_index];                                        \
-   if(target == -1)                                                     \
-   {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's target n" target_name \
-                   " not found in the node map.\n");                    \
-      exit(1);                                                          \
-   }                                                                    \
-   } while(0);
-
+     
 #define MAKE_MATCHED_NODES_ARRAY                \
    int count;                                   \
    int matched_nodes[left_nodes];               \
@@ -99,8 +53,8 @@
       host_node->label->mark != (nmark) ||                             \
       host_node->indegree < (indeg) ||                                 \
       host_node->outdegree < (outdeg) ||                               \
-      ((host_node->outdegree - (outdeg) != (bideg)) &&                 \
-       (host_node->indegree - (indeg) != (bideg))))                    \
+      host_node->outdegree - (outdeg) != (bideg) ||                    \
+      host_node->indegree - (indeg) != (bideg))                        \
 
 
 #define IF_INVALID_EDGE(lclass, emark)       \
@@ -163,7 +117,8 @@
       {                                                        \
          Node *host_node = getNode(host, host_index);          \
          Label *label = node_map[left_index].new_label;        \
-         relabelNode(host, host_node, label, true, false);     \
+         relabelNode(host, host_node, label, true,             \
+                     node_map[left_index].change_root);        \
          node_map[left_index].host_index = host_index;         \
          continue;                                             \
       }                                                        \

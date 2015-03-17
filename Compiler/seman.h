@@ -43,18 +43,23 @@
  *                  used to uniquely identify variables, nodes and edges as 
  *                  they can have the same name in different rules.
  *       
- * Flags: is_var is set to true if the symbol represents a GP variable. This
- *        is for more concise code: better to compare to a single bool than to
- *        compare with each of the individual variable types.
+ * Flags: Apart from empty_lhs, the boolean flags in a symbol are used to
+ *        support semantic checking. Each flag is described below.
+ *  
+ *  empty_lhs is set to true if the rule represented by the symbol has
+ *  an empty LHS graph. This value is used to update rule call nodes in
+ *  the AST in order to generate correct code for "empty rules". 
  *
- *        in_lhs is set to true if the symbol has type variable and occurs in
- *        the LHS of a rule. Set to false in all other cases. 
- * 
- *        wildcard is set to true if the symbol is a node or edge with the cyan
- *        mark. Set to false in all other cases.
+ *  is_var is set to true if the symbol represents a GP variable.
  *
- *        bidirectional is set to true if the symbol is a bidirectional edge.
- *        Set to false in all other cases.
+ *  in_lhs is set to true if the symbol has type variable and occurs in
+ *  the LHS of a rule. Set to false in all other cases. 
+ *
+ *  wildcard is set to true if the symbol is a node or edge with the
+ *  any mark. Set to false in all other cases.
+ *
+ *  bidirectional is set to true if the symbol is a bidirectional edge.
+ *  Set to false in all other cases.
  */
  
 typedef enum {PROCEDURE_S=0, RULE_S, INT_S, CHAR_S, STRING_S, ATOM_S,
@@ -65,6 +70,7 @@ typedef struct Symbol {
   SymbolType type;
   string scope;
   string containing_rule;
+  bool empty_lhs;
   bool is_var;
   bool in_lhs; 
   bool wildcard; 
@@ -184,17 +190,27 @@ bool semanticCheck(List *declarations, string const scope);
 void statementScan(GPStatement *const statement, string const scope);
 
 
-/* The validateCall functions search the symbol table for a rule or procedure
- * in either the passed scope or "Main" scope. Note that these could be equal.
- * validateRuleCall returns a string created by makeRuleIdentifier if a rule
- * symbol exists in a correct scope, or NULL otherwise. This return value
- * is used to update the rule name of the AST node representing the rule call.
+/* validateRuleCall searches the symbol table for a rule or procedure with the
+ * passed name in the passed scope. If the passed scope is not "Main" and the
+ * symbol is not found, search continues for a symbol in "Main" scope.
+ * Returns a string created by makeRuleIdentifier if a rule symbol exists in an
+ * appropriate scope, or NULL otherwise. This return value is used to update
+ * the rule name of the AST node representing the rule call. In addition, 
+ * the empty_lhs flag of the AST node is assigned the empty_lhs value in
+ * the rule's symbol.
  *
- * Argument 1: The name of the rule or procedure in question. Used to hash
- *             into the symbol table.
- * Argument 2: The current scope. */
+ * Argument 1: The name of the rule. Used to hash into the symbol table.
+ * Argument 2: A pointer to the empty_lhs variable in the AST node of the
+ *             rule call.
+ * Argument 3: The current scope. */
 
-string validateRuleCall(string const name, string const scope);
+string validateRuleCall(string const name, bool *empty_lhs, string const scope);
+
+/* Performs the same search as validateRuleCall. Unlike validateRuleCall, it 
+ * has no return value and does not modify any external variables. 
+ *
+ * Argument 1: The name of the procedure. Used to hash into the symbol table.
+ * Argument 2: The current scope. */
 void validateProcedureCall(string const name, string const scope);
 
 

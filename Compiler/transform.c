@@ -45,48 +45,44 @@ Rule *makeRule(GPRule *ast_rule)
    return rule;
 }
 
-int getNodeSize(GPGraph *graph, int minimum_size)
+int countNodes(GPGraph *graph)
 {
    int nodes = 0;
    List *iterator;
    for(iterator = graph->nodes; iterator != NULL; iterator = iterator->next)
        nodes++;
-   if(nodes < minimum_size) return minimum_size;
-   if(nodes == 0) return 0;
-   /* Return the smallest power of 2 greater than nodes. */
-   nodes--;
-   nodes |= nodes >> 1;
-   nodes |= nodes >> 2;
-   nodes |= nodes >> 4;
-   nodes |= nodes >> 8;
-   nodes |= nodes >> 16;
-   return nodes + 1;
+   return nodes;
 }
 
-int getEdgeSize(GPGraph *graph, int minimum_size)
+int countEdges(GPGraph *graph)
 {
    int edges = 0;
    List *iterator;
    for(iterator = graph->edges; iterator != NULL; iterator = iterator->next)
       edges++;
-   if(edges < minimum_size) return minimum_size;
-   if(edges == 0) return 0;
-   /* Return the smallest power of 2 greater than edges. */
-   edges--;
-   edges |= edges >> 1;
-   edges |= edges >> 2;
-   edges |= edges >> 4;
-   edges |= edges >> 8;
-   edges |= edges >> 16;
-   return edges + 1;
+   return edges;
+}
+
+int getArraySize(int number_of_items, int minimum_size)
+{
+   if(number_of_items < minimum_size) return minimum_size;
+   if(number_of_items == 0) return 0;
+   /* Return the smallest power of 2 greater than number_of_items. */
+   number_of_items--;
+   number_of_items |= number_of_items >> 1;
+   number_of_items |= number_of_items >> 2;
+   number_of_items |= number_of_items >> 4;
+   number_of_items |= number_of_items >> 8;
+   number_of_items |= number_of_items >> 16;
+   return number_of_items + 1;
 }
 
 Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
                IndexMap **edge_map, ItemList **deleted_nodes,
                unsigned int *is_rooted)
 {
-   int lhs_nodes = getNodeSize(ast_lhs, 0);
-   int lhs_edges = getEdgeSize(ast_lhs, 0);
+   int lhs_nodes = getArraySize(countNodes(ast_lhs), 0);
+   int lhs_edges = getArraySize(countEdges(ast_lhs), 0);
    Graph *lhs = newGraph(lhs_nodes, lhs_edges);
 
    List *nodes = ast_lhs->nodes;
@@ -98,8 +94,8 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       Label *label = transformLabel(ast_node->label);
       int node_index = addNode(lhs, ast_node->root, label);
 
-      *node_map = addIndexMap(*node_map, ast_node->name, node_index, -1, 
-                              NULL, NULL);
+      *node_map = addIndexMap(*node_map, ast_node->name, ast_node->root,
+                              node_index, -1, NULL, NULL);
 
       bool node_in_interface = false;
       List *iterator = interface;
@@ -143,7 +139,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       {
          int edge_index = addEdge(lhs, ast_edge->bidirectional, label, 
                                   source_map->left_index, source_map->left_index);
-         *edge_map = addIndexMap(*edge_map, ast_edge->name, edge_index, -1,
+         *edge_map = addIndexMap(*edge_map, ast_edge->name, false, edge_index, -1,
                                  ast_edge->source, ast_edge->target);
       }
       else
@@ -158,7 +154,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
 
          int edge_index = addEdge(lhs, ast_edge->bidirectional, label,
                                   source_map->left_index, target_map->left_index);
-         *edge_map = addIndexMap(*edge_map, ast_edge->name, edge_index, -1,
+         *edge_map = addIndexMap(*edge_map, ast_edge->name, false, edge_index, -1,
                                  ast_edge->source, ast_edge->target);
       }
       edges = edges->next;   
@@ -169,8 +165,8 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
 Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
                     PreservedItemList **nodes, ItemList **added_nodes)
 {
-   int rhs_nodes = getNodeSize(ast_rhs, 0);
-   int rhs_edges = getEdgeSize(ast_rhs, 0);
+   int rhs_nodes = getArraySize(countNodes(ast_rhs), 0);
+   int rhs_edges = getArraySize(countEdges(ast_rhs), 0);
    Graph *rhs = newGraph(rhs_nodes, rhs_edges);
 
    List *ast_nodes = ast_rhs->nodes;
@@ -187,8 +183,8 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
       {
          /* If the node is not in the map, add a new map for this node with
           * left index -1, and add the node to the added nodes list. */
-         *node_map = addIndexMap(*node_map, ast_node->name, -1, node_index,
-                                 NULL, NULL);
+         *node_map = addIndexMap(*node_map, ast_node->name, false, -1,
+                                 node_index, NULL, NULL);
          *added_nodes = addItem(*added_nodes, node_index);
       }
       else
@@ -212,7 +208,10 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
          /* TODO: Test label equality here. Pass NULL to addPreservedItem if the
           * labels match. */
          if(interface_node)
-            *nodes = addPreservedItem(*nodes, map->left_index, label);
+         {
+            bool change_root = ast_node->root != map->root;
+            *nodes = addPreservedItem(*nodes, map->left_index, change_root, label);
+         }
          else *added_nodes = addItem(*added_nodes, node_index);
         
          map->right_index = node_index;
@@ -293,12 +292,12 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
          /* Search in the edge map for an edge whose source and target 
           * correspond with that of the current edge. */
          IndexMap *map = findMapFromSrcTgt(*edge_map, source_id, target_id);
-         if(map == NULL) 
+         if(map == NULL && ast_edge->bidirectional)
+            map = findMapFromSrcTgt(*edge_map, target_id, source_id);
+         if(map == NULL)
             /* No such map exists, thus the edge is added by the rule. Both
              * source and target come from the LHS because they are both in
              * the interface. */
-            /* TODO: Test label equality here. Pass NULL to addPreservedItem if the
-             * labels match. */
             added_edges = addNewEdge(added_edges, edge_index,
                                      'l', source_map->left_index, 
                                      'l', target_map->left_index);
@@ -306,7 +305,9 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
          {
             /* A map has been found, therefore the edge is preserved by the
              * rule. */
-            *edges = addPreservedItem(*edges, map->left_index, label);
+            /* TODO: Test label equality here. Pass NULL to addPreservedItem if the
+             * labels match. */
+            *edges = addPreservedItem(*edges, map->left_index, false, label);
             /* The map is removed to ensure that a parallel RHS-edge is not
              * associated with this edge. */
             *edge_map = removeMap(*edge_map, map);     

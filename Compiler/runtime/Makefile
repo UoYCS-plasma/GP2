@@ -2,8 +2,9 @@ ROBJECTS := $(patsubst %.c, %.o, $(wildcard *.c))
 LOBJECTS = ../debug.o ../error.o ../label.o ../graph.o ../rule.o ../stack.o 
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
-CC = gcc
-CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
+CC = gcc 
+CFLAGS = -g -Wall -Wextra 
+#CFLAGS = -O2 -fomit-frame-pointer -Wall -Wextra 
 LFLAGS = -lglib-2.0
 
 default:	$(OBJECTS)

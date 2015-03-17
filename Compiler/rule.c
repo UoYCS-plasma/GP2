@@ -37,7 +37,7 @@ void freeVariableList(VariableList *variable_list)
    free(variable_list); 
 }
 
-IndexMap *addIndexMap(IndexMap *map, string id, int left_index, 
+IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index,
                       int right_index, string source_id, string target_id)
 {
    IndexMap *new_map = malloc(sizeof(IndexMap));
@@ -47,6 +47,7 @@ IndexMap *addIndexMap(IndexMap *map, string id, int left_index,
       exit(1);
    }
    new_map->id = strdup(id);
+   new_map->root = root;
    new_map->left_index = left_index;
    new_map->right_index = right_index;
    if(source_id == NULL) new_map->source_id = NULL;
@@ -169,7 +170,7 @@ void freeItemList(ItemList *item_list)
 }
 
 PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index, 
-                                    Label *new_label)
+                                    bool change_root, Label *new_label)
 {
    PreservedItemList *new_list = malloc(sizeof(PreservedItemList));
 
@@ -180,6 +181,7 @@ PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index,
    }
 
    new_list->left_index = left_index;   
+   new_list->change_root = change_root;
    new_list->new_label = new_label;
    new_list->next = list;
 

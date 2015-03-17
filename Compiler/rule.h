@@ -45,6 +45,7 @@ void freeVariableList(VariableList *variable_list);
  * rule. */
 typedef struct IndexMap {
    string id;
+   bool root;
    int left_index;
    int right_index;
    string source_id;
@@ -54,7 +55,7 @@ typedef struct IndexMap {
 
 /* Prepends a new map with the passed information to the given list and returns
  * a pointer to the new first map in the list. */
-IndexMap *addIndexMap(IndexMap *map, string id, int left_index, 
+IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index, 
                       int right_index, string source_id, string target_id);
 int findLeftIndexFromId(IndexMap *map, string id);                      
 IndexMap *findMapFromId(IndexMap *map, string id);
@@ -78,12 +79,13 @@ void freeItemList(ItemList *item_list);
  * otherwise it is the label of the corresponding RHS item. */
 typedef struct PreservedItemList {
    int left_index;
+   bool change_root;
    Label *new_label;
    struct PreservedItemList *next;
 } PreservedItemList;
 
 PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index, 
-                                    Label *new_label);
+                                    bool change_root, Label *new_label);
 PreservedItemList *queryPItemList(PreservedItemList *list, int left_index);                                
 void freePItemList(PreservedItemList *list);
 
@@ -119,13 +121,13 @@ typedef struct Condition {
     } edge_pred; 		/* EDGE_PRED */
 
     struct { 
-      GList *left_list;
-      GList *right_list; 
+      GP2List *left_list;
+      GP2List *right_list; 
     } list_cmp; 		/* EQUAL, NOT_EQUAL */
 
     struct { 
-      GList *left_exp; 
-      GList *right_exp; 
+      GP2List *left_exp; 
+      GP2List *right_exp; 
     } atom_cmp; 		/* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
 
     struct Condition *not_exp;  /* BOOL_NOT */

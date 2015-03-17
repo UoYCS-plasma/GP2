@@ -192,12 +192,12 @@ void printASTList(List *const list, FILE *dot_file)
           list->node_id = next_node_id;
           next_node_id += 1;
 
-          if(list->value.rule_name != NULL)
+          if(list->value.rule_call.rule_name != NULL)
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
                                "Rule \\n Name: %s\"]\n", 
                                list->node_id, list->node_id,
                                LOCATION_ARGS(list->location),
-                               list->value.rule_name);
+                               list->value.rule_call.rule_name);
           else 
           {
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -425,12 +425,12 @@ void printASTStatement(GPStatement *const stmt, FILE *dot_file)
            stmt->node_id = next_node_id;
            next_node_id += 1;
 
-           if(stmt->value.rule_name != NULL)
+           if(stmt->value.rule_call.rule_name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                                 "Rule Call \\n Name: %s\"]\n",
                                 stmt->node_id, stmt->node_id, 
                                 LOCATION_ARGS(stmt->location), 
-                                stmt->value.rule_name);
+                                stmt->value.rule_call.rule_name);
            else 
            {
                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"

@@ -45,7 +45,10 @@ typedef struct List {
     struct GPDeclaration *declaration; /* GLOBAL_DECLARATIONS, 
 					* LOCAL_DECLARATIONS */
     struct GPStatement *command;       /* COMMANDS */
-    string rule_name; 		       /* RULES */
+    struct {
+       string rule_name; 	
+       bool empty_lhs;                 
+    } rule_call;                       /* RULES */
     struct List *variables;            /* INT_DECLARATIONS, CHAR_DECLARATIONS,
                                         * STRING_DECLARATIONS, ATOM_DECLARATIONS */ 
     string variable_name; 	       /* VARIABLE_LIST */	  
@@ -104,7 +107,10 @@ typedef struct GPStatement {
   YYLTYPE location;
   union {    
     struct List *cmd_seq; 		/* COMMAND_SEQUENCE */
-    string rule_name; 			/* RULE_CALL */
+    struct {
+       string rule_name;
+       bool empty_lhs;
+    } rule_call;                        /* RULE_CALL */
     struct List *rule_set; 		/* RULE_SET_CALL */
     string proc_name;			/* PROCEDURE_CALL */
 

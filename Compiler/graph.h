@@ -13,7 +13,6 @@
 
 #define MAX_INCIDENT_EDGES 16
 
-#include <glib.h>
 #include "error.h"
 #include "globals.h"
 #include "label.h"
@@ -30,7 +29,7 @@ typedef struct LabelClassTable {
  * initial_size is either the graph's node pool size or the graph's edge pool 
  * size. initial_size / 4 items are allocated to the table's items array
  * for the first allocation. */
-void addLabelClassIndex(LabelClassTable *table, int index, int initial_size);
+int addLabelClassIndex(LabelClassTable *table, int index, int initial_size);
 /* Only called by removeNode and removeEdge. */
 void removeLabelClassIndex(LabelClassTable *table, int index);
 
@@ -114,6 +113,10 @@ typedef struct Node {
     * degrees is the number of non-negative indices in all of the node's edge
     * arrays. */
    int outdegree, indegree, bidegree;
+
+   /* The index of the node in its label class table. Used to quickly remove
+    * the entry from the potentially large table. */
+   int label_table_index;
 } Node;
 
 extern struct Node dummy_node;
@@ -124,11 +127,12 @@ typedef struct Edge {
    LabelClass label_class;
    Label *label;
    int source, target;
+   /* The index of the edge in its label class table. Used to quickly remove
+    * the entry from the potentially large table. */
+   int label_table_index;
 } Edge;
 
 extern struct Edge dummy_edge;
-
-
 
 /* The arguments nodes and edges are the initial sizes of the node array and the
  * edge array respectively. */

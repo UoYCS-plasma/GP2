@@ -58,7 +58,8 @@ List *addASTRule(YYLTYPE location, string rule_name, List *next)
 
     new_rule->list_type = RULES;
     new_rule->location = location;
-    new_rule->value.rule_name = strdup(rule_name);
+    new_rule->value.rule_call.rule_name = strdup(rule_name);
+    new_rule->value.rule_call.empty_lhs = false;
     new_rule->next = next;
 
     return new_rule;
@@ -276,7 +277,8 @@ GPStatement *newASTRuleCall(YYLTYPE location, string rule_name)
 
     stmt->statement_type = RULE_CALL;
     stmt->location = location;
-    stmt->value.rule_name = strdup(rule_name);
+    stmt->value.rule_call.rule_name = strdup(rule_name);
+    stmt->value.rule_call.empty_lhs = false;
 
     return stmt;
 }
@@ -860,7 +862,8 @@ void freeAST(List *ast)
 
 	case RULES:
 
-             if(ast->value.rule_name) free(ast->value.rule_name);
+             if(ast->value.rule_call.rule_name) 
+                free(ast->value.rule_call.rule_name);
 
 	     break;
 	
@@ -978,7 +981,8 @@ void freeASTStatement(GPStatement *stmt)
 
       case RULE_CALL:
 
-           if(stmt->value.rule_name) free(stmt->value.rule_name);
+           if(stmt->value.rule_call.rule_name) 
+              free(stmt->value.rule_call.rule_name);
 
            break;
 

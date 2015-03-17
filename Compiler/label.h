@@ -73,12 +73,19 @@ typedef struct Label {
    bool list_variable;
 } Label;
 
-/* Global structure for the blank label (no mark, empty list). */
+/* Global structure for the labels with empty lists. */
 extern struct Label blank_label;
+extern struct Label red_label;
+extern struct Label green_label;
+extern struct Label blue_label;
+extern struct Label grey_label;
+extern struct Label dashed_label;
+
 LabelClass getLabelClass(Label *label);
 Label *copyLabel(Label *label);
 void freeLabel(Label *label);
 
+bool isConstantLabel(Label *label);
 /* For now, this only tests mark equality. */
 bool labelMatch(Label *rule_label, Label *host_label);
 bool marksMatch(MarkType rule_mark, MarkType host_mark);
