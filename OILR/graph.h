@@ -1,6 +1,8 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
+#include "gp2c_out.h"
+
 #define elem(id) (elemPool[(id)])
 #define edge(n, pos) (elem((n)->outEdges.elems[pos]))
 
@@ -49,14 +51,14 @@
 #define DEF_EDGE_POOL 16
 #define DEF_ELEM_POOL 100
 
-#ifndef O_BITS
+/*#ifndef O_BITS
 
 #define O_BITS 2
 #define I_BITS 2
 #define L_BITS 2
 #define R_BITS 1
 
-#endif
+#endif */
 
 #define OILR_BITS (O_BITS+I_BITS+L_BITS+R_BITS)
 

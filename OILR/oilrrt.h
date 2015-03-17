@@ -4,8 +4,12 @@
 extern void _HOST();
 extern void GPMAIN();
 
+#ifndef NDEBUG
 void trace(int a, int b, int here);
 typedef void (*Tracer)();
+#else
+#define trace(a, b, c)
+#endif 
 
 #define trav(n) (travs[n])
 #define available(n) (!((n)->matched))
@@ -24,10 +28,14 @@ typedef void (*Tracer)();
 	(n)->matchedLoops--; } while (0)
 #define availableLoops(n) (loopdeg(n) - (n)->matchedLoops)
 
+struct Trav;
+
+typedef int (*Pred)(Elem *e);
+
 typedef struct Trav {
 	const int first;
 	const int last;
-	int o, i, l, r;
+	Pred p;
 
 	int cur;
 	int next;

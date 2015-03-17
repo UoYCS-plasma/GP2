@@ -95,8 +95,8 @@ void unlistElem(ElemList *el, NodeId id) {
 			return;
 		}
 	}
-	assert(pos>=0);
-	failWith("Node ID not found");
+	//assert(pos>=0);
+	failWith("Node ID not found; %d", id);
 }
 
 void sign(Node *n) {
@@ -122,14 +122,20 @@ void sign(Node *n) {
 void indexNode(NodeId id) {
 	Node *n = &elem(id);
 	ElemList *idx;
+	int count;
 	sign(n);
+	//fprintf(stderr, "%d: %d\n", id, n->sig);
 	idx = indexFor(gsp, n);
+	count = idx->len;
 	listElem(idx, id);
+	assert(idx->len == count+1);
 }
 void unindexNode(NodeId id) {
 	Node *n = &elem(id);
 	ElemList *idx = indexFor(gsp, n);
+	int count = idx->len;
 	unlistElem(idx, id);
+	assert(idx->len == count-1 && count > 0);
 }
 
 ElemId allocElem() {
@@ -170,7 +176,7 @@ void addNode() {
 	int id = allocElem();
 	listElem(&(gsp->nodes), id);
 	indexNode(id);
-	fprintf(stderr, "elemPool[%d] (node): 0x%lx of size %d\n", id, (unsigned long) elemPool, elemPoolSize);
+	//fprintf(stderr, "elemPool[%d] (node): 0x%lx of size %d\n", id, (unsigned long) elemPool, elemPoolSize);
 }
 void deleteNode(NodeId id) {
 	Node *n = &elem(id);
@@ -186,7 +192,8 @@ void addEdge(NodeId src, NodeId tgt) {
 	EdgeId eid = allocElem();
 	Node *s=&elem(src), *t=&elem(tgt);
 	Edge *e = &elem(eid);
-	fprintf(stderr, "elemPool[%d] (edge): 0x%lx of size %d\n", eid, (unsigned long) elemPool, elemPoolSize);
+	// fprintf(stderr, "elemPool[%d] (edge %d -> %d): 0x%lx of size %d\n", eid, src, tgt, (unsigned long) elemPool, elemPoolSize);
+	assert(src > 0 && tgt > 0);
 	unindexNode(src);
 	unindexNode(tgt);
 	e->src = src;
@@ -232,6 +239,8 @@ void initGraphEngine() {
 	elemPoolSize = DEF_ELEM_POOL;
 	if (elemPool == NULL)
 		failWith("Failed to allocate a node pool");
+	elemPool[0] = nullElem; // elems[0] is a dummy entry.
+	nextElem++;
 }
 void destroyGraphEngine() {
 	int i;
