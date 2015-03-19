@@ -15,6 +15,7 @@
 #include "error.h"
 #include "globals.h"
 #include "graph.h"
+#include "label.h"
 #include "rule.h"
 
 /* Creates the rule data structure from a pointer to a rule in the AST. */
@@ -42,8 +43,7 @@ int getArraySize(int number_of_items, int minimum_size);
  * (5) Sets the deletes_nodes flag if the rule deletes a node.
  */
 Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
-               IndexMap **edge_map, ItemList **deleted_nodes,
-               unsigned int *is_rooted);
+               IndexMap **edge_map, ItemList **deleted_nodes, bool *is_rooted);
 
 /* scanRHSNodes does the following:
  * (1) Creates and returns the graph data structure for the graph containing

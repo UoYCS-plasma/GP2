@@ -18,6 +18,7 @@
 #include "globals.h"
 #include "genHost.h"
 #include "genProgram.h"
+#include "genRule.h"
 #include "parser.h"
 #include "seman.h" 
 
@@ -101,8 +102,12 @@ int main(int argc, char** argv)
 
    if(valid_program && !syntax_error) 
    {
-      print_to_console("Generating code...\n\n"); 
+      print_to_console("Generating code...\n\n");
+      generateRules(gp_program);
+      /* TODO: Call to static analyser. Static analyser will annotate the AST. Passed
+       * the number of rule declarations. */
       generateRuntimeCode(gp_program);
+      /* TODO: Some flag to only call this function and not generateRuntimeCode. */
       generateHostGraphCode(ast_host_graph);
    }
    else print_to_console("Build aborted. Please consult the file %s.log for "

@@ -192,12 +192,12 @@ void printASTList(List *const list, FILE *dot_file)
           list->node_id = next_node_id;
           next_node_id += 1;
 
-          if(list->value.rule_call.rule_name != NULL)
+          if(list->value.rule_name != NULL)
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
                                "Rule \\n Name: %s\"]\n", 
                                list->node_id, list->node_id,
                                LOCATION_ARGS(list->location),
-                               list->value.rule_call.rule_name);
+                               list->value.rule_name);
           else 
           {
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -425,12 +425,12 @@ void printASTStatement(GPStatement *const stmt, FILE *dot_file)
            stmt->node_id = next_node_id;
            next_node_id += 1;
 
-           if(stmt->value.rule_call.rule_name != NULL)
+           if(stmt->value.rule_name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                                 "Rule Call \\n Name: %s\"]\n",
                                 stmt->node_id, stmt->node_id, 
                                 LOCATION_ARGS(stmt->location), 
-                                stmt->value.rule_call.rule_name);
+                                stmt->value.rule_name);
            else 
            {
                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -768,29 +768,6 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
                             atom->value.number);
           break;
 
-     case CHARACTER_CONSTANT:
-
-          atom->node_id = next_node_id;
-          next_node_id += 1;
-
-          if(atom->value.string != NULL)
-             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                               "Character: %s\"]\n", 
-                               atom->node_id, atom->node_id,
-                               LOCATION_ARGS(atom->location), 
-                               atom->value.string);
-          else 
-          {
-             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                               "UNDEFINED\"]\n",
-                               atom->node_id, atom->node_id, 
-                               LOCATION_ARGS(atom->location));
-             print_to_log("Error (printASTAtom): Empty character at AST "
-                          "node %d\n", atom->node_id);
-          }
-
-          break;
-       
      case STRING_CONSTANT:
 
           atom->node_id = next_node_id;

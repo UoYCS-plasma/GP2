@@ -45,10 +45,7 @@ typedef struct List {
     struct GPDeclaration *declaration; /* GLOBAL_DECLARATIONS, 
 					* LOCAL_DECLARATIONS */
     struct GPStatement *command;       /* COMMANDS */
-    struct {
-       string rule_name; 	
-       bool empty_lhs;                 
-    } rule_call;                       /* RULES */
+    string rule_name; 		       /* RULES */
     struct List *variables;            /* INT_DECLARATIONS, CHAR_DECLARATIONS,
                                         * STRING_DECLARATIONS, ATOM_DECLARATIONS */ 
     string variable_name; 	       /* VARIABLE_LIST */	  
@@ -107,10 +104,7 @@ typedef struct GPStatement {
   YYLTYPE location;
   union {    
     struct List *cmd_seq; 		/* COMMAND_SEQUENCE */
-    struct {
-       string rule_name;
-       bool empty_lhs;
-    } rule_call;                        /* RULE_CALL */
+    string rule_name; 			/* RULE_CALL */
     struct List *rule_set; 		/* RULE_SET_CALL */
     string proc_name;			/* PROCEDURE_CALL */
 
@@ -204,7 +198,7 @@ typedef struct GPAtomicExp {
   union {
     string name;		  /* VARIABLE */
     int number; 	 	  /* INTEGER_CONSTANT */
-    string string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
+    string string;		  /* STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
     struct List *list_arg; 	  /* LIST_LENGTH */
     struct GPAtomicExp *str_arg;  /* STRING_LENGTH */
@@ -261,7 +255,9 @@ typedef struct GPRule {
   struct GPGraph *lhs;
   struct GPGraph *rhs;
   struct List *interface;
-  struct GPCondExp *condition;  
+  struct GPCondExp *condition;
+  bool empty_lhs;
+  bool is_predicate;
 } GPRule;
 
 GPRule *newASTRule(YYLTYPE location, string name, struct List *variables, 

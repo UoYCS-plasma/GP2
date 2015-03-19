@@ -119,7 +119,6 @@ bool declarationScan(List *ast, string const scope)
                  proc_symbol->type = PROCEDURE_S;
                  proc_symbol->scope = strdup(scope);
 	         proc_symbol->containing_rule = NULL;
-                 proc_symbol->empty_lhs = false;
 		 proc_symbol->is_var = false;
 		 proc_symbol->in_lhs = false;
                  proc_symbol->wildcard = false; 
@@ -205,9 +204,6 @@ bool declarationScan(List *ast, string const scope)
 	         rule_symbol->type = RULE_S;
 	         rule_symbol->scope = strdup(scope);
 	         rule_symbol->containing_rule = NULL;
-                 if(ast->value.declaration->value.rule->lhs->nodes == NULL)
-                      rule_symbol->empty_lhs = true;
-                 else rule_symbol->empty_lhs = false;
                  rule_symbol->is_var = false;
                  rule_symbol->in_lhs = false;
                  rule_symbol->wildcard = false;
@@ -370,13 +366,12 @@ void statementScan(GPStatement *const statement, string const scope)
 
       case RULE_CALL:
       {
-           string rule_name = 
-              validateRuleCall(statement->value.rule_call.rule_name,
-                               &(statement->value.rule_call.empty_lhs),scope);
+           string rule_name = validateRuleCall(statement->value.rule_name,
+                                               scope);
            if(rule_name != NULL)
            {
-              free(statement->value.rule_call.rule_name);
-              statement->value.rule_call.rule_name = rule_name;
+              free(statement->value.rule_name);
+              statement->value.rule_name = rule_name;
            }
            break;
        }
@@ -395,14 +390,12 @@ void statementScan(GPStatement *const statement, string const scope)
 
            while(rule_list)
            {
-              string rule_name =
-                 validateRuleCall(rule_list->value.rule_call.rule_name,
-                                  &(rule_list->value.rule_call.empty_lhs), scope);
- 
+              string rule_name = validateRuleCall(rule_list->value.rule_name,
+                                                   scope);    
               if(rule_name != NULL)
               {
-                 free(rule_list->value.rule_call.rule_name);
-                 rule_list->value.rule_call.rule_name = rule_name;
+                 free(rule_list->value.rule_name);
+                 rule_list->value.rule_name = rule_name;
               }
               rule_list = rule_list->next;   
            }           
@@ -461,7 +454,7 @@ void statementScan(GPStatement *const statement, string const scope)
  * If the function does not return at this point, the code continues
  * by searching for the symbol in "Main" scope after the if statement. 
  * This code is also executed if "Main" is the passed scope. */
-string validateRuleCall(string const name, bool *empty_lhs, string const scope)
+string validateRuleCall(string const name, string const scope)
 {
    string global_rule_name = makeRuleIdentifier(name, "Main");
    GSList *symbol_list = NULL;
@@ -476,7 +469,6 @@ string validateRuleCall(string const name, bool *empty_lhs, string const scope)
          if(current_symbol->type == RULE_S && 
             !strcmp(current_symbol->scope, scope)) 
          {
-            *empty_lhs = current_symbol->empty_lhs; 
             free(global_rule_name);
             return local_rule_name;
          }
@@ -493,11 +485,7 @@ string validateRuleCall(string const name, bool *empty_lhs, string const scope)
    {
       Symbol *current_symbol = (Symbol*)(symbol_list->data);
       if(current_symbol->type == RULE_S && 
-         !strcmp(current_symbol->scope, "Main")) 
-      {
-         *empty_lhs = current_symbol->empty_lhs; 
-         return global_rule_name;
-      }
+         !strcmp(current_symbol->scope, "Main")) return global_rule_name;
       else symbol_list = symbol_list->next;
    }
    /* Rule symbol not found in global scope. */
@@ -710,7 +698,6 @@ void enterVariables(SymbolType const type, List *variables,
          var_symbol->type = type;
          var_symbol->scope = strdup(scope);
          var_symbol->containing_rule = strdup(rule_name);
-         var_symbol->empty_lhs = false;
          var_symbol->is_var = true;      
          var_symbol->in_lhs = false;
          var_symbol->wildcard = false;
@@ -808,7 +795,6 @@ void graphScan(GPGraph *const graph, string const scope,
          node_symbol->type = node_type;      
          node_symbol->scope = strdup(scope);
          node_symbol->containing_rule = strdup(rule_name);
-         node_symbol->empty_lhs = false;
          node_symbol->is_var = false;
          node_symbol->in_lhs = false;      
          node_symbol->wildcard = (node_list->value.node->label->mark == ANY);    
@@ -915,7 +901,6 @@ void graphScan(GPGraph *const graph, string const scope,
          edge_symbol->type = edge_type;      
          edge_symbol->scope = strdup(scope);
          edge_symbol->containing_rule = strdup(rule_name);
-         edge_symbol->empty_lhs = false;
          edge_symbol->is_var = false;
          edge_symbol->in_lhs = false;             
          edge_symbol->wildcard = (edge_list->value.edge->label->mark == ANY); 
@@ -983,29 +968,33 @@ void graphScan(GPGraph *const graph, string const scope,
          {
             BiEdge list_edge = iterator->value;
 
-            /* Find edges in the list with the same scope, rule, source node and
-             * target node as the current edge.
-             */
+            /* Find edges in the list with the same scope, rule, and 
+             * incident node IDs as the current edge. Edge direction is 
+             * irrelevant for this check. */
             if(!strcmp(list_edge.scope, scope) &&
                !strcmp(list_edge.containing_rule, rule_name) &&
-               !strcmp(list_edge.source, source_id) &&
-               !strcmp(list_edge.target, target_id) ) 
+               /* Either source = source and target = target... */
+               (!strcmp(list_edge.source, source_id) &&
+                !strcmp(list_edge.target, target_id))   ||
+               /*... or source = target and target = source */
+               (!strcmp(list_edge.source, target_id) &&
+                !strcmp(list_edge.target, source_id)) ) 
             {
                /* Semantic check (1) */
                if(side == 'r' && list_edge.graph == 'l') 
                   matching_bi_edge = true;
 
-               /* Semantic check (2) */
-               else 
-               {
-                  if(list_edge.graph == side)
-                  {
-                     print_to_log("Error (%s): Parallel bidirectional edges "
-                                  "in %s.\n", rule_name, graph_type);
-                     abort_compilation = true;
-                     add_bi_edge = false;
-                  }
-               }
+                /* Semantic check (2) */
+                else 
+                {
+                   if(list_edge.graph == side)
+                   {
+                      print_to_log("Error (%s): Parallel bidirectional edges "
+                                   "in %s.\n", rule_name, graph_type);
+                      abort_compilation = true;
+                      add_bi_edge = false;
+                   }
+                }
             }
             iterator = iterator->next;       
          }
@@ -1043,7 +1032,7 @@ void graphScan(GPGraph *const graph, string const scope,
             else 
             { 
                BiEdgeList *iterator = bidirectional_edges;
-               while(iterator->next != NULL) iterator = iterator->next; 
+               while(iterator->next) iterator = iterator->next; 
                iterator->next = new_edge;
             }
          }
@@ -1175,14 +1164,16 @@ void interfaceScan(List *interface, string const scope, string const rule_name)
      if(!in_lhs)  
      {
         print_to_log("Error (%s): Interface node %s not in the LHS "
-	   	     "graph.\n", rule_name, current_node_id);
+	   	     "graph.\n",
+                     rule_name, current_node_id);
         abort_compilation = true; 
      }
 
      if(!in_rhs) 
      {
         print_to_log("Error (%s): Interface node %s not in the RHS "
-		     "graph.\n", rule_name, current_node_id);
+		     "graph.\n", 
+                     rule_name, current_node_id);
         abort_compilation = true; 
      }
 
@@ -1412,9 +1403,9 @@ void gpListScan(List **gp_list, string const scope, string const rule_name,
 
    if(lhs_non_simple_exp) 
    {
-      print_to_console("Error (%s): Arithmetic expression in LHS label \n",
+      print_to_console("Error (%s): Non-simple expression in LHS label. \n",
                        rule_name);
-      print_to_log("Error (%s): Arithmetic expression in LHS label \n",
+      print_to_log("Error (%s): Non-simple expression in LHS label. \n",
                    rule_name);
       abort_compilation = true;
    }
@@ -1441,20 +1432,6 @@ void atomicExpScan(GPAtomicExp * const atom_exp, string const scope,
                            "string expression.\n", rule_name);
               abort_compilation = true;
            }             
-
-           break;
-
-
-      case CHARACTER_CONSTANT:
-
-           if(int_exp) 
-           {
-              print_to_console("Error (%s): Character constant appears in "
-                               "an integer expression.\n", rule_name);
-              print_to_log("Error (%s): Character constant appears in "
-                           "an integer expression.\n", rule_name);
-	      abort_compilation = true;
-           }
 
            break;
 
@@ -1701,8 +1678,6 @@ void atomicExpScan(GPAtomicExp * const atom_exp, string const scope,
                print_to_log("Error (%s): Arithmetic operator appears in "
                             "string expression.\n", rule_name);
             }
-
-            if(location == 'l') lhs_non_simple_exp = true;
 
             atomicExpScan(atom_exp->value.exp, scope, rule_name,
                           location, true, false);

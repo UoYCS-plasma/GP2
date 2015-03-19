@@ -34,9 +34,7 @@
 
 #include "ast.h"
 #include "error.h"
-#include "genMatch.h"
 #include "globals.h"
-#include "transform.h"
 
 /* The contexts of a GP2 program determine the code that is generated. In
  * particular, the code generated when a rule match fails is determined by

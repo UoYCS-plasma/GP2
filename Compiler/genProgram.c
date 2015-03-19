@@ -97,15 +97,9 @@ void generateDeclarationCode(List *declarations)
               break;
 
          case RULE_DECLARATION:
-         {
+
               PTMH("#include \"%s.h\"\n", decl->value.rule->name);
-
-              Rule *rule = makeRule(decl->value.rule);
-              generateRuleCode(rule);
-              freeRule(rule);
-
               break;
-         }
 
          default: print_to_log("Error (generateRuntimeCode): Unexpected "
                                "declaration type %d at AST node %d\n", 
@@ -135,9 +129,7 @@ void generateProgramCode(GPStatement *statement, ContextType context,
       case RULE_CALL:
 
            PTMSI("/* Rule Call */\n", indent);
-           generateRuleCall(statement->value.rule_call.rule_name, 
-                            statement->value.rule_call.empty_lhs, 
-                            context, indent);
+           generateRuleCall(statement->value.rule_name, false, context, indent);
            break;
 
       case RULE_SET_CALL:
@@ -337,7 +329,7 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
     * preliminary tests. */
    else
    {
-      string rule_name = commands->value.command->value.rule_call.rule_name;
+      string rule_name = commands->value.command->value.rule_name;
 
       if(commands->value.command->statement_type == RULE_CALL)
       {
@@ -379,8 +371,7 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
          {  
             /* TODO: empty_lhs rule code. */
             PTMSI("/* Rule Call */\n", indent);
-            PTMSI("morphism = match%s();\n", indent, 
-                  rules->value.rule_call.rule_name);
+            PTMSI("morphism = match%s();\n", indent, rules->value.rule_name);
             PTMSI("if(morphism != NULL)\n", indent);
             PTMSI("{\n", indent);
             if(context == IF_BODY || context == TRY_BODY)
@@ -397,8 +388,7 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
                PTMSI("copyGraph(host);\n", indent + 3);
                PTMSI("stack_depth++;\n", indent + 3);
             }
-            PTMSI("apply%s(morphism);\n", indent + 3, 
-                  rules->value.rule_call.rule_name);
+            PTMSI("apply%s(morphism);\n", indent + 3, rules->value.rule_name);
             PTMSI("break;\n", indent + 3);
             PTMSI("}\n", indent);
             
@@ -406,8 +396,7 @@ void generateCommandSequence(List *commands, ContextType context, int indent)
             {
                PTMSI("else\n", indent + 3);
                PTMSI("{\n", indent + 3);
-               generateFailureCode(rules->value.rule_call.rule_name, context,
-                                   indent + 6);         
+               generateFailureCode(rules->value.rule_name, context, indent + 6);         
                PTMSI("}\n", indent + 3);
                break;
             }
@@ -473,12 +462,13 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
    PTMSI("{\n", indent);
    while(rules != NULL)
    {  
-      if(rules->value.rule_call.empty_lhs) 
+      /* TODO: empty_lhs */
+      if(false) 
       {
-         PTMSI("apply%s();\n\n", indent, rules->value.rule_call.rule_name);
+         PTMSI("apply%s();\n\n", indent, rules->value.rule_name);
          continue;
       }
-      PTMSI("morphism = match%s();\n", indent + 3, rules->value.rule_call.rule_name);
+      PTMSI("morphism = match%s();\n", indent + 3, rules->value.rule_name);
       
       /* No need to apply the rule in an if statement since the original graph is
        * kept for the then or else branch. */
@@ -497,8 +487,7 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
       {
          PTMSI("if(morphism != NULL)\n", indent + 3);
          PTMSI("{\n", indent + 3);
-         PTMSI("apply%s(morphism);\n", indent + 6,
-               rules->value.rule_call.rule_name);
+         PTMSI("apply%s(morphism);\n", indent + 6, rules->value.rule_name);
          PTMSI("break;\n", indent + 6);
          PTMSI("}\n\n", indent + 3);
       }
@@ -506,7 +495,7 @@ void generateRuleSetCall(List *rules, ContextType context, int indent)
       {
          PTMSI("else\n", indent + 3);
          PTMSI("{\n", indent + 3);
-         generateFailureCode(rules->value.rule_call.rule_name, context, indent + 6);         
+         generateFailureCode(rules->value.rule_name, context, indent + 6);         
          PTMSI("}\n", indent + 3);
          break;
       }

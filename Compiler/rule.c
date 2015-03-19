@@ -38,7 +38,8 @@ void freeVariableList(VariableList *variable_list)
 }
 
 IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index,
-                      int right_index, string source_id, string target_id)
+                      int right_index, string source_id, string target_id,
+                      Label *label)
 {
    IndexMap *new_map = malloc(sizeof(IndexMap));
    if(new_map == NULL)
@@ -54,6 +55,7 @@ IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index,
    else new_map->source_id = strdup(source_id);
    if(target_id == NULL) new_map->target_id = NULL;
    else new_map->target_id = strdup(target_id);
+   new_map->label = label;
    new_map->next = map;
 
    return new_map;
@@ -233,6 +235,34 @@ void freeNewEdgeList(NewEdgeList *edge)
    free(edge);
 }
 
+bool isPredicate(Rule *rule)
+{
+   if(rule->deleted_nodes != NULL) return false;
+   if(rule->added_nodes != NULL) return false;
+   if(rule->added_edges != NULL) return false;
+
+   /* The rule is not a predicate if any node is relabelled or the root status
+    * of any node is changed. */
+   PreservedItemList *iterator = rule->preserved_nodes;
+   while(iterator != NULL)
+   {
+      if(iterator->change_root || iterator->new_label != NULL) return false;
+      iterator = iterator->next;
+   }
+   /* Deleted edges are not explicitly represented in the rule. 
+    * In addition to checking if any edge is relabelled, the loop checks that
+    * the number of preserved edges is equal to the number of LHS-edges. */
+   iterator = rule->preserved_edges;
+   int edge_count = 0;
+   while(iterator != NULL)
+   {
+      if(iterator->new_label != NULL) return false;
+      edge_count++;
+      iterator = iterator->next;
+   }
+   if(edge_count < rule->lhs->number_of_edges) return false;
+   else return true;
+}
 
 void printRule(Rule *rule)
 {
@@ -249,8 +279,6 @@ void printRule(Rule *rule)
    printGraph(rule->rhs);
    printf("\n");
 }
-
-
 
 void freeRule(Rule *rule)
 {

@@ -5,12 +5,49 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#include "genMatch.h"
+#include "genRule.h"
 
 FILE *rule_header = NULL;
 FILE *rule_source = NULL;
  
 Searchplan *searchplan = NULL;
+
+void generateRules(List *declarations)
+{
+   while(declarations != NULL)
+   {
+      GPDeclaration *decl = declarations->value.declaration;
+     
+      switch(decl->decl_type)
+      {
+         case MAIN_DECLARATION:
+         
+              break;
+
+         case PROCEDURE_DECLARATION:
+
+              if(decl->value.procedure->local_decls != NULL)
+                 generateRules(decl->value.procedure->local_decls);
+              break;
+
+         case RULE_DECLARATION:
+         {
+              Rule *rule = makeRule(decl->value.rule);
+              decl->value.rule->empty_lhs = rule->lhs == NULL;
+              decl->value.rule->is_predicate = isPredicate(rule);
+              generateRuleCode(rule);
+              freeRule(rule);
+              break;
+         }
+
+         default: print_to_log("Error (generateRules): Unexpected "
+                               "declaration type %d at AST node %d\n", 
+                               decl->decl_type, decl->node_id);
+              break;
+      }
+      declarations = declarations->next;
+   }
+}
 
 void generateRuleCode(Rule *rule)
 {

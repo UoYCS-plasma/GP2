@@ -58,8 +58,7 @@ List *addASTRule(YYLTYPE location, string rule_name, List *next)
 
     new_rule->list_type = RULES;
     new_rule->location = location;
-    new_rule->value.rule_call.rule_name = strdup(rule_name);
-    new_rule->value.rule_call.empty_lhs = false;
+    new_rule->value.rule_name = strdup(rule_name);
     new_rule->next = next;
 
     return new_rule;
@@ -277,8 +276,7 @@ GPStatement *newASTRuleCall(YYLTYPE location, string rule_name)
 
     stmt->statement_type = RULE_CALL;
     stmt->location = location;
-    stmt->value.rule_call.rule_name = strdup(rule_name);
-    stmt->value.rule_call.empty_lhs = false;
+    stmt->value.rule_name = strdup(rule_name);
 
     return stmt;
 }
@@ -561,26 +559,6 @@ GPAtomicExp *newASTNumber(YYLTYPE location, int number)
      return atom;
 }
 
-
-GPAtomicExp *newASTCharacter(YYLTYPE location, string character)
-{
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
-
-     if(atom == NULL) 
-     {
-       print_to_log("Error: Memory exhausted during AST construction.\n");
-       exit(1);
-     }
-
-     atom->exp_type = CHARACTER_CONSTANT;
-     atom->location = location;
-     if(character) atom->value.string = strdup(character);
-
-     return atom;
-}
-
-
-
 GPAtomicExp *newASTString(YYLTYPE location, string string)
 {
      GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
@@ -862,8 +840,7 @@ void freeAST(List *ast)
 
 	case RULES:
 
-             if(ast->value.rule_call.rule_name) 
-                free(ast->value.rule_call.rule_name);
+             if(ast->value.rule_name) free(ast->value.rule_name);
 
 	     break;
 	
@@ -981,8 +958,7 @@ void freeASTStatement(GPStatement *stmt)
 
       case RULE_CALL:
 
-           if(stmt->value.rule_call.rule_name) 
-              free(stmt->value.rule_call.rule_name);
+           if(stmt->value.rule_name) free(stmt->value.rule_name);
 
            break;
 
@@ -1152,8 +1128,6 @@ void freeASTAtomicExp(GPAtomicExp *atom)
            break;
 
 
-      case CHARACTER_CONSTANT:
-          
       case STRING_CONSTANT:
 
            if(atom->value.string)

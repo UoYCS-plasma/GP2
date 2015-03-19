@@ -21,7 +21,6 @@
  * according to the rule declaration. Used in the matching algorithm to check
  * the type of a variable for label matching.
  */
-
 typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} 
   GPType;
 
@@ -50,13 +49,15 @@ typedef struct IndexMap {
    int right_index;
    string source_id;
    string target_id;
+   Label *label;
    struct IndexMap *next;
 } IndexMap;
 
 /* Prepends a new map with the passed information to the given list and returns
  * a pointer to the new first map in the list. */
 IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index, 
-                      int right_index, string source_id, string target_id);
+                      int right_index, string source_id, string target_id,
+                      Label *label);
 int findLeftIndexFromId(IndexMap *map, string id);                      
 IndexMap *findMapFromId(IndexMap *map, string id);
 /* Used to find a map for an edge with the passed source and target IDs. */
@@ -155,14 +156,12 @@ typedef struct Rule {
    ItemList *added_nodes;
    NewEdgeList *added_edges;
    Condition *condition;
-   struct {
-      /* 1 if the rule does not change the host graph. */
-      unsigned int is_predicate : 1;
-      /* 1 if the rule is rooted. */
-      unsigned int is_rooted : 1;
-   } flags;
+   bool is_rooted;
 } Rule;
 
+/* Checks if a rule does not modify the host graph: the rule neither adds nor
+ * deletes nor relabels any items. */
+bool isPredicate(Rule *rule);
 void printRule(Rule *rule);
 void freeRule(Rule *rule);
 

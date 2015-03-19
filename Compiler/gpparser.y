@@ -68,7 +68,7 @@ bool syntax_error = false;
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
 %token <num> NUM 
-%token <str> STR CHAR
+%token <str> STR 
 %token <id> PROCID ID           				
 %token ROOT BIDIRECTIONAL	
 %token GP_PROGRAM GP_GRAPH						
@@ -433,8 +433,6 @@ List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); }
 
 AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
        | NUM 				{ $$ = newASTNumber(@$, $1); }
-       | CHAR				{ $$ = newASTCharacter(@$, $1); 
-   					  if($1) free($1); }
        | STR 				{ $$ = newASTString(@$, $1); 
 					  if($1) free($1); }
        | INDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(INDEGREE, @$, $3); 
@@ -497,7 +495,6 @@ HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); }
 
 
 HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
-       | CHAR				{ $$ = newASTCharacter(@$, $1); if($1) free($1); }
        | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }
 
 %%
