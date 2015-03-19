@@ -104,8 +104,7 @@ int main(int argc, char** argv)
    {
       print_to_console("Generating code...\n\n");
       generateRules(gp_program);
-      /* TODO: Call to static analyser. Static analyser will annotate the AST. Passed
-       * the number of rule declarations. */
+      //staticAnalysis(gp_program, gp_program);
       generateRuntimeCode(gp_program);
       /* TODO: Some flag to only call this function and not generateRuntimeCode. */
       generateHostGraphCode(ast_host_graph);

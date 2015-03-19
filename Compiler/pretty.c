@@ -192,12 +192,12 @@ void printASTList(List *const list, FILE *dot_file)
           list->node_id = next_node_id;
           next_node_id += 1;
 
-          if(list->value.rule_name != NULL)
+          if(list->value.rule_call.rule_name != NULL)
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
                                "Rule \\n Name: %s\"]\n", 
                                list->node_id, list->node_id,
                                LOCATION_ARGS(list->location),
-                               list->value.rule_name);
+                               list->value.rule_call.rule_name);
           else 
           {
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -207,6 +207,10 @@ void printASTList(List *const list, FILE *dot_file)
              print_to_log("Error: Undefined rule name at AST node %d", 
                           list->node_id);
           }
+          if(list->value.rule_call.rule != NULL)
+             print_to_dot_file("node%d->node%d[label=\"rule\"]\n",
+                               list->node_id, 
+                               list->value.rule_call.rule->node_id);
 
           prettyPrintList(list->next,list,next);
 
@@ -425,12 +429,12 @@ void printASTStatement(GPStatement *const stmt, FILE *dot_file)
            stmt->node_id = next_node_id;
            next_node_id += 1;
 
-           if(stmt->value.rule_name != NULL)
+           if(stmt->value.rule_call.rule_name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                                 "Rule Call \\n Name: %s\"]\n",
                                 stmt->node_id, stmt->node_id, 
                                 LOCATION_ARGS(stmt->location), 
-                                stmt->value.rule_name);
+                                stmt->value.rule_call.rule_name);
            else 
            {
                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -439,8 +443,11 @@ void printASTStatement(GPStatement *const stmt, FILE *dot_file)
                                  LOCATION_ARGS(stmt->location));
                print_to_log("Error (printASTStatement): Undefined rule name "
                            "at AST node %d", stmt->node_id);
-            }
-
+           }
+           if(stmt->value.rule_call.rule != NULL)
+              print_to_dot_file("node%d->node%d[label=\"rule\"]\n",
+                                stmt->node_id, 
+                                stmt->value.rule_call.rule->node_id);
             break;
 
       case RULE_SET_CALL:
@@ -465,12 +472,12 @@ void printASTStatement(GPStatement *const stmt, FILE *dot_file)
            stmt->node_id = next_node_id;
            next_node_id += 1;
 
-           if(stmt->value.proc_name != NULL)
+           if(stmt->value.proc_call.proc_name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                                 "Procedure Call \\n Name: %s\"]\n",
                                 stmt->node_id, stmt->node_id,
                                 LOCATION_ARGS(stmt->location), 
-                                stmt->value.proc_name);
+                                stmt->value.proc_call.proc_name);
            else 
            {
                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -480,7 +487,10 @@ void printASTStatement(GPStatement *const stmt, FILE *dot_file)
                print_to_log("Error (printASTStatement): Undefined procedure "
                            "ame at AST node %d", stmt->node_id);
            }
-
+           if(stmt->value.proc_call.procedure != NULL)
+              print_to_dot_file("node%d->node%d[label=\"procedure\"]\n",
+                                stmt->node_id,
+                                stmt->value.proc_call.procedure->node_id);
            break;
 
       case IF_STATEMENT:

@@ -58,7 +58,8 @@ List *addASTRule(YYLTYPE location, string rule_name, List *next)
 
     new_rule->list_type = RULES;
     new_rule->location = location;
-    new_rule->value.rule_name = strdup(rule_name);
+    new_rule->value.rule_call.rule_name = strdup(rule_name);
+    new_rule->value.rule_call.rule = NULL;
     new_rule->next = next;
 
     return new_rule;
@@ -276,7 +277,8 @@ GPStatement *newASTRuleCall(YYLTYPE location, string rule_name)
 
     stmt->statement_type = RULE_CALL;
     stmt->location = location;
-    stmt->value.rule_name = strdup(rule_name);
+    stmt->value.rule_call.rule_name = strdup(rule_name);
+    stmt->value.rule_call.rule = NULL;
 
     return stmt;
 }
@@ -310,7 +312,8 @@ GPStatement *newASTProcCall(YYLTYPE location, string proc_name)
 
     stmt->statement_type = PROCEDURE_CALL;
     stmt->location = location;
-    stmt->value.proc_name = strdup(proc_name);
+    stmt->value.proc_call.proc_name = strdup(proc_name);
+    stmt->value.proc_call.procedure = NULL;
 
     return stmt;
 }
@@ -840,7 +843,7 @@ void freeAST(List *ast)
 
 	case RULES:
 
-             if(ast->value.rule_name) free(ast->value.rule_name);
+             if(ast->value.rule_call.rule_name) free(ast->value.rule_call.rule_name);
 
 	     break;
 	
@@ -958,7 +961,7 @@ void freeASTStatement(GPStatement *stmt)
 
       case RULE_CALL:
 
-           if(stmt->value.rule_name) free(stmt->value.rule_name);
+           if(stmt->value.rule_call.rule_name) free(stmt->value.rule_call.rule_name);
 
            break;
 
@@ -972,7 +975,7 @@ void freeASTStatement(GPStatement *stmt)
 
       case PROCEDURE_CALL:
 
-           if(stmt->value.proc_name) free(stmt->value.proc_name);
+           if(stmt->value.proc_call.proc_name) free(stmt->value.proc_call.proc_name);
 
            break;
 
