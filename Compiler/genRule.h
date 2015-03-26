@@ -52,7 +52,7 @@ void generateRules(List *declarations);
  * It sets up the module environment and makes the appropriate calls to
  * emitMatchingCode and emitApplicationCode depending on the structure
  * of the rule.  */
-void generateRuleCode(Rule *rule);
+void generateRuleCode(Rule *rule, bool predicate);
  
 /* Generates the searchplan from the LHS which is used to emit the matching
  * code. The generated matching code is structure as follows:

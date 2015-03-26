@@ -47,6 +47,7 @@ typedef struct List {
     struct GPStatement *command;       /* COMMANDS */
     struct {
        string rule_name;
+       bool copy_point;
        struct GPRule *rule;
     } rule_call;                       /* RULES */
     struct List *variables;            /* INT_DECLARATIONS, CHAR_DECLARATIONS,
@@ -106,25 +107,29 @@ typedef struct GPStatement {
   StatementType statement_type;
   YYLTYPE location;
   union {    
-    struct List *cmd_seq; 		/* COMMAND_SEQUENCE */
+    struct List *commands; 		/* COMMAND_SEQUENCE */
     struct {
        string rule_name; 
-       struct GPRule *rule;                   
+       bool copy_point;
+       struct GPRule *rule;   
     } rule_call;                        /* RULE_CALL */
     struct List *rule_set; 		/* RULE_SET_CALL */
     struct { 
        string proc_name;
        struct GPProcedure *procedure; 
     } proc_call;                        /* PROCEDURE_CALL */
-
     struct {  
       struct GPStatement *condition;
       struct GPStatement *then_stmt; 
       struct GPStatement *else_stmt; 
+      int restore_point;
+      bool copy_point;
     } cond_branch; 			/* IF_STATEMENT, TRY_STATEMENT */
-
-    struct GPStatement *loop_stmt; 	/* ALAP_STATEMENT */
-
+    struct {
+       struct GPStatement *loop_body;
+       int restore_point;
+       bool copy_point;
+    } loop_stmt;                        /* ALAP_STATEMENT */
     struct { 
       struct GPStatement *left_stmt; 
       struct GPStatement *right_stmt; 
@@ -142,7 +147,7 @@ GPStatement *newASTCondBranch(StatementType statement_type, YYLTYPE location,
 	                      struct GPStatement *condition, 
                               struct GPStatement *then_stmt, 
 	                      struct GPStatement *else_stmt);
-GPStatement *newASTAlap(YYLTYPE location, struct GPStatement *loop_stmt);
+GPStatement *newASTAlap(YYLTYPE location, struct GPStatement *loop_body);
 GPStatement *newASTOrStmt(YYLTYPE location, struct GPStatement *left_stmt, 
 	                  struct GPStatement *right_stmt);
 GPStatement *newASTSkip(YYLTYPE location);
@@ -229,7 +234,7 @@ GPAtomicExp *newASTListLength (YYLTYPE location, struct List *list_arg);
 GPAtomicExp *newASTStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);
 GPAtomicExp *newASTNegExp (YYLTYPE location, struct GPAtomicExp *exp);
 GPAtomicExp *newASTBinaryOp (AtomExpType exp_type, YYLTYPE location, 
-	                     struct GPAtomicExp *left_exp,
+	                     struct GPAtomicExp *left_exp, 
                              struct GPAtomicExp *right_exp);
 
 
@@ -245,12 +250,12 @@ typedef struct GPProcedure {
   YYLTYPE location;
   string name; 
   struct List *local_decls; 
-  struct GPStatement *cmd_seq; 
+  struct GPStatement *commands;
+  int restore_point;
 } GPProcedure;
 
 GPProcedure *newASTProcedure(YYLTYPE location, string name, 
-                             struct List *local_decls, 
-                             struct GPStatement *cmd_seq);
+                             struct List *local_decls, struct GPStatement *cmd_seq);
 
 
 /* Root node for a rule definition. */

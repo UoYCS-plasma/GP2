@@ -35,7 +35,7 @@ void generateRules(List *declarations)
               Rule *rule = makeRule(decl->value.rule);
               decl->value.rule->empty_lhs = rule->lhs == NULL;
               decl->value.rule->is_predicate = isPredicate(rule);
-              generateRuleCode(rule);
+              generateRuleCode(rule, decl->value.rule->is_predicate);
               freeRule(rule);
               break;
          }
@@ -49,7 +49,7 @@ void generateRules(List *declarations)
    }
 }
 
-void generateRuleCode(Rule *rule)
+void generateRuleCode(Rule *rule, bool predicate)
 {
    string rule_name = rule->name;
    /* Create files runtime/<rule_name>.h and runtime/<rule_name>.c */
@@ -105,13 +105,13 @@ void generateRuleCode(Rule *rule)
       {
          generateMatchingCode(rule_name, rule->number_of_variables, rule->lhs,
                               rule->deleted_nodes);
-         generateApplicationCode(rule, false, true);
+         if(!predicate) generateApplicationCode(rule, false, true);
       }
       else
       {
          generateMatchingCode(rule_name, rule->number_of_variables, rule->lhs,
                               rule->deleted_nodes);
-         generateApplicationCode(rule, false, false);
+         if(!predicate) generateApplicationCode(rule, false, false);
       }
    }
    fclose(rule_header);
@@ -943,7 +943,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
          }
          else
          {
-            PTRSI("node_map[%d].relabel_item = false;\n", 3, index);
+            PTRSI("node_map[%d].relabel_item = %d;\n", 3, index, item->change_root);
             PTRSI("node_map[%d].new_label = NULL;\n", 3, index);
          }
       }

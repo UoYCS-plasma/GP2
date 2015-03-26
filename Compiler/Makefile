@@ -1,6 +1,6 @@
 OBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o \
           transform.o label.o graph.o rule.o stack.o searchplan.o \
-          genHost.o genRule.o genProgram.o main.o
+          analysis.o genHost.o genRule.o genProgram.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 LFLAGS = -lglib-2.0 
@@ -47,7 +47,7 @@ lex.yy.c:	gplexer.lex parser.h ast.h error.h
 		$(CC) -c $(CFLAGS) -o $@ $<
 
 # Dependencies
-main.o:		error.h globals.h genHost.h genProgram.h genRule.h parser.h seman.h
+main.o:		analysis.h error.h globals.h genHost.h genProgram.h genRule.h parser.h seman.h
 parser.o:	parser.h lex.yy.c
 debug.o:	error.h globals.h 
 ast.o: 		ast.h error.h globals.h
@@ -59,6 +59,7 @@ rule.o:		error.h globals.h graph.h rule.h
 transform.o:	ast.h error.h globals.h graph.h label.h rule.h transform.h 
 stack.o:	error.h globals.h stack.h
 searchplan.o:	graph.h globals.h searchplan.h
+analysis.o:	ast.h globals.h pretty.h analysis.h
 genHost.o:	ast.h error.h globals.h transform.h genHost.h
 genRule.o:	error.h globals.h rule.h searchplan.h transform.h genRule.h
 genProgram.o:	ast.h error.h globals.h genProgram.h

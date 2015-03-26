@@ -36,9 +36,9 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    PTIS("   Label *node_labels[%d] = {NULL};\n", node_buffer_size);
    if(host_edges > 0) 
    {
-      PTIS("   int edge_sources[%d];\n", node_buffer_size);
-      PTIS("   int edge_targets[%d];\n", node_buffer_size);
-      PTIS("   Label *edge_labels[%d] = {NULL};\n", node_buffer_size);
+      PTIS("   int edge_sources[%d] = {0};\n", edge_buffer_size);
+      PTIS("   int edge_targets[%d] = {0};\n", edge_buffer_size);
+      PTIS("   Label *edge_labels[%d] = {NULL};\n", edge_buffer_size);
    }
    PTIS("\n");
 
@@ -55,7 +55,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    while(nodes != NULL)
    { 
       GPNode *ast_node = nodes->value.node;
-      if(ast_node->root) PTIS("   root_nodes[%d] = true;\n ", node_count);
+      if(ast_node->root) PTIS("   root_nodes[%d] = true;\n", node_count);
       if(ast_node->label->mark != NONE ||
          ast_node->label->gp_list->list_type != EMPTY_LIST)
          PTIS("   node_labels[%d] = makeEmptyList(%d);\n", node_count, 

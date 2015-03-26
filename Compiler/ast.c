@@ -59,6 +59,7 @@ List *addASTRule(YYLTYPE location, string rule_name, List *next)
     new_rule->list_type = RULES;
     new_rule->location = location;
     new_rule->value.rule_call.rule_name = strdup(rule_name);
+    new_rule->value.rule_call.copy_point = false;
     new_rule->value.rule_call.rule = NULL;
     new_rule->next = next;
 
@@ -248,7 +249,7 @@ GPDeclaration *newASTRuleDecl(YYLTYPE location, GPRule *rule)
 
 
 
-GPStatement *newASTCommandSequence(YYLTYPE location, List *cmd_seq)
+GPStatement *newASTCommandSequence(YYLTYPE location, List *commands)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
@@ -260,7 +261,7 @@ GPStatement *newASTCommandSequence(YYLTYPE location, List *cmd_seq)
 
     stmt->statement_type = COMMAND_SEQUENCE;
     stmt->location = location;
-    stmt->value.cmd_seq = cmd_seq;
+    stmt->value.commands = commands;
 
     return stmt;
 }
@@ -278,8 +279,8 @@ GPStatement *newASTRuleCall(YYLTYPE location, string rule_name)
     stmt->statement_type = RULE_CALL;
     stmt->location = location;
     stmt->value.rule_call.rule_name = strdup(rule_name);
+    stmt->value.rule_call.copy_point = false;
     stmt->value.rule_call.rule = NULL;
-
     return stmt;
 }
 
@@ -336,11 +337,12 @@ GPStatement *newASTCondBranch(StatementType statement_type, YYLTYPE location,
     stmt->value.cond_branch.condition = condition;
     stmt->value.cond_branch.then_stmt = then_stmt;
     stmt->value.cond_branch.else_stmt = else_stmt;
-
+    stmt->value.cond_branch.restore_point = -1;
+    stmt->value.cond_branch.copy_point = false;
     return stmt;
 }
 
-GPStatement *newASTAlap(YYLTYPE location, GPStatement *loop_stmt)
+GPStatement *newASTAlap(YYLTYPE location, GPStatement *loop_body)
 {
     GPStatement *stmt = malloc(sizeof(GPStatement));
    
@@ -352,7 +354,9 @@ GPStatement *newASTAlap(YYLTYPE location, GPStatement *loop_stmt)
 
     stmt->statement_type = ALAP_STATEMENT;
     stmt->location = location;
-    stmt->value.loop_stmt = loop_stmt;
+    stmt->value.loop_stmt.loop_body = loop_body;
+    stmt->value.loop_stmt.restore_point = -1;
+    stmt->value.loop_stmt.copy_point = false;
 
     return stmt;
 }
@@ -672,7 +676,7 @@ GPAtomicExp *newASTBinaryOp(AtomExpType exp_type, YYLTYPE location,
 
 
 GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls,
-                             GPStatement *cmd_seq)
+                             GPStatement *commands)
 {
     GPProcedure *proc = malloc(sizeof(GPProcedure));
     
@@ -686,7 +690,8 @@ GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls,
     proc->location = location;
     proc->name = strdup(name);
     proc->local_decls = local_decls;
-    proc->cmd_seq = cmd_seq;
+    proc->commands = commands;
+    proc->restore_point = -1;
 
     return proc;
 }
@@ -711,6 +716,8 @@ GPRule *newASTRule(YYLTYPE location, string name, List *variables,
     rule->rhs = rhs;
     rule->interface = interface;
     rule->condition = condition;
+    rule->empty_lhs = false;
+    rule->is_predicate = false;
 
     return rule;
 }    
@@ -954,7 +961,7 @@ void freeASTStatement(GPStatement *stmt)
    {
       case COMMAND_SEQUENCE:	
 
-           if(stmt->value.cmd_seq) freeAST(stmt->value.cmd_seq);
+           if(stmt->value.commands) freeAST(stmt->value.commands);
 
            break;
 
@@ -996,7 +1003,8 @@ void freeASTStatement(GPStatement *stmt)
 
       case ALAP_STATEMENT:
 
-           if(stmt->value.loop_stmt) freeASTStatement(stmt->value.loop_stmt);
+           if(stmt->value.loop_stmt.loop_body) 
+              freeASTStatement(stmt->value.loop_stmt.loop_body);
             
            break;
 
@@ -1203,7 +1211,7 @@ void freeASTProcedure(GPProcedure *proc)
    if(proc == NULL) return;
    if(proc->name) free(proc->name);
    if(proc->local_decls) freeAST(proc->local_decls);
-   if(proc->cmd_seq) freeASTStatement(proc->cmd_seq);
+   if(proc->commands) freeASTStatement(proc->commands);
    free(proc);
 }
 

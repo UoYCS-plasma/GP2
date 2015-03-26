@@ -1,16 +1,6 @@
 #ifndef INC_GEN_MACROS_H
 #define INC_GEN_MACROS_H
 
-#define GET_GRAPH_AT_RESTORE_POINT                                         \
-   do {                                                                    \
-   if(restore_index > 0)                                                   \
-   {                                                                       \
-      int restore_depth = stack_depth - restore_points[restore_index - 1]; \
-      host = restoreGraph(host, restore_depth);                            \
-      stack_depth -= restore_depth;                                        \
-   }                                                                       \
-   } while(0);
-     
 #define MAKE_MATCHED_NODES_ARRAY                \
    int count;                                   \
    int matched_nodes[left_nodes];               \
@@ -41,7 +31,7 @@
 #define IF_INVALID_NODE(lclass, nmark, indeg, outdeg, bideg)  \
    if(node_matched ||                                         \
       host_node->label_class != (lclass) ||                   \
-      host_node->label->mark != (nmark) ||                    \
+      (host_node->label->mark != (nmark) && (nmark) != 6) ||  \
       host_node->indegree < (indeg) ||                        \
       host_node->outdegree < (outdeg) ||                      \
       ((host_node->outdegree + host_node->indegree            \
@@ -50,23 +40,23 @@
 #define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg, bideg)  \
    if(node_matched ||                                                  \
       host_node->label_class != (lclass) ||                            \
-      host_node->label->mark != (nmark) ||                             \
+      (host_node->label->mark != (nmark) && (nmark) != 6 ||            \
       host_node->indegree < (indeg) ||                                 \
       host_node->outdegree < (outdeg) ||                               \
       host_node->outdegree - (outdeg) != (bideg) ||                    \
       host_node->indegree - (indeg) != (bideg))                        \
 
 
-#define IF_INVALID_EDGE(lclass, emark)       \
-   if(edge_matched ||                        \
-      host_edge->label_class != (lclass) ||  \
-      host_edge->label->mark != (emark))
+#define IF_INVALID_EDGE(lclass, emark)                     \
+   if(edge_matched ||                                      \
+      host_edge->label_class != (lclass) ||                \
+      (host_edge->label->mark != (emark) && (emark) != 6))
 
-#define IF_INVALID_LOOP_EDGE(lclass, emark)      \
-   if(edge_matched ||                            \
-      host_edge->source != host_edge->target ||  \
-      host_edge->label_class != (lclass) ||      \
-      host_edge->label->mark != (emark))
+#define IF_INVALID_LOOP_EDGE(lclass, emark)                \
+   if(edge_matched ||                                      \
+      host_edge->source != host_edge->target ||            \
+      host_edge->label_class != (lclass) ||                \
+      (host_edge->label->mark != (emark) && (emark) != 6))
 
 /* Deletes all the host items in the morphism from the host graph. Edges are
  * deleted first so that there is no chance of dangling edges from node

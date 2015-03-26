@@ -14,6 +14,7 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
+#include "analysis.h"
 #include "error.h"
 #include "globals.h"
 #include "genHost.h"
@@ -22,7 +23,7 @@
 #include "parser.h"
 #include "seman.h" 
 
-#undef DEBUG
+#define DEBUG
 #undef PARSER_TRACE 	
 
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
@@ -104,7 +105,11 @@ int main(int argc, char** argv)
    {
       print_to_console("Generating code...\n\n");
       generateRules(gp_program);
-      //staticAnalysis(gp_program, gp_program);
+      #ifdef DEBUG
+         staticAnalysis(gp_program, true, argv[1]);   
+      #else
+         staticAnalysis(gp_program, false, NULL);
+      #endif
       generateRuntimeCode(gp_program);
       /* TODO: Some flag to only call this function and not generateRuntimeCode. */
       generateHostGraphCode(ast_host_graph);

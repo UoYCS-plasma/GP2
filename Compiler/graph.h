@@ -152,7 +152,9 @@ void removeEdge(Graph *graph, int index);
 
 /* The relabel functions take boolean arguments to control if the label is 
  * updated and if the boolean flag of the item should be changed. For nodes, 
- * this is the root flag. For edges, this is the bidirectional flag. */
+ * this is the root flag. For edges, this is the bidirectional flag.
+ * TODO: new_label == NULL now signifies no label change. Don't think I need a
+ *       change_label flag anymore. */
 void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label, 
                  bool change_root); 
 void relabelEdge(Graph *graph, Edge *edge, Label *new_label, bool change_label, 
@@ -160,8 +162,10 @@ void relabelEdge(Graph *graph, Edge *edge, Label *new_label, bool change_label,
 
 
 extern Stack *graph_stack;
-/* Creates a memory copy of the passed graph and pushes it to graph_stack. */
-void copyGraph(Graph *graph);
+/* Creates a memory copy of the passed graph and pushes it to the graph stack. 
+ * If replace is true, then the graph stack is popped before pushing the graph
+ * copy. */
+void copyGraph(Graph *graph, int depth);
 /* restoreGraph frees the passed graph and returns the graph <depth> items
  * down the stack. All intermediate graphs are freed. */
 Graph *restoreGraph(Graph *graph, int depth);

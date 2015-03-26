@@ -535,22 +535,15 @@ void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label,
       else addRootNode(graph, node->index);
       node->root = !node->root;
    }
-   if(change_label == false) return;
+   if(change_label == false || new_label == NULL) return;
    else
    {  
       if(!isConstantLabel(node->label)) freeLabel(node->label); 
 
       LabelClass new_label_class;
-      if(new_label == NULL)
-      {          
-         node->label = &blank_label; 
-         new_label_class = EMPTY_L;
-      }
-      else
-      {
-         node->label = new_label;
-         new_label_class = getLabelClass(new_label);
-      }
+      node->label = new_label;
+      new_label_class = getLabelClass(new_label);
+
       /* If the label classes differ, update the graph's LabelClassTables. */
       if(node->label_class != new_label_class) 
       {
@@ -568,22 +561,15 @@ void relabelEdge(Graph *graph, Edge *edge, Label *new_label,
                  bool change_label, bool change_bidirectional)
 {		
    if(change_bidirectional) edge->bidirectional = !edge->bidirectional;
-   if(change_label == false) return;
+   if(change_label == false || new_label == NULL) return;
    else
    {
       if(!isConstantLabel(edge->label)) freeLabel(edge->label); 
 
       LabelClass new_label_class;
-      if(new_label == NULL)
-      {          
-         edge->label = &blank_label; 
-         new_label_class = EMPTY_L;
-      }
-      else
-      {
-         edge->label = new_label;
-         new_label_class = getLabelClass(new_label);
-      }
+      edge->label = new_label;
+      new_label_class = getLabelClass(new_label);
+
       /* If the label classes differ, update the graph's LabelClassTables. */
       if(edge->label_class != new_label_class) 
       {
@@ -599,7 +585,7 @@ void relabelEdge(Graph *graph, Edge *edge, Label *new_label,
 
 Stack *graph_stack = NULL;
 
-void copyGraph(Graph *graph)
+void copyGraph(Graph *graph, int depth)
 {
     Graph *graph_copy = newGraph(graph->node_pool_size, graph->edge_pool_size); 
 
@@ -718,20 +704,30 @@ void copyGraph(Graph *graph)
    if(graph_stack == NULL) graph_stack = newStack(STACK_SIZE);
    StackData data;
    data.graph = graph_copy;
+   /* If there is a graph at the passed depth, pop it and replace it with the
+    * copied graph. */
+   if(depth == graph_stack->top - 1)
+   {
+      StackData old_data = pop(graph_stack);
+      freeGraph(old_data.graph);
+   }
    push(graph_stack, data);
 }
 
-Graph *restoreGraph(Graph *graph, int depth)
+Graph *restoreGraph(Graph *graph, int restore_point)
 {
-   if(depth < 1) return graph;
+   if(graph_stack->top == restore_point) return graph;
    freeGraph(graph);
-   int count;
-   for(count = 0; count < depth; count++)
-   {
+   while(graph_stack->top > restore_point)
+   { 
+      /* Pop decrements graph_stack->top. */
       StackData data = pop(graph_stack);
-      if(count != depth - 1) freeGraph(data.graph);
-      else return data.graph;
+      if(graph_stack->top == restore_point) return data.graph;
+      else freeGraph(data.graph);
    }
+   printf("Error! Restore Point %d, Stack Top %d.\n", restore_point, 
+          graph_stack->top);
+   exit(1);
 }
 
 void freeGraphStack(Stack *graph_stack)

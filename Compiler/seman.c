@@ -166,7 +166,6 @@ bool declarationScan(List *ast, string const scope)
                  g_hash_table_replace(symbol_table, rule_name_copy, symbol_list);  
 	      }
               else if(rule_name) free(rule_name); 
-
               break;
          }
 
@@ -239,8 +238,8 @@ bool semanticCheck(List *declarations, string const scope)
 	      /* An empty procedure program does not comform to the grammar. The
 	       * parser should catch it and report a syntax error, but there is
 	       * no harm in checking here as well. */
-              if(procedure->cmd_seq)
-                  statementScan(procedure->cmd_seq, new_scope, declarations);
+              if(procedure->commands)
+                  statementScan(procedure->commands, new_scope, declarations);
 	      else print_to_log("Error: Procedure %s has no program, "
                                 "not caught by parser. \n", procedure->name);
 
@@ -299,8 +298,8 @@ void statementScan(GPStatement *const statement, string const scope,
    {
       case COMMAND_SEQUENCE: 
       {
-           statement->value.cmd_seq = reverse(statement->value.cmd_seq);
-           List *command_list = statement->value.cmd_seq;
+           statement->value.commands = reverse(statement->value.commands);
+           List *command_list = statement->value.commands;
 
            while(command_list) 
            {
@@ -343,7 +342,7 @@ void statementScan(GPStatement *const statement, string const scope,
            List *rule_list = statement->value.rule_set;
            while(rule_list)
            {
-              string name = statement->value.rule_call.rule_name;
+              string name = rule_list->value.rule_call.rule_name;
               GPProcedure *procedure = NULL;
               /* If not in global scope, get a pointer to the procedure in 
                * which to start search for the rule declaration. */
@@ -362,8 +361,8 @@ void statementScan(GPStatement *const statement, string const scope,
               else
               {
                  free(name);
-                 statement->value.rule_call.rule_name = strdup(rule->name);
-                 statement->value.rule_call.rule = rule;
+                 rule_list->value.rule_call.rule_name = strdup(rule->name);
+                 rule_list->value.rule_call.rule = rule;
               }
               rule_list = rule_list->next;
            }           
@@ -406,7 +405,7 @@ void statementScan(GPStatement *const statement, string const scope,
 
       case ALAP_STATEMENT:
 
-           statementScan(statement->value.loop_stmt, scope, declarations);
+           statementScan(statement->value.loop_stmt.loop_body, scope, declarations);
 
            break;
 

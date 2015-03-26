@@ -72,12 +72,12 @@ void generateRuntimeCode(List *declarations);
 void generateDeclarationCode(List *declarations);
 
 void generateProgramCode(GPStatement *statement, ContextType context, 
-                         bool copy_before_condition, int indent);
-void generateCommandSequence(List *commands, ContextType context, int indent);
-void generateRuleCall(string rule_name, bool empty_lhs, ContextType context, 
-                      int indent);
-void generateRuleSetCall(List *rules, ContextType context, int indent);
-void generateProcedureCall(string proc_name, ContextType context, int indent);
+                         int restore_point, int indent);
+void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
+                      ContextType context, int restore_point, bool copy_point,
+                      bool in_rule_set, int indent);
+void generateRuleSetCall(List *rules, ContextType context, int restore_point, int indent);
+void generateProcedureCall(string proc_name, ContextType context, int restore_point, int indent);
 
 /* Generates code to handle failure, which is context-dependent. There are two
  * types of failure: 
@@ -88,6 +88,6 @@ void generateProcedureCall(string proc_name, ContextType context, int indent);
  *
  * The rule_name argument is used in the MAIN_BODY context to report the nature
  * of the failure before execution terminates. */
-void generateFailureCode(string rule_name, ContextType context, int indent);
+void generateFailureCode(string rule_name, ContextType context, int restore_point, int indent);
 
 #endif /* INC_GEN_PROGRAM_H */
