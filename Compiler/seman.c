@@ -533,15 +533,19 @@ void ruleScan(GPRule *const rule, string const scope)
               if(++integer_count > 1) 
               {
                  print_to_console("Warning (%s): More than one integer "
-                                  "list in variable declaration section.",
+                                  "list in variable declaration section."
+                                  "Only the first list is considered.\n",
                                   rule_name);
                  print_to_log("Warning (%s): More than one integer list "
                               "in variable declaration section.",
                               rule_name);
               }
-              else enterVariables(INT_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else 
+              {
+                 int count = enterVariables(INT_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
 	      break;
 
          case CHAR_DECLARATIONS:
@@ -549,15 +553,19 @@ void ruleScan(GPRule *const rule, string const scope)
               if(++character_count > 1)
               {
                  print_to_console("Warning (%s): More than one character "
-                                  "list in variable declaration section.",
+                                  "list in variable declaration section."
+                                  "Only the first list is considered.\n",
                                   rule_name);
                  print_to_log("Warning (%s): More than one character list "
                               "in variable declaration section.",
                               rule_name);
               }
-              else enterVariables(CHAR_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else 
+              {
+                 int count = enterVariables(CHAR_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
 	      break;
 
 
@@ -572,9 +580,12 @@ void ruleScan(GPRule *const rule, string const scope)
                               "in variable declaration section.", 
                               rule_name);
               }
-              else enterVariables(STRING_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else
+              {
+                 int count = enterVariables(STRING_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
               break;
    	
          case ATOM_DECLARATIONS:
@@ -588,9 +599,12 @@ void ruleScan(GPRule *const rule, string const scope)
                               "in variable declaration section.",
                               rule_name);
               }
-              else enterVariables(ATOM_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else
+              {
+                 int count = enterVariables(ATOM_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
 	      break; 
 
 	 case LIST_DECLARATIONS:
@@ -604,9 +618,12 @@ void ruleScan(GPRule *const rule, string const scope)
                               "in variable declaration section.", 
                               rule_name);
               }
-              else enterVariables(LIST_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else
+              {
+                 int count = enterVariables(LIST_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
 	      break;  	 
 
 	 default:
@@ -618,18 +635,20 @@ void ruleScan(GPRule *const rule, string const scope)
       variable_list = variable_list->next;
    }
 
-   graphScan(rule->lhs, scope, rule_name, 'l');
-   graphScan(rule->rhs, scope, rule_name, 'r');
+   graphScan(rule, scope, rule_name, 'l');
+   graphScan(rule, scope, rule_name, 'r');
    if(rule->interface) interfaceScan(rule->interface, scope, rule_name);
    if(rule->condition) conditionScan(rule->condition, scope, rule_name);
 }   
 
 
-void enterVariables(SymbolType const type, List *variables, 
-                    string const scope, string const rule_name)
+int enterVariables(SymbolType const type, List *variables, 
+                   string const scope, string const rule_name)
 {
+   int variable_count;
    while(variables) 
    {
+      variable_count++;
       string variable_name = strdup(variables->value.variable_name);	   
       GSList *symbol_list = g_hash_table_lookup(symbol_table, variable_name);
       /* symbol_list is preserved as a new symbol is prepended to it */
@@ -686,12 +705,16 @@ void enterVariables(SymbolType const type, List *variables,
      /* Move to the next variable in the declaration list. */
      variables = variables->next;
    }
+   return variable_count;
 }  
 
 
-void graphScan(GPGraph *const graph, string const scope, 
-               string const rule_name, char const side)
+void graphScan(GPRule *rule, string const scope, string const rule_name,
+               char const side)
 {
+   GPGraph *graph = NULL;
+   if(side == 'l') graph = rule->lhs;
+   else if(side == 'r') graph = rule->rhs;
    /* Variables to store the symbol types and the graph for semantic checking
     * and error reporting. */
    SymbolType node_type, edge_type;
@@ -717,6 +740,7 @@ void graphScan(GPGraph *const graph, string const scope,
 
    while(node_list)  
    {
+      if(side == 'l') rule->left_nodes++;
       /* node_id is used as a key, so it is duplicated as node_id will be freed
        * by g_hash_table_insert. I do not want to also free the node->name in
        * the AST. */
@@ -831,6 +855,7 @@ void graphScan(GPGraph *const graph, string const scope,
 
    while(edge_list)
    {
+      if(side == 'l') rule->left_edges++;
       /* edge_id is used as a key, so it is duplicated as edge_id will be freed
        * by g_hash_table_insert. I do not also want to free the edge->name in
        * the AST. */

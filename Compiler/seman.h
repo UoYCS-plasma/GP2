@@ -220,6 +220,8 @@ void ruleScan(GPRule *const rule, string const scope);
  * into the symbol table. It also checks that each variable name in the
  * parameter list is unique. Variable names are not added to the symbol
  * table if a clash is found. This function is called only by ruleScan.
+ * Returns the number of variables processed by the function. The return
+ * value is used to update the rule's variable count.
  *
  * Argument 1: Variable type, passed from ruleScan. It is one of INT_S,
  *             CHAR_S, STRING_S, ATOM_S, LIST_S.
@@ -228,19 +230,20 @@ void ruleScan(GPRule *const rule, string const scope);
  * Argument 3: The current scope.
  * Argument 4: The current rule being processed. This extra information
  *             is required for variable symbols. */
-void enterVariables(SymbolType const type, List *variables, 
-		    string const scope, string const rule_name);
+int enterVariables(SymbolType const type, List *variables, 
+		   string const scope, string const rule_name);
 
 /* graphScan is responsible for adding nodes and edges to the symbol table.
- * It also performs some semantic analysis: source and target nodes of edges
+ * It performs some semantic analysis: source and target nodes of edges
  * must exist and the union of node IDs and edge IDs in the graph must not 
- * contain duplicates. This function is called only by ruleScan.
+ * contain duplicates. It also updates the rule's left nodes and left edges
+ * count. This function is called only by ruleScan.
  *
- * Argument 1: A pointer to a struct GPGraph.
+ * Argument 1: A pointer to a struct GPRule.
  * Argument 2: The current scope.
  * Argument 3: The current rule being processed.
  * Argument 4: Either 'l' for the LHS graph or 'r' for the RHS graph. */
-void graphScan(GPGraph *graph, string const scope, string const rule_name,
+void graphScan(GPRule *rule, string const scope, string const rule_name,
                char const side);
 
 

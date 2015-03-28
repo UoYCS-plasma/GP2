@@ -13,40 +13,42 @@ void generateRuntimeCode(List *declarations)
    fprintf(host_file, "extern Graph *host;\n");
    fclose(host_file);
 
-   main_header = fopen("runtime/runtime.h", "w");
-   if(main_header == NULL) { 
-     perror("runtime/runtime.h");
-     exit(1);
-   }  
-
    main_source = fopen("runtime/main.c", "w");
    if(main_source == NULL) { 
      perror("runtime/main.c");
      exit(1);
    }
 
-   PTMH("#include <time.h>\n"
+   PTMS("#include <time.h>\n"
         "#include \"../error.h\"\n"
         "#include \"../debug.h\"\n"
         "#include \"../graph.h\"\n"
+        "#include \"init_runtime.h\"\n"
         "#include \"host.h\"\n"
         "#include \"match.h\"\n"
-        "#include \"../stack.h\"\n"
-        "#include \"init_runtime.h\"\n\n");
-
-   PTMS("#include \"runtime.h\"\n\n");
-
+        "#include \"../stack.h\"\n\n");
+   generateMorphismCode(declarations, 'd');
+   PTMS("Graph *host = NULL;\n"
+        "bool success = true;\n\n"
+        "void freeMorphisms(void);\n\n");
    generateDeclarationCode(declarations);
-
-   fclose(main_header);
    fclose(main_source);
 }
 
 void generateDeclarationCode(List *declarations)
 {
-   while(declarations != NULL)
+   PTMS("int main(void)\n"
+        "{\n"               
+        "   srand(time(NULL));\n"
+        "   openLogFileR();\n"
+        "   host = makeHostGraph();\n\n");
+   /* Debug code 
+   PTMS("   printGraph(host);\n\n"); */
+   generateMorphismCode(declarations, 'm');
+   List *iterator = declarations;
+   while(iterator != NULL)
    {
-      GPDeclaration *decl = declarations->value.declaration;
+      GPDeclaration *decl = iterator->value.declaration;
      
       switch(decl->decl_type)
       {
@@ -54,43 +56,74 @@ void generateDeclarationCode(List *declarations)
           * The semantic analysis ensures that the passed AST contains exactly one
           * MAIN_DECLARATION node. */
          case MAIN_DECLARATION:
-
-              PTMS("Graph *host = NULL;\n"
-                   "Morphism *morphism = NULL;\n"
-                   "string result = NULL;\n"
-                   "bool success = true;\n\n"
-                   "int main(void)\n"
-                   "{\n"               
-                   "   srand(time(NULL));\n"
-                   "   openLogFileR();\n"
-                   "   host = makeHostGraph();\n\n");
-                   /* Debug code 
-                   "   printGraph(host);\n\n"); */
-
               generateProgramCode(decl->value.main_program, MAIN_BODY, -1, 3);
-
-              PTMS("   printGraph(host);\n"
-                   "   freeGraph(host);\n"
-                   "   if(graph_stack) freeGraphStack(graph_stack);\n"
-                   "   closeLogFile();\n\n"
-                   "   return 0;\n"
-                   "}\n\n");
-
               break;
 
          case PROCEDURE_DECLARATION:
-
               if(decl->value.procedure->local_decls != NULL)
                  generateDeclarationCode(decl->value.procedure->local_decls);
-              
               break;
 
          case RULE_DECLARATION:
-
-              PTMH("#include \"%s.h\"\n", decl->value.rule->name);
               break;
 
-         default: print_to_log("Error (generateRuntimeCode): Unexpected "
+         default: print_to_log("Error (generateDeclarationCode): Unexpected "
+                               "declaration type %d at AST node %d\n", 
+                               decl->decl_type, decl->node_id);
+              break;
+      }
+      iterator = iterator->next;
+   }
+   PTMS("   printGraph(host);\n"
+        "   freeGraph(host);\n"
+        "   freeMorphisms();\n"
+        "   if(graph_stack) freeGraphStack(graph_stack);\n"
+        "   closeLogFile();\n\n"
+        "   return 0;\n"
+        "}\n\n");
+
+   PTMS("void freeMorphisms(void)\n{\n");
+   generateMorphismCode(declarations, 'f');
+   PTMS("}\n");
+}
+
+void generateMorphismCode(List *declarations, char type)
+{
+   if(type != 'm' && type != 'f' && type != 'd') 
+   {
+      print_to_log("Error: generateMorphismCode called with invalid type %c.\n", type);
+      exit(1);
+   }
+   while(declarations != NULL)
+   {
+      GPDeclaration *decl = declarations->value.declaration;
+      switch(decl->decl_type)
+      {
+         case MAIN_DECLARATION:
+              break;
+
+         case PROCEDURE_DECLARATION:
+              if(decl->value.procedure->local_decls != NULL)
+                 generateMorphismCode(decl->value.procedure->local_decls, type);
+              break;
+
+         case RULE_DECLARATION:
+         {
+              GPRule *rule = decl->value.rule;
+              if(type == 'd')
+              {
+                 PTMS("#include \"%s.h\"\n", rule->name);
+                 PTMS("Morphism *M_%s = NULL;\n", rule->name);
+              }
+              if(type == 'm')
+                 PTMSI("M_%s = makeMorphism(%d, %d, %d);\n", 3,
+                       rule->name, rule->left_nodes, rule->left_edges,
+                       rule->variable_count);
+              if(type == 'f')
+                 PTMSI("freeMorphism(M_%s);\n", 3, rule->name);
+              break;
+         }
+         default: print_to_log("Error (generateMorphismCode): Unexpected "
                                "declaration type %d at AST node %d\n", 
                                decl->decl_type, decl->node_id);
               break;
@@ -98,6 +131,7 @@ void generateDeclarationCode(List *declarations)
       declarations = declarations->next;
    }
 }
+
 
 void generateProgramCode(GPStatement *statement, ContextType context, 
                          int restore_point, int indent)
@@ -212,8 +246,17 @@ void generateProgramCode(GPStatement *statement, ContextType context,
            PTMSI("/* Loop Statement */\n", indent);
            PTMSI("while(success)\n", indent);
            PTMSI("{\n", indent);
-           if(statement->value.loop_stmt.copy_point && loop_restore_point >= 0)
-              PTMSI("copyGraph(host, %d);\n", indent + 3, loop_restore_point);
+           /* Local flag to determine if the graph has been copied in the 
+            * current iteration. */
+           if(loop_restore_point >= 0) 
+           {
+              PTMSI("bool graph_copied = false;\n", indent + 3);
+              if(statement->value.loop_stmt.copy_point)
+              {
+                 PTMSI("copyGraph(host, %d);\n", indent + 3, loop_restore_point);
+                 PTMSI("graph_copied = true;\n", indent + 3);
+              }
+           }
            generateProgramCode(statement->value.loop_stmt.loop_body, LOOP_BODY, 
                                loop_restore_point, indent + 3);
            PTMSI("}\n", indent);
@@ -273,37 +316,37 @@ void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
    }
    else
    {
-      PTMSI("morphism = match%s();\n", indent, rule_name);
-      PTMSI("if(morphism != NULL)\n", indent);
+      PTMSI("if(match%s(M_%s))\n", indent, rule_name, rule_name);
       PTMSI("{\n", indent);
-      if(copy_graph) PTMSI("copyGraph(host, %d);\n", indent + 3, restore_point);
+      if(copy_graph)
+      {
+         PTMSI("copyGraph(host, %d);\n", indent + 3, restore_point);
+         if(context == LOOP_BODY) PTMSI("graph_copied = true;\n", indent + 3);
+      }
       if(predicate) PTMSI("freeMorphism(morphism);\n", indent + 3);
       else
       {
          /* Optimisation: Don't have to apply the last rule in an if condition.
-         * However, finding such rules is non-trivial. The condition below
-         * suffices for contexts where applying the rule is incorrect, namely
-         * where there is no restore point and hence the graph is not copied
-         * in the GP2 if condition. */
+          * However, finding such rules is non-trivial. The condition below
+          * suffices for contexts where applying the rule is incorrect, namely
+          * where there is no restore point and hence the graph is not copied
+          * in the GP2 if condition. */
          if(context != IF_BODY || restore_point >= 0)
-            PTMSI("apply%s(morphism);\n", indent + 3, rule_name);
-         else PTMSI("freeMorphism(morphism);\n", indent + 3);
+         {
+            PTMSI("apply%s(M_%s);\n", indent + 3, rule_name, rule_name);
+            PTMSI("clearMorphism(M_%s);\n", indent + 3, rule_name);
+         }
       }
       PTMSI("success = true;\n", indent + 3);
       if(in_rule_set) PTMSI("break;\n", indent + 3);
       PTMSI("}\n", indent);
       /* No failure code in a rule set: the generated code follows through to the
-      * next rule in the set. This flag is not set for the last rule in a set. */
+       * next rule in the set. This flag is not set for the last rule in a set. */
       if(!in_rule_set)
       {
          PTMSI("else\n", indent);
          PTMSI("{\n", indent);
-         /* Do not restore the graph on a loop if this is a copy point, otherwise 
-         * the working graph will be the graph before this rule was applied on the
-         * previous iteration, effectively neglecting an entire loop iteration. */
-         if(context == LOOP_BODY && copy_graph) 
-            PTMSI("success = false;\n", indent + 3);
-         else generateFailureCode(rule_name, context, restore_point, indent + 3);
+         generateFailureCode(rule_name, context, restore_point, indent + 3);
          PTMSI("}\n", indent);   
       }
    }
@@ -346,6 +389,7 @@ void generateFailureCode(string rule_name, ContextType context, int restore_poin
                  "invoked.\\n\");\n", indent);
       PTMSI("if(graph_stack) freeGraphStack(graph_stack);\n", indent);
       PTMSI("freeGraph(host);\n", indent);
+      PTMSI("freeMorphisms();\n", indent);
       PTMSI("closeLogFile();\n", indent);
       PTMSI("return 0;\n", indent);
    }
@@ -360,7 +404,7 @@ void generateFailureCode(string rule_name, ContextType context, int restore_poin
       else PTMSI("return \"%s\";\n", indent, rule_name);
    }
    if(context == LOOP_BODY && restore_point >= 0) 
-      PTMSI("host = restoreGraph(host, %d);\n", indent, restore_point);
+      PTMSI("if(graph_copied) host = restoreGraph(host, %d);\n", indent, restore_point);
 }
 
 

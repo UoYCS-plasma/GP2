@@ -270,6 +270,9 @@ typedef struct GPRule {
   struct GPGraph *rhs;
   struct List *interface;
   struct GPCondExp *condition;
+  int left_nodes;
+  int left_edges;
+  int variable_count;
   bool empty_lhs;
   bool is_predicate;
 } GPRule;

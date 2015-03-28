@@ -71,8 +71,7 @@ void generateRuleCode(Rule *rule, bool predicate);
  * Argument 3: The list of nodes that the rule deletes. The dangling condition
  *             is checked for candidate host graph nodes that match a deleted
  *             node.  */
-void generateMatchingCode(string rule_name, int number_of_variables, 
-                          Graph *lhs, ItemList *deleted_nodes);
+void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes);
 
 
 /* Emits the declaration and definition of the main matching function 
@@ -86,7 +85,7 @@ void generateMatchingCode(string rule_name, int number_of_variables,
  * Argument 3: The number of nodes in the LHS.
  * Argument 4: The number of edges in the LHS. */
 void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes, 
-                     int left_edges, int variables);
+                     int left_edges);
 
 /* The four emitMatcher functions take an LHS item and emit a function that 
  * searches for a matching host item. The generated code queries the host graph

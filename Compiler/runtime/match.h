@@ -84,6 +84,7 @@ typedef struct Morphism {
 } Morphism;
 
 Morphism *makeMorphism(int nodes, int edges, int variables);
+void clearMorphism(Morphism *morphism);
 void addNodeMap(Morphism *morphism, int left_index, int host_index);
 void addEdgeMap(Morphism *morphism, int left_index, int host_index);
 void addAssignment(Morphism *morphism, string variable, GP2List value);

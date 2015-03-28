@@ -70,7 +70,7 @@ void generateRuntimeCode(List *declarations);
  * will create a module to match and apply that rule.
  */
 void generateDeclarationCode(List *declarations);
-
+void generateMorphismCode(List *declarations, char type);
 void generateProgramCode(GPStatement *statement, ContextType context, 
                          int restore_point, int indent);
 void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,

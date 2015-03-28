@@ -55,7 +55,7 @@ int countEdges(GPGraph *graph)
    int edges = 0;
    List *iterator;
    for(iterator = graph->edges; iterator != NULL; iterator = iterator->next)
-      edges++;
+       edges++;
    return edges;
 }
 

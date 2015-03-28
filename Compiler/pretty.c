@@ -967,9 +967,11 @@ void printASTRule(GPRule *const rule, FILE *dot_file)
 
    if(rule->name != NULL)
       print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Rule \\n Name: %s \\n Empty LHS: %d\\n"
+                        "Rule \\n Name: %s \\n Left Nodes: %d\\n" 
+                        "Left Edges: %d \\n Variables: %d \\n Empty LHS: %d\\n"
                         "Predicate: %d\"]\n", rule->node_id, rule->node_id,
-                        LOCATION_ARGS(rule->location), rule->name, 
+                        LOCATION_ARGS(rule->location), rule->name,
+                        rule->left_nodes, rule->left_edges, rule->variable_count,
                         rule->empty_lhs, rule->is_predicate);
    else 
    {

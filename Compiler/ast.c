@@ -716,6 +716,9 @@ GPRule *newASTRule(YYLTYPE location, string name, List *variables,
     rule->rhs = rhs;
     rule->interface = interface;
     rule->condition = condition;
+    rule->left_nodes = 0;
+    rule->left_edges = 0;
+    rule->variable_count = 0;
     rule->empty_lhs = false;
     rule->is_predicate = false;
 

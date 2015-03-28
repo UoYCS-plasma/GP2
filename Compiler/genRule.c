@@ -103,14 +103,12 @@ void generateRuleCode(Rule *rule, bool predicate)
    {
       if(rule->rhs == NULL)
       {
-         generateMatchingCode(rule_name, rule->number_of_variables, rule->lhs,
-                              rule->deleted_nodes);
+         generateMatchingCode(rule_name, rule->lhs, rule->deleted_nodes);
          if(!predicate) generateApplicationCode(rule, false, true);
       }
       else
       {
-         generateMatchingCode(rule_name, rule->number_of_variables, rule->lhs,
-                              rule->deleted_nodes);
+         generateMatchingCode(rule_name, rule->lhs, rule->deleted_nodes);
          if(!predicate) generateApplicationCode(rule, false, false);
       }
    }
@@ -119,8 +117,7 @@ void generateRuleCode(Rule *rule, bool predicate)
    return;
 }
 
-void generateMatchingCode(string rule_name, int number_of_variables,
-                          Graph *lhs, ItemList *deleted_nodes)
+void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes)
 {
    searchplan = generateSearchplan(lhs); 
 
@@ -201,7 +198,7 @@ void generateMatchingCode(string rule_name, int number_of_variables,
    }
  
    emitRuleMatcher(rule_name, searchplan->first, lhs->number_of_nodes, 
-                   lhs->number_of_edges, number_of_variables);
+                   lhs->number_of_edges);
    PTRS("\n\n");
 
    /* The second iteration of the searchplan prints the definitions of the 
@@ -275,21 +272,20 @@ void generateMatchingCode(string rule_name, int number_of_variables,
 
 
 void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes, 
-                     int left_edges, int variables)
+                     int left_edges)
 {
    char item;
    if(first_op->is_node) item = 'n';
    else item = 'e';
 
-   PTRH("Morphism *match%s(void);\n", rule_name);
+   PTRH("bool match%s(Morphism *morphism);\n", rule_name);
    PTRS("\nstatic int left_nodes = %d, left_edges = %d;\n"
-        "\nMorphism *match%s(void)\n"
+        "\nbool match%s(Morphism *morphism)\n"
         "{\n" 
         "   if(left_nodes > host->number_of_nodes ||\n"
         "      left_edges > host->number_of_edges) return false;\n\n"
-        "   Morphism *morphism = makeMorphism(left_nodes, left_edges, %d);\n\n"
         "   MAKE_MATCHED_NODES_ARRAY\n",
-        left_nodes, left_edges, rule_name, variables);
+        left_nodes, left_edges, rule_name);
 
    /* The matched edges array should not be created when there are 0 host
     * edges. Hence the following macro is only generated if there is at least
@@ -301,17 +297,13 @@ void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes,
       PTRS("   MAKE_MATCHED_EDGES_ARRAY\n");
 
    if(first_op->next == NULL)
-      PTRS("\n   bool match_found = match_%c%d(morphism, matched_nodes);\n",
+      PTRS("\n   return match_%c%d(morphism, matched_nodes);\n",
            item, first_op->index);
    else
-      PTRS("\n   bool match_found = match_%c%d(morphism, matched_nodes, "
-           "matched_edges);\n", item, first_op->index);
-   PTRS("   if(match_found) return morphism;\n"
-        "   freeMorphism(morphism);\n"
-        "   return NULL;\n"
-        "}\n");
+      PTRS("\n   return match_%c%d(morphism, matched_nodes, matched_edges);\n",
+           item, first_op->index);
+   PTRS("}\n");
 }
-
 
 void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
                      SearchOp *next_op)
@@ -1041,7 +1033,5 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       label_count++;
       iterator_e = iterator_e->next;      
    }
-   PTRS("   freeMorphism(morphism);\n"
-        "   return;\n"
-        "}\n\n");
+   PTRS("   return;\n}\n\n");
 }
