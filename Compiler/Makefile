@@ -1,5 +1,5 @@
 OBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o \
-          transform.o label.o graph.o rule.o stack.o searchplan.o \
+          transform.o label.o graph.o graphStacks.o rule.o stack.o searchplan.o \
           analysis.o genHost.o genRule.o genProgram.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
@@ -9,7 +9,7 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
 
 # Builds the parser and code generator, runs it on the passed GP2 program/host graph files,
 # and executes the generated code.
-# Usage: make F1=<path_to_program_file> F2=<path_to_host_graph_file>
+# Usage: make all F1=<path_to_program_file> F2=<path_to_host_graph_file>
 default:	
 		make compile 
 		./GP2-compile $(F1) $(F2) 
@@ -54,7 +54,8 @@ ast.o: 		ast.h error.h globals.h
 pretty.o:       pretty.h ast.h error.h globals.h seman.h
 seman.o:	seman.h ast.h error.h globals.h
 label.o:	label.h error.h globals.h
-graph.o:	error.h globals.h label.h stack.h graph.h 
+graph.o:	error.h globals.h label.h graph.h 
+graphStacks.o:  error.h globals.h graph.h stack.h graphStacks.h
 rule.o:		error.h globals.h graph.h rule.h
 transform.o:	ast.h error.h globals.h graph.h label.h rule.h transform.h 
 stack.o:	error.h globals.h stack.h

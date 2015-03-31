@@ -23,10 +23,10 @@ void generateRuntimeCode(List *declarations)
         "#include \"../error.h\"\n"
         "#include \"../debug.h\"\n"
         "#include \"../graph.h\"\n"
+        "#include \"../graphStacks.h\"\n"
         "#include \"init_runtime.h\"\n"
         "#include \"host.h\"\n"
-        "#include \"match.h\"\n"
-        "#include \"../stack.h\"\n\n");
+        "#include \"match.h\"\n");
    generateMorphismCode(declarations, 'd');
    PTMS("Graph *host = NULL;\n"
         "bool success = true;\n\n"

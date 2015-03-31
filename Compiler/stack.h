@@ -11,7 +11,8 @@
 #ifndef INC_STACK_H
 #define INC_STACK_H
 
-#define STACK_SIZE 16
+#define GRAPH_STACK_SIZE 4
+#define GRAPH_CHANGE_STACK_SIZE 32
 
 #include "error.h"
 #include "globals.h"
@@ -19,6 +20,7 @@
 typedef union StackData
 {
    struct Graph *graph;
+   struct GraphChange *graph_change;
 } StackData;
 
 /* The rightmost entry of the array is the top of the stack. */

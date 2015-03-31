@@ -1,5 +1,5 @@
 ROBJECTS := $(patsubst %.c, %.o, $(wildcard *.c))
-LOBJECTS = ../debug.o ../error.o ../label.o ../graph.o ../rule.o ../stack.o 
+LOBJECTS = ../debug.o ../error.o ../label.o ../graph.o ../graphStacks.o ../rule.o ../stack.o
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
 CC = gcc 
