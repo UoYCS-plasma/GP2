@@ -80,7 +80,7 @@ void freeItemList(ItemList *item_list);
  * otherwise it is the label of the corresponding RHS item. */
 typedef struct PreservedItemList {
    int left_index;
-   bool change_root;
+   bool rhs_root;
    Label *new_label;
    struct PreservedItemList *next;
 } PreservedItemList;

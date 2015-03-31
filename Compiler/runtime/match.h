@@ -19,9 +19,8 @@
 
 typedef struct RewriteData {
    bool remove_item;
-   bool change_root;
-   bool relabel_item;
-   Label *new_label;
+   bool rhs_root;
+   Label *new_label; /* NULL if the label does not change. */
    int host_index;
 } RewriteData;
 

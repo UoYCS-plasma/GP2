@@ -918,26 +918,18 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       if(item == NULL) 
       {
          PTRSI("node_map[%d].remove_item = true;\n", 3, index);
-         PTRSI("node_map[%d].change_root = false;\n", 3, index);
-         PTRSI("node_map[%d].relabel_item = false;\n", 3, index);
+         PTRSI("node_map[%d].rhs_root = false;\n", 3, index);
          PTRSI("node_map[%d].new_label = NULL;\n", 3, index);
          continue;
       }
       else
       {
          PTRSI("node_map[%d].remove_item = false;\n", 3, index);
-         PTRSI("node_map[%d].change_root = %d;\n", 3, index, item->change_root);
-         if(item->new_label != NULL)
-         {
-            PTRSI("node_map[%d].relabel_item = true;\n", 3, index);
-            PTRSI("node_map[%d].new_label = makeEmptyList(%d);\n", 3, index,
-                  item->new_label->mark);
-         }
-         else
-         {
-            PTRSI("node_map[%d].relabel_item = %d;\n", 3, index, item->change_root);
-            PTRSI("node_map[%d].new_label = NULL;\n", 3, index);
-         }
+         PTRSI("node_map[%d].rhs_root = %d;\n", 3, index, item->rhs_root);
+         if(item->new_label == NULL)
+              PTRSI("node_map[%d].new_label = NULL;\n", 3, index);
+         else PTRSI("node_map[%d].new_label = makeEmptyList(%d);\n", 3, index,
+                    item->new_label->mark);
       }
       PTRSI("node_map[%d].host_index = -1;\n\n", 3, index);
    } 
@@ -946,29 +938,21 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       PTRS("   RewriteData edge_map[%d];\n", lhs->number_of_edges);
    for(index = 0; index < lhs->number_of_edges; index++)
    {
-      PTRSI("edge_map[%d].change_root = false;\n", 3, index);
+      PTRSI("edge_map[%d].rhs_root = false;\n", 3, index);
       PreservedItemList *item = queryPItemList(rule->preserved_edges, index);
       if(item == NULL) 
       {
          PTRSI("edge_map[%d].remove_item = true;\n", 3, index);
-         PTRSI("edge_map[%d].relabel_item = false;\n", 3, index);
          PTRSI("edge_map[%d].new_label = NULL;\n", 3, index);
          continue;
       }
       else
       {
          PTRSI("edge_map[%d].remove_item = false;\n", 3, index);
-         if(item->new_label != NULL)
-         {
-            PTRSI("edge_map[%d].relabel_item = true;\n", 3, index);
-            PTRSI("edge_map[%d].new_label = makeEmptyList(%d);\n", 3, index,
-                  item->new_label->mark);
-         }
-         else
-         {
-            PTRSI("edge_map[%d].relabel_item = false;\n", 3, index);
-            PTRSI("edge_map[%d].new_label = NULL;\n", 3, index);
-         }
+         if(item->new_label == NULL)
+              PTRSI("edge_map[%d].new_label = NULL;\n", 3, index);
+         else PTRSI("edge_map[%d].new_label = makeEmptyList(%d);\n", 3, index,
+                    item->new_label->mark);
       }
       PTRSI("edge_map[%d].host_index = -1;\n\n", 3, index);
    }

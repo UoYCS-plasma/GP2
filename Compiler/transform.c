@@ -202,10 +202,9 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
 
          if(interface_node)
          {
-            bool change_root = ast_node->root != map->root;
             Label *new_label = NULL;
             if(!equalLabels(map->label, label)) new_label = label;
-            *nodes = addPreservedItem(*nodes, map->left_index, change_root, new_label);
+            *nodes = addPreservedItem(*nodes, map->left_index, ast_node->root, new_label);
          }
          else *added_nodes = addItem(*added_nodes, node_index);
         

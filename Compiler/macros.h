@@ -81,39 +81,38 @@
          removeEdge(host, host_index);                       \
          continue;                                           \
       }                                                      \
-      if(edge_map[left_index].relabel_item == true)          \
+      Label *new_label = edge_map[left_index].new_label;     \
+      if(new_label != NULL)                                  \
       {                                                      \
          Edge *host_edge = getEdge(host, host_index);        \
-         Label *label = edge_map[left_index].new_label;      \
-         relabelEdge(host, host_edge, label, true, false);   \
-         continue;                                           \
+         relabelEdge(host, host_edge, new_label, false);     \
       }                                                      \
    }                                                         \
    } while(0);                                               
 
 
-#define PROCESS_NODE_MORPHISMS                                 \
-   do {                                                        \
-   for(count = 0; count < morphism->nodes; count++)            \
-   {                                                           \
-      left_index = morphism->node_map[count].left_index;       \
-      host_index = morphism->node_map[count].host_index;       \
-      if(node_map[left_index].remove_item == true)             \
-      {                                                        \
-         removeNode(host, host_index);                         \
-         continue;                                             \
-      }                                                        \
-      if(node_map[left_index].relabel_item == true)            \
-      {                                                        \
-         Node *host_node = getNode(host, host_index);          \
-         Label *label = node_map[left_index].new_label;        \
-         relabelNode(host, host_node, label, true,             \
-                     node_map[left_index].change_root);        \
-         node_map[left_index].host_index = host_index;         \
-         continue;                                             \
-      }                                                        \
-      else node_map[left_index].host_index = host_index;       \
-   }                                                           \
+#define PROCESS_NODE_MORPHISMS                                             \
+   do {                                                                    \
+   for(count = 0; count < morphism->nodes; count++)                        \
+   {                                                                       \
+      left_index = morphism->node_map[count].left_index;                   \
+      host_index = morphism->node_map[count].host_index;                   \
+      if(node_map[left_index].remove_item == true)                         \
+      {                                                                    \
+         removeNode(host, host_index);                                     \
+         continue;                                                         \
+      }                                                                    \
+      Node *host_node = getNode(host, host_index);                         \
+      Label *new_label = node_map[left_index].new_label;                   \
+      bool change_root = host_node->root != node_map[left_index].rhs_root; \
+      if(new_label != NULL || change_root)                                 \
+      {                                                                    \
+         relabelNode(host, host_node, new_label, change_root);             \
+         node_map[left_index].host_index = host_index;                     \
+         continue;                                                         \
+      }                                                                    \
+      else node_map[left_index].host_index = host_index;                   \
+   }                                                                       \
    } while(0);                                               
 
 #endif /* INC_GEN_MACROS */

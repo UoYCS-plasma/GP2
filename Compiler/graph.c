@@ -526,8 +526,7 @@ void removeLabelClassIndex(LabelClassTable *table, int item_index)
    }
 }
 
-void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label,
-                 bool change_root) 
+void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root) 
 {
    if(change_root)
    {
@@ -535,7 +534,7 @@ void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label,
       else addRootNode(graph, node->index);
       node->root = !node->root;
    }
-   if(change_label == false || new_label == NULL) return;
+   if(new_label == NULL) return;
    else
    {  
       if(!isConstantLabel(node->label)) freeLabel(node->label); 
@@ -558,10 +557,10 @@ void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label,
 }
 
 void relabelEdge(Graph *graph, Edge *edge, Label *new_label, 
-                 bool change_label, bool change_bidirectional)
+                 bool change_bidirectional)
 {		
    if(change_bidirectional) edge->bidirectional = !edge->bidirectional;
-   if(change_label == false || new_label == NULL) return;
+   if(new_label == NULL) return;
    else
    {
       if(!isConstantLabel(edge->label)) freeLabel(edge->label); 

@@ -9,7 +9,7 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
 
 # Builds the parser and code generator, runs it on the passed GP2 program/host graph files,
 # and executes the generated code.
-# Usage: make all F1=<path_to_program_file> F2=<path_to_host_graph_file>
+# Usage: make F1=<path_to_program_file> F2=<path_to_host_graph_file>
 default:	
 		make compile 
 		./GP2-compile $(F1) $(F2) 

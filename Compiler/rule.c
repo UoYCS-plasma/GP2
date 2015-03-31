@@ -172,7 +172,7 @@ void freeItemList(ItemList *item_list)
 }
 
 PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index, 
-                                    bool change_root, Label *new_label)
+                                    bool rhs_root, Label *new_label)
 {
    PreservedItemList *new_list = malloc(sizeof(PreservedItemList));
 
@@ -183,7 +183,7 @@ PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index,
    }
 
    new_list->left_index = left_index;   
-   new_list->change_root = change_root;
+   new_list->rhs_root = rhs_root;
    new_list->new_label = new_label;
    new_list->next = list;
 
@@ -241,12 +241,14 @@ bool isPredicate(Rule *rule)
    if(rule->added_nodes != NULL) return false;
    if(rule->added_edges != NULL) return false;
 
-   /* The rule is not a predicate if any node is relabelled or the root status
-    * of any node is changed. */
+   /* The rule is not a predicate if any node is relabelled or if a root node
+    * is unrooted by the rule. */
    PreservedItemList *iterator = rule->preserved_nodes;
    while(iterator != NULL)
    {
-      if(iterator->change_root || iterator->new_label != NULL) return false;
+      if(iterator->new_label != NULL) return false;
+      Node *node = getNode(rule->lhs, iterator->left_index);
+      if(node->root && !iterator->rhs_root) return false;
       iterator = iterator->next;
    }
    /* Deleted edges are not explicitly represented in the rule. 

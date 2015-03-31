@@ -503,7 +503,9 @@ HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
  * messages to stderr and log_file. */
 void yyerror(const char *error_message)
 {
-   fprintf(stderr, "Error at '%s': %s\n", yytext, error_message);
+   fprintf(stderr, "%d.%d-%d.%d: Error at '%s': %s\n\n", 
+           yylloc.first_line, yylloc.first_column, yylloc.last_line, 
+           yylloc.last_column, yytext, error_message);
    fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, yytext, error_message);
@@ -514,7 +516,9 @@ void yyerror(const char *error_message)
  * the value of yytext may be misleading. */
 void report_warning(const char *error_message)
 {
-   fprintf(stderr, "Warning: %s\n", error_message);
+   fprintf(stderr, "%d.%d-%d.%d: Error: %s\n\n", 
+           yylloc.first_line, yylloc.first_column, yylloc.last_line, 
+           yylloc.last_column, error_message);
    fprintf(log_file, "%d.%d-%d.%d: Error: %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, error_message);

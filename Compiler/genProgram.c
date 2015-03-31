@@ -40,7 +40,7 @@ void generateDeclarationCode(List *declarations)
    PTMS("int main(void)\n"
         "{\n"               
         "   srand(time(NULL));\n"
-        "   openLogFileR();\n"
+        "   openLogFile();\n"
         "   host = makeHostGraph();\n\n");
    /* Debug code 
    PTMS("   printGraph(host);\n\n"); */
@@ -169,8 +169,7 @@ void generateProgramCode(GPStatement *statement, ContextType context,
       case PROCEDURE_CALL:
       {
            GPProcedure *procedure = statement->value.proc_call.procedure;
-           generateProgramCode(procedure->commands, context, 
-                               procedure->restore_point, indent);
+           generateProgramCode(procedure->commands, context, restore_point, indent);
            break;
       }
 
@@ -323,8 +322,7 @@ void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
          PTMSI("copyGraph(host, %d);\n", indent + 3, restore_point);
          if(context == LOOP_BODY) PTMSI("graph_copied = true;\n", indent + 3);
       }
-      if(predicate) PTMSI("freeMorphism(morphism);\n", indent + 3);
-      else
+      if(!predicate)
       {
          /* Optimisation: Don't have to apply the last rule in an if condition.
           * However, finding such rules is non-trivial. The condition below
