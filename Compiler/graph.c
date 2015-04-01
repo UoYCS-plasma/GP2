@@ -526,8 +526,9 @@ void removeLabelClassIndex(LabelClassTable *table, int item_index)
    }
 }
 
-void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root) 
+void relabelNode(Graph *graph, int index, Label *new_label, bool change_root) 
 {
+   Node *node = getNode(graph, index);
    if(change_root)
    {
       if(node->root) removeRootNode(graph, node->index);
@@ -556,9 +557,10 @@ void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root)
    }
 }
 
-void relabelEdge(Graph *graph, Edge *edge, Label *new_label, 
+void relabelEdge(Graph *graph, int index, Label *new_label, 
                  bool change_bidirectional)
 {		
+   Edge *edge = getEdge(graph, index);
    if(change_bidirectional) edge->bidirectional = !edge->bidirectional;
    if(new_label == NULL) return;
    else

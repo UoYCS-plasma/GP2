@@ -278,20 +278,16 @@ void rollBackGraph(Graph *graph)
               break; 
 
          case RELABELLED_NODE:
-         {
-              Node *node = getNode(graph, change->data.relabelled_node.index);
-              relabelNode(graph, node, change->data.relabelled_node.old_label,
+              relabelNode(graph, change->data.relabelled_node.index,
+                          change->data.relabelled_node.old_label,
                           change->data.relabelled_node.change_flag);           
               break;
-         }
 
          case RELABELLED_EDGE:
-         {
-              Edge *edge = getEdge(graph, change->data.relabelled_edge.index);
-              relabelEdge(graph, edge, change->data.relabelled_edge.old_label,
+              relabelEdge(graph, change->data.relabelled_edge.index,
+                          change->data.relabelled_edge.old_label,
                           change->data.relabelled_edge.change_flag);           
               break;
-         }
               
          default: 
               print_to_log("Error (restoreGraph): Unexepected change type %d.\n",

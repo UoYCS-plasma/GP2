@@ -70,24 +70,20 @@
       removeNode(host, morphism->node_map[count].host_index);   \
    } while(0);                                                  \
 
-#define PROCESS_EDGE_MORPHISMS                               \
-   do {                                                      \
-   for(count = 0; count < morphism->edges; count++)          \
-   {                                                         \
-      left_index = morphism->edge_map[count].left_index;     \
-      host_index = morphism->edge_map[count].host_index;     \
-      if(edge_map[left_index].remove_item == true)           \
-      {                                                      \
-         removeEdge(host, host_index);                       \
-         continue;                                           \
-      }                                                      \
-      Label *new_label = edge_map[left_index].new_label;     \
-      if(new_label != NULL)                                  \
-      {                                                      \
-         Edge *host_edge = getEdge(host, host_index);        \
-         relabelEdge(host, host_edge, new_label, false);     \
-      }                                                      \
-   }                                                         \
+#define PROCESS_EDGE_MORPHISMS                                               \
+   do {                                                                      \
+   for(count = 0; count < morphism->edges; count++)                          \
+   {                                                                         \
+      left_index = morphism->edge_map[count].left_index;                     \
+      host_index = morphism->edge_map[count].host_index;                     \
+      if(edge_map[left_index].remove_item == true)                           \
+      {                                                                      \
+         removeEdge(host, host_index);                                       \
+         continue;                                                           \
+      }                                                                      \
+      Label *new_label = edge_map[left_index].new_label;                     \
+      if(new_label != NULL) relabelEdge(host, host_index, new_label, false); \
+   }                                                                         \
    } while(0);                                               
 
 
@@ -107,7 +103,7 @@
       bool change_root = host_node->root != node_map[left_index].rhs_root; \
       if(new_label != NULL || change_root)                                 \
       {                                                                    \
-         relabelNode(host, host_node, new_label, change_root);             \
+         relabelNode(host, host_index, new_label, change_root);            \
          node_map[left_index].host_index = host_index;                     \
          continue;                                                         \
       }                                                                    \

@@ -152,8 +152,8 @@ void removeEdge(Graph *graph, int index);
 /* The relabel functions take boolean arguments to control if the label is 
  * updated and if the boolean flag of the item should be changed. For nodes, 
  * this is the root flag. For edges, this is the bidirectional flag. */
-void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_root); 
-void relabelEdge(Graph *graph, Edge *edge, Label *new_label, 
+void relabelNode(Graph *graph, int index, Label *new_label, bool change_root); 
+void relabelEdge(Graph *graph, int index, Label *new_label, 
                  bool change_bidirectional);
 
 Node *getNode(Graph *graph, int index);
