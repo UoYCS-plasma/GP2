@@ -10,7 +10,7 @@ void staticAnalysis(List *declarations, bool debug, string prefix)
       switch(decl->decl_type)
       {
          case MAIN_DECLARATION:
-              annotate(decl->value.main_program, -1);
+              annotate(decl->value.main_program);
               break;
 
          case PROCEDURE_DECLARATION:
@@ -38,103 +38,10 @@ void staticAnalysis(List *declarations, bool debug, string prefix)
    }
 }
 
-/* Goes through a command sequence. NULL commands are ignored. 
- * If the first non-NULL command encountered is either a non-predicate rule call
- * or a rule set containing a non-predicate rule, the copy points of all 
- * non-predicate rules are set to true and SIMPLE_COMMAND is returned.
- * If the first non-NULL command encountered is anything else, return
- * NORMAL_COMMAND. 
- * In this way only the rules that are necessary to annotate with copy points
- * are annotated. */
-commandType analyseSequence(List *commands, bool copy)
-{
-   while(commands != NULL)
-   {
-      bool last_command = commands->next == NULL;
-      GPStatement *command = commands->value.command;
-      switch(command->statement_type)
-      {
-         case COMMAND_SEQUENCE:
-         {
-              commandType type = analyseSequence(command->value.commands, copy);
-              if(type != NULL_COMMAND) return type;
-              else break;
-         }
+int restore_point = 0;
+int roll_back_point = 0;
 
-         case RULE_CALL:
-              if(last_command) break;
-              if(!command->value.rule_call.rule->is_predicate)
-              {
-                 if(copy) command->value.rule_call.copy_point = true;
-                 return SIMPLE_COMMAND;
-              }
-              else break;
-
-         case RULE_SET_CALL:
-         {
-              if(last_command) break;
-              commandType type = NULL_COMMAND;
-              List *rules = command->value.rule_set;
-              while(rules != NULL)
-              {
-                 if(!rules->value.rule_call.rule->is_predicate) 
-                 {
-                    if(copy) rules->value.rule_call.copy_point = true;
-                    type = SIMPLE_COMMAND;
-                 }
-                 rules = rules->next;
-              }
-              if(type == SIMPLE_COMMAND) return SIMPLE_COMMAND;
-              else break;
-         }
-
-         case PROCEDURE_CALL:
-         {
-              commandType type =
-                 getCommandType(command->value.proc_call.procedure->commands, copy);
-              if(type != NULL_COMMAND) return type;
-              else break;
-         }
-
-         case IF_STATEMENT:
-
-         case TRY_STATEMENT:
-              if(getCommandType(command->value.cond_branch.then_stmt, false)
-                 != NULL_COMMAND) return NORMAL_COMMAND;
-              if(getCommandType(command->value.cond_branch.else_stmt, false)
-                 != NULL_COMMAND) return NORMAL_COMMAND;
-              else break;
-
-         case ALAP_STATEMENT:
-              if(getCommandType(command->value.loop_stmt.loop_body, false)
-                 != NULL_COMMAND) return NORMAL_COMMAND;
-              else break;
-
-         case PROGRAM_OR:
-         {
-            if(getCommandType(command->value.or_stmt.left_stmt, false)
-               != NULL_COMMAND) return NORMAL_COMMAND;
-            if(getCommandType(command->value.or_stmt.right_stmt, false)
-               != NULL_COMMAND) return NORMAL_COMMAND;
-            else break;
-         }
-
-         case SKIP_STATEMENT:
-
-         case FAIL_STATEMENT:
-              break;
-
-         default:
-              print_to_log("Error (simpleStatement): Unexpected statement type %d.\n",
-                           command->statement_type);
-              break;
-      }
-      commands = commands->next;
-   }
-   return NULL_COMMAND;
-}
-
-void annotate(GPStatement *statement, int restore_point)
+void annotate(GPStatement *statement)
 {
    switch(statement->statement_type)
    {
@@ -143,7 +50,7 @@ void annotate(GPStatement *statement, int restore_point)
            List *commands = statement->value.commands;
            while(commands != NULL)
            {            
-              annotate(commands->value.command, restore_point);
+              annotate(commands->value.command);
               commands = commands->next;
            }
            break;
@@ -157,67 +64,61 @@ void annotate(GPStatement *statement, int restore_point)
       case PROCEDURE_CALL:
       {
            GPProcedure *procedure = statement->value.proc_call.procedure;
-           if(restore_point >= 0) procedure->restore_point = restore_point;
-           annotate(procedure->commands, restore_point);
+           annotate(procedure->commands);
            break;
       }
 
       case IF_STATEMENT:
       { 
-           commandType type = getCommandType(statement->value.cond_branch.condition, true); 
+           copyType type = getCopyType(statement->value.cond_branch.condition,
+                                       true, false, 0); 
            /* If the condition is a normal command, the graph is copied before
             * entering the condition. If the condition is null, the graph does
             * not need to be copied at all. Otherwise, the graph is copied
             * only when required, as determined by the AST annotation. */
-           if(type != NULL_COMMAND && type != SINGLE_RULE_CALL)
-           {
-              statement->value.cond_branch.restore_point = ++restore_point;
-              if(type != SIMPLE_COMMAND ||
-                 statement->value.cond_branch.condition->statement_type == ALAP_STATEMENT)
-                 statement->value.cond_branch.copy_point = true;
-           }
-           annotate(statement->value.cond_branch.condition, restore_point);
-           annotate(statement->value.cond_branch.then_stmt, restore_point);
-           annotate(statement->value.cond_branch.else_stmt, restore_point);
+           if(type == RECORD_CHANGES) 
+              statement->value.cond_branch.roll_back_point = roll_back_point++;
+           if(type == COPY)
+              statement->value.cond_branch.restore_point = restore_point++;
+           annotate(statement->value.cond_branch.condition);
+           annotate(statement->value.cond_branch.then_stmt);
+           annotate(statement->value.cond_branch.else_stmt);
            break;
       }
 
       case TRY_STATEMENT:
       {
-           commandType type = getCommandType(statement->value.cond_branch.condition, true); 
+           copyType type = getCopyType(statement->value.cond_branch.condition,
+                                       false, false, 0); 
            /* As above, except the graph does not need to be copied if the
             * condition is a loop because loops always succeed and try does
             * not backtrack for the 'then' branch. */
-           if(type != NULL_COMMAND && type != SINGLE_RULE_CALL &&
-              statement->value.cond_branch.condition->statement_type != ALAP_STATEMENT)
-           {
-              statement->value.cond_branch.restore_point = ++restore_point;
-              if(type != SIMPLE_COMMAND) 
-                 statement->value.cond_branch.copy_point = true;
-           }
-           annotate(statement->value.cond_branch.condition, restore_point);
-           annotate(statement->value.cond_branch.then_stmt, restore_point);
-           annotate(statement->value.cond_branch.else_stmt, restore_point);
+           if(type == RECORD_CHANGES) 
+              statement->value.cond_branch.roll_back_point = roll_back_point++;
+           if(type == COPY)
+              statement->value.cond_branch.restore_point = restore_point++;
+           annotate(statement->value.cond_branch.condition);
+           annotate(statement->value.cond_branch.then_stmt);
+           annotate(statement->value.cond_branch.else_stmt);
            break;
       }
 
       case ALAP_STATEMENT:
       {
            GPStatement *loop_body = statement->value.loop_stmt.loop_body;
-           commandType type = getCommandType(loop_body, true);
-           if(type != NULL_COMMAND && type != SINGLE_RULE_CALL)
-           {
-              statement->value.loop_stmt.restore_point = ++restore_point;
-              if(type != SIMPLE_COMMAND) statement->value.loop_stmt.copy_point = true;
-           }
-           annotate(loop_body, restore_point);
+           copyType type = getCopyType(loop_body, false, false, 0);
+           if(type == RECORD_CHANGES)
+              statement->value.loop_stmt.roll_back_point = roll_back_point++;
+           if(type == COPY)
+              statement->value.loop_stmt.restore_point = restore_point++;
+           annotate(loop_body);
            break;
       }
 
       case PROGRAM_OR:
       {
-           annotate(statement->value.or_stmt.left_stmt, restore_point);
-           annotate(statement->value.or_stmt.right_stmt, restore_point);
+           annotate(statement->value.or_stmt.left_stmt);
+           annotate(statement->value.or_stmt.right_stmt);
            break;
       }
 
@@ -233,66 +134,88 @@ void annotate(GPStatement *statement, int restore_point)
    }
 }
 
-/* Interrogates if/try conditions and loop bodies to determine their "copy type". 
- * Calls analyseSequence on command sequences. */
-commandType getCommandType(GPStatement *statement, bool copy)
+/* com_seq argument!
+ * 0 - initial value, not within any command sequence.
+ * 1 - within the first/main/top command sequence.
+ * 2 - within a nested command sequence. */
+copyType getCopyType(GPStatement *statement, bool if_body, int com_seq,
+                     bool last_command)
 {
    switch(statement->statement_type)
    {
       case COMMAND_SEQUENCE:
-           return analyseSequence(statement->value.commands, copy);
-
-      case RULE_CALL:
-           if(statement->value.rule_call.rule->is_predicate) return NULL_COMMAND;
-           else return SINGLE_RULE_CALL;
-
-      case RULE_SET_CALL:
-      {
-           commandType type = NULL_COMMAND;
-           List *rules = statement->value.rule_set;
-           while(rules != NULL)
+      { 
+           List *commands = statement->value.commands;
+           while(commands != NULL)
            {
-              if(!rules->value.rule_call.rule->is_predicate) type = SINGLE_RULE_CALL;
-              rules = rules->next;
+              int new_com_seq = 2;
+              if(com_seq == 0 || (com_seq == 1 && last_command)) new_com_seq = 1;
+              copyType type = getCopyType(commands->value.command, if_body,
+                                          lol, commands->next == NULL);
+              if(type == COPY) return COPY;
+              else commands = commands->next;
            }
-           return type;
+           return RECORD_CHANGES;
       }
 
+      case RULE_CALL:
+
+      case RULE_SET_CALL:
+           return NO_COPY;
+
       case PROCEDURE_CALL:
-           return getCommandType(statement->value.proc_call.procedure->commands, copy);
+           return getCopyType(statement->value.proc_call.procedure->commands, 
+                              if_body, com_seq, last_command);
 
       case IF_STATEMENT:
 
       case TRY_STATEMENT:
-           if(getCommandType(statement->value.cond_branch.then_stmt, false) != NULL_COMMAND)
-              return NORMAL_COMMAND;
-           if(getCommandType(statement->value.cond_branch.else_stmt, false) != NULL_COMMAND)
-              return NORMAL_COMMAND;
-           else return NULL_COMMAND;
+      {
+           copyType cond_type = getCopyType(statement->value.cond_branch.condition,
+                                            if_body, com_seq, last_command);
+           copyType then_type = getCopyType(statement->value.cond_branch.then_stmt,
+                                            if_body, com_seq, last_command);
+           copyType else_type = getCopyType(statement->value.cond_branch.else_stmt,
+                                            if_body, com_seq, last_command);
+           if(cond_type == COPY || then_type == COPY || else_type == COPY) return COPY;
+           else return RECORD_CHANGES;
+      }
 
+      /* A loop anywhere in an if body necessitates a deep copy. 
+       * A loop in a try body or a loop body necessitates a deep copy
+       * unless it is the last command in the body. */
       case ALAP_STATEMENT:
-           if(getCommandType(statement->value.loop_stmt.loop_body, false) != NULL_COMMAND)
-              return NORMAL_COMMAND;
-           else return NULL_COMMAND;
+           if(if_body) return COPY;
+           else
+           {
+              if(com_seq == 2) return COPY;
+              if(com_seq == 1 && !last_command) return COPY;
+              if(com_seq == 1 && last_command)
+                 statement->value.loop_stmt.stop_recording = true;
+           }
+           return NO_COPY;
 
+      /* Return the "max" of the two branches. */
       case PROGRAM_OR:
-           if(getCommandType(statement->value.or_stmt.left_stmt, false) != NULL_COMMAND)
-              return NORMAL_COMMAND;
-           if(getCommandType(statement->value.or_stmt.right_stmt, false) != NULL_COMMAND)
-              return NORMAL_COMMAND;
-           else return NULL_COMMAND;
+      {
+           copyType left_type = getCopyType(statement->value.or_stmt.left_stmt, 
+                                            if_body, com_seq, last_command);
+           copyType right_type = getCopyType(statement->value.or_stmt.right_stmt,
+                                             if_body, com_seq, last_command);
+           return left_type > right_type ? left_type : right_type;
+      }
 
       case SKIP_STATEMENT:
 
       case FAIL_STATEMENT:
-           return NULL_COMMAND;
+           return NO_COPY;
 
       default:
            print_to_log("Error (simpleStatement): Unexpected statement type %d.\n",
                         statement->statement_type);
            break;
    }
-   return NORMAL_COMMAND;
+   return COPY;
 }
 
 bool nullStatement(GPStatement *statement)
@@ -304,12 +227,8 @@ bool nullStatement(GPStatement *statement)
            List *commands = statement->value.commands;
            while(commands != NULL)
            {
-              if(!nullStatement(commands->value.command)) 
-              {
-                 if(commands->next != NULL) return false;
-                 else return nullStatement(commands->value.command);
-              }
-              else commands = commands->next;
+              if(!nullStatement(commands->value.command)) return false;
+              commands = commands->next;
            }
            return true;
       }
@@ -334,9 +253,15 @@ bool nullStatement(GPStatement *statement)
            return nullStatement(statement->value.proc_call.procedure->commands);
 
       case IF_STATEMENT:
+           if(!nullStatement(statement->value.cond_branch.then_stmt)) return false;
+           if(!nullStatement(statement->value.cond_branch.else_stmt)) return false;
+           return true;
 
       case TRY_STATEMENT:
-           return false;
+           if(!nullStatement(statement->value.cond_branch.condition)) return false;
+           if(!nullStatement(statement->value.cond_branch.then_stmt)) return false;
+           if(!nullStatement(statement->value.cond_branch.else_stmt)) return false;
+           return true;
 
       case ALAP_STATEMENT:
            if(nullStatement(statement->value.loop_stmt.loop_body))
@@ -362,7 +287,7 @@ bool nullStatement(GPStatement *statement)
            return true;
 
       default:
-           print_to_log("Error (simpleStatement): Unexpected statement type %d.\n",
+           print_to_log("Error (nullStatement): Unexpected statement type %d.\n",
                         statement->statement_type);
            break;
    }

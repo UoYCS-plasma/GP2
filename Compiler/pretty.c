@@ -522,11 +522,15 @@ void printASTStatement(GPStatement *const stmt, FILE *dot_file)
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "ALAP Statement\\n Restore Point = %d\\n"
-                             "Copy Point = %d\"]\n", 
+                             "Roll Back Point = %d\\n"
+                             "Copy Point = %d\\n"
+                             "Stop Recording = %d\"]\n", 
                              stmt->node_id, stmt->node_id,
                              LOCATION_ARGS(stmt->location),
                              stmt->value.loop_stmt.restore_point,
-                             stmt->value.loop_stmt.copy_point);
+                             stmt->value.loop_stmt.roll_back_point,
+                             stmt->value.loop_stmt.copy_point,
+                             stmt->value.loop_stmt.stop_recording);
 
            print_to_dot_file("node%d->node%d[label=\"loop \\n body\"]\n",  
                              stmt->node_id, next_node_id); 

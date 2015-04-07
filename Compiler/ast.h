@@ -123,12 +123,15 @@ typedef struct GPStatement {
       struct GPStatement *then_stmt; 
       struct GPStatement *else_stmt; 
       int restore_point;
+      int roll_back_point;
       bool copy_point;
     } cond_branch; 			/* IF_STATEMENT, TRY_STATEMENT */
     struct {
        struct GPStatement *loop_body;
        int restore_point;
+       int roll_back_point;
        bool copy_point;
+       bool stop_recording;
     } loop_stmt;                        /* ALAP_STATEMENT */
     struct { 
       struct GPStatement *left_stmt; 

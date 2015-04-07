@@ -24,7 +24,7 @@ extern Stack *graph_stack;
 /* Creates a memory copy of the passed graph and pushes it to the graph stack. 
  * If replace is true, then the graph stack is popped before pushing the graph
  * copy. */
-void copyGraph(Graph *graph, int depth);
+void copyGraph(Graph *graph);
 /* restoreGraph frees the passed graph and returns the graph <depth> items
  * down the stack. All intermediate graphs are freed. */
 Graph *restoreGraph(Graph *graph, int depth);
@@ -73,7 +73,8 @@ void pushRemovedNode(bool root, Label *label);
 void pushRemovedEdge(bool bidirectional, Label *label, int source, int target);
 void pushRelabelledNode(int index, bool change_flag, Label *old_label);
 void pushRelabelledEdge(int index, bool change_flag, Label *old_label);
-void rollBackGraph(Graph *graph);
+void rollBackGraph(Graph *graph, int restore_point);
+void discardChanges(int restore_point);
 void freeGraphChange(GraphChange *change); 
 void freeGraphChangeStack(Stack *graph_change_stack);
 

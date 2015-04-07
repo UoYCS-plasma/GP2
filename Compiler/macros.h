@@ -61,14 +61,24 @@
 /* Deletes all the host items in the morphism from the host graph. Edges are
  * deleted first so that there is no chance of dangling edges from node
  * deletion. Called when the RHS of a rule is the empty graph. */
-#define REMOVE_RHS                                              \
-   do {                                                         \
-   for(count = 0; count < morphism->edges; count++)             \
-      removeEdge(host, morphism->edge_map[count].host_index);   \
-                                                                \
-   for(count = 0; count < morphism->nodes; count++)             \
-      removeNode(host, morphism->node_map[count].host_index);   \
-   } while(0);                                                  \
+#define REMOVE_RHS                                                         \
+   do {                                                                    \
+   for(count = 0; count < morphism->edges; count++)                        \
+      if(record_changes)                                                   \
+      {                                                                    \
+         Edge *edge = getEdge(host, morphism->edge_map[count].host_index); \
+         pushRemovedEdge(false, edge->label, edge->source, edge->target);  \
+      }                                                                    \
+      removeEdge(host, morphism->edge_map[count].host_index);              \
+                                                                           \
+   for(count = 0; count < morphism->nodes; count++)                        \
+      if(record_changes)                                                   \
+      {                                                                    \
+         Node *node = getNode(host, morphism->node_map[count].host_index); \
+         pushRemovedNode(node->root, node->label);                         \
+      }                                                                    \
+      removeNode(host, morphism->node_map[count].host_index);              \
+   } while(0);                                                             \
 
 #define PROCESS_EDGE_MORPHISMS                                               \
    do {                                                                      \
@@ -78,11 +88,24 @@
       host_index = morphism->edge_map[count].host_index;                     \
       if(edge_map[left_index].remove_item == true)                           \
       {                                                                      \
+         if(record_changes)                                                  \
+         {                                                                   \
+            Edge *edge = getEdge(host, host_index);                          \
+            pushRemovedEdge(false, edge->label, edge->source, edge->target); \
+         }                                                                   \
          removeEdge(host, host_index);                                       \
          continue;                                                           \
       }                                                                      \
       Label *new_label = edge_map[left_index].new_label;                     \
-      if(new_label != NULL) relabelEdge(host, host_index, new_label, false); \
+      if(new_label != NULL)                                                  \
+      {                                                                      \
+         if(record_changes)                                                  \
+         {                                                                   \
+            Edge *edge = getEdge(host, host_index);                          \
+            pushRelabelledEdge(host_index, false, edge->label);              \
+         }                                                                   \
+         relabelEdge(host, host_index, new_label, false);                    \
+      }                                                                      \
    }                                                                         \
    } while(0);                                               
 
@@ -95,6 +118,11 @@
       host_index = morphism->node_map[count].host_index;                   \
       if(node_map[left_index].remove_item == true)                         \
       {                                                                    \
+         if(record_changes)                                                \
+         {                                                                 \
+            Node *node = getNode(host, host_index);                        \
+            pushRemovedNode(false, node->label);                           \
+         }                                                                 \
          removeNode(host, host_index);                                     \
          continue;                                                         \
       }                                                                    \
@@ -103,6 +131,11 @@
       bool change_root = host_node->root != node_map[left_index].rhs_root; \
       if(new_label != NULL || change_root)                                 \
       {                                                                    \
+         if(record_changes)                                                \
+         {                                                                 \
+            Node *node = getNode(host, host_index);                        \
+            pushRelabelledNode(host_index, change_root, node->label);      \
+         }                                                                 \
          relabelNode(host, host_index, new_label, change_root);            \
          node_map[left_index].host_index = host_index;                     \
          continue;                                                         \

@@ -1,6 +1,5 @@
 #include "genProgram.h"
 
-static FILE *main_header = NULL;
 static FILE *main_source = NULL;
 
 void generateRuntimeCode(List *declarations)
@@ -26,7 +25,8 @@ void generateRuntimeCode(List *declarations)
         "#include \"../graphStacks.h\"\n"
         "#include \"init_runtime.h\"\n"
         "#include \"host.h\"\n"
-        "#include \"match.h\"\n");
+        "#include \"match.h\"\n\n");
+   PTMS("#define DEBUG\n\n");
    generateMorphismCode(declarations, 'd');
    PTMS("Graph *host = NULL;\n"
         "bool success = true;\n\n"
@@ -56,7 +56,7 @@ void generateDeclarationCode(List *declarations)
           * The semantic analysis ensures that the passed AST contains exactly one
           * MAIN_DECLARATION node. */
          case MAIN_DECLARATION:
-              generateProgramCode(decl->value.main_program, MAIN_BODY, -1, 3);
+              generateProgramCode(decl->value.main_program, MAIN_BODY, -1, false, 3);
               break;
 
          case PROCEDURE_DECLARATION:
@@ -77,7 +77,8 @@ void generateDeclarationCode(List *declarations)
    PTMS("   printGraph(host);\n"
         "   freeGraph(host);\n"
         "   freeMorphisms();\n"
-        "   if(graph_stack) freeGraphStack(graph_stack);\n"
+        "   freeGraphStack(graph_stack);\n"
+        "   freeGraphChangeStack(graph_change_stack);\n"
         "   closeLogFile();\n\n"
         "   return 0;\n"
         "}\n\n");
@@ -130,11 +131,12 @@ void generateMorphismCode(List *declarations, char type)
       }
       declarations = declarations->next;
    }
+   if(type == 'd' || type == 'm') PTMS("\n");
 }
 
 
 void generateProgramCode(GPStatement *statement, ContextType context, 
-                         int restore_point, int indent)
+                         int restore_point, int roll_back_point, int indent)
 {
    switch(statement->statement_type)
    {
@@ -143,7 +145,8 @@ void generateProgramCode(GPStatement *statement, ContextType context,
            List *commands = statement->value.commands;
            while(commands != NULL)
            {
-              generateProgramCode(commands->value.command, context, restore_point, indent);
+              generateProgramCode(commands->value.command, context, restore_point,
+                                  roll_back_point, indent);
               if(context == LOOP_BODY && commands->next != NULL)
                  PTMSI("if(!success) break;\n", indent);             
               commands = commands->next;
@@ -156,48 +159,51 @@ void generateProgramCode(GPStatement *statement, ContextType context,
            generateRuleCall(statement->value.rule_call.rule_name, 
                             statement->value.rule_call.rule->empty_lhs,
                             statement->value.rule_call.rule->is_predicate,
-                            context, restore_point, 
-                            statement->value.rule_call.copy_point, false, indent);
+                            context, restore_point, roll_back_point, false, indent);
            break;
 
       case RULE_SET_CALL:
 
            PTMSI("/* Rule Set Call */\n", indent);
-           generateRuleSetCall(statement->value.rule_set, context, restore_point, indent);
+           generateRuleSetCall(statement->value.rule_set, context, restore_point,
+                               roll_back_point, indent);
            break;
 
       case PROCEDURE_CALL:
       {
            GPProcedure *procedure = statement->value.proc_call.procedure;
-           generateProgramCode(procedure->commands, context, restore_point, indent);
+           generateProgramCode(procedure->commands, context, restore_point,
+                               roll_back_point, indent);
            break;
       }
 
       case IF_STATEMENT:
       {
            int if_restore_point = statement->value.cond_branch.restore_point;
+           int if_roll_back_point = statement->value.cond_branch.roll_back_point;
            PTMSI("/* If Statement */\n", indent);
            PTMSI("/* Condition */\n", indent);
            PTMSI("do\n", indent);
            PTMSI("{\n", indent);
-           if(statement->value.cond_branch.copy_point && if_restore_point >= 0)
-              PTMSI("copyGraph(host, %d);\n", indent + 3, if_restore_point);
-           generateProgramCode(statement->value.cond_branch.condition, 
-                               IF_BODY, if_restore_point, indent + 3);
+           if(if_restore_point >= 0) PTMSI("copyGraph(host);\n", indent + 3);
+           generateProgramCode(statement->value.cond_branch.condition, IF_BODY,
+                               if_restore_point, if_roll_back_point, indent + 3);
            PTMSI("} while(false);\n\n", indent);
-           if(if_restore_point >= 0)
+           if(if_restore_point >= 0) 
               PTMSI("host = restoreGraph(host, %d);\n", indent, if_restore_point);
+           if(if_roll_back_point >= 0)
+              PTMSI("rollBackGraph(host, %d);\n", indent, if_roll_back_point);
            PTMSI("/* Then Branch */\n", indent);
            PTMSI("if(success)\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.then_stmt, 
-                               context, restore_point, indent + 3);
+                               context, restore_point, roll_back_point, indent + 3);
            PTMSI("}\n", indent);
            PTMSI("/* Else Branch */\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.else_stmt, 
-                               context, restore_point, indent + 3);
+                               context, restore_point, roll_back_point, indent + 3);
            PTMSI("}\n", indent);
            if(context == IF_BODY || context == TRY_BODY) 
               PTMSI("break;\n", indent);
@@ -206,14 +212,14 @@ void generateProgramCode(GPStatement *statement, ContextType context,
       case TRY_STATEMENT:
       {
            int try_restore_point = statement->value.cond_branch.restore_point;
+           int try_roll_back_point = statement->value.cond_branch.roll_back_point;
            PTMSI("/* Try Statement */\n", indent);
            PTMSI("/* Condition */\n", indent);
            PTMSI("do\n", indent);
            PTMSI("{\n", indent);
-           if(statement->value.cond_branch.copy_point && try_restore_point >= 0)
-              PTMSI("copyGraph(host, %d);\n", indent + 3, try_restore_point);
-           generateProgramCode(statement->value.cond_branch.condition,
-                               TRY_BODY, try_restore_point, indent + 3);
+           if(try_restore_point >= 0) PTMSI("copyGraph(host);\n", indent + 3);
+           generateProgramCode(statement->value.cond_branch.condition, TRY_BODY,
+                               try_restore_point, try_roll_back_point, indent + 3);
            /* In a try statement, only the else command sequence is executed on
             * the host graph state before the execution of the condition. If
             * the condition succeeds, the graph resulting from the execution
@@ -225,15 +231,17 @@ void generateProgramCode(GPStatement *statement, ContextType context,
            PTMSI("if(success)\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.cond_branch.then_stmt, 
-                               context, restore_point, indent + 3);
+                               context, restore_point, roll_back_point, indent + 3);
            PTMSI("}\n", indent);
            PTMSI("/* Else Branch */\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
-           if(try_restore_point >= 0)
+           if(try_restore_point >= 0) 
               PTMSI("host = restoreGraph(host, %d);\n", indent + 3, try_restore_point);
+           if(try_roll_back_point >= 0)
+              PTMSI("rollBackGraph(host, %d);\n", indent + 3, try_roll_back_point);
            generateProgramCode(statement->value.cond_branch.else_stmt,
-                               context, restore_point, indent + 3);
+                               context, restore_point, roll_back_point, indent + 3);
            PTMSI("}\n\n", indent);
            if(context == IF_BODY || context == TRY_BODY) 
               PTMSI("break;\n", indent);
@@ -242,22 +250,25 @@ void generateProgramCode(GPStatement *statement, ContextType context,
       case ALAP_STATEMENT:
       {
            int loop_restore_point = statement->value.loop_stmt.restore_point;
+           int loop_roll_back_point = statement->value.loop_stmt.roll_back_point;
            PTMSI("/* Loop Statement */\n", indent);
+           PTMSI("success = true;\n", indent);
            PTMSI("while(success)\n", indent);
            PTMSI("{\n", indent);
-           /* Local flag to determine if the graph has been copied in the 
-            * current iteration. */
            if(loop_restore_point >= 0) 
            {
-              PTMSI("bool graph_copied = false;\n", indent + 3);
-              if(statement->value.loop_stmt.copy_point)
-              {
-                 PTMSI("copyGraph(host, %d);\n", indent + 3, loop_restore_point);
-                 PTMSI("graph_copied = true;\n", indent + 3);
-              }
+              PTMSI("host = restoreGraph(host, %d);\n", indent + 3, 
+                    loop_restore_point);
+              PTMSI("copyGraph(host);\n", indent + 3);
            }
-           generateProgramCode(statement->value.loop_stmt.loop_body, LOOP_BODY, 
-                               loop_restore_point, indent + 3);
+           if(loop_roll_back_point >= 0)
+              PTMSI("discardChanges(%d);\n", indent + 3, loop_roll_back_point);
+           else 
+           {
+              if(statement->value.loop_stmt.stop_recording) loop_roll_back_point = -1;
+           }
+           generateProgramCode(statement->value.loop_stmt.loop_body, LOOP_BODY,
+                               loop_restore_point, loop_roll_back_point, indent + 3);
            PTMSI("}\n", indent);
            PTMSI("success = true;\n", indent);
            break;
@@ -271,12 +282,12 @@ void generateProgramCode(GPStatement *statement, ContextType context,
            PTMSI("if((random %% 2) == 0)\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.or_stmt.left_stmt, context, 
-                               restore_point, indent + 3);
+                               restore_point, roll_back_point, indent + 3);
            PTMSI("}\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
            generateProgramCode(statement->value.or_stmt.right_stmt, context, 
-                               restore_point, indent + 3);
+                               restore_point, roll_back_point, indent + 3);
            PTMSI("}\n", indent);
            if(context == IF_BODY || context == TRY_BODY) 
               PTMSI("break;\n", indent);
@@ -291,7 +302,8 @@ void generateProgramCode(GPStatement *statement, ContextType context,
       case FAIL_STATEMENT:
 
            PTMSI("/* Fail Statement */\n", indent);
-           generateFailureCode(NULL, context, restore_point, indent);
+           generateFailureCode(NULL, context, restore_point, roll_back_point,
+                               indent);
            break;
            
       default: print_to_log("Error (generateProgramCode): Unexpected "
@@ -303,25 +315,24 @@ void generateProgramCode(GPStatement *statement, ContextType context,
 }
 
 void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
-                      ContextType context, int restore_point, bool copy_point,
-                      bool in_rule_set, int indent)
+                      ContextType context, int restore_point,
+                      int roll_back_point, bool in_rule_set, int indent)
 {
-   bool copy_graph = restore_point >= 0 && copy_point;
    if(empty_lhs)
    {
-      if(copy_graph) PTMSI("copyGraph(host, %d);\n", indent, restore_point);
-      PTMSI("apply%s();\n", indent, rule_name);
+      PTMSI("#ifdef DEBUG\n", indent);
+      PTMSI("print_to_console(\"Matched %s.\\n\");\n", indent + 3, rule_name);
+      PTMSI("#endif\n", indent);
+      PTMSI("apply%s(%d);\n", indent, rule_name, roll_back_point >= 0);
       PTMSI("success = true;\n\n", indent);
    }
    else
    {
       PTMSI("if(match%s(M_%s))\n", indent, rule_name, rule_name);
       PTMSI("{\n", indent);
-      if(copy_graph)
-      {
-         PTMSI("copyGraph(host, %d);\n", indent + 3, restore_point);
-         if(context == LOOP_BODY) PTMSI("graph_copied = true;\n", indent + 3);
-      }
+      PTMSI("#ifdef DEBUG\n", indent + 3);
+      PTMSI("print_to_console(\"Matched %s.\\n\");\n", indent + 6, rule_name);
+      PTMSI("#endif\n", indent + 3);
       if(!predicate)
       {
          /* Optimisation: Don't have to apply the last rule in an if condition.
@@ -330,11 +341,10 @@ void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
           * where there is no restore point and hence the graph is not copied
           * in the GP2 if condition. */
          if(context != IF_BODY || restore_point >= 0)
-         {
-            PTMSI("apply%s(M_%s);\n", indent + 3, rule_name, rule_name);
-            PTMSI("clearMorphism(M_%s);\n", indent + 3, rule_name);
-         }
+            PTMSI("apply%s(M_%s, %d);\n", indent + 3, rule_name, rule_name,
+                  roll_back_point >= 0);
       }
+      else PTMSI("clearMorphism(M_%s);\n", indent + 3, rule_name);
       PTMSI("success = true;\n", indent + 3);
       if(in_rule_set) PTMSI("break;\n", indent + 3);
       PTMSI("}\n", indent);
@@ -344,14 +354,15 @@ void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
       {
          PTMSI("else\n", indent);
          PTMSI("{\n", indent);
-         generateFailureCode(rule_name, context, restore_point, indent + 3);
+         generateFailureCode(rule_name, context, restore_point, 
+                             roll_back_point, indent + 3);
          PTMSI("}\n", indent);   
       }
    }
 }
 
 void generateRuleSetCall(List *rules, ContextType context, int restore_point, 
-                         int indent)
+                         int roll_back_point, int indent)
 {
    PTMSI("do\n", indent);
    PTMSI("{\n", indent);
@@ -362,17 +373,16 @@ void generateRuleSetCall(List *rules, ContextType context, int restore_point,
       bool predicate = rules->value.rule_call.rule->is_predicate;
       if(rules->next == NULL)
            generateRuleCall(rule_name, empty_lhs, predicate, context,
-                            restore_point, rules->value.rule_call.copy_point, 
-                            false, indent + 3);
+                            restore_point, roll_back_point, false, indent + 3);
       else generateRuleCall(rule_name, empty_lhs, predicate, context, 
-                            restore_point, rules->value.rule_call.copy_point, 
-                            true, indent + 3);
+                            restore_point, roll_back_point, true, indent + 3);
       rules = rules->next;
    }
    PTMSI("} while(false);\n", indent);
 }
 
-void generateFailureCode(string rule_name, ContextType context, int restore_point, int indent)
+void generateFailureCode(string rule_name, ContextType context, 
+                         int restore_point, int roll_back_point, int indent)
 {
    /* A failure in the main body ends the execution. Emit code to report the 
     * failure, garbage collect and return 0. */
@@ -401,8 +411,13 @@ void generateFailureCode(string rule_name, ContextType context, int restore_poin
       if(rule_name == NULL) PTMSI("return NULL;\n", indent);
       else PTMSI("return \"%s\";\n", indent, rule_name);
    }
-   if(context == LOOP_BODY && restore_point >= 0) 
-      PTMSI("if(graph_copied) host = restoreGraph(host, %d);\n", indent, restore_point);
+   if(context == LOOP_BODY) 
+   {
+      if(restore_point >= 0)
+         PTMSI("host = restoreGraph(host, %d);\n", indent, restore_point);
+      if(roll_back_point >= 0) 
+         PTMSI("rollBackGraph(host, %d);\n", indent, roll_back_point);
+   }
 }
 
 

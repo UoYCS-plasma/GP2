@@ -2,7 +2,7 @@
 
 Stack *graph_stack = NULL;
 
-void copyGraph(Graph *graph, int depth)
+void copyGraph(Graph *graph)
 {
     Graph *graph_copy = newGraph(graph->node_pool_size, graph->edge_pool_size); 
 
@@ -117,22 +117,15 @@ void copyGraph(Graph *graph, int depth)
          edge->label = copyLabel(original_edge->label);
       }
    }  
- 
    if(graph_stack == NULL) graph_stack = newStack(GRAPH_STACK_SIZE);
    StackData data;
    data.graph = graph_copy;
-   /* If there is a graph at the passed depth, pop it and replace it with the
-    * copied graph. */
-   if(depth == graph_stack->top - 1)
-   {
-      StackData old_data = pop(graph_stack);
-      freeGraph(old_data.graph);
-   }
    push(graph_stack, data);
 }
 
 Graph *restoreGraph(Graph *graph, int restore_point)
 {
+   if(graph_stack == NULL) return graph;
    if(graph_stack->top == restore_point) return graph;
    freeGraph(graph);
    while(graph_stack->top > restore_point)
@@ -142,13 +135,14 @@ Graph *restoreGraph(Graph *graph, int restore_point)
       if(graph_stack->top == restore_point) return data.graph;
       else freeGraph(data.graph);
    }
-   printf("Error! Restore Point %d, Stack Top %d.\n", restore_point, 
-          graph_stack->top);
+   print_to_console("Error! Restore Point %d, Stack Top %d.\n", restore_point,
+                    graph_stack->top);
    exit(1);
 }
 
 void freeGraphStack(Stack *graph_stack)
 {
+   if(graph_stack == NULL) return;
    int count;
    for(count = 0; count < graph_stack->top; count++)
       if(graph_stack->data[count].graph) 
@@ -248,10 +242,12 @@ void pushRelabelledEdge(int index, bool change_flag, Label *old_label)
    data.graph_change = change;
    push(graph_change_stack, data);
 }
- 
-void rollBackGraph(Graph *graph)
-{
-   while(graph_change_stack->top > 0)
+   
+void rollBackGraph(Graph *graph, int restore_point)
+{ 
+   if(graph_change_stack == NULL) return; 
+   if(graph_change_stack->top <= restore_point) return;
+   while(graph_change_stack->top > restore_point)
    {
       StackData data = pop(graph_change_stack);
       GraphChange *change = data.graph_change;
@@ -294,7 +290,18 @@ void rollBackGraph(Graph *graph)
                            change->type); 
               break;
       }
-      free(change);
+      freeGraphChange(change);
+   } 
+} 
+
+void discardChanges(int restore_point)
+{
+   if(graph_change_stack == NULL) return;
+   if(graph_change_stack->top <= restore_point) return;
+   while(graph_change_stack->top > restore_point)
+   {
+      StackData data = pop(graph_change_stack);
+      freeGraphChange(data.graph_change);
    } 
 } 
 
@@ -332,10 +339,11 @@ void freeGraphChange(GraphChange *change)
 
 void freeGraphChangeStack(Stack *graph_change_stack)
 {
+   if(graph_change_stack == NULL) return;
    int count;
-   for(count = 0; count < graph_stack->top; count++)
-      if(graph_stack->data[count].graph) 
-         freeGraphChange(graph_stack->data[count].graph_change);
+   for(count = 0; count < graph_change_stack->top; count++)
+      if(graph_change_stack->data[count].graph_change) 
+         freeGraphChange(graph_change_stack->data[count].graph_change);
    freeStack(graph_change_stack);
 }
 

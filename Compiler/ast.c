@@ -338,6 +338,7 @@ GPStatement *newASTCondBranch(StatementType statement_type, YYLTYPE location,
     stmt->value.cond_branch.then_stmt = then_stmt;
     stmt->value.cond_branch.else_stmt = else_stmt;
     stmt->value.cond_branch.restore_point = -1;
+    stmt->value.cond_branch.roll_back_point = -1;
     stmt->value.cond_branch.copy_point = false;
     return stmt;
 }
@@ -356,7 +357,9 @@ GPStatement *newASTAlap(YYLTYPE location, GPStatement *loop_body)
     stmt->location = location;
     stmt->value.loop_stmt.loop_body = loop_body;
     stmt->value.loop_stmt.restore_point = -1;
+    stmt->value.loop_stmt.roll_back_point = -1;
     stmt->value.loop_stmt.copy_point = false;
+    stmt->value.loop_stmt.stop_recording = false;
 
     return stmt;
 }
