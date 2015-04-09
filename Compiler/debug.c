@@ -306,10 +306,6 @@ void printVerboseRule(Rule *rule)
             edge->target_location, edge->target_index);
       edge = edge->next;
    }
-
-   if(rule->flags.is_predicate) printf("Rule is a predicate.\n");
-   if(rule->flags.is_rooted) printf("Rule is rooted.\n");
-   
    printf("\n");
 }
 

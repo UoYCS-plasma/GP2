@@ -21,7 +21,6 @@
  * according to the rule declaration. Used in the matching algorithm to check
  * the type of a variable for label matching.
  */
-
 typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} 
   GPType;
 
@@ -45,17 +44,20 @@ void freeVariableList(VariableList *variable_list);
  * rule. */
 typedef struct IndexMap {
    string id;
+   bool root;
    int left_index;
    int right_index;
    string source_id;
    string target_id;
+   Label *label;
    struct IndexMap *next;
 } IndexMap;
 
 /* Prepends a new map with the passed information to the given list and returns
  * a pointer to the new first map in the list. */
-IndexMap *addIndexMap(IndexMap *map, string id, int left_index, 
-                      int right_index, string source_id, string target_id);
+IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index, 
+                      int right_index, string source_id, string target_id,
+                      Label *label);
 int findLeftIndexFromId(IndexMap *map, string id);                      
 IndexMap *findMapFromId(IndexMap *map, string id);
 /* Used to find a map for an edge with the passed source and target IDs. */
@@ -78,12 +80,13 @@ void freeItemList(ItemList *item_list);
  * otherwise it is the label of the corresponding RHS item. */
 typedef struct PreservedItemList {
    int left_index;
+   bool rhs_root;
    Label *new_label;
    struct PreservedItemList *next;
 } PreservedItemList;
 
 PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index, 
-                                    Label *new_label);
+                                    bool change_root, Label *new_label);
 PreservedItemList *queryPItemList(PreservedItemList *list, int left_index);                                
 void freePItemList(PreservedItemList *list);
 
@@ -119,13 +122,13 @@ typedef struct Condition {
     } edge_pred; 		/* EDGE_PRED */
 
     struct { 
-      GList *left_list;
-      GList *right_list; 
+      GP2List *left_list;
+      GP2List *right_list; 
     } list_cmp; 		/* EQUAL, NOT_EQUAL */
 
     struct { 
-      GList *left_exp; 
-      GList *right_exp; 
+      GP2List *left_exp; 
+      GP2List *right_exp; 
     } atom_cmp; 		/* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
 
     struct Condition *not_exp;  /* BOOL_NOT */
@@ -153,14 +156,12 @@ typedef struct Rule {
    ItemList *added_nodes;
    NewEdgeList *added_edges;
    Condition *condition;
-   struct {
-      /* 1 if the rule does not change the host graph. */
-      unsigned int is_predicate : 1;
-      /* 1 if the rule is rooted. */
-      unsigned int is_rooted : 1;
-   } flags;
+   bool is_rooted;
 } Rule;
 
+/* Checks if a rule does not modify the host graph: the rule neither adds nor
+ * deletes nor relabels any items. */
+bool isPredicate(Rule *rule);
 void printRule(Rule *rule);
 void freeRule(Rule *rule);
 

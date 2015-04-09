@@ -13,11 +13,9 @@
 
 #define MAX_INCIDENT_EDGES 16
 
-#include <glib.h>
 #include "error.h"
 #include "globals.h"
 #include "label.h"
-#include "stack.h"
 
 typedef struct LabelClassTable {
    int pool_size;
@@ -30,7 +28,7 @@ typedef struct LabelClassTable {
  * initial_size is either the graph's node pool size or the graph's edge pool 
  * size. initial_size / 4 items are allocated to the table's items array
  * for the first allocation. */
-void addLabelClassIndex(LabelClassTable *table, int index, int initial_size);
+int addLabelClassIndex(LabelClassTable *table, int index, int initial_size);
 /* Only called by removeNode and removeEdge. */
 void removeLabelClassIndex(LabelClassTable *table, int index);
 
@@ -114,6 +112,10 @@ typedef struct Node {
     * degrees is the number of non-negative indices in all of the node's edge
     * arrays. */
    int outdegree, indegree, bidegree;
+
+   /* The index of the node in its label class table. Used to quickly remove
+    * the entry from the potentially large table. */
+   int label_table_index;
 } Node;
 
 extern struct Node dummy_node;
@@ -124,11 +126,12 @@ typedef struct Edge {
    LabelClass label_class;
    Label *label;
    int source, target;
+   /* The index of the edge in its label class table. Used to quickly remove
+    * the entry from the potentially large table. */
+   int label_table_index;
 } Edge;
 
 extern struct Edge dummy_edge;
-
-
 
 /* The arguments nodes and edges are the initial sizes of the node array and the
  * edge array respectively. */
@@ -149,20 +152,9 @@ void removeEdge(Graph *graph, int index);
 /* The relabel functions take boolean arguments to control if the label is 
  * updated and if the boolean flag of the item should be changed. For nodes, 
  * this is the root flag. For edges, this is the bidirectional flag. */
-void relabelNode(Graph *graph, Node *node, Label *new_label, bool change_label, 
-                 bool change_root); 
-void relabelEdge(Graph *graph, Edge *edge, Label *new_label, bool change_label, 
+void relabelNode(Graph *graph, int index, Label *new_label, bool change_root); 
+void relabelEdge(Graph *graph, int index, Label *new_label, 
                  bool change_bidirectional);
-
-
-extern Stack *graph_stack;
-/* Creates a memory copy of the passed graph and pushes it to graph_stack. */
-void copyGraph(Graph *graph);
-/* restoreGraph frees the passed graph and returns the graph <depth> items
- * down the stack. All intermediate graphs are freed. */
-Graph *restoreGraph(Graph *graph, int depth);
-void freeGraphStack(Stack *graph_stack);
-
 
 Node *getNode(Graph *graph, int index);
 Edge *getEdge(Graph *graph, int index);
@@ -182,68 +174,5 @@ int getOutdegree(Node *node);
 
 void printGraph(Graph *graph);
 void freeGraph(Graph *graph);
-
-/* structs placed on the graph change stack. It contains sufficient
- * information to undo any of the six types of graph change.
- *
- * Add Node + Add Edge
- * ===================
- * The undo operations are removeNode and removeEdge which only require the 
- * name of the item's since the pointer can be quickly accessed via a hash
- * lookup. Storing the pointer to the item itself is dangerous because the 
- * added item could be deleted before restoreGraph is called.
- *
- * Remove Node + Remove Edge
- * =========================
- * The undo operations are addNode and addEdge. The structs contain the 
- * arguments to these functions. In the case of addEdge, called with pointers
- * to its source and target, these are obtained by hasing the names in
- * the GraphChange removed_edge struct. The label pointers are heap copies
- * since labels are freed when an item is deleted.
- *
- * Relabel Node + Relabel Edge
- * ===========================
- * As above, the structs contain the arguments to the relabelNode and 
- * relabelEdge functions. Labels do not have to be copied to heap in this
- * case as the pointers to the old labels of the items are used.
- */
-
-/* typedef enum { ADD_NODE = 0, ADD_EDGE, REMOVE_NODE, REMOVE_EDGE, 
-	       RELABEL_NODE, RELABEL_EDGE } GraphChangeType; 
-
-typedef struct GraphChange 
-{
-   GraphChangeType type;
-   union
-   {
-      int added_node; 
-      int added_edge;
-
-      struct {
-         bool root;
-         Label *label;
-      } removed_node;
-
-      struct {
-         Label *label;
-         bool bidirectional;
-         int source_name;
-         int target_name;
-      } removed_edge;
-
-      struct {
-         int index;
-         Label *old_label;
-         bool change_root;
-      } relabelled_node;
-   
-      struct {
-         int index;
-         Label *old_label;
-         bool change_bidirectional;
-      } relabelled_edge;
-   } data;
-} GraphChange; 
-void freeGraphChange(GraphChange *change); */
 
 #endif /* INC_GRAPH_H */

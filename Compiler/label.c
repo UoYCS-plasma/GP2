@@ -1,10 +1,75 @@
 #include "label.h"
 
 Label blank_label = {NONE, {NULL, NULL}, 0, false};
+Label red_label = {RED, {NULL, NULL}, 0, false};
+Label green_label = {GREEN, {NULL, NULL}, 0, false};
+Label blue_label = {BLUE, {NULL, NULL}, 0, false};
+Label grey_label = {GREY, {NULL, NULL}, 0, false};
+Label dashed_label = {DASHED, {NULL, NULL}, 0, false};
+
+bool isConstantLabel(Label *label)
+{
+   if(label == NULL) return true;
+   if(label == &blank_label || label == &red_label || label == &green_label ||
+      label == &blue_label || label == &grey_label || label == &dashed_label)
+      return true;
+   else return false;
+}
+
+bool equalLabels(Label *left_label, Label *right_label)
+{
+   if(left_label->mark != right_label->mark) return false;
+   if(left_label->list_length != right_label->list_length) return false;
+   if(left_label->list_variable != right_label->list_variable) return false;
+
+   GP2Atom *left_atom = left_label->list.first;
+   GP2Atom *right_atom = right_label->list.first;
+
+   while(left_atom != NULL)
+   {
+      if(left_atom->type != right_atom->type) return false;
+      /* LHS labels are simple expressions, hence there are only a few cases
+       * to consider. */
+      switch(left_atom->type)
+      {
+         case VARIABLE:
+              if(strcmp(left_atom->value.name, right_atom->value.name))
+                 return false;
+              break;
+
+         case INTEGER_CONSTANT:
+              if(left_atom->value.number != right_atom->value.number)
+                 return false;
+              break;
+
+         case STRING_CONSTANT:
+              if(strcmp(left_atom->value.string, right_atom->value.string))
+                 return false;
+              break;
+
+         case NEG:
+              if(left_atom->value.exp->type != INTEGER_CONSTANT) return false;
+              if(right_atom->value.exp->type != INTEGER_CONSTANT) return false;
+              if(left_atom->value.exp->value.number != 
+                 right_atom->value.exp->value.number) return false;
+              break;
+
+         default:
+              print_to_log("Error (equalLabels): Unexpected LHS atom type.\n");
+              break;
+      }
+      left_atom = left_atom->next;
+      right_atom = right_atom->next;
+   }
+   return true;
+}
 
 bool labelMatch(Label *rule_label, Label *host_label)
 {
    if(rule_label == NULL) return host_label == &blank_label;
+   /* Both labels are the same constant list. No variable assignments to make
+    * in this case, so just return true. 
+   if(equalLabels(rule_label, host_label)) return true; */
    return marksMatch(rule_label->mark, host_label->mark);
 }
 
@@ -17,14 +82,20 @@ bool marksMatch(MarkType rule_mark, MarkType host_mark)
 Label *makeEmptyList(MarkType mark)
 {
    if(mark == NONE) return &blank_label;
+   if(mark == RED) return &red_label;
+   if(mark == GREEN) return &green_label;
+   if(mark == BLUE) return &blue_label;
+   if(mark == GREY) return &grey_label;
+   if(mark == DASHED) return &dashed_label;
    
+   /* Otherwise, create the empty label with the ANY mark. */
    Label *label = malloc(sizeof(Label));
    if(label == NULL)
    {
       print_to_log("Error: Memory exhausted during label creation.\n");
       exit(1);
    }
-   label->mark = mark;
+   label->mark = ANY;
    label->list.first = NULL;
    label->list.last = NULL;
    label->list_length = 0;
@@ -58,10 +129,9 @@ LabelClass getLabelClass(Label *label)
       case NEG:
            return INT_L;
 
-      case CHARACTER_CONSTANT:
       case STRING_CONSTANT:
       case CONCAT:
-          return STRING_L;
+           return STRING_L;
 
       default:
            print_to_log("Error (getLabelClass): First element of passed list "
@@ -138,8 +208,6 @@ GP2Atom *copyGP2Atom(GP2Atom *atom)
            atom_copy->value.number = atom->value.number;
            break;
 
-      case CHARACTER_CONSTANT:
-
       case STRING_CONSTANT:
            atom_copy->value.string = strdup(atom->value.string);
            break;
@@ -187,11 +255,7 @@ void printGP2Atom(GP2Atom *atom)
 	     printf("%d", atom->value.number);
 	     break;
 
-	case CHARACTER_CONSTANT:
-	     printf("\"%s\"", atom->value.string);
-	     break;
-
-	case STRING_CONSTANT:
+        case STRING_CONSTANT:
 	     printf("\"%s\"", atom->value.string);
 	     break;
 
@@ -271,54 +335,40 @@ void printMark(MarkType mark, bool verbose)
    switch(mark)
    {
       case NONE:
-
            break;
 
       case RED:
-         
            if(verbose) printf("Mark: Red\n");
            else printf(" # red");
-
            break;
 
       case GREEN:
-
            if(verbose) printf("Mark: Green\n");
            else printf(" # green");
-
            break;
 
       case BLUE:
-
            if(verbose) printf("Mark: Blue\n");
            else printf(" # blue");
-
            break;
 
       case GREY:
-
            if(verbose) printf("Mark: Grey\n");
            else printf(" # grey");
-
            break;
 
       case DASHED:
-
            if(verbose) printf("Mark: Dashed\n");
            else printf(" # dashed");
-
            break;
 
       case ANY:
-
            if(verbose) printf("Mark: Any\n");
            else printf(" # any");
-
            break;
 
       default:
            print_to_log("Error (printMark): Unexpected mark type %d\n", mark);
-
            break;
    }
 }
@@ -346,8 +396,6 @@ void freeGP2Atom(GP2Atom *atom)
      case INTEGER_CONSTANT:
           break;
 
-     case CHARACTER_CONSTANT:
-      
      case STRING_CONSTANT:
           if(atom->value.string) free(atom->value.string);
           break;

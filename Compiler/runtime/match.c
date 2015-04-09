@@ -92,7 +92,6 @@ void freeMap(Map *map)
    free(map);
 } */
 
-
 Morphism *makeMorphism(int nodes, int edges, int variables)
 {
    Morphism *morphism = malloc(sizeof(Morphism));
@@ -148,7 +147,7 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
 
    if(variables > 0) 
    {
-      morphism->assignment = calloc(variables, sizeof(Map));
+      morphism->assignment = calloc(variables, sizeof(Assignment));
 
       if(morphism->assignment == NULL)
       {
@@ -164,8 +163,44 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
 
    }
    else morphism->assignment = NULL;
-
    return morphism;
+}
+
+void clearMorphism(Morphism *morphism)
+{ 
+   morphism->node_map_index = 0;
+   int count;
+   if(morphism->nodes > 0) 
+   {
+      for(count = 0; count < morphism->nodes; count++)
+      {
+         morphism->node_map[count].left_index = -1;
+         morphism->node_map[count].host_index = -1;
+         morphism->node_map[count].added_variables = -1;
+      }
+   }
+
+   morphism->edge_map_index = 0;
+   if(morphism->edges > 0) 
+   {
+      for(count = 0; count < morphism->edges; count++)
+      {
+         morphism->edge_map[count].left_index = -1;
+         morphism->edge_map[count].host_index = -1;
+         morphism->edge_map[count].added_variables = -1;
+      }
+   }
+
+   morphism->assignment_index = 0;
+   if(morphism->variables > 0) 
+   {
+      for(count = 0; count < morphism->variables; count++)
+      {
+         morphism->assignment[count].variable = NULL;
+         morphism->assignment[count].value.first = NULL;
+         morphism->assignment[count].value.last = NULL;
+      }
+   }
 }
 
 void addNodeMap(Morphism *morphism, int left_index, int host_index)

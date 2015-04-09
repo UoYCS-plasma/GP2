@@ -15,15 +15,21 @@
 #include "error.h"
 #include "globals.h"
 #include "graph.h"
+#include "label.h"
 #include "rule.h"
 
 /* Creates the rule data structure from a pointer to a rule in the AST. */
 Rule *makeRule(GPRule *rule);
 
-/* Returns the maximum of minimum_size and the smallest power of 2 greater 
- * than the number of nodes or edges in the passed graph. */
-int getNodeSize(GPGraph *graph, int minimum_size);
-int getEdgeSize(GPGraph *graph, int minimum_size);
+/* Counts the number of nodes/edges in a graph from its AST representation. */
+int countNodes(GPGraph *graph);
+int countEdges(GPGraph *graph);
+
+/* Used to generate an appropriate initial node/edge array size for a graph. 
+ * Returns the maximum of minimum_size and the smallest power of 2 greater 
+ * than the number_of_items in the passed graph. number_of_items is obtained
+ * from a call to countNodes or countEdges. */
+int getArraySize(int number_of_items, int minimum_size);
 
 /* scanLHS does the following:
  * (1) Creates and returns the graph data structure for the LHS graph.
@@ -37,8 +43,7 @@ int getEdgeSize(GPGraph *graph, int minimum_size);
  * (5) Sets the deletes_nodes flag if the rule deletes a node.
  */
 Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
-               IndexMap **edge_map, ItemList **deleted_nodes,
-               unsigned int *is_rooted);
+               IndexMap **edge_map, ItemList **deleted_nodes, bool *is_rooted);
 
 /* scanRHSNodes does the following:
  * (1) Creates and returns the graph data structure for the graph containing

@@ -64,8 +64,6 @@ bool declarationScan(List *ast, string const scope)
    {     
       switch(ast->value.declaration->decl_type) 
       {
-	 /* The MAIN_DECLARATION node points only to a command sequence: no 
-          * declarations in the subtree. */
          case MAIN_DECLARATION:
    
               main_count += 1;
@@ -74,60 +72,17 @@ bool declarationScan(List *ast, string const scope)
   
          case PROCEDURE_DECLARATION:
          {
-	      /* Get the name of the procedure */
               GPProcedure *procedure = ast->value.declaration->value.procedure;
-	      string procedure_name = strdup(procedure->name);	      
-
-              symbol_list = g_hash_table_lookup(symbol_table, procedure_name);
-	      
-	      /* Make a copy of symbol_list for list traversal as symbol_list
-	       * needs to point to the head of the list in case the new symbol
-	       * is added. */
-	      GSList *iterator = symbol_list;
-              bool add_procedure = true;	  
-
-	      /* Report an error if a procedure with that name already exists
-	       * in the table. */
-              while(iterator)  
+              GPProcedure *duplicate = 
+                 findProcedureDeclaration(ast, procedure->name, procedure);
+              if(duplicate != NULL)
               {
-		 if(((Symbol*)iterator->data)->type == PROCEDURE_S)
-                 {
-		    print_to_console("Error: Procedure %s declared more " 
-                                     "than once.\n", 
-                                     procedure_name);
-		    print_to_log("Error: Procedure %s declared more " 
-                                 "than once.\n", 
-                                 procedure_name);
-		    add_procedure = false;
-		    name_clash = true;
-                    /* Report the error only once for this declaration. */
-		    break;
-		 }
-		 iterator = iterator->next;
-              }
-	      
-              if(add_procedure) 
-              {
-                 /* Create a symbol for the procedure name */
-                 Symbol *proc_symbol = malloc(sizeof(Symbol));
-
-	         if(proc_symbol == NULL)  
-                 {
-                    print_to_log("Memory exhausted during symbol management.\n");
-                    exit(1); 
-                 }
-                 proc_symbol->type = PROCEDURE_S;
-                 proc_symbol->scope = strdup(scope);
-	         proc_symbol->containing_rule = NULL;
-		 proc_symbol->is_var = false;
-		 proc_symbol->in_lhs = false;
-                 proc_symbol->wildcard = false; 
-                 proc_symbol->bidirectional = false; 
-
-                 symbol_list = g_slist_prepend(symbol_list, proc_symbol);      
-                 g_hash_table_replace(symbol_table, procedure_name, symbol_list); 
+                 print_to_console("Error: Procedure %s declared more " 
+                                  "than once.\n", procedure->name);
+	         print_to_log("Error: Procedure %s declared more " 
+                              "than once.\n", procedure->name);
+	         name_clash = true;
 	      }
-
 	      if(procedure->local_decls) 
               {
 	         /* Reverse local declaration list */
@@ -136,11 +91,8 @@ bool declarationScan(List *ast, string const scope)
                  /* Scan for any local declarations. The procedure's name is
                   * passed as the new scope. */
                  name_clash = declarationScan(procedure->local_decls, 
-                                              procedure_name);
+                                              procedure->name);
               }
-
-              if(!add_procedure && procedure_name) free(procedure_name);
- 
               break;
          }
   
@@ -169,20 +121,16 @@ bool declarationScan(List *ast, string const scope)
                     if(!strcmp(scope, "Main")) 
                     {
                        print_to_console("Error: Rule %s declared twice in " 
-                                        "global scope %s.\n", 
-                                        rule_name, scope);
+                                        "global scope %s.\n", rule_name, scope);
                        print_to_log("Error: Rule %s declared twice in " 
-                                    "global scope %s.\n", 
-                                    rule_name, scope);
+                                    "global scope %s.\n", rule_name, scope);
                     }
                     else 
                     { 
                        print_to_console("Error: Rule %s declared twice in " 
-                                        "procedure %s.\n", 
-                                        rule_name, scope);
+                                        "procedure %s.\n", rule_name, scope);
                        print_to_log("Error: Rule %s declared twice in " 
-                                    "procedure %s.\n", 
-                                    rule_name, scope);
+                                    "procedure %s.\n", rule_name, scope);
                     }
 		    add_rule = false;
                     name_clash = true;
@@ -218,7 +166,6 @@ bool declarationScan(List *ast, string const scope)
                  g_hash_table_replace(symbol_table, rule_name_copy, symbol_list);  
 	      }
               else if(rule_name) free(rule_name); 
-
               break;
          }
 
@@ -226,13 +173,10 @@ bool declarationScan(List *ast, string const scope)
              print_to_log("Error: Unexpected node type %d at AST node %d\n\n", 
                           ast->value.declaration->decl_type, 
 		          ast->value.declaration->node_id);
-
              break; 
-
       }     
       ast = ast->next;  	
    }
-
    /* The code following the if statement is only executed upon reaching the
     * end of the global declaration list. */
    if(!strcmp(scope, "Main")) 
@@ -280,7 +224,7 @@ bool semanticCheck(List *declarations, string const scope)
 	       * no harm in checking here as well. */
               if(current_declaration->value.main_program)
 		 statementScan(current_declaration->value.main_program,
-                               scope);
+                               scope, declarations);
 	      else print_to_log("Error: Main procedure has no program. \n");
 
               break;
@@ -294,8 +238,8 @@ bool semanticCheck(List *declarations, string const scope)
 	      /* An empty procedure program does not comform to the grammar. The
 	       * parser should catch it and report a syntax error, but there is
 	       * no harm in checking here as well. */
-              if(procedure->cmd_seq)
-                  statementScan(procedure->cmd_seq, new_scope);
+              if(procedure->commands)
+                  statementScan(procedure->commands, new_scope, declarations);
 	      else print_to_log("Error: Procedure %s has no program, "
                                 "not caught by parser. \n", procedure->name);
 
@@ -347,18 +291,19 @@ void freeBiEdgeList(BiEdgeList *edge_list)
 }
 
 
-void statementScan(GPStatement *const statement, string const scope) 
+void statementScan(GPStatement *const statement, string const scope, 
+                   List *declarations) 
 {
    switch(statement->statement_type) 
    {
       case COMMAND_SEQUENCE: 
       {
-           statement->value.cmd_seq = reverse(statement->value.cmd_seq);
-           List *command_list = statement->value.cmd_seq;
+           statement->value.commands = reverse(statement->value.commands);
+           List *command_list = statement->value.commands;
 
            while(command_list) 
            {
-              statementScan(command_list->value.command, scope);
+              statementScan(command_list->value.command, scope, declarations);
               command_list = command_list->next;   
            }           
            break;
@@ -366,72 +311,110 @@ void statementScan(GPStatement *const statement, string const scope)
 
       case RULE_CALL:
       {
-           string rule_name = validateRuleCall(statement->value.rule_name,
-                                               scope);
-           if(rule_name != NULL)
+           string name = statement->value.rule_call.rule_name;
+           GPProcedure *procedure = NULL;
+           /* If not in global scope, get a pointer to the procedure in which to
+            * start search for the rule declaration. */
+           if(strcmp(scope, "Main"))
+              procedure = findProcedureDeclaration(declarations, scope, NULL);
+
+           GPRule *rule = findRuleDeclaration(declarations, name, procedure);
+           if(rule == NULL)
            {
-              free(statement->value.rule_name);
-              statement->value.rule_name = rule_name;
+              print_to_console("Error: Rule %s called but not declared in a "
+                               "visible scope.\n", name);     
+              print_to_log("Error: Rule %s called but not declared in a "
+                           "visible scope.\n", name);
+              abort_compilation = true;
+           }
+           else
+           {
+              free(name);
+              statement->value.rule_call.rule_name = strdup(rule->name);
+              statement->value.rule_call.rule = rule;
            }
            break;
-       }
-
-      case PROCEDURE_CALL:   
-
-           validateProcedureCall(statement->value.proc_name, scope);
-
-           break;
+      }
 
       case RULE_SET_CALL: 
       {
            statement->value.rule_set = reverse(statement->value.rule_set);
-
            List *rule_list = statement->value.rule_set;
-
            while(rule_list)
            {
-              string rule_name = validateRuleCall(rule_list->value.rule_name,
-                                                   scope);    
-              if(rule_name != NULL)
+              string name = rule_list->value.rule_call.rule_name;
+              GPProcedure *procedure = NULL;
+              /* If not in global scope, get a pointer to the procedure in 
+               * which to start search for the rule declaration. */
+              if(strcmp(scope, "Main"))
+                 procedure = findProcedureDeclaration(declarations, scope, NULL);
+
+              GPRule *rule = findRuleDeclaration(declarations, name, procedure);
+              if(rule == NULL)
               {
-                 free(rule_list->value.rule_name);
-                 rule_list->value.rule_name = rule_name;
+                 print_to_console("Error: Rule %s called but not declared in a "
+                                  "visible scope.\n", name);     
+                 print_to_log("Error: Rule %s called but not declared in a "
+                              "visible scope.\n", name);
+                 abort_compilation = true;
               }
-              rule_list = rule_list->next;   
+              else
+              {
+                 free(name);
+                 rule_list->value.rule_call.rule_name = strdup(rule->name);
+                 rule_list->value.rule_call.rule = rule;
+              }
+              rule_list = rule_list->next;
            }           
+           break;
+      }
+
+      case PROCEDURE_CALL:   
+      {
+           string name = statement->value.proc_call.proc_name;
+           GPProcedure *procedure = findProcedureDeclaration(declarations, name, NULL);
+           if(procedure == NULL)
+           {
+              print_to_console("Error: Procedure %s called but not declared.\n", name);    
+              print_to_log("Error: Procedure %s called but not declared.\n", name);
+              abort_compilation = true;
+           }
+           else statement->value.proc_call.procedure = procedure;
            break;
       }
 
       case IF_STATEMENT:
 
            statementScan(statement->value.cond_branch.condition, 
-                         scope);
+                         scope, declarations);
            statementScan(statement->value.cond_branch.then_stmt,
-                         scope);
+                         scope, declarations);
            statementScan(statement->value.cond_branch.else_stmt,
-                         scope);
+                         scope, declarations);
            break;
 
       case TRY_STATEMENT:
 
            statementScan(statement->value.cond_branch.condition, 
-                         scope);
+                         scope, declarations);
            statementScan(statement->value.cond_branch.then_stmt, 
-                         scope);
+                         scope, declarations);
            statementScan(statement->value.cond_branch.else_stmt, 
-                         scope);
+                         scope, declarations);
            break;
 
       case ALAP_STATEMENT:
 
-           statementScan(statement->value.loop_stmt,scope);
+           statementScan(statement->value.loop_stmt.loop_body, scope, declarations);
 
            break;
 
       case PROGRAM_OR:
 
-           statementScan(statement->value.or_stmt.left_stmt, scope);
-           statementScan(statement->value.or_stmt.right_stmt, scope);
+           statementScan(statement->value.or_stmt.left_stmt, scope,
+                         declarations);
+           statementScan(statement->value.or_stmt.right_stmt, scope, 
+                         declarations);
 
            break;
 
@@ -448,88 +431,77 @@ void statementScan(GPStatement *const statement, string const scope)
       }
 }             
 
-/* Searches for a rule name in the appropriate scope. 
- * If the passed scope is not "Main", first search for a rule symbol in the
- * passed scope. If such a symbol exists, we return the local rule name.
- * If the function does not return at this point, the code continues
- * by searching for the symbol in "Main" scope after the if statement. 
- * This code is also executed if "Main" is the passed scope. */
-string validateRuleCall(string const name, string const scope)
+GPRule *findRuleDeclaration(List *global_declarations, string const name,
+                            GPProcedure *procedure)
 {
-   string global_rule_name = makeRuleIdentifier(name, "Main");
-   GSList *symbol_list = NULL;
-
-   if(strcmp(scope, "Main"))
+   /* The code in the body of the if statement searches the local declarations
+    * of the passed procedure. If the rule is not found there, or if no 
+    * procedure was passed, the code falls through to the while loop that 
+    * searches the global declaration list. */
+   if(procedure != NULL)
    {
-      string local_rule_name = makeRuleIdentifier(name, scope);
-      symbol_list = g_hash_table_lookup(symbol_table, local_rule_name);
-      while(symbol_list != NULL)
+      List *local_declarations = procedure->local_decls;
+      while(local_declarations != NULL)
       {
-         Symbol *current_symbol = (Symbol*)(symbol_list->data);
-         if(current_symbol->type == RULE_S && 
-            !strcmp(current_symbol->scope, scope)) 
+         GPDeclaration *declaration = local_declarations->value.declaration;
+         if(declaration->decl_type == RULE_DECLARATION)
          {
-            free(global_rule_name);
-            return local_rule_name;
+           /* The rule name in the declaration is of the form 
+            * "<proc_name>_<rule_name>". Disregard "<proc_name>_" for the 
+            * comparison. */
+            int length = strlen(declaration->value.rule->name) -
+                         strlen(procedure->name) + 1;
+            if(!strcmp(declaration->value.rule->name + length, name))
+               return declaration->value.rule;
          }
-         else symbol_list = symbol_list->next;
+         if(declaration->decl_type == PROCEDURE_DECLARATION)
+         {
+            /* Search for the rule declaration in the local declaration list of
+             * the procedure and any local procedures. */
+            GPRule *rule = findRuleDeclaration(local_declarations, name,  
+                                               declaration->value.procedure);
+            if(rule != NULL) return rule;
+         }                           
+         local_declarations = local_declarations->next;
       }
-      /* Rule symbol not found in local scope. */
-      free(local_rule_name);
    }
-
-   /* No else statement: this is "fall through" code in case the code
-    * in the if statement does not return. */
-   symbol_list = g_hash_table_lookup(symbol_table, global_rule_name);
-   while(symbol_list != NULL)
+   while(global_declarations != NULL)
    {
-      Symbol *current_symbol = (Symbol*)(symbol_list->data);
-      if(current_symbol->type == RULE_S && 
-         !strcmp(current_symbol->scope, "Main")) return global_rule_name;
-      else symbol_list = symbol_list->next;
+      GPDeclaration *declaration = global_declarations->value.declaration;
+      if(declaration->decl_type == RULE_DECLARATION)
+      {
+          /* The rule name in the declaration node is of the form
+           * "Main_<rule_name>". Disregard "Main_" for the comparison. */
+          if(!strcmp(declaration->value.rule->name + 5, name))
+             return declaration->value.rule;
+      }
+      global_declarations = global_declarations->next;
    }
-   /* Rule symbol not found in global scope. */
-   free(global_rule_name);
-
-   print_to_console("Error: Rule %s called but not declared in a "
-                    "visible scope.\n", name);     
-   print_to_log("Error: Rule %s called but not declared in a "
-                "visible scope.\n", name);
-   abort_compilation = true;
    return NULL;
 }   
 
-
-void validateProcedureCall(string const name, string const scope) 
+GPProcedure *findProcedureDeclaration(List *declarations, string const name,
+                                      GPProcedure *excluded_procedure) 
 {
-   GSList *symbol_list = g_hash_table_lookup(symbol_table, name);
-
-   if(symbol_list == NULL) 
+   while(declarations != NULL)
    {
-      print_to_console("Error: Procedure %s called but not declared.\n", name);
-      print_to_log("Error: Procedure %s called but not declared.\n", name);
-      abort_compilation = true;
-      return;
+      GPDeclaration *declaration = declarations->value.declaration;
+      if(declaration->decl_type == PROCEDURE_DECLARATION)
+      {
+         if(!strcmp(declaration->value.procedure->name, name) &&
+            declaration->value.procedure != excluded_procedure)
+            return declaration->value.procedure;
+         /* Search for the procdure declaration in the local declaration list
+          * of the procedure and any local procedures. */
+         GPProcedure *procedure =
+            findProcedureDeclaration(declaration->value.procedure->local_decls, 
+                                     name, NULL);
+         if(procedure != NULL) return procedure;
+      }                           
+      declarations = declarations->next;
    }
-   /* Search the symbol list for a symbol with an appropriate scope. */
-   while(symbol_list != NULL)
-   {
-      Symbol *current_symbol = (Symbol*)(symbol_list->data);
-      /* If the current symbol has type PROCEDURE_S and its scope is either
-       * the passed scope parameter or "Main", return. */
-      if(current_symbol->type == PROCEDURE_S &&
-         (!strcmp(current_symbol->scope, scope) ||
-          !strcmp(current_symbol->scope, "Main")) ) return;
-      symbol_list = symbol_list->next;
-   }
-   print_to_console("Error: Procedure %s called but not declared in a "
-                    "visible scope.\n", name);     
-   print_to_log("Error: Procedure %s called but not declared in a "
-                "visible scope.\n", name);
-   abort_compilation = true;
+   return NULL;
 }
-
-
 
 void ruleScan(GPRule *const rule, string const scope)
 {  
@@ -561,15 +533,19 @@ void ruleScan(GPRule *const rule, string const scope)
               if(++integer_count > 1) 
               {
                  print_to_console("Warning (%s): More than one integer "
-                                  "list in variable declaration section.",
+                                  "list in variable declaration section."
+                                  "Only the first list is considered.\n",
                                   rule_name);
                  print_to_log("Warning (%s): More than one integer list "
                               "in variable declaration section.",
                               rule_name);
               }
-              else enterVariables(INT_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else 
+              {
+                 int count = enterVariables(INT_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
 	      break;
 
          case CHAR_DECLARATIONS:
@@ -577,15 +553,19 @@ void ruleScan(GPRule *const rule, string const scope)
               if(++character_count > 1)
               {
                  print_to_console("Warning (%s): More than one character "
-                                  "list in variable declaration section.",
+                                  "list in variable declaration section."
+                                  "Only the first list is considered.\n",
                                   rule_name);
                  print_to_log("Warning (%s): More than one character list "
                               "in variable declaration section.",
                               rule_name);
               }
-              else enterVariables(CHAR_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else 
+              {
+                 int count = enterVariables(CHAR_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
 	      break;
 
 
@@ -600,9 +580,12 @@ void ruleScan(GPRule *const rule, string const scope)
                               "in variable declaration section.", 
                               rule_name);
               }
-              else enterVariables(STRING_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else
+              {
+                 int count = enterVariables(STRING_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
               break;
    	
          case ATOM_DECLARATIONS:
@@ -616,9 +599,12 @@ void ruleScan(GPRule *const rule, string const scope)
                               "in variable declaration section.",
                               rule_name);
               }
-              else enterVariables(ATOM_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else
+              {
+                 int count = enterVariables(ATOM_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
 	      break; 
 
 	 case LIST_DECLARATIONS:
@@ -632,9 +618,12 @@ void ruleScan(GPRule *const rule, string const scope)
                               "in variable declaration section.", 
                               rule_name);
               }
-              else enterVariables(LIST_S, variable_list->value.variables,
-			          scope, rule_name);
-
+              else
+              {
+                 int count = enterVariables(LIST_S, variable_list->value.variables,
+			                    scope, rule_name);
+                 rule->variable_count += count;
+              }
 	      break;  	 
 
 	 default:
@@ -646,18 +635,20 @@ void ruleScan(GPRule *const rule, string const scope)
       variable_list = variable_list->next;
    }
 
-   graphScan(rule->lhs, scope, rule_name, 'l');
-   graphScan(rule->rhs, scope, rule_name, 'r');
+   graphScan(rule, scope, rule_name, 'l');
+   graphScan(rule, scope, rule_name, 'r');
    if(rule->interface) interfaceScan(rule->interface, scope, rule_name);
    if(rule->condition) conditionScan(rule->condition, scope, rule_name);
 }   
 
 
-void enterVariables(SymbolType const type, List *variables, 
-                    string const scope, string const rule_name)
+int enterVariables(SymbolType const type, List *variables, 
+                   string const scope, string const rule_name)
 {
+   int variable_count;
    while(variables) 
    {
+      variable_count++;
       string variable_name = strdup(variables->value.variable_name);	   
       GSList *symbol_list = g_hash_table_lookup(symbol_table, variable_name);
       /* symbol_list is preserved as a new symbol is prepended to it */
@@ -714,12 +705,16 @@ void enterVariables(SymbolType const type, List *variables,
      /* Move to the next variable in the declaration list. */
      variables = variables->next;
    }
+   return variable_count;
 }  
 
 
-void graphScan(GPGraph *const graph, string const scope, 
-               string const rule_name, char const side)
+void graphScan(GPRule *rule, string const scope, string const rule_name,
+               char const side)
 {
+   GPGraph *graph = NULL;
+   if(side == 'l') graph = rule->lhs;
+   else if(side == 'r') graph = rule->rhs;
    /* Variables to store the symbol types and the graph for semantic checking
     * and error reporting. */
    SymbolType node_type, edge_type;
@@ -745,6 +740,7 @@ void graphScan(GPGraph *const graph, string const scope,
 
    while(node_list)  
    {
+      if(side == 'l') rule->left_nodes++;
       /* node_id is used as a key, so it is duplicated as node_id will be freed
        * by g_hash_table_insert. I do not want to also free the node->name in
        * the AST. */
@@ -859,6 +855,7 @@ void graphScan(GPGraph *const graph, string const scope,
 
    while(edge_list)
    {
+      if(side == 'l') rule->left_edges++;
       /* edge_id is used as a key, so it is duplicated as edge_id will be freed
        * by g_hash_table_insert. I do not also want to free the edge->name in
        * the AST. */
@@ -968,13 +965,17 @@ void graphScan(GPGraph *const graph, string const scope,
          {
             BiEdge list_edge = iterator->value;
 
-            /* Find edges in the list with the same scope, rule, source node and
-             * target node as the current edge.
-             */
-            if(!strcmp(list_edge.scope,scope) &&
-               !strcmp(list_edge.containing_rule,rule_name) &&
-               !strcmp(list_edge.source,source_id) &&
-               !strcmp(list_edge.target,target_id) ) 
+            /* Find edges in the list with the same scope, rule, and 
+             * incident node IDs as the current edge. Edge direction is 
+             * irrelevant for this check. */
+            if(!strcmp(list_edge.scope, scope) &&
+               !strcmp(list_edge.containing_rule, rule_name) &&
+               /* Either source = source and target = target... */
+               ((!strcmp(list_edge.source, source_id) &&
+                !strcmp(list_edge.target, target_id))   ||
+               /*... or source = target and target = source */
+               (!strcmp(list_edge.source, target_id) &&
+                !strcmp(list_edge.target, source_id))) ) 
             {
                /* Semantic check (1) */
                if(side == 'r' && list_edge.graph == 'l') 
@@ -1399,9 +1400,9 @@ void gpListScan(List **gp_list, string const scope, string const rule_name,
 
    if(lhs_non_simple_exp) 
    {
-      print_to_console("Error (%s): Arithmetic expression in LHS label \n",
+      print_to_console("Error (%s): Non-simple expression in LHS label. \n",
                        rule_name);
-      print_to_log("Error (%s): Arithmetic expression in LHS label \n",
+      print_to_log("Error (%s): Non-simple expression in LHS label. \n",
                    rule_name);
       abort_compilation = true;
    }
@@ -1428,20 +1429,6 @@ void atomicExpScan(GPAtomicExp * const atom_exp, string const scope,
                            "string expression.\n", rule_name);
               abort_compilation = true;
            }             
-
-           break;
-
-
-      case CHARACTER_CONSTANT:
-
-           if(int_exp) 
-           {
-              print_to_console("Error (%s): Character constant appears in "
-                               "an integer expression.\n", rule_name);
-              print_to_log("Error (%s): Character constant appears in "
-                           "an integer expression.\n", rule_name);
-	      abort_compilation = true;
-           }
 
            break;
 
@@ -1688,8 +1675,6 @@ void atomicExpScan(GPAtomicExp * const atom_exp, string const scope,
                print_to_log("Error (%s): Arithmetic operator appears in "
                             "string expression.\n", rule_name);
             }
-
-            if(location == 'l') lhs_non_simple_exp = true;
 
             atomicExpScan(atom_exp->value.exp, scope, rule_name,
                           location, true, false);

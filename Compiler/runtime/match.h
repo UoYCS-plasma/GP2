@@ -19,8 +19,8 @@
 
 typedef struct RewriteData {
    bool remove_item;
-   bool relabel_item;
-   Label *new_label;
+   bool rhs_root;
+   Label *new_label; /* NULL if the label does not change. */
    int host_index;
 } RewriteData;
 
@@ -83,6 +83,7 @@ typedef struct Morphism {
 } Morphism;
 
 Morphism *makeMorphism(int nodes, int edges, int variables);
+void clearMorphism(Morphism *morphism);
 void addNodeMap(Morphism *morphism, int left_index, int host_index);
 void addEdgeMap(Morphism *morphism, int left_index, int host_index);
 void addAssignment(Morphism *morphism, string variable, GP2List value);

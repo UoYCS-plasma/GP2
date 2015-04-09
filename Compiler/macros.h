@@ -1,62 +1,6 @@
 #ifndef INC_GEN_MACROS_H
 #define INC_GEN_MACROS_H
 
-#define GET_GRAPH_AT_RESTORE_POINT                              \
-   do {                                                         \
-   if(stack_depth > restore_point)                              \
-   {                                                            \
-      host = restoreGraph(host, stack_depth - restore_point);   \
-      stack_depth--;                                            \
-   }                                                            \
-   } while(0);
-      
-#define ADD_UNLABELLED_HOST_NODE(is_root, node_name)                    \
-   do {                                                                 \
-   node_index = addNode(host, (is_root), NULL);                         \
-   map_index = (int)strtol(node_name, NULL, 0);                         \
-   node_map[map_index] = node_index;                                    \
-   } while(0);                                                          \
-
-#define ADD_HOST_NODE(is_root, node_name, number)                       \
-   do {                                                                 \
-   node_index = addNode(host, (is_root), label ## number);              \
-   map_index = (int)strtol(node_name, NULL, 0);                         \
-   node_map[map_index] = node_index;                                    \
-   } while(0);                                                          \
-
-#define GET_HOST_LOOP_ENDPOINT(source_name)                             \
-   do {                                                                 \
-   map_index = (int)strtol(source_name, NULL, 0);                       \
-   source = node_map[map_index];                                        \
-   target = node_map[map_index];                                        \
-   if(source == -1)                                                     \
-   {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's source n" source_name \
-                   " not found in the node map.\n");                    \
-      exit(1);                                                          \
-   }                                                                    \
-   } while(0);
-
-#define GET_HOST_EDGE_ENDPOINTS(source_name, target_name)               \
-   do {                                                                 \
-   map_index = (int)strtol(source_name, NULL, 0);                       \
-   source = node_map[map_index];                                        \
-   if(source == -1)                                                     \
-   {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's source n" source_name \
-                   " not found in the node map.\n");                    \
-      exit(1);                                                          \
-   }                                                                    \
-   map_index = (int)strtol(target_name, NULL, 0);                       \
-   target = node_map[map_index];                                        \
-   if(target == -1)                                                     \
-   {                                                                    \
-      print_to_log("Error (makeHostGraph): Edge's target n" target_name \
-                   " not found in the node map.\n");                    \
-      exit(1);                                                          \
-   }                                                                    \
-   } while(0);
-
 #define MAKE_MATCHED_NODES_ARRAY                \
    int count;                                   \
    int matched_nodes[left_nodes];               \
@@ -87,7 +31,7 @@
 #define IF_INVALID_NODE(lclass, nmark, indeg, outdeg, bideg)  \
    if(node_matched ||                                         \
       host_node->label_class != (lclass) ||                   \
-      host_node->label->mark != (nmark) ||                    \
+      (host_node->label->mark != (nmark) && (nmark) != 6) ||  \
       host_node->indegree < (indeg) ||                        \
       host_node->outdegree < (outdeg) ||                      \
       ((host_node->outdegree + host_node->indegree            \
@@ -96,79 +40,108 @@
 #define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg, bideg)  \
    if(node_matched ||                                                  \
       host_node->label_class != (lclass) ||                            \
-      host_node->label->mark != (nmark) ||                             \
+      (host_node->label->mark != (nmark) && (nmark) != 6 ||            \
       host_node->indegree < (indeg) ||                                 \
       host_node->outdegree < (outdeg) ||                               \
-      ((host_node->outdegree - (outdeg) != (bideg)) &&                 \
-       (host_node->indegree - (indeg) != (bideg))))                    \
+      host_node->outdegree - (outdeg) != (bideg) ||                    \
+      host_node->indegree - (indeg) != (bideg))                        \
 
 
-#define IF_INVALID_EDGE(lclass, emark)       \
-   if(edge_matched ||                        \
-      host_edge->label_class != (lclass) ||  \
-      host_edge->label->mark != (emark))
+#define IF_INVALID_EDGE(lclass, emark)                     \
+   if(edge_matched ||                                      \
+      host_edge->label_class != (lclass) ||                \
+      (host_edge->label->mark != (emark) && (emark) != 6))
 
-#define IF_INVALID_LOOP_EDGE(lclass, emark)      \
-   if(edge_matched ||                            \
-      host_edge->source != host_edge->target ||  \
-      host_edge->label_class != (lclass) ||      \
-      host_edge->label->mark != (emark))
+#define IF_INVALID_LOOP_EDGE(lclass, emark)                \
+   if(edge_matched ||                                      \
+      host_edge->source != host_edge->target ||            \
+      host_edge->label_class != (lclass) ||                \
+      (host_edge->label->mark != (emark) && (emark) != 6))
 
 /* Deletes all the host items in the morphism from the host graph. Edges are
  * deleted first so that there is no chance of dangling edges from node
  * deletion. Called when the RHS of a rule is the empty graph. */
-#define REMOVE_RHS                                              \
-   do {                                                         \
-   for(count = 0; count < morphism->edges; count++)             \
-      removeEdge(host, morphism->edge_map[count].host_index);   \
-                                                                \
-   for(count = 0; count < morphism->nodes; count++)             \
-      removeNode(host, morphism->node_map[count].host_index);   \
-   } while(0);                                                  \
+#define REMOVE_RHS                                                         \
+   do {                                                                    \
+   for(count = 0; count < morphism->edges; count++)                        \
+      if(record_changes)                                                   \
+      {                                                                    \
+         Edge *edge = getEdge(host, morphism->edge_map[count].host_index); \
+         pushRemovedEdge(false, edge->label, edge->source, edge->target);  \
+      }                                                                    \
+      removeEdge(host, morphism->edge_map[count].host_index);              \
+                                                                           \
+   for(count = 0; count < morphism->nodes; count++)                        \
+      if(record_changes)                                                   \
+      {                                                                    \
+         Node *node = getNode(host, morphism->node_map[count].host_index); \
+         pushRemovedNode(node->root, node->label);                         \
+      }                                                                    \
+      removeNode(host, morphism->node_map[count].host_index);              \
+   } while(0);                                                             \
 
-#define PROCESS_EDGE_MORPHISMS                               \
-   do {                                                      \
-   for(count = 0; count < morphism->edges; count++)          \
-   {                                                         \
-      left_index = morphism->edge_map[count].left_index;     \
-      host_index = morphism->edge_map[count].host_index;     \
-      if(edge_map[left_index].remove_item == true)           \
-      {                                                      \
-         removeEdge(host, host_index);                       \
-         continue;                                           \
-      }                                                      \
-      if(edge_map[left_index].relabel_item == true)          \
-      {                                                      \
-         Edge *host_edge = getEdge(host, host_index);        \
-         Label *label = edge_map[left_index].new_label;      \
-         relabelEdge(host, host_edge, label, true, false);   \
-         continue;                                           \
-      }                                                      \
-   }                                                         \
+#define PROCESS_EDGE_MORPHISMS                                               \
+   do {                                                                      \
+   for(count = 0; count < morphism->edges; count++)                          \
+   {                                                                         \
+      left_index = morphism->edge_map[count].left_index;                     \
+      host_index = morphism->edge_map[count].host_index;                     \
+      if(edge_map[left_index].remove_item == true)                           \
+      {                                                                      \
+         if(record_changes)                                                  \
+         {                                                                   \
+            Edge *edge = getEdge(host, host_index);                          \
+            pushRemovedEdge(false, edge->label, edge->source, edge->target); \
+         }                                                                   \
+         removeEdge(host, host_index);                                       \
+         continue;                                                           \
+      }                                                                      \
+      Label *new_label = edge_map[left_index].new_label;                     \
+      if(new_label != NULL)                                                  \
+      {                                                                      \
+         if(record_changes)                                                  \
+         {                                                                   \
+            Edge *edge = getEdge(host, host_index);                          \
+            pushRelabelledEdge(host_index, false, edge->label);              \
+         }                                                                   \
+         relabelEdge(host, host_index, new_label, false);                    \
+      }                                                                      \
+   }                                                                         \
    } while(0);                                               
 
 
-#define PROCESS_NODE_MORPHISMS                                 \
-   do {                                                        \
-   for(count = 0; count < morphism->nodes; count++)            \
-   {                                                           \
-      left_index = morphism->node_map[count].left_index;       \
-      host_index = morphism->node_map[count].host_index;       \
-      if(node_map[left_index].remove_item == true)             \
-      {                                                        \
-         removeNode(host, host_index);                         \
-         continue;                                             \
-      }                                                        \
-      if(node_map[left_index].relabel_item == true)            \
-      {                                                        \
-         Node *host_node = getNode(host, host_index);          \
-         Label *label = node_map[left_index].new_label;        \
-         relabelNode(host, host_node, label, true, false);     \
-         node_map[left_index].host_index = host_index;         \
-         continue;                                             \
-      }                                                        \
-      else node_map[left_index].host_index = host_index;       \
-   }                                                           \
+#define PROCESS_NODE_MORPHISMS                                             \
+   do {                                                                    \
+   for(count = 0; count < morphism->nodes; count++)                        \
+   {                                                                       \
+      left_index = morphism->node_map[count].left_index;                   \
+      host_index = morphism->node_map[count].host_index;                   \
+      if(node_map[left_index].remove_item == true)                         \
+      {                                                                    \
+         if(record_changes)                                                \
+         {                                                                 \
+            Node *node = getNode(host, host_index);                        \
+            pushRemovedNode(false, node->label);                           \
+         }                                                                 \
+         removeNode(host, host_index);                                     \
+         continue;                                                         \
+      }                                                                    \
+      Node *host_node = getNode(host, host_index);                         \
+      Label *new_label = node_map[left_index].new_label;                   \
+      bool change_root = host_node->root != node_map[left_index].rhs_root; \
+      if(new_label != NULL || change_root)                                 \
+      {                                                                    \
+         if(record_changes)                                                \
+         {                                                                 \
+            Node *node = getNode(host, host_index);                        \
+            pushRelabelledNode(host_index, change_root, node->label);      \
+         }                                                                 \
+         relabelNode(host, host_index, new_label, change_root);            \
+         node_map[left_index].host_index = host_index;                     \
+         continue;                                                         \
+      }                                                                    \
+      else node_map[left_index].host_index = host_index;                   \
+   }                                                                       \
    } while(0);                                               
 
 #endif /* INC_GEN_MACROS */
