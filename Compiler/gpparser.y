@@ -58,9 +58,8 @@ bool syntax_error = false;
 }
 
 /* Single character tokens do not need to be explicitly declared. */
-
-%token MAIN IF TRY THEN ELSE SKIP FAIL                          
-%token WHERE EDGETEST  		               
+%token MAIN IF TRY THEN ELSE SKIP FAIL BREAK
+%token WHERE EDGETEST   
 %token INDEG OUTDEG LLEN SLEN					
 %token INT CHARACTER STRING ATOM LIST 	                               
 %token INTERFACE _EMPTY INJECTIVE 	
@@ -233,7 +232,7 @@ LocalDecls: /* empty */			{ $$ = NULL; }
 
 ComSeq: Command 			{ $$ = addASTCommand(@1, $1, NULL); }
       | ComSeq ';' Command  		{ $$ = addASTCommand(@3, $3, $1); }
-      /* Error-catching production */
+      /* Error-catching productions */
       | ComSeq ',' Command		{ $$ = addASTCommand(@3, $3, $1);
                                           report_warning("Incorrect use of comma "
 					    "to separate commands. Perhaps you "
@@ -270,6 +269,7 @@ Block: '(' ComSeq ')' 	                { $$ = newASTCommandSequence(@$,$2); }
      | Block OR Block 			{ $$ = newASTOrStmt(@$, $1, $3); }
      | SKIP				{ $$ = newASTSkip(@$); }
      | FAIL				{ $$ = newASTFail(@$); }
+     | BREAK				{ $$ = newASTBreak(@$); }
 
 SimpleCommand: RuleSetCall 	        { $$ = newASTRuleSetCall(@$, $1); }
              | RuleID                   { $$ = newASTRuleCall(@$, $1); if($1) free($1); }

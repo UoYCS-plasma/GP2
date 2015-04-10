@@ -224,28 +224,23 @@ bool semanticCheck(List *declarations, string const scope)
 	       * no harm in checking here as well. */
               if(current_declaration->value.main_program)
 		 statementScan(current_declaration->value.main_program,
-                               scope, declarations);
+                               scope, declarations, false);
 	      else print_to_log("Error: Main procedure has no program. \n");
 
               break;
 
          case PROCEDURE_DECLARATION: 
 	 {
-              /* Set scope to procedure name for scanning local declarations */
               GPProcedure *procedure = current_declaration->value.procedure;
-              string new_scope = procedure->name;
-
 	      /* An empty procedure program does not comform to the grammar. The
 	       * parser should catch it and report a syntax error, but there is
 	       * no harm in checking here as well. */
-              if(procedure->commands)
-                  statementScan(procedure->commands, new_scope, declarations);
-	      else print_to_log("Error: Procedure %s has no program, "
-                                "not caught by parser. \n", procedure->name);
-
+              if(!procedure->commands)
+                 print_to_log("Error: Procedure %s has no program, "
+                              "not caught by parser. \n", procedure->name);
 	      if(procedure->local_decls)
                  abort_compilation = semanticCheck(procedure->local_decls,
-                                                   new_scope);
+                                                   procedure->name);
               break;
 	 }    
 
@@ -292,7 +287,7 @@ void freeBiEdgeList(BiEdgeList *edge_list)
 
 
 void statementScan(GPStatement *const statement, string const scope, 
-                   List *declarations) 
+                   List *declarations, bool in_loop) 
 {
    switch(statement->statement_type) 
    {
@@ -303,7 +298,7 @@ void statementScan(GPStatement *const statement, string const scope,
 
            while(command_list) 
            {
-              statementScan(command_list->value.command, scope, declarations);
+              statementScan(command_list->value.command, scope, declarations, in_loop);
               command_list = command_list->next;   
            }           
            break;
@@ -379,48 +374,65 @@ void statementScan(GPStatement *const statement, string const scope,
               print_to_log("Error: Procedure %s called but not declared.\n", name);
               abort_compilation = true;
            }
-           else statement->value.proc_call.procedure = procedure;
+           else 
+           {
+              statement->value.proc_call.procedure = procedure;
+              statementScan(procedure->commands, name, declarations, in_loop);
+           }
            break;
       }
 
       case IF_STATEMENT:
 
            statementScan(statement->value.cond_branch.condition, 
-                         scope, declarations);
+                         scope, declarations, false);
            statementScan(statement->value.cond_branch.then_stmt,
-                         scope, declarations);
+                         scope, declarations, in_loop);
            statementScan(statement->value.cond_branch.else_stmt,
-                         scope, declarations);
+                         scope, declarations, in_loop);
            break;
 
       case TRY_STATEMENT:
 
            statementScan(statement->value.cond_branch.condition, 
-                         scope, declarations);
+                         scope, declarations, false);
            statementScan(statement->value.cond_branch.then_stmt, 
-                         scope, declarations);
+                         scope, declarations, in_loop);
            statementScan(statement->value.cond_branch.else_stmt, 
-                         scope, declarations);
+                         scope, declarations, in_loop);
            break;
 
       case ALAP_STATEMENT:
 
-           statementScan(statement->value.loop_stmt.loop_body, scope, declarations);
+           statementScan(statement->value.loop_stmt.loop_body, scope,
+                        declarations, true);
 
            break;
 
       case PROGRAM_OR:
 
            statementScan(statement->value.or_stmt.left_stmt, scope,
-                         declarations);
+                         declarations, in_loop);
            statementScan(statement->value.or_stmt.right_stmt, scope, 
-                         declarations);
+                         declarations, in_loop);
 
            break;
 
-      case SKIP_STATEMENT: break;
-
+      case SKIP_STATEMENT: 
       case FAIL_STATEMENT: break;
+      
+      case BREAK_STATEMENT: 
+        
+           if(!in_loop) 
+           {
+              YYLTYPE location = statement->location;
+              print_to_console("Error: break statement not in loop.\n");
+              print_to_log("%d.%d-%d.%d: Error: break statement not in loop.\n", 
+                           location.first_line, location.first_column, 
+                           location.last_line, location.last_column);
+              abort_compilation = true;
+           }
+           break;
 
       default: print_to_log("Error (statementScan): Unexpected type %d at "
                              "AST node %d\n", 

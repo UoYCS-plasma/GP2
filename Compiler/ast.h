@@ -100,7 +100,7 @@ GPDeclaration *newASTRuleDecl (YYLTYPE location, struct GPRule *rule);
 
 typedef enum {COMMAND_SEQUENCE = 0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL, 
               IF_STATEMENT, TRY_STATEMENT, ALAP_STATEMENT, PROGRAM_OR, 
-              SKIP_STATEMENT, FAIL_STATEMENT} StatementType;
+              SKIP_STATEMENT, FAIL_STATEMENT, BREAK_STATEMENT} StatementType;
 
 typedef struct GPStatement {
   int node_id;
@@ -137,8 +137,8 @@ typedef struct GPStatement {
       struct GPStatement *left_stmt; 
       struct GPStatement *right_stmt; 
     } or_stmt;			        /* PROGRAM_OR */
-    /* skip and fail are predefined GP rules represented by a struct GPStatement
-     * containing only a statement_type and location. */
+    /* skip, fail and break statements are represented by a GPStatement
+     * containing only a type and location. */
   } value;
 } GPStatement;
 
@@ -155,6 +155,7 @@ GPStatement *newASTOrStmt(YYLTYPE location, struct GPStatement *left_stmt,
 	                  struct GPStatement *right_stmt);
 GPStatement *newASTSkip(YYLTYPE location);
 GPStatement *newASTFail(YYLTYPE location);
+GPStatement *newASTBreak(YYLTYPE location);
 
 
 /* Definition of AST nodes representing conditional expressions.*/

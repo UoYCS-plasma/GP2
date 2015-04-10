@@ -109,6 +109,7 @@ then 	  	    return THEN;
 else		    return ELSE;
 skip                return SKIP;
 fail	 	    return FAIL;
+break	 	    return BREAK;
 where		    return WHERE;
 and                 return AND;
 or                  return OR;

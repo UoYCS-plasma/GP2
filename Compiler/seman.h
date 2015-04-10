@@ -172,13 +172,18 @@ bool semanticCheck(List *declarations, string const scope);
 
 /* statementScan is called whenever a GPStatement node is reached in the AST.
  * Called only by semanticCheck and itself. It searches for rule and procedure
- * calls and checks them for semantic correctness with the auxiliary function 
- * validateCall.
+ * calls and checks them for semantic correctness by searching for their 
+ * declarations in the appropriate scopes. It also checks that each break
+ * statement occurs in a loop body. 
  *
  * Argument 1: A pointer to the GPStatement node.
- * Argument 2: The current scope, passed from declarationScan. */
+ * Argument 2: The current scope, passed from declarationScan. 
+ * Argument 3: The main declaration list. Passed to findRuleDeclaration
+ *             and findProcedureDeclaration when a rule call or procedure
+ *             call is encountered.
+ * Argument 4: Flag set to true if scanning is taking place in a loop body. */
 void statementScan(GPStatement *const statement, string const scope, 
-                   List *declarations);
+                   List *declarations, bool in_loop);
 
 /* findRuleDeclaration searches for a GPRule AST node corresponding to the
  * passed name. It starts the search in the local declaration list of a

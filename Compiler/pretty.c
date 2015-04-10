@@ -579,6 +579,15 @@ void printASTStatement(GPStatement *const stmt, FILE *dot_file)
                              LOCATION_ARGS(stmt->location));
            break;
       
+      case BREAK_STATEMENT:
+
+           stmt->node_id = next_node_id;
+           next_node_id += 1;
+           print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n break\"]\n", 
+                             stmt->node_id, stmt->node_id, 
+                             LOCATION_ARGS(stmt->location));
+           break;
+      
       default: print_to_log("Error (printASTStatement): Unexpected type: "
                            "%d\n", (int)stmt->statement_type); 
                break;

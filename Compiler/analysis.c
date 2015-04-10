@@ -151,7 +151,7 @@ copyType getCopyType(GPStatement *statement, bool if_body, int com_seq,
               int new_com_seq = 2;
               if(com_seq == 0 || (com_seq == 1 && last_command)) new_com_seq = 1;
               copyType type = getCopyType(commands->value.command, if_body,
-                                          lol, commands->next == NULL);
+                                          new_com_seq, commands->next == NULL);
               if(type == COPY) return COPY;
               else commands = commands->next;
            }

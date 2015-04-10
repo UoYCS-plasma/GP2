@@ -415,7 +415,21 @@ GPStatement *newASTFail(YYLTYPE location)
     return stmt;
 }
 
+GPStatement *newASTBreak(YYLTYPE location)
+{
+    GPStatement *stmt = malloc(sizeof(GPStatement));
+   
+    if(stmt == NULL) 
+    {
+      print_to_log("Error: Memory exhausted during AST construction.\n");
+      exit(1);
+    }
 
+    stmt->statement_type = BREAK_STATEMENT;
+    stmt->location = location;
+
+    return stmt;
+}
 
 GPCondExp *newASTSubtypePred(CondExpType exp_type, YYLTYPE location, string var)
 {
@@ -1028,6 +1042,8 @@ void freeASTStatement(GPStatement *stmt)
       case SKIP_STATEMENT:
 
       case FAIL_STATEMENT:
+      
+      case BREAK_STATEMENT:
 
            break;
 
