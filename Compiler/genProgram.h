@@ -72,12 +72,12 @@ void generateRuntimeCode(List *declarations);
 void generateDeclarationCode(List *declarations);
 void generateMorphismCode(List *declarations, char type);
 void generateProgramCode(GPStatement *statement, ContextType context, 
-                         int restore_point, int roll_back_point, int indent);
+                         int restore_point, int roll_back, int indent);
 void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
                       ContextType context, int restore_point, 
-                      int roll_back_point, bool in_rule_set, int indent);
+                      int roll_back, bool last_rule, int indent);
 void generateRuleSetCall(List *rules, ContextType context, int restore_point, 
-                         int roll_back_point, int indent);
+                         int roll_back, int indent);
 
 /* Generates code to handle failure, which is context-dependent. There are two
  * types of failure: 
@@ -89,6 +89,6 @@ void generateRuleSetCall(List *rules, ContextType context, int restore_point,
  * The rule_name argument is used in the MAIN_BODY context to report the nature
  * of the failure before execution terminates. */
 void generateFailureCode(string rule_name, ContextType context, 
-                         int restore_point, int roll_back_point, int indent);
+                         int restore_point, int roll_back, int indent);
 
 #endif /* INC_GEN_PROGRAM_H */

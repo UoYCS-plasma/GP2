@@ -20,12 +20,11 @@ void staticAnalysis(List *declarations, bool debug, string prefix);
 
 typedef enum {NO_COPY = 0, RECORD_CHANGES, COPY} copyType;
 
-typedef enum {NULL_COMMAND = 0, SINGLE_RULE_CALL, SIMPLE_COMMAND, NORMAL_COMMAND} commandType;
+void annotate(GPStatement *statement, int restore_point);
 
-void annotate(GPStatement *statement);
-
-copyType getCopyType(GPStatement *statement, bool if_body, int com_seq,
-                     bool last_command);
+copyType getStatementType(GPStatement *statement, bool if_body, int com_seq,
+                          bool last_command);
+copyType getSequenceType(List *commands, bool if_body, int com_seq);
 
 /* A simple statement is a statement that does not necessitate copying the 
  * graph when present in a conditional statement predicate, a loop or a 

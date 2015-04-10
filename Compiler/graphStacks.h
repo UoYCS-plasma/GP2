@@ -27,7 +27,8 @@ extern Stack *graph_stack;
 void copyGraph(Graph *graph);
 /* restoreGraph frees the passed graph and returns the graph <depth> items
  * down the stack. All intermediate graphs are freed. */
-Graph *restoreGraph(Graph *graph, int depth);
+Graph *popGraphs(Graph *graph, int restore_point);
+void discardGraphs(int depth);
 void freeGraphStack(Stack *graph_stack);
 
 extern Stack *graph_change_stack;

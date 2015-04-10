@@ -295,15 +295,20 @@ void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes,
     * If there are no left edges, then there is no purpose for a matched edges
     * array regardless of the number of host edges. */
    if(left_edges > 0)
-      PTRS("   MAKE_MATCHED_EDGES_ARRAY\n");
+      PTRS("   MAKE_MATCHED_EDGES_ARRAY\n\n");
 
    if(first_op->next == NULL)
-      PTRS("\n   return match_%c%d(morphism, matched_nodes);\n",
-           item, first_op->index);
+      PTRSI("if(match_%c%d(morphism, matched_nodes)) return true;\n",
+            3, item, first_op->index);
    else
-      PTRS("\n   return match_%c%d(morphism, matched_nodes, matched_edges);\n",
-           item, first_op->index);
-   PTRS("}\n");
+      PTRSI("if(match_%c%d(morphism, matched_nodes, matched_edges)) return true;\n",
+            3, item, first_op->index);
+   PTRS("   else\n"
+        "   {\n"
+        "      clearMorphism(morphism);\n"
+        "      return false;\n"
+        "   }\n"
+        "}\n");
 }
 
 void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
@@ -547,8 +552,8 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
 
    PTRS("   int source_index = findHostIndex(morphism, %d);\n"
         "   if(source_index < 0) return false;\n"
-        "   Node *host_node = getNode(host, source_index);\n"
-        "   int target_index = findHostIndex(morphism, %d);\n\n"
+        "   Node *host_node = getNode(host, source_index);\n\n"
+        "   int target_index = findHostIndex(morphism, %d);\n"
         "   int counter;\n"
         "   bool edge_matched = false;\n"
         "   for(counter = host_node->out_index - 1; counter >= 0; counter--)\n",
@@ -764,7 +769,7 @@ void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
       PTRSI("if(edges_match)\n", 6);
       PTRSI("{\n", 6);
       PTRSI("addEdgeMap(morphism, %d, host_edge->index);\n", 9, left_edge->index);
-      PTRSI("matched_edges[host_edge->index] = true;\n", 9);
+      PTRSI("matched_edges[%d] = host_edge->index;\n", 9, left_edge->index);
    
       bool total_match = emitNextMatcherCall(next_op, 9);
       if(!total_match) 
@@ -858,7 +863,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       PTRH("void apply%s(bool record_changes);\n", rule->name);
       PTRS("void apply%s(bool record_changes)\n", rule->name);
       PTRS("{\n");
-      PTRSI("int index = -1;\n", 3);
+      PTRSI("index = -1;\n", 3);
       int index, label_count = 0;
       if(rule->added_edges != NULL)
       {
@@ -874,7 +879,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
                rule_node->root, label_count);
          if(rule->added_edges != NULL) 
             PTRSI("map[%d] = index;\n", 3, rule_node->index);
-         PTRSI("if(record_changes) pushAddedNode(index);\n\n", 3);
+         PTRSI("if(record_changes) pushAddedNode(index);\n", 3);
          label_count++;
       }
       NewEdgeList *iterator = rule->added_edges;
@@ -885,18 +890,17 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
                rule_edge->label->mark);
          PTRSI("index = addEdge(host, false, label%d, map[%d], map[%d]);\n\n",
                3, label_count, iterator->source_index, iterator->target_index);
-         PTRSI("if(record_changes) pushAddedEdge(index);\n\n", 3);
+         PTRSI("if(record_changes) pushAddedEdge(index);\n", 3);
          iterator = iterator->next;
          label_count++;
       }     
-      PTRS("   return;\n}\n\n");
+      PTRSI("\n}\n\n", 3);
       return;
    }
 
    PTRH("void apply%s(Morphism *morphism, bool record_changes);\n", rule->name);
    PTRS("void apply%s(Morphism *morphism, bool record_changes)\n", rule->name);
    PTRS("{\n");
-
    /* If the RHS is the empty graph, emit code to remove the image of the RHS
     * from the host graph. This code is simple enough to define in a macro. */
    if(empty_rhs)
@@ -904,7 +908,6 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       PTRS("   int count;\n"
            "   REMOVE_RHS\n" 
            "   clearMorphism(M_%s);\n"
-           "   return;\n"
            "}\n\n", rule->name);
       return;
    }
@@ -983,7 +986,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       PTRSI("index = addNode(host, %d, label%d);\n", 3, rule_node->root,
             label_count);
       if(rule->added_edges != NULL) PTRSI("map[%d] = index;\n", 3, rule_node->index);
-      PTRSI("if(record_changes) pushAddedNode(index);\n\n", 3);
+      PTRSI("if(record_changes) pushAddedNode(index);\n", 3);
       label_count++;
       iterator_n = iterator_n->next;
    }   
@@ -1014,10 +1017,9 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
             rule_edge->label->mark);
       PTRSI("index = addEdge(host, false, label%d, source, target);\n", 3, 
             label_count);
-      PTRSI("if(record_changes) pushAddedEdge(index);\n\n", 3);
+      PTRSI("if(record_changes) pushAddedEdge(index);\n", 3);
       label_count++;
       iterator_e = iterator_e->next;      
    }
-   PTRS("   clearMorphism(morphism);\n"
-        "   return;\n}\n\n");
+   PTRS("   clearMorphism(morphism);\n}\n\n");
 }

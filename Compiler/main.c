@@ -106,6 +106,9 @@ int main(int argc, char **argv)
       return 0;
    }   
    reverseGraphAST(ast_host_graph);
+   #ifdef DEBUG 
+      printDotHostGraph(ast_host_graph, host_graph_file);
+   #endif
    generateHostGraphCode(ast_host_graph);
 
    fclose(yyin);

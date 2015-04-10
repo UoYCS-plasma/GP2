@@ -59,7 +59,6 @@ List *addASTRule(YYLTYPE location, string rule_name, List *next)
     new_rule->list_type = RULES;
     new_rule->location = location;
     new_rule->value.rule_call.rule_name = strdup(rule_name);
-    new_rule->value.rule_call.copy_point = false;
     new_rule->value.rule_call.rule = NULL;
     new_rule->next = next;
 
@@ -279,7 +278,6 @@ GPStatement *newASTRuleCall(YYLTYPE location, string rule_name)
     stmt->statement_type = RULE_CALL;
     stmt->location = location;
     stmt->value.rule_call.rule_name = strdup(rule_name);
-    stmt->value.rule_call.copy_point = false;
     stmt->value.rule_call.rule = NULL;
     return stmt;
 }
@@ -338,8 +336,7 @@ GPStatement *newASTCondBranch(StatementType statement_type, YYLTYPE location,
     stmt->value.cond_branch.then_stmt = then_stmt;
     stmt->value.cond_branch.else_stmt = else_stmt;
     stmt->value.cond_branch.restore_point = -1;
-    stmt->value.cond_branch.roll_back_point = -1;
-    stmt->value.cond_branch.copy_point = false;
+    stmt->value.cond_branch.roll_back = false;
     return stmt;
 }
 
@@ -357,8 +354,7 @@ GPStatement *newASTAlap(YYLTYPE location, GPStatement *loop_body)
     stmt->location = location;
     stmt->value.loop_stmt.loop_body = loop_body;
     stmt->value.loop_stmt.restore_point = -1;
-    stmt->value.loop_stmt.roll_back_point = -1;
-    stmt->value.loop_stmt.copy_point = false;
+    stmt->value.loop_stmt.roll_back = false;
     stmt->value.loop_stmt.stop_recording = false;
 
     return stmt;

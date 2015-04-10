@@ -60,6 +60,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          ast_node->label->gp_list->list_type != EMPTY_LIST)
          PTIS("   node_labels[%d] = makeEmptyList(%d);\n", node_count, 
               ast_node->label->mark);
+      /* Assumes the nodes are named in order from 0: n0, n1 etc. */
       int map_index = (int)strtol((ast_node->name) + 1, NULL, 0);
       node_map[map_index] = node_index++;   
       if(++node_count == node_buffer_size)

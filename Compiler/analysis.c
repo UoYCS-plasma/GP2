@@ -10,7 +10,7 @@ void staticAnalysis(List *declarations, bool debug, string prefix)
       switch(decl->decl_type)
       {
          case MAIN_DECLARATION:
-              annotate(decl->value.main_program);
+              annotate(decl->value.main_program, 0);
               break;
 
          case PROCEDURE_DECLARATION:
@@ -38,10 +38,7 @@ void staticAnalysis(List *declarations, bool debug, string prefix)
    }
 }
 
-int restore_point = 0;
-int roll_back_point = 0;
-
-void annotate(GPStatement *statement)
+void annotate(GPStatement *statement, int restore_point)
 {
    switch(statement->statement_type)
    {
@@ -50,7 +47,10 @@ void annotate(GPStatement *statement)
            List *commands = statement->value.commands;
            while(commands != NULL)
            {            
-              annotate(commands->value.command);
+              /* Note that each command is annotated with the same restore
+               * point as each command in the sequence is independent with
+               * respect to graph backtracking. */
+              annotate(commands->value.command, restore_point);
               commands = commands->next;
            }
            break;
@@ -64,67 +64,81 @@ void annotate(GPStatement *statement)
       case PROCEDURE_CALL:
       {
            GPProcedure *procedure = statement->value.proc_call.procedure;
-           annotate(procedure->commands);
+           annotate(procedure->commands, restore_point);
            break;
       }
 
       case IF_STATEMENT:
       { 
-           copyType type = getCopyType(statement->value.cond_branch.condition,
-                                       true, false, 0); 
+           copyType type = getStatementType(statement->value.cond_branch.condition,
+                                            true, false, 0); 
            /* If the condition is a normal command, the graph is copied before
             * entering the condition. If the condition is null, the graph does
             * not need to be copied at all. Otherwise, the graph is copied
             * only when required, as determined by the AST annotation. */
+           int if_restore_point = restore_point;
            if(type == RECORD_CHANGES) 
-              statement->value.cond_branch.roll_back_point = roll_back_point++;
+              statement->value.cond_branch.roll_back = true;
            if(type == COPY)
-              statement->value.cond_branch.restore_point = restore_point++;
-           annotate(statement->value.cond_branch.condition);
-           annotate(statement->value.cond_branch.then_stmt);
-           annotate(statement->value.cond_branch.else_stmt);
+           {
+              statement->value.cond_branch.restore_point = restore_point;
+              if_restore_point++;
+           }
+           annotate(statement->value.cond_branch.condition, if_restore_point);
+           annotate(statement->value.cond_branch.then_stmt, restore_point);
+           annotate(statement->value.cond_branch.else_stmt, restore_point);
            break;
       }
 
       case TRY_STATEMENT:
       {
-           copyType type = getCopyType(statement->value.cond_branch.condition,
-                                       false, false, 0); 
+           copyType type = getStatementType(statement->value.cond_branch.condition,
+                                            false, false, 0); 
            /* As above, except the graph does not need to be copied if the
             * condition is a loop because loops always succeed and try does
             * not backtrack for the 'then' branch. */
+           int try_restore_point = restore_point;
            if(type == RECORD_CHANGES) 
-              statement->value.cond_branch.roll_back_point = roll_back_point++;
+              statement->value.cond_branch.roll_back = true;
            if(type == COPY)
-              statement->value.cond_branch.restore_point = restore_point++;
-           annotate(statement->value.cond_branch.condition);
-           annotate(statement->value.cond_branch.then_stmt);
-           annotate(statement->value.cond_branch.else_stmt);
+           {
+              statement->value.cond_branch.restore_point = restore_point;
+              try_restore_point++;
+           }
+           annotate(statement->value.cond_branch.condition, try_restore_point);
+           annotate(statement->value.cond_branch.then_stmt, restore_point);
+           annotate(statement->value.cond_branch.else_stmt, restore_point);
            break;
       }
 
       case ALAP_STATEMENT:
       {
            GPStatement *loop_body = statement->value.loop_stmt.loop_body;
-           copyType type = getCopyType(loop_body, false, false, 0);
+           copyType type = getStatementType(loop_body, false, false, 0);
+           int loop_restore_point = restore_point;
            if(type == RECORD_CHANGES)
-              statement->value.loop_stmt.roll_back_point = roll_back_point++;
+              statement->value.loop_stmt.roll_back = true;
            if(type == COPY)
-              statement->value.loop_stmt.restore_point = restore_point++;
-           annotate(loop_body);
+           {
+              statement->value.loop_stmt.restore_point = restore_point;
+              loop_restore_point++;
+           }
+           annotate(loop_body, loop_restore_point);
            break;
       }
 
       case PROGRAM_OR:
       {
-           annotate(statement->value.or_stmt.left_stmt);
-           annotate(statement->value.or_stmt.right_stmt);
+           annotate(statement->value.or_stmt.left_stmt, restore_point);
+           annotate(statement->value.or_stmt.right_stmt, restore_point);
            break;
       }
 
       case SKIP_STATEMENT:
 
       case FAIL_STATEMENT:
+
+      case BREAK_STATEMENT:
            break;
 
       default:
@@ -134,28 +148,40 @@ void annotate(GPStatement *statement)
    }
 }
 
+
+
+copyType getSequenceType(List *commands, bool if_body, int com_seq)
+{ 
+   while(commands != NULL)
+   {
+      int new_com_seq = 2;
+      if(com_seq == 0 || (com_seq == 1 && commands->next == NULL))
+         new_com_seq = 1;
+      copyType type = getStatementType(commands->value.command, if_body,
+                                       new_com_seq, commands->next == NULL);
+      if(type == COPY) return COPY;
+      else commands = commands->next;
+   }
+   return RECORD_CHANGES;
+}
+
 /* com_seq argument!
  * 0 - initial value, not within any command sequence.
  * 1 - within the first/main/top command sequence.
  * 2 - within a nested command sequence. */
-copyType getCopyType(GPStatement *statement, bool if_body, int com_seq,
-                     bool last_command)
+copyType getStatementType(GPStatement *statement, bool if_body, int com_seq,
+                          bool last_command)
 {
    switch(statement->statement_type)
    {
       case COMMAND_SEQUENCE:
       { 
            List *commands = statement->value.commands;
-           while(commands != NULL)
-           {
-              int new_com_seq = 2;
-              if(com_seq == 0 || (com_seq == 1 && last_command)) new_com_seq = 1;
-              copyType type = getCopyType(commands->value.command, if_body,
-                                          new_com_seq, commands->next == NULL);
-              if(type == COPY) return COPY;
-              else commands = commands->next;
-           }
-           return RECORD_CHANGES;
+           /* Special case for sequences with one command. */
+           if(commands->next == NULL)
+              return getStatementType(commands->value.command, if_body, 
+                                      com_seq, true);
+           else return getSequenceType(commands, if_body, com_seq);
       }
 
       case RULE_CALL:
@@ -164,19 +190,19 @@ copyType getCopyType(GPStatement *statement, bool if_body, int com_seq,
            return NO_COPY;
 
       case PROCEDURE_CALL:
-           return getCopyType(statement->value.proc_call.procedure->commands, 
+           return getStatementType(statement->value.proc_call.procedure->commands, 
                               if_body, com_seq, last_command);
 
       case IF_STATEMENT:
 
       case TRY_STATEMENT:
       {
-           copyType cond_type = getCopyType(statement->value.cond_branch.condition,
-                                            if_body, com_seq, last_command);
-           copyType then_type = getCopyType(statement->value.cond_branch.then_stmt,
-                                            if_body, com_seq, last_command);
-           copyType else_type = getCopyType(statement->value.cond_branch.else_stmt,
-                                            if_body, com_seq, last_command);
+           copyType cond_type = getStatementType(statement->value.cond_branch.condition,
+                                                 if_body, com_seq, last_command);
+           copyType then_type = getStatementType(statement->value.cond_branch.then_stmt,
+                                                 if_body, com_seq, last_command);
+           copyType else_type = getStatementType(statement->value.cond_branch.else_stmt,
+                                                 if_body, com_seq, last_command);
            if(cond_type == COPY || then_type == COPY || else_type == COPY) return COPY;
            else return RECORD_CHANGES;
       }
@@ -198,16 +224,18 @@ copyType getCopyType(GPStatement *statement, bool if_body, int com_seq,
       /* Return the "max" of the two branches. */
       case PROGRAM_OR:
       {
-           copyType left_type = getCopyType(statement->value.or_stmt.left_stmt, 
-                                            if_body, com_seq, last_command);
-           copyType right_type = getCopyType(statement->value.or_stmt.right_stmt,
-                                             if_body, com_seq, last_command);
+           copyType left_type = getStatementType(statement->value.or_stmt.left_stmt, 
+                                                 if_body, com_seq, last_command);
+           copyType right_type = getStatementType(statement->value.or_stmt.right_stmt,
+                                                  if_body, com_seq, last_command);
            return left_type > right_type ? left_type : right_type;
       }
 
       case SKIP_STATEMENT:
 
       case FAIL_STATEMENT:
+      
+      case BREAK_STATEMENT:
            return NO_COPY;
 
       default:

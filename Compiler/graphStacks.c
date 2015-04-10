@@ -123,7 +123,7 @@ void copyGraph(Graph *graph)
    push(graph_stack, data);
 }
 
-Graph *restoreGraph(Graph *graph, int restore_point)
+Graph *popGraphs(Graph *graph, int restore_point)
 {
    if(graph_stack == NULL) return graph;
    if(graph_stack->top == restore_point) return graph;
@@ -138,6 +138,19 @@ Graph *restoreGraph(Graph *graph, int restore_point)
    print_to_console("Error! Restore Point %d, Stack Top %d.\n", restore_point,
                     graph_stack->top);
    exit(1);
+}
+
+void discardGraphs(int depth)
+{
+   if(graph_stack == NULL) return;
+   if(graph_stack->top == depth) return;
+   while(graph_stack->top > depth)
+   { 
+      /* Pop decrements graph_stack->top. */
+      StackData data = pop(graph_stack);
+      freeGraph(data.graph);
+   }
+   return;
 }
 
 void freeGraphStack(Stack *graph_stack)
@@ -246,9 +259,9 @@ void pushRelabelledEdge(int index, bool change_flag, Label *old_label)
 void rollBackGraph(Graph *graph, int restore_point)
 { 
    if(graph_change_stack == NULL) return; 
-   if(graph_change_stack->top <= restore_point) return;
+   if(graph_change_stack->top == restore_point) return;
    while(graph_change_stack->top > restore_point)
-   {
+   { 
       StackData data = pop(graph_change_stack);
       GraphChange *change = data.graph_change;
       switch(change->type)
@@ -297,7 +310,7 @@ void rollBackGraph(Graph *graph, int restore_point)
 void discardChanges(int restore_point)
 {
    if(graph_change_stack == NULL) return;
-   if(graph_change_stack->top <= restore_point) return;
+   if(graph_change_stack->top == restore_point) return;
    while(graph_change_stack->top > restore_point)
    {
       StackData data = pop(graph_change_stack);

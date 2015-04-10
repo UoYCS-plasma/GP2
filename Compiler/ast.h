@@ -47,7 +47,6 @@ typedef struct List {
     struct GPStatement *command;       /* COMMANDS */
     struct {
        string rule_name;
-       bool copy_point;
        struct GPRule *rule;
     } rule_call;                       /* RULES */
     struct List *variables;            /* INT_DECLARATIONS, CHAR_DECLARATIONS,
@@ -110,7 +109,6 @@ typedef struct GPStatement {
     struct List *commands; 		/* COMMAND_SEQUENCE */
     struct {
        string rule_name; 
-       bool copy_point;
        struct GPRule *rule;   
     } rule_call;                        /* RULE_CALL */
     struct List *rule_set; 		/* RULE_SET_CALL */
@@ -123,14 +121,12 @@ typedef struct GPStatement {
       struct GPStatement *then_stmt; 
       struct GPStatement *else_stmt; 
       int restore_point;
-      int roll_back_point;
-      bool copy_point;
+      bool roll_back;
     } cond_branch; 			/* IF_STATEMENT, TRY_STATEMENT */
     struct {
        struct GPStatement *loop_body;
        int restore_point;
-       int roll_back_point;
-       bool copy_point;
+       bool roll_back;
        bool stop_recording;
     } loop_stmt;                        /* ALAP_STATEMENT */
     struct { 
