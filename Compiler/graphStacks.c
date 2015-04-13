@@ -256,7 +256,7 @@ void pushRelabelledEdge(int index, bool change_flag, Label *old_label)
    push(graph_change_stack, data);
 }
    
-void rollBackGraph(Graph *graph, int restore_point)
+void undoChanges(Graph *graph, int restore_point)
 { 
    if(graph_change_stack == NULL) return; 
    if(graph_change_stack->top == restore_point) return;

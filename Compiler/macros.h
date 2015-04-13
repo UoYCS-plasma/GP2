@@ -58,6 +58,14 @@
       host_edge->label_class != (lclass) ||                \
       (host_edge->label->mark != (emark) && (emark) != 6))
 
+#define HANDLE_RESULT(lindex)       \
+  if(result) return true;           \
+  else                              \
+  {                                 \
+     removeNodeMap(morphism);       \
+     matched_nodes[(lindex)] = -1;  \
+  } 
+
 /* Deletes all the host items in the morphism from the host graph. Edges are
  * deleted first so that there is no chance of dangling edges from node
  * deletion. Called when the RHS of a rule is the empty graph. */

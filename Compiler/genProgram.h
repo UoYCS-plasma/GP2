@@ -78,6 +78,8 @@ void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
                       int roll_back, bool last_rule, int indent);
 void generateRuleSetCall(List *rules, ContextType context, int restore_point, 
                          int roll_back, int indent);
+void generateBranchStatement(GPStatement *statement, ContextType context,
+                             int restore_point, int roll_back, int indent);
 
 /* Generates code to handle failure, which is context-dependent. There are two
  * types of failure: 

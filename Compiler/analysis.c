@@ -148,8 +148,6 @@ void annotate(GPStatement *statement, int restore_point)
    }
 }
 
-
-
 copyType getSequenceType(List *commands, bool if_body, int com_seq)
 { 
    while(commands != NULL)
@@ -245,80 +243,3 @@ copyType getStatementType(GPStatement *statement, bool if_body, int com_seq,
    }
    return COPY;
 }
-
-bool nullStatement(GPStatement *statement)
-{
-   switch(statement->statement_type)
-   {
-      case COMMAND_SEQUENCE:
-      {
-           List *commands = statement->value.commands;
-           while(commands != NULL)
-           {
-              if(!nullStatement(commands->value.command)) return false;
-              commands = commands->next;
-           }
-           return true;
-      }
-      case RULE_CALL:
-           if(statement->value.rule_call.rule->is_predicate) return true;
-           break;
-
-      case RULE_SET_CALL:
-      {
-           /* If one non-predicate rule exists, then the rule set is not a null
-            * statement. */
-           List *rules = statement->value.rule_set;
-           while(rules != NULL)
-           {
-              if(!rules->value.rule_call.rule->is_predicate) return false;
-              rules = rules->next;
-           }
-           return true;
-      }
-
-      case PROCEDURE_CALL:
-           return nullStatement(statement->value.proc_call.procedure->commands);
-
-      case IF_STATEMENT:
-           if(!nullStatement(statement->value.cond_branch.then_stmt)) return false;
-           if(!nullStatement(statement->value.cond_branch.else_stmt)) return false;
-           return true;
-
-      case TRY_STATEMENT:
-           if(!nullStatement(statement->value.cond_branch.condition)) return false;
-           if(!nullStatement(statement->value.cond_branch.then_stmt)) return false;
-           if(!nullStatement(statement->value.cond_branch.else_stmt)) return false;
-           return true;
-
-      case ALAP_STATEMENT:
-           if(nullStatement(statement->value.loop_stmt.loop_body))
-           {
-              print_to_console("Warning: There may be a nonterminating loop in "
-                               "your program!\n\n");
-              YYLTYPE location = statement->location;
-              print_to_log("%d.%d-%d.%d: Warning: Possible nonterminating loop!\n\n", 
-                           location.first_line, location.first_column, 
-                           location.last_line, location.last_column);
-              return true;
-           }
-           else return false;
-
-      case PROGRAM_OR:
-           if(!nullStatement(statement->value.or_stmt.left_stmt)) return false;
-           if(!nullStatement(statement->value.or_stmt.right_stmt)) return false;
-           return true;
-
-      case SKIP_STATEMENT:
-
-      case FAIL_STATEMENT:
-           return true;
-
-      default:
-           print_to_log("Error (nullStatement): Unexpected statement type %d.\n",
-                        statement->statement_type);
-           break;
-   }
-   return false;
-}
-
