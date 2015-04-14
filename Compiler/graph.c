@@ -690,57 +690,53 @@ int getOutdegree(Node *node)
 }
 
 
-void printGraph(Graph *graph) 
+void printGraph(Graph *graph, FILE *file) 
 {
    int index, node_count = 0, edge_count = 0;
-
    if(graph == NULL || graph->number_of_nodes == 0) 
    {
-      printf("[ | ]\n");
+      fprintf(file, "[ | ]\n");
       return;
    }
-
-   printf("[ ");
+   fprintf(file, "[ ");
    for(index = 0; index < graph->node_index; index++)
    {
       Node *node = getNode(graph, index);
       if(node->index >= 0) 
       {
          /* Five nodes per line */
-         if(node_count != 0 && node_count % 5 == 0) printf("\n  ");
+         if(node_count != 0 && node_count % 5 == 0) fprintf(file, "\n  ");
          node_count++;
-         if(node->root) printf("(n%d(R), ", index);
-         else printf("(n%d, ", index);
-         printGP2List(node->label->list);
-         printMark(node->label->mark, false);
-         printf(") ");
+         if(node->root) fprintf(file, "(n%d(R), ", index);
+         else fprintf(file, "(n%d, ", index);
+         printGP2List(node->label->list, file);
+         printMark(node->label->mark, false, file);
+         fprintf(file, ") ");
       }
    }
- 
    if(graph->number_of_edges == 0)
    {
-      printf("| ]\n\n");
+      fprintf(file, "| ]\n\n");
       return;
    }
-
-   printf("|\n  ");
+   fprintf(file, "|\n  ");
    for(index = 0; index < graph->edge_index; index++)
    {
       Edge *edge = getEdge(graph, index);
       if(edge->index >= 0) 
       {
          /* Three edges per line */
-         if(edge_count != 0 && edge_count % 3 == 0) printf("\n  ");
+         if(edge_count != 0 && edge_count % 3 == 0) fprintf(file, "\n  ");
          edge_count++;
-         if(edge->bidirectional) printf("(e%d(B), ", index);
-         else printf("(e%d, ", index);
-         printf("n%d, n%d, ", edge->source, edge->target);
-         printGP2List(edge->label->list);
-         printMark(edge->label->mark, false);
-         printf(") ");
+         if(edge->bidirectional) fprintf(file, "(e%d(B), ", index);
+         else fprintf(file, "(e%d, ", index);
+         fprintf(file, "n%d, n%d, ", edge->source, edge->target);
+         printGP2List(edge->label->list, file);
+         printMark(edge->label->mark, false, file);
+         fprintf(file, ") ");
       }
    }
-   printf("]\n\n");
+   fprintf(file, "]\n\n");
 }
 
 void freeGraph(Graph *graph) 

@@ -27,7 +27,6 @@
   do { fprintf(symbol_table_file, text, ## __VA_ARGS__); }     \
   while(0) 
 
-
 /* prettyPrint is a macro that calls the appropriate print provided the first
  * argument is not a null pointer. 
  *
@@ -43,7 +42,6 @@
  * written by prettyPrint. The edges must be explicitly written directly 
  * before calling this macro. This is done in the .c file.
  */ 
-
 #define prettyPrint(POINTER_ARG,TYPE)                                         \
   do { 									      \
        if(POINTER_ARG != NULL)                                                \
@@ -56,7 +54,6 @@
        }            							      \
      }                                                                        \
   while (0)
-
 
 /* prettyPrintList is used to process members of AST structs that point
  * to a struct List. It should only be used when a NULL pointer is valid in
@@ -76,7 +73,6 @@
  * immediately following this edge creation. The use of the global node counter
  * next_node_id ensures that the edge points to the correct node.
  */
-
 #define prettyPrintList(POINTER_ARG, NODE_TYPE, EDGE_LABEL)                 \
    do {                                                                     \
         if(POINTER_ARG == NULL) {                                           \
@@ -98,10 +94,8 @@
  * that are required for calls to fprintf. LOC is a variable of type struct 
  * YYLTYPE, which occurs in the location field of every AST node struct.
  */
-
 #define LOCATION_ARGS(LOC)    \
    LOC.first_line, LOC.first_column, LOC.last_line, LOC.last_column
-
 
 #define printListNode(NODE_LABEL)                                     \
   do                                                                  \
@@ -133,22 +127,22 @@
      print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"               \
                        #NODE_LABEL "\\n Restore Point = %d\\n"            \
                        "Roll Back Point = %d\"]\n",                       \
-                       stmt->node_id, stmt->node_id,                      \
-                       LOCATION_ARGS(stmt->location),                     \
-                       stmt->value.cond_branch.restore_point,             \
-                       stmt->value.cond_branch.roll_back);                \
+                       command->node_id, command->node_id,                \
+                       LOCATION_ARGS(command->location),                  \
+                       command->value.cond_branch.restore_point,          \
+                       command->value.cond_branch.roll_back);             \
                                                                           \
      print_to_dot_file("node%d->node%d[label=\"condition\"]\n",           \
-                       stmt->node_id, next_node_id);                      \
-     prettyPrint(stmt->value.cond_branch.condition, Statement);           \
+                       command->node_id, next_node_id);                   \
+     prettyPrint(command->value.cond_branch.condition, Command);          \
                                                                           \
      print_to_dot_file("node%d->node%d[label=\"then\"]\n",                \
-                       stmt->node_id, next_node_id);                      \
-     prettyPrint(stmt->value.cond_branch.then_stmt, Statement);           \
+                       command->node_id, next_node_id);                   \
+     prettyPrint(command->value.cond_branch.then_command, Command);       \
                                                                           \
      print_to_dot_file("node%d->node%d[label=\"else\"]\n",                \
-                       stmt->node_id, next_node_id);                      \
-     prettyPrint(stmt->value.cond_branch.else_stmt, Statement);           \
+                       command->node_id, next_node_id);                   \
+     prettyPrint(command->value.cond_branch.else_command, Command);       \
   }                                                                       \
   while(0)     
 
@@ -259,51 +253,21 @@
   }                                                                         \
   while(0)  
 
-/* printSymbolTable creates the file <program>.tab, where <program> is the
- * name of the GP2 program file, and pretty prints the symbol table to that 
- * file. 
- *
- * Argument 1: The symbol table.
- * Argument 2: The name of the GP2 program file.*/
-
+/* Create the file <file_name>.tab to store the printed symbol table.
+ * printSymbolList is called on each hash table entry. */
 void printSymbolTable(GHashTable *table, string const file_name);
-
-
-/* printSymbolList is an auxiliary function called by printSymbolTable. It
- * iterates over a symbol list, pretty printing each symbol in the list. */
-
 void printSymbolList(gpointer key, gpointer value, gpointer user_data);
 
-/* printDotAST creates a new file <source_name>.dot. It generates
- * a DOT text file that can be used to draw a picture of the AST via
- * graphviz. 
- * 
- * Argument 1: A pointer to the AST to be pretty printed.
- * Argument 2: The name of the GP2 program file. */
-
-void printDotAST(List * const gp_ast, string file_name);
-
-
-/* Identical to printDotAST, except it calls printGraph instead of
- * printList.
- *
- * Argument 1: A pointer to the AST of the host graph to be pretty printed.
- * Argument 2: The name of the GP2 host graph file. */
-
-void printDotHostGraph(GPGraph * const host_graph_ast, string file_name);
-
-/* printList is called by printDotAST. It walks through the AST, outputting
- * lines to dot_file and recursively calling printing functions at the
- * appropriate places. 
- * 
- * Argument 1: A pointer to a List in the AST.
- * Argument 2: The .dot file created by printDotAST.
- * Argument 3: A variable to keep track of the current node number. Used
-               to uniquely identify nodes in the output. */
+/* Creates the file <file_name>.dot to which is printed a DOT representation
+ * of the passed AST for visualisation. printDotAST is initially called to
+ * print the program AST, while printASTGraph is called to print the host graph
+ * AST. */
+void printDotAST(List *const gp_ast, string file_name);
+void printDotHostGraph(GPGraph *const host_graph_ast, string file_name);
 
 void printASTList(List * const list, FILE *dot_file);
 void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file);
-void printASTStatement(GPStatement * const stmt, FILE *dot_file);
+void printASTCommand(GPCommand * const stmt, FILE *dot_file);
 void printASTCondition(GPCondExp * const cond, FILE *dot_file);
 void printASTAtom(GPAtomicExp * const atom, FILE *dot_file);
 void printASTProcedure(GPProcedure * const proc, FILE *dot_file);
@@ -312,6 +276,5 @@ void printASTGraph(GPGraph * const graph, FILE *dot_file);
 void printASTNode(GPNode * const node, FILE *dot_file);
 void printASTEdge(GPEdge * const edge, FILE *dot_file);
 void printASTLabel(GPLabel * const label, FILE *dot_file);
-/* void printASTPosition(GPPos * const pos, FILE *dot_file); */
 
 #endif /* INC_PRETTY_H */

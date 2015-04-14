@@ -162,7 +162,7 @@ typedef struct Rule {
 /* Checks if a rule does not modify the host graph: the rule neither adds nor
  * deletes nor relabels any items. */
 bool isPredicate(Rule *rule);
-void printRule(Rule *rule);
+void printRule(Rule *rule, FILE *file);
 void freeRule(Rule *rule);
 
 #endif /* INC_RULE_H */

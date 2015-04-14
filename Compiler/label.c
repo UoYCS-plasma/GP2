@@ -231,106 +231,106 @@ GP2Atom *copyGP2Atom(GP2Atom *atom)
    return atom_copy;
 }
 
-void printGP2List(GP2List list) 
+void printGP2List(GP2List list, FILE *file) 
 {
    GP2Atom *iterator = list.first;
-   if(iterator == NULL) printf("empty");
+   if(iterator == NULL) fprintf(file, "empty");
    while(iterator != NULL) 
    {
-      printGP2Atom(iterator);
-      if(iterator->next) printf(" : ");
+      printGP2Atom(iterator, file);
+      if(iterator->next) fprintf(file, " : ");
       iterator = iterator->next;
    } 
 }
 
-void printGP2Atom(GP2Atom *atom) 
+void printGP2Atom(GP2Atom *atom, FILE *file) 
 {
     switch(atom->type) 
     {
 	case VARIABLE: 
-	     printf("%s", atom->value.name);
+	     fprintf(file, "%s", atom->value.name);
 	     break;
 
 	case INTEGER_CONSTANT: 
-	     printf("%d", atom->value.number);
+	     fprintf(file, "%d", atom->value.number);
 	     break;
 
         case STRING_CONSTANT:
-	     printf("\"%s\"", atom->value.string);
+	     fprintf(file, "\"%s\"", atom->value.string);
 	     break;
 
 	case INDEGREE:
-	     printf("indeg(%s)", atom->value.node_id);
+	     fprintf(file, "indeg(%s)", atom->value.node_id);
 	     break;
  
 	case OUTDEGREE:
-	     printf("outdeg(%s)", atom->value.node_id);
+	     fprintf(file, "outdeg(%s)", atom->value.node_id);
 	     break;
 
 	case LIST_LENGTH:
-	     printf("llength(");
-	     printGP2List(*atom->value.list_arg);
-	     printf(")");
+	     fprintf(file, "llength(");
+	     printGP2List(*atom->value.list_arg, file);
+	     fprintf(file, ")");
 	     break;
 
 	case STRING_LENGTH:
-	     printf("slength(");
-	     printGP2Atom(atom->value.str_arg);
-	     printf(")");
+	     fprintf(file, "slength(");
+	     printGP2Atom(atom->value.str_arg, file);
+	     fprintf(file, ")");
 	     break;
 
 	case NEG:
-	     printf("- ");
-	     printGP2Atom(atom->value.exp);
+	     fprintf(file, "- ");
+	     printGP2Atom(atom->value.exp, file);
 	     break;
 
 	case ADD:
-	     printf("(");
-	     printGP2Atom(atom->value.bin_op.left_exp);
-	     printf(" + ");
-	     printGP2Atom(atom->value.bin_op.right_exp);
-	     printf(")");
+	     fprintf(file, "(");
+	     printGP2Atom(atom->value.bin_op.left_exp, file);
+	     fprintf(file, " + ");
+	     printGP2Atom(atom->value.bin_op.right_exp, file);
+	     fprintf(file, ")");
 	     break;
 
 	case SUBTRACT:
-	     printf("(");
-	     printGP2Atom(atom->value.bin_op.left_exp);
-	     printf(" - ");
-	     printGP2Atom(atom->value.bin_op.right_exp);
-	     printf(")");
+	     fprintf(file, "(");
+	     printGP2Atom(atom->value.bin_op.left_exp, file);
+	     fprintf(file, " - ");
+	     printGP2Atom(atom->value.bin_op.right_exp, file);
+	     fprintf(file, ")");
 	     break;
 
 	case MULTIPLY:
-	     printf("(");
-	     printGP2Atom(atom->value.bin_op.left_exp);
-	     printf(" * ");
-	     printGP2Atom(atom->value.bin_op.right_exp);
-	     printf(")");
+	     fprintf(file, "(");
+	     printGP2Atom(atom->value.bin_op.left_exp, file);
+	     fprintf(file, " * ");
+	     printGP2Atom(atom->value.bin_op.right_exp, file);
+	     fprintf(file, ")");
 	     break;
 
 	case DIVIDE:
-	     printf("(");
-	     printGP2Atom(atom->value.bin_op.left_exp);
-	     printf(" / ");
-	     printGP2Atom(atom->value.bin_op.right_exp);
-	     printf(")");
+	     fprintf(file, "(");
+	     printGP2Atom(atom->value.bin_op.left_exp, file);
+	     fprintf(file, " / ");
+	     printGP2Atom(atom->value.bin_op.right_exp, file);
+	     fprintf(file, ")");
 	     break;
 
 	case CONCAT:
-	     printf("(");
-	     printGP2Atom(atom->value.bin_op.left_exp);
-	     printf(" . ");
-	     printGP2Atom(atom->value.bin_op.right_exp);
-	     printf(")");
+	     fprintf(file, "(");
+	     printGP2Atom(atom->value.bin_op.left_exp, file);
+	     fprintf(file, " . ");
+	     printGP2Atom(atom->value.bin_op.right_exp, file);
+	     fprintf(file, ")");
 	     break;
 
-	default: printf("Unexpected GP2Atom Type: %d\n",
+	default: fprintf(file, "Unexpected GP2Atom Type: %d\n",
 		       (int)atom->type); 
 		 break;
     }
 }
 
-void printMark(MarkType mark, bool verbose)
+void printMark(MarkType mark, bool verbose, FILE *file)
 {
    switch(mark)
    {
@@ -338,33 +338,33 @@ void printMark(MarkType mark, bool verbose)
            break;
 
       case RED:
-           if(verbose) printf("Mark: Red\n");
-           else printf(" # red");
+           if(verbose) fprintf(file, "Mark: Red\n");
+           else fprintf(file, " # red");
            break;
 
       case GREEN:
-           if(verbose) printf("Mark: Green\n");
-           else printf(" # green");
+           if(verbose) fprintf(file, "Mark: Green\n");
+           else fprintf(file, " # green");
            break;
 
       case BLUE:
-           if(verbose) printf("Mark: Blue\n");
-           else printf(" # blue");
+           if(verbose) fprintf(file, "Mark: Blue\n");
+           else fprintf(file, " # blue");
            break;
 
       case GREY:
-           if(verbose) printf("Mark: Grey\n");
-           else printf(" # grey");
+           if(verbose) fprintf(file, "Mark: Grey\n");
+           else fprintf(file, " # grey");
            break;
 
       case DASHED:
-           if(verbose) printf("Mark: Dashed\n");
-           else printf(" # dashed");
+           if(verbose) fprintf(file, "Mark: Dashed\n");
+           else fprintf(file, " # dashed");
            break;
 
       case ANY:
-           if(verbose) printf("Mark: Any\n");
-           else printf(" # any");
+           if(verbose) fprintf(file, "Mark: Any\n");
+           else fprintf(file, " # any");
            break;
 
       default:

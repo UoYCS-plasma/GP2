@@ -71,15 +71,16 @@ void generateRuntimeCode(List *declarations);
  */
 void generateDeclarationCode(List *declarations);
 void generateMorphismCode(List *declarations, char type);
-void generateProgramCode(GPStatement *statement, ContextType context, 
+void generateProgramCode(GPCommand *command, ContextType context, 
                          int restore_point, int roll_back, int indent);
 void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
                       ContextType context, int restore_point, 
                       int roll_back, bool last_rule, int indent);
 void generateRuleSetCall(List *rules, ContextType context, int restore_point, 
                          int roll_back, int indent);
-void generateBranchStatement(GPStatement *statement, ContextType context,
+void generateBranchStatement(GPCommand *command, ContextType context,
                              int restore_point, int roll_back, int indent);
+void generateLoopStatement(GPCommand *command, int undo_point, int indent);
 
 /* Generates code to handle failure, which is context-dependent. There are two
  * types of failure: 

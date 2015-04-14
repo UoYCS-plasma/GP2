@@ -170,20 +170,20 @@ bool declarationScan(List *ast, string const scope);
 bool semanticCheck(List *declarations, string const scope);
 
 
-/* statementScan is called whenever a GPStatement node is reached in the AST.
+/* commandScan is called whenever a GPCommand node is reached in the AST.
  * Called only by semanticCheck and itself. It searches for rule and procedure
  * calls and checks them for semantic correctness by searching for their 
  * declarations in the appropriate scopes. It also checks that each break
  * statement occurs in a loop body. 
  *
- * Argument 1: A pointer to the GPStatement node.
+ * Argument 1: A pointer to the GPCommand node.
  * Argument 2: The current scope, passed from declarationScan. 
  * Argument 3: The main declaration list. Passed to findRuleDeclaration
  *             and findProcedureDeclaration when a rule call or procedure
  *             call is encountered.
  * Argument 4: Flag set to true if scanning is taking place in a loop body. */
-void statementScan(GPStatement *const statement, string const scope, 
-                   List *declarations, bool in_loop);
+void commandScan(GPCommand *const command, string const scope, 
+                 List *declarations, bool in_loop);
 
 /* findRuleDeclaration searches for a GPRule AST node corresponding to the
  * passed name. It starts the search in the local declaration list of a
@@ -212,14 +212,16 @@ GPProcedure *findProcedureDeclaration(List *declarations, string const name,
                                        GPProcedure *excluded_procedure);
 
 /* ruleScan processes a struct GPRule. First it reverses the rule's parameter
- * list and interface list. Then it iterates down the variable list and enters
- * each variable into the symbol table with the auxiliary function
- * enterVariables. Finally it processes the rest of the rule using some
- * subfunctions. 
+ * list and interface list. Then it iterates over the variable list and enters
+ * each variable into the symbol table with the auxiliary functions 
+ * checkDeclarations and enterVariables. Finally, it processes the rest of the
+ * rule using various subfunctions. 
  *
  * Argument 1: A pointer to the GPRule node.
  * Argument 2: The current scope. */
 void ruleScan(GPRule *const rule, string const scope);
+void checkDeclaration(GPRule *const rule, List *variables, string const scope,
+                      SymbolType const type, int count, string type_name);
 
 /* enterVariables adds variable declarations from a rule's parameter list
  * into the symbol table. It also checks that each variable name in the

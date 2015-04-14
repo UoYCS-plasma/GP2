@@ -266,20 +266,19 @@ bool isPredicate(Rule *rule)
    else return true;
 }
 
-void printRule(Rule *rule)
+void printRule(Rule *rule, FILE *file)
 {
    if(rule == NULL) 
    {
-      printf("printRule passed a NULL pointer.\n\n");
+      print_to_log("Error (printRule): NULL rule pointer.\n\n");
       return;
    }
-
-   printf("%s\n\n", rule->name);
-   printGraph(rule->lhs);
-   printf("\n");
-   printf("=>\n\n");
-   printGraph(rule->rhs);
-   printf("\n");
+   fprintf(file, "%s\n\n", rule->name);
+   printGraph(rule->lhs, file);
+   fprintf(file, "\n");
+   fprintf(file, "=>\n\n");
+   printGraph(rule->rhs, file);
+   fprintf(file, "\n");
 }
 
 void freeRule(Rule *rule)

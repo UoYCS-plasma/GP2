@@ -84,7 +84,7 @@ bool syntax_error = false;
 %union {  
   struct List *list; 
   struct GPDeclaration *decl;
-  struct GPStatement *stmt;
+  struct GPCommand *command;
   struct GPProcedure *proc;
   struct GPRule *rule;
   struct GPGraph *graph;
@@ -103,7 +103,7 @@ bool syntax_error = false;
              VarList Inter NodeIDList NodeList HostNodeList EdgeList 
              HostEdgeList List HostList
 %type <decl> Declaration
-%type <stmt> MainDecl Command Block SimpleCommand 
+%type <command> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
 %type <rule> RuleDecl
 %type <graph> Graph HostGraph
@@ -124,7 +124,7 @@ bool syntax_error = false;
 %destructor { free($$); } <str> <id>
 %destructor { freeAST($$); } <list>
 %destructor { freeASTDeclaration($$); } <decl>
-%destructor { freeASTStatement($$); } <stmt>
+%destructor { freeASTCommand($$); } <command>
 %destructor { freeASTRule($$); } <rule>
 %destructor { freeASTGraph($$); } <graph>
 %destructor { freeASTNode($$); } <node>

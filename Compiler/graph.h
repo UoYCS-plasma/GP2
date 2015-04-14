@@ -172,7 +172,7 @@ Label *getEdgeLabel(Edge *edge);
 int getIndegree(Node *node);
 int getOutdegree(Node *node);
 
-void printGraph(Graph *graph);
+void printGraph(Graph *graph, FILE *file);
 void freeGraph(Graph *graph);
 
 #endif /* INC_GRAPH_H */

@@ -251,117 +251,117 @@ bool validGraph(Graph *graph)
 }
 
 
-void printVerboseRule(Rule *rule)
+void printVerboseRule(Rule *rule, FILE *file)
 {
-   printf("Rule %s\n\n", rule->name);
-   printf("LHS\n===\n");
-   if(rule->lhs) printVerboseGraph(rule->lhs);
-   else printf("Empty Graph\n\n");
+   fprintf(file, "Rule %s\n\n", rule->name);
+   fprintf(file, "LHS\n===\n");
+   if(rule->lhs) printVerboseGraph(rule->lhs, file);
+   else fprintf(file, "Empty Graph\n\n");
 
-   printf("RHS\n===\n");
-   if(rule->rhs) printVerboseGraph(rule->rhs);
-   else printf("Empty Graph\n\n");
+   fprintf(file, "RHS\n===\n");
+   if(rule->rhs) printVerboseGraph(rule->rhs, file);
+   else fprintf(file, "Empty Graph\n\n");
 
    PreservedItemList *item = rule->preserved_nodes;
-   printf("Preserved nodes: ");
+   fprintf(file, "Preserved nodes: ");
    while(item != NULL)
    {
-      printf("%d", item->left_index);
-      if(item->next != NULL) printf(", ");
+      fprintf(file, "%d", item->left_index);
+      if(item->next != NULL) fprintf(file, ", ");
       item = item->next;
    }
 
    item = rule->preserved_edges;
-   printf("\nPreserved edges: ");
+   fprintf(file, "\nPreserved edges: ");
    while(item != NULL)
    {
-      printf("%d", item->left_index);
-      if(item->next != NULL) printf(", ");
+      fprintf(file, "%d", item->left_index);
+      if(item->next != NULL) fprintf(file, ", ");
       item = item->next;
    }
 
    ItemList *iterator = rule->added_nodes;
-   printf("\nAdded nodes: ");
+   fprintf(file, "\nAdded nodes: ");
    while(iterator != NULL)
    {
-      printf("%d ", iterator->index);
+      fprintf(file, "%d ", iterator->index);
       iterator = iterator->next;
    }
    
    iterator = rule->deleted_nodes;
-   printf("\nDeleted nodes: ");
+   fprintf(file, "\nDeleted nodes: ");
    while(iterator != NULL)
    {
-      printf("%d ", iterator->index);
+      fprintf(file, "%d ", iterator->index);
       iterator = iterator->next;
    }
 
-   printf("\nAdded edges:\n");
+   fprintf(file, "\nAdded edges:\n");
 
    NewEdgeList *edge = rule->added_edges;
    while(edge != NULL)
    {
-      printf("Edge %d. Source %c-%d. Target %c-%d.\n",
+      fprintf(file, "Edge %d. Source %c-%d. Target %c-%d.\n",
             edge->edge_index, edge->source_location, edge->source_index,
             edge->target_location, edge->target_index);
       edge = edge->next;
    }
-   printf("\n");
+   fprintf(file, "\n");
 }
 
 
-void printVerboseGraph(Graph *graph) 
+void printVerboseGraph(Graph *graph, FILE *file) 
 {
     int index;
-    printf("Nodes\n=====\n");
+    fprintf(file, "Nodes\n=====\n");
     for(index = 0; index < graph->node_index; index++)
     {
        Node *node = getNode(graph, index);
-       if(node->index >= 0) printVerboseNode(node);
+       if(node->index >= 0) printVerboseNode(node, file);
     }    
  
-    printf("Edges\n=====\n");
+    fprintf(file, "Edges\n=====\n");
     for(index = 0; index < graph->edge_index; index++)
     {
        Edge *edge = getEdge(graph, index);
-       if(edge->index >= 0) printVerboseEdge(edge);
+       if(edge->index >= 0) printVerboseEdge(edge, file);
     } 
-    printf("\n");
+    fprintf(file, "\n");
 
-    printf("Root Node List\n==============\n");
+    fprintf(file, "Root Node List\n==============\n");
     RootNodes *iterator = graph->root_nodes;
     while(iterator != NULL)
     {
-       if(iterator->next == NULL) printf("%d\n", iterator->index);
-       else printf("%d, ", iterator->index);
+       if(iterator->next == NULL) fprintf(file, "%d\n", iterator->index);
+       else fprintf(file, "%d, ", iterator->index);
        iterator = iterator->next;
     }
 }
 
-void printVerboseNode(Node *node)
+void printVerboseNode(Node *node, FILE *file)
 {
-    printf("Index: %d", node->index);
-    if(node->root) printf(" (Root)");
-    printf("\n");
-    printf("Label Class: %d\n", node->label_class);
-    printf("Label: ");
-    printGP2List(node->label->list);
-    printf("\n");
-    printMark(node->label->mark, true);
-    printf("Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
+    fprintf(file, "Index: %d", node->index);
+    if(node->root) fprintf(file, " (Root)");
+    fprintf(file, "\n");
+    fprintf(file, "Label Class: %d\n", node->label_class);
+    fprintf(file, "Label: ");
+    printGP2List(node->label->list, file);
+    fprintf(file, "\n");
+    printMark(node->label->mark, true, file);
+    fprintf(file, "Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
            node->indegree, node->outdegree, node->bidegree);
 }
 
-void printVerboseEdge(Edge *edge) 
+void printVerboseEdge(Edge *edge, FILE *file) 
 {
-    printf("Index: %d", edge->index);
-    if(edge->bidirectional) printf(" (Bidirectional)");
-    printf("\n");
-    printf("Label Class: %d\n", edge->label_class);
-    printf("Label: ");
-    printGP2List(edge->label->list);
-    printf("\n");
-    printMark(edge->label->mark, true);
-    printf("Source: %d. Target: %d\n\n", edge->source, edge->target);
+    fprintf(file, "Index: %d", edge->index);
+    if(edge->bidirectional) fprintf(file, " (Bidirectional)");
+    fprintf(file, "\n");
+    fprintf(file, "Label Class: %d\n", edge->label_class);
+    fprintf(file, "Label: ");
+    printGP2List(edge->label->list, file);
+    fprintf(file, "\n");
+    printMark(edge->label->mark, true, file);
+    fprintf(file, "Source: %d. Target: %d\n\n", edge->source, edge->target);
 }
 

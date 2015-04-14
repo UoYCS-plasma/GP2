@@ -291,7 +291,7 @@ void printMorphism(Morphism *morphism)
       for(count = 0; count < morphism->variables; count++)
       {
          printf("Variable %s -> ", morphism->assignment[count].variable);
-         printGP2List(morphism->assignment[count].value);
+         printGP2List(morphism->assignment[count].value, stdout);
          printf("\n");
       }
    }

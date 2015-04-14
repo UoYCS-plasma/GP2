@@ -96,9 +96,9 @@ bool marksMatch(MarkType rule_mark, MarkType host_mark);
 Label *makeEmptyList(MarkType mark);
 
 /* Do not pass a NULL pointer! To either argument! */
-void printGP2List(GP2List list);
-void printGP2Atom(GP2Atom *atom);
-void printMark(MarkType mark, bool verbose);
+void printGP2List(GP2List list, FILE *file);
+void printGP2Atom(GP2Atom *atom, FILE *file);
+void printMark(MarkType mark, bool verbose, FILE *file);
 void freeGP2List(GP2List list);
 void freeGP2Atom(GP2Atom *atom);
 
