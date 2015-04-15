@@ -1,10 +1,16 @@
 #include "graphStacks.h"
 
-Stack *graph_stack = NULL;
+Graph **graph_stack = NULL;
+int graph_stack_index = 0;
 
 void copyGraph(Graph *graph)
-{
-    Graph *graph_copy = newGraph(graph->node_pool_size, graph->edge_pool_size); 
+{ 
+   if(graph_stack_index == GRAPH_STACK_SIZE)
+   {
+      print_to_log("Error: copyGraph called with a full graph stack.\n");
+      return;
+   }
+   Graph *graph_copy = newGraph(graph->node_pool_size, graph->edge_pool_size); 
 
    /* The node array, edge array, free node slots array, free edge slots array,
     * and the label class lists are copied from the original graph. The original
@@ -117,246 +123,201 @@ void copyGraph(Graph *graph)
          edge->label = copyLabel(original_edge->label);
       }
    }  
-   if(graph_stack == NULL) graph_stack = newStack(GRAPH_STACK_SIZE);
-   StackData data;
-   data.graph = graph_copy;
-   push(graph_stack, data);
+   if(graph_stack == NULL) graph_stack = calloc(GRAPH_STACK_SIZE, sizeof(Graph*));
+   graph_stack[graph_stack_index++] = graph_copy;
 }
 
 Graph *popGraphs(Graph *graph, int restore_point)
 {
-   if(graph_stack == NULL) return graph;
-   if(graph_stack->top == restore_point) return graph;
+   if(graph_stack == NULL) return NULL;
    freeGraph(graph);
-   while(graph_stack->top > restore_point)
+   while(graph_stack_index > restore_point)
    { 
-      /* Pop decrements graph_stack->top. */
-      StackData data = pop(graph_stack);
-      if(graph_stack->top == restore_point) return data.graph;
-      else freeGraph(data.graph);
+      Graph *graph = graph_stack[--graph_stack_index];
+      if(graph_stack_index > restore_point) freeGraph(graph);
    }
-   print_to_console("Error! Restore Point %d, Stack Top %d.\n", restore_point,
-                    graph_stack->top);
-   exit(1);
+   return graph;
 }
 
 void discardGraphs(int depth)
 {
    if(graph_stack == NULL) return;
-   if(graph_stack->top == depth) return;
-   while(graph_stack->top > depth)
-   { 
-      /* Pop decrements graph_stack->top. */
-      StackData data = pop(graph_stack);
-      freeGraph(data.graph);
-   }
-   return;
+   while(graph_stack_index > depth) freeGraph(graph_stack[--graph_stack_index]);
 }
 
-void freeGraphStack(Stack *graph_stack)
+void freeGraphStack(void)
 {
    if(graph_stack == NULL) return;
-   int count;
-   for(count = 0; count < graph_stack->top; count++)
-      if(graph_stack->data[count].graph) 
-         freeGraph(graph_stack->data[count].graph);
-   freeStack(graph_stack);
+   discardGraphs(0);
+   free(graph_stack);
 }
 
-Stack *graph_change_stack = NULL;
 
-GraphChange *newGraphChange(void)
+GraphChange *graph_change_stack = NULL;
+int graph_change_index = 0;
+
+bool validGraphChangeStack(void)
 {
-   GraphChange *change = malloc(sizeof(GraphChange));
-   if(change == NULL)
+   if(graph_change_stack == NULL)
    {
-      print_to_log("Error (newGraphChange): memory allocation failed.\n");
-      exit(1);
+      graph_change_stack = calloc(GRAPH_CHANGE_STACK_SIZE, sizeof(GraphChange));
+      return true;
    }
-   return change;
+   if(graph_change_index == GRAPH_CHANGE_STACK_SIZE)
+   {
+      print_to_log("Error: Push to graph change stack attempted with a full "
+                   "graph change stack.\n");
+      return false;
+   }
+   return true;
 }
-
+ 
 void pushAddedNode(int index)
 {
-   GraphChange *change = newGraphChange();
-   change->type = ADDED_NODE;
-   change->data.added_node_index = index;
-   if(graph_change_stack == NULL) 
-      graph_change_stack = newStack(GRAPH_CHANGE_STACK_SIZE);
-   StackData data;
-   data.graph_change = change;
-   push(graph_change_stack, data);
+   if(!validGraphChangeStack()) return;
+   int gci = graph_change_index++; 
+   graph_change_stack[gci].type = ADDED_NODE;
+   graph_change_stack[gci].data.added_node_index = index;
 }
    
 void pushAddedEdge(int index)
 {
-   GraphChange *change = newGraphChange();
-   change->type = ADDED_EDGE;
-   change->data.added_edge_index = index;
-   if(graph_change_stack == NULL) 
-      graph_change_stack = newStack(GRAPH_CHANGE_STACK_SIZE);
-   StackData data;
-   data.graph_change = change;
-   push(graph_change_stack, data);
+   if(!validGraphChangeStack()) return;
+   int gci = graph_change_index++; 
+   graph_change_stack[gci].type = ADDED_EDGE;
+   graph_change_stack[gci].data.added_edge_index = index;
 }
 
 void pushRemovedNode(bool root, Label *label)
 {
-   GraphChange *change = newGraphChange();
-   change->type = REMOVED_NODE;
-   change->data.removed_node.root = root;
-   change->data.removed_node.label = label;
-   if(graph_change_stack == NULL) 
-      graph_change_stack = newStack(GRAPH_CHANGE_STACK_SIZE);
-   StackData data;
-   data.graph_change = change;
-   push(graph_change_stack, data);
+   if(!validGraphChangeStack()) return;
+   int gci = graph_change_index++; 
+   graph_change_stack[gci].type = REMOVED_NODE;
+   graph_change_stack[gci].data.removed_node.root = root;
+   graph_change_stack[gci].data.removed_node.label = label;
 }
 
 void pushRemovedEdge(bool bidirectional, Label *label, int source, int target)
 {
-   GraphChange *change = newGraphChange();
-   change->type = REMOVED_EDGE;
-   change->data.removed_edge.bidirectional = bidirectional;
-   change->data.removed_edge.label = label;
-   change->data.removed_edge.source = source;
-   change->data.removed_edge.target = target;
-   if(graph_change_stack == NULL) 
-      graph_change_stack = newStack(GRAPH_CHANGE_STACK_SIZE);
-   StackData data;
-   data.graph_change = change;
-   push(graph_change_stack, data);
+   if(!validGraphChangeStack()) return;
+   int gci = graph_change_index++; 
+   graph_change_stack[gci].type = REMOVED_EDGE;
+   graph_change_stack[gci].data.removed_edge.bidirectional = bidirectional;
+   graph_change_stack[gci].data.removed_edge.label = label;
+   graph_change_stack[gci].data.removed_edge.source = source;
+   graph_change_stack[gci].data.removed_edge.target = target;
 }
 
 void pushRelabelledNode(int index, bool change_flag, Label *old_label)
 {
-   GraphChange *change = newGraphChange();
-   change->type = RELABELLED_NODE;
-   change->data.relabelled_node.index = index;
-   change->data.relabelled_node.change_flag = change_flag;
-   change->data.relabelled_node.old_label = old_label;
-   if(graph_change_stack == NULL) 
-      graph_change_stack = newStack(GRAPH_CHANGE_STACK_SIZE);
-   StackData data;
-   data.graph_change = change;
-   push(graph_change_stack, data);
+   if(!validGraphChangeStack()) return;
+   int gci = graph_change_index++; 
+   graph_change_stack[gci].type = RELABELLED_NODE;
+   graph_change_stack[gci].data.relabelled_node.index = index;
+   graph_change_stack[gci].data.relabelled_node.change_flag = change_flag;
+   graph_change_stack[gci].data.relabelled_node.old_label = old_label;
 }
 
 void pushRelabelledEdge(int index, bool change_flag, Label *old_label)
 {
-   GraphChange *change = newGraphChange();
-   change->type = RELABELLED_NODE;
-   change->data.relabelled_edge.index = index;
-   change->data.relabelled_edge.change_flag = change_flag;
-   change->data.relabelled_edge.old_label = old_label;
-   if(graph_change_stack == NULL) 
-      graph_change_stack = newStack(GRAPH_CHANGE_STACK_SIZE);
-   StackData data;
-   data.graph_change = change;
-   push(graph_change_stack, data);
+   if(!validGraphChangeStack()) return;
+   int gci = graph_change_index++; 
+   graph_change_stack[gci].type = RELABELLED_NODE;
+   graph_change_stack[gci].data.relabelled_edge.index = index;
+   graph_change_stack[gci].data.relabelled_edge.change_flag = change_flag;
+   graph_change_stack[gci].data.relabelled_edge.old_label = old_label;
 }
    
 void undoChanges(Graph *graph, int restore_point)
 { 
    if(graph_change_stack == NULL) return; 
-   if(graph_change_stack->top == restore_point) return;
-   while(graph_change_stack->top > restore_point)
+   while(graph_change_index > restore_point)
    { 
-      StackData data = pop(graph_change_stack);
-      GraphChange *change = data.graph_change;
-      switch(change->type)
+      GraphChange change = graph_change_stack[--graph_change_index];
+      switch(change.type)
       {
          case ADDED_NODE:
-              removeNode(graph, change->data.added_node_index);
+              removeNode(graph, change.data.added_node_index);
               break;
 
          case ADDED_EDGE:
-              removeEdge(graph, change->data.added_edge_index);
+              removeEdge(graph, change.data.added_edge_index);
               break;
 
          case REMOVED_NODE:
-              addNode(graph, change->data.removed_node.root,
-                      change->data.removed_node.label);
+              addNode(graph, change.data.removed_node.root,
+                      change.data.removed_node.label);
               break;
 
          case REMOVED_EDGE:
-              addEdge(graph, change->data.removed_edge.bidirectional,
-                      change->data.removed_edge.label, 
-                      change->data.removed_edge.source, 
-                      change->data.removed_edge.target);
+              addEdge(graph, change.data.removed_edge.bidirectional,
+                      change.data.removed_edge.label, 
+                      change.data.removed_edge.source, 
+                      change.data.removed_edge.target);
               break; 
 
          case RELABELLED_NODE:
-              relabelNode(graph, change->data.relabelled_node.index,
-                          change->data.relabelled_node.old_label,
-                          change->data.relabelled_node.change_flag);           
+              relabelNode(graph, change.data.relabelled_node.index,
+                          change.data.relabelled_node.old_label,
+                          change.data.relabelled_node.change_flag);           
               break;
 
          case RELABELLED_EDGE:
-              relabelEdge(graph, change->data.relabelled_edge.index,
-                          change->data.relabelled_edge.old_label,
-                          change->data.relabelled_edge.change_flag);           
+              relabelEdge(graph, change.data.relabelled_edge.index,
+                          change.data.relabelled_edge.old_label,
+                          change.data.relabelled_edge.change_flag);           
               break;
               
          default: 
               print_to_log("Error (restoreGraph): Unexepected change type %d.\n",
-                           change->type); 
+                           change.type); 
               break;
       }
-      freeGraphChange(change);
    } 
 } 
 
 void discardChanges(int restore_point)
 {
    if(graph_change_stack == NULL) return;
-   if(graph_change_stack->top == restore_point) return;
-   while(graph_change_stack->top > restore_point)
-   {
-      StackData data = pop(graph_change_stack);
-      freeGraphChange(data.graph_change);
-   } 
+   while(graph_change_index > restore_point)
+      freeGraphChange(graph_change_stack[--graph_change_index]);
 } 
 
-void freeGraphChange(GraphChange *change)
+void freeGraphChange(GraphChange change)
 {
-   switch(change->type)
+   switch(change.type)
    {
       case ADDED_NODE:
       case ADDED_EDGE:
            break;
 
       case REMOVED_NODE:
-           if(!isConstantLabel(change->data.removed_node.label))
-             freeLabel(change->data.removed_node.label);
+           if(!isConstantLabel(change.data.removed_node.label))
+             freeLabel(change.data.removed_node.label);
            break;
 
       case REMOVED_EDGE:
-           if(!isConstantLabel(change->data.removed_edge.label))
-             freeLabel(change->data.removed_edge.label);
+           if(!isConstantLabel(change.data.removed_edge.label))
+             freeLabel(change.data.removed_edge.label);
            break;
 
       case RELABELLED_NODE:
       case RELABELLED_EDGE:
-           if(!isConstantLabel(change->data.relabelled_edge.old_label)) 
-              freeLabel(change->data.relabelled_edge.old_label);
-           if(change) free(change);           
+           if(!isConstantLabel(change.data.relabelled_edge.old_label)) 
+              freeLabel(change.data.relabelled_edge.old_label);
            break;
 
       default: 
            print_to_log("Error (freeGraphChange): Unexepected graph change "
-                        "type %d.\n",change->type); 
+                        "type %d.\n",change.type); 
            break;      
    }  
 } 
 
-void freeGraphChangeStack(Stack *graph_change_stack)
+void freeGraphChangeStack(void)
 {
    if(graph_change_stack == NULL) return;
-   int count;
-   for(count = 0; count < graph_change_stack->top; count++)
-      if(graph_change_stack->data[count].graph_change) 
-         freeGraphChange(graph_change_stack->data[count].graph_change);
-   freeStack(graph_change_stack);
+   discardChanges(0);
+   free(graph_change_stack);
 }
 

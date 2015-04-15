@@ -95,8 +95,7 @@ void generateRuleCode(Rule *rule, bool predicate)
         "#include \"../graphStacks.h\"\n"
         "#include \"../macros.h\"\n"
         "#include \"match.h\"\n"
-        "#include \"host.h\"\n"
-        "#include \"../stack.h\"\n\n");
+        "#include \"host.h\"\n\n");
    PTRS("#include \"%s.h\"\n\n", rule_name);
 
    if(rule->lhs == NULL) generateApplicationCode(rule, true, false);

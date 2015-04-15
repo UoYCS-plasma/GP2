@@ -1,7 +1,7 @@
 #include "genProgram.h"
 
 #define RULE_TRACE
-#define GRAPH_TRACE
+#undef GRAPH_TRACE
 #define BACKTRACK_TRACE
 
 static FILE *main_source = NULL;
@@ -31,12 +31,10 @@ void generateRuntimeCode(List *declarations)
         "#include \"init_runtime.h\"\n"
         "#include \"host.h\"\n"
         "#include \"match.h\"\n\n");
-   PTMS("#define TOP_OF_GRAPH_CHANGE_STACK \\\n");
-   PTMSI("graph_change_stack == NULL ? 0 : graph_change_stack->top;\n\n", 3);
    generateMorphismCode(declarations, 'd');
    PTMS("Graph *host = NULL;\n"
         "bool success = true;\n\n"
-        "void garbageCollect(void);\n\n"
+        "void garbageCollect(void);\n"
         "void freeMorphisms(void);\n\n");
    generateDeclarationCode(declarations);
    fclose(main_source);
@@ -92,8 +90,8 @@ void generateDeclarationCode(List *declarations)
         "{\n"
         "   freeGraph(host);\n"
         "   freeMorphisms();\n"
-        "   freeGraphStack(graph_stack);\n"
-        "   freeGraphChangeStack(graph_change_stack);\n"
+        "   freeGraphStack();\n"
+        "   freeGraphChangeStack();\n"
         "   closeLogFile();\n"
         "}\n\n");
 
@@ -364,7 +362,7 @@ void generateBranchStatement(GPCommand *command, ContextType context,
          PTMSI("print_to_log(\"(%d) Recording graph changes.\\n\\n\");\n",
                indent, new_undo_point);
       #endif
-      PTMSI("int undo_point%d = TOP_OF_GRAPH_CHANGE_STACK;\n", indent, new_undo_point);
+      PTMSI("int undo_point%d = graph_change_index;\n", indent, new_undo_point);
    }
    PTMSI("do\n", indent);
    PTMSI("{\n", indent);
@@ -446,7 +444,7 @@ void generateLoopStatement(GPCommand *command, int undo_point, int indent)
                
    PTMSI("/* Loop Statement */\n", indent);
    PTMSI("success = true;\n", indent);
-   if(roll_back) PTMSI("int undo_point%d = TOP_OF_GRAPH_CHANGE_STACK;\n", 
+   if(roll_back) PTMSI("int undo_point%d = graph_change_index;\n", 
                         indent, new_undo_point);
    PTMSI("while(success)\n", indent);
    PTMSI("{\n", indent);
