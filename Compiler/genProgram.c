@@ -364,7 +364,7 @@ void generateBranchStatement(GPCommand *command, ContextType context,
          PTMSI("print_to_log(\"(%d) Recording graph changes.\\n\\n\");\n",
                indent, new_undo_point);
       #endif
-      PTMSI("int undo_point%d = TOP_OF_GRAPH_CHANGE_STACK;\n", indent, undo_point);
+      PTMSI("int undo_point%d = TOP_OF_GRAPH_CHANGE_STACK;\n", indent, new_undo_point);
    }
    PTMSI("do\n", indent);
    PTMSI("{\n", indent);
@@ -423,7 +423,7 @@ void generateBranchStatement(GPCommand *command, ContextType context,
          PTMSI("undoChanges(host, undo_point%d);\n", indent + 3, new_undo_point);
          #ifdef BACKTRACK_TRACE
             PTMSI("print_to_log(\"(%d) Undoing graph changes.\\n\\n\");\n",
-                  indent + 3, new_restore_point);
+                  indent + 3, new_undo_point);
             PTMSI("printGraph(host, log_file);\n", indent + 3);
          #endif
       }

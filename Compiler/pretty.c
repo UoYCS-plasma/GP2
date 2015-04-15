@@ -461,7 +461,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "ALAP Statement\\n Restore Point = %d\\n"
-                             "Roll Back Point = %d\\n"
+                             "Roll Back = %d\\n"
                              "Stop Recording = %d\"]\n", 
                              command->node_id, command->node_id,
                              LOCATION_ARGS(command->location),
