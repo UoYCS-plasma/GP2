@@ -1,11 +1,3 @@
-/* ///////////////////////////////////////////////////////////////////////////
-
-  =================================
-  pretty.c - Chris Bak (18/09/2013)
-  =================================
-
-/////////////////////////////////////////////////////////////////////////// */
-
 #include "pretty.h" 
 
 /* printSymbolTable uses g_hash_table_foreach to print the symbol table.
@@ -123,7 +115,6 @@ void printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
 	perror(dot_file_name);
 	exit(1);
      }	
-
      print_to_dot_file("digraph g { \n");
 
      /* Print the entry point of the AST. node1 will be the first 
@@ -158,46 +149,39 @@ void printASTList(List *const list, FILE *dot_file)
    switch(list->list_type)
    {
      case GLOBAL_DECLARATIONS:
-
           list->node_id = next_node_id;
           next_node_id += 1;
           printListNode(Global \\n Declarations);
           prettyPrint(list->value.declaration, Declaration);
           prettyPrintList(list->next,list, next);
-
           break;	
 
      case LOCAL_DECLARATIONS:
-
           list->node_id = next_node_id;
           next_node_id += 1;
           printListNode(Local \\n Declarations);
 	  prettyPrint(list->value.declaration, Declaration);
           prettyPrintList(list->next,list,next);
-
           break;	
 
      case COMMANDS:
-
           list->node_id = next_node_id;
           next_node_id += 1;
           printListNode(Commands);
-          prettyPrint(list->value.command, Statement);
+          prettyPrint(list->value.command, Command);
           prettyPrintList(list->next,list,next);
-
           break;	
 
      case RULES:
-
           list->node_id = next_node_id;
           next_node_id += 1;
 
-          if(list->value.rule_name != NULL)
+          if(list->value.rule_call.rule_name != NULL)
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
-                               "Rule \\n Name: %s\"]\n", 
+                               "Rule Call \\n Name: %s\"]\n",
                                list->node_id, list->node_id,
                                LOCATION_ARGS(list->location),
-                               list->value.rule_name);
+                               list->value.rule_call.rule_name);
           else 
           {
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -207,23 +191,23 @@ void printASTList(List *const list, FILE *dot_file)
              print_to_log("Error: Undefined rule name at AST node %d", 
                           list->node_id);
           }
+          if(list->value.rule_call.rule != NULL)
+             print_to_dot_file("node%d->node%d[label=\"rule\"]\n",
+                               list->node_id, 
+                               list->value.rule_call.rule->node_id);
 
           prettyPrintList(list->next,list,next);
-
           break;
      
      case INT_DECLARATIONS:
-
           list->node_id = next_node_id;
           next_node_id += 1;
           printListNode(Integer \\n Declarations);
           prettyPrint(list->value.variables, List);
           prettyPrintList(list->next,list,next);
-
           break;
 
      case CHAR_DECLARATIONS:
-
           list->node_id = next_node_id;
           next_node_id += 1;
           printListNode(Character \\n Declarations);
@@ -233,7 +217,6 @@ void printASTList(List *const list, FILE *dot_file)
           break;
 
      case STRING_DECLARATIONS:
-
           list->node_id = next_node_id;
           next_node_id += 1;
           printListNode(String \\n Declarations);
@@ -243,7 +226,6 @@ void printASTList(List *const list, FILE *dot_file)
           break;
      
      case ATOM_DECLARATIONS:
-
           list->node_id = next_node_id;
           next_node_id += 1;
           printListNode(Atom \\n Declarations);
@@ -253,7 +235,6 @@ void printASTList(List *const list, FILE *dot_file)
           break;
      
      case LIST_DECLARATIONS:
-
           list->node_id = next_node_id;
           next_node_id += 1;
           printListNode(List \\n Declarations);
@@ -263,7 +244,6 @@ void printASTList(List *const list, FILE *dot_file)
           break;
      
      case VARIABLE_LIST:
-
           list->node_id = next_node_id;
           next_node_id += 1;
 
@@ -282,13 +262,10 @@ void printASTList(List *const list, FILE *dot_file)
              print_to_log("Error: Undefined variable name at AST node %d", 
                            list->node_id);
           }
-
           prettyPrintList(list->next,list,next);
-
           break;
      
      case INTERFACE_LIST:
-
           list->node_id = next_node_id;
           next_node_id += 1; 
           if(list->value.node_id != NULL)
@@ -307,41 +284,33 @@ void printASTList(List *const list, FILE *dot_file)
                            "AST node %d", list->node_id);
           }
           prettyPrintList(list->next,list,next);
-
           break;
      
      case NODE_LIST:
-
           list->node_id = next_node_id;
           next_node_id += 1; 
           printListNode(Nodes);
           prettyPrint(list->value.node, Node);
           prettyPrintList(list->next,list,next);
-
           break;
      
      case EDGE_LIST:
-
           list->node_id = next_node_id;
           next_node_id += 1; 
           printListNode(Edges);
           prettyPrint(list->value.edge, Edge);
           prettyPrintList(list->next,list,next);
-
           break;
 
      case GP_LIST:
-
           list->node_id = next_node_id;
           next_node_id += 1; 
           printListNode(GP List);
           prettyPrint(list->value.atom, Atom);
           prettyPrintList(list->next,list,next);
-
           break;
      
      case EMPTY_LIST:
-             
           list->node_id = next_node_id;
           next_node_id += 1;
           print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n" 
@@ -349,16 +318,13 @@ void printASTList(List *const list, FILE *dot_file)
                             list->node_id, list->node_id,
                             LOCATION_ARGS(list->location));
           prettyPrintList(list->next,list,next);
-
           break;
-
 
      default: print_to_log("Error (printASTList): Unexpected type: %d\n",
                            (int)list->list_type); 
-               break;	 
+              break;	 
      }
 }
-
 
 
 void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
@@ -366,30 +332,24 @@ void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
    switch(decl->decl_type) 
    {
       case MAIN_DECLARATION:
-      
            decl->node_id = next_node_id;
            next_node_id += 1;
            printDeclarationNode(Main, main \\n program);
-           prettyPrint(decl->value.main_program, Statement);
-
+           prettyPrint(decl->value.main_program, Command);
            break;
 
       case PROCEDURE_DECLARATION:
-
            decl->node_id = next_node_id;
            next_node_id += 1;
            printDeclarationNode(Procedure \\n Declaration, proc);
            prettyPrint(decl->value.procedure, Procedure);
-
            break;
 
       case RULE_DECLARATION:
-
            decl->node_id = next_node_id;
            next_node_id += 1;
            printDeclarationNode(Rule \\n Declaration, rule);
            prettyPrint(decl->value.rule, Rule);
-
            break;
 
       default: print_to_log("Error (printASTDeclaration): Unexpected type: "
@@ -399,167 +359,166 @@ void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
 }
 
 
-void printASTStatement(GPStatement *const stmt, FILE *dot_file)
+void printASTCommand(GPCommand *const command, FILE *dot_file)
 {
-  switch(stmt->statement_type)
+  switch(command->command_type)
   {
       case COMMAND_SEQUENCE:	
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "Command \\n Sequence\"]\n", 
-                             stmt->node_id, stmt->node_id, 
-                             LOCATION_ARGS(stmt->location));
+                             command->node_id, command->node_id, 
+                             LOCATION_ARGS(command->location));
 
-           print_to_dot_file("node%d->node%d[label=\"cmd_seq\"]\n",  
-                             stmt->node_id, next_node_id); 
+           print_to_dot_file("node%d->node%d[label=\"commands\"]\n",  
+                             command->node_id, next_node_id); 
 
-           prettyPrint(stmt->value.cmd_seq, List);
-
+           prettyPrint(command->value.commands, List);
            break;
 
       case RULE_CALL:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
 
-           if(stmt->value.rule_name != NULL)
+           if(command->value.rule_call.rule_name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                                 "Rule Call \\n Name: %s\"]\n",
-                                stmt->node_id, stmt->node_id, 
-                                LOCATION_ARGS(stmt->location), 
-                                stmt->value.rule_name);
+                                command->node_id, command->node_id, 
+                                LOCATION_ARGS(command->location), 
+                                command->value.rule_call.rule_name);
            else 
            {
                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
                                  "Rule \\n Name: UNDEFINED\"]\n",  
-                                 stmt->node_id, stmt->node_id, 
-                                 LOCATION_ARGS(stmt->location));
-               print_to_log("Error (printASTStatement): Undefined rule name "
-                           "at AST node %d", stmt->node_id);
-            }
-
+                                 command->node_id, command->node_id, 
+                                 LOCATION_ARGS(command->location));
+               print_to_log("Error (printASTCommand): Undefined rule name "
+                           "at AST node %d", command->node_id);
+           }
+           if(command->value.rule_call.rule != NULL)
+              print_to_dot_file("node%d->node%d[label=\"rule\"]\n",
+                                command->node_id, 
+                                command->value.rule_call.rule->node_id);
             break;
 
       case RULE_SET_CALL:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "Rule Set Call\"]\n", 
-                             stmt->node_id, stmt->node_id,
-                             LOCATION_ARGS(stmt->location));
+                             command->node_id, command->node_id,
+                             LOCATION_ARGS(command->location));
 
            print_to_dot_file("node%d->node%d[label=\"rule set\"]\n",  
-                             stmt->node_id, next_node_id); 
+                             command->node_id, next_node_id); 
 
-           prettyPrint(stmt->value.rule_set, List);
-
+           prettyPrint(command->value.rule_set, List);
            break;
 
       case PROCEDURE_CALL:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
 
-           if(stmt->value.proc_name != NULL)
+           if(command->value.proc_call.proc_name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                                 "Procedure Call \\n Name: %s\"]\n",
-                                stmt->node_id, stmt->node_id,
-                                LOCATION_ARGS(stmt->location), 
-                                stmt->value.proc_name);
+                                command->node_id, command->node_id,
+                                LOCATION_ARGS(command->location), 
+                                command->value.proc_call.proc_name);
            else 
            {
                print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
                                  "Procedure \\n Name: UNDEFINED\"]\n",
-                                 stmt->node_id, stmt->node_id,
-                                 LOCATION_ARGS(stmt->location));
-               print_to_log("Error (printASTStatement): Undefined procedure "
-                           "ame at AST node %d", stmt->node_id);
+                                 command->node_id, command->node_id,
+                                 LOCATION_ARGS(command->location));
+               print_to_log("Error (printASTCommand): Undefined procedure "
+                           "ame at AST node %d", command->node_id);
            }
-
+           if(command->value.proc_call.procedure != NULL)
+              print_to_dot_file("node%d->node%d[label=\"procedure\"]\n",
+                                command->node_id,
+                                command->value.proc_call.procedure->node_id);
            break;
 
       case IF_STATEMENT:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
-
            printConditionalNode(If Statement);
-            
            break;
 
       case TRY_STATEMENT:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
-
            printConditionalNode(Try Statement);
-         
            break;
 
       case ALAP_STATEMENT:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                             "ALAP Statement\"]\n", 
-                             stmt->node_id, stmt->node_id,
-                             LOCATION_ARGS(stmt->location));
+                             "ALAP Statement\\n Restore Point = %d\\n"
+                             "Roll Back = %d\\n"
+                             "Stop Recording = %d\"]\n", 
+                             command->node_id, command->node_id,
+                             LOCATION_ARGS(command->location),
+                             command->value.loop_stmt.restore_point,
+                             command->value.loop_stmt.roll_back,
+                             command->value.loop_stmt.stop_recording);
 
-           print_to_dot_file("node%d->node%d[label=\"loop \\n statement\"]\n",  
-                             stmt->node_id, next_node_id); 
+           print_to_dot_file("node%d->node%d[label=\"loop \\n body\"]\n",  
+                             command->node_id, next_node_id); 
 
-           prettyPrint(stmt->value.loop_stmt, Statement);
-            
+           prettyPrint(command->value.loop_stmt.loop_body, Command);
            break;
 
       case PROGRAM_OR:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "OR Statement\"]\n", 
-                             stmt->node_id, stmt->node_id,
-                             LOCATION_ARGS(stmt->location));
+                             command->node_id, command->node_id,
+                             LOCATION_ARGS(command->location));
 
            print_to_dot_file("node%d->node%d[label=\"left \\n statement\"]\n",  
-                             stmt->node_id, next_node_id);  
-
-           prettyPrint(stmt->value.or_stmt.left_stmt, Statement);             
+                             command->node_id, next_node_id);  
+           prettyPrint(command->value.or_stmt.left_command, Command);             
 
            print_to_dot_file("node%d->node%d[label=\"right \\n statement\"]\n",  
-                             stmt->node_id, next_node_id);  
-
-           prettyPrint(stmt->value.or_stmt.right_stmt, Statement);
-
+                             command->node_id, next_node_id);  
+           prettyPrint(command->value.or_stmt.right_command, Command);
            break;
 
       case SKIP_STATEMENT:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n skip\"]\n", 
-                             stmt->node_id, stmt->node_id,
-                             LOCATION_ARGS(stmt->location));
+                             command->node_id, command->node_id,
+                             LOCATION_ARGS(command->location));
            break;
 
       case FAIL_STATEMENT:
-
-           stmt->node_id = next_node_id;
+           command->node_id = next_node_id;
            next_node_id += 1;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n fail\"]\n", 
-                             stmt->node_id, stmt->node_id, 
-                             LOCATION_ARGS(stmt->location));
+                             command->node_id, command->node_id, 
+                             LOCATION_ARGS(command->location));
            break;
       
-      default: print_to_log("Error (printASTStatement): Unexpected type: "
-                           "%d\n", (int)stmt->statement_type); 
+      case BREAK_STATEMENT:
+           command->node_id = next_node_id;
+           next_node_id += 1;
+           print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n break\"]\n", 
+                             command->node_id, command->node_id, 
+                             LOCATION_ARGS(command->location));
+           break;
+      
+      default: print_to_log("Error (printASTCommand): Unexpected type: "
+                           "%d\n", (int)command->command_type); 
                break;
       }
 }
@@ -570,39 +529,30 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
    switch(cond->exp_type) 
    {
       case INT_CHECK:
- 
            cond->node_id = next_node_id;
            next_node_id += 1;
            printTypeCheckNode(int check, INT_CHECK);
-
            break;
 
       case CHAR_CHECK:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printTypeCheckNode(char check, CHAR_CHECK);
-
            break;
 
       case STRING_CHECK:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printTypeCheckNode(string check, STRING_CHECK);
-
            break;
 
       case ATOM_CHECK:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printTypeCheckNode(atom check, ATOM_CHECK);
-
            break;
 
       case EDGE_PRED:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nEdge Test\\n",
@@ -644,55 +594,42 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
            break;
 
       case EQUAL:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printListEqualityNode(=);
-     
            break;	
 
       case NOT_EQUAL:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printListEqualityNode(!=);
-     
            break;
       
       case GREATER:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printRelationalNode(>);
-
            break;
 
       case GREATER_EQUAL:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printRelationalNode(>=);
-
            break;
 
       case LESS:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printRelationalNode(<);
-
            break;
 
       case LESS_EQUAL:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printRelationalNode(>=);
-
            break;	  
 
       case BOOL_NOT:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nNOT\"]\n", 
@@ -703,23 +640,18 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
                              cond->node_id, next_node_id);
 
            prettyPrint(cond->value.not_exp, Condition);
-
            break;
 
       case BOOL_OR:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printBinaryBooleanNode(OR);
-  
            break;
 
       case BOOL_AND:
-
            cond->node_id = next_node_id;
            next_node_id += 1;
            printBinaryBooleanNode(AND);
-
            break;
 
       default: print_to_log("Error (printASTCondition): Unexpected Type: "
@@ -753,11 +685,9 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
               print_to_log("Error (printASTAtom): Undefined variable name "
                            "at AST node %d", atom->node_id);
            }
-
            break;
 
      case INTEGER_CONSTANT:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
 
@@ -768,31 +698,7 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
                             atom->value.number);
           break;
 
-     case CHARACTER_CONSTANT:
-
-          atom->node_id = next_node_id;
-          next_node_id += 1;
-
-          if(atom->value.string != NULL)
-             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                               "Character: %s\"]\n", 
-                               atom->node_id, atom->node_id,
-                               LOCATION_ARGS(atom->location), 
-                               atom->value.string);
-          else 
-          {
-             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                               "UNDEFINED\"]\n",
-                               atom->node_id, atom->node_id, 
-                               LOCATION_ARGS(atom->location));
-             print_to_log("Error (printASTAtom): Empty character at AST "
-                          "node %d\n", atom->node_id);
-          }
-
-          break;
-       
      case STRING_CONSTANT:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
 
@@ -810,23 +716,18 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
           break;
 
      case INDEGREE:
-     
           atom->node_id = next_node_id;
           next_node_id += 1;
           printDegreeOperatorNode(indegree, INDEGREE);
-
           break;
 
      case OUTDEGREE:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
           printDegreeOperatorNode(outdegree, OUTDEGREE);
-
           break;
 
      case LIST_LENGTH:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
 
@@ -850,7 +751,6 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
           break;
 
      case STRING_LENGTH:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
 
@@ -875,7 +775,6 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
           break;
 
      case NEG:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
 
@@ -886,48 +785,36 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
           print_to_dot_file("node%d->node%d[label=\"exp\"]\n",          
                     atom->node_id, next_node_id);   
           prettyPrint(atom->value.exp, Atom);
-
           break;
 
      case ADD:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
           printBinaryOperatorNode(+);
-
           break;
 
      case SUBTRACT:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
           printBinaryOperatorNode(-);
-
           break;
 
-
      case MULTIPLY:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
           printBinaryOperatorNode(*);
-
           break;
 
      case DIVIDE:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
           printBinaryOperatorNode(/);
-
           break;
 
      case CONCAT:
-
           atom->node_id = next_node_id;
           next_node_id += 1;
           printBinaryOperatorNode(.);
-
           break;
 
      default: print_to_log("Error (printAtomicExp): Unexpected Atomic "
@@ -961,7 +848,7 @@ void printASTProcedure(GPProcedure *const proc, FILE *dot_file)
     prettyPrintList(proc->local_decls, proc, decls);
     print_to_dot_file("node%d->node%d[label=\"cmd seq\"]\n", 
                       proc->node_id, next_node_id); 
-    prettyPrint(proc->cmd_seq, Statement);
+    prettyPrint(proc->commands, Command);
 }
 
 void printASTRule(GPRule *const rule, FILE *dot_file)
@@ -971,9 +858,12 @@ void printASTRule(GPRule *const rule, FILE *dot_file)
 
    if(rule->name != NULL)
       print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                        "Rule \\n Name: %s\"]\n", 
-                        rule->node_id, rule->node_id,
-                        LOCATION_ARGS(rule->location), rule->name);
+                        "Rule \\n Name: %s \\n Left Nodes: %d\\n" 
+                        "Left Edges: %d \\n Variables: %d \\n Empty LHS: %d\\n"
+                        "Predicate: %d\"]\n", rule->node_id, rule->node_id,
+                        LOCATION_ARGS(rule->location), rule->name,
+                        rule->left_nodes, rule->left_edges, rule->variable_count,
+                        rule->empty_lhs, rule->is_predicate);
    else 
    {
       print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -1020,10 +910,6 @@ void printASTGraph(GPGraph *const graph, FILE *dot_file)
    print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n Graph\"]\n",
                      graph->node_id, graph->node_id, 
                      LOCATION_ARGS(graph->location));
-   /* print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
-                     graph->node_id, next_node_id); 
-
-    * prettyPrint(graph->position, Position); */
    prettyPrintList(graph->nodes, graph, nodes);
    prettyPrintList(graph->edges, graph, edges);
 }
@@ -1054,10 +940,6 @@ void printASTNode(GPNode * const node, FILE *dot_file)
    print_to_dot_file("node%d->node%d[label=\"label\"]\n", 
                      node->node_id, next_node_id); 
    prettyPrint(node->label, Label);
-
-   /* print_to_dot_file("node%d->node%d[label=\"position\"]\n", 
-                     node->node_id, next_node_id); 
-    * prettyPrint(node->position, Position); */
 }
 
 void printASTEdge(GPEdge * const edge, FILE *dot_file)
@@ -1109,19 +991,6 @@ void printASTEdge(GPEdge * const edge, FILE *dot_file)
    prettyPrint(edge->label, Label);
 }
 
-
-/* void printASTPosition(GPPos * const pos, FILE *dot_file)
-{
-     pos->node_id = next_node_id;
-     next_node_id += 1;
-
-     print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                       "Position \\n x: %d \\n y: %d\"]\n", 
-                       pos->node_id, pos->node_id,
-                       LOCATION_ARGS(pos->location), pos->x, pos->y);
-} */
-
-
 void printASTLabel(GPLabel * const label, FILE *dot_file)
 {
    label->node_id = next_node_id;
@@ -1154,6 +1023,4 @@ void printASTLabel(GPLabel * const label, FILE *dot_file)
                      label->node_id, next_node_id); 
    prettyPrint(label->gp_list, List);
 }
-
-
 

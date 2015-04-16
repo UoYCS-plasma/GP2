@@ -4,9 +4,8 @@
   Generate Program Module
   =======================    
 
-  The code generating module. Responsible for generating the main routine
-  of the GP 2 runtime system and the code to set up the runtime system, 
-  namely the construction of the host graph.
+  The code generating module. Generates the main function of the runtime 
+  system from the AST of the control sequence of the GP 2 program. 
 
 /////////////////////////////////////////////////////////////////////////// */
 
@@ -14,7 +13,7 @@
 #define INC_GEN_PROGRAM_H
 
 /* main_header and main_source are the file handles for runtime.h
- * and runtime.c respectively. */
+ * and main.c respectively. */
 #define printToMainHeader(code, ...)	             \
   do { fprintf(main_header, code, ##__VA_ARGS__); }  \
   while(0) 
@@ -33,24 +32,9 @@
 
 #define PTMSI printToMainSourceI
 
-/* source is the file handle for init_source.c. */
-#define printToInitSource(code, ...)	        \
-  do { fprintf(source, code, ##__VA_ARGS__); }  \
-  while(0) 
-
-#define PTIS printToInitSource
-
 #include "ast.h"
 #include "error.h"
-#include "genMatch.h"
 #include "globals.h"
-#include "transform.h"
-
-/* generateHostGraphCode creates the module init_runtime. It uses the AST of
- * the host graph to emit code to create nodes and edges and add them to
- * the host graph. This code is written to a function called makeHostGraph
- * that is called at runtime. */ 
- void generateHostGraphCode(GPGraph *ast_host_graph);
 
 /* The contexts of a GP2 program determine the code that is generated. In
  * particular, the code generated when a rule match fails is determined by
@@ -86,12 +70,17 @@ void generateRuntimeCode(List *declarations);
  * will create a module to match and apply that rule.
  */
 void generateDeclarationCode(List *declarations);
-
-void generateProgramCode(GPStatement *statement, ContextType context, int indent);
-void generateCommandSequence(List *commands, ContextType context, int indent);
-void generateRuleCall(string rule_name, ContextType context, int indent);
-void generateRuleSetCall(List *rules, ContextType context, int indent);
-void generateProcedureCall(string proc_name, ContextType context, int indent);
+void generateMorphismCode(List *declarations, char type);
+void generateProgramCode(GPCommand *command, ContextType context, 
+                         int restore_point, int roll_back, int indent);
+void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
+                      ContextType context, int restore_point, 
+                      int roll_back, bool last_rule, int indent);
+void generateRuleSetCall(List *rules, ContextType context, int restore_point, 
+                         int roll_back, int indent);
+void generateBranchStatement(GPCommand *command, ContextType context,
+                             int restore_point, int roll_back, int indent);
+void generateLoopStatement(GPCommand *command, int undo_point, int indent);
 
 /* Generates code to handle failure, which is context-dependent. There are two
  * types of failure: 
@@ -102,6 +91,7 @@ void generateProcedureCall(string proc_name, ContextType context, int indent);
  *
  * The rule_name argument is used in the MAIN_BODY context to report the nature
  * of the failure before execution terminates. */
-void generateFailureCode(string rule_name, ContextType context, int indent);
+void generateFailureCode(string rule_name, ContextType context, 
+                         int restore_point, int roll_back, int indent);
 
 #endif /* INC_GEN_PROGRAM_H */

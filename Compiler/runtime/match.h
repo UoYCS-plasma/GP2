@@ -17,11 +17,17 @@
 #include "../label.h"
 #include "../rule.h"
 
-/* Association list to represent variable-value mappings. */
+typedef struct RewriteData {
+   bool remove_item;
+   bool rhs_root;
+   Label *new_label; /* NULL if the label does not change. */
+   int host_index;
+} RewriteData;
 
+/* Association list to represent variable-value mappings. */
 typedef struct Assignment {
   string variable;
-  GP2List *value;
+  GP2List value;
 } Assignment;
 
 /* Create a new assignment specified by the last two arguments and prepends it
@@ -77,9 +83,10 @@ typedef struct Morphism {
 } Morphism;
 
 Morphism *makeMorphism(int nodes, int edges, int variables);
+void clearMorphism(Morphism *morphism);
 void addNodeMap(Morphism *morphism, int left_index, int host_index);
 void addEdgeMap(Morphism *morphism, int left_index, int host_index);
-void addAssignment(Morphism *morphism, string variable, GP2List *value);
+void addAssignment(Morphism *morphism, string variable, GP2List value);
 void removeNodeMap(Morphism *morphism);
 void removeEdgeMap(Morphism *morphism);
 void removeAssignment(Morphism *morphism);

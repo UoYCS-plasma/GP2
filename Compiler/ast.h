@@ -28,9 +28,7 @@
  * is required to prevent a double free.
  */ 
 
-
-/* Definition of AST nodes representing lists. */
-
+/* Definition of AST list nodes. */
 typedef enum {GLOBAL_DECLARATIONS = 0, LOCAL_DECLARATIONS, COMMANDS, 
               RULES, INT_DECLARATIONS, CHAR_DECLARATIONS, 
               STRING_DECLARATIONS, ATOM_DECLARATIONS,  
@@ -44,8 +42,11 @@ typedef struct List {
   union {
     struct GPDeclaration *declaration; /* GLOBAL_DECLARATIONS, 
 					* LOCAL_DECLARATIONS */
-    struct GPStatement *command;       /* COMMANDS */
-    string rule_name; 		       /* RULES */
+    struct GPCommand *command;         /* COMMANDS */
+    struct {
+       string rule_name;
+       struct GPRule *rule;
+    } rule_call;                       /* RULES */
     struct List *variables;            /* INT_DECLARATIONS, CHAR_DECLARATIONS,
                                         * STRING_DECLARATIONS, ATOM_DECLARATIONS */ 
     string variable_name; 	       /* VARIABLE_LIST */	  
@@ -59,7 +60,7 @@ typedef struct List {
 
 List *addASTDecl (ListType list_type, YYLTYPE location, 
 	          struct GPDeclaration *declaration, struct List *next);
-List *addASTCommand (YYLTYPE location, struct GPStatement *command, 
+List *addASTCommand (YYLTYPE location, struct GPCommand *command, 
                      struct List *next);
 List *addASTRule (YYLTYPE location, string rule_name, struct List *next);
 List *addASTVariableDecl (ListType list_type, YYLTYPE location, 
@@ -72,8 +73,7 @@ List *addASTAtom (YYLTYPE location, struct GPAtomicExp *atom, struct List *next)
 List *addASTEmptyList (YYLTYPE location);
 
 
-/* Definition of AST nodes representing declarations. */
-
+/* Definition of AST nodes for declarations. */
 typedef enum {MAIN_DECLARATION = 0, PROCEDURE_DECLARATION, RULE_DECLARATION} DeclType;
 
 typedef struct GPDeclaration {
@@ -81,67 +81,76 @@ typedef struct GPDeclaration {
   DeclType decl_type;
   YYLTYPE location;
   union {
-    struct GPStatement *main_program; 	/* MAIN_DECLARATION */
+    struct GPCommand *main_program; 	/* MAIN_DECLARATION */
     struct GPProcedure *procedure; 	/* PROCEDURE_DECLARATION */
     struct GPRule *rule; 		/* RULE_DECLARATION */
   } value;
 } GPDeclaration;
 
-GPDeclaration *newASTMainDecl (YYLTYPE location, struct GPStatement *main_program);
+GPDeclaration *newASTMainDecl (YYLTYPE location, struct GPCommand *main_program);
 GPDeclaration *newASTProcedureDecl (YYLTYPE location, struct GPProcedure *procedure);
 GPDeclaration *newASTRuleDecl (YYLTYPE location, struct GPRule *rule);
 
 
-/* Definition of AST nodes representing GP program statements. */
-
+/* Definition of AST nodes for GP commands. */
 typedef enum {COMMAND_SEQUENCE = 0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL, 
               IF_STATEMENT, TRY_STATEMENT, ALAP_STATEMENT, PROGRAM_OR, 
-              SKIP_STATEMENT, FAIL_STATEMENT} StatementType;
+              SKIP_STATEMENT, FAIL_STATEMENT, BREAK_STATEMENT} CommandType;
 
-typedef struct GPStatement {
+typedef struct GPCommand {
   int node_id;
-  StatementType statement_type;
+  CommandType command_type;
   YYLTYPE location;
   union {    
-    struct List *cmd_seq; 		/* COMMAND_SEQUENCE */
-    string rule_name; 			/* RULE_CALL */
+    struct List *commands; 		/* COMMAND_SEQUENCE */
+    struct {
+       string rule_name; 
+       struct GPRule *rule;   
+    } rule_call;                        /* RULE_CALL */
     struct List *rule_set; 		/* RULE_SET_CALL */
-    string proc_name;			/* PROCEDURE_CALL */
-
-    struct {  
-      struct GPStatement *condition;
-      struct GPStatement *then_stmt; 
-      struct GPStatement *else_stmt; 
-    } cond_branch; 			/* IF_STATEMENT, TRY_STATEMENT */
-
-    struct GPStatement *loop_stmt; 	/* ALAP_STATEMENT */
-
     struct { 
-      struct GPStatement *left_stmt; 
-      struct GPStatement *right_stmt; 
+       string proc_name;
+       struct GPProcedure *procedure; 
+    } proc_call;                        /* PROCEDURE_CALL */
+    struct {  
+      struct GPCommand *condition;
+      struct GPCommand *then_command; 
+      struct GPCommand *else_command; 
+      int restore_point;
+      bool roll_back;
+    } cond_branch; 			/* IF_STATEMENT, TRY_STATEMENT */
+    struct {
+       struct GPCommand *loop_body;
+       int restore_point;
+       bool roll_back;
+       bool stop_recording;
+    } loop_stmt;                        /* ALAP_STATEMENT */
+    struct { 
+      struct GPCommand *left_command; 
+      struct GPCommand *right_command; 
     } or_stmt;			        /* PROGRAM_OR */
-    /* skip and fail are predefined GP rules represented by a struct GPStatement
-     * containing only a statement_type and location. */
+    /* skip, fail and break statements are represented by a GPCommand
+     * containing only a type and location. */
   } value;
-} GPStatement;
+} GPCommand;
 
-GPStatement *newASTCommandSequence(YYLTYPE location, struct List *cmd_seq);
-GPStatement *newASTRuleCall(YYLTYPE location, string rule_name);
-GPStatement *newASTRuleSetCall(YYLTYPE location, struct List *rule_set);
-GPStatement *newASTProcCall(YYLTYPE location, string proc_name);
-GPStatement *newASTCondBranch(StatementType statement_type, YYLTYPE location, 
-	                      struct GPStatement *condition, 
-                              struct GPStatement *then_stmt, 
-	                      struct GPStatement *else_stmt);
-GPStatement *newASTAlap(YYLTYPE location, struct GPStatement *loop_stmt);
-GPStatement *newASTOrStmt(YYLTYPE location, struct GPStatement *left_stmt, 
-	                  struct GPStatement *right_stmt);
-GPStatement *newASTSkip(YYLTYPE location);
-GPStatement *newASTFail(YYLTYPE location);
+GPCommand *newASTCommandSequence(YYLTYPE location, struct List *cmd_seq);
+GPCommand *newASTRuleCall(YYLTYPE location, string rule_name);
+GPCommand *newASTRuleSetCall(YYLTYPE location, struct List *rule_set);
+GPCommand *newASTProcCall(YYLTYPE location, string proc_name);
+GPCommand *newASTCondBranch(CommandType statement_type, YYLTYPE location, 
+	                      struct GPCommand *condition, 
+                              struct GPCommand *then_stmt, 
+	                      struct GPCommand *else_stmt);
+GPCommand *newASTAlap(YYLTYPE location, struct GPCommand *loop_body);
+GPCommand *newASTOrStmt(YYLTYPE location, struct GPCommand *left_stmt, 
+	                  struct GPCommand *right_stmt);
+GPCommand *newASTSkip(YYLTYPE location);
+GPCommand *newASTFail(YYLTYPE location);
+GPCommand *newASTBreak(YYLTYPE location);
 
 
-/* Definition of AST nodes representing conditional expressions.*/
-
+/* Definition of AST nodes for conditional expressions.*/
 typedef struct GPCondExp {
   int node_id;
   CondExpType exp_type;
@@ -189,8 +198,7 @@ GPCondExp *newASTBinaryExp(CondExpType exp_type, YYLTYPE location,
 	                   struct GPCondExp *left_exp, 
                            struct GPCondExp *right_exp);
 
-/* Definition of AST nodes representing integer or string expressions. */
-
+/* Definition of AST nodes for atomic expressions. */
 typedef struct GPAtomicExp {
   int node_id;
   AtomExpType exp_type;
@@ -198,7 +206,7 @@ typedef struct GPAtomicExp {
   union {
     string name;		  /* VARIABLE */
     int number; 	 	  /* INTEGER_CONSTANT */
-    string string;		  /* CHARACTER_CONSTANT, STRING_CONSTANT */
+    string string;		  /* STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
     struct List *list_arg; 	  /* LIST_LENGTH */
     struct GPAtomicExp *str_arg;  /* STRING_LENGTH */
@@ -220,15 +228,11 @@ GPAtomicExp *newASTListLength (YYLTYPE location, struct List *list_arg);
 GPAtomicExp *newASTStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);
 GPAtomicExp *newASTNegExp (YYLTYPE location, struct GPAtomicExp *exp);
 GPAtomicExp *newASTBinaryOp (AtomExpType exp_type, YYLTYPE location, 
-	                     struct GPAtomicExp *left_exp,
+	                     struct GPAtomicExp *left_exp, 
                              struct GPAtomicExp *right_exp);
 
 
-/* Definition of the remaining AST node types. */
-
 typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, LABEL} ASTNodeType;
-
-/* Root node for a procedure definition. */
 
 typedef struct GPProcedure {
   int node_id;
@@ -236,15 +240,12 @@ typedef struct GPProcedure {
   YYLTYPE location;
   string name; 
   struct List *local_decls; 
-  struct GPStatement *cmd_seq; 
+  struct GPCommand *commands;
 } GPProcedure;
 
 GPProcedure *newASTProcedure(YYLTYPE location, string name, 
-                             struct List *local_decls, 
-                             struct GPStatement *cmd_seq);
+                             struct List *local_decls, struct GPCommand *cmd_seq);
 
-
-/* Root node for a rule definition. */
 
 typedef struct GPRule {
   int node_id;
@@ -255,16 +256,17 @@ typedef struct GPRule {
   struct GPGraph *lhs;
   struct GPGraph *rhs;
   struct List *interface;
-  struct GPCondExp *condition;  
+  struct GPCondExp *condition;
+  int left_nodes;
+  int left_edges;
+  int variable_count;
+  bool empty_lhs;
+  bool is_predicate;
 } GPRule;
 
 GPRule *newASTRule(YYLTYPE location, string name, struct List *variables, 
                    struct GPGraph *lhs, struct GPGraph *rhs, 
                    struct List *interface, struct GPCondExp *condition);
-
-
-/* Root node for a graph definition. This data structure is used for
- * graphs in rules and for the host graph. */
 
 typedef struct GPGraph {
   int node_id;
@@ -304,20 +306,6 @@ typedef struct GPEdge {
 GPEdge *newASTEdge(YYLTYPE location, bool bidirectional, string name, 
                    string source, string target, struct GPLabel *label);
 
-
-/* AST node for specifying locations in the graphical editor. 
-
-typedef struct GPPos {
-  int node_id;
-  ASTNodeType node_type; 
-  YYLTYPE location; 
-  int x;
-  int y;
-} GPPos;
-
-GPPos *newASTPosition (YYLTYPE location, int x, int y); */
-
-
 typedef struct GPLabel {
   int node_id;
   ASTNodeType node_type; 
@@ -328,13 +316,9 @@ typedef struct GPLabel {
 
 GPLabel *newASTLabel(YYLTYPE location, MarkType mark, struct List *gp_list);
 
-/* freeAST takes a pointer to the root of an AST and walks through the AST,
- * calling the other freeing functions depending on the subtrees it
- * encounters. */
-
 void freeAST(List *ast);
 void freeASTDeclaration(GPDeclaration *decl);
-void freeASTStatement(GPStatement *stmt);
+void freeASTCommand(GPCommand *stmt);
 void freeASTCondition(GPCondExp *cond);
 void freeASTAtomicExp(GPAtomicExp *atom);
 void freeASTProcedure(GPProcedure *proc);

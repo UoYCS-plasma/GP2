@@ -14,9 +14,12 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
+#include "analysis.h"
 #include "error.h"
 #include "globals.h"
+#include "genHost.h"
 #include "genProgram.h"
+#include "genRule.h"
 #include "parser.h"
 #include "seman.h" 
 
@@ -28,91 +31,124 @@
  * then it will parse using the grammar for GP2 programs. If Bison receives
  * GP_GRAPH then it will parse using the grammar for GP2 host graphs.
  * The variable parse_target is passed to the lexer which in turn sends
- * the appropriate token to the parser. 
- */ 
-
+ * the appropriate token to the parser. */ 
 #define GP_PROGRAM 1 		
 #define GP_GRAPH 2	
 int parse_target = 0; 
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
+   string const usage = "Usage:\n"
+                        "GP2-compile <program_file> <host_file>\n"
+                        "GP2-compile -h <host_file>\n"
+                        "GP2-compile -p <program_file>\n";
    if(argc != 3) {
-     print_to_console("Usage: GP2-compile <program_file> <host_graph_file>\n");
-     return 1;
+     print_to_console("%s", usage);
+     return 0;
    }
-   openLogFileC(argv[1]);
+   openLogFile();
 
-   /* The global variable FILE *yyin is declared in lex.yy.c. It must be 
-    * pointed to the file to be read by the parser. argv[1] is the file 
-    * containing the GP program text file.
-    */
-   if(!(yyin = fopen(argv[1], "r"))) 
-   {  
-      perror(argv[1]);
-      yylineno = 1;	
-      return 1;
-   }
+   /* 0 - Build both program and host graph. 
+    * 1 - Build only host graph.
+    * 2 - Build only program. */
+   int mode = 0;
+   string program_file = NULL, host_file = NULL;
 
-   #ifdef PARSER_TRACE 
-   yydebug = 1; /* Bison outputs a trace of its parse to stderr. */
-   #endif
-
-   /* Bison parses with the GP2 program grammar */
-   parse_target = GP_PROGRAM;
-   printf("\nProcessing %s...\n\n", argv[1]);
-
-   if(yyparse() == 0) print_to_console("GP2 program parse succeeded.\n\n");
-   else 
+   /* Check for options. */
+   if(argv[1][0] != '-')
    {
-      print_to_console("GP2 program parse failed.\n\n");     
-      fclose(yyin);
-      return 0;
+     program_file = argv[1];
+     host_file = argv[2];
    }
-
-   /* Point yyin to the file containing the host graph. */
-   if(!(yyin = fopen(argv[2], "r"))) {  
-      perror(argv[1]);
-      yylineno = 1;	
-      return 1;
+   else
+   {
+      if(argv[1][1] == 'h')
+      {
+         mode = 1;
+         host_file = argv[2];
+      }
+      else if(argv[1][1] == 'p')
+      {
+         mode = 2;
+         program_file = argv[2];
+      }
+      else
+      {
+        print_to_console("%s", usage);
+        return 0;
+      }
    }
-
-   /* Bison parses with the host graph grammar */
-   parse_target = GP_GRAPH;
-   printf("\nProcessing %s...\n\n", argv[2]);
-  
-   if(yyparse() == 0) print_to_console("GP2 graph parse succeeded.\n\n");
-   else 
+   
+   /* GP 2 program parser. */
+   if(mode != 1)
    {
-      print_to_console("GP2 graph parse failed.\n\n");
-      fclose(yyin);
-      if(gp_program) freeAST(gp_program); 
-      return 0;
-   }   
+      if(!(yyin = fopen(program_file, "r"))) 
+      {  
+         perror(program_file);
+         return 1;
+      }
+      #ifdef PARSER_TRACE 
+      yydebug = 1; /* Bison outputs a trace of its parse to stderr. */
+      #endif
+      parse_target = GP_PROGRAM;
+      printf("\nProcessing %s...\n\n", program_file);
 
-   gp_program = reverse(gp_program);
-   reverseGraphAST(ast_host_graph);
-
-   #ifdef DEBUG
-     bool valid_program = analyseProgram(gp_program, true, argv[1]);
-   #else
-     bool valid_program = analyseProgram(gp_program, false, NULL);
-   #endif
-
-   if(valid_program && !syntax_error) 
+      if(yyparse() == 0) print_to_console("GP2 program parse succeeded.\n\n");
+      else 
+      {
+         print_to_console("GP2 program parse failed.\n\n");     
+         fclose(yyin);
+         return 0;
+      }
+      gp_program = reverse(gp_program);
+      #ifdef DEBUG
+      bool valid_program = analyseProgram(gp_program, true, program_file);
+      #else
+      bool valid_program = analyseProgram(gp_program, false, NULL);
+      #endif
+      if(valid_program && !syntax_error) 
+      {
+         print_to_console("Generating program code...\n\n");
+         generateRules(gp_program);
+         #ifdef DEBUG
+            staticAnalysis(gp_program, true, program_file);   
+         #else
+            staticAnalysis(gp_program, false, NULL);
+         #endif
+         generateRuntimeCode(gp_program);
+      }
+      else print_to_console("Build aborted. Please consult the file gp2.log "
+                            "for a detailed error report.\n");   
+   }
+   /* GP 2 host graph parser. */
+   if(mode != 2)
    {
-      print_to_console("Generating code...\n\n"); 
-      generateRuntimeCode(gp_program);
+      if(!(yyin = fopen(host_file, "r"))) {  
+         perror(host_file);
+         return 1;
+      }
+      parse_target = GP_GRAPH;
+      printf("\nProcessing %s...\n\n", host_file);
+   
+      if(yyparse() == 0) print_to_console("GP2 graph parse succeeded.\n\n");
+      else 
+      {
+         print_to_console("GP2 graph parse failed.\n\n");
+         fclose(yyin);
+         if(gp_program) freeAST(gp_program); 
+         return 0;
+      }   
+      reverseGraphAST(ast_host_graph);
+      #ifdef DEBUG 
+         printDotHostGraph(ast_host_graph, host_file);
+      #endif
+      print_to_console("Generating host graph code...\n\n");
       generateHostGraphCode(ast_host_graph);
    }
-   else print_to_console("Build aborted. Please consult the file %s.log for "
-                         "a detailed error report.\n", argv[1]);   
 
    fclose(yyin);
    if(gp_program) freeAST(gp_program); 
    if(ast_host_graph) freeASTGraph(ast_host_graph); 
-
    closeLogFile();
-
    return 0;
 }

@@ -58,9 +58,8 @@ bool syntax_error = false;
 }
 
 /* Single character tokens do not need to be explicitly declared. */
-
-%token MAIN IF TRY THEN ELSE SKIP FAIL                          
-%token WHERE EDGETEST  		               
+%token MAIN IF TRY THEN ELSE SKIP FAIL BREAK
+%token WHERE EDGETEST   
 %token INDEG OUTDEG LLEN SLEN					
 %token INT CHARACTER STRING ATOM LIST 	                               
 %token INTERFACE _EMPTY INJECTIVE 	
@@ -68,7 +67,7 @@ bool syntax_error = false;
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
 %token <num> NUM 
-%token <str> STR CHAR
+%token <str> STR 
 %token <id> PROCID ID           				
 %token ROOT BIDIRECTIONAL	
 %token GP_PROGRAM GP_GRAPH						
@@ -85,7 +84,7 @@ bool syntax_error = false;
 %union {  
   struct List *list; 
   struct GPDeclaration *decl;
-  struct GPStatement *stmt;
+  struct GPCommand *command;
   struct GPProcedure *proc;
   struct GPRule *rule;
   struct GPGraph *graph;
@@ -104,7 +103,7 @@ bool syntax_error = false;
              VarList Inter NodeIDList NodeList HostNodeList EdgeList 
              HostEdgeList List HostList
 %type <decl> Declaration
-%type <stmt> MainDecl Command Block SimpleCommand 
+%type <command> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
 %type <rule> RuleDecl
 %type <graph> Graph HostGraph
@@ -125,7 +124,7 @@ bool syntax_error = false;
 %destructor { free($$); } <str> <id>
 %destructor { freeAST($$); } <list>
 %destructor { freeASTDeclaration($$); } <decl>
-%destructor { freeASTStatement($$); } <stmt>
+%destructor { freeASTCommand($$); } <command>
 %destructor { freeASTRule($$); } <rule>
 %destructor { freeASTGraph($$); } <graph>
 %destructor { freeASTNode($$); } <node>
@@ -233,7 +232,7 @@ LocalDecls: /* empty */			{ $$ = NULL; }
 
 ComSeq: Command 			{ $$ = addASTCommand(@1, $1, NULL); }
       | ComSeq ';' Command  		{ $$ = addASTCommand(@3, $3, $1); }
-      /* Error-catching production */
+      /* Error-catching productions */
       | ComSeq ',' Command		{ $$ = addASTCommand(@3, $3, $1);
                                           report_warning("Incorrect use of comma "
 					    "to separate commands. Perhaps you "
@@ -270,6 +269,7 @@ Block: '(' ComSeq ')' 	                { $$ = newASTCommandSequence(@$,$2); }
      | Block OR Block 			{ $$ = newASTOrStmt(@$, $1, $3); }
      | SKIP				{ $$ = newASTSkip(@$); }
      | FAIL				{ $$ = newASTFail(@$); }
+     | BREAK				{ $$ = newASTBreak(@$); }
 
 SimpleCommand: RuleSetCall 	        { $$ = newASTRuleSetCall(@$, $1); }
              | RuleID                   { $$ = newASTRuleCall(@$, $1); if($1) free($1); }
@@ -433,8 +433,6 @@ List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); }
 
 AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
        | NUM 				{ $$ = newASTNumber(@$, $1); }
-       | CHAR				{ $$ = newASTCharacter(@$, $1); 
-   					  if($1) free($1); }
        | STR 				{ $$ = newASTString(@$, $1); 
 					  if($1) free($1); }
        | INDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(INDEGREE, @$, $3); 
@@ -497,7 +495,6 @@ HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); }
 
 
 HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
-       | CHAR				{ $$ = newASTCharacter(@$, $1); if($1) free($1); }
        | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }
 
 %%
@@ -506,7 +503,9 @@ HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
  * messages to stderr and log_file. */
 void yyerror(const char *error_message)
 {
-   fprintf(stderr, "Error at '%s': %s\n", yytext, error_message);
+   fprintf(stderr, "%d.%d-%d.%d: Error at '%s': %s\n\n", 
+           yylloc.first_line, yylloc.first_column, yylloc.last_line, 
+           yylloc.last_column, yytext, error_message);
    fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, yytext, error_message);
@@ -517,7 +516,9 @@ void yyerror(const char *error_message)
  * the value of yytext may be misleading. */
 void report_warning(const char *error_message)
 {
-   fprintf(stderr, "Warning: %s\n", error_message);
+   fprintf(stderr, "%d.%d-%d.%d: Error: %s\n\n", 
+           yylloc.first_line, yylloc.first_column, yylloc.last_line, 
+           yylloc.last_column, error_message);
    fprintf(log_file, "%d.%d-%d.%d: Error: %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, error_message);
