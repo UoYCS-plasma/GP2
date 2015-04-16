@@ -1,5 +1,5 @@
 ================================
-Author: Chris Bak (February 4th 2015)
+Author: Chris Bak (April 16th 2015)
 GP 2: Graph Programming
 ================================
 
@@ -21,7 +21,9 @@ To build the GP 2 compiler, run
 This creates the executable GP2-compile which is called in one of three ways:
 
 > ./GP2-compile /path/to/program-file /path/to/host-graph-file
+
 > ./GP2-compile -p /path/to/program-file
+
 > ./GP2-compile -h /path/to/host-graph-file
 
 The last two options allow the user to compile a modified or new program while retaining a previously-built host graph, or to compile a new host graph with an existing program.
