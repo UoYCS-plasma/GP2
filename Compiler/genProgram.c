@@ -1,8 +1,8 @@
 #include "genProgram.h"
 
-#define RULE_TRACE
+#undef RULE_TRACE
 #undef GRAPH_TRACE
-#define BACKTRACK_TRACE
+#undef BACKTRACK_TRACE
 
 static FILE *main_source = NULL;
 int undo_point_count = 0;
@@ -310,15 +310,23 @@ void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
       PTMSI("success = true;\n", indent + 3);
       if(!last_rule) PTMSI("break;\n", indent + 3);
       PTMSI("}\n", indent);
-      PTMSI("else\n", indent);
-      PTMSI("{\n", indent);
-      #ifdef RULE_TRACE
-         PTMSI("print_to_log(\"Failed to match %s.\\n\\n\");\n", indent + 3, rule_name);
-      #endif
       /* Only generate failure code if the last rule in the set fails. */ 
-      if(last_rule) generateFailureCode(rule_name, context, restore_point,
-                                        undo_point, indent + 3);
-      PTMSI("}\n", indent);   
+      if(last_rule)
+      {
+         PTMSI("else\n", indent);
+         PTMSI("{\n", indent);
+         #ifdef RULE_TRACE
+            PTMSI("print_to_log(\"Failed to match %s.\\n\\n\");\n", indent + 3, rule_name);
+         #endif
+         generateFailureCode(rule_name, context, restore_point, undo_point, indent + 3);
+         PTMSI("}\n", indent);  
+      }
+      else 
+      {
+         #ifdef RULE_TRACE
+            PTMSI("print_to_log(\"Failed to match %s.\\n\\n\");\n", indent + 3, rule_name);
+         #endif
+      }
    }
 }
 

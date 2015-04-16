@@ -15,8 +15,6 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    }
    
    fprintf(header, "#include \"../graph.h\"\n"
-                   "#include \"../macros.h\"\n"
-                   "#include \"../rule.h\"\n\n"
  		   "Graph *makeHostGraph(void);\n");
 
    int host_nodes = countNodes(ast_host_graph);

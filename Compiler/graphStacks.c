@@ -127,13 +127,23 @@ void copyGraph(Graph *graph)
    graph_stack[graph_stack_index++] = graph_copy;
 }
 
-Graph *popGraphs(Graph *graph, int restore_point)
+Graph *popGraphs(Graph *current_graph, int restore_point)
 {
    if(graph_stack == NULL) return NULL;
-   freeGraph(graph);
+   if(graph_stack_index < restore_point)
+   {
+      print_to_log("popGraphs called with restore point greater than the top "
+                   "of the graph stack.\n");
+      return current_graph;
+   }
+   if(graph_stack_index == restore_point) return current_graph;
+
+   freeGraph(current_graph);
+   Graph *graph = NULL;
    while(graph_stack_index > restore_point)
    { 
-      Graph *graph = graph_stack[--graph_stack_index];
+      graph = graph_stack[--graph_stack_index];
+      /* Free graphs between the passed restore point and the top stack entry. */
       if(graph_stack_index > restore_point) freeGraph(graph);
    }
    return graph;

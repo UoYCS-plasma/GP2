@@ -30,7 +30,7 @@ extern int graph_stack_index;
 void copyGraph(Graph *graph);
 /* popGraphs pops and frees the graph change stack until the restore point.
  * is reached. It returns the graph at that stack entry. */
-Graph *popGraphs(Graph *graph, int restore_point);
+Graph *popGraphs(Graph *current_graph, int restore_point);
 void discardGraphs(int depth);
 void freeGraphStack(void);
 

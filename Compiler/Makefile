@@ -7,30 +7,25 @@ LFLAGS = -lglib-2.0
 VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
            --leak-check=full --leak-resolution=high --track-origins=yes \
 
-# Builds the parser and code generator, runs it on the passed GP2 program/host graph files,
-# and executes the generated code.
-# Usage: make all F1=<path_to_program_file> F2=<path_to_host_graph_file>
-default:	
-		make compile 
-		./GP2-compile $(F1) $(F2) 
+# Builds the compiler, generates code, and builds the runtime system.
+# Usage: make F1=<path_to_program_file> F2=<path_to_host_graph_file>
+default:	$(OBJECTS)
+		make build
+		./GP2-compile $(F1) $(F2)
 		cd runtime && make
 
-run:	
-		make compile 
-		./GP2-compile $(F1) $(F2) 
-		cd runtime && make && ./GP2-run
-
-debug:		
-		make compile-debug $(F1) $(F2) 
-		cd runtime && make && $(VALGRIND) --suppressions=../GNOME.supp/glib.supp ./GP2-run 
-
-# Builds the parser and the code generator.
-compile:	$(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile
-
-# Builds the parser and the code generator. Runs the executable with a call to valgrind.
-compile-debug:	$(OBJECTS)
+# Builds the executable GP2-compile.
+build:		$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 	
+
+# Builds everything and runs valgrind on the runtime executable.
+debug:		$(OBJECTS)	
+		make $(F1) $(F2) 
+		cd runtime && $(VALGRIND) --suppressions=../GNOME.supp/glib.supp ./GP2-run 
+
+# Builds the executable GP2-compile and runs it with valgrind.
+compile-debug:	$(OBJECTS)
+		make build
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-compile $(F1) $(F2)
 
 clean:
