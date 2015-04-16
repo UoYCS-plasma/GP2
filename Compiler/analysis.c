@@ -70,36 +70,49 @@ void annotate(GPCommand *command, int restore_point)
       case TRY_STATEMENT:
       {
            bool if_body = command->command_type == IF_STATEMENT;
-           copyType type = getCommandType(command->value.cond_branch.condition,
-                                          0, if_body, false); 
-           /* As above, except the graph does not need to be copied if the
-            * condition is a loop because loops always succeed and try does
-            * not backtrack for the 'then' branch. */
            int new_restore_point = restore_point;
-           if(type == RECORD_CHANGES) 
-              command->value.cond_branch.roll_back = true;
-           if(type == COPY)
+           GPCommand *condition = command->value.cond_branch.condition;
+           GPCommand *then_command = command->value.cond_branch.then_command;
+           GPCommand *else_command = command->value.cond_branch.else_command;
+           /* If the if condition below does not hold, then this is a try
+            * statement whose condition cannot fail. In that case, no graph
+            * backtracking is required.
+            * Otherwise, this is an if statement, or a try statement whose 
+            * condition can fail, which may require graph backtracking to
+            * the state before executing the condition. */
+           if(if_body || !neverFails(condition))
            {
-              command->value.cond_branch.restore_point = restore_point;
-              new_restore_point++;
+              copyType type = getCommandType(condition, 0, if_body, false); 
+              if(type == RECORD_CHANGES) 
+                 command->value.cond_branch.roll_back = true;
+              if(type == COPY)
+              {
+                 command->value.cond_branch.restore_point = restore_point;
+                 new_restore_point++;
+              }
            }
-           annotate(command->value.cond_branch.condition, new_restore_point);
-           annotate(command->value.cond_branch.then_command, restore_point);
-           annotate(command->value.cond_branch.else_command, restore_point);
+           annotate(condition, new_restore_point);
+           annotate(then_command, restore_point);
+           annotate(else_command, restore_point);
            break;
       }
 
       case ALAP_STATEMENT:
       {
            GPCommand *loop_body = command->value.loop_stmt.loop_body;
-           copyType type = getCommandType(loop_body, 0, false, false);
            int loop_restore_point = restore_point;
-           if(type == RECORD_CHANGES)
-              command->value.loop_stmt.roll_back = true;
-           if(type == COPY)
+           /* Only analyse the loop body for backtracking if if it possible
+            * for the loop body to fail. */
+           if(!neverFails(loop_body))
            {
-              command->value.loop_stmt.restore_point = restore_point;
-              loop_restore_point++;
+              copyType type = getCommandType(loop_body, 0, false, false);
+              if(type == RECORD_CHANGES)
+                 command->value.loop_stmt.roll_back = true;
+              if(type == COPY)
+              {
+                 command->value.loop_stmt.restore_point = restore_point;
+                 loop_restore_point++;
+              }
            }
            annotate(loop_body, loop_restore_point);
            break;
@@ -112,9 +125,9 @@ void annotate(GPCommand *command, int restore_point)
            break;
       }
 
+      case BREAK_STATEMENT:
       case SKIP_STATEMENT:
       case FAIL_STATEMENT:
-      case BREAK_STATEMENT:
            break;
 
       default:
@@ -122,6 +135,56 @@ void annotate(GPCommand *command, int restore_point)
                         command->command_type);
            break;
    }
+}
+
+bool neverFails(GPCommand *command)
+{
+   switch(command->command_type)
+   {
+      case COMMAND_SEQUENCE:
+      { 
+           List *commands = command->value.commands;
+           while(commands != NULL)
+           {
+              if(!neverFails(commands->value.command)) return false;
+              else commands = commands->next;
+           }
+           return true;
+      }
+      case RULE_CALL:
+      case RULE_SET_CALL:
+           return false;
+
+      case PROCEDURE_CALL:
+           return neverFails(command->value.proc_call.procedure->commands);
+
+      case IF_STATEMENT:
+      case TRY_STATEMENT:
+           if(!neverFails(command->value.cond_branch.then_command)) return false;
+           if(!neverFails(command->value.cond_branch.else_command)) return false;
+           else return true;
+
+      case ALAP_STATEMENT:
+           return true;
+
+      case PROGRAM_OR:
+           if(!neverFails(command->value.or_stmt.left_command)) return false;
+           if(!neverFails(command->value.or_stmt.right_command)) return false;
+           else return true;
+
+      case BREAK_STATEMENT:
+      case SKIP_STATEMENT:
+           return true;
+
+      case FAIL_STATEMENT:
+           return false;
+
+      default:
+           print_to_log("Error (neverFails): Unexpected command type %d.\n",
+                        command->command_type);
+           break;
+   }
+   return false;
 }
 
 /* Depth 0: initial value, not within any command sequence.
@@ -178,9 +241,9 @@ copyType getCommandType(GPCommand *command, int depth, bool if_body,
                                                depth, if_body, last_command);
            copyType then_type = getCommandType(command->value.cond_branch.then_command,
                                                depth, if_body, last_command);
-           copyType else_type = getCommandType(command->value.cond_branch.else_command,
+           copyType else_type = getCommandType(command->value.cond_branch.else_command, 
                                                depth, if_body, last_command);
-           /* In GP2 speak, no graph backtracking is required in, for example,
+           /* No graph backtracking is required in, for example, 
             * "try (if C then r1 else r2) then P else Q" because the inner if
             * statement simplifies to a single rule application on the current
             * graph. This is not guaranteed if the inner statement is a try

@@ -23,8 +23,12 @@ void staticAnalysis(List *declarations, bool debug, string prefix);
  * copy type. */
 void annotate(GPCommand *command, int restore_point);
 
-typedef enum {NO_BACKTRACK = 0, RECORD_CHANGES, COPY} copyType;
+/* Returns true if the passed GP 2 command always succeeds. Used to test
+ * conditions and loop bodies: if these always succeed, then backtracking
+ * is not necessary for try statements and loops. */
+bool neverFails(GPCommand *command);
 
+typedef enum {NO_BACKTRACK = 0, RECORD_CHANGES, COPY} copyType;
 /* Assigns a copy type to commands that require graph backtracking, namely
  * a command in a loop body or a command in the conditional part of an 
  * if/try statement. In addition to the command in question, the function

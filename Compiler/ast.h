@@ -42,7 +42,7 @@ typedef struct List {
   union {
     struct GPDeclaration *declaration; /* GLOBAL_DECLARATIONS, 
 					* LOCAL_DECLARATIONS */
-    struct GPCommand *command;       /* COMMANDS */
+    struct GPCommand *command;         /* COMMANDS */
     struct {
        string rule_name;
        struct GPRule *rule;
