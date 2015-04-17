@@ -14,6 +14,14 @@ default:	$(OBJECTS)
 		./GP2-compile $(F1) $(F2)
 		cd runtime && make
 
+program:	
+		./GP2-compile -p $(F1)
+		cd runtime && make
+
+host:	
+		./GP2-compile -h $(F1)
+		cd runtime && make
+
 # Builds the executable GP2-compile.
 build:		$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 	

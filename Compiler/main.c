@@ -79,9 +79,9 @@ int main(int argc, char **argv)
       }
    }
    
-   /* GP 2 program parser. */
    if(mode != 1)
    {
+      /* Set up and run the GP 2 program parser. */
       if(!(yyin = fopen(program_file, "r"))) 
       {  
          perror(program_file);
@@ -120,9 +120,11 @@ int main(int argc, char **argv)
       else print_to_console("Build aborted. Please consult the file gp2.log "
                             "for a detailed error report.\n");   
    }
-   /* GP 2 host graph parser. */
-   if(mode != 2)
+
+   if(mode == 2) generateHostGraphCode(NULL); 
+   else
    {
+      /* Set up and run the host graph parser. */
       if(!(yyin = fopen(host_file, "r"))) {  
          perror(host_file);
          return 1;

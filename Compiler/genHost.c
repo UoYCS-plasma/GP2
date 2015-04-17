@@ -7,15 +7,23 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
      perror("init_runtime.h");
      exit(1);
    }  
-
    FILE *source = fopen("runtime/init_runtime.c", "w");
    if(source == NULL) { 
      perror("init_runtime.c");
      exit(1);
    }
-   
    fprintf(header, "#include \"../graph.h\"\n"
  		   "Graph *makeHostGraph(void);\n");
+   PTIS("#include \"init_runtime.h\"\n\n"
+        "Graph *makeHostGraph(void)\n"
+        "{\n");
+
+   if(ast_host_graph == NULL) 
+   {
+      PTIS("   return NULL;\n");
+      PTIS("}\n");
+      return;
+   }
 
    int host_nodes = countNodes(ast_host_graph);
    int host_edges = countEdges(ast_host_graph);
@@ -24,10 +32,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    int host_node_size = getArraySize(host_nodes, MIN_HOST_NODE_SIZE);
    int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
 
-   PTIS("#include \"init_runtime.h\"\n\n"
-        "Graph *makeHostGraph(void)\n"
-        "{\n"
-        "   Graph *host = newGraph(%d, %d);\n"
+   PTIS("   Graph *host = newGraph(%d, %d);\n"
         "   int count = 0;\n\n", host_node_size, host_edge_size);
    PTIS("   /* Arrays to store data for adding nodes and edges. */\n");
    PTIS("   bool root_nodes[%d] = {false};\n", node_buffer_size);
