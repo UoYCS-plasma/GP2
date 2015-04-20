@@ -29,7 +29,7 @@ edgesIso g1 g2 s = all (outEdgesIso g1 g2 s) (allNodeKeys g1)
 
 outEdgesIso :: Ord b => Graph a b -> Graph a b -> Mapping NodeKey NodeKey -> NodeKey -> Bool
 outEdgesIso g1 g2 s n1 =
-  nonEmpty (bijectionsWith (edgeAttribs Nothing) es1 (edgeAttribs $ Just s) es2) 
+  nonEmpty (bijectionsWith (edgeAttribs $ Just s) es1 (edgeAttribs Nothing) es2) 
   where es1 = outEdges g1 n1 ; es2 = outEdges g2 $ definiteLookup n1 s
 
 edgeAttribs:: Maybe (Mapping NodeKey NodeKey) -> (EdgeKey,b) -> (b, NodeKey)

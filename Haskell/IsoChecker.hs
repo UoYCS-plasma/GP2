@@ -26,7 +26,7 @@ main = do
         (Right g1', Right g2') -> do
           let hg1 = makeHostGraph g1'
           let hg2 = makeHostGraph g2'
-          putStr $ (if isomorphic hg1 hg2 then "ISOMORPHIC: " else "NON-ISOMORPHIC")
+          putStr $ (if isomorphic hg1 hg2 then "ISOMORPHIC: " else "NON-ISOMORPHIC: ")
           putStrLn $ gr1file ++ " and " ++ gr2file
     (_, _, errs) -> do
       error (concat errs ++ usage)
