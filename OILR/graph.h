@@ -32,6 +32,13 @@
 	(r) = min((r), R_SZ); \
 } while (0);
 
+
+#ifndef NDEBUG
+#define debug(...) do { printf("--> ") ; printf(__VA_ARGS__) ; printf("\n");} while (0);
+#else
+#define debug(...)
+#endif
+
 /*typedef union NodeSignature {
 	struct {
 		unsigned int o:2;
@@ -130,9 +137,9 @@ extern Elem *elemPool;
 extern Graph graphs[];
 extern Graph *gsp;
 
-
 /* API functions */
 
+extern int signature(Node *n);
 void printGraph(Graph *g);
 Graph *newGraph();
 void cloneGraph();

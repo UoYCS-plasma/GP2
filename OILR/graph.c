@@ -26,17 +26,17 @@ void printGraph(Graph *g) {
 	Node *n;
 	Edge *e;
 	NodeId tgt;
-	int i,j, edgeCount=0;
+	int i,j, edgeCount=nextElem;
 	printf("[\n");
 	for (i=0; i<g->nodes.len; i++)
 		printf("\t(n%d, empty)\n", g->nodes.elems[i]);
 	printf("|\n");
 	for (i=0; i<g->nodes.len; i++) {
-		n = &elem(i);
+		n = &elem(g->nodes.elems[i]);
 		for (j=0; j<outdeg(n); j++) {
 			e = &edge(n, j);
 			tgt = target(e);
-			printf("\t(e%d, n%d, n%d, empty)\n", edgeCount++, i, tgt);
+			printf("\t(e%d, n%d, n%d, empty)\n", n->outEdges.elems[j], g->nodes.elems[i], tgt);
 		}
 		for (j=0; j<loopdeg(n); j++) {
 			printf("\t(e%d, n%d, n%d, empty)\n", edgeCount++, i, i);
@@ -47,8 +47,7 @@ void printGraph(Graph *g) {
 
 void resizeElemList(ElemList *nl, int sz) {
 	sz = (sz<DEF_EDGE_POOL) ? DEF_EDGE_POOL : sz;
-	// fprintf(stderr, " %d ", sz);
-	fprintf(stderr, "resize: 0x%lx, from %d to %d\n", (unsigned long) nl, nl->pool, sz);
+	debug("resize: 0x%lx, from %d to %d\n", (unsigned long) nl, nl->pool, sz);
 	if (sz == nl->pool)
 		return;
 	assert(sz > nl->len);
@@ -85,7 +84,6 @@ int listElem(ElemList *nl, NodeId id) {
 void unlistElem(ElemList *el, NodeId id) {
 	int pos = el->len--;
 	assert(pos > 0 && el->elems != NULL);
-	//fprintf(stderr, "%d", pos);
 	while (pos-- > 0) {
 		if (el->elems[pos] == id) {
 			el->elems[pos] = el->elems[el->len];
@@ -100,31 +98,15 @@ void unlistElem(ElemList *el, NodeId id) {
 }
 
 void sign(Node *n) {
-	int o = outdeg(n);
-	int i = indeg(n);
-	int l = loopdeg(n);
-	int r = rooted(n);
-	scaleToIndexSize(o, i, l, r);
-#if O_BITS
-	n->oilr.o = o;
-#endif
-#if I_BITS
-	n->oilr.i = i;
-#endif
-#if L_BITS
-	n->oilr.l = l;
-#endif
-#if R_BITS
-	n->oilr.r = r;
-#endif
+	n->sig = signature(n);
 }
 
 void indexNode(NodeId id) {
 	Node *n = &elem(id);
 	ElemList *idx;
 	int count;
+	debug("Reindexing node %d from %d to %d", id, n->sig, signature(n));
 	sign(n);
-	//fprintf(stderr, "%d: %d\n", id, n->sig);
 	idx = indexFor(gsp, n);
 	count = idx->len;
 	listElem(idx, id);
@@ -176,7 +158,7 @@ void addNode() {
 	int id = allocElem();
 	listElem(&(gsp->nodes), id);
 	indexNode(id);
-	//fprintf(stderr, "elemPool[%d] (node): 0x%lx of size %d\n", id, (unsigned long) elemPool, elemPoolSize);
+	debug("Creating node %d", id);
 }
 void deleteNode(NodeId id) {
 	Node *n = &elem(id);
@@ -192,8 +174,8 @@ void addEdge(NodeId src, NodeId tgt) {
 	EdgeId eid = allocElem();
 	Node *s=&elem(src), *t=&elem(tgt);
 	Edge *e = &elem(eid);
-	// fprintf(stderr, "elemPool[%d] (edge %d -> %d): 0x%lx of size %d\n", eid, src, tgt, (unsigned long) elemPool, elemPoolSize);
 	assert(src > 0 && tgt > 0);
+	debug("Creating edge %d between %d and %d", eid, src, tgt);
 	unindexNode(src);
 	unindexNode(tgt);
 	e->src = src;

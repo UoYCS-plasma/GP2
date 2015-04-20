@@ -1,12 +1,14 @@
 #ifndef OILRRT_H
 #define OILRRT_H
 
+#include <stdio.h>
+
 extern void _HOST();
 extern void GPMAIN();
 
 #ifndef NDEBUG
 void trace(int a, int b, int here);
-typedef void (*Tracer)();
+typedef void (*Tracer)(FILE *f);
 #else
 #define trace(a, b, c)
 #endif 
@@ -59,7 +61,7 @@ extern int success;
 void search(Trav *t);
 void followOutEdge(Trav *from, Trav *to);
 void followInEdge(Trav *to, Trav *from);
-void edgeBetween(Trav *from, Trav *to, int negate);
+void edgeBetween(Trav *from, Trav *tween, int negate);
 void reset(Trav *t);
 
 #endif

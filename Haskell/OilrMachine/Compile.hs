@@ -60,9 +60,9 @@ compileBlock (ProgramOr _ _) = notImplemented "compileBlock"
 
 
 compileSimple :: SimpleCommand -> Prog
-compileSimple (RuleCall rs) = concatMap (\id -> [CALL id, ZTRF]) rs
-compileSimple (LoopedRuleCall rs) = map (\id -> LOOP id) rs
-compileSimple (ProcedureCall p) = [CALL p , ZTRF]
+compileSimple (RuleCall rs) = concatMap (\id -> [CALL id, ORFAIL]) rs
+compileSimple (LoopedRuleCall rs) = map (\id -> ALAP id) rs
+compileSimple (ProcedureCall p) = [CALL p , ORFAIL]
 compileSimple (LoopedProcedureCall p) = [LOOP p]
 compileSimple Skip = [NOP]
 compileSimple Fail = [FAIL]

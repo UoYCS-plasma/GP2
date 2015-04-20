@@ -10,13 +10,12 @@ data Instr =
     --  Node and edge finding prims
     ----------------------------------
 
-    -- Settings for OILR index creation.
-      OILR Deg Deg Deg Deg
-
     -- Add an element to a search plan
+    | PLANS | ENDP
     | SPC Deg Deg Deg Deg
 
     -- Add a traverser
+    | TRAVS | ENDT
     | TRAV Deg Deg Deg Deg
 
     ----------------------------------
@@ -29,7 +28,7 @@ data Instr =
     -- delete an edge in a TRAV register
     | DELE Int
     
-    -- introduce a new edge between src and tgt
+    -- introduce a new edge between src and tgt TRAVS
     | NEWE Int Int
 
     -- introduce a new node

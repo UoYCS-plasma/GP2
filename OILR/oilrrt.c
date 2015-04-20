@@ -14,14 +14,20 @@ int success = 0;
 extern Tracer tracers[];
 void trace(int a, int b, int here) {
 	int i;
-	printf("  ");
+	printf("  [32m");
 
 	for (i=a; i<=b; i++) {
-		if (i == here)
-			printf(">");
-		else
+		if (i == here) {
+			if (success)
+				printf("[1;32m>");
+			else
+				printf("[1;31m<");
+			tracers[i](stdout);
+			printf("[0m");
+		} else {
 			printf(" ");
-		tracers[i]();
+			tracers[i](stdout);
+		}
 	}
 	printf("\n");
 }
@@ -32,9 +38,7 @@ int traverse(ElemList *l, Trav *t, Pred p) {
 	Elem *cnd;
 	int i, id;
 	success = 0;
-	//printf("%d\n", t->next);
 	for (i=t->next; i<l->len; i++) {
-		// printf("%d\n", i);
 		id = l->elems[i];
 		cnd = &elem(id);
 		if (!cnd->matched && p(cnd)) {
@@ -43,7 +47,7 @@ int traverse(ElemList *l, Trav *t, Pred p) {
 			return id;
 		}
 	}
-	return -1;
+	return 0;
 }
 
 void search(Trav *t) {
@@ -55,7 +59,6 @@ void search(Trav *t) {
 	t->match = 0;
 	for (i=t->cur; i<=t->last; i++) {
 		idx = index(gsp, searchSpaces[i]);
-		// printf("Index: %d, %d\n", i, idx->len);
 		id = traverse(idx, t, t->p);
 		if (success) {
 			match( &elem(id) );
@@ -80,7 +83,6 @@ void unmatchNodeAndEdge(Trav *t) {
 }
 
 void reset(Trav *t) {
-	//t->match = -1;
 	unmatchNodeAndEdge(t);
 	t->cur = t->first;
 	t->next = 0;
@@ -106,10 +108,10 @@ void followInEdge(Trav *to, Trav *from) {
 		matchNodeAndEdge(from, e, source(&elem(e)) );
 }
 
-void edgeBetween(Trav *from, Trav *to, int negate) {
+void edgeBetween(Trav *from, Trav *tween, int negate) {
 	NodeId src = from->match;
 	ElemList *es = outEdgeList(&elem(src));
-	ElemId e = traverse(es, to, to->p);
+	ElemId e = traverse(es, tween, tween->p);
 	if (success) {
 		if (negate)
 			success = 0;
