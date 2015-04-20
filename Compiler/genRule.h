@@ -1,8 +1,8 @@
 /* ///////////////////////////////////////////////////////////////////////////
 
-  =====================
-  Generate Match Module
-  =====================
+  ====================
+  Generate Rule Module
+  ====================
 
   Module for generating code to apply a rule. The functions in this module
   take a rule and produce a C module with two principal functions: one to match
@@ -11,8 +11,8 @@
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#ifndef INC_GEN_MATCH_H
-#define INC_GEN_MATCH_H
+#ifndef INC_GEN_RULE_H
+#define INC_GEN_RULE_H
 
 #define printToRuleHeader(code, ...)	             \
   do { fprintf(rule_header, code, ##__VA_ARGS__); }  \
@@ -32,20 +32,27 @@
 
 #define PTRSI printToRuleSourceI
 
+#include "ast.h"
 #include "error.h"
 #include "globals.h"
 #include "rule.h"
 #include "searchplan.h"
+#include "transform.h"
 
 FILE *rule_header;
 FILE *rule_source;
 struct Searchplan *searchplan;
 
+/* Generates code from each rule declaration in the AST via calls to makeRule
+ * and generateRuleCode. It also tests if each rule is a predicate rule and
+ * updates the rule declaration AST nodes accordingly. */
+void generateRules(List *declarations);
+
 /* generateRuleCode creates a C module to match and apply the rule.
  * It sets up the module environment and makes the appropriate calls to
  * emitMatchingCode and emitApplicationCode depending on the structure
  * of the rule.  */
- void generateRuleCode(Rule *rule);
+void generateRuleCode(Rule *rule, bool predicate);
  
 /* Generates the searchplan from the LHS which is used to emit the matching
  * code. The generated matching code is structure as follows:
@@ -64,8 +71,7 @@ struct Searchplan *searchplan;
  * Argument 3: The list of nodes that the rule deletes. The dangling condition
  *             is checked for candidate host graph nodes that match a deleted
  *             node.  */
-void generateMatchingCode(string rule_name, int number_of_variables, 
-                          Graph *lhs, ItemList *deleted_nodes);
+void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes);
 
 
 /* Emits the declaration and definition of the main matching function 
@@ -79,7 +85,7 @@ void generateMatchingCode(string rule_name, int number_of_variables,
  * Argument 3: The number of nodes in the LHS.
  * Argument 4: The number of edges in the LHS. */
 void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes, 
-                     int left_edges, int variables);
+                     int left_edges);
 
 /* The four emitMatcher functions take an LHS item and emit a function that 
  * searches for a matching host item. The generated code queries the host graph
@@ -168,4 +174,4 @@ bool emitNextMatcherCall(SearchOp* next_operation, int indent);
  * generated to apply the rule. */
 void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs);
 
-#endif /* INC_GEN_MATCH_H */
+#endif /* INC_GEN_RULE_H */

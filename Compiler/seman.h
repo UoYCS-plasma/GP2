@@ -150,16 +150,14 @@ extern GHashTable *symbol_table;
 bool analyseProgram(List *gp_program, bool debug, string prefix);
 
 /* declarationScan traverses the global declaration list and any local 
- * declaration lists. It adds all procedure declarations and rule declarations
- * to the symbol table. Returns true if a name conflict is found, such as
- * two procedures with the same name, or if there is not exactly one Main
- * declaration. 
+ * declaration lists. It adds all rule declarations to the symbol table. 
+ * Returns true if a name conflict is found, such as two procedures with the
+ * same name, or if there is not exactly one Main declaration. 
  *
  * Argument 1: The root of the AST which is the head of the global declaration
  *             list.
  * Argument 2: The scope of the declaration list the function is traversing.
  *             This is either "Main" (initial value) or a procedure name. */
-
 bool declarationScan(List *ast, string const scope);
 
 /* semanticCheck performs semantic analysis on a GP program after parsing. 
@@ -169,51 +167,68 @@ bool declarationScan(List *ast, string const scope);
  *
  * Argument 1: A pointer to the abstract syntax tree of the input program.
  * Argument 2: The current scope. semanticCheck is initially called with "Main". */
-
 bool semanticCheck(List *declarations, string const scope);
 
 
-/* statementScan is called whenever a GPStatement node is reached in the AST.
+/* commandScan is called whenever a GPCommand node is reached in the AST.
  * Called only by semanticCheck and itself. It searches for rule and procedure
- * calls and checks them for semantic correctness with the auxiliary function 
- * validateCall.
+ * calls and checks them for semantic correctness by searching for their 
+ * declarations in the appropriate scopes. It also checks that each break
+ * statement occurs in a loop body. 
  *
- * Argument 1: A pointer to the GPStatement node.
- * Argument 2: The current scope, passed from declarationScan. */
+ * Argument 1: A pointer to the GPCommand node.
+ * Argument 2: The current scope, passed from declarationScan. 
+ * Argument 3: The main declaration list. Passed to findRuleDeclaration
+ *             and findProcedureDeclaration when a rule call or procedure
+ *             call is encountered.
+ * Argument 4: Flag set to true if scanning is taking place in a loop body. */
+void commandScan(GPCommand *const command, string const scope, 
+                 List *declarations, bool in_loop);
 
-void statementScan(GPStatement *const statement, string const scope);
-
-
-/* The validateCall functions search the symbol table for a rule or procedure
- * in either the passed scope or "Main" scope. Note that these could be equal.
- * validateRuleCall returns a string created by makeRuleIdentifier if a rule
- * symbol exists in a correct scope, or NULL otherwise. This return value
- * is used to update the rule name of the AST node representing the rule call.
+/* findRuleDeclaration searches for a GPRule AST node corresponding to the
+ * passed name. It starts the search in the local declaration list of a
+ * procedure passed by the caller. If the procedure is NULL, or if an
+ * appropriate node does not exist in that procedure's declaration list,
+ * search resumes in the global declaration list. 
  *
- * Argument 1: The name of the rule or procedure in question. Used to hash
- *             into the symbol table.
- * Argument 2: The current scope. */
+ * Argument 1: The global declaration list.
+ * Argument 2: The name of the rule to find.
+ * Argument 3: The procedure in which to start search, or NULL if search
+ *             should only be conducted in the global declaration list. */
+GPRule *findRuleDeclaration(List *declarations, string const name, 
+                            GPProcedure *procedure);
 
-string validateRuleCall(string const name, string const scope);
-void validateProcedureCall(string const name, string const scope);
-
+/* findRuleDeclaration searches for a GPProcedure AST node corresponding to the
+ * passed name. It starts search from the global declaration list and 
+ * recursively searches declaration lists of procedures. If a procedure node
+ * equalling the third (optional) argument is found, it is ignored and search
+ * resumed. This feature is used when checking for occurrences of more than
+ * one procedure declaration with the same name.
+ *
+ * Argument 1: The global declaration list.
+ * Argument 2: The name of the procedure to find.
+ * Argument 3: A procedure to ignore if it is found in the search. */
+GPProcedure *findProcedureDeclaration(List *declarations, string const name,
+                                       GPProcedure *excluded_procedure);
 
 /* ruleScan processes a struct GPRule. First it reverses the rule's parameter
- * list and interface list. Then it iterates down the variable list and enters
- * each variable into the symbol table with the auxiliary function
- * enterVariables. Finally it processes the rest of the rule using some
- * subfunctions. 
+ * list and interface list. Then it iterates over the variable list and enters
+ * each variable into the symbol table with the auxiliary functions 
+ * checkDeclarations and enterVariables. Finally, it processes the rest of the
+ * rule using various subfunctions. 
  *
  * Argument 1: A pointer to the GPRule node.
  * Argument 2: The current scope. */
-
 void ruleScan(GPRule *const rule, string const scope);
-
+void checkDeclaration(GPRule *const rule, List *variables, string const scope,
+                      SymbolType const type, int count, string type_name);
 
 /* enterVariables adds variable declarations from a rule's parameter list
  * into the symbol table. It also checks that each variable name in the
  * parameter list is unique. Variable names are not added to the symbol
  * table if a clash is found. This function is called only by ruleScan.
+ * Returns the number of variables processed by the function. The return
+ * value is used to update the rule's variable count.
  *
  * Argument 1: Variable type, passed from ruleScan. It is one of INT_S,
  *             CHAR_S, STRING_S, ATOM_S, LIST_S.
@@ -221,26 +236,21 @@ void ruleScan(GPRule *const rule, string const scope);
  *             in the AST.
  * Argument 3: The current scope.
  * Argument 4: The current rule being processed. This extra information
- *             is required for variable symbols.
- */
-
-void enterVariables(SymbolType const type, List *variables, 
-		    string const scope, string const rule_name);
-
+ *             is required for variable symbols. */
+int enterVariables(SymbolType const type, List *variables, 
+		   string const scope, string const rule_name);
 
 /* graphScan is responsible for adding nodes and edges to the symbol table.
- * It also performs some semantic analysis: source and target nodes of edges
+ * It performs some semantic analysis: source and target nodes of edges
  * must exist and the union of node IDs and edge IDs in the graph must not 
- * contain duplicates. This function is called only by ruleScan.
+ * contain duplicates. It also updates the rule's left nodes and left edges
+ * count. This function is called only by ruleScan.
  *
- * Argument 1: A pointer to a struct GPGraph.
+ * Argument 1: A pointer to a struct GPRule.
  * Argument 2: The current scope.
  * Argument 3: The current rule being processed.
- * Argument 4: Either 'l' for the LHS graph or 'r' for the RHS graph.
- *
- */
-
-void graphScan(GPGraph *graph, string const scope, string const rule_name,
+ * Argument 4: Either 'l' for the LHS graph or 'r' for the RHS graph. */
+void graphScan(GPRule *rule, string const scope, string const rule_name,
                char const side);
 
 
@@ -252,9 +262,7 @@ void graphScan(GPGraph *graph, string const scope, string const rule_name,
  *
  * Argument 1: Pointer to the head of an AST interface list.
  * Argument 2: The current scope.
- * Argument 3: The current rule being processed.
- */
-
+ * Argument 3: The current rule being processed. */
 void interfaceScan(List *interface, string const scope, string const rule_name);
 
 
@@ -265,9 +273,7 @@ void interfaceScan(List *interface, string const scope, string const rule_name);
  *
  * Argument 1: Pointer to a struct GPCondExp.
  * Argument 2: The current scope.
- * Argument 3: The current rule being processed.
- */   
-
+ * Argument 3: The current rule being processed. */   
 void conditionScan(GPCondExp *const condition, string const scope,
                    string const rule_name);
 
@@ -299,9 +305,7 @@ void conditionScan(GPCondExp *const condition, string const scope,
  *             Either [l]eft-hand graph, [r]ight-hand graph or [c]ondition.
  *             If called from graphScan, this is the 'side' parameter
  *             passed to the graphScan call. If called from conditionScan,
- *             this is 'c'.
- */
-
+ *             this is 'c'. */
 void gpListScan(List **gp_list, string const scope, string const rule_name,
                 char const location);
 
@@ -328,9 +332,7 @@ void gpListScan(List **gp_list, string const scope, string const rule_name,
  *             are encountered.
  * Argument 6: If true, then the expression pointed to by atom_exp is a
  *             string expression. Errors are reported if integer expressions 
- *             are encountered.
- */
-
+ *             are encountered. */
 void atomicExpScan(GPAtomicExp *const atom_exp, string const scope, 
                    string const rule_name, char const location, 
                    bool const int_exp, bool const string_exp);
