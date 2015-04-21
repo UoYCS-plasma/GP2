@@ -345,9 +345,8 @@ void printVerboseNode(Node *node, FILE *file)
     fprintf(file, "\n");
     fprintf(file, "Label Class: %d\n", node->label_class);
     fprintf(file, "Label: ");
-    printGP2List(node->label->list, file);
+    printLabel(node->label, file);
     fprintf(file, "\n");
-    printMark(node->label->mark, true, file);
     fprintf(file, "Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
            node->indegree, node->outdegree, node->bidegree);
 }
@@ -359,9 +358,8 @@ void printVerboseEdge(Edge *edge, FILE *file)
     fprintf(file, "\n");
     fprintf(file, "Label Class: %d\n", edge->label_class);
     fprintf(file, "Label: ");
-    printGP2List(edge->label->list, file);
+    printLabel(edge->label, file);
     fprintf(file, "\n");
-    printMark(edge->label->mark, true, file);
     fprintf(file, "Source: %d. Target: %d\n\n", edge->source, edge->target);
 }
 

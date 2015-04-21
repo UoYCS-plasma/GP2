@@ -17,13 +17,6 @@
 #include "globals.h"
 #include "graph.h"
 
-/* The parameter list of a rule. Each variable has one of the five GP 2 types 
- * according to the rule declaration. Used in the matching algorithm to check
- * the type of a variable for label matching.
- */
-typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} 
-  GPType;
-
 typedef struct VariableList {
   string variable;
   GPType type; 
@@ -111,7 +104,7 @@ void freeNewEdgeList(NewEdgeList *new_edge);
 
 
 typedef struct Condition {
-  CondExpType exp_type;		/* globals.h */
+  ConditionType exp_type;		/* globals.h */
   union {
     string var; 		/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
 				 * ATOM_CHECK */

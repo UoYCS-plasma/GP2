@@ -4,8 +4,7 @@
   Label Module
   ============
 
-  Module for GP2's labels and lists. Defines a doubly-linked list structure
-  to support GP2 lists.
+  Data structures and functions for GP2's labels.
 
 /////////////////////////////////////////////////////////////////////////// */
 
@@ -19,88 +18,88 @@
 
 /* Classes of GP 2 labels for querying by label. This is a partition of the
  * set of all GP 2 labels. 
- * The label classes are the empty list, an integer constant, a string constant,
- * constant, a variable of atomic type (int, string, char or atom), 
- * fixed-length lists of length 2 up to a fixed bound, and any list containing 
- * a list variable. */
+ * The label classes are as follows: 
+ * - The empty list (EMPTY_L)
+ * - Integer constant (INT_L)
+ * - String constant (STRING_L)
+ * - Atomic variable (ATOMIC_VAR_L) - all labels consisting of a single
+ *   non-list variable.
+ * - List containing a list variable.
+ * - List of length 2, 3, and 4 (LIST2_L, LIST3_L, LIST4_L) without a list
+ *   variable.
+ * - List of length > 4 (LONG_LIST_L) without a list variable. */
+ typedef enum {EMPTY_L = 0, INT_L, STRING_L, ATOMIC_VAR_L, LIST_VAR_L, LIST2_L,
+               LIST3_L, LIST4_L, LONG_LIST_L} LabelClass;
 
-typedef enum {EMPTY_L = 0, INT_L, STRING_L, ATOMIC_VAR_L, LIST2_L, LIST3_L,
-              LIST4_L, LIST5_L, LONG_LIST_L, LISTVAR_L} LabelClass;
-
-typedef struct GP2Atom {
-   /* Abstract data type for atomic expressions. From globals.h. 
-   typedef enum {VARIABLE = 0, INTEGER_CONSTANT, CHARACTER_CONSTANT,
-                 STRING_CONSTANT, INDEGREE, OUTDEGREE, LIST_LENGTH, STRING_LENGTH,
-                 NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomExpType; */
-   AtomExpType type;
+/* AtomType defined in globals.h. I place the enumerated type here for reference.
+ * {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, STRING_CONSTANT, INDEGREE,
+ *  OUTDEGREE, LIST_LENGTH, STRING_LENGTH, NEG, ADD, SUBTRACT,
+ *  MULTIPLY, DIVIDE, CONCAT} AtomType; 
+ * All types above except for EMPTY are used in this label structure. */
+ typedef struct Atom { 
+   AtomType type;
    union {
-      string name;                /* VARIABLE */
-      int number;                 /* INTEGER_CONSTANT */
-      string string;              /* STRING_CONSTANT */
-      string node_id;             /* INDEGREE, OUTDEGREE */
-      struct GP2List *list_arg;   /* LIST_LENGTH */
-      struct GP2Atom *str_arg;    /* STRING_LENGTH */
-      struct GP2Atom *exp; 	  /* NEG */
-      struct { 
-         struct GP2Atom *left_exp;
-         struct GP2Atom *right_exp;
-      } bin_op;           	  /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
+      struct {
+         string name;
+         GPType type;
+      } variable;
+      int number;
+      string string;
+      /* The index of the node in the RHS of the rule. */
+      int node_id;   
+      struct Atom *string_arg; 
+      struct Atom *neg_exp;
+      struct {
+         struct Atom *left_exp;
+         struct Atom *right_exp;
+      } bin_op;
    } value;
-   struct GP2Atom *prev;
-   struct GP2Atom *next;
-} GP2Atom;
+} Atom;
 
-typedef struct GP2List {
-   struct GP2Atom *first;
-   struct GP2Atom *last;
-} GP2List;
-
-void append(GP2List *list, GP2Atom *atom);
-/* Cleans <destination> by NULLing its first and last pointers, then walks
- * <source>, copying the atoms and appending them to <destination>. */
-void copyGP2List(GP2List source, GP2List *destination);
-/* Only called when copying the host graph, hence this function only concerns
- * atoms with constant values. */
-GP2Atom *copyGP2Atom(GP2Atom *atom);
-
+/* The length of the list in a label is fixed at compile time in the
+ * transformation phase. If length > 0, then an array of length atoms is 
+ * allocated to heap. The array is populated with the appropriate atoms. */
 typedef struct Label {
-   /* Abstract data type for GP2's marks defined in globals.h.
-    * typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; */
    MarkType mark;
-   struct GP2List list;
-   /* Metadata set while the label is being constructed from the AST. */
-   int list_length; 
+   int length;
+   /* Array of Atoms with length elements. */
+   Atom *list;
    bool list_variable;
 } Label;
 
-/* Global structure for the labels with empty lists. */
-extern struct Label blank_label;
-extern struct Label red_label;
-extern struct Label green_label;
-extern struct Label blue_label;
-extern struct Label grey_label;
-extern struct Label dashed_label;
+/* Compares a LHS label with a RHS label of the same rule for syntactic equality. 
+ * Used in rule generation to determine if an item is relabelled. */
+bool equalRuleLabels(Label left_label, Label right_label);
+/* Called by equalRuleLabels. Since left_atom is an atom in a LHS label, it must 
+ * be a constant, a variable, a negated variable or a concatenated string. */
+bool equalRuleAtoms(Atom *left_atom, Atom *right_atom);
 
-LabelClass getLabelClass(Label *label);
-Label *copyLabel(Label *label);
-void freeLabel(Label *label);
+/* To be implemented. */
+bool labelMatch(Label rule_label, Label host_label);
 
-bool isConstantLabel(Label *label);
+/* Allocates memory for an array with length number of atoms. */
+Atom *makeList(int length);
+void addAtom(Atom atom, Label label, int position);
+LabelClass getLabelClass(Label label);
 
-/* Compares two labels for syntactic equality. Used in rule generation to
- * determine whether an item is relabelled or not. */
-bool equalLabels(Label *left_label, Label *right_label);
-/* For now, this only tests mark equality. */
-bool labelMatch(Label *rule_label, Label *host_label);
-bool marksMatch(MarkType rule_mark, MarkType host_mark);
-Label *makeEmptyList(MarkType mark);
+/* Creates a copy of source and assigns it to target. The assumption is that 
+ * target points to a Label-sized portion of heap. Heap memory is allocated
+ * in this function only if the source label contains pointers to heap, namely 
+ * strings and nested Atoms. */
+void copyLabel(Label *source, Label *target);
+Atom *copyAtom(Atom *list, int length);
 
-/* Do not pass a NULL pointer! To either argument! */
-void printGP2List(GP2List list, FILE *file);
-void printGP2Atom(GP2Atom *atom, FILE *file);
-void printMark(MarkType mark, bool verbose, FILE *file);
-void freeGP2List(GP2List list);
-void freeGP2Atom(GP2Atom *atom);
-
+void printLabel(Label label, FILE *file);
+void printAtom(Atom *atom, FILE *file);
+void printOperation(Atom *left_exp, Atom *right_exp, string const operation,
+                    FILE *file);
+void printMark(MarkType mark, FILE *file);
+void freeLabel(Label label);
+/* freeAtom is called on both the atoms in the label's list (array) and on any
+ * nested atoms. The array is a contiguous block of memory containing some
+ * number of atoms: atoms in this array shoud not be freed individually. Nested
+ * atoms are allocated on demand, so it is safe to free them individually. This
+ * is the reason for the free_atom boolean argument. */
+void freeAtom(Atom *atom, bool free_atom);
 
 #endif /* INC_LABEL_H */

@@ -524,7 +524,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
 }
 
 
-void printASTCondition(GPCondExp *const cond, FILE *dot_file)
+void printASTCondition(GPCondition *const cond, FILE *dot_file)
 {
    switch(cond->exp_type) 
    {
@@ -661,7 +661,7 @@ void printASTCondition(GPCondExp *const cond, FILE *dot_file)
  }
 
 
- void printASTAtom(GPAtomicExp * const atom, FILE *dot_file)
+ void printASTAtom(GPAtom * const atom, FILE *dot_file)
 {
    switch(atom->exp_type) 
    {

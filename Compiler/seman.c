@@ -1075,7 +1075,7 @@ void interfaceScan(List *interface, string const scope, string const rule_name)
 }
         
 
-void conditionScan(GPCondExp * const condition, string const scope, 
+void conditionScan(GPCondition * const condition, string const scope, 
                    string const rule_name)
 {
    switch(condition->exp_type) 
@@ -1265,7 +1265,7 @@ void gpListScan(List **gp_list, string const scope, string const rule_name,
    lhs_non_simple_exp = false;
 }
 
-void atomicExpScan(GPAtomicExp * const atom_exp, string const scope,
+void atomicExpScan(GPAtom * const atom_exp, string const scope,
                    string const rule_name, char const location, 
                    bool const int_exp, bool const string_exp)
 {

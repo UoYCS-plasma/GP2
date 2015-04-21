@@ -123,7 +123,7 @@ List *addASTEdge(YYLTYPE location, GPEdge *edge, List *next)
      return new_edge;
 }
 
-List *addASTAtom(YYLTYPE location, GPAtomicExp *atom, List *next)
+List *addASTAtom(YYLTYPE location, GPAtom *atom, List *next)
 {
     List *new_atom = malloc(sizeof(List));
     if(new_atom == NULL) 
@@ -347,9 +347,9 @@ GPCommand *newASTBreak(YYLTYPE location)
 }
 
 
-GPCondExp *newASTSubtypePred(CondExpType exp_type, YYLTYPE location, string var)
+GPCondition *newASTSubtypePred(CondExpType exp_type, YYLTYPE location, string var)
 {
-     GPCondExp *cond = malloc(sizeof(GPCondExp));
+     GPCondition *cond = malloc(sizeof(GPCondition));
      if(cond == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -361,10 +361,10 @@ GPCondExp *newASTSubtypePred(CondExpType exp_type, YYLTYPE location, string var)
      return cond;
 }
 
-GPCondExp *newASTEdgePred(YYLTYPE location, string source, string target, 
+GPCondition *newASTEdgePred(YYLTYPE location, string source, string target, 
 	                  GPLabel *label)
 {
-     GPCondExp *cond = malloc(sizeof(GPCondExp));
+     GPCondition *cond = malloc(sizeof(GPCondition));
      if(cond == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -378,10 +378,10 @@ GPCondExp *newASTEdgePred(YYLTYPE location, string source, string target,
      return cond;
 }
 
-GPCondExp *newASTListComparison(CondExpType exp_type, YYLTYPE location,
+GPCondition *newASTListComparison(CondExpType exp_type, YYLTYPE location,
 	                        List *left_list, List *right_list)
 {
-     GPCondExp *cond = malloc(sizeof(GPCondExp));
+     GPCondition *cond = malloc(sizeof(GPCondition));
      if(cond == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -394,10 +394,10 @@ GPCondExp *newASTListComparison(CondExpType exp_type, YYLTYPE location,
      return cond;
 }
 
-GPCondExp *newASTAtomComparison(CondExpType exp_type, YYLTYPE location,
-	                        GPAtomicExp *left_exp, GPAtomicExp *right_exp)
+GPCondition *newASTAtomComparison(CondExpType exp_type, YYLTYPE location,
+	                        GPAtom *left_exp, GPAtom *right_exp)
 {
-     GPCondExp *cond = malloc(sizeof(GPCondExp));
+     GPCondition *cond = malloc(sizeof(GPCondition));
      if(cond == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -410,9 +410,9 @@ GPCondExp *newASTAtomComparison(CondExpType exp_type, YYLTYPE location,
      return cond;
 }
 
-GPCondExp *newASTNotExp(YYLTYPE location, GPCondExp *not_exp)
+GPCondition *newASTNotExp(YYLTYPE location, GPCondition *not_exp)
 {
-     GPCondExp *cond = malloc(sizeof(GPCondExp));
+     GPCondition *cond = malloc(sizeof(GPCondition));
      if(cond == NULL)
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -424,10 +424,10 @@ GPCondExp *newASTNotExp(YYLTYPE location, GPCondExp *not_exp)
      return cond;
 }
 
-GPCondExp *newASTBinaryExp(CondExpType exp_type, YYLTYPE location, 
-                           GPCondExp *left_exp, GPCondExp *right_exp)
+GPCondition *newASTBinaryExp(CondExpType exp_type, YYLTYPE location, 
+                           GPCondition *left_exp, GPCondition *right_exp)
 {
-     GPCondExp *cond = malloc(sizeof(GPCondExp));
+     GPCondition *cond = malloc(sizeof(GPCondition));
      if(cond == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -441,9 +441,9 @@ GPCondExp *newASTBinaryExp(CondExpType exp_type, YYLTYPE location,
 }
 
 
-GPAtomicExp *newASTVariable(YYLTYPE location, string name)
+GPAtom *newASTVariable(YYLTYPE location, string name)
 {
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+     GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL)
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -455,9 +455,9 @@ GPAtomicExp *newASTVariable(YYLTYPE location, string name)
      return atom;
 }
 
-GPAtomicExp *newASTNumber(YYLTYPE location, int number)
+GPAtom *newASTNumber(YYLTYPE location, int number)
 {
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+     GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -469,9 +469,9 @@ GPAtomicExp *newASTNumber(YYLTYPE location, int number)
      return atom;
 }
 
-GPAtomicExp *newASTString(YYLTYPE location, string string)
+GPAtom *newASTString(YYLTYPE location, string string)
 {
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+     GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL)
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -484,10 +484,10 @@ GPAtomicExp *newASTString(YYLTYPE location, string string)
      return atom;
 }
 
-GPAtomicExp *newASTDegreeOp(AtomExpType exp_type, YYLTYPE location, 
+GPAtom *newASTDegreeOp(AtomExpType exp_type, YYLTYPE location, 
                             string node_id)
 {
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+     GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -499,9 +499,9 @@ GPAtomicExp *newASTDegreeOp(AtomExpType exp_type, YYLTYPE location,
      return atom;
 }
 
-GPAtomicExp *newASTListLength(YYLTYPE location, List *list_arg)
+GPAtom *newASTListLength(YYLTYPE location, List *list_arg)
 {
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+     GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL)
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -513,9 +513,9 @@ GPAtomicExp *newASTListLength(YYLTYPE location, List *list_arg)
      return atom;
 }
 
-GPAtomicExp *newASTStringLength(YYLTYPE location, GPAtomicExp *str_arg)
+GPAtom *newASTStringLength(YYLTYPE location, GPAtom *str_arg)
 {
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+     GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -527,9 +527,9 @@ GPAtomicExp *newASTStringLength(YYLTYPE location, GPAtomicExp *str_arg)
      return atom;
 }
 
-GPAtomicExp *newASTNegExp(YYLTYPE location, GPAtomicExp *exp)
+GPAtom *newASTNegExp(YYLTYPE location, GPAtom *exp)
 {
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+     GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -541,10 +541,10 @@ GPAtomicExp *newASTNegExp(YYLTYPE location, GPAtomicExp *exp)
      return atom;
 }
 
-GPAtomicExp *newASTBinaryOp(AtomExpType exp_type, YYLTYPE location, 
-                            GPAtomicExp *left_exp, GPAtomicExp *right_exp)
+GPAtom *newASTBinaryOp(AtomExpType exp_type, YYLTYPE location, 
+                            GPAtom *left_exp, GPAtom *right_exp)
 {
-     GPAtomicExp *atom = malloc(sizeof(GPAtomicExp));
+     GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL) 
      {
        print_to_log("Error (AST): malloc failure.\n");
@@ -577,7 +577,7 @@ GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls,
  
 GPRule *newASTRule(YYLTYPE location, string name, List *variables,
 	           GPGraph *lhs, GPGraph *rhs, List *interface, 
-		   GPCondExp *condition)
+		   GPCondition *condition)
 {
     GPRule *rule = malloc(sizeof(GPRule));
     if(rule == NULL) 
@@ -807,7 +807,7 @@ void freeASTCommand(GPCommand *command)
    free(command);
 }
 
-void freeASTCondition(GPCondExp *cond)
+void freeASTCondition(GPCondition *cond)
 {
    if(cond == NULL) return;
    switch(cond->exp_type) 
@@ -860,7 +860,7 @@ void freeASTCondition(GPCondExp *cond)
    free(cond);
 }
 
-void freeASTAtomicExp(GPAtomicExp *atom)
+void freeASTAtomicExp(GPAtom *atom)
 {
    if(atom == NULL) return;
    switch(atom->exp_type) 

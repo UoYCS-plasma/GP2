@@ -91,9 +91,9 @@ bool syntax_error = false;
   struct GPNode *node;
   struct GPEdge *edge;
   struct GPPos *pos;
-  struct GPCondExp *cond_exp;
+  struct GPCondition *cond_exp;
   struct GPLabel *label;  
-  struct GPAtomicExp *atom_exp;
+  struct GPAtom *atom_exp;
 
   int list_type; /* enum ListType */
   int check_type; /* enum CondExpType */

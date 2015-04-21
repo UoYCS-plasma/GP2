@@ -266,15 +266,15 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
 void interfaceScan(List *interface, string const scope, string const rule_name);
 
 
-/* conditionScan navigates a subtree of the AST with a GPCondExp node
+/* conditionScan navigates a subtree of the AST with a GPCondition node
  * as its root. It performs semantic checking on all possible types
  * of GP2 conditions, usually calling auxiliary functions. This function
  * is called only by ruleScan.
  *
- * Argument 1: Pointer to a struct GPCondExp.
+ * Argument 1: Pointer to a struct GPCondition.
  * Argument 2: The current scope.
  * Argument 3: The current rule being processed. */   
-void conditionScan(GPCondExp *const condition, string const scope,
+void conditionScan(GPCondition *const condition, string const scope,
                    string const rule_name);
 
 
@@ -321,7 +321,7 @@ void gpListScan(List **gp_list, string const scope, string const rule_name,
  * (argument 6) set to true. This function should never be called with both
  * of these arguments set to true.
  *
- * Argument 1: Pointer to a struct GPAtomicExp
+ * Argument 1: Pointer to a struct GPAtom
  * Argument 2: The current scope.
  * Argument 3: The current rule being processed.
  * Argument 4: The location of the atomic expression in the program.
@@ -333,7 +333,7 @@ void gpListScan(List **gp_list, string const scope, string const rule_name,
  * Argument 6: If true, then the expression pointed to by atom_exp is a
  *             string expression. Errors are reported if integer expressions 
  *             are encountered. */
-void atomicExpScan(GPAtomicExp *const atom_exp, string const scope, 
+void atomicExpScan(GPAtom *const atom_exp, string const scope, 
                    string const rule_name, char const location, 
                    bool const int_exp, bool const string_exp);
 

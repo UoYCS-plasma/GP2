@@ -709,8 +709,7 @@ void printGraph(Graph *graph, FILE *file)
          node_count++;
          if(node->root) fprintf(file, "(n%d(R), ", index);
          else fprintf(file, "(n%d, ", index);
-         printGP2List(node->label->list, file);
-         printMark(node->label->mark, false, file);
+         printLabel(node->label, file);
          fprintf(file, ") ");
       }
    }
@@ -731,8 +730,7 @@ void printGraph(Graph *graph, FILE *file)
          if(edge->bidirectional) fprintf(file, "(e%d(B), ", index);
          else fprintf(file, "(e%d, ", index);
          fprintf(file, "n%d, n%d, ", edge->source, edge->target);
-         printGP2List(edge->label->list, file);
-         printMark(edge->label->mark, false, file);
+         printLabel(edge->label, file);
          fprintf(file, ") ");
       }
    }

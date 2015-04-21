@@ -53,7 +53,7 @@ typedef struct List {
     string node_id; 		       /* INTERFACE_LIST */	   
     struct GPNode *node; 	       /* NODE_LIST */   
     struct GPEdge *edge; 	       /* EDGE_LIST */   
-    struct GPAtomicExp *atom;          /* GP_LIST */
+    struct GPAtom *atom;               /* GP_LIST */
   } value;
   struct List *next;
 } List;
@@ -69,7 +69,7 @@ List *addASTVariable (YYLTYPE location, string variable_name, struct List *next)
 List *addASTNodeID (YYLTYPE location, string node_id, struct List *next);
 List *addASTNode (YYLTYPE location, struct GPNode *node, struct List *next);
 List *addASTEdge (YYLTYPE location, struct GPEdge *edge, struct List *next);
-List *addASTAtom (YYLTYPE location, struct GPAtomicExp *atom, struct List *next);
+List *addASTAtom (YYLTYPE location, struct GPAtom *atom, struct List *next);
 List *addASTEmptyList (YYLTYPE location);
 
 
@@ -139,9 +139,9 @@ GPCommand *newASTRuleCall(YYLTYPE location, string rule_name);
 GPCommand *newASTRuleSetCall(YYLTYPE location, struct List *rule_set);
 GPCommand *newASTProcCall(YYLTYPE location, string proc_name);
 GPCommand *newASTCondBranch(CommandType statement_type, YYLTYPE location, 
-	                      struct GPCommand *condition, 
-                              struct GPCommand *then_stmt, 
-	                      struct GPCommand *else_stmt);
+	                    struct GPCommand *condition, 
+                            struct GPCommand *then_stmt, 
+	                    struct GPCommand *else_stmt);
 GPCommand *newASTAlap(YYLTYPE location, struct GPCommand *loop_body);
 GPCommand *newASTOrStmt(YYLTYPE location, struct GPCommand *left_stmt, 
 	                  struct GPCommand *right_stmt);
@@ -151,9 +151,9 @@ GPCommand *newASTBreak(YYLTYPE location);
 
 
 /* Definition of AST nodes for conditional expressions.*/
-typedef struct GPCondExp {
+typedef struct GPCondition {
   int node_id;
-  CondExpType exp_type;
+  ConditionType exp_type;
   YYLTYPE location;
   union {
     string var; 		/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
@@ -170,66 +170,67 @@ typedef struct GPCondExp {
     } list_cmp; 		/* EQUAL, NOT_EQUAL */
 
     struct { 
-      struct GPAtomicExp *left_exp; 
-      struct GPAtomicExp *right_exp; 
+      struct GPAtom *left_exp; 
+      struct GPAtom *right_exp; 
     } atom_cmp; 		/* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
 
-    struct GPCondExp *not_exp;  /* BOOL_NOT */
+    struct GPCondition *not_exp;  /* BOOL_NOT */
 
     struct { 
-      struct GPCondExp *left_exp; 
-      struct GPCondExp *right_exp; 
+      struct GPCondition *left_exp; 
+      struct GPCondition *right_exp; 
     } bin_exp; 			/* BOOL_OR, BOOL_AND */
   } value;
-} GPCondExp;
+} GPCondition;
 
-GPCondExp *newASTSubtypePred(CondExpType exp_type, YYLTYPE location, 
-                             string var);
-GPCondExp *newASTEdgePred(YYLTYPE location, string source, string target,
-	                  struct GPLabel *label);
-GPCondExp *newASTListComparison(CondExpType exp_type, YYLTYPE location, 
-	                        struct List *left_list, 
-                                struct List *right_list);
-GPCondExp *newASTAtomComparison(CondExpType exp_type, YYLTYPE location,
-	                        struct GPAtomicExp *left_exp, 
-                                struct GPAtomicExp *right_exp);
-GPCondExp *newASTNotExp(YYLTYPE location, struct GPCondExp *not_exp);
-GPCondExp *newASTBinaryExp(CondExpType exp_type, YYLTYPE location, 
-	                   struct GPCondExp *left_exp, 
-                           struct GPCondExp *right_exp);
+GPCondition *newASTSubtypePred(ConditionType exp_type, YYLTYPE location, 
+                               string var);
+GPCondition *newASTEdgePred(YYLTYPE location, string source, string target,
+	                    struct GPLabel *label);
+GPCondition *newASTListComparison(ConditionType exp_type, YYLTYPE location, 
+	                          struct List *left_list, struct List *right_list);
+GPCondition *newASTAtomComparison(ConditionType exp_type, YYLTYPE location,
+	                          struct GPAtom *left_exp, struct GPAtom *right_exp);
+GPCondition *newASTNotExp(YYLTYPE location, struct GPCondition *not_exp);
+GPCondition *newASTBinaryExp(ConditionType exp_type, YYLTYPE location, 
+	                     struct GPCondition *left_exp, 
+                             struct GPCondition *right_exp);
 
 /* Definition of AST nodes for atomic expressions. */
-typedef struct GPAtomicExp {
+typedef struct GPAtom {
   int node_id;
-  AtomExpType exp_type;
+  AtomType exp_type;
   YYLTYPE location;
   union {
-    string name;		  /* VARIABLE */
+    struct {
+       string name;		  
+       GPType type;             
+    } variable;                   /* VARIABLE */
     int number; 	 	  /* INTEGER_CONSTANT */
     string string;		  /* STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
     struct List *list_arg; 	  /* LIST_LENGTH */
-    struct GPAtomicExp *str_arg;  /* STRING_LENGTH */
-    struct GPAtomicExp *exp; 	  /* NEG */
+    struct GPAtom *str_arg;       /* STRING_LENGTH */
+    struct GPAtom *exp; 	  /* NEG */
     struct { 
-      struct GPAtomicExp *left_exp;
-      struct GPAtomicExp *right_exp;
+      struct GPAtom *left_exp;
+      struct GPAtom *right_exp;
     } bin_op; 		   	  /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
   } value;
-} GPAtomicExp;
+} GPAtom;
 
-GPAtomicExp *newASTVariable (YYLTYPE location, string name);
-GPAtomicExp *newASTNumber (YYLTYPE location, int number);
-GPAtomicExp *newASTCharacter (YYLTYPE location, string character);
-GPAtomicExp *newASTString (YYLTYPE location, string string);
-GPAtomicExp *newASTDegreeOp (AtomExpType exp_type, YYLTYPE location, 
+GPAtom *newASTVariable (YYLTYPE location, string name);
+GPAtom *newASTNumber (YYLTYPE location, int number);
+GPAtom *newASTCharacter (YYLTYPE location, string character);
+GPAtom *newASTString (YYLTYPE location, string string);
+GPAtom *newASTDegreeOp (AtomType exp_type, YYLTYPE location, 
                              string node_id);
-GPAtomicExp *newASTListLength (YYLTYPE location, struct List *list_arg);
-GPAtomicExp *newASTStringLength (YYLTYPE location, struct GPAtomicExp *str_arg);
-GPAtomicExp *newASTNegExp (YYLTYPE location, struct GPAtomicExp *exp);
-GPAtomicExp *newASTBinaryOp (AtomExpType exp_type, YYLTYPE location, 
-	                     struct GPAtomicExp *left_exp, 
-                             struct GPAtomicExp *right_exp);
+GPAtom *newASTListLength (YYLTYPE location, struct List *list_arg);
+GPAtom *newASTStringLength (YYLTYPE location, struct GPAtom *str_arg);
+GPAtom *newASTNegExp (YYLTYPE location, struct GPAtom *exp);
+GPAtom *newASTBinaryOp (AtomType exp_type, YYLTYPE location, 
+	                     struct GPAtom *left_exp, 
+                             struct GPAtom *right_exp);
 
 
 typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, LABEL} ASTNodeType;
@@ -256,7 +257,7 @@ typedef struct GPRule {
   struct GPGraph *lhs;
   struct GPGraph *rhs;
   struct List *interface;
-  struct GPCondExp *condition;
+  struct GPCondition *condition;
   int left_nodes;
   int left_edges;
   int variable_count;
@@ -266,7 +267,7 @@ typedef struct GPRule {
 
 GPRule *newASTRule(YYLTYPE location, string name, struct List *variables, 
                    struct GPGraph *lhs, struct GPGraph *rhs, 
-                   struct List *interface, struct GPCondExp *condition);
+                   struct List *interface, struct GPCondition *condition);
 
 typedef struct GPGraph {
   int node_id;
@@ -319,8 +320,8 @@ GPLabel *newASTLabel(YYLTYPE location, MarkType mark, struct List *gp_list);
 void freeAST(List *ast);
 void freeASTDeclaration(GPDeclaration *decl);
 void freeASTCommand(GPCommand *stmt);
-void freeASTCondition(GPCondExp *cond);
-void freeASTAtomicExp(GPAtomicExp *atom);
+void freeASTCondition(GPCondition *cond);
+void freeASTAtom(GPAtom *atom);
 void freeASTProcedure(GPProcedure *proc);
 void freeASTRule(GPRule *rule);
 void freeASTGraph(GPGraph *graph);
