@@ -60,7 +60,7 @@ bool syntax_error = false;
 /* Single character tokens do not need to be explicitly declared. */
 %token MAIN IF TRY THEN ELSE SKIP FAIL BREAK
 %token WHERE EDGETEST   
-%token INDEG OUTDEG LLEN SLEN					
+%token INDEG OUTDEG _LENGTH					
 %token INT CHARACTER STRING ATOM LIST 	                               
 %token INTERFACE _EMPTY INJECTIVE 	
 %token <mark> MARK ANY_MARK			                        
@@ -131,7 +131,7 @@ bool syntax_error = false;
 %destructor { freeASTEdge($$); } <edge>
 %destructor { freeASTCondition($$); } <cond_exp>
 %destructor { freeASTLabel($$); } <label>
-%destructor { freeASTAtomicExp($$); } <atom_exp>
+%destructor { freeASTAtom($$); } <atom_exp>
 
 %error-verbose
 
@@ -439,8 +439,7 @@ AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
 					  if($3) free($3); }
        | OUTDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(OUTDEGREE, @$, $3); 
 				 	  if($3) free($3); }
-       | LLEN '(' List ')' 		{ $$ = newASTListLength(@$, $3); }
-       | SLEN '(' AtomExp ')' 		{ $$ = newASTStringLength(@$, $3); }
+       | _LENGTH '(' Variable ')' 	{ $$ = newASTLength(@$, $3); }
        | '-' AtomExp %prec UMINUS 	{ $$ = newASTNegExp(@$, $2); } 
        | '(' AtomExp ')' 		{ $$ = $2; }
        | AtomExp '+' AtomExp 		{ $$ = newASTBinaryOp(ADD, @$, $1, $3);  }

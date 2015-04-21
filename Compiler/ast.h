@@ -58,8 +58,8 @@ typedef struct List {
   struct List *next;
 } List;
 
-List *addASTDecl (ListType list_type, YYLTYPE location, 
-	          struct GPDeclaration *declaration, struct List *next);
+List *addASTDecl(ListType list_type, YYLTYPE location, 
+	         struct GPDeclaration *declaration, struct List *next);
 List *addASTCommand (YYLTYPE location, struct GPCommand *command, 
                      struct List *next);
 List *addASTRule (YYLTYPE location, string rule_name, struct List *next);
@@ -205,12 +205,10 @@ typedef struct GPAtom {
     struct {
        string name;		  
        GPType type;             
-    } variable;                   /* VARIABLE */
+    } variable;                   /* VARIABLE, LENGTH */
     int number; 	 	  /* INTEGER_CONSTANT */
     string string;		  /* STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
-    struct List *list_arg; 	  /* LIST_LENGTH */
-    struct GPAtom *str_arg;       /* STRING_LENGTH */
     struct GPAtom *exp; 	  /* NEG */
     struct { 
       struct GPAtom *left_exp;
@@ -225,8 +223,7 @@ GPAtom *newASTCharacter (YYLTYPE location, string character);
 GPAtom *newASTString (YYLTYPE location, string string);
 GPAtom *newASTDegreeOp (AtomType exp_type, YYLTYPE location, 
                              string node_id);
-GPAtom *newASTListLength (YYLTYPE location, struct List *list_arg);
-GPAtom *newASTStringLength (YYLTYPE location, struct GPAtom *str_arg);
+GPAtom *newASTLength (YYLTYPE location, string name);
 GPAtom *newASTNegExp (YYLTYPE location, struct GPAtom *exp);
 GPAtom *newASTBinaryOp (AtomType exp_type, YYLTYPE location, 
 	                     struct GPAtom *left_exp, 
@@ -317,6 +314,10 @@ typedef struct GPLabel {
 
 GPLabel *newASTLabel(YYLTYPE location, MarkType mark, struct List *gp_list);
 
+/* Reverses the passed list and returns its new head. Used because Bison 
+ * generates lists in reverse order due to left-recursive grammar rules. */
+struct List *reverse (struct List * listHead);
+void reverseGraphAST (GPGraph *graph); 
 void freeAST(List *ast);
 void freeASTDeclaration(GPDeclaration *decl);
 void freeASTCommand(GPCommand *stmt);

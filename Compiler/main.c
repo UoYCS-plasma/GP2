@@ -21,6 +21,7 @@
 #include "genProgram.h"
 #include "genRule.h"
 #include "parser.h"
+#include "pretty.h"
 #include "seman.h" 
 
 #define DEBUG
@@ -88,7 +89,7 @@ int main(int argc, char **argv)
          return 1;
       }
       #ifdef PARSER_TRACE 
-      yydebug = 1; /* Bison outputs a trace of its parse to stderr. */
+         yydebug = 1; /* Bison outputs a trace of its parse to stderr. */
       #endif
       parse_target = GP_PROGRAM;
       printf("\nProcessing %s...\n\n", program_file);
@@ -102,18 +103,19 @@ int main(int argc, char **argv)
       }
       gp_program = reverse(gp_program);
       #ifdef DEBUG
-      bool valid_program = analyseProgram(gp_program, true, program_file);
+         /* analyseProgram prints the symbol table before exiting. */
+         bool valid_program = analyseProgram(gp_program, true);
+         printDotAST(gp_program, program_file, "_1");
       #else
-      bool valid_program = analyseProgram(gp_program, false, NULL);
+         bool valid_program = analyseProgram(gp_program, false);
       #endif
       if(valid_program && !syntax_error) 
       {
          print_to_console("Generating program code...\n\n");
          generateRules(gp_program);
+         staticAnalysis(gp_program);   
          #ifdef DEBUG
-            staticAnalysis(gp_program, true, program_file);   
-         #else
-            staticAnalysis(gp_program, false, NULL);
+            printDotAST(gp_program, program_file, "_2");
          #endif
          generateRuntimeCode(gp_program);
       }

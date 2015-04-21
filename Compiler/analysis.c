@@ -1,6 +1,6 @@
 #include "analysis.h"
 
-void staticAnalysis(List *declarations, bool debug, string prefix)
+void staticAnalysis(List *declarations)
 {
    List *iterator = declarations;
    while(iterator != NULL)
@@ -26,14 +26,6 @@ void staticAnalysis(List *declarations, bool debug, string prefix)
               break;
       }
       iterator = iterator->next;
-   }
-   if(debug)
-   {
-      int length = strlen(prefix) + 2;
-      char file_name[length]; 
-      strcpy(file_name, prefix);
-      strcat(file_name,"_3"); 
-      printDotAST(declarations, file_name);
    }
 }
 

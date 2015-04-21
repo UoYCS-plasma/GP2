@@ -115,13 +115,13 @@ typedef struct Condition {
     } edge_pred; 		/* EDGE_PRED */
 
     struct { 
-      GP2List *left_list;
-      GP2List *right_list; 
+      Label *left_list;
+      Label *right_list; 
     } list_cmp; 		/* EQUAL, NOT_EQUAL */
 
     struct { 
-      GP2List *left_exp; 
-      GP2List *right_exp; 
+      Label *left_exp; 
+      Label *right_exp; 
     } atom_cmp; 		/* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
 
     struct Condition *not_exp;  /* BOOL_NOT */

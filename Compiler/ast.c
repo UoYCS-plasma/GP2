@@ -1,5 +1,4 @@
 #include "ast.h" 
-
 List *addASTDecl(ListType list_type, YYLTYPE location, GPDeclaration *declaration,
 	         List *next)
 { 
@@ -347,7 +346,7 @@ GPCommand *newASTBreak(YYLTYPE location)
 }
 
 
-GPCondition *newASTSubtypePred(CondExpType exp_type, YYLTYPE location, string var)
+GPCondition *newASTSubtypePred(ConditionType exp_type, YYLTYPE location, string var)
 {
      GPCondition *cond = malloc(sizeof(GPCondition));
      if(cond == NULL) 
@@ -378,7 +377,7 @@ GPCondition *newASTEdgePred(YYLTYPE location, string source, string target,
      return cond;
 }
 
-GPCondition *newASTListComparison(CondExpType exp_type, YYLTYPE location,
+GPCondition *newASTListComparison(ConditionType exp_type, YYLTYPE location,
 	                        List *left_list, List *right_list)
 {
      GPCondition *cond = malloc(sizeof(GPCondition));
@@ -394,7 +393,7 @@ GPCondition *newASTListComparison(CondExpType exp_type, YYLTYPE location,
      return cond;
 }
 
-GPCondition *newASTAtomComparison(CondExpType exp_type, YYLTYPE location,
+GPCondition *newASTAtomComparison(ConditionType exp_type, YYLTYPE location,
 	                        GPAtom *left_exp, GPAtom *right_exp)
 {
      GPCondition *cond = malloc(sizeof(GPCondition));
@@ -424,7 +423,7 @@ GPCondition *newASTNotExp(YYLTYPE location, GPCondition *not_exp)
      return cond;
 }
 
-GPCondition *newASTBinaryExp(CondExpType exp_type, YYLTYPE location, 
+GPCondition *newASTBinaryExp(ConditionType exp_type, YYLTYPE location, 
                            GPCondition *left_exp, GPCondition *right_exp)
 {
      GPCondition *cond = malloc(sizeof(GPCondition));
@@ -451,7 +450,8 @@ GPAtom *newASTVariable(YYLTYPE location, string name)
      }
      atom->exp_type = VARIABLE;
      atom->location = location;
-     atom->value.name = strdup(name);
+     atom->value.variable.name = strdup(name);
+     atom->value.variable.type = LIST_VAR;
      return atom;
 }
 
@@ -484,7 +484,7 @@ GPAtom *newASTString(YYLTYPE location, string string)
      return atom;
 }
 
-GPAtom *newASTDegreeOp(AtomExpType exp_type, YYLTYPE location, 
+GPAtom *newASTDegreeOp(AtomType exp_type, YYLTYPE location, 
                             string node_id)
 {
      GPAtom *atom = malloc(sizeof(GPAtom));
@@ -499,7 +499,7 @@ GPAtom *newASTDegreeOp(AtomExpType exp_type, YYLTYPE location,
      return atom;
 }
 
-GPAtom *newASTListLength(YYLTYPE location, List *list_arg)
+GPAtom *newASTLength(YYLTYPE location, string name)
 {
      GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL)
@@ -507,23 +507,10 @@ GPAtom *newASTListLength(YYLTYPE location, List *list_arg)
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     atom->exp_type = LIST_LENGTH;
+     atom->exp_type = LENGTH;
      atom->location = location;
-     atom->value.list_arg = list_arg;
-     return atom;
-}
-
-GPAtom *newASTStringLength(YYLTYPE location, GPAtom *str_arg)
-{
-     GPAtom *atom = malloc(sizeof(GPAtom));
-     if(atom == NULL) 
-     {
-       print_to_log("Error (AST): malloc failure.\n");
-       exit(1);
-     }
-     atom->exp_type = STRING_LENGTH;
-     atom->location = location;
-     atom->value.str_arg = str_arg;
+     atom->value.variable.name = strdup(name);
+     atom->value.variable.type = LIST_VAR;
      return atom;
 }
 
@@ -541,8 +528,8 @@ GPAtom *newASTNegExp(YYLTYPE location, GPAtom *exp)
      return atom;
 }
 
-GPAtom *newASTBinaryOp(AtomExpType exp_type, YYLTYPE location, 
-                            GPAtom *left_exp, GPAtom *right_exp)
+GPAtom *newASTBinaryOp(AtomType exp_type, YYLTYPE location, 
+                       GPAtom *left_exp, GPAtom *right_exp)
 {
      GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL) 
@@ -668,7 +655,56 @@ GPLabel *newASTLabel(YYLTYPE location, MarkType mark, List *gp_list)
     return label;
 }
 
-/* Recursively traverse the AST, freeing string expressions and substructures. */
+List *reverse (List *head) 
+{
+   List *currentNode = head;
+   List *tempNode = NULL;
+   List *previousNode = NULL;
+
+   /* invariant: currentNode points to the node being worked on and
+    * previousNode points to the original parent of currentNode. */
+   while(currentNode != NULL) 
+   {
+      /* Maintain a pointer to currentNode->next before reassignment. */
+      tempNode = currentNode->next; 
+      /* reversing the 'next' pointer of currentNode. */
+      currentNode->next = previousNode; 
+      /* setting the invariant for the next iteration */
+      previousNode = currentNode;
+      currentNode = tempNode;
+   }
+   /* Return the tail of the original list i.e. the head of the reversed 
+    * list. */
+   return previousNode;
+}     
+
+void reverseGraphAST(GPGraph *graph)
+{
+   if(graph->nodes)
+   {
+      graph->nodes = reverse(graph->nodes);  
+      List *iterator = graph->nodes;
+      while(iterator) 
+      {
+           iterator->value.node->label->gp_list = 
+             reverse(iterator->value.node->label->gp_list);
+           iterator = iterator->next;
+      }
+   }
+   if(graph->edges)
+   {
+      graph->edges = reverse(graph->edges);
+      List *iterator = graph->edges;
+
+      while(iterator)  
+      {
+           iterator->value.edge->label->gp_list = 
+             reverse(iterator->value.edge->label->gp_list);
+           iterator = iterator->next;
+      }
+   }
+}
+
 void freeAST(List *ast) 
 {
    if(!ast) return;
@@ -713,7 +749,7 @@ void freeAST(List *ast)
 	     break;
 
 	case GP_LIST:
-             if(ast->value.atom) freeASTAtomicExp(ast->value.atom);
+             if(ast->value.atom) freeASTAtom(ast->value.atom);
 	     break;
 
 	case EMPTY_LIST:
@@ -835,9 +871,9 @@ void freeASTCondition(GPCondition *cond)
       case LESS:
       case LESS_EQUAL:
            if(cond->value.atom_cmp.left_exp)
-             freeASTAtomicExp(cond->value.atom_cmp.left_exp);
+             freeASTAtom(cond->value.atom_cmp.left_exp);
            if(cond->value.atom_cmp.right_exp) 
-             freeASTAtomicExp(cond->value.atom_cmp.right_exp);
+             freeASTAtom(cond->value.atom_cmp.right_exp);
            break;	  
 
 
@@ -860,13 +896,13 @@ void freeASTCondition(GPCondition *cond)
    free(cond);
 }
 
-void freeASTAtomicExp(GPAtom *atom)
+void freeASTAtom(GPAtom *atom)
 {
    if(atom == NULL) return;
    switch(atom->exp_type) 
    {
       case VARIABLE:
-           if(atom->value.name) free(atom->value.name);
+           if(atom->value.variable.name) free(atom->value.variable.name);
            break;
 
       case INTEGER_CONSTANT:
@@ -881,16 +917,12 @@ void freeASTAtomicExp(GPAtom *atom)
            if(atom->value.node_id) free(atom->value.node_id);
            break;
 
-      case LIST_LENGTH:
-           if(atom->value.list_arg) freeAST(atom->value.list_arg);
-           break;
-
-      case STRING_LENGTH:
-           if(atom->value.str_arg) freeASTAtomicExp(atom->value.str_arg);
+      case LENGTH:
+           if(atom->value.variable.name) free(atom->value.variable.name);
            break;
 
       case NEG:
-           if(atom->value.exp) freeASTAtomicExp(atom->value.exp);
+           if(atom->value.exp) freeASTAtom(atom->value.exp);
            break;
 
       case ADD:
@@ -899,12 +931,12 @@ void freeASTAtomicExp(GPAtom *atom)
       case DIVIDE:
       case CONCAT:
            if(atom->value.bin_op.left_exp) 
-              freeASTAtomicExp(atom->value.bin_op.left_exp);
+              freeASTAtom(atom->value.bin_op.left_exp);
            if(atom->value.bin_op.right_exp)
-              freeASTAtomicExp(atom->value.bin_op.right_exp);
+              freeASTAtom(atom->value.bin_op.right_exp);
            break;
 
-      default: print_to_log("Error (freeASTAtomicExp): Unexpected type: %d\n",
+      default: print_to_log("Error (freeASTAtom): Unexpected type: %d\n",
                             (int)atom->exp_type); 
                break;
       }
@@ -964,4 +996,4 @@ void freeASTLabel(GPLabel *label)
    if(label->gp_list) freeAST(label->gp_list);
    free(label);
 }
-   
+  

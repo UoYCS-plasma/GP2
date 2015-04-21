@@ -6,19 +6,13 @@
  * each value. */
 static FILE *symbol_table_file;
 
-void printSymbolTable(GHashTable *table, string const file_name) 
+void printSymbolTable(GHashTable *table) 
 {
-   int length = strlen(file_name) + 4; 
-   char symbol_table_file_name[length];
-   strcpy(symbol_table_file_name, file_name);
-   strncat(symbol_table_file_name, ".tab", 4);
-   symbol_table_file = fopen(symbol_table_file_name, "w");
-     
+   symbol_table_file = fopen("symbols.tab", "w");
    if(symbol_table_file == NULL) {
-      perror(symbol_table_file_name);
+      perror("symbols.tab");
       exit(1);
    }
-
    print_to_symtab_file("Symbol Table\n\n");	
    g_hash_table_foreach(table, printSymbolList, NULL);
    fclose(symbol_table_file);
@@ -78,19 +72,18 @@ void printSymbolList(gpointer key, gpointer value, gpointer user_data)
 
 static unsigned int next_node_id = 1;
 
-void printDotAST(List *const gp_ast, string file_name)
+void printDotAST(List *const gp_ast, string file_name, string suffix)
 {
-     int length = strlen(file_name) + 5; 
+     int length = strlen(file_name) + strlen(suffix) + 4; 
      char dot_file_name[length];
      strcpy(dot_file_name, file_name);
+     strncat(dot_file_name, suffix, strlen(suffix));
      strncat(dot_file_name, ".dot", 4);
      FILE *dot_file = fopen(dot_file_name, "w");
-     
      if(dot_file == NULL) {
 	perror(dot_file_name);
 	exit(1);
      }	
-
      print_to_dot_file("digraph g { \n");
      /* Print the entry point of the AST. node1 is the first 
       * node created by printList. */
@@ -666,16 +659,16 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
    switch(atom->exp_type) 
    {
       case VARIABLE:
-
            atom->node_id = next_node_id;
            next_node_id += 1;
 
-           if(atom->value.name != NULL)
+           if(atom->value.variable.name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                                "Variable: %s\"]\n", 
+                                "Variable: %s \\n \nType: %d\"]\n", 
                                 atom->node_id, atom->node_id, 
                                 LOCATION_ARGS(atom->location),
-                                atom->value.name);
+                                atom->value.variable.name, 
+                                atom->value.variable.type);
            else 
            {
               print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d"
@@ -727,50 +720,25 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
           printDegreeOperatorNode(outdegree, OUTDEGREE);
           break;
 
-     case LIST_LENGTH:
+     case LENGTH:
           atom->node_id = next_node_id;
           next_node_id += 1;
 
-          if(atom->value.list_arg) {
+          if(atom->value.variable.name != NULL)
              print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                               "List \\n Length\"]\n", 
+                               "Length: %s \\n \nType: %d\"]\n", 
                                atom->node_id, atom->node_id, 
-                               LOCATION_ARGS(atom->location));
-             print_to_dot_file("node%d->node%d[label=\"arg\"]\n", 
-                               atom->node_id, next_node_id);
-             prettyPrint(atom->value.list_arg, List);
-          }
+                               LOCATION_ARGS(atom->location),
+                               atom->value.variable.name, 
+                               atom->value.variable.type);
           else 
           {
-             print_to_dot_file("node%d[shape=plaintext,label=\"%dNULL\"]\n",
-                               next_node_id, next_node_id);  
-             print_to_dot_file("node%d->node%d[label=\"arg\"]\n",          
-                               atom->node_id, next_node_id);                     
-             next_node_id += 1;       
-          }
-          break;
-
-     case STRING_LENGTH:
-          atom->node_id = next_node_id;
-          next_node_id += 1;
-
-          if(atom->value.str_arg)
-          {
-             print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                               "String \\n Length\"]\n", 
+             print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d"
+                               "\\nLength: \\n UNDEFINED\"]\n",
                                atom->node_id, atom->node_id, 
                                LOCATION_ARGS(atom->location));
-             print_to_dot_file("node%d->node%d[label=\"arg\"]\n", 
-                     atom->node_id, next_node_id);
-             prettyPrint(atom->value.str_arg, Atom);
-          }
-          else
-          {
-             print_to_dot_file("node%d[shape=plaintext,label=\"%dNULL\"]\n", 
-                               next_node_id, next_node_id);  
-             print_to_dot_file("node%d->node%d[label=\"arg\"]\n",          
-                               atom->node_id, next_node_id);                     
-             next_node_id += 1;       
+             print_to_log("Error (printASTAtom): Undefined variable name "
+                          "at AST node %d", atom->node_id);
           }
           break;
 

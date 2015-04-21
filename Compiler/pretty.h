@@ -237,7 +237,7 @@
 #define printDegreeOperatorNode(NODE_LABEL_1, NODE_LABEL_2)                 \
   do                                                                        \
   {                                                                         \
-     if(atom->value.name != NULL)                                           \
+     if(atom->value.node_id != NULL)                                        \
      print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n" #NODE_LABEL_1   \
                        "(%s)\"]\n", atom->node_id, atom->node_id,           \
                        LOCATION_ARGS(atom->location), atom->value.node_id); \
@@ -253,16 +253,16 @@
   }                                                                         \
   while(0)  
 
-/* Create the file <file_name>.tab to store the printed symbol table.
+/* Write the symbol table to the file "symbols.tab".
  * printSymbolList is called on each hash table entry. */
-void printSymbolTable(GHashTable *table, string const file_name);
+void printSymbolTable(GHashTable *table);
 void printSymbolList(gpointer key, gpointer value, gpointer user_data);
 
-/* Creates the file <file_name>.dot to which is printed a DOT representation
- * of the passed AST for visualisation. printDotAST is initially called to
- * print the program AST, while printASTGraph is called to print the host graph
- * AST. */
-void printDotAST(List *const gp_ast, string file_name);
+/* Creates the file <file_name><suffix>.dot to which is printed a DOT
+ * representation of the passed AST for visualisation. printDotAST is initially
+ * called to print the program AST, while printASTGraph is called to print the 
+ * host graph AST. */
+void printDotAST(List *const gp_ast, string file_name, string suffix);
 void printDotHostGraph(GPGraph *const host_graph_ast, string file_name);
 
 void printASTList(List * const list, FILE *dot_file);

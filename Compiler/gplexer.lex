@@ -119,8 +119,7 @@ indeg 		    return INDEG;
 outdeg		    return OUTDEG;
 interface	    return INTERFACE;
 empty		    return _EMPTY;
-llength		    return LLEN;
-slength	            return SLEN;
+length		    return _LENGTH;
 
  /* Keywords for node and edge marks */
 
