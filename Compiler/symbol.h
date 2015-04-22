@@ -35,10 +35,10 @@
  * Scope: The procedure in which the symbol is visible. Either "Global" or the
  *        name of a procedure in the program. All symbols have a scope.
  *
- * Containing Rule: The rule in which the symbol is visible. NULL for symbols
- *                  for symbols of type 'rule' and 'procedure'. This field is
- *                  used to uniquely identify variables, nodes and edges as 
- *                  they can have the same name in different rules.
+ * Rule Name: The rule in which the symbol is visible. NULL for symbols of type
+ *            'rule' and 'procedure'. This field is used to uniquely identify
+ *            variables, nodes and edges as they can have the same name in
+ *            different rules.
  *       
  * Flags: is_var is set to true if the symbol represents a GP variable. This
  *        is for more concise code: better to compare to a single bool than to
@@ -57,26 +57,21 @@ typedef enum {PROCEDURE_S=0, RULE_S, INT_S, CHAR_S, STRING_S, ATOM_S,
               LIST_S, LEFT_NODE_S, RIGHT_NODE_S, LEFT_EDGE_S, RIGHT_EDGE_S} 
               SymbolType;
 
-typedef struct Symbol {
+typedef struct SymbolList {
   SymbolType type;
   string scope;
-  string containing_rule;
+  string rule_name;
   bool is_var;
   bool in_lhs; 
   bool wildcard; 
   bool bidirectional;
-} Symbol;
+  struct SymbolList *next;
+} SymbolList;
 
-Symbol *makeSymbol(SymbolType type, string scope, string containing_rule,
-                   bool is_var, bool in_lhs, bool wildcard, bool bidirectional);
-bool symbolInScope(Symbol *symbol, string scope, string rule_name);
-
-/* glib requires the user to provide functions to free hash table values.
- * freeSymbolList frees a list of struct Symbols. This function is passed
- * to the glib through g_hash_table_new_full, called in main.c. 
- * freeSymbolList is called by glib's hashtable functions under the hood.
- */
-void freeSymbolList(gpointer key, gpointer value, gpointer data);
+SymbolList *addSymbol(SymbolList *list, SymbolType type, string scope, string rule,
+                      bool is_var, bool in_lhs, bool wildcard, bool bidirectional);
+bool symbolInScope(SymbolList *symbol, string scope, string rule_name);
+void freeSymbolList(gpointer key, gpointer value, gpointer user_data); 
 
 /* BiEdge is used to store the necessary information for semantic checking of
  * bidirectional edges. We need to check for parallel bidirectional edges,

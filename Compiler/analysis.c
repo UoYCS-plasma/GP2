@@ -5,24 +5,25 @@ void staticAnalysis(List *declarations)
    List *iterator = declarations;
    while(iterator != NULL)
    {
-      GPDeclaration *decl = iterator->value.declaration;
+      GPDeclaration *decl = iterator->declaration;
       switch(decl->decl_type)
       {
          case MAIN_DECLARATION:
-              annotate(decl->value.main_program, 0);
+              annotate(decl->main_program, 0);
               break;
 
          case PROCEDURE_DECLARATION:
-              if(decl->value.procedure->local_decls != NULL)
-                 staticAnalysis(decl->value.procedure->local_decls, false, NULL);
+              if(decl->procedure->local_decls != NULL)
+                 staticAnalysis(decl->procedure->local_decls);
               break;
 
          case RULE_DECLARATION:
               break;
 
-         default: print_to_log("Error (enterPredicateRules): Unexpected "
-                               "declaration type %d at AST node %d\n", 
-                               decl->decl_type, decl->node_id);
+         default: 
+              print_to_log("Error (enterPredicateRules): Unexpected "
+                           "declaration type %d at AST node %d\n", 
+                           decl->decl_type, decl->id);
               break;
       }
       iterator = iterator->next;
@@ -35,13 +36,13 @@ void annotate(GPCommand *command, int restore_point)
    {
       case COMMAND_SEQUENCE:
       {
-           List *commands = command->value.commands;
+           List *commands = command->commands;
            while(commands != NULL)
            {            
               /* Note that each command is annotated with the same restore
                * point as each command in the sequence is independent with
                * respect to graph backtracking. */
-              annotate(commands->value.command, restore_point);
+              annotate(commands->command, restore_point);
               commands = commands->next;
            }
            break;
@@ -53,7 +54,7 @@ void annotate(GPCommand *command, int restore_point)
 
       case PROCEDURE_CALL:
       {
-           GPProcedure *procedure = command->value.proc_call.procedure;
+           GPProcedure *procedure = command->proc_call.procedure;
            annotate(procedure->commands, restore_point);
            break;
       }
@@ -63,9 +64,9 @@ void annotate(GPCommand *command, int restore_point)
       {
            bool if_body = command->command_type == IF_STATEMENT;
            int new_restore_point = restore_point;
-           GPCommand *condition = command->value.cond_branch.condition;
-           GPCommand *then_command = command->value.cond_branch.then_command;
-           GPCommand *else_command = command->value.cond_branch.else_command;
+           GPCommand *condition = command->cond_branch.condition;
+           GPCommand *then_command = command->cond_branch.then_command;
+           GPCommand *else_command = command->cond_branch.else_command;
            /* If the if condition below does not hold, then this is a try
             * statement whose condition cannot fail. In that case, no graph
             * backtracking is required.
@@ -76,10 +77,10 @@ void annotate(GPCommand *command, int restore_point)
            {
               copyType type = getCommandType(condition, 0, if_body, false); 
               if(type == RECORD_CHANGES) 
-                 command->value.cond_branch.roll_back = true;
+                 command->cond_branch.roll_back = true;
               if(type == COPY)
               {
-                 command->value.cond_branch.restore_point = restore_point;
+                 command->cond_branch.restore_point = restore_point;
                  new_restore_point++;
               }
            }
@@ -91,7 +92,7 @@ void annotate(GPCommand *command, int restore_point)
 
       case ALAP_STATEMENT:
       {
-           GPCommand *loop_body = command->value.loop_stmt.loop_body;
+           GPCommand *loop_body = command->loop_stmt.loop_body;
            int loop_restore_point = restore_point;
            /* Only analyse the loop body for backtracking if if it possible
             * for the loop body to fail. */
@@ -99,10 +100,10 @@ void annotate(GPCommand *command, int restore_point)
            {
               copyType type = getCommandType(loop_body, 0, false, false);
               if(type == RECORD_CHANGES)
-                 command->value.loop_stmt.roll_back = true;
+                 command->loop_stmt.roll_back = true;
               if(type == COPY)
               {
-                 command->value.loop_stmt.restore_point = restore_point;
+                 command->loop_stmt.restore_point = restore_point;
                  loop_restore_point++;
               }
            }
@@ -112,8 +113,8 @@ void annotate(GPCommand *command, int restore_point)
 
       case PROGRAM_OR:
       {
-           annotate(command->value.or_stmt.left_command, restore_point);
-           annotate(command->value.or_stmt.right_command, restore_point);
+           annotate(command->or_stmt.left_command, restore_point);
+           annotate(command->or_stmt.right_command, restore_point);
            break;
       }
 
@@ -135,10 +136,10 @@ bool neverFails(GPCommand *command)
    {
       case COMMAND_SEQUENCE:
       { 
-           List *commands = command->value.commands;
+           List *commands = command->commands;
            while(commands != NULL)
            {
-              if(!neverFails(commands->value.command)) return false;
+              if(!neverFails(commands->command)) return false;
               else commands = commands->next;
            }
            return true;
@@ -148,20 +149,20 @@ bool neverFails(GPCommand *command)
            return false;
 
       case PROCEDURE_CALL:
-           return neverFails(command->value.proc_call.procedure->commands);
+           return neverFails(command->proc_call.procedure->commands);
 
       case IF_STATEMENT:
       case TRY_STATEMENT:
-           if(!neverFails(command->value.cond_branch.then_command)) return false;
-           if(!neverFails(command->value.cond_branch.else_command)) return false;
+           if(!neverFails(command->cond_branch.then_command)) return false;
+           if(!neverFails(command->cond_branch.else_command)) return false;
            else return true;
 
       case ALAP_STATEMENT:
            return true;
 
       case PROGRAM_OR:
-           if(!neverFails(command->value.or_stmt.left_command)) return false;
-           if(!neverFails(command->value.or_stmt.right_command)) return false;
+           if(!neverFails(command->or_stmt.left_command)) return false;
+           if(!neverFails(command->or_stmt.right_command)) return false;
            else return true;
 
       case BREAK_STATEMENT:
@@ -189,15 +190,15 @@ copyType getCommandType(GPCommand *command, int depth, bool if_body,
    {
       case COMMAND_SEQUENCE:
       { 
-           List *commands = command->value.commands;
+           List *commands = command->commands;
            /* Special case for sequences containing a single command. 
             * The second expression in the if condition below handles strange
             * programs like "(((r1; r2)); r3)" which would otherwise be treated
             * as "(r1; r2)", because "((r1; r2))" is parsed as a command sequence
             * containing the single command "(r1; r2)". */
            if(commands->next == NULL &&
-              commands->value.command->command_type != COMMAND_SEQUENCE)
-              return getCommandType(commands->value.command, depth, if_body, true);
+              commands->command->command_type != COMMAND_SEQUENCE)
+              return getCommandType(commands->command, depth, if_body, true);
            else
            {
               int new_depth = 1;
@@ -210,7 +211,7 @@ copyType getCommandType(GPCommand *command, int depth, bool if_body,
               if(depth == 2 || (depth == 1 && !last_command)) new_depth = 2;
               while(commands != NULL)
               {
-                 copyType type = getCommandType(commands->value.command, new_depth, if_body,
+                 copyType type = getCommandType(commands->command, new_depth, if_body,
                                                 commands->next == NULL);
                  if(type == COPY) return COPY;
                  else commands = commands->next;
@@ -223,17 +224,17 @@ copyType getCommandType(GPCommand *command, int depth, bool if_body,
            return NO_BACKTRACK;
 
       case PROCEDURE_CALL:
-           return getCommandType(command->value.proc_call.procedure->commands, 
+           return getCommandType(command->proc_call.procedure->commands, 
                                  depth, if_body, last_command);
 
       case IF_STATEMENT:
       case TRY_STATEMENT:
       {
-           copyType cond_type = getCommandType(command->value.cond_branch.condition,
+           copyType cond_type = getCommandType(command->cond_branch.condition,
                                                depth, if_body, last_command);
-           copyType then_type = getCommandType(command->value.cond_branch.then_command,
+           copyType then_type = getCommandType(command->cond_branch.then_command,
                                                depth, if_body, last_command);
-           copyType else_type = getCommandType(command->value.cond_branch.else_command, 
+           copyType else_type = getCommandType(command->cond_branch.else_command, 
                                                depth, if_body, last_command);
            /* No graph backtracking is required in, for example, 
             * "try (if C then r1 else r2) then P else Q" because the inner if
@@ -263,16 +264,16 @@ copyType getCommandType(GPCommand *command, int depth, bool if_body,
               if(depth == 2) return COPY;
               if(depth == 1 && !last_command) return COPY;
               if(depth == 1 && last_command)
-                 command->value.loop_stmt.stop_recording = true;
+                 command->loop_stmt.stop_recording = true;
            }
            return NO_BACKTRACK;
 
       /* Return the "max" of the two branches. */
       case PROGRAM_OR:
       {
-           copyType left_type = getCommandType(command->value.or_stmt.left_command, 
+           copyType left_type = getCommandType(command->or_stmt.left_command, 
                                                depth, if_body, last_command);
-           copyType right_type = getCommandType(command->value.or_stmt.right_command,
+           copyType right_type = getCommandType(command->or_stmt.right_command,
                                                 depth, if_body, last_command);
            return left_type > right_type ? left_type : right_type;
       }

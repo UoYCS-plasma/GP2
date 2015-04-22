@@ -81,7 +81,7 @@ typedef struct Node {
    int index;
    bool root;
    LabelClass label_class;
-   Label *label;
+   Label label;
 
    /* Fixed-size arrays for the node's outgoing and incoming edges. */
    int out_edges[MAX_INCIDENT_EDGES];
@@ -124,7 +124,7 @@ typedef struct Edge {
    int index;
    bool bidirectional;
    LabelClass label_class;
-   Label *label;
+   Label label;
    int source, target;
    /* The index of the edge in its label class table. Used to quickly remove
     * the entry from the potentially large table. */
@@ -143,18 +143,16 @@ Graph *newGraph(int nodes, int edges);
  *
  * To assign the empty label to a node or edge, pass NULL as the label 
  * argument. This also applies to the relabelling functions. */
-int addNode(Graph *graph, bool root, Label *label);
-int addEdge(Graph *graph, bool bidirectional, Label *label, int source_index, 
+int addNode(Graph *graph, bool root, Label label);
+int addEdge(Graph *graph, bool bidirectional, Label label, int source_index, 
             int target_index);
 void removeNode(Graph *graph, int index);
 void removeEdge(Graph *graph, int index);
 
-/* The relabel functions take boolean arguments to control if the label is 
- * updated and if the boolean flag of the item should be changed. For nodes, 
- * this is the root flag. For edges, this is the bidirectional flag. */
-void relabelNode(Graph *graph, int index, Label *new_label, bool change_root); 
-void relabelEdge(Graph *graph, int index, Label *new_label, 
-                 bool change_bidirectional);
+void relabelNode(Graph *graph, int index, Label new_label);
+void changeRoot(Graph *graph, int index);
+void relabelEdge(Graph *graph, int index, Label new_label);
+void changeBidirectional(Graph *graph, int index);
 
 Node *getNode(Graph *graph, int index);
 Edge *getEdge(Graph *graph, int index);
@@ -167,8 +165,8 @@ int getInEdge(Node *node, int index);
 int getOutEdge(Node *node, int index);
 int getSource(Edge *edge);
 int getTarget(Edge *edge);
-Label *getNodeLabel(Node *node);
-Label *getEdgeLabel(Edge *edge);
+Label getNodeLabel(Node *node);
+Label getEdgeLabel(Edge *edge);
 int getIndegree(Node *node);
 int getOutdegree(Node *node);
 

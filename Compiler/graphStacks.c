@@ -80,7 +80,7 @@ void copyGraph(Graph *graph)
       if(node->index >= 0)
       {
          Node *original_node = getNode(graph, index);
-         node->label = copyLabel(original_node->label);
+         copyLabel(&(original_node->label), &(node->label));
  
          /* If necessary, copy the extra edges arrays of the original node. */
          if(original_node->extra_out_edges != NULL)
@@ -120,7 +120,7 @@ void copyGraph(Graph *graph)
       if(edge->index >= 0)
       {
          Edge *original_edge = getEdge(graph, index);
-         edge->label = copyLabel(original_edge->label);
+         copyLabel(&(original_edge->label), &(edge->label));
       }
    }  
    if(graph_stack == NULL) graph_stack = calloc(GRAPH_STACK_SIZE, sizeof(Graph*));
@@ -198,7 +198,7 @@ void pushAddedEdge(int index)
    graph_change_stack[gci].data.added_edge_index = index;
 }
 
-void pushRemovedNode(bool root, Label *label)
+void pushRemovedNode(bool root, Label label)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
@@ -207,7 +207,7 @@ void pushRemovedNode(bool root, Label *label)
    graph_change_stack[gci].data.removed_node.label = label;
 }
 
-void pushRemovedEdge(bool bidirectional, Label *label, int source, int target)
+void pushRemovedEdge(bool bidirectional, Label label, int source, int target)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
@@ -218,7 +218,7 @@ void pushRemovedEdge(bool bidirectional, Label *label, int source, int target)
    graph_change_stack[gci].data.removed_edge.target = target;
 }
 
-void pushRelabelledNode(int index, bool change_flag, Label *old_label)
+void pushRelabelledNode(int index, bool change_flag, Label old_label)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
@@ -228,7 +228,7 @@ void pushRelabelledNode(int index, bool change_flag, Label *old_label)
    graph_change_stack[gci].data.relabelled_node.old_label = old_label;
 }
 
-void pushRelabelledEdge(int index, bool change_flag, Label *old_label)
+void pushRelabelledEdge(int index, bool change_flag, Label old_label)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
@@ -267,17 +267,20 @@ void undoChanges(Graph *graph, int restore_point)
               break; 
 
          case RELABELLED_NODE:
-              relabelNode(graph, change.data.relabelled_node.index,
-                          change.data.relabelled_node.old_label,
-                          change.data.relabelled_node.change_flag);           
+         {
+              int index = change.data.relabelled_node.index;
+              relabelNode(graph, index, change.data.relabelled_node.old_label);
+              if(change.data.relabelled_node.change_flag) changeRoot(graph, index);           
               break;
-
+         }
          case RELABELLED_EDGE:
-              relabelEdge(graph, change.data.relabelled_edge.index,
-                          change.data.relabelled_edge.old_label,
-                          change.data.relabelled_edge.change_flag);           
+         {
+              int index = change.data.relabelled_edge.index;
+              relabelEdge(graph, index, change.data.relabelled_edge.old_label);
+              if(change.data.relabelled_edge.change_flag) 
+                 changeBidirectional(graph, index);
               break;
-              
+         }
          default: 
               print_to_log("Error (restoreGraph): Unexepected change type %d.\n",
                            change.type); 
@@ -301,20 +304,14 @@ void freeGraphChange(GraphChange change)
       case ADDED_EDGE:
            break;
 
-      case REMOVED_NODE:
-           if(!isConstantLabel(change.data.removed_node.label))
-             freeLabel(change.data.removed_node.label);
+      case REMOVED_NODE: freeLabel(change.data.removed_node.label);
            break;
 
-      case REMOVED_EDGE:
-           if(!isConstantLabel(change.data.removed_edge.label))
-             freeLabel(change.data.removed_edge.label);
+      case REMOVED_EDGE: freeLabel(change.data.removed_edge.label);
            break;
 
       case RELABELLED_NODE:
-      case RELABELLED_EDGE:
-           if(!isConstantLabel(change.data.relabelled_edge.old_label)) 
-              freeLabel(change.data.relabelled_edge.old_label);
+      case RELABELLED_EDGE: freeLabel(change.data.relabelled_edge.old_label);
            break;
 
       default: 

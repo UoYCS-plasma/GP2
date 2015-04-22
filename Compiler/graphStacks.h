@@ -50,12 +50,12 @@ typedef struct GraphChange
 
       struct {
          bool root;
-         Label *label;
+         Label label;
       } removed_node;
 
       struct {
          bool bidirectional;
-         Label *label;
+         Label label;
          int source;
          int target;
       } removed_edge;
@@ -63,7 +63,7 @@ typedef struct GraphChange
       struct {
          int index;
          bool change_flag;
-         Label *old_label;
+         Label old_label;
       } relabelled_node, relabelled_edge;   
    } data;
 } GraphChange; 
@@ -74,10 +74,10 @@ extern int graph_change_index;
 bool validGraphChangeStack(void);
 void pushAddedNode(int index);
 void pushAddedEdge(int index);
-void pushRemovedNode(bool root, Label *label);
-void pushRemovedEdge(bool bidirectional, Label *label, int source, int target);
-void pushRelabelledNode(int index, bool change_flag, Label *old_label);
-void pushRelabelledEdge(int index, bool change_flag, Label *old_label);
+void pushRemovedNode(bool root, Label label);
+void pushRemovedEdge(bool bidirectional, Label label, int source, int target);
+void pushRelabelledNode(int index, bool change_flag, Label old_label);
+void pushRelabelledEdge(int index, bool change_flag, Label old_label);
 void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);
 void freeGraphChange(GraphChange change); 

@@ -39,7 +39,7 @@ void freeVariableList(VariableList *variable_list)
 
 IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index,
                       int right_index, string source_id, string target_id,
-                      Label *label)
+                      Label label)
 {
    IndexMap *new_map = malloc(sizeof(IndexMap));
    if(new_map == NULL)
@@ -66,6 +66,16 @@ int findLeftIndexFromId(IndexMap *map, string id)
    while(map != NULL)
    {
       if(!strcmp(map->id, id)) return map->left_index;
+      else map = map->next;
+   }
+   return -1; 
+}
+
+int findRightIndexFromId(IndexMap *map, string id)
+{
+   while(map != NULL)
+   {
+      if(!strcmp(map->id, id)) return map->right_index;
       else map = map->next;
    }
    return -1; 
@@ -203,6 +213,11 @@ PreservedItemList *queryPItemList(PreservedItemList *list, int left_index)
 void freePItemList(PreservedItemList *list)
 {
    if(list == NULL) return;
+   if(list->new_label != NULL)
+   {
+      freeLabel(*(list->new_label));
+      free(list->new_label);
+   }
    if(list->next) freePItemList(list->next);
    free(list);
 }

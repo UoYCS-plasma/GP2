@@ -15,7 +15,6 @@ bool equalRuleLabels(Label left_label, Label right_label)
 {
    if(left_label.mark != right_label.mark) return false;
    if(left_label.length != right_label.length) return false;
-   if(left_label.list_variable != right_label.list_variable) return false;
 
    int index;
    for(index = 0; index < left_label.length; index++)
@@ -34,22 +33,22 @@ bool equalRuleAtoms(Atom *left_atom, Atom *right_atom)
    switch(left_atom->type)
    {
       case VARIABLE:
-           return !strcmp(left_atom->value.variable.name, right_atom->value.variable.name);
+           return !strcmp(left_atom->variable.name, right_atom->variable.name);
 
       case INTEGER_CONSTANT:
-           return left_atom->value.number == right_atom->value.number;
+           return left_atom->number == right_atom->number;
 
       case STRING_CONSTANT:
-           return !strcmp(left_atom->value.string, right_atom->value.string);
+           return !strcmp(left_atom->string, right_atom->string);
 
       case NEG:
-           return !equalRuleAtoms(left_atom->value.neg_exp, right_atom->value.neg_exp);
+           return !equalRuleAtoms(left_atom->neg_exp, right_atom->neg_exp);
 
       case CONCAT:
-           if(!equalRuleAtoms(left_atom->value.bin_op.left_exp, 
-                              right_atom->value.bin_op.left_exp)) return false;
-           if(!equalRuleAtoms(left_atom->value.bin_op.right_exp, 
-                              right_atom->value.bin_op.right_exp)) return false;
+           if(!equalRuleAtoms(left_atom->bin_op.left_exp, 
+                              right_atom->bin_op.left_exp)) return false;
+           if(!equalRuleAtoms(left_atom->bin_op.right_exp, 
+                              right_atom->bin_op.right_exp)) return false;
            return true;
 
       default:
@@ -69,7 +68,6 @@ void copyLabel(Label *source, Label *target)
 {
    target->mark = source->mark;
    target->length = source->length;
-   target->list_variable = source->list_variable;
    target->list = copyList(source->list, source->length);      
 }
 
@@ -79,7 +77,7 @@ Atom *copyList(Atom *list, int length)
    int index;
    for(index = 0; index < length; index++)
    {
-      /* Populate the copied array with the appropriate values. Any strings
+      /* Populate the copied array with the appropriate . Any strings
        * are duplicated in memory. Nested Atoms are memory-copied by the auxiliary
        * function copyAtom. */
       Atom atom = list[index];
@@ -87,27 +85,26 @@ Atom *copyList(Atom *list, int length)
       switch(atom.type) 
       {
          case VARIABLE:
-         case LIST_LENGTH:
-         case STRING_LENGTH:
-              list_copy[index].value.variable.name = strdup(atom.value.variable.name);
-              list_copy[index].value.variable.type = atom.value.variable.type;
+         case LENGTH:
+              list_copy[index].variable.name = strdup(atom.variable.name);
+              list_copy[index].variable.type = atom.variable.type;
               break;
 
          case INTEGER_CONSTANT:
-              list_copy[index].value.number = atom.value.number;
+              list_copy[index].number = atom.number;
               break;
 
          case STRING_CONSTANT:
-              list_copy[index].value.string = strdup(atom.value.string);
+              list_copy[index].string = strdup(atom.string);
               break;
 
          case INDEGREE:
          case OUTDEGREE:
-              list_copy[index].value.node_id = atom.value.node_id;              
+              list_copy[index].node_id = atom.node_id;              
               break;
 
          case NEG:
-              list_copy[index].value.neg_exp = copyAtom(atom.value.neg_exp);
+              list_copy[index].neg_exp = copyAtom(atom.neg_exp);
               break;
 
          case ADD:
@@ -115,8 +112,8 @@ Atom *copyList(Atom *list, int length)
          case MULTIPLY:
          case DIVIDE:
          case CONCAT:
-              list_copy[index].value.bin_op.left_exp = copyAtom(atom.value.bin_op.left_exp);
-              list_copy[index].value.bin_op.right_exp = copyAtom(atom.value.bin_op.right_exp);
+              list_copy[index].bin_op.left_exp = copyAtom(atom.bin_op.left_exp);
+              list_copy[index].bin_op.right_exp = copyAtom(atom.bin_op.right_exp);
               break;
 
          default: printf("Error (copyAtom): Unexpected atom type: %d\n", 
@@ -134,27 +131,26 @@ Atom *copyAtom(Atom *atom)
    switch(atom->type) 
    {
       case VARIABLE:
-      case LIST_LENGTH:
-      case STRING_LENGTH:
-           copy->value.variable.name = strdup(atom->value.variable.name);
-           copy->value.variable.type = atom->value.variable.type;
+      case LENGTH:
+           copy->variable.name = strdup(atom->variable.name);
+           copy->variable.type = atom->variable.type;
            break;
 
       case INTEGER_CONSTANT:
-           copy->value.number = atom->value.number;
+           copy->number = atom->number;
            break;
 
       case STRING_CONSTANT:
-           copy->value.string = strdup(atom->value.string);
+           copy->string = strdup(atom->string);
             break;
 
       case INDEGREE:
       case OUTDEGREE:
-           copy->value.node_id = atom->value.node_id;              
+           copy->node_id = atom->node_id;              
            break;
 
       case NEG:
-           copy->value.neg_exp = copyAtom(atom->value.neg_exp);
+           copy->neg_exp = copyAtom(atom->neg_exp);
            break;
 
       case ADD:
@@ -162,8 +158,8 @@ Atom *copyAtom(Atom *atom)
       case MULTIPLY:
       case DIVIDE:
       case CONCAT:
-           copy->value.bin_op.left_exp = copyAtom(atom->value.bin_op.left_exp);
-           copy->value.bin_op.right_exp = copyAtom(atom->value.bin_op.right_exp);
+           copy->bin_op.left_exp = copyAtom(atom->bin_op.left_exp);
+           copy->bin_op.right_exp = copyAtom(atom->bin_op.right_exp);
            break;
 
       default: printf("Error (copyAtom): Unexpected atom type: %d\n", 
@@ -175,7 +171,6 @@ Atom *copyAtom(Atom *atom)
 
 LabelClass getLabelClass(Label label)
 {
-   if(label.list_variable) return LIST_VAR_L;
    if(label.length == 0) return EMPTY_L;
    if(label.length == 1)
    {
@@ -183,13 +178,14 @@ LabelClass getLabelClass(Label label)
       {
          switch(first_atom.type)
          {
-            case VARIABLE: return ATOMIC_VAR_L;     
+            case VARIABLE: 
+                 if(first_atom.variable.type == LIST_VAR) return LIST_VAR_L;
+                 else return ATOMIC_VAR_L;     
  
             case INTEGER_CONSTANT:
             case INDEGREE:
             case OUTDEGREE:
-            case LIST_LENGTH:
-            case STRING_LENGTH:
+            case LENGTH:
             case NEG:
             case ADD:
             case SUBTRACT:
@@ -208,6 +204,15 @@ LabelClass getLabelClass(Label label)
    }
    else
    {
+      int index;
+      /* Search for a list variable. */
+      for(index = 0; index < label.length; index++)
+      {
+         if(label.list[index].type == VARIABLE)
+         {
+            if(label.list[index].variable.type == LIST_VAR) return LIST_VAR_L;
+         }
+      }
       switch(label.length)
       {
          case 2: return LIST2_L;
@@ -239,58 +244,57 @@ void printAtom(Atom *atom, FILE *file)
     switch(atom->type) 
     {
         case INTEGER_CONSTANT: 
-             fprintf(file, "%d", atom->value.number);
+             fprintf(file, "%d", atom->number);
              break;
               
         case STRING_CONSTANT:
-             fprintf(file, "%s", atom->value.string);
+             fprintf(file, "%s", atom->string);
 	     break;
 
 	case VARIABLE: 
-	     fprintf(file, "%s", atom->value.variable.name);
+	     fprintf(file, "%s", atom->variable.name);
 	     break;
 
 	case INDEGREE:
-	     fprintf(file, "indeg(%d)", atom->value.node_id);
+	     fprintf(file, "indeg(%d)", atom->node_id);
 	     break;
  
 	case OUTDEGREE:
-	     fprintf(file, "outdeg(%d)", atom->value.node_id);
+	     fprintf(file, "outdeg(%d)", atom->node_id);
 	     break;
 
-	case LIST_LENGTH:
-	case STRING_LENGTH:
-	     fprintf(file, "length(%s)", atom->value.variable.name);
+	case LENGTH:
+	     fprintf(file, "length(%s)", atom->variable.name);
 	     break;
 
 	case NEG:
 	     fprintf(file, "- ");
-	     printAtom(atom->value.neg_exp, file);
+	     printAtom(atom->neg_exp, file);
 	     break;
 
 	case ADD:
-	     printOperation(atom->value.bin_op.left_exp, 
-                            atom->value.bin_op.right_exp, "+", file);
+	     printOperation(atom->bin_op.left_exp, 
+                            atom->bin_op.right_exp, "+", file);
 	     break;
 
 	case SUBTRACT:
-	     printOperation(atom->value.bin_op.left_exp, 
-                            atom->value.bin_op.right_exp, "-", file);
+	     printOperation(atom->bin_op.left_exp, 
+                            atom->bin_op.right_exp, "-", file);
 	     break;
 
 	case MULTIPLY:
-	     printOperation(atom->value.bin_op.left_exp, 
-                            atom->value.bin_op.right_exp, "*", file);
+	     printOperation(atom->bin_op.left_exp, 
+                            atom->bin_op.right_exp, "*", file);
 	     break;
 
 	case DIVIDE:
-	     printOperation(atom->value.bin_op.left_exp, 
-                            atom->value.bin_op.right_exp, "/", file);
+	     printOperation(atom->bin_op.left_exp, 
+                            atom->bin_op.right_exp, "/", file);
 	     break;
 
 	case CONCAT:
-	     printOperation(atom->value.bin_op.left_exp, 
-                            atom->value.bin_op.right_exp, ".", file);
+	     printOperation(atom->bin_op.left_exp, 
+                            atom->bin_op.right_exp, ".", file);
 	     break;
 
 	default: fprintf(file, "Error (printAtom): Unexpected atom type: %d\n",
@@ -337,27 +341,26 @@ void freeAtom(Atom *atom, bool free_atom)
    switch(atom->type) 
    {
      case VARIABLE:
-          if(atom->value.variable.name) free(atom->value.variable.name);
+          if(atom->variable.name) free(atom->variable.name);
           break;
 
      case INTEGER_CONSTANT:
           break;
 
      case STRING_CONSTANT:
-          if(atom->value.string) free(atom->value.string);
+          if(atom->string) free(atom->string);
           break;
 
      case INDEGREE:
      case OUTDEGREE:
           break;
 
-     case LIST_LENGTH:
-     case STRING_LENGTH:
-          if(atom->value.variable.name) free(atom->value.variable.name);
+     case LENGTH:
+          if(atom->variable.name) free(atom->variable.name);
           break;
 
      case NEG:
-          if(atom->value.neg_exp) freeAtom(atom->value.neg_exp, true);
+          if(atom->neg_exp) freeAtom(atom->neg_exp, true);
           break;
 
      case ADD:
@@ -365,8 +368,8 @@ void freeAtom(Atom *atom, bool free_atom)
      case MULTIPLY:
      case DIVIDE:
      case CONCAT:
-          if(atom->value.bin_op.left_exp) freeAtom(atom->value.bin_op.left_exp, true);
-          if(atom->value.bin_op.right_exp) freeAtom(atom->value.bin_op.right_exp, true);
+          if(atom->bin_op.left_exp) freeAtom(atom->bin_op.left_exp, true);
+          if(atom->bin_op.right_exp) freeAtom(atom->bin_op.right_exp, true);
           break;
 
      default: printf("Error (freeAtom): Unexpected atom type: %d\n", 

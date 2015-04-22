@@ -28,32 +28,30 @@
  * - List of length 2, 3, and 4 (LIST2_L, LIST3_L, LIST4_L) without a list
  *   variable.
  * - List of length > 4 (LONG_LIST_L) without a list variable. */
- typedef enum {EMPTY_L = 0, INT_L, STRING_L, ATOMIC_VAR_L, LIST_VAR_L, LIST2_L,
-               LIST3_L, LIST4_L, LONG_LIST_L} LabelClass;
+typedef enum {EMPTY_L = 0, INT_L, STRING_L, ATOMIC_VAR_L, LIST_VAR_L, LIST2_L,
+              LIST3_L, LIST4_L, LONG_LIST_L} LabelClass;
 
 /* AtomType defined in globals.h. I place the enumerated type here for reference.
  * {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, STRING_CONSTANT, INDEGREE,
- *  OUTDEGREE, LIST_LENGTH, STRING_LENGTH, NEG, ADD, SUBTRACT,
- *  MULTIPLY, DIVIDE, CONCAT} AtomType; 
+ *  OUTDEGREE, LENGTH, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType; 
  * All types above except for EMPTY are used in this label structure. */
- typedef struct Atom { 
+typedef struct Atom { 
    AtomType type;
    union {
+      int number;
+      string string;
       struct {
          string name;
          GPType type;
       } variable;
-      int number;
-      string string;
       /* The index of the node in the RHS of the rule. */
       int node_id;   
-      struct Atom *string_arg; 
       struct Atom *neg_exp;
       struct {
          struct Atom *left_exp;
          struct Atom *right_exp;
       } bin_op;
-   } value;
+   };
 } Atom;
 
 /* The length of the list in a label is fixed at compile time in the
@@ -64,7 +62,6 @@ typedef struct Label {
    int length;
    /* Array of Atoms with length elements. */
    Atom *list;
-   bool list_variable;
 } Label;
 
 /* Compares a LHS label with a RHS label of the same rule for syntactic equality. 
@@ -87,7 +84,8 @@ LabelClass getLabelClass(Label label);
  * in this function only if the source label contains pointers to heap, namely 
  * strings and nested Atoms. */
 void copyLabel(Label *source, Label *target);
-Atom *copyAtom(Atom *list, int length);
+Atom *copyList(Atom *list, int length);
+Atom *copyAtom(Atom *atom);
 
 void printLabel(Label label, FILE *file);
 void printAtom(Atom *atom, FILE *file);

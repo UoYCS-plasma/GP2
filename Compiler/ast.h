@@ -33,10 +33,10 @@ typedef enum {GLOBAL_DECLARATIONS = 0, LOCAL_DECLARATIONS, COMMANDS,
               RULES, INT_DECLARATIONS, CHAR_DECLARATIONS, 
               STRING_DECLARATIONS, ATOM_DECLARATIONS,  
               LIST_DECLARATIONS, VARIABLE_LIST, INTERFACE_LIST, 
-              NODE_LIST, EDGE_LIST, GP_LIST, EMPTY_LIST} ListType;
+              NODE_LIST, EDGE_LIST, GP_LIST} ListType;
 
 typedef struct List {
-  int node_id;
+  int id;
   ListType list_type;  
   YYLTYPE location;  /* location of symbol in the source file */
   union {
@@ -54,7 +54,7 @@ typedef struct List {
     struct GPNode *node; 	       /* NODE_LIST */   
     struct GPEdge *edge; 	       /* EDGE_LIST */   
     struct GPAtom *atom;               /* GP_LIST */
-  } value;
+  };
   struct List *next;
 } List;
 
@@ -70,21 +70,19 @@ List *addASTNodeID (YYLTYPE location, string node_id, struct List *next);
 List *addASTNode (YYLTYPE location, struct GPNode *node, struct List *next);
 List *addASTEdge (YYLTYPE location, struct GPEdge *edge, struct List *next);
 List *addASTAtom (YYLTYPE location, struct GPAtom *atom, struct List *next);
-List *addASTEmptyList (YYLTYPE location);
-
 
 /* Definition of AST nodes for declarations. */
 typedef enum {MAIN_DECLARATION = 0, PROCEDURE_DECLARATION, RULE_DECLARATION} DeclType;
 
 typedef struct GPDeclaration {
-  int node_id;
+  int id;
   DeclType decl_type;
   YYLTYPE location;
   union {
     struct GPCommand *main_program; 	/* MAIN_DECLARATION */
     struct GPProcedure *procedure; 	/* PROCEDURE_DECLARATION */
     struct GPRule *rule; 		/* RULE_DECLARATION */
-  } value;
+  };
 } GPDeclaration;
 
 GPDeclaration *newASTMainDecl (YYLTYPE location, struct GPCommand *main_program);
@@ -98,7 +96,7 @@ typedef enum {COMMAND_SEQUENCE = 0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL,
               SKIP_STATEMENT, FAIL_STATEMENT, BREAK_STATEMENT} CommandType;
 
 typedef struct GPCommand {
-  int node_id;
+  int id;
   CommandType command_type;
   YYLTYPE location;
   union {    
@@ -131,7 +129,7 @@ typedef struct GPCommand {
     } or_stmt;			        /* PROGRAM_OR */
     /* skip, fail and break statements are represented by a GPCommand
      * containing only a type and location. */
-  } value;
+  };
 } GPCommand;
 
 GPCommand *newASTCommandSequence(YYLTYPE location, struct List *cmd_seq);
@@ -152,8 +150,8 @@ GPCommand *newASTBreak(YYLTYPE location);
 
 /* Definition of AST nodes for conditional expressions.*/
 typedef struct GPCondition {
-  int node_id;
-  ConditionType exp_type;
+  int id;
+  ConditionType type;
   YYLTYPE location;
   union {
     string var; 		/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
@@ -180,7 +178,7 @@ typedef struct GPCondition {
       struct GPCondition *left_exp; 
       struct GPCondition *right_exp; 
     } bin_exp; 			/* BOOL_OR, BOOL_AND */
-  } value;
+  };
 } GPCondition;
 
 GPCondition *newASTSubtypePred(ConditionType exp_type, YYLTYPE location, 
@@ -198,42 +196,40 @@ GPCondition *newASTBinaryExp(ConditionType exp_type, YYLTYPE location,
 
 /* Definition of AST nodes for atomic expressions. */
 typedef struct GPAtom {
-  int node_id;
-  AtomType exp_type;
+  int id;
+  AtomType type;
   YYLTYPE location;
   union {
+    int number; 	 	  /* INTEGER_CONSTANT */
+    string string;		  /* STRING_CONSTANT */
     struct {
        string name;		  
        GPType type;             
     } variable;                   /* VARIABLE, LENGTH */
-    int number; 	 	  /* INTEGER_CONSTANT */
-    string string;		  /* STRING_CONSTANT */
     string node_id; 		  /* INDEGREE, OUTDEGREE */
-    struct GPAtom *exp; 	  /* NEG */
+    struct GPAtom *neg_exp; 	  /* NEG */
     struct { 
       struct GPAtom *left_exp;
       struct GPAtom *right_exp;
     } bin_op; 		   	  /* ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT */
-  } value;
+  };
 } GPAtom;
 
 GPAtom *newASTVariable (YYLTYPE location, string name);
 GPAtom *newASTNumber (YYLTYPE location, int number);
 GPAtom *newASTCharacter (YYLTYPE location, string character);
 GPAtom *newASTString (YYLTYPE location, string string);
-GPAtom *newASTDegreeOp (AtomType exp_type, YYLTYPE location, 
-                             string node_id);
+GPAtom *newASTDegreeOp (AtomType exp_type, YYLTYPE location, string node_id);
 GPAtom *newASTLength (YYLTYPE location, string name);
-GPAtom *newASTNegExp (YYLTYPE location, struct GPAtom *exp);
+GPAtom *newASTNegExp (YYLTYPE location, struct GPAtom *neg_exp);
 GPAtom *newASTBinaryOp (AtomType exp_type, YYLTYPE location, 
-	                     struct GPAtom *left_exp, 
-                             struct GPAtom *right_exp);
+                        struct GPAtom *left_exp, struct GPAtom *right_exp);
 
 
 typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, LABEL} ASTNodeType;
 
 typedef struct GPProcedure {
-  int node_id;
+  int id;
   ASTNodeType node_type;
   YYLTYPE location;
   string name; 
@@ -246,7 +242,7 @@ GPProcedure *newASTProcedure(YYLTYPE location, string name,
 
 
 typedef struct GPRule {
-  int node_id;
+  int id;
   ASTNodeType node_type;
   YYLTYPE location;
   string name; 
@@ -267,7 +263,7 @@ GPRule *newASTRule(YYLTYPE location, string name, struct List *variables,
                    struct List *interface, struct GPCondition *condition);
 
 typedef struct GPGraph {
-  int node_id;
+  int id;
   ASTNodeType node_type;	
   YYLTYPE location;
   struct List *nodes;
@@ -278,7 +274,7 @@ GPGraph *newASTGraph(YYLTYPE location, struct List *nodes, struct List *edges);
 
 
 typedef struct GPNode {
-  int node_id;
+  int id;
   ASTNodeType node_type;	
   YYLTYPE location; 
   bool root;
@@ -291,7 +287,7 @@ GPNode *newASTNode(YYLTYPE location, bool root, string name,
 
 
 typedef struct GPEdge {
-  int node_id;
+  int id;
   ASTNodeType node_type;	
   YYLTYPE location; 
   bool bidirectional; 
@@ -305,7 +301,7 @@ GPEdge *newASTEdge(YYLTYPE location, bool bidirectional, string name,
                    string source, string target, struct GPLabel *label);
 
 typedef struct GPLabel {
-  int node_id;
+  int id;
   ASTNodeType node_type; 
   YYLTYPE location; 
   MarkType mark;
@@ -331,4 +327,3 @@ void freeASTEdge(GPEdge *edge);
 void freeASTLabel(GPLabel *label);
 
 #endif /* INC_AST_H */
-

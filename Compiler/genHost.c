@@ -57,10 +57,9 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    /* Populate the runtime arrays with the necessary data to add each node. */
    while(nodes != NULL)
    { 
-      GPNode *ast_node = nodes->value.node;
+      GPNode *ast_node = nodes->node;
       if(ast_node->root) PTIS("   root_nodes[%d] = true;\n", node_count);
-      if(ast_node->label->mark != NONE ||
-         ast_node->label->gp_list->list_type != EMPTY_LIST)
+      if(ast_node->label->mark != NONE)
          PTIS("   node_labels[%d] = makeEmptyList(%d);\n", node_count, 
               ast_node->label->mark);
       /* Assumes the nodes are named in order from 0: n0, n1 etc. */
@@ -92,13 +91,12 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    int edge_count = 0;
    while(edges != NULL)
    {
-      GPEdge *ast_edge = edges->value.edge;
+      GPEdge *ast_edge = edges->edge;
       int source_index = (int)strtol((ast_edge->source) + 1, NULL, 0);
       int target_index = (int)strtol((ast_edge->target) + 1, NULL, 0);
       PTIS("   edge_sources[%d] = %d; edge_targets[%d] = %d; ",
            edge_count, node_map[source_index], edge_count, node_map[target_index]);
-      if(ast_edge->label->mark != NONE ||
-         ast_edge->label->gp_list->list_type != EMPTY_LIST)
+      if(ast_edge->label->mark != NONE)
          PTIS("   edge_labels[%d] = makeEmptyList(%d);\n", edge_count, 
               ast_edge->label->mark);
       else PTIS("\n");

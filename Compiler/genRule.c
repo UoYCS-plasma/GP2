@@ -16,33 +16,32 @@ void generateRules(List *declarations)
 {
    while(declarations != NULL)
    {
-      GPDeclaration *decl = declarations->value.declaration;
+      GPDeclaration *decl = declarations->declaration;
      
       switch(decl->decl_type)
       {
          case MAIN_DECLARATION:
-         
               break;
 
          case PROCEDURE_DECLARATION:
 
-              if(decl->value.procedure->local_decls != NULL)
-                 generateRules(decl->value.procedure->local_decls);
+              if(decl->procedure->local_decls != NULL)
+                 generateRules(decl->procedure->local_decls);
               break;
 
          case RULE_DECLARATION:
          {
-              Rule *rule = makeRule(decl->value.rule);
-              decl->value.rule->empty_lhs = rule->lhs == NULL;
-              decl->value.rule->is_predicate = isPredicate(rule);
-              generateRuleCode(rule, decl->value.rule->is_predicate);
+              Rule *rule = makeRule(decl->rule);
+              decl->rule->empty_lhs = rule->lhs == NULL;
+              decl->rule->is_predicate = isPredicate(rule);
+              generateRuleCode(rule, decl->rule->is_predicate);
               freeRule(rule);
               break;
          }
 
-         default: print_to_log("Error (generateRules): Unexpected "
-                               "declaration type %d at AST node %d\n", 
-                               decl->decl_type, decl->node_id);
+         default: 
+              print_to_log("Error (generateRules): Unexpected declaration type "
+                           "%d at AST node %d\n", decl->decl_type, decl->id);
               break;
       }
       declarations = declarations->next;
@@ -329,14 +328,14 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
    PTRSI("/* Arguments: label class, mark, indegree, outdegree, bidegree. */\n", 6);
    if(dangling_node)
         PTRSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d, %d) continue;\n\n", 6,
-              left_node->label_class, left_node->label->mark, 
+              left_node->label_class, left_node->label.mark, 
               left_node->indegree, left_node->outdegree, left_node->bidegree);
    else PTRSI("IF_INVALID_NODE(%d, %d, %d, %d, %d) continue;\n\n", 6,
-              left_node->label_class, left_node->label->mark, 
+              left_node->label_class, left_node->label.mark, 
               left_node->indegree, left_node->outdegree, left_node->bidegree); 
 
    /* TODO: Call to label matcher goes here. */
-   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_node->label->mark);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_node->label.mark);
    PTRSI("bool nodes_match = labelMatch(label, host_node->label);\n", 6);
    PTRSI("if(!isConstantLabel(label)) freeLabel(label);\n", 6);
    PTRSI("if(nodes_match)\n", 6);
@@ -384,10 +383,10 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
    PTRSI(" /* Arguments: label class, mark, indegree, outdegree, bidegree. */\n", 3);
    if(dangling_node)
         PTRSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d, %d)", 3,
-              left_node->label_class, left_node->label->mark, 
+              left_node->label_class, left_node->label.mark, 
               left_node->indegree, left_node->outdegree, left_node->bidegree);
    else PTRSI("IF_INVALID_NODE(%d, %d, %d, %d, %d)", 3,
-              left_node->label_class, left_node->label->mark, 
+              left_node->label_class, left_node->label.mark, 
               left_node->indegree, left_node->outdegree, left_node->bidegree); 
 
    if(type == 'b')
@@ -403,16 +402,16 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type,
       PTRSI(" /* Arguments: label class, mark, indegree, outdegree, bidegree. */\n", 6);
       if(dangling_node)
            PTRSI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d, %d) return false;\n", 6,
-                 left_node->label_class, left_node->label->mark, 
+                 left_node->label_class, left_node->label.mark, 
                  left_node->indegree, left_node->outdegree, left_node->bidegree);
       else PTRSI("IF_INVALID_NODE(%d, %d, %d, %d, %d) return false;\n", 6,
-                 left_node->label_class, left_node->label->mark, 
+                 left_node->label_class, left_node->label.mark, 
                  left_node->indegree, left_node->outdegree, left_node->bidegree); 
       PTRSI("}\n\n", 3);
    }
    else PTRS(" return false;\n\n");
  
-   PTRSI("Label *label = makeEmptyList(%d);\n", 3, left_node->label->mark);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 3, left_node->label.mark);
    PTRSI("bool nodes_match = labelMatch(label, host_node->label);\n", 3);
    PTRSI("if(!isConstantLabel(label)) freeLabel(label);\n", 3);
    PTRSI("if(nodes_match)\n", 3);
@@ -454,9 +453,9 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
    PTRSI(" /* Arguments: label class, mark. */\n", 6);
    if(left_edge->source == left_edge->target) 
         PTRSI("IF_INVALID_LOOP_EDGE(%d, %d)\n\n", 6,
-              left_edge->label_class, left_edge->label->mark);
+              left_edge->label_class, left_edge->label.mark);
    else PTRSI("IF_INVALID_EDGE(%d, %d)\n\n", 6, 
-              left_edge->label_class, left_edge->label->mark);
+              left_edge->label_class, left_edge->label.mark);
    PTRSI("/* If either endpoint has been matched, check that the corresponding\n", 6);
    PTRSI(" * endpoint of the host edge is the image of the node in question. */\n", 6);
    PTRSI("continue;\n\n", 6);
@@ -465,7 +464,7 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
    PTRSI("int target_index = findHostIndex(morphism, %d);\n", left_edge->target, 6);
    PTRSI("if(target_index >= 0 && host_edge->target != target_index) continue;\n", 6);
 
-   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label.mark);
    PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
    PTRSI("if(!isConstantLabel(label)) freeLabel(label);\n", 6);
    PTRSI("if(edges_match)\n", 6);
@@ -520,9 +519,9 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
    PTRSI("/* Arguments: label class, mark. */\n", 6);
    if(is_loop) 
         PTRSI("IF_INVALID_LOOP_EDGE(%d, %d) continue;\n\n", 6,
-              left_edge->label_class, left_edge->label->mark);
+              left_edge->label_class, left_edge->label.mark);
    else PTRSI("IF_INVALID_EDGE(%d, %d) continue;\n\n", 6, 
-              left_edge->label_class, left_edge->label->mark);
+              left_edge->label_class, left_edge->label.mark);
 
    if(left_edge->bidirectional)
    {
@@ -540,7 +539,7 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
    }
  
    /* TODO: Call to label matcher goes here. */
-   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label.mark);
    PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
    PTRSI("if(!isConstantLabel(label)) freeLabel(label);\n", 6);
    PTRSI("if(edges_match)\n", 6);
@@ -573,9 +572,9 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
       PTRSI(" /* Arguments: label class, mark. */\n", 6);
       if(is_loop)
            PTRSI("IF_INVALID_LOOP_EDGE(%d, %d) continue;\n\n", 6,
-                 left_edge->label_class, left_edge->label->mark);
+                 left_edge->label_class, left_edge->label.mark);
       else PTRSI("IF_INVALID_EDGE(%d, %d) continue;\n\n", 6, 
-                 left_edge->label_class, left_edge->label->mark);
+                 left_edge->label_class, left_edge->label.mark);
       if(left_edge->bidirectional)
       {
          PTRSI("/* If the rule edge's source has been matched, check that either\n", 6);
@@ -592,7 +591,7 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
       }
 
       /* TODO: Call to label matcher goes here. */
-      PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+      PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label.mark);
       PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
       PTRSI("if(!isConstantLabel(label)) freeLabel(label);\n", 6);
       PTRSI("if(edges_match)\n", 6);
@@ -647,7 +646,7 @@ void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
    PTRSI("CHECK_MATCHED_EDGE\n\n", 6);
    PTRSI(" /* Arguments: label class, mark. */\n", 6);
    PTRSI("IF_INVALID_EDGE(%d, %d) continue;\n\n", 6, 
-         left_edge->label_class, left_edge->label->mark);
+         left_edge->label_class, left_edge->label.mark);
    if(left_edge->bidirectional)
    {
       PTRSI("/* If the rule edge's source has been matched, check that either\n", 6);
@@ -664,7 +663,7 @@ void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
    }
 
    /* TODO: Call to label matcher goes here. */
-   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+   PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label.mark);
    PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
    PTRSI("if(!isConstantLabel(label)) freeLabel(label);\n", 6);
    PTRSI("if(edges_match)\n", 6);
@@ -695,7 +694,7 @@ void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
            "      CHECK_MATCHED_EDGE\n\n");
       PTRSI(" /* Arguments: label class, mark. */\n", 6);
       PTRSI("IF_INVALID_EDGE(%d, %d) continue;\n\n", 6, 
-            left_edge->label_class, left_edge->label->mark);
+            left_edge->label_class, left_edge->label.mark);
       if(left_edge->bidirectional)
       {
          PTRSI("/* If the rule edge's target has been matched, check that either\n", 6);
@@ -712,7 +711,7 @@ void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
       }
 
       /* TODO: Call to label matcher goes here. */
-      PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label->mark);
+      PTRSI("Label *label = makeEmptyList(%d);\n", 6, left_edge->label.mark);
       PTRSI("bool edges_match = labelMatch(label, host_edge->label);\n", 6);
       PTRSI("if(!isConstantLabel(label)) freeLabel(label);\n", 6);
       PTRSI("if(edges_match)\n", 6);
@@ -816,7 +815,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
           * the correct edges are added. */
          Node *rule_node = getNode(rhs, index);
          PTRSI("Label *label%d = makeEmptyList(%d);\n", 3,
-               label_count, rule_node->label->mark);
+               label_count, rule_node->label.mark);
          PTRSI("index = addNode(host, %d, label%d);\n\n", 3, 
                rule_node->root, label_count);
          if(rule->added_edges != NULL) 
@@ -829,7 +828,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       {
          Edge *rule_edge = getEdge(rhs, iterator->edge_index);
          PTRSI("Label *label%d = makeEmptyList(%d);\n", 3, label_count,
-               rule_edge->label->mark);
+               rule_edge->label.mark);
          /* The host-source and host-target of added edges are taken from the 
           * map populated in the previous loop. */
          PTRSI("index = addEdge(host, false, label%d, map[%d], map[%d]);\n\n",
@@ -928,7 +927,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    {   
       Node *rule_node = getNode(rhs, iterator_n->index);
       PTRSI("Label *label%d = makeEmptyList(%d);\n", 3, label_count,
-            rule_node->label->mark);
+            rule_node->label.mark);
       PTRSI("index = addNode(host, %d, label%d);\n", 3, rule_node->root,
             label_count);
       if(rule->added_edges != NULL) PTRSI("map[%d] = index;\n", 3, rule_node->index);
@@ -960,7 +959,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
 
       Edge *rule_edge = getEdge(rhs, iterator_e->edge_index);
       PTRSI("Label *label%d = makeEmptyList(%d);\n", 3, label_count,
-            rule_edge->label->mark);
+            rule_edge->label.mark);
       PTRSI("index = addEdge(host, false, label%d, source, target);\n", 3, 
             label_count);
       PTRSI("if(record_changes) pushAddedEdge(index);\n", 3);

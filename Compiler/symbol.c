@@ -1,44 +1,42 @@
 #include "symbol.h"
 
-Symbol *makeSymbol(SymbolType type, string scope, string containing_rule,
-                   bool is_var, bool in_lhs, bool wildcard, bool bidirectional)
+SymbolList *addSymbol(SymbolList *list, SymbolType type, string scope, string rule_name,
+                      bool is_var, bool in_lhs, bool wildcard, bool bidirectional)
 {
-   Symbol *symbol = malloc(sizeof(Symbol));
+   SymbolList *symbol = malloc(sizeof(SymbolList));
    if(symbol == NULL) {
       print_to_log("Error (makeSymbol): malloc failure.\n");
       exit(1);
    }
    symbol->type = type;
    symbol->scope = scope == NULL ? NULL : strdup(scope);
-   symbol->containing_rule = containing_rule == NULL ? NULL : strdup(containing_rule);
+   symbol->rule_name = rule_name == NULL ? NULL : strdup(rule_name);
    symbol->is_var = is_var;
    symbol->in_lhs = in_lhs;
    symbol->wildcard = wildcard;
    symbol->bidirectional = bidirectional;
+   symbol->next = list;
    return symbol;
 }
 
-bool symbolInScope(Symbol *symbol, string scope, string rule_name)
+bool symbolInScope(SymbolList *symbol, string scope, string rule_name)
 {
-   return !strcmp(symbol->scope, scope) && 
-          !strcmp(symbol->containing_rule, rule_name);
+   return !strcmp(symbol->scope, scope) && !strcmp(symbol->rule_name, rule_name);
 }
 
-void freeSymbolList(gpointer key, gpointer value, gpointer data) 
+void freeSymbolList(gpointer key, gpointer value, gpointer user_data) 
 {
-   /* iterator keeps a pointer to the current GSList node */
-   GSList *iterator = (GSList*)value;
-   while(iterator != NULL) 
+   SymbolList *list = (SymbolList*)value;
+   while(list != NULL)
    {
-      iterator = iterator->next;
-      Symbol *symbol = (Symbol*)iterator->data;
-      if(symbol == NULL) continue;
-      if(symbol->scope) free(symbol->scope); 
-      if(symbol->containing_rule) free(symbol->containing_rule); 
-      free(symbol);
+      if(list->scope) free(list->scope);    
+      if(list->rule_name) free(list->rule_name);
+      SymbolList *temp = list;
+      list = list->next;
+      free(temp);
    }
-   g_slist_free((GSList*)value);
 }
+
 
 void addBiEdge(BiEdgeList *list, string scope, string containing_rule, 
                char graph, string source, string target)

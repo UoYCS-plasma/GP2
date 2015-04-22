@@ -54,7 +54,7 @@ void generateDeclarationCode(List *declarations)
    List *iterator = declarations;
    while(iterator != NULL)
    {
-      GPDeclaration *decl = iterator->value.declaration;
+      GPDeclaration *decl = iterator->declaration;
      
       switch(decl->decl_type)
       {
@@ -62,20 +62,21 @@ void generateDeclarationCode(List *declarations)
           * The semantic analysis ensures that the passed AST contains exactly one
           * MAIN_DECLARATION node. */
          case MAIN_DECLARATION:
-              generateProgramCode(decl->value.main_program, MAIN_BODY, -1, -1, 3);
+              generateProgramCode(decl->main_program, MAIN_BODY, -1, -1, 3);
               break;
 
          case PROCEDURE_DECLARATION:
-              if(decl->value.procedure->local_decls != NULL)
-                 generateDeclarationCode(decl->value.procedure->local_decls);
+              if(decl->procedure->local_decls != NULL)
+                 generateDeclarationCode(decl->procedure->local_decls);
               break;
 
          case RULE_DECLARATION:
               break;
 
-         default: print_to_log("Error (generateDeclarationCode): Unexpected "
-                               "declaration type %d at AST node %d\n", 
-                               decl->decl_type, decl->node_id);
+         default: 
+              print_to_log("Error (generateDeclarationCode): Unexpected "
+                           "declaration type %d at AST node %d\n", 
+                           decl->decl_type, decl->id);
               break;
       }
       iterator = iterator->next;
@@ -109,20 +110,20 @@ void generateMorphismCode(List *declarations, char type)
    }
    while(declarations != NULL)
    {
-      GPDeclaration *decl = declarations->value.declaration;
+      GPDeclaration *decl = declarations->declaration;
       switch(decl->decl_type)
       {
          case MAIN_DECLARATION:
               break;
 
          case PROCEDURE_DECLARATION:
-              if(decl->value.procedure->local_decls != NULL)
-                 generateMorphismCode(decl->value.procedure->local_decls, type);
+              if(decl->procedure->local_decls != NULL)
+                 generateMorphismCode(decl->procedure->local_decls, type);
               break;
 
          case RULE_DECLARATION:
          {
-              GPRule *rule = decl->value.rule;
+              GPRule *rule = decl->rule;
               if(type == 'd')
               {
                  PTMS("#include \"%s.h\"\n", rule->name);
@@ -136,9 +137,10 @@ void generateMorphismCode(List *declarations, char type)
                  PTMSI("freeMorphism(M_%s);\n", 3, rule->name);
               break;
          }
-         default: print_to_log("Error (generateMorphismCode): Unexpected "
-                               "declaration type %d at AST node %d\n", 
-                               decl->decl_type, decl->node_id);
+         default: 
+              print_to_log("Error (generateMorphismCode): Unexpected "
+                           "declaration type %d at AST node %d\n", 
+                           decl->decl_type, decl->id);
               break;
       }
       declarations = declarations->next;
@@ -154,10 +156,10 @@ void generateProgramCode(GPCommand *command, ContextType context,
    {
       case COMMAND_SEQUENCE:
       {
-           List *commands = command->value.commands;
+           List *commands = command->commands;
            while(commands != NULL)
            {
-              generateProgramCode(commands->value.command, context, restore_point,
+              generateProgramCode(commands->command, context, restore_point,
                                   undo_point, indent);
               if(context == LOOP_BODY && commands->next != NULL)
                  PTMSI("if(!success) break;\n", indent);             
@@ -168,22 +170,22 @@ void generateProgramCode(GPCommand *command, ContextType context,
       case RULE_CALL:
 
            PTMSI("/* Rule Call */\n", indent);
-           generateRuleCall(command->value.rule_call.rule_name, 
-                            command->value.rule_call.rule->empty_lhs,
-                            command->value.rule_call.rule->is_predicate,
+           generateRuleCall(command->rule_call.rule_name, 
+                            command->rule_call.rule->empty_lhs,
+                            command->rule_call.rule->is_predicate,
                             context, restore_point, undo_point, true, indent);
            break;
 
       case RULE_SET_CALL:
 
            PTMSI("/* Rule Set Call */\n", indent);
-           generateRuleSetCall(command->value.rule_set, context, restore_point,
+           generateRuleSetCall(command->rule_set, context, restore_point,
                                undo_point, indent);
            break;
 
       case PROCEDURE_CALL:
       {
-           GPProcedure *procedure = command->value.proc_call.procedure;
+           GPProcedure *procedure = command->proc_call.procedure;
            generateProgramCode(procedure->commands, context, restore_point,
                                undo_point, indent);
            break;
@@ -207,12 +209,12 @@ void generateProgramCode(GPCommand *command, ContextType context,
            PTMSI("int random = rand();\n", indent);
            PTMSI("if((random %% 2) == 0)\n", indent);
            PTMSI("{\n", indent);
-           generateProgramCode(command->value.or_stmt.left_command, context, 
+           generateProgramCode(command->or_stmt.left_command, context, 
                                restore_point, undo_point, indent + 3);
            PTMSI("}\n", indent);
            PTMSI("else\n", indent);
            PTMSI("{\n", indent);
-           generateProgramCode(command->value.or_stmt.right_command, context, 
+           generateProgramCode(command->or_stmt.right_command, context, 
                                restore_point, undo_point, indent + 3);
            PTMSI("}\n", indent);
            if(context == IF_BODY || context == TRY_BODY) 
@@ -256,9 +258,9 @@ void generateProgramCode(GPCommand *command, ContextType context,
            PTMSI("break;\n", indent);
            break;
            
-      default: print_to_log("Error (generateProgramCode): Unexpected "
-                            "command type %d at AST node %d\n", 
-                            command->command_type, command->node_id);
+      default: 
+           print_to_log("Error (generateProgramCode): Unexpected command type "
+                        "%d at AST node %d\n", command->command_type, command->id);
            break;
    }
 }
@@ -337,9 +339,9 @@ void generateRuleSetCall(List *rules, ContextType context, int restore_point,
    PTMSI("{\n", indent);
    while(rules != NULL)
    {  
-      string rule_name = rules->value.rule_call.rule_name;
-      bool empty_lhs = rules->value.rule_call.rule->empty_lhs;
-      bool predicate = rules->value.rule_call.rule->is_predicate;
+      string rule_name = rules->rule_call.rule_name;
+      bool empty_lhs = rules->rule_call.rule->empty_lhs;
+      bool predicate = rules->rule_call.rule->is_predicate;
       if(rules->next == NULL)
            generateRuleCall(rule_name, empty_lhs, predicate, context,
                             restore_point, undo_point, true, indent + 3);
@@ -353,8 +355,8 @@ void generateRuleSetCall(List *rules, ContextType context, int restore_point,
 void generateBranchStatement(GPCommand *command, ContextType context,
                              int restore_point, int undo_point, int indent)
 {
-   int new_restore_point = command->value.cond_branch.restore_point;
-   bool roll_back = command->value.cond_branch.roll_back;
+   int new_restore_point = command->cond_branch.restore_point;
+   bool roll_back = command->cond_branch.roll_back;
    int new_undo_point = -1;
    if(roll_back) new_undo_point = undo_point_count++;
    else if(undo_point >= 0) new_undo_point = undo_point;
@@ -382,7 +384,7 @@ void generateBranchStatement(GPCommand *command, ContextType context,
       #endif
       PTMSI("copyGraph(host);\n", indent + 3);
    }
-   generateProgramCode(command->value.cond_branch.condition, new_context,
+   generateProgramCode(command->cond_branch.condition, new_context,
                        new_restore_point, new_undo_point, indent + 3);
    PTMSI("} while(false);\n\n", indent);
    if(new_context == IF_BODY)
@@ -407,7 +409,7 @@ void generateBranchStatement(GPCommand *command, ContextType context,
    PTMSI("/* Then Branch */\n", indent);
    PTMSI("if(success)\n", indent);
    PTMSI("{\n", indent);
-   generateProgramCode(command->value.cond_branch.then_command, 
+   generateProgramCode(command->cond_branch.then_command, 
                        context, restore_point, undo_point, indent + 3);
    PTMSI("}\n", indent);
    PTMSI("/* Else Branch */\n", indent);
@@ -434,7 +436,7 @@ void generateBranchStatement(GPCommand *command, ContextType context,
          #endif
       }
    }
-   generateProgramCode(command->value.cond_branch.else_command, 
+   generateProgramCode(command->cond_branch.else_command, 
                        context, restore_point, undo_point, indent + 3);
    PTMSI("}\n", indent);
    if(context == IF_BODY || context == TRY_BODY) PTMSI("break;\n", indent);
@@ -443,11 +445,11 @@ void generateBranchStatement(GPCommand *command, ContextType context,
 
 void generateLoopStatement(GPCommand *command, int undo_point, int indent)
 {
-   int new_restore_point = command->value.loop_stmt.restore_point;
-   bool roll_back = command->value.loop_stmt.roll_back;   
+   int new_restore_point = command->loop_stmt.restore_point;
+   bool roll_back = command->loop_stmt.roll_back;   
    int new_undo_point = -1;
    if(roll_back) new_undo_point = undo_point_count++;
-   else if(undo_point >= 0 && !command->value.loop_stmt.stop_recording)
+   else if(undo_point >= 0 && !command->loop_stmt.stop_recording)
             new_undo_point = undo_point;
                
    PTMSI("/* Loop Statement */\n", indent);
@@ -471,7 +473,7 @@ void generateLoopStatement(GPCommand *command, int undo_point, int indent)
                indent + 3, new_undo_point);
       #endif
    }
-   generateProgramCode(command->value.loop_stmt.loop_body, LOOP_BODY,
+   generateProgramCode(command->loop_stmt.loop_body, LOOP_BODY,
                         new_restore_point, new_undo_point, indent + 3);
    if(new_restore_point >= 0)
    {

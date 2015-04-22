@@ -62,8 +62,8 @@ extern BiEdgeList *bidirectional_edges;
 /* The top level semantic analysis function. Creates the symbol table and
  * calls declarationScan and semanticCheck with their initial arguments
  * (gp_program and "Main"). If debug is set to true, the symbol table is
- * printed before function exit. */
-bool analyseProgram(List *gp_program, bool debug);
+ * printed to <program_name_1.dot> before function exit. */
+bool analyseProgram(List *gp_program, bool debug, string program_name);
 
 /* declarationScan traverses the global declaration list and any local 
  * declaration lists. It adds all rule declarations to the symbol table. 
@@ -252,6 +252,6 @@ void atomScan(GPAtom *atom, string scope, string rule_name, char location,
  * from the symbol table, and performs semantic checking on the variables. 
  * The arguments are the same as those passed to atomScan. */
 void variableScan(GPAtom *atom, string scope, string rule_name, 
-                  char location, bool int_exp, bool string_exp);
+                  char location, bool int_exp, bool string_exp, bool length);
 
 #endif /* INC_SEMAN_H */

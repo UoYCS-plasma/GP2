@@ -75,6 +75,14 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
                           IndexMap *node_map, IndexMap **edge_map,
                           PreservedItemList **edges);
 
-Label *transformLabel(GPLabel *ast_label);
+/* Generates a Label from the AST representation of a label. The data
+ * structures for atoms are extremely similar, admitting a straightforward
+ * translation. One key difference is that the target structure stores
+ * an integer (RHS node index) for the indegree and outdegree operations
+ * in contrast to the string in the AST. The node map is passed to the two
+ * transformation functions to get the appropriate index from the string
+ * node identifier. */
+Label transformLabel(GPLabel *ast_label, IndexMap *node_map);
+Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map);
 
 #endif /* INC_TRANSFORM_H */

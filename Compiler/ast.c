@@ -10,7 +10,7 @@ List *addASTDecl(ListType list_type, YYLTYPE location, GPDeclaration *declaratio
     }
     new_decl->list_type = list_type; 
     new_decl->location = location;
-    new_decl->value.declaration = declaration;
+    new_decl->declaration = declaration;
     new_decl->next = next;
     return new_decl;
 }
@@ -25,7 +25,7 @@ List *addASTCommand(YYLTYPE location, GPCommand *command, List *next)
     }
     new_command->list_type = COMMANDS;
     new_command->location = location;
-    new_command->value.command = command;
+    new_command->command = command;
     new_command->next = next;
     return new_command;
 }
@@ -40,8 +40,8 @@ List *addASTRule(YYLTYPE location, string rule_name, List *next)
     }
     new_rule->list_type = RULES;
     new_rule->location = location;
-    new_rule->value.rule_call.rule_name = strdup(rule_name);
-    new_rule->value.rule_call.rule = NULL;
+    new_rule->rule_call.rule_name = strdup(rule_name);
+    new_rule->rule_call.rule = NULL;
     new_rule->next = next;
     return new_rule;
 }
@@ -57,7 +57,7 @@ List *addASTVariableDecl(ListType list_type, YYLTYPE location, List *variables,
     }
     new_var_decl->list_type = list_type; 
     new_var_decl->location = location;
-    new_var_decl->value.variables = variables;
+    new_var_decl->variables = variables;
     new_var_decl->next = next;
     return new_var_decl;
 }
@@ -72,7 +72,7 @@ List *addASTVariable(YYLTYPE location, string variable_name, List *next)
     }
     new_var->list_type = VARIABLE_LIST;
     new_var->location = location;
-    new_var->value.variable_name = strdup(variable_name);
+    new_var->variable_name = strdup(variable_name);
     new_var->next = next;
     return new_var;
 }
@@ -87,7 +87,7 @@ List *addASTNodeID(YYLTYPE location, string node_id, List *next)
     }
     new_id->list_type = INTERFACE_LIST;
     new_id->location = location;
-    new_id->value.node_id = strdup(node_id);
+    new_id->node_id = strdup(node_id);
     new_id->next = next;
     return new_id;
 }
@@ -102,7 +102,7 @@ List *addASTNode(YYLTYPE location, GPNode *node, List *next)
      }
      new_node->list_type = NODE_LIST;
      new_node->location = location;
-     new_node->value.node = node;
+     new_node->node = node;
      new_node->next = next;
      return new_node;
 }
@@ -117,7 +117,7 @@ List *addASTEdge(YYLTYPE location, GPEdge *edge, List *next)
      }
      new_edge->list_type = EDGE_LIST;
      new_edge->location = location;
-     new_edge->value.edge = edge;
+     new_edge->edge = edge;
      new_edge->next = next;
      return new_edge;
 }
@@ -132,25 +132,10 @@ List *addASTAtom(YYLTYPE location, GPAtom *atom, List *next)
     }
     new_atom->list_type = GP_LIST;
     new_atom->location = location;
-    new_atom->value.atom = atom;
+    new_atom->atom = atom;
     new_atom->next = next;
     return new_atom;
 }
-
-List *addASTEmptyList(YYLTYPE location)
-{
-     List *new_empty = malloc(sizeof(List));
-     if(new_empty == NULL) 
-     {
-       print_to_log("Error (AST): malloc failure.\n");
-       exit(1);
-     }
-     new_empty->list_type = EMPTY_LIST;
-     new_empty->location = location;
-     new_empty->next = NULL;
-     return new_empty;
-}
-
 
 GPDeclaration *newASTMainDecl(YYLTYPE location, GPCommand *main_program)
 {
@@ -162,7 +147,7 @@ GPDeclaration *newASTMainDecl(YYLTYPE location, GPCommand *main_program)
     }
     new_main->decl_type = MAIN_DECLARATION;
     new_main->location = location;
-    new_main->value.main_program = main_program;
+    new_main->main_program = main_program;
     return new_main;
 }
 
@@ -176,7 +161,7 @@ GPDeclaration *newASTProcedureDecl(YYLTYPE location, GPProcedure *procedure)
     }
     new_proc->decl_type = PROCEDURE_DECLARATION;
     new_proc->location = location;
-    new_proc->value.procedure = procedure;
+    new_proc->procedure = procedure;
     return new_proc;
 }
 
@@ -190,7 +175,7 @@ GPDeclaration *newASTRuleDecl(YYLTYPE location, GPRule *rule)
     }
     new_rule->decl_type = RULE_DECLARATION;
     new_rule->location = location;
-    new_rule->value.rule = rule;
+    new_rule->rule = rule;
     return new_rule;
 }
 
@@ -205,7 +190,7 @@ GPCommand *newASTCommandSequence(YYLTYPE location, List *commands)
     }
     command->command_type = COMMAND_SEQUENCE;
     command->location = location;
-    command->value.commands = commands;
+    command->commands = commands;
     return command;
 }
 
@@ -219,8 +204,8 @@ GPCommand *newASTRuleCall(YYLTYPE location, string rule_name)
     }
     command->command_type = RULE_CALL;
     command->location = location;
-    command->value.rule_call.rule_name = strdup(rule_name);
-    command->value.rule_call.rule = NULL;
+    command->rule_call.rule_name = strdup(rule_name);
+    command->rule_call.rule = NULL;
     return command;
 }
 
@@ -234,7 +219,7 @@ GPCommand *newASTRuleSetCall(YYLTYPE location, List *rule_set)
     }
     command->command_type = RULE_SET_CALL;
     command->location = location;
-    command->value.rule_set = rule_set;
+    command->rule_set = rule_set;
     return command;
 }
 
@@ -248,8 +233,8 @@ GPCommand *newASTProcCall(YYLTYPE location, string proc_name)
     }
     command->command_type = PROCEDURE_CALL;
     command->location = location;
-    command->value.proc_call.proc_name = strdup(proc_name);
-    command->value.proc_call.procedure = NULL;
+    command->proc_call.proc_name = strdup(proc_name);
+    command->proc_call.procedure = NULL;
     return command;
 }
 
@@ -265,11 +250,11 @@ GPCommand *newASTCondBranch(CommandType command_type, YYLTYPE location,
     }
     command->command_type = command_type; 
     command->location = location;
-    command->value.cond_branch.condition = condition;
-    command->value.cond_branch.then_command = then_command;
-    command->value.cond_branch.else_command = else_command;
-    command->value.cond_branch.restore_point = -1;
-    command->value.cond_branch.roll_back = false;
+    command->cond_branch.condition = condition;
+    command->cond_branch.then_command = then_command;
+    command->cond_branch.else_command = else_command;
+    command->cond_branch.restore_point = -1;
+    command->cond_branch.roll_back = false;
     return command;
 }
 
@@ -283,10 +268,10 @@ GPCommand *newASTAlap(YYLTYPE location, GPCommand *loop_body)
     }
     command->command_type = ALAP_STATEMENT;
     command->location = location;
-    command->value.loop_stmt.loop_body = loop_body;
-    command->value.loop_stmt.restore_point = -1;
-    command->value.loop_stmt.roll_back = false;
-    command->value.loop_stmt.stop_recording = false;
+    command->loop_stmt.loop_body = loop_body;
+    command->loop_stmt.restore_point = -1;
+    command->loop_stmt.roll_back = false;
+    command->loop_stmt.stop_recording = false;
     return command;
 }
 
@@ -301,8 +286,8 @@ GPCommand *newASTOrStmt(YYLTYPE location, GPCommand *left_command,
     }
     command->command_type = PROGRAM_OR;
     command->location = location;
-    command->value.or_stmt.left_command = left_command;
-    command->value.or_stmt.right_command = right_command;
+    command->or_stmt.left_command = left_command;
+    command->or_stmt.right_command = right_command;
     return command;
 }
 
@@ -346,7 +331,7 @@ GPCommand *newASTBreak(YYLTYPE location)
 }
 
 
-GPCondition *newASTSubtypePred(ConditionType exp_type, YYLTYPE location, string var)
+GPCondition *newASTSubtypePred(ConditionType type, YYLTYPE location, string var)
 {
      GPCondition *cond = malloc(sizeof(GPCondition));
      if(cond == NULL) 
@@ -354,9 +339,9 @@ GPCondition *newASTSubtypePred(ConditionType exp_type, YYLTYPE location, string 
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     cond->exp_type = exp_type; 
+     cond->type = type; 
      cond->location = location;
-     cond->value.var = strdup(var);
+     cond->var = strdup(var);
      return cond;
 }
 
@@ -369,15 +354,15 @@ GPCondition *newASTEdgePred(YYLTYPE location, string source, string target,
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     cond->exp_type = EDGE_PRED;
+     cond->type = EDGE_PRED;
      cond->location = location;
-     cond->value.edge_pred.source = strdup(source);
-     cond->value.edge_pred.target = strdup(target);
-     cond->value.edge_pred.label = label;
+     cond->edge_pred.source = strdup(source);
+     cond->edge_pred.target = strdup(target);
+     cond->edge_pred.label = label;
      return cond;
 }
 
-GPCondition *newASTListComparison(ConditionType exp_type, YYLTYPE location,
+GPCondition *newASTListComparison(ConditionType type, YYLTYPE location,
 	                        List *left_list, List *right_list)
 {
      GPCondition *cond = malloc(sizeof(GPCondition));
@@ -386,14 +371,14 @@ GPCondition *newASTListComparison(ConditionType exp_type, YYLTYPE location,
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     cond->exp_type = exp_type; 
+     cond->type = type; 
      cond->location = location;
-     cond->value.list_cmp.left_list = left_list;
-     cond->value.list_cmp.right_list = right_list;
+     cond->list_cmp.left_list = left_list;
+     cond->list_cmp.right_list = right_list;
      return cond;
 }
 
-GPCondition *newASTAtomComparison(ConditionType exp_type, YYLTYPE location,
+GPCondition *newASTAtomComparison(ConditionType type, YYLTYPE location,
 	                        GPAtom *left_exp, GPAtom *right_exp)
 {
      GPCondition *cond = malloc(sizeof(GPCondition));
@@ -402,10 +387,10 @@ GPCondition *newASTAtomComparison(ConditionType exp_type, YYLTYPE location,
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     cond->exp_type = exp_type; 
+     cond->type = type; 
      cond->location = location;
-     cond->value.atom_cmp.left_exp = left_exp;
-     cond->value.atom_cmp.right_exp = right_exp;
+     cond->atom_cmp.left_exp = left_exp;
+     cond->atom_cmp.right_exp = right_exp;
      return cond;
 }
 
@@ -417,13 +402,13 @@ GPCondition *newASTNotExp(YYLTYPE location, GPCondition *not_exp)
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     cond->exp_type = BOOL_NOT;
+     cond->type = BOOL_NOT;
      cond->location = location;
-     cond->value.not_exp = not_exp;
+     cond->not_exp = not_exp;
      return cond;
 }
 
-GPCondition *newASTBinaryExp(ConditionType exp_type, YYLTYPE location, 
+GPCondition *newASTBinaryExp(ConditionType type, YYLTYPE location, 
                            GPCondition *left_exp, GPCondition *right_exp)
 {
      GPCondition *cond = malloc(sizeof(GPCondition));
@@ -432,10 +417,10 @@ GPCondition *newASTBinaryExp(ConditionType exp_type, YYLTYPE location,
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     cond->exp_type = exp_type; 
+     cond->type = type; 
      cond->location = location;
-     cond->value.bin_exp.left_exp = left_exp;
-     cond->value.bin_exp.right_exp = right_exp;
+     cond->bin_exp.left_exp = left_exp;
+     cond->bin_exp.right_exp = right_exp;
      return cond;
 }
 
@@ -448,10 +433,10 @@ GPAtom *newASTVariable(YYLTYPE location, string name)
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     atom->exp_type = VARIABLE;
+     atom->type = VARIABLE;
      atom->location = location;
-     atom->value.variable.name = strdup(name);
-     atom->value.variable.type = LIST_VAR;
+     atom->variable.name = strdup(name);
+     atom->variable.type = LIST_VAR;
      return atom;
 }
 
@@ -463,9 +448,9 @@ GPAtom *newASTNumber(YYLTYPE location, int number)
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     atom->exp_type = INTEGER_CONSTANT;
+     atom->type = INTEGER_CONSTANT;
      atom->location = location;
-     atom->value.number = number;
+     atom->number = number;
      return atom;
 }
 
@@ -477,14 +462,14 @@ GPAtom *newASTString(YYLTYPE location, string string)
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     atom->exp_type = STRING_CONSTANT;
+     atom->type = STRING_CONSTANT;
      atom->location = location;
-     if(string) atom->value.string = strdup(string);
-     else atom->value.string = NULL;
+     if(string) atom->string = strdup(string);
+     else atom->string = NULL;
      return atom;
 }
 
-GPAtom *newASTDegreeOp(AtomType exp_type, YYLTYPE location, 
+GPAtom *newASTDegreeOp(AtomType type, YYLTYPE location, 
                             string node_id)
 {
      GPAtom *atom = malloc(sizeof(GPAtom));
@@ -493,9 +478,9 @@ GPAtom *newASTDegreeOp(AtomType exp_type, YYLTYPE location,
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     atom->exp_type = exp_type; 
+     atom->type = type; 
      atom->location = location;
-     atom->value.node_id = strdup(node_id);
+     atom->node_id = strdup(node_id);
      return atom;
 }
 
@@ -507,14 +492,14 @@ GPAtom *newASTLength(YYLTYPE location, string name)
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     atom->exp_type = LENGTH;
+     atom->type = LENGTH;
      atom->location = location;
-     atom->value.variable.name = strdup(name);
-     atom->value.variable.type = LIST_VAR;
+     atom->variable.name = strdup(name);
+     atom->variable.type = LIST_VAR;
      return atom;
 }
 
-GPAtom *newASTNegExp(YYLTYPE location, GPAtom *exp)
+GPAtom *newASTNegExp(YYLTYPE location, GPAtom *neg_exp)
 {
      GPAtom *atom = malloc(sizeof(GPAtom));
      if(atom == NULL) 
@@ -522,13 +507,13 @@ GPAtom *newASTNegExp(YYLTYPE location, GPAtom *exp)
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     atom->exp_type = NEG;
+     atom->type = NEG;
      atom->location = location;
-     atom->value.exp = exp;
+     atom->neg_exp = neg_exp;
      return atom;
 }
 
-GPAtom *newASTBinaryOp(AtomType exp_type, YYLTYPE location, 
+GPAtom *newASTBinaryOp(AtomType type, YYLTYPE location, 
                        GPAtom *left_exp, GPAtom *right_exp)
 {
      GPAtom *atom = malloc(sizeof(GPAtom));
@@ -537,10 +522,10 @@ GPAtom *newASTBinaryOp(AtomType exp_type, YYLTYPE location,
        print_to_log("Error (AST): malloc failure.\n");
        exit(1);
      }
-     atom->exp_type = exp_type; 
+     atom->type = type; 
      atom->location = location;
-     atom->value.bin_op.left_exp = left_exp;
-     atom->value.bin_op.right_exp = right_exp;
+     atom->bin_op.left_exp = left_exp;
+     atom->bin_op.right_exp = right_exp;
      return atom;
 }
 
@@ -572,6 +557,7 @@ GPRule *newASTRule(YYLTYPE location, string name, List *variables,
       print_to_log("Error (AST): malloc failure.\n");
       exit(1);
     }
+    rule->id = 0;
     rule->node_type = RULE;
     rule->location = location;
     rule->name = strdup(name);
@@ -686,8 +672,8 @@ void reverseGraphAST(GPGraph *graph)
       List *iterator = graph->nodes;
       while(iterator) 
       {
-           iterator->value.node->label->gp_list = 
-             reverse(iterator->value.node->label->gp_list);
+           iterator->node->label->gp_list = 
+             reverse(iterator->node->label->gp_list);
            iterator = iterator->next;
       }
    }
@@ -698,8 +684,8 @@ void reverseGraphAST(GPGraph *graph)
 
       while(iterator)  
       {
-           iterator->value.edge->label->gp_list = 
-             reverse(iterator->value.edge->label->gp_list);
+           iterator->edge->label->gp_list = 
+             reverse(iterator->edge->label->gp_list);
            iterator = iterator->next;
       }
    }
@@ -712,16 +698,16 @@ void freeAST(List *ast)
    {
 	case GLOBAL_DECLARATIONS:
         case LOCAL_DECLARATIONS:
-	     if(ast->value.declaration) 
-               freeASTDeclaration(ast->value.declaration);
+	     if(ast->declaration) 
+               freeASTDeclaration(ast->declaration);
 	     break;	
 
 	case COMMANDS:
-             if(ast->value.command) freeASTCommand(ast->value.command);
+             if(ast->command) freeASTCommand(ast->command);
 	     break;	
 
 	case RULES:
-             if(ast->value.rule_call.rule_name) free(ast->value.rule_call.rule_name);
+             if(ast->rule_call.rule_name) free(ast->rule_call.rule_name);
 	     break;
 
 	case INT_DECLARATIONS:
@@ -729,31 +715,28 @@ void freeAST(List *ast)
 	case STRING_DECLARATIONS:
 	case ATOM_DECLARATIONS:
 	case LIST_DECLARATIONS:
-             if(ast->value.variables) freeAST(ast->value.variables);
+             if(ast->variables) freeAST(ast->variables);
 	     break;
 	
 	case VARIABLE_LIST:
-             if(ast->value.variable_name) free(ast->value.variable_name);
+             if(ast->variable_name) free(ast->variable_name);
 	     break;
 	
 	case INTERFACE_LIST:
-             if(ast->value.node_id) free(ast->value.node_id);
+             if(ast->node_id) free(ast->node_id);
 	     break;
 	
 	case NODE_LIST:
-             if(ast->value.node) freeASTNode(ast->value.node);
+             if(ast->node) freeASTNode(ast->node);
 	     break;
 	
 	case EDGE_LIST:
-             if(ast->value.edge) freeASTEdge(ast->value.edge);
+             if(ast->edge) freeASTEdge(ast->edge);
 	     break;
 
 	case GP_LIST:
-             if(ast->value.atom) freeASTAtom(ast->value.atom);
+             if(ast->atom) freeASTAtom(ast->atom);
 	     break;
-
-	case EMPTY_LIST:
-             break;
 
 	default: print_to_log("Error (freeAST): Unexpected Type: %d\n",
                               (int)ast->list_type); 
@@ -769,16 +752,16 @@ void freeASTDeclaration(GPDeclaration *decl)
    switch(decl->decl_type) 
    {
       case MAIN_DECLARATION:
-           if(decl->value.main_program) 
-             freeASTCommand(decl->value.main_program);
+           if(decl->main_program) 
+             freeASTCommand(decl->main_program);
            break;
 
       case PROCEDURE_DECLARATION:
-           if(decl->value.procedure) freeASTProcedure(decl->value.procedure);
+           if(decl->procedure) freeASTProcedure(decl->procedure);
            break;
 
       case RULE_DECLARATION:
-           if(decl->value.rule) freeASTRule(decl->value.rule);
+           if(decl->rule) freeASTRule(decl->rule);
            break;
 
       default: print_to_log("Error (freeASTDeclaration): Unexpected Type: "
@@ -794,41 +777,41 @@ void freeASTCommand(GPCommand *command)
    switch(command->command_type) 
    {
       case COMMAND_SEQUENCE:	
-           if(command->value.commands) freeAST(command->value.commands);
+           if(command->commands) freeAST(command->commands);
            break;
 
       case RULE_CALL:
-           if(command->value.rule_call.rule_name) free(command->value.rule_call.rule_name);
+           if(command->rule_call.rule_name) free(command->rule_call.rule_name);
            break;
 
       case RULE_SET_CALL:
-           if(command->value.rule_set) freeAST(command->value.rule_set);
+           if(command->rule_set) freeAST(command->rule_set);
            break;
 
       case PROCEDURE_CALL:
-           if(command->value.proc_call.proc_name) free(command->value.proc_call.proc_name);
+           if(command->proc_call.proc_name) free(command->proc_call.proc_name);
            break;
 
       case IF_STATEMENT:
       case TRY_STATEMENT:
-           if(command->value.cond_branch.condition) 
-             freeASTCommand(command->value.cond_branch.condition);
-           if(command->value.cond_branch.then_command) 
-             freeASTCommand(command->value.cond_branch.then_command);
-           if(command->value.cond_branch.else_command) 
-             freeASTCommand(command->value.cond_branch.else_command);
+           if(command->cond_branch.condition) 
+             freeASTCommand(command->cond_branch.condition);
+           if(command->cond_branch.then_command) 
+             freeASTCommand(command->cond_branch.then_command);
+           if(command->cond_branch.else_command) 
+             freeASTCommand(command->cond_branch.else_command);
            break;
 
       case ALAP_STATEMENT:
-           if(command->value.loop_stmt.loop_body) 
-              freeASTCommand(command->value.loop_stmt.loop_body);
+           if(command->loop_stmt.loop_body) 
+              freeASTCommand(command->loop_stmt.loop_body);
            break;
 
       case PROGRAM_OR:
-           if(command->value.or_stmt.left_command) 
-             freeASTCommand(command->value.or_stmt.left_command);
-           if(command->value.or_stmt.right_command) 
-             freeASTCommand(command->value.or_stmt.right_command);
+           if(command->or_stmt.left_command) 
+             freeASTCommand(command->or_stmt.left_command);
+           if(command->or_stmt.right_command) 
+             freeASTCommand(command->or_stmt.right_command);
            break;
 
       case SKIP_STATEMENT:
@@ -846,51 +829,51 @@ void freeASTCommand(GPCommand *command)
 void freeASTCondition(GPCondition *cond)
 {
    if(cond == NULL) return;
-   switch(cond->exp_type) 
+   switch(cond->type) 
    {
       case INT_CHECK:
       case STRING_CHECK:
       case ATOM_CHECK:
-           if(cond->value.var) free(cond->value.var);
+           if(cond->var) free(cond->var);
            break;
 
       case EDGE_PRED:
-           if(cond->value.edge_pred.source) free(cond->value.edge_pred.source);
-	   if(cond->value.edge_pred.target) free(cond->value.edge_pred.target);
-	   if(cond->value.edge_pred.label) freeASTLabel(cond->value.edge_pred.label);
+           if(cond->edge_pred.source) free(cond->edge_pred.source);
+	   if(cond->edge_pred.target) free(cond->edge_pred.target);
+	   if(cond->edge_pred.label) freeASTLabel(cond->edge_pred.label);
            break;
 
       case EQUAL:
       case NOT_EQUAL:
-           if(cond->value.list_cmp.left_list) freeAST(cond->value.list_cmp.left_list);
-           if(cond->value.list_cmp.right_list) freeAST(cond->value.list_cmp.right_list);
+           if(cond->list_cmp.left_list) freeAST(cond->list_cmp.left_list);
+           if(cond->list_cmp.right_list) freeAST(cond->list_cmp.right_list);
            break;
 
       case GREATER:
       case GREATER_EQUAL:
       case LESS:
       case LESS_EQUAL:
-           if(cond->value.atom_cmp.left_exp)
-             freeASTAtom(cond->value.atom_cmp.left_exp);
-           if(cond->value.atom_cmp.right_exp) 
-             freeASTAtom(cond->value.atom_cmp.right_exp);
+           if(cond->atom_cmp.left_exp)
+             freeASTAtom(cond->atom_cmp.left_exp);
+           if(cond->atom_cmp.right_exp) 
+             freeASTAtom(cond->atom_cmp.right_exp);
            break;	  
 
 
       case BOOL_NOT:
-           if(cond->value.not_exp) freeASTCondition(cond->value.not_exp);
+           if(cond->not_exp) freeASTCondition(cond->not_exp);
 	   break;
 
       case BOOL_OR:
       case BOOL_AND:
-           if(cond->value.bin_exp.left_exp)
-              freeASTCondition(cond->value.bin_exp.left_exp);
-           if(cond->value.bin_exp.right_exp) 
-              freeASTCondition(cond->value.bin_exp.right_exp);
+           if(cond->bin_exp.left_exp)
+              freeASTCondition(cond->bin_exp.left_exp);
+           if(cond->bin_exp.right_exp) 
+              freeASTCondition(cond->bin_exp.right_exp);
       break;
 
       default: print_to_log("Error (freeASTCondition): Unexpected type: %d\n",
-                              (int)cond->exp_type); 
+                              (int)cond->type); 
                break;
 	}
    free(cond);
@@ -899,30 +882,30 @@ void freeASTCondition(GPCondition *cond)
 void freeASTAtom(GPAtom *atom)
 {
    if(atom == NULL) return;
-   switch(atom->exp_type) 
+   switch(atom->type) 
    {
       case VARIABLE:
-           if(atom->value.variable.name) free(atom->value.variable.name);
+           if(atom->variable.name) free(atom->variable.name);
            break;
 
       case INTEGER_CONSTANT:
            break;
 
       case STRING_CONSTANT:
-           if(atom->value.string) free(atom->value.string);
+           if(atom->string) free(atom->string);
            break;
 
       case INDEGREE:
       case OUTDEGREE:
-           if(atom->value.node_id) free(atom->value.node_id);
+           if(atom->node_id) free(atom->node_id);
            break;
 
       case LENGTH:
-           if(atom->value.variable.name) free(atom->value.variable.name);
+           if(atom->variable.name) free(atom->variable.name);
            break;
 
       case NEG:
-           if(atom->value.exp) freeASTAtom(atom->value.exp);
+           if(atom->neg_exp) freeASTAtom(atom->neg_exp);
            break;
 
       case ADD:
@@ -930,14 +913,12 @@ void freeASTAtom(GPAtom *atom)
       case MULTIPLY:
       case DIVIDE:
       case CONCAT:
-           if(atom->value.bin_op.left_exp) 
-              freeASTAtom(atom->value.bin_op.left_exp);
-           if(atom->value.bin_op.right_exp)
-              freeASTAtom(atom->value.bin_op.right_exp);
+           if(atom->bin_op.left_exp) freeASTAtom(atom->bin_op.left_exp);
+           if(atom->bin_op.right_exp) freeASTAtom(atom->bin_op.right_exp);
            break;
 
       default: print_to_log("Error (freeASTAtom): Unexpected type: %d\n",
-                            (int)atom->exp_type); 
+                            (int)atom->type); 
                break;
       }
    free(atom);

@@ -386,8 +386,6 @@ RootNode: /* empty */
 Bidirection: /* empty */ 
 	   | BIDIRECTIONAL		{ is_bidir = true; }
 
-/* Position: '(' NUM ',' NUM ')' 	{ $$ = newASTPosition(@$, $2, $4); } */
-
 
  /* Grammar for GP2 Conditions. */
 
@@ -421,25 +419,30 @@ LabelArg: /* empty */ 			{ $$ = NULL; }
  /* Grammar for GP2 Labels */
 
 Label: List				{ $$ = newASTLabel(@$, NONE, $1); }
+     | _EMPTY				{ $$ = newASTLabel(@$, NONE, NULL); }
      | List '#' MARK	  		{ $$ = newASTLabel(@$, $3, $1); }
+     | _EMPTY '#' MARK	  		{ $$ = newASTLabel(@$, $3, NULL); }
      /* Any has a distinct token since it cannot occur in the host graph. */
      | List '#' ANY_MARK		{ $$ = newASTLabel(@$, $3, $1); }
+     | _EMPTY '#' ANY_MARK		{ $$ = newASTLabel(@$, $3, NULL); }
 
 
 List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); } 
     | List ':' AtomExp 			{ $$ = addASTAtom(@3, $3, $1); }
-    | _EMPTY				{ $$ = addASTEmptyList(@$); }
+    /* The empty keyword in the middle of a list is a syntax error. */
+    | List ':' _EMPTY			{ $$ = $1;
+    					  report_warning("Empty symbol in the "
+     					                 "middle of a list.\n"); }
 
 
 AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
        | NUM 				{ $$ = newASTNumber(@$, $1); }
-       | STR 				{ $$ = newASTString(@$, $1); 
-					  if($1) free($1); }
+       | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }
        | INDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(INDEGREE, @$, $3); 
 					  if($3) free($3); }
        | OUTDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(OUTDEGREE, @$, $3); 
 				 	  if($3) free($3); }
-       | _LENGTH '(' Variable ')' 	{ $$ = newASTLength(@$, $3); }
+       | _LENGTH '(' Variable ')' 	{ $$ = newASTLength(@$, $3); if($3) free($3); }
        | '-' AtomExp %prec UMINUS 	{ $$ = newASTNegExp(@$, $2); } 
        | '(' AtomExp ')' 		{ $$ = $2; }
        | AtomExp '+' AtomExp 		{ $$ = newASTBinaryOp(ADD, @$, $1, $3);  }
@@ -486,12 +489,16 @@ HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
                      			  if($6) free($6); }
 
 HostLabel: HostList			{ $$ = newASTLabel(@$, NONE, $1); }
+         | _EMPTY			{ $$ = newASTLabel(@$, NONE, NULL); }
          | HostList '#' MARK	  	{ $$ = newASTLabel(@$, $3, $1); }
+         | _EMPTY '#' MARK	  	{ $$ = newASTLabel(@$, $3, NULL); }
 
 HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); } 
         | HostList ':' HostExp 		{ $$ = addASTAtom(@3, $3, $1); }
-        | _EMPTY			{ $$ = addASTEmptyList(@$); }
-
+        /* The empty keyword in the middle of a list is a syntax error. */
+        | HostList ':' _EMPTY	        { $$ = $1;
+					  report_warning("Error: empty symbol in the "
+     					                 "middle of a list.\n"); }
 
 HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
        | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }

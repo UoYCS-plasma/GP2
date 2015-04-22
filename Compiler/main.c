@@ -104,10 +104,9 @@ int main(int argc, char **argv)
       gp_program = reverse(gp_program);
       #ifdef DEBUG
          /* analyseProgram prints the symbol table before exiting. */
-         bool valid_program = analyseProgram(gp_program, true);
-         printDotAST(gp_program, program_file, "_1");
+         bool valid_program = analyseProgram(gp_program, true, program_file);
       #else
-         bool valid_program = analyseProgram(gp_program, false);
+         bool valid_program = analyseProgram(gp_program, false, NULL);
       #endif
       if(valid_program && !syntax_error) 
       {
