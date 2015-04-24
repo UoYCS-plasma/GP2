@@ -393,13 +393,21 @@ Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map)
            break;
 
       case NEG:
-           atom.neg_exp = malloc(sizeof(Atom));
-           if(atom.neg_exp == NULL)
+           if(ast_atom->neg_exp->type == INTEGER_CONSTANT)
            {
-              print_to_log("Error (transformAtom): malloc failure.\n");
-              exit(1);
+              atom.number = -(ast_atom->neg_exp->number);
+              break;
            }
-           *(atom.neg_exp) = transformAtom(ast_atom->neg_exp, node_map);
+           else
+           {
+              atom.neg_exp = malloc(sizeof(Atom));
+              if(atom.neg_exp == NULL)
+              {
+                 print_to_log("Error (transformAtom): malloc failure.\n");
+                 exit(1);
+              }
+              *(atom.neg_exp) = transformAtom(ast_atom->neg_exp, node_map);
+           }
            break;
 
       case ADD:

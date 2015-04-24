@@ -24,9 +24,8 @@
 #define MIN_HOST_NODE_SIZE 256
 #define MIN_HOST_EDGE_SIZE 256
 
-/* The size of the five runtime arrays that support the building of the host
- * graph. */
-#define BUFFER_SIZE 4096
+/* The size of the runtime arrays that support the building of the host graph. */
+#define BUFFER_SIZE 2000
 
 #include "ast.h"
 #include "error.h"

@@ -1,10 +1,12 @@
-ROBJECTS := $(patsubst %.c, %.o, $(wildcard *.c))
+# Runtime objects.
+ROBJECTS := $(patsubst %.c, %.o, $(wildcard *.c)) $(patsubst %.c, %.o, $(wildcard host/*.c)) 
+# Library objects.
 LOBJECTS = ../debug.o ../error.o ../label.o ../graph.o ../graphStacks.o ../rule.o 
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
 CC = gcc 
-CFLAGS = -g -O0 -Wall -Wextra 
-#CFLAGS = -O2 -fomit-frame-pointer -Wall -Wextra 
+#CFLAGS = -g -O0 -Wall -Wextra 
+CFLAGS = -O2 -fomit-frame-pointer -Wall -Wextra 
 LFLAGS = -lglib-2.0
 
 default:	$(OBJECTS)
@@ -15,5 +17,6 @@ default:	$(OBJECTS)
 
 # Delete all files except Makefile, match.c and match.h. 
 clean:		
-		ls | grep -v 'Makefile\|match' | xargs rm
+		ls | grep -v 'host\|Makefile\|match' | xargs rm
+		rm host/*
 		rm match.o

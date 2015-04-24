@@ -108,22 +108,6 @@ int addNode(Graph *graph, bool root, Label label)
 
    graph->nodes[index].index = index;
    graph->nodes[index].root = root;
-   graph->nodes[index].out_index = 0;
-   graph->nodes[index].in_index = 0;
-   graph->nodes[index].extra_out_edges = NULL;
-   graph->nodes[index].extra_in_edges = NULL;
-   graph->nodes[index].out_pool_size = 0;
-   graph->nodes[index].in_pool_size = 0;
-   graph->nodes[index].outdegree = 0;
-   graph->nodes[index].indegree= 0;
-   graph->nodes[index].bidegree= 0;
-   
-   int count;
-   for(count = 0; count < MAX_INCIDENT_EDGES; count++)
-   {
-      graph->nodes[index].out_edges[count] = -1;
-      graph->nodes[index].in_edges[count] = -1;
-   }
 
    LabelClass label_class = getLabelClass(label);
    graph->nodes[index].label_class = label_class;

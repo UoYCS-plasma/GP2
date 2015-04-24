@@ -127,7 +127,6 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
    if(edges > 0) 
    {
       morphism->edge_map = calloc(edges, sizeof(Map));
-
       if(morphism->edge_map == NULL)
       {
          print_to_log("Memory exhausted during morphism construction.\n");
@@ -148,7 +147,6 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
    if(variables > 0) 
    {
       morphism->assignment = calloc(variables, sizeof(Assignment));
-
       if(morphism->assignment == NULL)
       {
          print_to_log("Memory exhausted during morphism construction.\n");
@@ -157,10 +155,8 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
       for(count = 0; count < variables; count++)
       {
          morphism->assignment[count].variable = NULL;
-         morphism->assignment[count].value.first = NULL;
-         morphism->assignment[count].value.last = NULL;
+         morphism->assignment[count].value = NULL;
       }
-
    }
    else morphism->assignment = NULL;
    return morphism;
@@ -197,8 +193,7 @@ void clearMorphism(Morphism *morphism)
       for(count = 0; count < morphism->variables; count++)
       {
          morphism->assignment[count].variable = NULL;
-         morphism->assignment[count].value.first = NULL;
-         morphism->assignment[count].value.last = NULL;
+         morphism->assignment[count].value = NULL;
       }
    }
 }
@@ -217,7 +212,7 @@ void addEdgeMap(Morphism *morphism, int left_index, int host_index)
    morphism->edge_map_index++;
 }
 
-void addAssignment(Morphism *morphism, string variable, GP2List value)
+void addAssignment(Morphism *morphism, string variable, Atom *value)
 {
    morphism->assignment[morphism->assignment_index].variable = variable;
    morphism->assignment[morphism->assignment_index].value = value;
@@ -242,8 +237,7 @@ void removeAssignment(Morphism *morphism)
 {
    morphism->assignment_index--;
    morphism->assignment[morphism->assignment_index].variable = NULL;
-   morphism->assignment[morphism->assignment_index].value.first = NULL;
-   morphism->assignment[morphism->assignment_index].value.last = NULL;
+   morphism->assignment[morphism->assignment_index].value = NULL;
 }
 
 
@@ -265,9 +259,7 @@ void printMorphism(Morphism *morphism)
       printf("No morphism exists.\n\n");
       return;
    }
-   
    int count;
-
    if(morphism->node_map)
    {
       printf("\nNode Mappings\n=============\n");
@@ -276,7 +268,6 @@ void printMorphism(Morphism *morphism)
                  morphism->node_map[count].host_index);
       printf("\n");
    }
-
    if(morphism->edge_map)
    {
       printf("Edge Mappings\n=============\n");
@@ -285,13 +276,12 @@ void printMorphism(Morphism *morphism)
                  morphism->edge_map[count].host_index);
       printf("\n");
    }
-
    if(morphism->assignment)
    {
       for(count = 0; count < morphism->variables; count++)
       {
          printf("Variable %s -> ", morphism->assignment[count].variable);
-         printGP2List(morphism->assignment[count].value, stdout);
+         printAtom(morphism->assignment[count].value, stdout);
          printf("\n");
       }
    }
@@ -305,6 +295,4 @@ void freeMorphism(Morphism *morphism)
    if(morphism->assignment) free(morphism->assignment);
    free(morphism);
 }
-
-
 

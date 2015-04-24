@@ -1,5 +1,38 @@
 #include "label.h"
 
+Label makeBlankLabel(MarkType mark)
+{
+   Label label = { .mark = mark,
+                   .length = 0,
+                   .list = NULL };
+   return label;
+}
+
+Label makeHostLabel(Constant *constant, int length, MarkType mark)
+{
+   Atom *list = makeList(length);
+   int index;
+   for(index = 0; index < length; index++)
+   {
+      if(constant[index].type == 'i')
+      {
+         list[index].type = INTEGER_CONSTANT;
+         list[index].number = constant[index].number;
+      }
+      else if(constant[index].type == 's')
+      {
+         list[index].type = STRING_CONSTANT;
+         list[index].string = strdup(constant[index].string);
+      }
+      else print_to_log("Error (makeLabel): Unexpected constant type %c.\n",
+                        constant[index].type);
+   }
+   Label label = { .mark = mark,
+                   .length = 0,
+                   .list = list };
+   return label;
+}
+
 Atom *makeList(int length)
 {
    Atom *list = malloc(length * sizeof(Atom));
@@ -327,6 +360,7 @@ void printMark(MarkType mark, FILE *file)
 
 void freeLabel(Label label)
 {
+   if(label.list == NULL) return;
    int index;
    for(index = 0; index < label.length; index++)
       /* freeAtom called with false because these atoms are not individually

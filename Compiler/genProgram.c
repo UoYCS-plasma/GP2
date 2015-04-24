@@ -9,14 +9,6 @@ int undo_point_count = 0;
 
 void generateRuntimeCode(List *declarations)
 {
-   FILE *host_file = fopen("runtime/host.h", "w");
-   if(host_file == NULL) { 
-     perror("runtime/host.h");
-     exit(1);
-   }  
-   fprintf(host_file, "extern Graph *host;\n");
-   fclose(host_file);
-
    main_source = fopen("runtime/main.c", "w");
    if(main_source == NULL) { 
      perror("runtime/main.c");
@@ -28,8 +20,8 @@ void generateRuntimeCode(List *declarations)
         "#include \"../debug.h\"\n"
         "#include \"../graph.h\"\n"
         "#include \"../graphStacks.h\"\n"
+        "#include \"host/host.h\"\n"
         "#include \"init_runtime.h\"\n"
-        "#include \"host.h\"\n"
         "#include \"match.h\"\n\n");
    generateMorphismCode(declarations, 'd');
    PTMS("Graph *host = NULL;\n"

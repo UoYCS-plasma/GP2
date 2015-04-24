@@ -2,127 +2,148 @@
 
 void generateHostGraphCode(GPGraph *ast_host_graph)
 {
+   FILE *host_file = fopen("runtime/host/host.h", "w");
+   if(host_file == NULL) { 
+     perror("runtime/host/host.h");
+     exit(1);
+   }  
+   fprintf(host_file, "#ifndef INC_HOST_H\n");
+   fprintf(host_file, "#define INC_HOST_H\n\n");
+   fprintf(host_file, "extern Graph *host;\n");
+
    FILE *header = fopen("runtime/init_runtime.h", "w");
    if(header == NULL) { 
      perror("init_runtime.h");
      exit(1);
-   }  
+   } 
+
    FILE *source = fopen("runtime/init_runtime.c", "w");
    if(source == NULL) { 
      perror("init_runtime.c");
      exit(1);
    }
    fprintf(header, "#include \"../graph.h\"\n"
+                   "#include \"host/host.h\"\n"
  		   "Graph *makeHostGraph(void);\n");
-   PTIS("#include \"init_runtime.h\"\n\n"
-        "Graph *makeHostGraph(void)\n"
-        "{\n");
 
+   PTIS("#include \"init_runtime.h\"\n\n");
+   PTIS("Graph *makeHostGraph(void)\n");
+   PTIS("{\n");
    if(ast_host_graph == NULL) 
    {
-      PTIS("   return NULL;\n");
+      PTIS("   return newGraph(%d, %d);\n", MIN_HOST_NODE_SIZE,
+           MIN_HOST_EDGE_SIZE);
       PTIS("}\n");
       return;
    }
-
    int host_nodes = countNodes(ast_host_graph);
    int host_edges = countEdges(ast_host_graph);
-   int node_buffer_size = host_nodes > BUFFER_SIZE ? BUFFER_SIZE : host_nodes + 1;
-   int edge_buffer_size = host_edges > BUFFER_SIZE ? BUFFER_SIZE : host_edges + 1;
    int host_node_size = getArraySize(host_nodes, MIN_HOST_NODE_SIZE);
    int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
+   int node_file_count = 0, edge_file_count = 0;
 
-   PTIS("   Graph *host = newGraph(%d, %d);\n"
-        "   int count = 0;\n\n", host_node_size, host_edge_size);
-   PTIS("   /* Arrays to store data for adding nodes and edges. */\n");
-   PTIS("   bool root_nodes[%d] = {false};\n", node_buffer_size);
-   PTIS("   Label *node_labels[%d] = {NULL};\n", node_buffer_size);
-   if(host_edges > 0) 
-   {
-      PTIS("   int edge_sources[%d] = {0};\n", edge_buffer_size);
-      PTIS("   int edge_targets[%d] = {0};\n", edge_buffer_size);
-      PTIS("   Label *edge_labels[%d] = {NULL};\n", edge_buffer_size);
-   }
-   PTIS("\n");
-
-   /* Hash table mapping node identifiers (from the AST) to their indices in 
-    * the host graph. The nodes are added to the host graph according to their
-    * order in the AST's node list, hence the host graph indices are known
-    * at compile time. */
-   int node_map[host_nodes], count;
-   for(count = 0; count < host_nodes; count++) node_map[count] = -1;
+   PTIS("   Graph *host = newGraph(%d, %d);\n\n", host_node_size, host_edge_size);
 
    List *nodes = ast_host_graph->nodes;
-   int node_index = 0, node_count = 0;
    /* Populate the runtime arrays with the necessary data to add each node. */
-   while(nodes != NULL)
-   { 
-      GPNode *ast_node = nodes->node;
-      if(ast_node->root) PTIS("   root_nodes[%d] = true;\n", node_count);
-      if(ast_node->label->mark != NONE)
-         PTIS("   node_labels[%d] = makeEmptyList(%d);\n", node_count, 
-              ast_node->label->mark);
-      /* Assumes the nodes are named in order from 0: n0, n1 etc. */
-      int map_index = (int)strtol((ast_node->name) + 1, NULL, 0);
-      node_map[map_index] = node_index++;   
-      if(++node_count == node_buffer_size)
-      {
-         PTIS("\n");
-         PTIS("   for(count = 0; count < %d; count++)\n"
-              "      addNode(host, root_nodes[count], node_labels[count]);\n",
-              node_buffer_size);
-         PTIS("   memset(root_nodes, 0, %d * sizeof(bool));\n", node_buffer_size);
-         PTIS("   memset(node_labels, 0, %d * sizeof(Label*));\n\n", node_buffer_size);
-         node_count = 0;
-      }
-      nodes = nodes->next;   
-   }
-   /* In the likely case that the number of host nodes is not a multiple of 
-    * node_buffer_size, add the remaining nodes. */
-   if(node_count > 0 && node_count < node_buffer_size)
+   if(host_nodes <= BUFFER_SIZE)
    {
+      while(nodes != NULL)
+      { 
+         PTIS("   addNode(host, %d, blank_label);\n", nodes->node->root);
+         nodes = nodes->next;   
+      }
       PTIS("\n");
-      PTIS("   for(count = 0; count < %d; count++)\n"
-           "      addNode(host, root_nodes[count], node_labels[count]);\n\n",
-           node_count);
+   }
+   else
+   {
+      node_file_count = (host_nodes / BUFFER_SIZE) + 1;
+      int count;
+      for(count = 0; count < node_file_count && count < 1000; count++)
+      {
+         /* runtime/host/nodes<count>.c, where count is up to 3 digits long. 
+          * The character array includes space for the terminating NULL character. */
+         char file_name[24];
+         snprintf(file_name, 24, "runtime/host/nodes%d.c", count);
+         FILE *node_file = fopen(file_name, "w");
+         if(node_file == NULL) { 
+            perror(file_name);
+            exit(1);
+         }
+         fprintf(node_file, "#include \"../../graph.h\"\n\n");
+         fprintf(host_file, "void nodes%d(Graph *host);\n", count);
+         fprintf(source, "   nodes%d(host);\n", count);
+         fprintf(node_file, "void nodes%d(Graph *host)\n{\n", count);
+         /* Emit code to add BUFFER_SIZE nodes. */
+         int node_count = 0;
+         fprintf(node_file, "   Label blank_label = {NONE, 0, NULL};\n\n");
+         while(nodes != NULL && node_count < BUFFER_SIZE)
+         {
+            fprintf(node_file, "   addNode(host, %d, blank_label);\n", nodes->node->root);
+            node_count++;
+            nodes = nodes->next;   
+         }
+         fprintf(node_file, "}\n");
+         fclose(node_file);
+         if(nodes == NULL) break;
+      }
    }
 
    List *edges = ast_host_graph->edges;
-   int edge_count = 0;
-   while(edges != NULL)
+   if(host_edges <= BUFFER_SIZE)
    {
-      GPEdge *ast_edge = edges->edge;
-      int source_index = (int)strtol((ast_edge->source) + 1, NULL, 0);
-      int target_index = (int)strtol((ast_edge->target) + 1, NULL, 0);
-      PTIS("   edge_sources[%d] = %d; edge_targets[%d] = %d; ",
-           edge_count, node_map[source_index], edge_count, node_map[target_index]);
-      if(ast_edge->label->mark != NONE)
-         PTIS("   edge_labels[%d] = makeEmptyList(%d);\n", edge_count, 
-              ast_edge->label->mark);
-      else PTIS("\n");
-      edge_count++;
-      if(edge_count == edge_buffer_size)
+      while(edges != NULL)
       {
-         PTIS("\n");
-         PTIS("   for(count = 0; count < %d; count++)\n"
-              "      addEdge(host, false, edge_labels[count], edge_sources[count],\n"
-              "              edge_targets[count]);\n", edge_buffer_size);
-         PTIS("   memset(edge_labels, 0, %d * sizeof(Label*));\n\n", edge_buffer_size);
-         edge_count = 0;
+         /* As the nodes, assumed to be named n0, n1, ... are added to the host 
+         * graph in order, the index of each node in the host graph is its number
+         * in its AST identifier. */
+         int source_index = (int)strtol((edges->edge->source) + 1, NULL, 0);
+         int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
+         PTIS("   addEdge(host, false, blank_label, %d, %d);\n",
+              source_index, target_index);
+         edges = edges->next;   
       }
-      edges = edges->next;   
    }
-   /* In the likely case that the number of host edged is not a multiple of 
-    * edge_buffer_size, add the remaining edges. */
-   if(edge_count > 0 && edge_count < edge_buffer_size)
+   else
    {
-      PTIS("\n");
-      PTIS("   for(count = 0; count < %d; count++)\n"
-           "      addEdge(host, false, edge_labels[count], edge_sources[count],\n"
-           "              edge_targets[count]);\n\n", edge_count);
+      edge_file_count = (host_edges / BUFFER_SIZE) + 1;
+      int count;
+      for(count = 0; count < edge_file_count && count < 1000; count++)
+      {
+         /* runtime/host/edges<count>.c, where count is up to 3 digits long.
+          * The array includes space for the terminating NULL character. */
+         char file_name[24];
+         snprintf(file_name, 24, "runtime/host/edges%d.c", count);
+         FILE *edge_file = fopen(file_name, "w");
+         if(edge_file == NULL) { 
+            perror(file_name);
+            exit(1);
+         }
+         fprintf(edge_file, "#include \"../../graph.h\"\n\n");
+         fprintf(host_file, "void edges%d(Graph *host);\n", count);
+         fprintf(source, "   edges%d(host);\n", count);
+         fprintf(edge_file, "void edges%d(Graph *host)\n{\n", count);
+         /* Emit code to add BUFFER_SIZE edges. */
+         int edge_count = 0;
+         fprintf(edge_file, "   Label blank_label = {NONE, 0, NULL};\n\n");
+         while(edges != NULL && edge_count < BUFFER_SIZE)
+         {
+            int source_index = (int)strtol((edges->edge->source) + 1, NULL, 0);
+            int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
+            fprintf(edge_file, "   addEdge(host, false, blank_label, %d, %d);\n", 
+                    source_index, target_index);
+            edge_count++;
+            edges = edges->next;   
+         }
+         fprintf(edge_file, "}\n");
+         fclose(edge_file);
+         if(edges == NULL) break;
+      }
    }
-   PTIS("   return host;\n"
-        "}\n");
+   PTIS("\n   return host;\n");
+   PTIS("}\n");
+   fprintf(host_file, "\n#endif\n");
+   fclose(host_file);
    fclose(header);
    fclose(source);
 }

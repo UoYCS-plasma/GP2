@@ -54,6 +54,14 @@ typedef struct Atom {
    };
 } Atom;
 
+typedef struct Constant {
+   char type; /* 'i' or 's' */
+   union {
+      int number;
+      string string;
+   };
+} Constant;
+
 /* The length of the list in a label is fixed at compile time in the
  * transformation phase. If length > 0, then an array of length atoms is 
  * allocated to heap. The array is populated with the appropriate atoms. */

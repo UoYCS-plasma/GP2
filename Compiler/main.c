@@ -24,7 +24,7 @@
 #include "pretty.h"
 #include "seman.h" 
 
-#define DEBUG
+#undef DEBUG
 #undef PARSER_TRACE 	
 
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
