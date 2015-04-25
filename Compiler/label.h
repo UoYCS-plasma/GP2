@@ -72,6 +72,13 @@ typedef struct Label {
    Atom *list;
 } Label;
 
+/* Defined in graph.c. */
+extern struct Label blank_label;
+
+/* Functions called at runtime to build host labels. */
+Label makeEmptyLabel(MarkType mark);
+Label makeHostLabel(Constant *constant, int length, MarkType mark);
+
 /* Compares a LHS label with a RHS label of the same rule for syntactic equality. 
  * Used in rule generation to determine if an item is relabelled. */
 bool equalRuleLabels(Label left_label, Label right_label);

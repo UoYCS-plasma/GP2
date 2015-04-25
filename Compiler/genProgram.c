@@ -14,14 +14,13 @@ void generateRuntimeCode(List *declarations)
      perror("runtime/main.c");
      exit(1);
    }
-
    PTMS("#include <time.h>\n"
         "#include \"../error.h\"\n"
         "#include \"../debug.h\"\n"
         "#include \"../graph.h\"\n"
         "#include \"../graphStacks.h\"\n"
+        "#include \"buildHost.h\"\n"
         "#include \"host/host.h\"\n"
-        "#include \"init_runtime.h\"\n"
         "#include \"match.h\"\n\n");
    generateMorphismCode(declarations, 'd');
    PTMS("Graph *host = NULL;\n"
@@ -37,7 +36,7 @@ void generateDeclarationCode(List *declarations)
    PTMS("int main(void)\n{\n");
    PTMSI("srand(time(NULL));\n", 3);
    PTMSI("openLogFile();\n", 3);
-   PTMSI("host = makeHostGraph();\n\n", 3);
+   PTMSI("host = buildHostGraph();\n\n", 3);
    #ifdef GRAPH_TRACE
       PTMSI("print_to_log(\"/* Start Graph. */\\n\");\n", 3);
       PTMSI("printGraph(host, log_file);\n\n", 3);

@@ -1,5 +1,6 @@
 #include "graph.h"
 
+Label blank_label = {NONE, 0, NULL};
 Node dummy_node = {-1, false, EMPTY_L, {NONE, 0, NULL}, {-1}, {-1},
                    NULL, NULL, 0, 0, 0, 0, 0, 0, 0, -1};
 Edge dummy_edge = {-1, false, EMPTY_L, {NONE, 0, NULL}, -1, -1, -1};
@@ -111,7 +112,10 @@ int addNode(Graph *graph, bool root, Label label)
 
    LabelClass label_class = getLabelClass(label);
    graph->nodes[index].label_class = label_class;
-   graph->nodes[index].label = label;
+   graph->nodes[index].label.mark = label.mark;
+   graph->nodes[index].label.length = label.length;
+   graph->nodes[index].label.list = label.list;
+
    int label_index = addLabelClassIndex(&graph->nodes_by_label[label_class],
                                         index, graph->node_pool_size);
    graph->nodes[index].label_table_index = label_index;
@@ -176,7 +180,9 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
 
    LabelClass label_class = getLabelClass(label);
    graph->edges[index].label_class = label_class;
-   graph->edges[index].label = label;
+   graph->edges[index].label.mark = label.mark;
+   graph->edges[index].label.length = label.length;
+   graph->edges[index].label.list = label.list;
 
    int label_index = addLabelClassIndex(&graph->edges_by_label[label_class], 
                                         index, graph->edge_pool_size);

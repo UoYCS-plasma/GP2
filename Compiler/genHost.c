@@ -2,6 +2,9 @@
 
 void generateHostGraphCode(GPGraph *ast_host_graph)
 {
+   /* The host header contains the declaration of both the host graph and 
+    * any functions that add a batch of nodes or edges to the host graph in
+    * case of the host graph being sufficiently large. */
    FILE *host_file = fopen("runtime/host/host.h", "w");
    if(host_file == NULL) { 
      perror("runtime/host/host.h");
@@ -11,29 +14,30 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    fprintf(host_file, "#define INC_HOST_H\n\n");
    fprintf(host_file, "extern Graph *host;\n");
 
-   FILE *header = fopen("runtime/init_runtime.h", "w");
+   /* init_runtime has the code for building the host graph and, in the future,
+    * code to gather host graph metrics for dynamic matching strategies. */
+   FILE *header = fopen("runtime/buildHost.h", "w");
    if(header == NULL) { 
      perror("init_runtime.h");
      exit(1);
    } 
-
-   FILE *source = fopen("runtime/init_runtime.c", "w");
-   if(source == NULL) { 
+   FILE *file = fopen("runtime/buildHost.c", "w");
+   if(file == NULL) { 
      perror("init_runtime.c");
      exit(1);
    }
    fprintf(header, "#include \"../graph.h\"\n"
                    "#include \"host/host.h\"\n"
- 		   "Graph *makeHostGraph(void);\n");
+ 		   "Graph *buildHostGraph(void);\n");
 
-   PTIS("#include \"init_runtime.h\"\n\n");
-   PTIS("Graph *makeHostGraph(void)\n");
-   PTIS("{\n");
+   PTF("#include \"buildHost.h\"\n\n");
+   PTF("Graph *buildHostGraph(void)\n");
+   PTF("{\n");
    if(ast_host_graph == NULL) 
    {
-      PTIS("   return newGraph(%d, %d);\n", MIN_HOST_NODE_SIZE,
+      PTF("   return newGraph(%d, %d);\n", MIN_HOST_NODE_SIZE,
            MIN_HOST_EDGE_SIZE);
-      PTIS("}\n");
+      PTF("}\n");
       return;
    }
    int host_nodes = countNodes(ast_host_graph);
@@ -41,19 +45,26 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    int host_node_size = getArraySize(host_nodes, MIN_HOST_NODE_SIZE);
    int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
    int node_file_count = 0, edge_file_count = 0;
-
-   PTIS("   Graph *host = newGraph(%d, %d);\n\n", host_node_size, host_edge_size);
+   PTF("   Graph *host = newGraph(%d, %d);\n\n", host_node_size, host_edge_size);
 
    List *nodes = ast_host_graph->nodes;
-   /* Populate the runtime arrays with the necessary data to add each node. */
+   /* Build the host graph in init_runtime.c if the number of nodes is small 
+    * enough. Otherwise, create new source files to add BUFFER_SIZE nodes
+    * to the graph. */
    if(host_nodes <= BUFFER_SIZE)
    {
+      PTF("   Label label;\n\n");
+      int node_count = 0;
       while(nodes != NULL)
-      { 
-         PTIS("   addNode(host, %d, blank_label);\n", nodes->node->root);
+      {
+         string label_name = generateLabelCode(nodes->node->label, 
+                                               node_count++, file);
+         if(label_name != NULL) PTF("   addNode(host, %d, %s);\n", 
+                                     nodes->node->root, label_name);
+         if(strcmp(label_name, "blank_label")) PTF("\n"); 
          nodes = nodes->next;   
       }
-      PTIS("\n");
+      PTF("\n");
    }
    else
    {
@@ -70,17 +81,24 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             perror(file_name);
             exit(1);
          }
-         fprintf(node_file, "#include \"../../graph.h\"\n\n");
+         /* The "nodes" functions are declared in host.h, called in 
+          * buildHost.c, and defined in the corresponding nodes.c file. */
+         PTF("   nodes%d(host);\n", count);
          fprintf(host_file, "void nodes%d(Graph *host);\n", count);
-         fprintf(source, "   nodes%d(host);\n", count);
+         fprintf(node_file, "#include \"../../graph.h\"\n\n");
          fprintf(node_file, "void nodes%d(Graph *host)\n{\n", count);
+
          /* Emit code to add BUFFER_SIZE nodes. */
+         fprintf(node_file, "   Label label;\n\n");
          int node_count = 0;
-         fprintf(node_file, "   Label blank_label = {NONE, 0, NULL};\n\n");
          while(nodes != NULL && node_count < BUFFER_SIZE)
          {
-            fprintf(node_file, "   addNode(host, %d, blank_label);\n", nodes->node->root);
-            node_count++;
+            string label_name = generateLabelCode(nodes->node->label, 
+                                                  node_count++, node_file);
+            if(label_name != NULL)
+               fprintf(node_file, "   addNode(host, %d, %s);\n", 
+                       nodes->node->root, label_name);
+            if(strcmp(label_name, "blank_label")) PTF("\n"); 
             nodes = nodes->next;   
          }
          fprintf(node_file, "}\n");
@@ -92,15 +110,23 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    List *edges = ast_host_graph->edges;
    if(host_edges <= BUFFER_SIZE)
    {
+      if(host_nodes > BUFFER_SIZE) PTF("   Label label;\n\n");
+      int edge_count = host_nodes <= BUFFER_SIZE ? host_nodes : 0; 
       while(edges != NULL)
       {
-         /* As the nodes, assumed to be named n0, n1, ... are added to the host 
-         * graph in order, the index of each node in the host graph is its number
-         * in its AST identifier. */
+        /* The nodes, assumed to be named n0, n1, ... are added to the host 
+         * graph in the order in the text file. Therefore the index of each
+         * node in the host graph is the number in its AST identifier.
+         * The call to strtol extracts the number after the 'n' in the node
+         * IDs of the edge's source and target. */
          int source_index = (int)strtol((edges->edge->source) + 1, NULL, 0);
          int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
-         PTIS("   addEdge(host, false, blank_label, %d, %d);\n",
-              source_index, target_index);
+         string label_name = 
+            generateLabelCode(edges->edge->label, edge_count++, file);
+         if(label_name != NULL)
+            PTF("   addEdge(host, false, %s, %d, %d);\n", label_name, 
+                 source_index, target_index);
+         if(strcmp(label_name, "blank_label")) PTF("\n"); 
          edges = edges->next;   
       }
    }
@@ -119,20 +145,28 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             perror(file_name);
             exit(1);
          }
-         fprintf(edge_file, "#include \"../../graph.h\"\n\n");
+         /* The "edges" functions are declared in host.h, called in 
+          * buildHost.c, and defined in the corresponding edges.c file. */
+         PTF("   edges%d(host);\n", count);
          fprintf(host_file, "void edges%d(Graph *host);\n", count);
-         fprintf(source, "   edges%d(host);\n", count);
+         fprintf(edge_file, "#include \"../../graph.h\"\n\n");
          fprintf(edge_file, "void edges%d(Graph *host)\n{\n", count);
+
          /* Emit code to add BUFFER_SIZE edges. */
+         fprintf(edge_file, "   Label label;\n\n");
          int edge_count = 0;
-         fprintf(edge_file, "   Label blank_label = {NONE, 0, NULL};\n\n");
          while(edges != NULL && edge_count < BUFFER_SIZE)
          {
+           /* The call to strtol extracts the number after the 'n' in the node
+            * IDs of the edge's source and target. */
             int source_index = (int)strtol((edges->edge->source) + 1, NULL, 0);
             int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
-            fprintf(edge_file, "   addEdge(host, false, blank_label, %d, %d);\n", 
-                    source_index, target_index);
-            edge_count++;
+            string label_name = 
+               generateLabelCode(edges->edge->label, edge_count++, edge_file);
+            if(label_name != NULL)
+               fprintf(edge_file, "   addEdge(host, false, %s, %d, %d);\n", 
+                       label_name, source_index, target_index);
+            if(strcmp(label_name, "blank_label")) PTF("\n"); 
             edges = edges->next;   
          }
          fprintf(edge_file, "}\n");
@@ -140,10 +174,58 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          if(edges == NULL) break;
       }
    }
-   PTIS("\n   return host;\n");
-   PTIS("}\n");
+   PTF("   return host;\n");
+   PTF("}\n");
    fprintf(host_file, "\n#endif\n");
    fclose(host_file);
    fclose(header);
-   fclose(source);
+   fclose(file);
 }
+
+string generateLabelCode(GPLabel *ast_label, int list_count, FILE *file)
+{
+   int length = 0;
+   List *list = ast_label->gp_list;
+   while(list != NULL)
+   {
+      length++;
+      list = list->next;
+   }
+   /* The global label variable blank_label, representing a label with no mark
+    * and the empty list, is defined in graph.c. */
+   if(length == 0 && ast_label->mark == NONE) return "blank_label";
+   if(length == 0 && ast_label->mark != NONE)
+      PTF("   label = makeEmptyLabel(%d);\n", ast_label->mark);
+   else
+   {
+      int index = 0;
+      PTF("   Constant list%d[%d];\n   ", list_count, length);
+      list = ast_label->gp_list;
+      while(list != NULL)
+      {
+         GPAtom *atom = list->atom;
+         if(atom->type == INTEGER_CONSTANT)
+         {
+            PTF("list%d[%d].type = 'i'; ", list_count, index);
+            PTF("list%d[%d].number = %d; ", list_count, index, atom->number);
+         }
+         else if(atom->type == STRING_CONSTANT)
+         {
+            PTF("list%d[%d].type = 's'; ", list_count, index);
+            PTF("list%d[%d].string = \"%s\"; ", list_count, index, atom->string);
+         }
+         else 
+         {
+            print_to_log("Error (generateLabelCode): Unexpected host atom "
+                         "type %d.\n", atom->type);
+            return NULL;
+         }
+         index++;
+         list = list->next;
+      }
+      PTF("\n   label = makeHostLabel(list%d, %d, %d);\n", list_count,
+           length, ast_label->mark);
+   }
+   return "label";
+}
+      

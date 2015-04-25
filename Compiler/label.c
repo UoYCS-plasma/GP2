@@ -28,7 +28,7 @@ Label makeHostLabel(Constant *constant, int length, MarkType mark)
                         constant[index].type);
    }
    Label label = { .mark = mark,
-                   .length = 0,
+                   .length = length,
                    .list = list };
    return label;
 }
@@ -281,7 +281,7 @@ void printAtom(Atom *atom, FILE *file)
              break;
               
         case STRING_CONSTANT:
-             fprintf(file, "%s", atom->string);
+             fprintf(file, "\"%s\"", atom->string);
 	     break;
 
 	case VARIABLE: 

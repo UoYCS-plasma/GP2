@@ -24,7 +24,11 @@
 #include "pretty.h"
 #include "seman.h" 
 
-#undef DEBUG
+#undef DEBUG_PROGRAM
+/* Warning: for very large host graphs (in the order of 100,000 nodes + edges),
+ * printing the host graph's AST causes stack overflow. Only switch this on
+ * for small host graphs! */
+#undef DEBUG_HOST
 #undef PARSER_TRACE 	
 
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
@@ -49,9 +53,9 @@ int main(int argc, char **argv)
    }
    openLogFile();
 
-   /* 0 - Build both program and host graph. 
-    * 1 - Build only host graph.
-    * 2 - Build only program. */
+   /* 0 - Build both the program and the host graph. 
+    * 1 - Build only the host graph.
+    * 2 - Build only the program. */
    int mode = 0;
    string program_file = NULL, host_file = NULL;
 
@@ -102,7 +106,7 @@ int main(int argc, char **argv)
          return 0;
       }
       gp_program = reverse(gp_program);
-      #ifdef DEBUG
+      #ifdef DEBUG_PROGRAM
          /* analyseProgram prints the symbol table before exiting. */
          bool valid_program = analyseProgram(gp_program, true, program_file);
       #else
@@ -113,7 +117,7 @@ int main(int argc, char **argv)
          print_to_console("Generating program code...\n\n");
          generateRules(gp_program);
          staticAnalysis(gp_program);   
-         #ifdef DEBUG
+         #ifdef DEBUG_PROGRAM
             printDotAST(gp_program, program_file, "_2");
          #endif
          generateRuntimeCode(gp_program);
@@ -142,7 +146,7 @@ int main(int argc, char **argv)
          return 0;
       }   
       reverseGraphAST(ast_host_graph);
-      #ifdef DEBUG 
+      #ifdef DEBUG_HOST 
          printDotHostGraph(ast_host_graph, host_file);
       #endif
       print_to_console("Generating host graph code...\n\n");
