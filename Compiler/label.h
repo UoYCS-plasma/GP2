@@ -86,9 +86,6 @@ bool equalRuleLabels(Label left_label, Label right_label);
  * be a constant, a variable, a negated variable or a concatenated string. */
 bool equalRuleAtoms(Atom *left_atom, Atom *right_atom);
 
-/* To be implemented. */
-bool labelMatch(Label rule_label, Label host_label);
-
 /* Allocates memory for an array with length number of atoms. */
 Atom *makeList(int length);
 void addAtom(Atom atom, Label label, int position);
@@ -103,11 +100,14 @@ Atom *copyList(Atom *list, int length);
 Atom *copyAtom(Atom *atom);
 
 void printLabel(Label label, FILE *file);
-void printAtom(Atom *atom, FILE *file);
+void printList(Atom *atom, int length, FILE *file);
+void printAtom(Atom *atom, bool nested, FILE *file);
 void printOperation(Atom *left_exp, Atom *right_exp, string const operation,
-                    FILE *file);
+                    bool nested, FILE *file);
 void printMark(MarkType mark, FILE *file);
+
 void freeLabel(Label label);
+void freeList(Atom *atom, int length);
 /* freeAtom is called on both the atoms in the label's list (array) and on any
  * nested atoms. The array is a contiguous block of memory containing some
  * number of atoms: atoms in this array shoud not be freed individually. Nested

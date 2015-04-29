@@ -35,6 +35,7 @@ Label makeHostLabel(Constant *constant, int length, MarkType mark)
 
 Atom *makeList(int length)
 {
+   if(length == 0) return NULL;
    Atom *list = malloc(length * sizeof(Atom));
    if(list == NULL)
    {
@@ -259,20 +260,25 @@ LabelClass getLabelClass(Label label)
 
 void printLabel(Label label, FILE *file) 
 {
-   if(label.length == 0) fprintf(file, "empty");
-   else
-   {
-      int index;
-      for(index = 0; index < label.length; index++)
-      {
-         printAtom(&(label.list[index]), file);
-         if(index != label.length - 1) fprintf(file, " : ");
-      }
-   }
+   printList(label.list, label.length, file);
    printMark(label.mark, file);
 }
 
-void printAtom(Atom *atom, FILE *file)
+void printList(Atom *atom, int length, FILE *file)
+{
+   if(length == 0) fprintf(file, "empty");
+   else
+   {
+      int index;
+      for(index = 0; index < length; index++)
+      {
+         printAtom(&(atom[index]), false, file);
+         if(index != length - 1) fprintf(file, " : ");
+      }
+   }
+}
+
+void printAtom(Atom *atom, bool nested, FILE *file)
 {
     switch(atom->type) 
     {
@@ -302,32 +308,32 @@ void printAtom(Atom *atom, FILE *file)
 
 	case NEG:
 	     fprintf(file, "- ");
-	     printAtom(atom->neg_exp, file);
+	     printAtom(atom->neg_exp, true, file);
 	     break;
 
 	case ADD:
-	     printOperation(atom->bin_op.left_exp, 
-                            atom->bin_op.right_exp, "+", file);
+	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp, 
+                            "+", nested, file);
 	     break;
 
 	case SUBTRACT:
-	     printOperation(atom->bin_op.left_exp, 
-                            atom->bin_op.right_exp, "-", file);
+	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp,
+                            "-", nested, file);
 	     break;
 
 	case MULTIPLY:
-	     printOperation(atom->bin_op.left_exp, 
-                            atom->bin_op.right_exp, "*", file);
+	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp, 
+                            "*", nested, file);
 	     break;
 
 	case DIVIDE:
-	     printOperation(atom->bin_op.left_exp, 
-                            atom->bin_op.right_exp, "/", file);
+	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp, 
+                            "/", nested, file);
 	     break;
 
 	case CONCAT:
-	     printOperation(atom->bin_op.left_exp, 
-                            atom->bin_op.right_exp, ".", file);
+	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp, 
+                            ".", nested, file);
 	     break;
 
 	default: fprintf(file, "Error (printAtom): Unexpected atom type: %d\n",
@@ -337,13 +343,13 @@ void printAtom(Atom *atom, FILE *file)
 }
 
 void printOperation(Atom *left_exp, Atom *right_exp, string const operation,
-                    FILE *file)
+                    bool nested, FILE *file)
 {
-   fprintf(file, "(");
-   printAtom(left_exp, file);
+   if(nested) fprintf(file, "(");
+   printAtom(left_exp, true, file);
    fprintf(file, " %s ", operation);
-   printAtom(right_exp, file);
-   fprintf(file, ")");
+   printAtom(right_exp, true, file);
+   if(nested) fprintf(file, ")");
 }
 
 void printMark(MarkType mark, FILE *file)
@@ -360,13 +366,16 @@ void printMark(MarkType mark, FILE *file)
 
 void freeLabel(Label label)
 {
-   if(label.list == NULL) return;
+   if(label.list != NULL) freeList(label.list, label.length);
+}
+
+void freeList(Atom *atom, int length)
+{
    int index;
-   for(index = 0; index < label.length; index++)
-      /* freeAtom called with false because these atoms are not individually
-       * freed. The complete array is freed after the for loop. */
-      freeAtom(&(label.list[index]), false);
-   free(label.list);
+   /* freeAtom called with false because these atoms are not individually
+    * freed. The complete array is freed after the for loop. */
+   for(index = 0; index < length; index++) freeAtom(&(atom[index]), false);
+   if(atom) free(atom);
 }
 
 void freeAtom(Atom *atom, bool free_atom)

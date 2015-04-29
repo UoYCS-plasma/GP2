@@ -58,6 +58,7 @@ typedef struct List {
   struct List *next;
 } List;
 
+List *makeGPList(void);
 List *addASTDecl(ListType list_type, YYLTYPE location, 
 	         struct GPDeclaration *declaration, struct List *next);
 List *addASTCommand (YYLTYPE location, struct GPCommand *command, 
@@ -85,6 +86,7 @@ typedef struct GPDeclaration {
   };
 } GPDeclaration;
 
+GPDeclaration *makeDeclaration(void);
 GPDeclaration *newASTMainDecl (YYLTYPE location, struct GPCommand *main_program);
 GPDeclaration *newASTProcedureDecl (YYLTYPE location, struct GPProcedure *procedure);
 GPDeclaration *newASTRuleDecl (YYLTYPE location, struct GPRule *rule);
@@ -132,17 +134,16 @@ typedef struct GPCommand {
   };
 } GPCommand;
 
-GPCommand *newASTCommandSequence(YYLTYPE location, struct List *cmd_seq);
+GPCommand *makeGPCommand(void);
+GPCommand *newASTCommandSequence(YYLTYPE location, List *cmd_seq);
 GPCommand *newASTRuleCall(YYLTYPE location, string rule_name);
-GPCommand *newASTRuleSetCall(YYLTYPE location, struct List *rule_set);
+GPCommand *newASTRuleSetCall(YYLTYPE location, List *rule_set);
 GPCommand *newASTProcCall(YYLTYPE location, string proc_name);
 GPCommand *newASTCondBranch(CommandType statement_type, YYLTYPE location, 
-	                    struct GPCommand *condition, 
-                            struct GPCommand *then_stmt, 
-	                    struct GPCommand *else_stmt);
-GPCommand *newASTAlap(YYLTYPE location, struct GPCommand *loop_body);
-GPCommand *newASTOrStmt(YYLTYPE location, struct GPCommand *left_stmt, 
-	                  struct GPCommand *right_stmt);
+	                    GPCommand *condition, GPCommand *then_stmt, 
+	                    GPCommand *else_stmt);
+GPCommand *newASTAlap(YYLTYPE location, GPCommand *loop_body);
+GPCommand *newASTOrStmt(YYLTYPE location, GPCommand *left_stmt, GPCommand *right_stmt);
 GPCommand *newASTSkip(YYLTYPE location);
 GPCommand *newASTFail(YYLTYPE location);
 GPCommand *newASTBreak(YYLTYPE location);
@@ -181,18 +182,17 @@ typedef struct GPCondition {
   };
 } GPCondition;
 
-GPCondition *newASTSubtypePred(ConditionType exp_type, YYLTYPE location, 
-                               string var);
+GPCondition *makeGPCondition(void);
+GPCondition *newASTSubtypePred(ConditionType exp_type, YYLTYPE location, string var);
 GPCondition *newASTEdgePred(YYLTYPE location, string source, string target,
 	                    struct GPLabel *label);
 GPCondition *newASTListComparison(ConditionType exp_type, YYLTYPE location, 
-	                          struct List *left_list, struct List *right_list);
+	                          List *left_list, List *right_list);
 GPCondition *newASTAtomComparison(ConditionType exp_type, YYLTYPE location,
 	                          struct GPAtom *left_exp, struct GPAtom *right_exp);
-GPCondition *newASTNotExp(YYLTYPE location, struct GPCondition *not_exp);
+GPCondition *newASTNotExp(YYLTYPE location, GPCondition *not_exp);
 GPCondition *newASTBinaryExp(ConditionType exp_type, YYLTYPE location, 
-	                     struct GPCondition *left_exp, 
-                             struct GPCondition *right_exp);
+	                     GPCondition *left_exp, GPCondition *right_exp);
 
 /* Definition of AST nodes for atomic expressions. */
 typedef struct GPAtom {
@@ -215,15 +215,16 @@ typedef struct GPAtom {
   };
 } GPAtom;
 
+GPAtom *makeGPAtom(void);
 GPAtom *newASTVariable (YYLTYPE location, string name);
 GPAtom *newASTNumber (YYLTYPE location, int number);
 GPAtom *newASTCharacter (YYLTYPE location, string character);
 GPAtom *newASTString (YYLTYPE location, string string);
 GPAtom *newASTDegreeOp (AtomType exp_type, YYLTYPE location, string node_id);
 GPAtom *newASTLength (YYLTYPE location, string name);
-GPAtom *newASTNegExp (YYLTYPE location, struct GPAtom *neg_exp);
-GPAtom *newASTBinaryOp (AtomType exp_type, YYLTYPE location, 
-                        struct GPAtom *left_exp, struct GPAtom *right_exp);
+GPAtom *newASTNegExp (YYLTYPE location, GPAtom *neg_exp);
+GPAtom *newASTBinaryOp(AtomType exp_type, YYLTYPE location, GPAtom *left_exp, 
+                       GPAtom *right_exp);
 
 
 typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, LABEL} ASTNodeType;
@@ -237,9 +238,8 @@ typedef struct GPProcedure {
   struct GPCommand *commands;
 } GPProcedure;
 
-GPProcedure *newASTProcedure(YYLTYPE location, string name, 
-                             struct List *local_decls, struct GPCommand *cmd_seq);
-
+GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls,
+                             GPCommand *cmd_seq);
 
 typedef struct GPRule {
   int id;
@@ -258,9 +258,9 @@ typedef struct GPRule {
   bool is_predicate;
 } GPRule;
 
-GPRule *newASTRule(YYLTYPE location, string name, struct List *variables, 
-                   struct GPGraph *lhs, struct GPGraph *rhs, 
-                   struct List *interface, struct GPCondition *condition);
+GPRule *newASTRule(YYLTYPE location, string name, List *variables, 
+                   struct GPGraph *lhs, struct GPGraph *rhs, List *interface, 
+                   GPCondition *condition);
 
 typedef struct GPGraph {
   int id;
@@ -270,7 +270,7 @@ typedef struct GPGraph {
   struct List *edges;
 } GPGraph;
 
-GPGraph *newASTGraph(YYLTYPE location, struct List *nodes, struct List *edges);
+GPGraph *newASTGraph(YYLTYPE location, List *nodes, List *edges);
 
 
 typedef struct GPNode {
@@ -282,8 +282,7 @@ typedef struct GPNode {
   struct GPLabel *label; 
 } GPNode;
 
-GPNode *newASTNode(YYLTYPE location, bool root, string name, 
-                   struct GPLabel *label);
+GPNode *newASTNode(YYLTYPE location, bool root, string name, struct GPLabel *label);
 
 
 typedef struct GPEdge {
@@ -308,11 +307,11 @@ typedef struct GPLabel {
   struct List *gp_list;
 } GPLabel;
 
-GPLabel *newASTLabel(YYLTYPE location, MarkType mark, struct List *gp_list);
+GPLabel *newASTLabel(YYLTYPE location, MarkType mark, List *gp_list);
 
 /* Reverses the passed list and returns its new head. Used because Bison 
  * generates lists in reverse order due to left-recursive grammar rules. */
-struct List *reverse (struct List * listHead);
+List *reverse (List *listHead);
 void reverseGraphAST (GPGraph *graph); 
 void freeAST(List *ast);
 void freeASTDeclaration(GPDeclaration *decl);

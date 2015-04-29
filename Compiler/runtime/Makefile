@@ -15,8 +15,8 @@ default:	$(OBJECTS)
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<
 
-# Delete all files except Makefile, match.c and match.h. 
+# Delete all files except Makefile, labelMatch*, and morphism*. 
 clean:		
-		ls | grep -v 'host\|Makefile\|match' | xargs rm
+		ls | grep -v 'host\|Makefile\|labelMatch\|morphism' | xargs rm
 		rm host/*
 		rm match.o

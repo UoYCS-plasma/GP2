@@ -1,96 +1,4 @@
-/* ///////////////////////////////////////////////////////////////////////////
-
-  ================================
-  match.c - Chris Bak (14/08/2014)
-  ================================
-
-/////////////////////////////////////////////////////////////////////////// */
-
-#include "match.h"
-
-/*
-Assignment *addAssignment(Assignment *assignment, string name, GP2List *value)
-{
-   Assignment *new_assignment = malloc(sizeof(Assignment));
-
-   if(new_assignment == NULL) 
-   {
-      print_to_log("Memory exhausted during assignment construction.\n");
-      exit(1);
-   }
-
-   new_assignment->variable = name;
-   new_assignment->value = value;   
-   new_assignment->next = assignment;
-
-   return new_assignment;
-}
-
-
-Assignment *removeAssignment(Assignment *assignment)
-{
-   Assignment *new_assignment = assignment->next;
-   if(assignment->variable) free(assignment->variable); 
-   if(assignment->value) freeGP2List(assignment->value);
-   if(assignment) free(assignment);
-   return new_assignment;
-}
-
-
-GP2List *lookupValue(Assignment *assignment, string name)
-{
-   while(assignment != NULL) 
-   {
-     if(strcmp(assignment->variable, name) == 0) return assignment->value;
-     assignment = assignment->next;
-   }
-   return NULL;
-         
-}
-
-void freeAssignment(Assignment *assignment)
-{
-   if(assignment == NULL) return;
-   if(assignment->variable) free(assignment->variable); 
-   if(assignment->value) freeGP2List(assignment->value);
-   if(assignment->next) freeAssignment(assignment->next);
-   free(assignment);
-}
-
-
-Map *addMap(Map *map, int right_index, Node *host_node)
-{
-   Map *new_map = malloc(sizeof(Map));
-
-   if(new_map == NULL) 
-   {
-      print_to_log("Error: Memory exhausted during map construction.\n");
-      exit(1);
-   }
-
-   new_map->right_index = right_index;
-   new_map->host_node = host_node;
-   new_map->next = map;
-
-   return new_map;
-}
-
-Node *findHostNode(Map *map, int right_index)
-{
-   while(map != NULL)
-   {
-      if(right_index == map->right_index) return map->host_node;
-      else map = map->next;
-   }
-   return NULL;
-}
-
-void freeMap(Map *map)
-{
-   if(map == NULL) return;
-   if(map->next) freeMap(map->next);
-   free(map);
-} */
+#include "morphism.h"
 
 Morphism *makeMorphism(int nodes, int edges, int variables)
 {
@@ -155,6 +63,7 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
       for(count = 0; count < variables; count++)
       {
          morphism->assignment[count].variable = NULL;
+         morphism->assignment[count].length = 0;
          morphism->assignment[count].value = NULL;
       }
    }
@@ -193,6 +102,7 @@ void clearMorphism(Morphism *morphism)
       for(count = 0; count < morphism->variables; count++)
       {
          morphism->assignment[count].variable = NULL;
+         morphism->assignment[count].length = 0;
          morphism->assignment[count].value = NULL;
       }
    }
@@ -212,10 +122,11 @@ void addEdgeMap(Morphism *morphism, int left_index, int host_index)
    morphism->edge_map_index++;
 }
 
-void addAssignment(Morphism *morphism, string variable, Atom *value)
+void addAssignment(Morphism *morphism, string variable, int length, Atom *value)
 {
-   morphism->assignment[morphism->assignment_index].variable = variable;
-   morphism->assignment[morphism->assignment_index].value = value;
+   morphism->assignment[morphism->assignment_index].variable = strdup(variable);
+   morphism->assignment[morphism->assignment_index].length = length;
+   morphism->assignment[morphism->assignment_index].value = copyList(value, length);
    morphism->assignment_index++;
 }
 
@@ -233,13 +144,33 @@ void removeEdgeMap(Morphism *morphism)
    morphism->edge_map[morphism->edge_map_index].host_index = -1;
 }
 
-void removeAssignment(Morphism *morphism)
+void removeAssignments(Morphism *morphism, int number)
 {
-   morphism->assignment_index--;
-   morphism->assignment[morphism->assignment_index].variable = NULL;
-   morphism->assignment[morphism->assignment_index].value = NULL;
+   int count;
+   for(count = 0; count < number; count++)
+   {
+      morphism->assignment_index--;
+      Assignment *assignment = &(morphism->assignment[morphism->assignment_index]);
+
+      if(assignment->variable) free(assignment->variable);
+      freeList(assignment->value, assignment->length);
+
+      assignment->variable = NULL;
+      assignment->length = 0;
+      assignment->value = NULL;
+   }
 }
 
+int lookupVariable(Morphism *morphism, string variable)
+{
+   int count;
+   for(count = 0; count < morphism->variables; count++)
+   {
+      if(morphism->assignment[count].variable == NULL) continue;
+      if(!strcmp(morphism->assignment[count].variable, variable)) return count;
+   }
+   return -1;
+}
 
 int findHostIndex(Morphism *morphism, int left_index)
 {
@@ -260,7 +191,7 @@ void printMorphism(Morphism *morphism)
       return;
    }
    int count;
-   if(morphism->node_map)
+   if(morphism->node_map != NULL)
    {
       printf("\nNode Mappings\n=============\n");
       for(count = 0; count < morphism->nodes; count++)
@@ -268,7 +199,7 @@ void printMorphism(Morphism *morphism)
                  morphism->node_map[count].host_index);
       printf("\n");
    }
-   if(morphism->edge_map)
+   if(morphism->edge_map != NULL)
    {
       printf("Edge Mappings\n=============\n");
       for(count = 0; count < morphism->edges; count++)
@@ -276,13 +207,18 @@ void printMorphism(Morphism *morphism)
                  morphism->edge_map[count].host_index);
       printf("\n");
    }
-   if(morphism->assignment)
+   if(morphism->assignment != NULL)
    {
       for(count = 0; count < morphism->variables; count++)
       {
-         printf("Variable %s -> ", morphism->assignment[count].variable);
-         printAtom(morphism->assignment[count].value, stdout);
-         printf("\n");
+         if(morphism->assignment[count].variable != NULL)
+         {
+            printf("Variable %s -> ", morphism->assignment[count].variable);
+            printList(morphism->assignment[count].value, 
+                      morphism->assignment[count].length, stdout);
+            printf("\n");
+            printf("Length: %d\n\n", morphism->assignment[count].length);
+         }
       }
    }
 }
@@ -292,7 +228,17 @@ void freeMorphism(Morphism *morphism)
    if(morphism == NULL) return;
    if(morphism->node_map) free(morphism->node_map);
    if(morphism->edge_map) free(morphism->edge_map);
-   if(morphism->assignment) free(morphism->assignment);
+   if(morphism->assignment)
+   {
+      int index;
+      for(index = 0; index < morphism->variables; index++)
+      {
+         Assignment assignment = morphism->assignment[index];
+         if(assignment.variable != NULL) free(assignment.variable);
+         freeList(assignment.value, assignment.length);
+      }
+      free(morphism->assignment);
+   }
    free(morphism);
 }
 
