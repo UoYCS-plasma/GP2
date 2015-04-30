@@ -109,7 +109,6 @@ bool declarationScan(List *ast, string scope)
                  string rule_name_copy = strdup(rule_name);
                  g_hash_table_replace(symbol_table, rule_name_copy, symbol_list);  
 	      }
-              //else if(rule_name) free(rule_name); 
               break;
          }
          default: 

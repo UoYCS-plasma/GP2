@@ -106,7 +106,7 @@ List *addASTAtom(YYLTYPE location, GPAtom *atom, List *next)
 
 GPDeclaration *makeGPDeclaration(void)
 {
-   GPDeclaration *declaration = makeGPDeclaration();
+   GPDeclaration *declaration = malloc(sizeof(GPDeclaration));
    if(declaration == NULL)
    {
       print_to_log("Error (makeGPDeclaration): malloc failure.\n");
@@ -144,7 +144,7 @@ GPDeclaration *newASTRuleDecl(YYLTYPE location, GPRule *rule)
 
 GPCommand *makeGPCommand(void)
 {
-   GPCommand *command = makeGPCommand();
+   GPCommand *command = malloc(sizeof(GPCommand));
    if(command == NULL)
    {
       print_to_log("Error (makeGPCommand): malloc failure.\n");
@@ -255,7 +255,7 @@ GPCommand *newASTBreak(YYLTYPE location)
 
 GPCondition *makeGPCondition(void)
 {
-   GPCondition *condition = makeGPCondition();
+   GPCondition *condition = malloc(sizeof(GPCondition));
    if(condition == NULL)
    {
       print_to_log("Error (makeGPCondition): malloc failure.\n");
@@ -329,7 +329,7 @@ GPCondition *newASTBinaryExp(ConditionType type, YYLTYPE location,
 
 GPAtom *makeGPAtom(void)
 {
-   GPAtom *atom = makeGPAtom();
+   GPAtom *atom = malloc(sizeof(GPAtom));
    if(atom == NULL)
    {
       print_to_log("Error (makeGPAtom): malloc failure.\n");
@@ -390,9 +390,21 @@ GPAtom *newASTLength(YYLTYPE location, string name)
 GPAtom *newASTNegExp(YYLTYPE location, GPAtom *neg_exp)
 {
     GPAtom *atom = makeGPAtom();
-    atom->type = NEG;
     atom->location = location;
-    atom->neg_exp = neg_exp;
+    /* If the passed GPAtom is an integer constant, create a new integer
+     * constant GPAtom containing the negation of that constant.
+     * The passed GPAtoms is freed. */
+    if(neg_exp->type == INTEGER_CONSTANT)
+    {
+       atom->type = INTEGER_CONSTANT;
+       atom->number = -(neg_exp->number);
+       freeASTAtom(neg_exp);
+    }
+    else
+    {
+       atom->type = NEG;
+       atom->neg_exp = neg_exp;
+    }
     return atom;
 }
 
@@ -400,13 +412,83 @@ GPAtom *newASTBinaryOp(AtomType type, YYLTYPE location,
                        GPAtom *left_exp, GPAtom *right_exp)
 {
     GPAtom *atom = makeGPAtom();
-    atom->type = type; 
     atom->location = location;
-    atom->bin_op.left_exp = left_exp;
-    atom->bin_op.right_exp = right_exp;
+    if(type == DIVIDE && right_exp->type == INTEGER_CONSTANT)
+    {
+       if(right_exp->number == 0)
+       {
+          print_error("Error: You are trying to divide by 0. I cannot allow "
+                      "you to destroy the universe. Abort!\n");
+          exit(1);
+       }
+    }
+    /* If both of the passed GPAtoms are integer constants, create a new
+     * integer constant GPAtom containing the appropriate integer. The passed
+     * GPAtoms are freed. */
+    if(left_exp->type == INTEGER_CONSTANT && right_exp->type == INTEGER_CONSTANT)
+    {
+       atom->type = INTEGER_CONSTANT;
+       switch(type)
+       {
+          case ADD:
+               atom->number = left_exp->number + right_exp->number;
+               break;
+          
+          case SUBTRACT:
+               atom->number = left_exp->number - right_exp->number;
+               break;
+
+          case MULTIPLY:
+               atom->number = left_exp->number * right_exp->number;
+               break;
+
+          case DIVIDE:
+               atom->number = left_exp->number / right_exp->number;
+               break;
+
+          default:
+               print_to_log("Error (newASTBinaryOp): Unexpected atom type %d.\n",
+                            type);
+               exit(0);
+       }
+       freeASTAtom(left_exp);
+       freeASTAtom(right_exp);
+    }
+    else
+    {
+       atom->type = type; 
+       atom->bin_op.left_exp = left_exp;
+       atom->bin_op.right_exp = right_exp;
+    }
     return atom;
 }
 
+GPAtom *newASTConcat(YYLTYPE location, GPAtom *left_exp, GPAtom *right_exp)
+{
+    GPAtom *atom = makeGPAtom();
+    atom->location = location;
+    /* If both of the passed GPAtoms are string constants, create a new string
+     * constant GPAtom containing the concatenated string. The passed GPAtoms 
+     * are freed. */
+    if(left_exp->type == STRING_CONSTANT && right_exp->type == STRING_CONSTANT)
+    {
+       atom->type = STRING_CONSTANT;
+       int length = strlen(left_exp->string) + strlen(right_exp->string) + 1;
+       char new_string[length];
+       strcpy(new_string, left_exp->string);
+       strcat(new_string, right_exp->string);
+       atom->string = strdup(new_string);
+       freeASTAtom(left_exp);
+       freeASTAtom(right_exp);
+    }
+    else
+    {
+       atom->type = CONCAT; 
+       atom->bin_op.left_exp = left_exp;
+       atom->bin_op.right_exp = right_exp;
+    }
+    return atom;
+}
 
 GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls,
                              GPCommand *commands)

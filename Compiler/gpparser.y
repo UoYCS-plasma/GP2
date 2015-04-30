@@ -449,7 +449,7 @@ AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
        | AtomExp '-' AtomExp 		{ $$ = newASTBinaryOp(SUBTRACT, @$, $1, $3); }
        | AtomExp '*' AtomExp 		{ $$ = newASTBinaryOp(MULTIPLY, @$, $1, $3); }
        | AtomExp '/' AtomExp 		{ $$ = newASTBinaryOp(DIVIDE, @$, $1, $3); }
-       | AtomExp '.' AtomExp 		{ $$ = newASTBinaryOp(CONCAT, @$, $1, $3); }
+       | AtomExp '.' AtomExp 		{ $$ = newASTConcat(@$, $1, $3); }
 
  /* GP2 Identifiers */
 

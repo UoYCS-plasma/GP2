@@ -24,7 +24,7 @@
 #include "pretty.h"
 #include "seman.h" 
 
-#undef DEBUG_PROGRAM
+#define DEBUG_PROGRAM
 /* Warning: for very large host graphs (in the order of 100,000 nodes + edges),
  * printing the host graph's AST causes stack overflow. Only switch this on
  * for small host graphs! */

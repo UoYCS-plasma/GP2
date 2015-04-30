@@ -256,8 +256,20 @@ void printSymbolList(gpointer key, gpointer , gpointer user_data);
  * called to print the program AST, while printASTGraph is called to print the 
  * host graph AST. */
 void printDotAST(List *const gp_ast, string file_name, string suffix);
-void printDotHostGraph(GPGraph *const host_graph_ast, string file_name);
 
+/* AST nodes for rules and procedures can have more than one parent node.
+ * To avoid these nodes being printed twice, their printing functions only
+ * write to the file if their ID is the initial value (0). 
+ * However, if the AST is printed more than once during program execution, 
+ * the AST nodes won't have their initial IDs after the first print. Without 
+ * resetting the IDs of rule and procedure nodes, they won't be printed at all
+ * on subsequent AST prints. Note that this is only a problem for AST nodes
+ * with more than one parent node.
+ * This function is called before printASTList to ensure that all rule and procedure
+ * nodes have ID 0 which results in the correct printing of the AST. */
+void resetRuleAndProcedureIds(List *list);
+
+void printDotHostGraph(GPGraph *const host_graph_ast, string file_name);
 void printASTList(List * const list, FILE *dot_file);
 void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file);
 void printASTCommand(GPCommand * const stmt, FILE *dot_file);

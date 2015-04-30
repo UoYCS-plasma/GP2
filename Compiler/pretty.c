@@ -93,10 +93,28 @@ void printDotAST(List *const gp_ast, string file_name, string suffix)
      print_to_dot_file("node0[shape=plaintext,label=\"ROOT\"]\n");
      print_to_dot_file("node0->node1\n");
 
-     next_id = 1;   
-     printASTList(gp_ast,dot_file);
+     resetRuleAndProcedureIds(gp_ast);
+     printASTList(gp_ast, dot_file);
      print_to_dot_file("}\n\n");
      fclose(dot_file);
+}
+
+void resetRuleAndProcedureIds(List *list)
+{
+   while(list != NULL)
+   {
+      if(list->list_type == GLOBAL_DECLARATIONS || list->list_type == LOCAL_DECLARATIONS)
+      {
+         GPDeclaration *declaration = list->declaration;
+         if(declaration->decl_type == RULE_DECLARATION) declaration->rule->id = 0;
+         if(declaration->decl_type == PROCEDURE_DECLARATION)
+         {
+            declaration->procedure->id = 0;
+            resetRuleAndProcedureIds(declaration->procedure->local_decls);
+         }
+      }
+      list = list->next;
+   }
 }
 
 void printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
@@ -135,42 +153,34 @@ void printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
  * the .dot file.
  *
  * These functions make frequent use of the macros prettyPrint, prettyPrintList
- * LOCATION_ARGS, defined in the header file. Function calls with odd arguments, 
- * such as printListNode, are function macros written to reduce some of the 
- * clutter.
- */
-
+ * LOCATION_ARGS, defined in the header file. */
 void printASTList(List *const list, FILE *dot_file)
 {
    switch(list->list_type)
    {
      case GLOBAL_DECLARATIONS:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
           printListNode(Global \\n Declarations);
           prettyPrint(list->declaration, Declaration);
-          prettyPrintList(list->next,list, next);
+          prettyPrintList(list->next, list, next);
           break;	
 
      case LOCAL_DECLARATIONS:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
           printListNode(Local \\n Declarations);
 	  prettyPrint(list->declaration, Declaration);
-          prettyPrintList(list->next,list,next);
+          prettyPrintList(list->next, list, next);
           break;	
 
      case COMMANDS:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
           printListNode(Commands);
           prettyPrint(list->command, Command);
-          prettyPrintList(list->next,list,next);
+          prettyPrintList(list->next, list, next);
           break;	
 
      case RULES:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
 
           if(list->rule_call.rule_name != NULL)
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -192,52 +202,42 @@ void printASTList(List *const list, FILE *dot_file)
           break;
      
      case INT_DECLARATIONS:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
           printListNode(Integer \\n Declarations);
           prettyPrint(list->variables, List);
-          prettyPrintList(list->next,list,next);
+          prettyPrintList(list->next, list, next);
           break;
 
      case CHAR_DECLARATIONS:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
           printListNode(Character \\n Declarations);
           prettyPrint(list->variables, List);
-          prettyPrintList(list->next,list,next);
-
+          prettyPrintList(list->next, list, next);
           break;
 
      case STRING_DECLARATIONS:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
           printListNode(String \\n Declarations);
           prettyPrint(list->variables, List);
-          prettyPrintList(list->next,list,next);
-           
+          prettyPrintList(list->next, list, next);
           break;
      
      case ATOM_DECLARATIONS:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
           printListNode(Atom \\n Declarations);
           prettyPrint(list->variables, List);
-          prettyPrintList(list->next,list,next);
-
+          prettyPrintList(list->next, list, next);
           break;
      
      case LIST_DECLARATIONS:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
           printListNode(List \\n Declarations);
           prettyPrint(list->variables, List);
-          prettyPrintList(list->next,list,next);
-
+          prettyPrintList(list->next, list, next);
           break;
      
      case VARIABLE_LIST:
-          list->id = next_id;
-          next_id += 1;
+          list->id = next_id++;
 
           if(list->variable_name != NULL)
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
@@ -252,12 +252,11 @@ void printASTList(List *const list, FILE *dot_file)
              print_to_log("Error: Undefined variable name at AST node %d", 
                            list->id);
           }
-          prettyPrintList(list->next,list,next);
+          prettyPrintList(list->next, list, next);
           break;
      
      case INTERFACE_LIST:
-          list->id = next_id;
-          next_id += 1; 
+          list->id = next_id++;
           if(list->node_id != NULL)
              print_to_dot_file("node%d[shape=box,label=\"%d\\n%d.%d-%d.%d\\n"
                                "Interface \\n Node: %s\"]\n", list->id, list->id, 
@@ -270,31 +269,28 @@ void printASTList(List *const list, FILE *dot_file)
              print_to_log("Error (printASTList): Undefined node name at "
                            "AST node %d", list->id);
           }
-          prettyPrintList(list->next,list,next);
+          prettyPrintList(list->next, list, next);
           break;
      
      case NODE_LIST:
-          list->id = next_id;
-          next_id += 1; 
+          list->id = next_id++;
           printListNode(Nodes);
           prettyPrint(list->node, Node);
-          prettyPrintList(list->next,list,next);
+          prettyPrintList(list->next, list, next);
           break;
      
      case EDGE_LIST:
-          list->id = next_id;
-          next_id += 1; 
+          list->id = next_id++;
           printListNode(Edges);
           prettyPrint(list->edge, Edge);
-          prettyPrintList(list->next,list,next);
+          prettyPrintList(list->next, list, next);
           break;
 
      case GP_LIST:
-          list->id = next_id;
-          next_id += 1; 
+          list->id = next_id++;
           printListNode(GP List);
           prettyPrint(list->atom, Atom);
-          prettyPrintList(list->next,list,next);
+          prettyPrintList(list->next, list, next);
           break;
 
      default: print_to_log("Error (printASTList): Unexpected type: %d\n",
@@ -309,22 +305,19 @@ void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
    switch(decl->decl_type) 
    {
       case MAIN_DECLARATION:
-           decl->id = next_id;
-           next_id += 1;
+           decl->id = next_id++;
            printDeclarationNode(Main, main \\n program, next_id);
            prettyPrint(decl->main_program, Command);
            break;
 
       case PROCEDURE_DECLARATION:
-           decl->id = next_id;
-           next_id += 1;
+           decl->id = next_id++;
            printDeclarationNode(Procedure \\n Declaration, proc, next_id);
            prettyPrint(decl->procedure, Procedure);
            break;
 
       case RULE_DECLARATION:
-           decl->id = next_id;
-           next_id += 1;
+           decl->id = next_id++;
            prettyPrint(decl->rule, Rule);
            printDeclarationNode(Rule \\n Declaration, rule, decl->rule->id);
            break;
@@ -341,8 +334,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
   switch(command->command_type)
   {
       case COMMAND_SEQUENCE:	
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "Command \\n Sequence\"]\n", 
@@ -356,8 +348,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
            break;
 
       case RULE_CALL:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
 
            if(command->rule_call.rule_name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -379,8 +370,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
            break;
 
       case RULE_SET_CALL:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "Rule Set Call\"]\n", command->id, command->id,
@@ -391,8 +381,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
            break;
 
       case PROCEDURE_CALL:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
 
            if(command->proc_call.proc_name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -415,20 +404,17 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
            break;
 
       case IF_STATEMENT:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
            printConditionalNode(If Statement);
            break;
 
       case TRY_STATEMENT:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
            printConditionalNode(Try Statement);
            break;
 
       case ALAP_STATEMENT:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "ALAP Statement\\n Restore Point = %d\\n"
@@ -446,8 +432,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
            break;
 
       case PROGRAM_OR:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                              "OR Statement\"]\n", command->id, command->id,
@@ -463,24 +448,21 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
            break;
 
       case SKIP_STATEMENT:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n skip\"]\n", 
                              command->id, command->id,
                              LOCATION_ARGS(command->location));
            break;
 
       case FAIL_STATEMENT:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n fail\"]\n", 
                              command->id, command->id, 
                              LOCATION_ARGS(command->location));
            break;
       
       case BREAK_STATEMENT:
-           command->id = next_id;
-           next_id += 1;
+           command->id = next_id++;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n break\"]\n", 
                              command->id, command->id, 
                              LOCATION_ARGS(command->location));
@@ -498,32 +480,27 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
    switch(cond->type) 
    {
       case INT_CHECK:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printTypeCheckNode(int check, INT_CHECK);
            break;
 
       case CHAR_CHECK:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printTypeCheckNode(char check, CHAR_CHECK);
            break;
 
       case STRING_CHECK:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printTypeCheckNode(string check, STRING_CHECK);
            break;
 
       case ATOM_CHECK:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printTypeCheckNode(atom check, ATOM_CHECK);
            break;
 
       case EDGE_PRED:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nEdge Test\\n",
                              cond->id, cond->id, LOCATION_ARGS(cond->location));
 
@@ -557,49 +534,41 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
                                 next_id, next_id);  
               print_to_dot_file("node%d->node%d[label=\"label \\n argument\"]"          
                                 "\n", cond->id, next_id);                     
-              next_id += 1;       
            }
            break;
 
       case EQUAL:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printListEqualityNode(=);
            break;	
 
       case NOT_EQUAL:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printListEqualityNode(!=);
            break;
       
       case GREATER:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printRelationalNode(>);
            break;
 
       case GREATER_EQUAL:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printRelationalNode(>=);
            break;
 
       case LESS:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printRelationalNode(<);
            break;
 
       case LESS_EQUAL:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printRelationalNode(>=);
            break;	  
 
       case BOOL_NOT:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nNOT\"]\n", 
                              cond->id, cond->id, LOCATION_ARGS(cond->location));
 
@@ -610,14 +579,12 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
            break;
 
       case BOOL_OR:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printBinaryBooleanNode(OR);
            break;
 
       case BOOL_AND:
-           cond->id = next_id;
-           next_id += 1;
+           cond->id = next_id++;
            printBinaryBooleanNode(AND);
            break;
 
@@ -633,8 +600,7 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
    switch(atom->type) 
    {
       case VARIABLE:
-           atom->id = next_id;
-           next_id += 1;
+           atom->id = next_id++;
 
            if(atom->variable.name != NULL)
               print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -652,8 +618,7 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
            break;
 
      case INTEGER_CONSTANT:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
 
           print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                             "Number: %d\"]\n", atom->id, atom->id, 
@@ -661,8 +626,7 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
           break;
 
      case STRING_CONSTANT:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
 
           if(atom->string != NULL)
              print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -675,20 +639,17 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
           break;
 
      case INDEGREE:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
           printDegreeOperatorNode(indegree, INDEGREE);
           break;
 
      case OUTDEGREE:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
           printDegreeOperatorNode(outdegree, OUTDEGREE);
           break;
 
      case LENGTH:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
 
           if(atom->variable.name != NULL)
              print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -706,8 +667,7 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
           break;
 
      case NEG:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
 
           print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\nMINUS\"]\n", 
                             atom->id, atom->id, LOCATION_ARGS(atom->location));
@@ -717,32 +677,27 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
           break;
 
      case ADD:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
           printBinaryOperatorNode(+);
           break;
 
      case SUBTRACT:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
           printBinaryOperatorNode(-);
           break;
 
      case MULTIPLY:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
           printBinaryOperatorNode(*);
           break;
 
      case DIVIDE:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
           printBinaryOperatorNode(/);
           break;
 
      case CONCAT:
-          atom->id = next_id;
-          next_id += 1;
+          atom->id = next_id++;
           printBinaryOperatorNode(.);
           break;
 
@@ -755,8 +710,10 @@ void printASTCondition(GPCondition *const cond, FILE *dot_file)
 
 void printASTProcedure(GPProcedure *const proc, FILE *dot_file)
 {
-   proc->id = next_id;
-   next_id += 1;
+   /* Procedure nodes may have more than one parent node. Checking the 
+    * proc_id's value ensures the AST for the rule is printed only once. */
+   if(proc->id > 0) return;
+   proc->id = next_id++;
 
    if(proc->name != NULL)
       print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -780,11 +737,10 @@ void printASTProcedure(GPProcedure *const proc, FILE *dot_file)
 
 void printASTRule(GPRule *const rule, FILE *dot_file)
 {
-   /* Rule nodes have more than one parent node. Checking the rule_id's value
-    * ensures the AST for the rule is printed only once. */
+   /* Rule nodes may have more than one parent node. Checking the rule_id's
+    * value ensures the AST for the rule is printed only once. */
    if(rule->id > 0) return;
-   rule->id = next_id;
-   next_id += 1;
+   rule->id = next_id++;
 
    if(rule->name != NULL)
       print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
@@ -811,15 +767,13 @@ void printASTRule(GPRule *const rule, FILE *dot_file)
    prettyPrintList(rule->interface, rule, interface);
 
    /* Same code as the prettyPrintList macro, except this fragment needs to
-   * call printCondition instead of printList.
-   */
+    * call printCondition instead of printList. */
    if(rule->condition == NULL) 
    {                                         
       print_to_dot_file("node%d[shape=plaintext,label=\"%d NULL\"]\n", 
                         next_id, next_id);                            
       print_to_dot_file("node%d->node%d[label=\"condition\"]\n",            
                         rule->id, next_id);                           
-      next_id += 1;                                              
    }							          
    else 
    {                                                            
@@ -831,8 +785,7 @@ void printASTRule(GPRule *const rule, FILE *dot_file)
 
 void printASTGraph(GPGraph *const graph, FILE *dot_file)
 {
-   graph->id = next_id;
-   next_id += 1;
+   graph->id = next_id++;
 
    print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n Graph\"]\n",
                      graph->id, graph->id, LOCATION_ARGS(graph->location));
@@ -842,8 +795,7 @@ void printASTGraph(GPGraph *const graph, FILE *dot_file)
 
 void printASTNode(GPNode * const node, FILE *dot_file)
 {
-   node->id = next_id;
-   next_id += 1;
+   node->id = next_id++;
    if(node->name != NULL)
       print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "Node \\n Name: %s", node->id, node->id, 
@@ -866,8 +818,7 @@ void printASTNode(GPNode * const node, FILE *dot_file)
 
 void printASTEdge(GPEdge * const edge, FILE *dot_file)
 {
-   edge->id = next_id;
-   next_id += 1;
+   edge->id = next_id++;
    if(edge->name != NULL)
       print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
                         "Edge \\n Name: %s\\n ", edge->id, edge->id, 
@@ -903,8 +854,7 @@ void printASTEdge(GPEdge * const edge, FILE *dot_file)
 
 void printASTLabel(GPLabel * const label, FILE *dot_file)
 {
-   label->id = next_id;
-   next_id += 1;
+   label->id = next_id++;
    print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n Label \\n Mark: ", 
                      label->id, label->id, LOCATION_ARGS(label->location));
    switch(label->mark) 

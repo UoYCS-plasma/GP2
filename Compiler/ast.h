@@ -225,7 +225,7 @@ GPAtom *newASTLength (YYLTYPE location, string name);
 GPAtom *newASTNegExp (YYLTYPE location, GPAtom *neg_exp);
 GPAtom *newASTBinaryOp(AtomType exp_type, YYLTYPE location, GPAtom *left_exp, 
                        GPAtom *right_exp);
-
+GPAtom *newASTConcat(YYLTYPE location, GPAtom *left_exp, GPAtom *right_exp);
 
 typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, LABEL} ASTNodeType;
 
