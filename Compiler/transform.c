@@ -84,7 +84,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
    while(nodes != NULL)
    {
       GPNode *ast_node = nodes->node;
-      if(ast_node->root) *is_rooted = 1;
+      if(ast_node->root) *is_rooted = true;
       Label label = transformLabel(ast_node->label, NULL);
       int node_index = addNode(lhs, ast_node->root, label);
       *node_map = addIndexMap(*node_map, ast_node->name, ast_node->root,
@@ -302,7 +302,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
                copyLabel(&label, new_label);
             }
             *edges = addPreservedItem(*edges, map->left_index, false, new_label);
-            /* The map is removed to ensure that a parallel RHS-edge ins not
+            /* The map is removed to ensure that a parallel RHS-edge is not
              * associated with this edge. */
             *edge_map = removeMap(*edge_map, map);     
          }
@@ -337,25 +337,16 @@ Label transformLabel(GPLabel *ast_label, IndexMap *node_map)
 {
    Label label;
    label.mark = ast_label->mark;
-   /* Traverse the AST list to get its length. If it is 0, set the label's list
-    * to NULL, otherwise allocate and populate the list. */
-   List *list = ast_label->gp_list;
-   label.length = 0;
-   while(list != NULL)
+   label.length = getListLength(ast_label);
+   if(label.length == 0)
    {
-      label.length++;
-      list = list->next;
+      if(label.mark == NONE) return blank_label;
+      else label.list = NULL;
    }
-   if(label.length == 0) label.list = NULL;
    else
    {
-      label.list = calloc(label.length, sizeof(Atom));
-      if(label.list == NULL)
-      {
-         print_to_log("Error (transformLabel): malloc failure.\n");
-         exit(1);
-      }
-      list = ast_label->gp_list;
+      label.list = makeList(label.length);
+      List *list = ast_label->gp_list;
       int position = 0;
       while(list != NULL)
       {
@@ -365,6 +356,18 @@ Label transformLabel(GPLabel *ast_label, IndexMap *node_map)
       }
    }
    return label;
+}
+
+int getListLength(GPLabel *ast_label)
+{
+   int length = 0;
+   List *list = ast_label->gp_list;
+   while(list != NULL)
+   {
+      length++;
+      list = list->next;
+   }
+   return length;
 }
 
 Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map)

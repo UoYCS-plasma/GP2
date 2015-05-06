@@ -12,14 +12,16 @@
 #ifndef INC_MATCH_H
 #define INC_MATCH_H
 
+#include "../error.h"
 #include "../globals.h"
-#include "../graph.h"
 #include "../label.h"
-#include "../rule.h"
 
-/* Association list to represent variable-value mappings. */
+/* Association list to represent variable-value mappings. The type of an 
+ * assignment is the type of its value. This is either INT_VAR, STRING_VAR
+ * or LIST_VAR. */
 typedef struct Assignment {
   string variable;
+  GPType type;
   int length;
   Atom *value;
 } Assignment;
@@ -30,12 +32,13 @@ typedef struct Map {
    /* The number of variable-value assignments added by this node map.
     * Needed when matching backtracks in order to remove the appropriate
     * number of assignments from the morphism. */
-   int added_variables;
+   int variables;
 } Map;
 
 /* A graph morphism is a set of node-to-node mappings, a set of edge-to-edge
- * mappings and a variable-value assignment. */
-
+ * mappings and a variable-value assignment. Maps and assignments are
+ * stored as static arrays, whose sizes are determined at compile time by
+ * the number of nodes, edges and variables in the rule. */
 typedef struct Morphism {
    int nodes;
    int node_map_index;
@@ -50,17 +53,66 @@ typedef struct Morphism {
    Assignment *assignment;
 } Morphism;
 
+/* Allocates memory for the morphism, and calls initialiseMorphism. */
 Morphism *makeMorphism(int nodes, int edges, int variables);
-void clearMorphism(Morphism *morphism);
-void addNodeMap(Morphism *morphism, int left_index, int host_index);
-void addEdgeMap(Morphism *morphism, int left_index, int host_index);
-/* addAssignment calls copyList on value. */
-void addAssignment(Morphism *morphism, string variable, int length, Atom *value);
+
+/* This function is used to both initialise the morphism on creation and to 
+ * reset the morphism after each rule application. The data in the morphism
+ * are reset to their default values. */
+void initialiseMorphism(Morphism *morphism);
+void addNodeMap(Morphism *morphism, int left_index, int host_index, int variables);
 void removeNodeMap(Morphism *morphism);
+void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variables);
 void removeEdgeMap(Morphism *morphism);
+/* addAssignment calls copyList on value. */
+void addAssignment(Morphism *morphism, string variable, GPType type, int length,
+                   Atom *value);
 void removeAssignments(Morphism *morphism, int number);
-int lookupVariable(Morphism *morphism, string variable);
-int findHostIndex(Morphism *morphism, int left_index);
+
+/* Given the index of a node/edge in the LHS, return the index of its image
+ * in the host graph according to the passed morphism. */
+int lookupNode(Morphism *morphism, int left_index);
+int lookupEdge(Morphism *morphism, int left_index);
+Assignment *lookupVariable(Morphism *morphism, string variable);
+
+/* Tests a potential variable-value assignment against the assignments in the
+ * morphism. If the variable is not in the assignment, its name and value are 
+ * added to the assignments array in the morphism. 
+ *
+ * Returns -1 if the variable has already been assigned to a different value
+ * in the assignment.
+ * Returns 0 if the variable has a value in the assignment that is equal to
+ * the passed value.
+ * Returns 1 if the variable did not previously exist in the assignment. 
+ *
+ * addListAssignment and addStringAssignment are passed stack variables created
+ * by the caller. If the assignment is added to the morphism, the values are
+ * copied to heap by addAssignment. Otherwise, they are no longer required and
+ * will be discarded when the calling function exits. */
+int addListAssignment(string name, Atom *list, int length, Morphism *morphism);
+int addIntegerAssignment(string name, int value, Morphism *morphism);
+int addStringAssignment(string name, string value, Morphism *morphism);
+
+/* These functions expect to be passed a variable of the appropriate type. */
+int getIntegerValue(string name, Morphism *morphism);
+string getStringValue(string name, Morphism *morphism);
+Atom *getListValue(string name, Morphism *morphism);
+
+/* Used to test string constants in the rule against a host string. If 
+ * rule_string is a prefix of the host_string, then the index of the host 
+ * character directly after this prefix is returned, so that the caller knows
+ * where in the host string to resume matching. 
+ * For example, isPrefix("ab", "abcd") returns 2, the index of the first 
+ * character ('c') after the matched substring ("ab").
+ * Returns -1 if it the rule string is not a prefix of the host string. */
+int isPrefix(const string rule_string, const string host_string);
+
+/* Analogous to isPrefix. Example: isSuffix("cd", "abcd") returns 1, the index
+ * of the character ('b') directly preceding the matched suffix ("cd"). 
+ * The exception is if rule_string equals host_string, in which case 0 is
+ * returned. */
+int isSuffix(const string rule_string, const string host_string);
+
 void printMorphism(Morphism *morphism);
 void freeMorphism(Morphism *morphism);
  

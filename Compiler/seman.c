@@ -1129,10 +1129,8 @@ void atomScan(GPAtom *atom, string scope, string rule_name, char location,
                abort_compilation = true;
             }
             if(location == 'l') lhs_not_simple = true;
-            atomScan(atom->bin_op.left_exp, scope,
-                          rule_name, location, true, false);
-            atomScan(atom->bin_op.right_exp, scope,
-                          rule_name, location, true, false);       
+            atomScan(atom->bin_op.left_exp, scope, rule_name, location, true, false);
+            atomScan(atom->bin_op.right_exp, scope, rule_name, location, true, false);       
             break;
 
        case CONCAT:     
@@ -1142,10 +1140,8 @@ void atomScan(GPAtom *atom, string scope, string rule_name, char location,
                            "expression.\n", rule_name);
                abort_compilation = true;
             }
-            atomScan(atom->bin_op.left_exp, scope,
-                          rule_name, location, false, true);
-            atomScan(atom->bin_op.right_exp, scope,
-                          rule_name, location, false, true); 
+            atomScan(atom->bin_op.left_exp, scope, rule_name, location, false, true);
+            atomScan(atom->bin_op.right_exp, scope, rule_name, location, false, true); 
 	    if(string_var_count > 1) 
             {
 	       print_error("Error (%s): More than one string variable in LHS "
@@ -1176,61 +1172,56 @@ void variableScan(GPAtom *atom, string scope, string rule_name,
        * not entered into the symbol table. */
       if(var_list->is_var && symbolInScope(var_list, scope, rule_name))
       {
-         if(location == 'l') var_list->in_lhs = true;   
          in_rule = true;
-         /* Assign the variable's type to the AST node and increment the
-          * string and list variable counters for every appropriate variable
-          * in the LHS. */
-         switch(var_list->type)
+         if(location == 'l') 
          {
-            case INT_S:
-                 atom->variable.type = INTEGER_VAR;
-                 if(length) 
-                 {
-                    print_error("Error (%s): Integer variable %s in length "
-                                "operator.\n", rule_name, atom->variable.name);
-                    abort_compilation = true;
-                 }
-                 break;
+            var_list->in_lhs = true;   
+            /* Assign the variable's type to the AST node and increment the
+            * string and list variable counters for every appropriate variable
+            * in the LHS. */
+            switch(var_list->type)
+            {
+               case INT_S:
+                    atom->variable.type = INTEGER_VAR;
+                    if(length) 
+                    {
+                       print_error("Error (%s): Integer variable %s in length "
+                                   "operator.\n", rule_name, atom->variable.name);
+                       abort_compilation = true;
+                    }
+                    break;
 
-            case CHAR_S:
-                 atom->variable.type = CHARACTER_VAR;
-                 if(length) 
-                 {
-                    print_error("Error (%s): Character variable %s in length "
-                                "operator.\n", rule_name, atom->variable.name);
-                    abort_compilation = true;
-                 }
-                 break;
-            
-            case STRING_S:
-                 atom->variable.type = STRING_VAR;
-                 if(location == 'l') string_var_count++;
-                 break;
+               case CHAR_S:
+                    atom->variable.type = CHARACTER_VAR;
+                    if(length) 
+                    {
+                      print_error("Error (%s): Character variable %s in length "
+                                  "operator.\n", rule_name, atom->variable.name);
+                      abort_compilation = true;
+                    }
+                    break;
+               
+               case STRING_S:
+                    atom->variable.type = STRING_VAR;
+                    if(location == 'l') string_var_count++;
+                    break;
 
-            case ATOM_S:
-                 atom->variable.type = ATOM_VAR;
-                 if(location == 'l') string_var_count++;
-                 break;
+               case ATOM_S:
+                    atom->variable.type = ATOM_VAR;
+                    if(location == 'l') string_var_count++;
+                    break;
 
-            case LIST_S:
-                 atom->variable.type = LIST_VAR;
-                 if(location == 'l') list_var_count++;
-                 break;
+               case LIST_S:
+                    atom->variable.type = LIST_VAR;
+                    if(location == 'l') list_var_count++;
+                    break;
 
-            default:
-                 print_to_log("Error (variableCheck): Unexpected symbol type "
-                              "%d.\n", var_list->type);
-                 break;
+               default:
+                    print_to_log("Error (variableCheck): Unexpected symbol type "
+                                  "%d.\n", var_list->type);
+                    break;
+            }
          }
-         if(!in_rule) 
-         {
-            print_error("Error (%s): Variable %s in expression but not "
-                        "declared.\n", rule_name, atom->variable.name);
-            abort_compilation = true;
-         }
-         /* Other semantic errors are reported in the else clause: there is no
-          * need to report these if the variable has not been declared. */
          else /* location == 'r' || location == 'c' */
          {
             /* Check if a RHS variable exists in the LHS */
@@ -1257,10 +1248,16 @@ void variableScan(GPAtom *atom, string scope, string rule_name,
             }
          }
          /* We have found the variable in the rule with the appropriate
-         * name. enterVariables ensures there is only one such variable
-         * variable in the symbol list. There is no need to look further. */
+          * name. enterVariables ensures there is only one such variable
+          * variable in the symbol list. There is no need to look further. */
          break;	
       }              
       var_list = var_list->next;
+   }
+   if(!in_rule) 
+   {
+      print_error("Error (%s): Variable %s in expression but not declared.\n",
+                  rule_name, atom->variable.name);
+      abort_compilation = true;
    } 
 }

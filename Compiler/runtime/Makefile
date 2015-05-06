@@ -19,4 +19,4 @@ default:	$(OBJECTS)
 clean:		
 		ls | grep -v 'host\|Makefile\|labelMatch\|morphism' | xargs rm
 		rm host/*
-		rm match.o
+		rm morphism.o

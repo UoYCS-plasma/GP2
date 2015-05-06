@@ -1,6 +1,6 @@
 OBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o symbol.o \
           transform.o label.o graph.o graphStacks.o rule.o searchplan.o \
-          analysis.o genHost.o genRule.o genProgram.o main.o
+          analysis.o genHost.o genLabel.o genRule.o genProgram.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
 LFLAGS = -lglib-2.0 
@@ -29,7 +29,7 @@ build:		$(OBJECTS)
 # Builds everything and runs valgrind on the runtime executable.
 debug:		$(OBJECTS)	
 		make $(F1) $(F2) 
-		cd runtime && $(VALGRIND) --suppressions=../GNOME.supp/glib.supp ./GP2-run 
+		cd runtime && make && $(VALGRIND) ./GP2-run 
 
 # Builds the executable GP2-compile and runs it with valgrind.
 compile-debug:	$(OBJECTS)
@@ -64,7 +64,8 @@ rule.o:		error.h globals.h graph.h rule.h
 transform.o:	ast.h error.h globals.h graph.h label.h rule.h transform.h 
 searchplan.o:	graph.h globals.h searchplan.h
 analysis.o:	ast.h globals.h pretty.h analysis.h
-genHost.o:	ast.h error.h globals.h transform.h genHost.h
-genRule.o:	error.h globals.h rule.h searchplan.h transform.h genRule.h
+genHost.o:	ast.h error.h genLabel.h globals.h transform.h genHost.h
+genLabel.o:     error.h globals.h label.h genLabel.h
+genRule.o:	error.h genLabel.h globals.h rule.h searchplan.h transform.h genRule.h
 genProgram.o:	ast.h error.h globals.h genProgram.h
 

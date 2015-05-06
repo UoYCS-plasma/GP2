@@ -54,14 +54,6 @@ typedef struct Atom {
    };
 } Atom;
 
-typedef struct Constant {
-   char type; /* 'i' or 's' */
-   union {
-      int number;
-      string string;
-   };
-} Constant;
-
 /* The length of the list in a label is fixed at compile time in the
  * transformation phase. If length > 0, then an array of length atoms is 
  * allocated to heap. The array is populated with the appropriate atoms. */
@@ -72,12 +64,12 @@ typedef struct Label {
    Atom *list;
 } Label;
 
-/* Defined in graph.c. */
 extern struct Label blank_label;
 
-/* Functions called at runtime to build host labels. */
+/* Called at runtime to build labels. makeHostLabel expects an atom array in
+ * heap as its third argument. */
 Label makeEmptyLabel(MarkType mark);
-Label makeHostLabel(Constant *constant, int length, MarkType mark);
+Label makeHostLabel(MarkType mark, int length, Atom *list);
 
 /* Compares a LHS label with a RHS label of the same rule for syntactic equality. 
  * Used in rule generation to determine if an item is relabelled. */

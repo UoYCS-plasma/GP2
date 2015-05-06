@@ -1,6 +1,5 @@
 #include "graph.h"
 
-Label blank_label = {NONE, 0, NULL};
 Node dummy_node = {-1, false, EMPTY_L, {NONE, 0, NULL}, {-1}, {-1},
                    NULL, NULL, 0, 0, 0, 0, 0, 0, 0, -1};
 Edge dummy_edge = {-1, false, EMPTY_L, {NONE, 0, NULL}, -1, -1, -1};

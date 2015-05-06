@@ -83,6 +83,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
  * transformation functions to get the appropriate index from the string
  * node identifier. */
 Label transformLabel(GPLabel *ast_label, IndexMap *node_map);
+int getListLength(GPLabel *ast_label);
 Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map);
 
 #endif /* INC_TRANSFORM_H */

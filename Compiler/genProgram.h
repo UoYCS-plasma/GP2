@@ -12,26 +12,6 @@
 #ifndef INC_GEN_PROGRAM_H
 #define INC_GEN_PROGRAM_H
 
-/* main_header and main_source are the file handles for runtime.h
- * and main.c respectively. */
-#define printToMainHeader(code, ...)	             \
-  do { fprintf(main_header, code, ##__VA_ARGS__); }  \
-  while(0) 
-
-#define PTMH printToMainHeader
-
-#define printToMainSource(code, ...)	             \
-  do { fprintf(main_source, code, ##__VA_ARGS__); }  \
-  while(0) 
-
-#define PTMS printToMainSource
-
-#define printToMainSourceI(code, indent, ...)	         		\
-  do { fprintf(main_source, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
-  while(0) 
-
-#define PTMSI printToMainSourceI
-
 #include "ast.h"
 #include "error.h"
 #include "globals.h"

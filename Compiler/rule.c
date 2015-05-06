@@ -191,7 +191,6 @@ PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index,
       print_to_log("Error: Memory exhausted during rule construction.\n");
       exit(1);
    }
-
    new_list->left_index = left_index;   
    new_list->rhs_root = rhs_root;
    new_list->new_label = new_label;

@@ -1,35 +1,16 @@
 #include "label.h"
 
-Label makeBlankLabel(MarkType mark)
+Label blank_label = {NONE, 0, NULL};
+
+Label makeEmptyLabel(MarkType mark)
 {
-   Label label = { .mark = mark,
-                   .length = 0,
-                   .list = NULL };
+   Label label = { .mark = mark, .length = 0, .list = NULL };
    return label;
 }
 
-Label makeHostLabel(Constant *constant, int length, MarkType mark)
+Label makeHostLabel(MarkType mark, int length, Atom *list)
 {
-   Atom *list = makeList(length);
-   int index;
-   for(index = 0; index < length; index++)
-   {
-      if(constant[index].type == 'i')
-      {
-         list[index].type = INTEGER_CONSTANT;
-         list[index].number = constant[index].number;
-      }
-      else if(constant[index].type == 's')
-      {
-         list[index].type = STRING_CONSTANT;
-         list[index].string = strdup(constant[index].string);
-      }
-      else print_to_log("Error (makeLabel): Unexpected constant type %c.\n",
-                        constant[index].type);
-   }
-   Label label = { .mark = mark,
-                   .length = length,
-                   .list = list };
+   Label label = { .mark = mark, .length = length, .list = list };
    return label;
 }
 
@@ -242,10 +223,8 @@ LabelClass getLabelClass(Label label)
       /* Search for a list variable. */
       for(index = 0; index < label.length; index++)
       {
-         if(label.list[index].type == VARIABLE)
-         {
-            if(label.list[index].variable.type == LIST_VAR) return LIST_VAR_L;
-         }
+         if(label.list[index].type == VARIABLE &&
+            label.list[index].variable.type == LIST_VAR) return LIST_VAR_L;
       }
       switch(label.length)
       {

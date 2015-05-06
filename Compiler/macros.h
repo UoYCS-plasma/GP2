@@ -13,7 +13,6 @@
        matched_edges[count] = -1;                
 
 #define CHECK_MATCHED_NODE                         \
-   int index;                                      \
    for(index = 0; index < left_nodes; index++)     \
    {                                               \
       if(matched_nodes[index] == host_node->index) \
@@ -21,7 +20,6 @@
    }                                               \
       
 #define CHECK_MATCHED_EDGE                         \
-   int index;                                      \
    for(index = 0; index < left_edges; index++)     \
    {                                               \
       if(matched_edges[index] == host_edge->index) \
@@ -31,7 +29,7 @@
 #define IF_INVALID_NODE(lclass, nmark, indeg, outdeg, bideg)  \
    if(node_matched ||                                         \
       host_node->label_class != (lclass) ||                   \
-      (host_node->label->mark != (nmark) && (nmark) != 6) ||  \
+      (host_node->label.mark != (nmark) && (nmark) != 6) ||   \
       host_node->indegree < (indeg) ||                        \
       host_node->outdegree < (outdeg) ||                      \
       ((host_node->outdegree + host_node->indegree            \
@@ -40,7 +38,7 @@
 #define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg, bideg)  \
    if(node_matched ||                                                  \
       host_node->label_class != (lclass) ||                            \
-      (host_node->label->mark != (nmark) && (nmark) != 6 ||            \
+      (host_node->label.mark != (nmark) && (nmark) != 6) ||            \
       host_node->indegree < (indeg) ||                                 \
       host_node->outdegree < (outdeg) ||                               \
       host_node->outdegree - (outdeg) != (bideg) ||                    \
@@ -50,13 +48,13 @@
 #define IF_INVALID_EDGE(lclass, emark)                     \
    if(edge_matched ||                                      \
       host_edge->label_class != (lclass) ||                \
-      (host_edge->label->mark != (emark) && (emark) != 6))
+      (host_edge->label.mark != (emark) && (emark) != 6))
 
 #define IF_INVALID_LOOP_EDGE(lclass, emark)                \
    if(edge_matched ||                                      \
       host_edge->source != host_edge->target ||            \
       host_edge->label_class != (lclass) ||                \
-      (host_edge->label->mark != (emark) && (emark) != 6))
+      (host_edge->label.mark != (emark) && (emark) != 6))
 
 #define HANDLE_RESULT(lindex)       \
   if(result) return true;           \

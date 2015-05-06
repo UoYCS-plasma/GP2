@@ -26,9 +26,9 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
      perror("init_runtime.c");
      exit(1);
    }
-   fprintf(header, "#include \"../graph.h\"\n"
-                   "#include \"host/host.h\"\n"
- 		   "Graph *buildHostGraph(void);\n");
+   PTH("#include \"../graph.h\"\n"
+       "#include \"host/host.h\"\n"
+       "Graph *buildHostGraph(void);\n");
 
    PTF("#include \"buildHost.h\"\n\n");
    PTF("Graph *buildHostGraph(void)\n");
@@ -57,11 +57,15 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       int node_count = 0;
       while(nodes != NULL)
       {
-         string label_name = generateLabelCode(nodes->node->label, 
-                                               node_count++, file);
-         if(label_name != NULL) PTF("   addNode(host, %d, %s);\n", 
-                                     nodes->node->root, label_name);
-         if(strcmp(label_name, "blank_label")) PTF("\n"); 
+         GPLabel *label = nodes->node->label;
+         bool root = nodes->node->root;
+         if(label->mark == NONE && getListLength(label) == 0)
+            PTFI("addNode(host, %d, blank_label);\n", 3, root);
+         else
+         {
+            generateLabelCode(label, node_count++, file);
+            PTFI("addNode(host, %d, label);\n", 3, root);
+         }
          nodes = nodes->next;   
       }
       PTF("\n");
@@ -93,12 +97,15 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          int node_count = 0;
          while(nodes != NULL && node_count < BUFFER_SIZE)
          {
-            string label_name = generateLabelCode(nodes->node->label, 
-                                                  node_count++, node_file);
-            if(label_name != NULL)
-               fprintf(node_file, "   addNode(host, %d, %s);\n", 
-                       nodes->node->root, label_name);
-            if(strcmp(label_name, "blank_label")) PTF("\n"); 
+            GPLabel *label = nodes->node->label;
+            bool root = nodes->node->root;
+            if(label->mark == NONE && getListLength(label) == 0)
+               fprintf(node_file, "   addNode(host, %d, blank_label);\n", root);
+            else
+            {
+               generateLabelCode(label, node_count++, node_file);
+               fprintf(node_file, "   addNode(host, %d, label);\n", root);
+            }
             nodes = nodes->next;   
          }
          fprintf(node_file, "}\n");
@@ -121,12 +128,17 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          * IDs of the edge's source and target. */
          int source_index = (int)strtol((edges->edge->source) + 1, NULL, 0);
          int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
-         string label_name = 
-            generateLabelCode(edges->edge->label, edge_count++, file);
-         if(label_name != NULL)
-            PTF("   addEdge(host, false, %s, %d, %d);\n", label_name, 
+
+         GPLabel *label = edges->edge->label;
+         if(label->mark == NONE && getListLength(label) == 0)
+            PTFI("addEdge(host, false, blank_label, %d, %d);\n", 3, 
                  source_index, target_index);
-         if(strcmp(label_name, "blank_label")) PTF("\n"); 
+         else
+         {
+            generateLabelCode(label, edge_count++, file);
+            PTFI("addEdge(host, false, label, %d, %d);\n", 3,
+                 source_index, target_index);
+         }
          edges = edges->next;   
       }
    }
@@ -161,13 +173,17 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             * IDs of the edge's source and target. */
             int source_index = (int)strtol((edges->edge->source) + 1, NULL, 0);
             int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
-            string label_name = 
-               generateLabelCode(edges->edge->label, edge_count++, edge_file);
-            if(label_name != NULL)
-               fprintf(edge_file, "   addEdge(host, false, %s, %d, %d);\n", 
-                       label_name, source_index, target_index);
-            if(strcmp(label_name, "blank_label")) PTF("\n"); 
-            edges = edges->next;   
+
+            GPLabel *label = edges->edge->label;
+            if(label->mark == NONE && getListLength(label) == 0)
+               PTFI("addEdge(host, false, blank_label, %d, %d);\n", 3, 
+                  source_index, target_index);
+            else
+            {
+               generateLabelCode(label, edge_count++, edge_file);
+               PTFI("addEdge(host, false, label, %d, %d,);\n", 3,
+                    source_index, target_index);
+            } 
          }
          fprintf(edge_file, "}\n");
          fclose(edge_file);
@@ -182,7 +198,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    fclose(file);
 }
 
-string generateLabelCode(GPLabel *ast_label, int list_count, FILE *file)
+void generateLabelCode(GPLabel *ast_label, int list_count, FILE *file)
 {
    int length = 0;
    List *list = ast_label->gp_list;
@@ -191,41 +207,37 @@ string generateLabelCode(GPLabel *ast_label, int list_count, FILE *file)
       length++;
       list = list->next;
    }
-   /* The global label variable blank_label, representing a label with no mark
-    * and the empty list, is defined in graph.c. */
-   if(length == 0 && ast_label->mark == NONE) return "blank_label";
-   if(length == 0 && ast_label->mark != NONE)
-      PTF("   label = makeEmptyLabel(%d);\n", ast_label->mark);
+   if(length == 0) PTFI("label = makeEmptyLabel(%d);\n", 3, ast_label->mark);
    else
    {
+      PTFI("Atom *list%d = makeList(%d);\n", 3, list_count, length);
       int index = 0;
-      PTF("   Constant list%d[%d];\n   ", list_count, length);
       list = ast_label->gp_list;
       while(list != NULL)
       {
          GPAtom *atom = list->atom;
          if(atom->type == INTEGER_CONSTANT)
          {
-            PTF("list%d[%d].type = 'i'; ", list_count, index);
-            PTF("list%d[%d].number = %d; ", list_count, index, atom->number);
+            PTFI("list%d[%d].type = INTEGER_CONSTANT; ", 3, list_count, index);
+            PTF("list%d[%d].number = %d;\n", list_count, index, atom->number);
          }
          else if(atom->type == STRING_CONSTANT)
          {
-            PTF("list%d[%d].type = 's'; ", list_count, index);
-            PTF("list%d[%d].string = \"%s\"; ", list_count, index, atom->string);
+            PTFI("list%d[%d].type = STRING_CONSTANT; ", 3, list_count, index);
+            PTF("list%d[%d].string = strdup(\"%s\")\n; ", 
+                list_count, index, atom->string);
          }
          else 
          {
             print_to_log("Error (generateLabelCode): Unexpected host atom "
                          "type %d.\n", atom->type);
-            return NULL;
+            break;
          }
          index++;
          list = list->next;
       }
-      PTF("\n   label = makeHostLabel(list%d, %d, %d);\n", list_count,
-           length, ast_label->mark);
+      PTFI("label = makeHostLabel(%d, %d, list%d);\n", 3,
+           ast_label->mark, length, list_count);
    }
-   return "label";
 }
       

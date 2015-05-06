@@ -11,7 +11,27 @@
 #ifndef INC_GLOBALS_H
 #define INC_GLOBALS_H
 
-#include <assert.h>
+/* Convenience macros for the code generating modules that write to C header
+ * and C source files. The source file pointer in each module is named "file"
+ * to avoid any potential confusion with sources in graphs. */
+#define printToHeader(code, ...)	       \
+  do { fprintf(header, code, ##__VA_ARGS__); } \
+  while(0) 
+
+#define printToFile(code, ...)	               \
+  do { fprintf(file, code, ##__VA_ARGS__); }   \
+  while(0) 
+
+/* A wrapper to a call to fprintf which indents the line written
+ * to the file with <indent> number of spaces. */
+#define printToFileIndented(code, indent, ...)	        	 \
+  do { fprintf(file, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
+  while(0) 
+
+#define PTH printToHeader
+#define PTF printToFile
+#define PTFI printToFileIndented
+  
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h> 
