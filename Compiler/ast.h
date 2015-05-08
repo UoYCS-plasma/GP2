@@ -48,7 +48,8 @@ typedef struct List {
        struct GPRule *rule;
     } rule_call;                       /* RULES */
     struct List *variables;            /* INT_DECLARATIONS, CHAR_DECLARATIONS,
-                                        * STRING_DECLARATIONS, ATOM_DECLARATIONS */ 
+                                        * STRING_DECLARATIONS, ATOM_DECLARATIONS,
+                                        * LIST_DECLARATIONS */ 
     string variable_name; 	       /* VARIABLE_LIST */	  
     string node_id; 		       /* INTERFACE_LIST */	   
     struct GPNode *node; 	       /* NODE_LIST */   

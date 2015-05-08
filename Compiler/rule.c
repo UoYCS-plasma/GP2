@@ -71,16 +71,6 @@ int findLeftIndexFromId(IndexMap *map, string id)
    return -1; 
 }
 
-int findRightIndexFromId(IndexMap *map, string id)
-{
-   while(map != NULL)
-   {
-      if(!strcmp(map->id, id)) return map->right_index;
-      else map = map->next;
-   }
-   return -1; 
-}
-
 IndexMap *findMapFromId(IndexMap *map, string id)
 {
    while(map != NULL)

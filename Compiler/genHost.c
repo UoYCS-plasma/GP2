@@ -60,12 +60,10 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          GPLabel *label = nodes->node->label;
          bool root = nodes->node->root;
          if(label->mark == NONE && getListLength(label) == 0)
-            PTFI("addNode(host, %d, blank_label);\n", 3, root);
-         else
-         {
-            generateLabelCode(label, node_count++, file);
-            PTFI("addNode(host, %d, label);\n", 3, root);
-         }
+            PTFI("label = blank_label;\n", 3);
+         else generateLabelCode(label, node_count++, file);
+
+         PTFI("addNode(host, %d, label);\n", 3, root);
          nodes = nodes->next;   
       }
       PTF("\n");
@@ -100,12 +98,9 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             GPLabel *label = nodes->node->label;
             bool root = nodes->node->root;
             if(label->mark == NONE && getListLength(label) == 0)
-               fprintf(node_file, "   addNode(host, %d, blank_label);\n", root);
-            else
-            {
-               generateLabelCode(label, node_count++, node_file);
-               fprintf(node_file, "   addNode(host, %d, label);\n", root);
-            }
+               fprintf(node_file, "   label = blank_label;\n");
+            else generateLabelCode(label, node_count++, node_file);
+            fprintf(node_file, "   addNode(host, %d, label);\n", root);
             nodes = nodes->next;   
          }
          fprintf(node_file, "}\n");
@@ -131,14 +126,9 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
 
          GPLabel *label = edges->edge->label;
          if(label->mark == NONE && getListLength(label) == 0)
-            PTFI("addEdge(host, false, blank_label, %d, %d);\n", 3, 
-                 source_index, target_index);
-         else
-         {
-            generateLabelCode(label, edge_count++, file);
-            PTFI("addEdge(host, false, label, %d, %d);\n", 3,
-                 source_index, target_index);
-         }
+            PTFI("label = blank_label;\n", 3);
+         else generateLabelCode(label, edge_count++, file);
+         PTFI("addEdge(host, false, label, %d, %d);\n", 3, source_index, target_index);
          edges = edges->next;   
       }
    }
@@ -176,14 +166,9 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
 
             GPLabel *label = edges->edge->label;
             if(label->mark == NONE && getListLength(label) == 0)
-               PTFI("addEdge(host, false, blank_label, %d, %d);\n", 3, 
-                  source_index, target_index);
-            else
-            {
-               generateLabelCode(label, edge_count++, edge_file);
-               PTFI("addEdge(host, false, label, %d, %d,);\n", 3,
-                    source_index, target_index);
-            } 
+               PTFI("label = blank_label;\n", 3);
+            else generateLabelCode(label, edge_count++, edge_file);
+            PTFI("addEdge(host, false, label, %d, %d,);\n", 3, source_index, target_index);
          }
          fprintf(edge_file, "}\n");
          fclose(edge_file);

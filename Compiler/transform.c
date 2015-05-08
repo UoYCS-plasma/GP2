@@ -10,8 +10,8 @@ Rule *makeRule(GPRule *ast_rule)
    }
    
    rule->name = strdup(ast_rule->name);
-   rule->variables = NULL;
-   rule->number_of_variables = 0;
+   rule->number_of_variables = ast_rule->variable_count;
+   rule->variables = scanVariableList(NULL, ast_rule->variables);
 
    IndexMap *node_map = NULL;
    IndexMap *edge_map = NULL;
@@ -39,6 +39,63 @@ Rule *makeRule(GPRule *ast_rule)
    if(edge_map) freeIndexMap(edge_map);
    rule->condition = NULL;
    return rule;
+}
+
+VariableList *scanVariableList(VariableList *list, List *declarations)
+{
+   while(declarations != NULL)
+   {
+      List *variables = declarations->variables;
+      switch(declarations->list_type)
+      {
+         case INT_DECLARATIONS:
+              while(variables != NULL)
+              {
+                 list = addVariable(list, variables->variable_name, INTEGER_VAR);
+                 variables = variables->next;
+              }
+              break;
+
+         case CHAR_DECLARATIONS:
+              while(variables != NULL)
+              {
+                 list = addVariable(list, variables->variable_name, CHARACTER_VAR);
+                 variables = variables->next;
+              }
+              break;
+
+         case STRING_DECLARATIONS:
+              while(variables != NULL)
+              {
+                 list = addVariable(list, variables->variable_name, STRING_VAR);
+                 variables = variables->next;
+              }
+              break;
+
+         case ATOM_DECLARATIONS:
+              while(variables != NULL)
+              {
+                 list = addVariable(list, variables->variable_name, ATOM_VAR);
+                 variables = variables->next;
+              }
+              break;
+
+         case LIST_DECLARATIONS:
+              while(variables != NULL)
+              {
+                 list = addVariable(list, variables->variable_name, LIST_VAR);
+                 variables = variables->next;
+              }
+              break;
+          
+         default:
+              print_to_log("Error (scanVariableList): Unexpected type %d\n", 
+                           declarations->list_type);
+              break;
+      }
+      declarations = declarations->next;
+   }
+   return list;
 }
 
 int countNodes(GPGraph *graph)
@@ -392,7 +449,7 @@ Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map)
 
       case INDEGREE:
       case OUTDEGREE:
-           atom.node_id = findRightIndexFromId(node_map, ast_atom->node_id);
+           atom.node_id = findLeftIndexFromId(node_map, ast_atom->node_id);
            break;
 
       case NEG:

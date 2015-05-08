@@ -465,10 +465,11 @@ void ruleScan(GPRule *rule, string scope)
       }
       variable_list = variable_list->next;
    }
-   graphScan(rule, scope, rule->name, 'l');
-   graphScan(rule, scope, rule->name, 'r');
+   graphScan(rule, rule->interface, scope, rule->name, 'l');
+   graphScan(rule, rule->interface, scope, rule->name, 'r');
    if(rule->interface) interfaceScan(rule->interface, scope, rule->name);
-   if(rule->condition) conditionScan(rule->condition, scope, rule->name);
+   if(rule->condition) conditionScan(rule->condition, rule->interface, 
+                                     scope, rule->name);
 }   
 
 void checkDeclaration(GPRule *rule, List *variables, string scope,
@@ -524,7 +525,7 @@ int enterVariables(SymbolType type, List *variables, string scope, string rule_n
    return variable_count;
 }  
 
-void graphScan(GPRule *rule, string scope, string rule_name, char side)
+void graphScan(GPRule *rule, List *interface, string scope, string rule_name, char side)
 {
    GPGraph *graph = NULL;
    if(side == 'l') graph = rule->lhs;
@@ -614,7 +615,7 @@ void graphScan(GPRule *rule, string scope, string rule_name, char side)
             iterator = iterator->next;      
          }
       }
-      gpListScan(&(node_list->node->label->gp_list), scope, rule_name, side);
+      gpListScan(&(node_list->node->label->gp_list), interface, scope, rule_name, side);
       node_list = node_list->next;   
       if(!add_node && node_id) free(node_id);  
    }   
@@ -804,7 +805,7 @@ void graphScan(GPRule *rule, string scope, string rule_name, char side)
             else symbol_list = symbol_list->next;             
          }
       }	 
-      gpListScan(&(edge_list->edge->label->gp_list), scope, rule_name, side);
+      gpListScan(&(edge_list->edge->label->gp_list), interface, scope, rule_name, side);
       edge_list = edge_list->next;
       if(!add_edge && edge_id) free(edge_id);
    }
@@ -816,17 +817,15 @@ void interfaceScan(List *interface, string scope, string rule_name)
    GSList *interface_ids = NULL, *iterator = NULL;
    bool in_lhs, in_rhs;
 
-   while(interface)
+   while(interface != NULL)
    {
       in_lhs = false, in_rhs = false;
-      string current_node_id = interface->node_id;
-
       /* g_slist_insert_sorted inserts elements and maintains lexicographic
        * order of its elements with use of the function strcmp. This makes
        * checking for duplicate nodes easier. */
-      interface_ids = g_slist_insert_sorted(interface_ids, current_node_id,
+      interface_ids = g_slist_insert_sorted(interface_ids, interface->node_id,
                                             (GCompareFunc)strcmp);
-      SymbolList *node_symbol = g_hash_table_lookup(symbol_table, current_node_id);     
+      SymbolList *node_symbol = g_hash_table_lookup(symbol_table, interface->node_id);     
       while(node_symbol) 
       {
          if(symbolInScope(node_symbol, scope, rule_name))
@@ -842,13 +841,13 @@ void interfaceScan(List *interface, string scope, string rule_name)
       if(!in_lhs)  
       {
          print_to_log("Error (%s): Interface node %s not in the LHS "
-                      "graph.\n", rule_name, current_node_id);
+                      "graph.\n", rule_name, interface->node_id);
          abort_compilation = true; 
       }
       if(!in_rhs) 
       {
          print_to_log("Error (%s): Interface node %s not in the RHS "
-                      "graph.\n", rule_name, current_node_id);
+                      "graph.\n", rule_name, interface->node_id);
          abort_compilation = true; 
       }
       interface = interface->next;   
@@ -865,7 +864,8 @@ void interfaceScan(List *interface, string scope, string rule_name)
 }
         
 
-void conditionScan(GPCondition * condition, string scope, string rule_name)
+void conditionScan(GPCondition *condition, List *interface, string scope, 
+                   string rule_name)
 {
    switch(condition->type) 
    {
@@ -895,77 +895,71 @@ void conditionScan(GPCondition * condition, string scope, string rule_name)
            break;
       }
       /* For an edge predicate, the source and target node IDs must be present
-       * in the LHS of the rule. The optional label argument is also scanned. */
+       * in the interface of the rule. The optional label argument is also scanned. */
       case EDGE_PRED:
       {
-           bool in_lhs = false;
-           SymbolList *node_list = 
-              g_hash_table_lookup(symbol_table, condition->edge_pred.source);
-           while(node_list != NULL)  
+           bool in_interface = false;
+           while(interface != NULL)  
            {
-              if(node_list->type == LEFT_NODE_S && 
-                 symbolInScope(node_list, scope, rule_name))
+              if(!strcmp(condition->edge_pred.source, interface->node_id))
               {
-                 in_lhs = true;
+                 in_interface = true;
                  break;
               }
-              node_list = node_list->next;
+              interface = interface->next;
            }
-           if(!in_lhs) 
+           if(!in_interface) 
            {
-              print_error("Error (%s): Node %s in edge predicate not in LHS.\n",
-                          rule_name, condition->edge_pred.source);
+              print_error("Error (%s): Node %s in edge predicate not in the "
+                          "interface.\n", rule_name, condition->edge_pred.source);
               abort_compilation = true;  
            }
-           in_lhs = false;
+           in_interface = false;
 
-           node_list = g_hash_table_lookup(symbol_table, condition->edge_pred.target);
-           while(node_list != NULL) 
+           while(interface != NULL)  
            {
-              if(node_list->type == LEFT_NODE_S &&
-                 symbolInScope(node_list, scope, rule_name)) 
+              if(!strcmp(condition->edge_pred.target, interface->node_id))
               {
-                 in_lhs = true;
+                 in_interface = true;
                  break;
               }
-              node_list = node_list->next;
+              interface = interface->next;
            }
-           if(!in_lhs) 
+           if(!in_interface) 
            {
-              print_error("Error (%s): Node %s in edge predicate not in LHS.\n",
-                          rule_name, condition->edge_pred.target);
+              print_error("Error (%s): Node %s in edge predicate not in the "
+                          "interface.\n", rule_name, condition->edge_pred.target);
               abort_compilation = true;  
            }
-           in_lhs = false;
-
 	   /* Scan the label argument if it exists. */
            if(condition->edge_pred.label)
-              gpListScan(&(condition->edge_pred.label->gp_list), scope, rule_name, 'c');
+              gpListScan(&(condition->edge_pred.label->gp_list), interface, 
+                         scope, rule_name, 'c');
            break;
       }
 
       case EQUAL:
       case NOT_EQUAL:
-           gpListScan(&(condition->list_cmp.left_list), scope, rule_name, 'c');
-           gpListScan(&(condition->list_cmp.right_list), scope, rule_name, 'c');
+           gpListScan(&(condition->list_cmp.left_list), interface, scope, rule_name, 'c');
+           gpListScan(&(condition->list_cmp.right_list), interface, scope, rule_name, 'c');
            break;
 
       case GREATER:
       case GREATER_EQUAL:
       case LESS:
       case LESS_EQUAL:
-           atomScan(condition->atom_cmp.left_exp, scope, rule_name, 'c', true, false);
-           atomScan(condition->atom_cmp.right_exp, scope, rule_name, 'c', true, false);
+           atomScan(condition->atom_cmp.left_exp, interface, scope, rule_name, 'c', true, false);
+           atomScan(condition->atom_cmp.right_exp, interface, scope, rule_name, 'c', true, false);
            break;
 
       case BOOL_NOT:
-           conditionScan(condition->not_exp, scope, rule_name);
+           conditionScan(condition->not_exp, interface, scope, rule_name);
            break;
 
       case BOOL_OR:
       case BOOL_AND:
-           conditionScan(condition->bin_exp.left_exp, scope, rule_name);
-           conditionScan(condition->bin_exp.right_exp, scope, rule_name);
+           conditionScan(condition->bin_exp.left_exp, interface, scope, rule_name);
+           conditionScan(condition->bin_exp.right_exp, interface, scope, rule_name);
            break;
 
       default:
@@ -981,14 +975,15 @@ static int list_var_count = 0;
 static int string_var_count = 0;
 static bool lhs_not_simple = false;
 
-void gpListScan(List **gp_list, string scope, string rule_name, char location)
+void gpListScan(List **gp_list, List *interface, string scope, string rule_name, 
+                char location)
 {
    *gp_list = reverse(*gp_list);
 
    List *iterator = *gp_list;
    while(iterator) 
    {
-      atomScan(iterator->atom, scope, rule_name, location, false, false);
+      atomScan(iterator->atom, interface, scope, rule_name, location, false, false);
       iterator = iterator->next; 
    } 
    if(list_var_count > 1) print_error("Error (%s): More than one list variable "
@@ -1012,8 +1007,8 @@ void gpListScan(List **gp_list, string scope, string rule_name, char location)
  * set one of these flags to true. Specifically, the atoms in degree operators,
  * the length operator and arithmetic expressions are called with int_exp true.
  * The atoms in concat expressions are called with string_exp true. */
-void atomScan(GPAtom *atom, string scope, string rule_name, char location,
-              bool int_exp, bool string_exp)
+void atomScan(GPAtom *atom, List *interface, string scope, string rule_name, 
+              char location, bool int_exp, bool string_exp)
 {
    switch(atom->type) 
    {
@@ -1060,50 +1055,25 @@ void atomScan(GPAtom *atom, string scope, string rule_name, char location,
 	      abort_compilation = true;
            }
            if(location == 'l') lhs_not_simple = true;
-           /* If the degree operator is in a condition, its argument must exist
-            * in the LHS graph. */
-           if(location == 'c') 
+           /* If the degree operator is in a condition or a RHS-label, its argument 
+            * must exist in the interface. */
+           else /* location == 'c' || location == 'r' */
            {
-	      bool in_lhs = false;
-	      SymbolList *node_list = g_hash_table_lookup(symbol_table, atom->node_id);
-    	      while(node_list != NULL) 
+              bool in_interface = false;
+              while(interface != NULL)  
               {
-                 if(node_list->type == LEFT_NODE_S &&
-                    symbolInScope(node_list, scope, rule_name))
-		 {
-		    in_lhs = true;
-		    break;
-		 }
-		 node_list = node_list->next;
-	      }
-	      if(!in_lhs) 
-              {
-		 print_error("Error (%s): Node %s in degree operator is not "
-			     "in the LHS.\n", rule_name, atom->node_id);
-                 abort_compilation = true;
-              }
-           }
-           /* If the degree operator is in a right-label, its argument must exist
-            * in the RHS graph.  */
-           if(location == 'r') 
-           {
-              bool in_rhs = false;
-	      SymbolList *node_list = g_hash_table_lookup(symbol_table, atom->node_id);
-	      while(node_list != NULL) 
-              {
-		 if(node_list->type == RIGHT_NODE_S &&
-                    symbolInScope(node_list, scope, rule_name))
+                 if(!strcmp(atom->node_id, interface->node_id))
                  {
-		    in_rhs = true;
-		    break;
-		 }
-		 node_list = node_list->next;
-	      }
-	      if(!in_rhs)  
+                    in_interface = true;
+                    break;
+                 }
+                 interface = interface->next;
+              }
+              if(!in_interface) 
               {
-		 print_error("Error (%s): Node %s in degree operator is not "
-			     "in the RHS.\n", rule_name, atom->node_id);
-                 abort_compilation = true;
+                 print_error("Error (%s): Node %s in degree operator not in the "
+                             "interface.\n", rule_name, atom->node_id);
+                 abort_compilation = true;  
               }
            }
            break;
@@ -1115,7 +1085,7 @@ void atomScan(GPAtom *atom, string scope, string rule_name, char location,
                            "expression.\n", rule_name);
                abort_compilation = true;
             }
-            atomScan(atom->neg_exp, scope, rule_name, location, true, false);
+            atomScan(atom->neg_exp, interface, scope, rule_name, location, true, false);
             break;
 
        case ADD:
@@ -1129,8 +1099,10 @@ void atomScan(GPAtom *atom, string scope, string rule_name, char location,
                abort_compilation = true;
             }
             if(location == 'l') lhs_not_simple = true;
-            atomScan(atom->bin_op.left_exp, scope, rule_name, location, true, false);
-            atomScan(atom->bin_op.right_exp, scope, rule_name, location, true, false);       
+            atomScan(atom->bin_op.left_exp, interface, scope, rule_name, 
+                     location, true, false);
+            atomScan(atom->bin_op.right_exp, interface, scope, rule_name,
+                     location, true, false);       
             break;
 
        case CONCAT:     
@@ -1140,8 +1112,10 @@ void atomScan(GPAtom *atom, string scope, string rule_name, char location,
                            "expression.\n", rule_name);
                abort_compilation = true;
             }
-            atomScan(atom->bin_op.left_exp, scope, rule_name, location, false, true);
-            atomScan(atom->bin_op.right_exp, scope, rule_name, location, false, true); 
+            atomScan(atom->bin_op.left_exp, interface, scope, rule_name,
+                     location, false, true);
+            atomScan(atom->bin_op.right_exp, interface, scope, rule_name, 
+                     location, false, true); 
 	    if(string_var_count > 1) 
             {
 	       print_error("Error (%s): More than one string variable in LHS "
@@ -1167,93 +1141,100 @@ void variableScan(GPAtom *atom, string scope, string rule_name,
    bool in_rule = false;
    while(var_list)
    {
-      /* Locate the variable with the appropriate scope and rule 
-       * name. If it exists, there is only one, as duplicates are 
-       * not entered into the symbol table. */
-      if(var_list->is_var && symbolInScope(var_list, scope, rule_name))
+      /* Locate the variable with the appropriate scope and rule name. If it 
+       * exists, there is only one, as duplicates are not entered into the 
+       * symbol table. */
+      if(var_list->is_var && symbolInScope(var_list, scope, rule_name)) in_rule = true;
+      else 
       {
-         in_rule = true;
-         if(location == 'l') 
-         {
-            var_list->in_lhs = true;   
-            /* Assign the variable's type to the AST node and increment the
-            * string and list variable counters for every appropriate variable
-            * in the LHS. */
-            switch(var_list->type)
-            {
-               case INT_S:
-                    atom->variable.type = INTEGER_VAR;
-                    if(length) 
-                    {
-                       print_error("Error (%s): Integer variable %s in length "
-                                   "operator.\n", rule_name, atom->variable.name);
-                       abort_compilation = true;
-                    }
-                    break;
+         var_list = var_list->next;
+         continue;
+      }
+      switch(var_list->type)
+      {
+         case INT_S:
+              atom->variable.type = INTEGER_VAR;
+              if(location == 'l') var_list->in_lhs = true;
+              if(length) 
+              {
+                 print_error("Error (%s): Integer variable %s in length "
+                             "operator.\n", rule_name, atom->variable.name);
+                 abort_compilation = true;
+              }
+              break;
 
-               case CHAR_S:
-                    atom->variable.type = CHARACTER_VAR;
-                    if(length) 
-                    {
-                      print_error("Error (%s): Character variable %s in length "
-                                  "operator.\n", rule_name, atom->variable.name);
-                      abort_compilation = true;
-                    }
-                    break;
-               
-               case STRING_S:
-                    atom->variable.type = STRING_VAR;
-                    if(location == 'l') string_var_count++;
-                    break;
+         case CHAR_S:
+              atom->variable.type = CHARACTER_VAR;
+              if(location == 'l') var_list->in_lhs = true;
+              if(length) 
+              {
+                 print_error("Error (%s): Character variable %s in length "
+                             "operator.\n", rule_name, atom->variable.name);
+                 abort_compilation = true;
+              }
+              break;
+         
+         case STRING_S:
+              atom->variable.type = STRING_VAR;
+              if(location == 'l') 
+              {
+                 var_list->in_lhs = true;
+                 string_var_count++;
+              }
+              break;
 
-               case ATOM_S:
-                    atom->variable.type = ATOM_VAR;
-                    if(location == 'l') string_var_count++;
-                    break;
+         case ATOM_S:
+              atom->variable.type = ATOM_VAR;
+              if(location == 'l') 
+              {
+                 var_list->in_lhs = true;
+                 string_var_count++;
+              }
+              break;
 
-               case LIST_S:
-                    atom->variable.type = LIST_VAR;
-                    if(location == 'l') list_var_count++;
-                    break;
+         case LIST_S:
+              atom->variable.type = LIST_VAR;
+              if(location == 'l') 
+              {
+                 var_list->in_lhs = true;
+                 list_var_count++;
+              }
+              break;
 
-               default:
-                    print_to_log("Error (variableCheck): Unexpected symbol type "
-                                  "%d.\n", var_list->type);
-                    break;
-            }
-         }
-         else /* location == 'r' || location == 'c' */
-         {
-            /* Check if a RHS variable exists in the LHS */
-            if(location == 'r' && !(var_list->in_lhs))
-            {
-               print_error("Error (%s): Variable %s in RHS but not in LHS.\n",
-                           rule_name, atom->variable.name);
-               abort_compilation = true;
-            }
-            /* Type checking */
-            if(int_exp && var_list->type != INT_S && !length) 
-            {
-               print_error("Error (%s): Variable %s occurs in an integer "
-                           "expression but not declared as an integer.\n",
-                           rule_name, atom->variable.name);
-               abort_compilation = true;
-            }
-            if(string_exp && var_list->type != CHAR_S && var_list->type != STRING_S)
-            {
-               print_error("Error (%s): Variable %s occurs in a string expression "
-                           "but not declared as a string or character.\n",
-                           rule_name, atom->variable.name);
-               abort_compilation = true;
-            }
-         }
-         /* We have found the variable in the rule with the appropriate
-          * name. enterVariables ensures there is only one such variable
-          * variable in the symbol list. There is no need to look further. */
-         break;	
-      }              
+         default:
+              print_to_log("Error (variableCheck): Unexpected symbol type "
+                            "%d.\n", var_list->type);
+              break;
+      }
+      /* Check if a RHS variable exists in the LHS */
+      if(location == 'r' && !(var_list->in_lhs))
+      {
+         print_error("Error (%s): Variable %s in RHS but not in LHS.\n",
+                     rule_name, atom->variable.name);
+         abort_compilation = true;
+      }
+      /* Type checking */
+      if(int_exp && var_list->type != INT_S && !length) 
+      {
+         print_error("Error (%s): Variable %s occurs in an integer "
+                     "expression but not declared as an integer.\n",
+                     rule_name, atom->variable.name);
+         abort_compilation = true;
+      }
+      if(string_exp && var_list->type != CHAR_S && var_list->type != STRING_S)
+      {
+         print_error("Error (%s): Variable %s occurs in a string expression "
+                     "but not declared as a string or character.\n",
+                     rule_name, atom->variable.name);
+         abort_compilation = true;
+      }
+      /* We have found the variable in the rule with the appropriate
+       * name. enterVariables ensures there is only one such variable
+       * variable in the symbol list. There is no need to look further. */
+      if(in_rule) break;	
       var_list = var_list->next;
    }
+
    if(!in_rule) 
    {
       print_error("Error (%s): Variable %s in expression but not declared.\n",

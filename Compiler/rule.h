@@ -52,7 +52,6 @@ IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index,
                       int right_index, string source_id, string target_id,
                       Label label);
 int findLeftIndexFromId(IndexMap *map, string id);                      
-int findRightIndexFromId(IndexMap *map, string id);                      
 IndexMap *findMapFromId(IndexMap *map, string id);
 /* Used to find a map for an edge with the passed source and target IDs. */
 IndexMap *findMapFromSrcTgt(IndexMap *map, string source, string target);

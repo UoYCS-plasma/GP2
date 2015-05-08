@@ -21,6 +21,10 @@
 /* Creates the rule data structure from a pointer to a rule in the AST. */
 Rule *makeRule(GPRule *rule);
 
+/* Populates the rule's variable list from the variable declaration lists in
+ * the AST. */
+VariableList *scanVariableList(VariableList *variable_list, List *declarations);
+
 /* Counts the number of nodes/edges in a graph from its AST representation. */
 int countNodes(GPGraph *graph);
 int countEdges(GPGraph *graph);

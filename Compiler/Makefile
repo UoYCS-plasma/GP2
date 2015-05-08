@@ -28,7 +28,7 @@ build:		$(OBJECTS)
 
 # Builds everything and runs valgrind on the runtime executable.
 debug:		$(OBJECTS)	
-		make $(F1) $(F2) 
+		./GP2-compile $(F1) $(F2) 
 		cd runtime && make && $(VALGRIND) ./GP2-run 
 
 # Builds the executable GP2-compile and runs it with valgrind.

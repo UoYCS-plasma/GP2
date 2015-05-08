@@ -166,11 +166,12 @@ int enterVariables(SymbolType type, List *variables, string scope,
  * count. This function is called only by ruleScan.
  *
  * Argument 1: A pointer to a struct GPRule.
- * Argument 2: The current scope.
- * Argument 3: The current rule being processed.
- * Argument 4: Either 'l' for the LHS graph or 'r' for the RHS graph. */
-void graphScan(GPRule *rule, string scope, string rule_name, char side);
-
+ * Argument 2: The rule's interface, passed to gpListScan.
+ * Argument 3: The current scope.
+ * Argument 4: The current rule being processed.
+ * Argument 5: Either 'l' for the LHS graph or 'r' for the RHS graph. */
+void graphScan(GPRule *rule, List *interface, string scope, string rule_name,
+               char side);
 
 /* interfaceScan performs semantic checking on the interface list of a rule.
  * All nodes in the list are checked to see if they appear in both graphs of
@@ -186,13 +187,16 @@ void interfaceScan(List *interface, string scope, string rule_name);
 
 /* conditionScan navigates a subtree of the AST with a GPCondition node
  * as its root. It performs semantic checking on all possible types
- * of GP2 conditions, usually calling auxiliary functions. This function
+ * of GP2 conditions, sometimes calling auxiliary functions. This function
  * is called only by ruleScan.
  *
  * Argument 1: Pointer to a struct GPCondition.
- * Argument 2: The current scope.
- * Argument 3: The current rule being processed. */   
-void conditionScan(GPCondition *condition, string scope, string rule_name);
+ * Argument 2: The rule's interface, used to check node IDs in the edge
+ *             predicate.
+ * Argument 3: The current scope.
+ * Argument 4: The current rule being processed. */   
+void conditionScan(GPCondition *condition, List *interface, string scope, 
+                   string rule_name);
 
 
 /* gpListScan takes as input the head of a GP2 list expression in the AST.
@@ -216,15 +220,16 @@ void conditionScan(GPCondition *condition, string scope, string rule_name);
  *             If called from cases EQUAL or NOT_EQUAL in conditionScan,
  *             this argument is the address of a pointer in the struct list_cmp
  *             of a struct GPConditionExp.
- * Argument 2: The current scope.
- * Argument 3: The current rule being processed.
- * Argument 4: The location of the list in the program.
+ * Argument 2: The rule's interface, passed to atomScan.
+ * Argument 3: The current scope.
+ * Argument 4: The current rule being processed.
+ * Argument 5: The location of the list in the program.
  *             Either [l]eft-hand graph, [r]ight-hand graph or [c]ondition.
  *             If called from graphScan, this is the 'side' parameter
  *             passed to the graphScan call. If called from conditionScan,
  *             this is 'c'. */
-void gpListScan(List **gp_list, string scope, string rule_name, char location);
-
+void gpListScan(List **gp_list, List *interface, string scope, string rule_name, 
+                char location);
 
 /* atomScan checks variables and nodes in expressions to see if they have
  * been declared in the rule. If the function is called with location 'l',
@@ -232,20 +237,22 @@ void gpListScan(List **gp_list, string scope, string rule_name, char location);
  * The function also performs type checking with the use of two flags to
  * designate when an expression should expect integer/string variables.
  *
- * Argument 1: Pointer to a struct GPAtom
- * Argument 2: The current scope.
- * Argument 3: The current rule being processed.
- * Argument 4: The location of the atomic expression in the program.
+ * Argument 1: Pointer to a struct GPAtom.
+ * Argument 2: The rule's interface, used to check semantic correctness of 
+ *             degree operators.
+ * Argument 3: The current scope.
+ * Argument 4: The current rule being processed.
+ * Argument 5: The location of the atomic expression in the program.
  *             Either [l]eft-hand graph, [r]ight-hand graph or [c]ondition.
  *             Passed from the caller.
- * Argument 5: If true, then the expression pointed to by atom_exp is an
+ * Argument 6: If true, then the expression pointed to by atom_exp is an
  *             integer expression. Erros are reported if string expressions
  *             are encountered.
- * Argument 6: If true, then the expression pointed to by atom_exp is a
+ * Argument 7: If true, then the expression pointed to by atom_exp is a
  *             string expression. Errors are reported if integer expressions 
  *             are encountered. */
-void atomScan(GPAtom *atom, string scope, string rule_name, char location,
-              bool int_exp, bool string_exp);
+void atomScan(GPAtom *atom, List *interface, string scope, string rule_name,
+              char location, bool int_exp, bool string_exp);
 
 /* Called by atomScan when it encounters a variable or a length operator. 
  * variableScan updates the AST node of variables with their type, obtained
