@@ -39,7 +39,7 @@ void freeVariableList(VariableList *variable_list)
 
 IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index,
                       int right_index, string source_id, string target_id,
-                      Label *label)
+                      Label label)
 {
    IndexMap *new_map = malloc(sizeof(IndexMap));
    if(new_map == NULL)
@@ -181,7 +181,6 @@ PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index,
       print_to_log("Error: Memory exhausted during rule construction.\n");
       exit(1);
    }
-
    new_list->left_index = left_index;   
    new_list->rhs_root = rhs_root;
    new_list->new_label = new_label;
@@ -203,6 +202,11 @@ PreservedItemList *queryPItemList(PreservedItemList *list, int left_index)
 void freePItemList(PreservedItemList *list)
 {
    if(list == NULL) return;
+   if(list->new_label != NULL)
+   {
+      freeLabel(*(list->new_label));
+      free(list->new_label);
+   }
    if(list->next) freePItemList(list->next);
    free(list);
 }
@@ -266,20 +270,19 @@ bool isPredicate(Rule *rule)
    else return true;
 }
 
-void printRule(Rule *rule)
+void printRule(Rule *rule, FILE *file)
 {
    if(rule == NULL) 
    {
-      printf("printRule passed a NULL pointer.\n\n");
+      print_to_log("Error (printRule): NULL rule pointer.\n\n");
       return;
    }
-
-   printf("%s\n\n", rule->name);
-   printGraph(rule->lhs);
-   printf("\n");
-   printf("=>\n\n");
-   printGraph(rule->rhs);
-   printf("\n");
+   fprintf(file, "%s\n\n", rule->name);
+   printGraph(rule->lhs, file);
+   fprintf(file, "\n");
+   fprintf(file, "=>\n\n");
+   printGraph(rule->rhs, file);
+   fprintf(file, "\n");
 }
 
 void freeRule(Rule *rule)

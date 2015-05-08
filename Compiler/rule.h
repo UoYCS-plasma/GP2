@@ -17,13 +17,6 @@
 #include "globals.h"
 #include "graph.h"
 
-/* The parameter list of a rule. Each variable has one of the five GP 2 types 
- * according to the rule declaration. Used in the matching algorithm to check
- * the type of a variable for label matching.
- */
-typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} 
-  GPType;
-
 typedef struct VariableList {
   string variable;
   GPType type; 
@@ -49,7 +42,7 @@ typedef struct IndexMap {
    int right_index;
    string source_id;
    string target_id;
-   Label *label;
+   Label label;
    struct IndexMap *next;
 } IndexMap;
 
@@ -57,7 +50,7 @@ typedef struct IndexMap {
  * a pointer to the new first map in the list. */
 IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index, 
                       int right_index, string source_id, string target_id,
-                      Label *label);
+                      Label label);
 int findLeftIndexFromId(IndexMap *map, string id);                      
 IndexMap *findMapFromId(IndexMap *map, string id);
 /* Used to find a map for an edge with the passed source and target IDs. */
@@ -111,7 +104,7 @@ void freeNewEdgeList(NewEdgeList *new_edge);
 
 
 typedef struct Condition {
-  CondExpType exp_type;		/* globals.h */
+  ConditionType exp_type;		/* globals.h */
   union {
     string var; 		/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
 				 * ATOM_CHECK */
@@ -122,13 +115,13 @@ typedef struct Condition {
     } edge_pred; 		/* EDGE_PRED */
 
     struct { 
-      GP2List *left_list;
-      GP2List *right_list; 
+      Label *left_list;
+      Label *right_list; 
     } list_cmp; 		/* EQUAL, NOT_EQUAL */
 
     struct { 
-      GP2List *left_exp; 
-      GP2List *right_exp; 
+      Label *left_exp; 
+      Label *right_exp; 
     } atom_cmp; 		/* GREATER, GREATER_EQUAL, LESS, LESS_EQUAL */
 
     struct Condition *not_exp;  /* BOOL_NOT */
@@ -162,7 +155,7 @@ typedef struct Rule {
 /* Checks if a rule does not modify the host graph: the rule neither adds nor
  * deletes nor relabels any items. */
 bool isPredicate(Rule *rule);
-void printRule(Rule *rule);
+void printRule(Rule *rule, FILE *file);
 void freeRule(Rule *rule);
 
 #endif /* INC_RULE_H */

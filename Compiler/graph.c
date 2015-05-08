@@ -1,7 +1,8 @@
 #include "graph.h"
 
-Node dummy_node = {-1, false, EMPTY_L, NULL, {-1}, {-1}, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, -1};
-Edge dummy_edge = {-1, false, EMPTY_L, NULL, -1, -1, -1};
+Node dummy_node = {-1, false, EMPTY_L, {NONE, 0, NULL}, {-1}, {-1},
+                   NULL, NULL, 0, 0, 0, 0, 0, 0, 0, -1};
+Edge dummy_edge = {-1, false, EMPTY_L, {NONE, 0, NULL}, -1, -1, -1};
 
 Graph *newGraph(int nodes, int edges) 
 {
@@ -72,7 +73,7 @@ Graph *newGraph(int nodes, int edges)
     return graph;
 }
 
-int addNode(Graph *graph, bool root, Label *label) 
+int addNode(Graph *graph, bool root, Label label) 
 {
    /* Get the index of the new node by examining the free node slots array.
     * A non-negative array element is the index of a hole in the graph's node
@@ -107,35 +108,13 @@ int addNode(Graph *graph, bool root, Label *label)
 
    graph->nodes[index].index = index;
    graph->nodes[index].root = root;
-   graph->nodes[index].out_index = 0;
-   graph->nodes[index].in_index = 0;
-   graph->nodes[index].extra_out_edges = NULL;
-   graph->nodes[index].extra_in_edges = NULL;
-   graph->nodes[index].out_pool_size = 0;
-   graph->nodes[index].in_pool_size = 0;
-   graph->nodes[index].outdegree = 0;
-   graph->nodes[index].indegree= 0;
-   graph->nodes[index].bidegree= 0;
-   
-   int count;
-   for(count = 0; count < MAX_INCIDENT_EDGES; count++)
-   {
-      graph->nodes[index].out_edges[count] = -1;
-      graph->nodes[index].in_edges[count] = -1;
-   }
 
-   LabelClass label_class;
-   if(label == NULL)
-   {
-      label_class = EMPTY_L;
-      graph->nodes[index].label = &blank_label;
-   }
-   else
-   { 
-      label_class = getLabelClass(label);
-      graph->nodes[index].label = label;
-   }
+   LabelClass label_class = getLabelClass(label);
    graph->nodes[index].label_class = label_class;
+   graph->nodes[index].label.mark = label.mark;
+   graph->nodes[index].label.length = label.length;
+   graph->nodes[index].label.list = label.list;
+
    int label_index = addLabelClassIndex(&graph->nodes_by_label[label_class],
                                         index, graph->node_pool_size);
    graph->nodes[index].label_table_index = label_index;
@@ -158,7 +137,7 @@ void addRootNode(Graph *graph, int index)
    graph->root_nodes = root_node;
 }
 
-int addEdge(Graph *graph, bool bidirectional, Label *label, int source_index,
+int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
             int target_index) 
 {
    /* Get the index of the new edge by examining the free edge slots array.
@@ -198,18 +177,12 @@ int addEdge(Graph *graph, bool bidirectional, Label *label, int source_index,
    graph->edges[index].source = source_index;
    graph->edges[index].target = target_index;
 
-   LabelClass label_class;
-   if(label == NULL)
-   {
-      label_class = EMPTY_L;
-      graph->edges[index].label = &blank_label;
-   }
-   else
-   { 
-      label_class = getLabelClass(label);
-      graph->edges[index].label = label;
-   }
+   LabelClass label_class = getLabelClass(label);
    graph->edges[index].label_class = label_class;
+   graph->edges[index].label.mark = label.mark;
+   graph->edges[index].label.length = label.length;
+   graph->edges[index].label.list = label.list;
+
    int label_index = addLabelClassIndex(&graph->edges_by_label[label_class], 
                                         index, graph->edge_pool_size);
    graph->edges[index].label_table_index = label_index;                                        
@@ -324,7 +297,7 @@ void removeNode(Graph *graph, int index)
        return;
     }
     /* Deallocate memory in the node structure. */
-    if(!isConstantLabel(node->label)) freeLabel(node->label);
+    freeLabel(node->label);
     if(node->extra_out_edges) free(node->extra_out_edges);
     if(node->extra_in_edges) free(node->extra_in_edges); 
 
@@ -371,7 +344,7 @@ void removeEdge(Graph *graph, int index)
    Edge *edge = getEdge(graph, index);
    removeLabelClassIndex(&graph->edges_by_label[edge->label_class], 
                          edge->label_table_index);
-   if(!isConstantLabel(edge->label)) freeLabel(edge->label);
+   freeLabel(edge->label);
 
    Node *source = getNode(graph, edge->source);
    Node *target = getNode(graph, edge->target);
@@ -526,62 +499,56 @@ void removeLabelClassIndex(LabelClassTable *table, int item_index)
    }
 }
 
-void relabelNode(Graph *graph, int index, Label *new_label, bool change_root) 
+void relabelNode(Graph *graph, int index, Label new_label) 
 {
    Node *node = getNode(graph, index);
-   if(change_root)
+   LabelClass old_label_class = node->label_class;
+   freeLabel(node->label); 
+   node->label = new_label;
+   node->label_class = getLabelClass(new_label);
+   /* If the label classes differ, update the graph's LabelClassTables. */
+   if(node->label_class != old_label_class) 
    {
-      if(node->root) removeRootNode(graph, node->index);
-      else addRootNode(graph, node->index);
-      node->root = !node->root;
-   }
-   if(new_label == NULL) return;
-   else
-   {  
-      if(!isConstantLabel(node->label)) freeLabel(node->label); 
-
-      LabelClass new_label_class;
-      node->label = new_label;
-      new_label_class = getLabelClass(new_label);
-
-      /* If the label classes differ, update the graph's LabelClassTables. */
-      if(node->label_class != new_label_class) 
-      {
-         int label_index = 
-            addLabelClassIndex(&graph->nodes_by_label[new_label_class], 
-                               node->index, graph->node_pool_size);
-         removeLabelClassIndex(&graph->nodes_by_label[node->label_class], 
-                               node->label_table_index);
-         node->label_table_index = label_index;
-      }   
+      int label_index = 
+         addLabelClassIndex(&graph->nodes_by_label[node->label_class], 
+                            node->index, graph->node_pool_size);
+      removeLabelClassIndex(&graph->nodes_by_label[old_label_class], 
+                            node->label_table_index);
+      node->label_table_index = label_index;
    }
 }
 
-void relabelEdge(Graph *graph, int index, Label *new_label, 
-                 bool change_bidirectional)
-{		
+void changeRoot(Graph *graph, int index)
+{
+   Node *node = getNode(graph, index);
+   if(node->root) removeRootNode(graph, node->index);
+   else addRootNode(graph, node->index);
+   node->root = !node->root;
+}
+
+void relabelEdge(Graph *graph, int index, Label new_label)
+{	
    Edge *edge = getEdge(graph, index);
-   if(change_bidirectional) edge->bidirectional = !edge->bidirectional;
-   if(new_label == NULL) return;
-   else
+   LabelClass old_label_class = edge->label_class;
+   freeLabel(edge->label); 
+   edge->label = new_label;
+   edge->label_class = getLabelClass(new_label);
+   /* If the label classes differ, update the graph's LabelClassTables. */
+   if(edge->label_class != old_label_class) 
    {
-      if(!isConstantLabel(edge->label)) freeLabel(edge->label); 
-
-      LabelClass new_label_class;
-      edge->label = new_label;
-      new_label_class = getLabelClass(new_label);
-
-      /* If the label classes differ, update the graph's LabelClassTables. */
-      if(edge->label_class != new_label_class) 
-      {
-         int label_index =
-            addLabelClassIndex(&graph->edges_by_label[new_label_class], 
-                               edge->index, graph->edge_pool_size);
-         removeLabelClassIndex(&graph->edges_by_label[edge->label_class], 
-                               edge->label_table_index);
-         edge->label_table_index = label_index;
-      }
+      int label_index =
+         addLabelClassIndex(&graph->edges_by_label[edge->label_class], 
+                            edge->index, graph->edge_pool_size);
+      removeLabelClassIndex(&graph->edges_by_label[old_label_class], 
+                            edge->label_table_index);
+      edge->label_table_index = label_index;
    }
+}
+
+void changeBidirectional(Graph *graph, int index)
+{
+   Edge *edge = getEdge(graph, index);
+   edge->bidirectional = !edge->bidirectional;
 }
 
 /* ================== *
@@ -669,12 +636,12 @@ int getTarget(Edge *edge)
 }
 
 
-Label *getNodeLabel(Node *node) 
+Label getNodeLabel(Node *node) 
 {
    return node->label;
 }
 
-Label *getEdgeLabel(Edge *edge) 
+Label getEdgeLabel(Edge *edge) 
 {
    return edge->label;
 }
@@ -690,57 +657,51 @@ int getOutdegree(Node *node)
 }
 
 
-void printGraph(Graph *graph) 
+void printGraph(Graph *graph, FILE *file) 
 {
    int index, node_count = 0, edge_count = 0;
-
    if(graph == NULL || graph->number_of_nodes == 0) 
    {
-      printf("[ | ]\n");
+      fprintf(file, "[ | ]\n");
       return;
    }
-
-   printf("[ ");
+   fprintf(file, "[ ");
    for(index = 0; index < graph->node_index; index++)
    {
       Node *node = getNode(graph, index);
       if(node->index >= 0) 
       {
          /* Five nodes per line */
-         if(node_count != 0 && node_count % 5 == 0) printf("\n  ");
+         if(node_count != 0 && node_count % 5 == 0) fprintf(file, "\n  ");
          node_count++;
-         if(node->root) printf("(n%d(R), ", index);
-         else printf("(n%d, ", index);
-         printGP2List(node->label->list);
-         printMark(node->label->mark, false);
-         printf(") ");
+         if(node->root) fprintf(file, "(n%d(R), ", index);
+         else fprintf(file, "(n%d, ", index);
+         printLabel(node->label, file);
+         fprintf(file, ") ");
       }
    }
- 
    if(graph->number_of_edges == 0)
    {
-      printf("| ]\n\n");
+      fprintf(file, "| ]\n\n");
       return;
    }
-
-   printf("|\n  ");
+   fprintf(file, "|\n  ");
    for(index = 0; index < graph->edge_index; index++)
    {
       Edge *edge = getEdge(graph, index);
       if(edge->index >= 0) 
       {
          /* Three edges per line */
-         if(edge_count != 0 && edge_count % 3 == 0) printf("\n  ");
+         if(edge_count != 0 && edge_count % 3 == 0) fprintf(file, "\n  ");
          edge_count++;
-         if(edge->bidirectional) printf("(e%d(B), ", index);
-         else printf("(e%d, ", index);
-         printf("n%d, n%d, ", edge->source, edge->target);
-         printGP2List(edge->label->list);
-         printMark(edge->label->mark, false);
-         printf(") ");
+         if(edge->bidirectional) fprintf(file, "(e%d(B), ", index);
+         else fprintf(file, "(e%d, ", index);
+         fprintf(file, "n%d, n%d, ", edge->source, edge->target);
+         printLabel(edge->label, file);
+         fprintf(file, ") ");
       }
    }
-   printf("]\n\n");
+   fprintf(file, "]\n\n");
 }
 
 void freeGraph(Graph *graph) 
@@ -753,7 +714,7 @@ void freeGraph(Graph *graph)
       Node *node = getNode(graph, index);
       if(node->index >= 0)
       {
-         if(!isConstantLabel(node->label)) freeLabel(node->label);
+         freeLabel(node->label);
          if(node->extra_out_edges) free(node->extra_out_edges);
          if(node->extra_in_edges) free(node->extra_in_edges);
       }  
@@ -763,10 +724,7 @@ void freeGraph(Graph *graph)
    for(index = 0; index < graph->edge_index; index++)
    {
       Edge *edge = getEdge(graph, index);
-      if(edge->index >= 0)
-      {
-         if(!isConstantLabel(edge->label)) freeLabel(edge->label);
-      }  
+      if(edge->index >= 0) freeLabel(edge->label);
    }
    if(graph->edges) free(graph->edges);
 
@@ -780,7 +738,6 @@ void freeGraph(Graph *graph)
       if(graph->edges_by_label[index].items != NULL)
          free(graph->edges_by_label[index].items); 
    }
-
    if(graph->root_nodes != NULL) 
    {
       RootNodes *iterator = graph->root_nodes;

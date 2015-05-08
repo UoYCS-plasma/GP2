@@ -11,9 +11,6 @@
 #ifndef INC_STACK_H
 #define INC_STACK_H
 
-#define GRAPH_STACK_SIZE 4
-#define GRAPH_CHANGE_STACK_SIZE 32
-
 #include "error.h"
 #include "globals.h"
 

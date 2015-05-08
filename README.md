@@ -1,5 +1,5 @@
 ================================
-Author: Chris Bak (February 4th 2015)
+Author: Chris Bak (April 16th 2015)
 GP 2: Graph Programming
 ================================
 
@@ -9,21 +9,32 @@ GP 2 is a graph programming language. Graph programs consist of two text files. 
 Compiler
 ========
 
-The Compiler subdirectory contains a lexer, a parser and a code generator for GP 2 programs. The generated C files are placed in the directory Compiler/runtime.
+The Compiler subdirectory contains a lexer, a parser and a code generator for GP 2 programs. The generated runtime system files are placed in the directory Compiler/runtime.
 
 Build Instructions
 ---------------------
 
-To build and run a GP 2 program, run the following in the Compiler directory:
+To build the GP 2 compiler, run
 
-> make path/to/gp_program_file path/to/gp_graph_file
+> make build
 
-This creates the binary GP2 in the directory Compiler/runtime.  
+This creates the executable GP2-compile which is called in one of three ways:
 
-Alternatively, to execute only the parser and code generator, run:
-> make compile 
-> ./GP2-compile path/to/gp_program_file path/to/gp_graph_file
+> ./GP2-compile /path/to/program-file /path/to/host-graph-file
 
+> ./GP2-compile -p /path/to/program-file
+
+> ./GP2-compile -h /path/to/host-graph-file
+
+The last two options allow the user to compile a modified or new program while retaining a previously-built host graph, or to compile a new host graph with an existing program.
+
+Running
+
+> make F1=/path/to/program-file F2=/path/to/host-graph-file
+
+builds the compiler, calls it on the passed program and host graph files, and builds the runtime system.
+
+To execute the compiled GP 2 program, type `./GP2-run` in the runtime directory.
 
 Haskell
 =======

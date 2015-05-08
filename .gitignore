@@ -11,7 +11,8 @@ TODO
 *.log
 lex.yy.c
 *.o
-a.out
+*.out
+core*
 tmp/
 *.a
 *.txt
@@ -29,3 +30,9 @@ Main*
 Test*
 runtime.c
 runtime.h
+nodes*
+edges*
+Haskell
+tokenise
+test*
+Results

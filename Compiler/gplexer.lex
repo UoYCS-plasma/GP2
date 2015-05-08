@@ -81,7 +81,7 @@ extern int parse_target;
 "\"\""				 { yylval.str = NULL; return STR; } 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
-<IN_STRING>[a-zA-Z0-9_]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
+<IN_STRING>[a-zA-Z0-9_ ]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
 <IN_STRING>(\n)                  { print_to_log("%d.%d-%d.%d: String "
           				         "continues on new line.\n", 
                                         yylloc.first_line, yylloc.first_column, 
@@ -109,6 +109,7 @@ then 	  	    return THEN;
 else		    return ELSE;
 skip                return SKIP;
 fail	 	    return FAIL;
+break	 	    return BREAK;
 where		    return WHERE;
 and                 return AND;
 or                  return OR;
@@ -118,8 +119,7 @@ indeg 		    return INDEG;
 outdeg		    return OUTDEG;
 interface	    return INTERFACE;
 empty		    return _EMPTY;
-llength		    return LLEN;
-slength	            return SLEN;
+length		    return _LENGTH;
 
  /* Keywords for node and edge marks */
 

@@ -14,26 +14,9 @@
 #ifndef INC_GEN_RULE_H
 #define INC_GEN_RULE_H
 
-#define printToRuleHeader(code, ...)	             \
-  do { fprintf(rule_header, code, ##__VA_ARGS__); }  \
-  while(0) 
-
-#define PTRH printToRuleHeader
-
-#define printToRuleSource(code, ...)	             \
-  do { fprintf(rule_source, code, ##__VA_ARGS__); }  \
-  while(0) 
-
-#define PTRS printToRuleSource
-
-#define printToRuleSourceI(code, indent, ...)	         		\
-  do { fprintf(rule_source, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
-  while(0) 
-
-#define PTRSI printToRuleSourceI
-
 #include "ast.h"
 #include "error.h"
+#include "genLabel.h"
 #include "globals.h"
 #include "rule.h"
 #include "searchplan.h"

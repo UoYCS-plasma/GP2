@@ -15,22 +15,24 @@
 #ifndef INC_GRAPH_STACKS_H
 #define INC_GRAPH_STACKS_H
 
+#define GRAPH_STACK_SIZE 8
+#define GRAPH_CHANGE_STACK_SIZE 32
+
 #include "error.h"
 #include "globals.h"
 #include "graph.h"
-#include "stack.h"
 
-extern Stack *graph_stack;
+extern Graph **graph_stack;
+extern int graph_stack_index;
 /* Creates a memory copy of the passed graph and pushes it to the graph stack. 
  * If replace is true, then the graph stack is popped before pushing the graph
  * copy. */
 void copyGraph(Graph *graph);
-/* restoreGraph frees the passed graph and returns the graph <depth> items
- * down the stack. All intermediate graphs are freed. */
-Graph *restoreGraph(Graph *graph, int depth);
-void freeGraphStack(Stack *graph_stack);
-
-extern Stack *graph_change_stack;
+/* popGraphs pops and frees the graph change stack until the restore point.
+ * is reached. It returns the graph at that stack entry. */
+Graph *popGraphs(Graph *current_graph, int restore_point);
+void discardGraphs(int depth);
+void freeGraphStack(void);
 
 /* A GraphChange stores the data sufficient to perform the inverse operation
  * of a previously-made change to the graph. For instance, if a node is removed
@@ -48,12 +50,12 @@ typedef struct GraphChange
 
       struct {
          bool root;
-         Label *label;
+         Label label;
       } removed_node;
 
       struct {
          bool bidirectional;
-         Label *label;
+         Label label;
          int source;
          int target;
       } removed_edge;
@@ -61,21 +63,24 @@ typedef struct GraphChange
       struct {
          int index;
          bool change_flag;
-         Label *old_label;
+         Label old_label;
       } relabelled_node, relabelled_edge;   
    } data;
 } GraphChange; 
 
-GraphChange *newGraphChange(void);
+extern GraphChange *graph_change_stack;
+extern int graph_change_index;
+
+bool validGraphChangeStack(void);
 void pushAddedNode(int index);
 void pushAddedEdge(int index);
-void pushRemovedNode(bool root, Label *label);
-void pushRemovedEdge(bool bidirectional, Label *label, int source, int target);
-void pushRelabelledNode(int index, bool change_flag, Label *old_label);
-void pushRelabelledEdge(int index, bool change_flag, Label *old_label);
-void rollBackGraph(Graph *graph, int restore_point);
+void pushRemovedNode(bool root, Label label);
+void pushRemovedEdge(bool bidirectional, Label label, int source, int target);
+void pushRelabelledNode(int index, bool change_flag, Label old_label);
+void pushRelabelledEdge(int index, bool change_flag, Label old_label);
+void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);
-void freeGraphChange(GraphChange *change); 
-void freeGraphChangeStack(Stack *graph_change_stack);
+void freeGraphChange(GraphChange change); 
+void freeGraphChangeStack(void);
 
 #endif /* INC_GRAPH_STACKS_H */

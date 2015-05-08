@@ -19,10 +19,9 @@
  * described in the source file. Currently does not account for bidirectional
  * edges/bidegrees, but these can only occur in rule graphs. */
 bool validGraph(Graph *graph);
-void printVerboseRule(Rule *rule);
-void printVerboseGraph(Graph *graph);
-void printVerboseNode(Node *node);
-void printVerboseEdge(Edge *edge);
-
+void printVerboseRule(Rule *rule, FILE *file);
+void printVerboseGraph(Graph *graph, FILE *file);
+void printVerboseNode(Node *node, FILE *file);
+void printVerboseEdge(Edge *edge, FILE *file);
 
 #endif /* INC_DEBUG_H */
