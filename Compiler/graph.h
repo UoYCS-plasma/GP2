@@ -4,7 +4,8 @@
   Graph Module
   ============
                              
-  An API for GP2 graphs. Defines structures for graphs, nodes and edges.  
+  An API for GP2 graphs. Defines structures for graphs, nodes and edges
+  and functions that operate on these structures.
 
 /////////////////////////////////////////////////////////////////////////// */
 
@@ -16,21 +17,7 @@
 #include "error.h"
 #include "globals.h"
 #include "label.h"
-
-typedef struct LabelClassTable {
-   int pool_size;
-   int index;
-   int *items;
-} LabelClassTable;
-
-/* Responsible for allocating heap memory to a LabelClassTable. 
- * Only called by addNode, relabelNode, addEdge and relabelEdge. 
- * initial_size is either the graph's node pool size or the graph's edge pool 
- * size. initial_size / 4 items are allocated to the table's items array
- * for the first allocation. */
-int addLabelClassIndex(LabelClassTable *table, int index, int initial_size);
-/* Only called by removeNode and removeEdge. */
-void removeLabelClassIndex(LabelClassTable *table, int index);
+#include "labelclass.h"
 
 typedef struct RootNodes {
    int index;
@@ -61,15 +48,7 @@ typedef struct Graph
     * number_of_nodes + free_node_index = node_index. 
     * number_of_edges + free_edge_index = edge_index. */
    int number_of_nodes, number_of_edges;
-
-   /* Arrays of LabelClassTable indexed by label class. 
-    * Each LabelClassTable is a dynamically-allocated array of node or edge
-    * indices. Initially these arrays are NULL; memory is allocated on demand
-    * since not all label classes are likely to be represented in a single
-    * GP 2 program. */
-   struct LabelClassTable nodes_by_label[LABEL_CLASSES];
-   struct LabelClassTable edges_by_label[LABEL_CLASSES];
-
+   
    /* Root nodes referenced in a linked list for fast access. */
    struct RootNodes *root_nodes;
 } Graph;
@@ -157,8 +136,6 @@ void changeBidirectional(Graph *graph, int index);
 Node *getNode(Graph *graph, int index);
 Edge *getEdge(Graph *graph, int index);
 RootNodes *getRootNodeList(Graph *graph);
-LabelClassTable getNodesByLabel(Graph *graph, LabelClass label_class);
-LabelClassTable getEdgesByLabel(Graph *graph, LabelClass label_class);
 /* The following four functions return indices. To get pointers to the items,
  * pass the return value to getNode or getEdge with the appropriate graph. */
 int getInEdge(Node *node, int index);

@@ -11,25 +11,20 @@
 #ifndef INC_LABEL_H
 #define INC_LABEL_H
 
-#define LABEL_CLASSES 10
-
 #include "error.h"
 #include "globals.h"
 
-/* Classes of GP 2 labels for querying by label. This is a partition of the
- * set of all GP 2 labels. 
+/* A partition of the set of all GP 2 host labels for guided querying of host 
+ * items during label matching. 
+ *
  * The label classes are as follows: 
  * - The empty list (EMPTY_L)
  * - Integer constant (INT_L)
  * - String constant (STRING_L)
- * - Atomic variable (ATOMIC_VAR_L) - all labels consisting of a single
- *   non-list variable.
- * - List containing a list variable.
- * - List of length 2, 3, and 4 (LIST2_L, LIST3_L, LIST4_L) without a list
- *   variable.
- * - List of length > 4 (LONG_LIST_L) without a list variable. */
-typedef enum {EMPTY_L = 0, INT_L, STRING_L, ATOMIC_VAR_L, LIST_VAR_L, LIST2_L,
-              LIST3_L, LIST4_L, LONG_LIST_L} LabelClass;
+ * - List of length 2, 3, and 4 (LIST2_L, LIST3_L, LIST4_L).
+ * - List of length > 4 (LONG_LIST_L). */
+typedef enum {EMPTY_L = 0, INT_L, STRING_L, LIST2_L, LIST3_L, LIST4_L, 
+              LONG_LIST_L} LabelClass;
 
 /* AtomType defined in globals.h. I place the enumerated type here for reference.
  * {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, STRING_CONSTANT, INDEGREE,

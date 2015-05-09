@@ -49,7 +49,6 @@ Graph *newGraph(int nodes, int edges)
        graph->edges[index] = dummy_edge;
        graph->free_edge_slots[index] = -1;
     }
-
     graph->node_pool_size = nodes;
     graph->edge_pool_size = edges;
     graph->free_node_index = 0;
@@ -58,17 +57,6 @@ Graph *newGraph(int nodes, int edges)
     graph->edge_index = 0;
     graph->number_of_nodes = 0;
     graph->number_of_edges = 0;
-
-    for(index = 0; index < LABEL_CLASSES; index++)
-    {
-       graph->nodes_by_label[index].pool_size = 0;  
-       graph->nodes_by_label[index].index = 0;  
-       graph->nodes_by_label[index].items = NULL;  
-
-       graph->edges_by_label[index].pool_size = 0;  
-       graph->edges_by_label[index].index = 0;  
-       graph->edges_by_label[index].items = NULL;
-    }
     graph->root_nodes = NULL;
     return graph;
 }
@@ -115,8 +103,7 @@ int addNode(Graph *graph, bool root, Label label)
    graph->nodes[index].label.length = label.length;
    graph->nodes[index].label.list = label.list;
 
-   int label_index = addLabelClassIndex(&graph->nodes_by_label[label_class],
-                                        index, graph->node_pool_size);
+   int label_index = addLabelClassIndex(true, label.mark, label_class, index);
    graph->nodes[index].label_table_index = label_index;
     
    if(root) addRootNode(graph, index);
@@ -183,8 +170,7 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
    graph->edges[index].label.length = label.length;
    graph->edges[index].label.list = label.list;
 
-   int label_index = addLabelClassIndex(&graph->edges_by_label[label_class], 
-                                        index, graph->edge_pool_size);
+   int label_index = addLabelClassIndex(false, label.mark, label_class, index);
    graph->edges[index].label_table_index = label_index;                                        
 
    /* For the source's outedge store and the target's inedge store, do the
@@ -255,35 +241,6 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
    return index;
 }
 
-int addLabelClassIndex(LabelClassTable *table, int index, int initial_size)
-{
-   if(table->pool_size == 0)
-   {
-      table->pool_size = (initial_size <= 4) ? initial_size : initial_size / 4;
-      table->items = calloc(table->pool_size, sizeof(int));
-      if(table->items == NULL)
-      {
-         print_to_log("Error: Memory exhausted during label class indexing.\n");
-         exit(1);
-      }
-   }
-   else
-   {
-      if(table->index >= table->pool_size)
-      {
-         table->pool_size *= 2;
-         table->items = realloc(table->items, table->pool_size * sizeof(int));
-         if(table->items == NULL)
-         {
-            print_to_log("Error: Memory exhausted during label class indexing.\n");
-            exit(1);
-         }
-      }
-   }
-   table->items[table->index++] = index;
-   return table->index - 1;
-}
-
 void removeNode(Graph *graph, int index)
 {   
     Node *node = getNode(graph, index);  
@@ -300,9 +257,7 @@ void removeNode(Graph *graph, int index)
     freeLabel(node->label);
     if(node->extra_out_edges) free(node->extra_out_edges);
     if(node->extra_in_edges) free(node->extra_in_edges); 
-
-    removeLabelClassIndex(&graph->nodes_by_label[node->label_class], 
-                          node->label_table_index);
+    removeLabelClassIndex(true, node->mark, node->label_class, index);
     if(node->root) removeRootNode(graph, index);
     
     graph->nodes[index] = dummy_node;
@@ -342,8 +297,7 @@ void removeRootNode(Graph *graph, int index)
 void removeEdge(Graph *graph, int index) 
 {
    Edge *edge = getEdge(graph, index);
-   removeLabelClassIndex(&graph->edges_by_label[edge->label_class], 
-                         edge->label_table_index);
+   removeLabelClassIndex(false, edge->mark, edge->label_class, index);
    freeLabel(edge->label);
 
    Node *source = getNode(graph, edge->source);
@@ -481,40 +435,20 @@ void removeEdge(Graph *graph, int index)
    }
 }
 
-void removeLabelClassIndex(LabelClassTable *table, int item_index)
-{
-   table->items[item_index] = -1;
-   /* If the index of the removed item directly precedes the last index,
-    * decrement the index until it refers to an array element one place
-    * beyond the right-most -1 element. */
-   int index = table->index;
-   if(item_index == index - 1)
-   {
-      index--;
-      while(index > 0)
-      {
-         if(table->items[index] == -1) index--;
-         else break;
-      }
-   }
-}
-
 void relabelNode(Graph *graph, int index, Label new_label) 
 {
    Node *node = getNode(graph, index);
    LabelClass old_label_class = node->label_class;
+   MarkType old_mark = node->label.mark;
    freeLabel(node->label); 
    node->label = new_label;
    node->label_class = getLabelClass(new_label);
    /* If the label classes differ, update the graph's LabelClassTables. */
    if(node->label_class != old_label_class) 
    {
-      int label_index = 
-         addLabelClassIndex(&graph->nodes_by_label[node->label_class], 
-                            node->index, graph->node_pool_size);
-      removeLabelClassIndex(&graph->nodes_by_label[old_label_class], 
-                            node->label_table_index);
+      int label_index = addLabelClassIndex(true, new_label.mark, node->label_class, index);
       node->label_table_index = label_index;
+      removeLabelClassIndex(true, old_mark, old_label_class, index);
    }
 }
 
@@ -530,18 +464,16 @@ void relabelEdge(Graph *graph, int index, Label new_label)
 {	
    Edge *edge = getEdge(graph, index);
    LabelClass old_label_class = edge->label_class;
+   MarkType old_mark = edge->label.mark;
    freeLabel(edge->label); 
    edge->label = new_label;
    edge->label_class = getLabelClass(new_label);
-   /* If the label classes differ, update the graph's LabelClassTables. */
+   /* If the label classes differ, update the label class tables. */
    if(edge->label_class != old_label_class) 
    {
-      int label_index =
-         addLabelClassIndex(&graph->edges_by_label[edge->label_class], 
-                            edge->index, graph->edge_pool_size);
-      removeLabelClassIndex(&graph->edges_by_label[old_label_class], 
-                            edge->label_table_index);
+      int label_index = addLabelClassIndex(false, new_label.mark, edge->label_class, index);
       edge->label_table_index = label_index;
+      removeLabelClassIndex(false, old_mark, old_label_class, index);
    }
 }
 
@@ -583,19 +515,6 @@ RootNodes *getRootNodeList(Graph *graph)
 {
    return graph->root_nodes;
 }
-
-
-LabelClassTable getNodesByLabel(Graph *graph, LabelClass label_class) 
-{
-   return graph->nodes_by_label[label_class];
-}
-   
-
-LabelClassTable getEdgesByLabel(Graph *graph, LabelClass label_class) 
-{
-   return graph->edges_by_label[label_class];
-}
-
 
 int getOutEdge(Node *node, int index)
 {
