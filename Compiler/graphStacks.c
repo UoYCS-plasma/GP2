@@ -34,38 +34,40 @@ void copyGraph(Graph *graph)
    graph_copy->number_of_nodes = graph->number_of_nodes;
    graph_copy->number_of_edges = graph->number_of_edges;
 
-   memcpy(graph_copy->nodes_by_label, graph->nodes_by_label, sizeof(LabelClassTable));
-   memcpy(graph_copy->edges_by_label, graph->edges_by_label, sizeof(LabelClassTable));
+   memcpy(graph_copy->node_classes, graph->node_classes,
+          sizeof(LabelClassTable*) * MARKS * LABEL_CLASSES);
+   memcpy(graph_copy->edge_classes, graph->edge_classes,
+          sizeof(LabelClassTable*) * MARKS * LABEL_CLASSES);
 
    int index;
-   for(index = 0; index < LABEL_CLASSES; index++)
+   for(index = 0; index < MARKS * LABEL_CLASSES; index++)
    {
       /* If the pool size is greater than 0, allocate memory to the items 
        * array of the copied LabelClassTable and copy the corresponding array
        * from the original graph. */
-      LabelClassTable *list = &graph_copy->nodes_by_label[index];
-      if(list->pool_size > 0)
+      LabelClassTable *table = graph_copy->node_classes[index];
+      if(table->pool_size > 0)
       {
-         list->items = calloc(list->pool_size, sizeof(int));
-         if(list->items == NULL)
+         table->items = calloc(table->pool_size, sizeof(int));
+         if(table->items == NULL)
          {
             print_to_log("Error: Memory exhausted during graph copying.\n");
             exit(1);
          }
-         memcpy(list->items, graph->nodes_by_label[index].items, 
-                list->pool_size * sizeof(int));
+         memcpy(table->items, graph->node_classes[index]->items, 
+                table->pool_size * sizeof(int));
       }
-      list = &graph_copy->edges_by_label[index];
-      if(list->pool_size > 0)
+      table = graph_copy->edge_classes[index];
+      if(table->pool_size > 0)
       {
-         list->items = calloc(list->pool_size, sizeof(int));
-         if(list->items == NULL)
+         table->items = calloc(table->pool_size, sizeof(int));
+         if(table->items == NULL)
          {
             print_to_log("Error: Memory exhausted during graph copying.\n");
             exit(1);
          }
-         memcpy(list->items, graph->edges_by_label[index].items, 
-                list->pool_size * sizeof(int));
+         memcpy(table->items, graph->edge_classes[index]->items, 
+                table->pool_size * sizeof(int));
       }
    }
    graph_copy->root_nodes = NULL;

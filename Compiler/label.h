@@ -14,18 +14,6 @@
 #include "error.h"
 #include "globals.h"
 
-/* A partition of the set of all GP 2 host labels for guided querying of host 
- * items during label matching. 
- *
- * The label classes are as follows: 
- * - The empty list (EMPTY_L)
- * - Integer constant (INT_L)
- * - String constant (STRING_L)
- * - List of length 2, 3, and 4 (LIST2_L, LIST3_L, LIST4_L).
- * - List of length > 4 (LONG_LIST_L). */
-typedef enum {EMPTY_L = 0, INT_L, STRING_L, LIST2_L, LIST3_L, LIST4_L, 
-              LONG_LIST_L} LabelClass;
-
 /* AtomType defined in globals.h. I place the enumerated type here for reference.
  * {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, STRING_CONSTANT, INDEGREE,
  *  OUTDEGREE, LENGTH, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType; 
@@ -61,6 +49,19 @@ typedef struct Label {
 
 extern struct Label blank_label;
 
+/* A partition of the set of all GP 2 host labels for guided querying of host 
+ * items during label matching. 
+ *
+ * The label classes are as follows: 
+ * - The empty list (EMPTY_L)
+ * - Integer constant (INT_L)
+ * - String constant (STRING_L)
+ * - List of length 2, 3, and 4 (LIST2_L, LIST3_L, LIST4_L).
+ * - List of length > 4 (LONG_LIST_L). */
+
+typedef enum {EMPTY_L = 0, INT_L, STRING_L, LIST2_L, LIST3_L, LIST4_L, 
+              LONG_LIST_L} LabelClass;
+
 /* Called at runtime to build labels. makeHostLabel expects an atom array in
  * heap as its third argument. */
 Label makeEmptyLabel(MarkType mark);
@@ -73,10 +74,12 @@ bool equalRuleLabels(Label left_label, Label right_label);
  * be a constant, a variable, a negated variable or a concatenated string. */
 bool equalRuleAtoms(Atom *left_atom, Atom *right_atom);
 
-/* Allocates memory for an array with length number of atoms. */
+/* Returns the label class of a host graph label. */
+LabelClass getLabelClass(Label label);
+
+/* Allocates memory for an array with <length> number of atoms. */
 Atom *makeList(int length);
 void addAtom(Atom atom, Label label, int position);
-LabelClass getLabelClass(Label label);
 
 /* Creates a copy of source and assigns it to target. The assumption is that 
  * target points to a Label-sized portion of heap. Heap memory is allocated

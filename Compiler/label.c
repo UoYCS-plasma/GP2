@@ -14,18 +14,6 @@ Label makeHostLabel(MarkType mark, int length, Atom *list)
    return label;
 }
 
-Atom *makeList(int length)
-{
-   if(length == 0) return NULL;
-   Atom *list = malloc(length * sizeof(Atom));
-   if(list == NULL)
-   {
-      print_to_log("Error (makeLabel): malloc failure.\n");
-      exit(1);
-   }
-   return list;
-}
-
 bool equalRuleLabels(Label left_label, Label right_label)
 {
    if(left_label.mark != right_label.mark) return false;
@@ -73,7 +61,51 @@ bool equalRuleAtoms(Atom *left_atom, Atom *right_atom)
    }
    return false;
 }
-    
+
+LabelClass getLabelClass(Label label)
+{
+   if(label.length == 0) return EMPTY_L;
+   if(label.length == 1)
+   {
+      switch(label.list[0].type)
+      {
+         case INTEGER_CONSTANT:
+              return INT_L;
+
+         case STRING_CONSTANT:
+              return STRING_L;
+
+         default:
+              print_to_log("Error (getLabelClass): First atom of passed host "
+                           "label has unexpected type %d.\n", label.list[0].type);
+              break;
+      }
+   }
+   else
+   {
+      switch(label.length)
+      {
+         case 2: return LIST2_L;
+         case 3: return LIST3_L;
+         case 4: return LIST4_L;
+         default: return LONG_LIST_L;
+      }
+   }
+   return EMPTY_L;
+}   
+
+Atom *makeList(int length)
+{
+   if(length == 0) return NULL;
+   Atom *list = malloc(length * sizeof(Atom));
+   if(list == NULL)
+   {
+      print_to_log("Error (makeLabel): malloc failure.\n");
+      exit(1);
+   }
+   return list;
+}
+
 void addAtom(Atom atom, Label label, int position)
 {
    label.list[position] = atom;
@@ -184,58 +216,6 @@ Atom *copyAtom(Atom *atom)
    return copy;
 }
 
-LabelClass getLabelClass(Label label)
-{
-   if(label.length == 0) return EMPTY_L;
-   if(label.length == 1)
-   {
-      Atom first_atom = label.list[0];
-      {
-         switch(first_atom.type)
-         {
-            case VARIABLE: 
-                 if(first_atom.variable.type == LIST_VAR) return LIST_VAR_L;
-                 else return ATOMIC_VAR_L;     
- 
-            case INTEGER_CONSTANT:
-            case INDEGREE:
-            case OUTDEGREE:
-            case LENGTH:
-            case NEG:
-            case ADD:
-            case SUBTRACT:
-            case MULTIPLY:
-            case DIVIDE: return INT_L;
-
-            case STRING_CONSTANT:
-            case CONCAT: return STRING_L;
-
-            default:
-               print_to_log("Error (getLabelClass): First rule atom of passed "
-                            "list has unexpected type %d.\n", first_atom.type);
-               break;
-         }
-      }
-   }
-   else
-   {
-      int index;
-      /* Search for a list variable. */
-      for(index = 0; index < label.length; index++)
-      {
-         if(label.list[index].type == VARIABLE &&
-            label.list[index].variable.type == LIST_VAR) return LIST_VAR_L;
-      }
-      switch(label.length)
-      {
-         case 2: return LIST2_L;
-         case 3: return LIST3_L;
-         case 4: return LIST4_L;
-         default: return LONG_LIST_L;
-      }
-   }
-   return EMPTY_L;
-}
 
 void printLabel(Label label, FILE *file) 
 {

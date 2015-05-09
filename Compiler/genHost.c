@@ -35,8 +35,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    PTF("{\n");
    if(ast_host_graph == NULL) 
    {
-      PTF("   return newGraph(%d, %d);\n", MIN_HOST_NODE_SIZE,
-           MIN_HOST_EDGE_SIZE);
+      PTFI("return newGraph(%d, %d);\n", 3, MIN_HOST_NODE_SIZE, MIN_HOST_EDGE_SIZE);
       PTF("}\n");
       return;
    }
@@ -45,7 +44,9 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    int host_node_size = getArraySize(host_nodes, MIN_HOST_NODE_SIZE);
    int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
    int node_file_count = 0, edge_file_count = 0;
-   PTF("   Graph *host = newGraph(%d, %d);\n\n", host_node_size, host_edge_size);
+   PTFI("Graph *host = newGraph(%d, %d);\n\n", 3, host_node_size, host_edge_size);
+   PTFI("host->node_classes = makeLabelClassTable();\n", 3);
+   PTFI("host->edge_classes = makeLabelClassTable();\n", 3);
 
    List *nodes = ast_host_graph->nodes;
    /* Build the host graph in init_runtime.c if the number of nodes is small 
@@ -53,7 +54,8 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
     * to the graph. */
    if(host_nodes <= BUFFER_SIZE)
    {
-      PTF("   Label label;\n\n");
+      PTFI("int index;\n", 3);
+      PTFI("Label label;\n\n", 3);
       int node_count = 0;
       while(nodes != NULL)
       {
@@ -63,7 +65,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             PTFI("label = blank_label;\n", 3);
          else generateLabelCode(label, node_count++, file);
 
-         PTFI("addNode(host, %d, label);\n", 3, root);
+         PTFI("index = addNode(host, %d, label);\n", 3, root);
          nodes = nodes->next;   
       }
       PTF("\n");
