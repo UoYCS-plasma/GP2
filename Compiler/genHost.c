@@ -210,7 +210,7 @@ void generateLabelCode(GPLabel *ast_label, int list_count, FILE *file)
          else if(atom->type == STRING_CONSTANT)
          {
             PTFI("list%d[%d].type = STRING_CONSTANT; ", 3, list_count, index);
-            PTF("list%d[%d].string = strdup(\"%s\")\n; ", 
+            PTF("list%d[%d].string = strdup(\"%s\");\n", 
                 list_count, index, atom->string);
          }
          else 

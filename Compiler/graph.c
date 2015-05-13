@@ -1,7 +1,6 @@
 #include "graph.h"
 
-Node dummy_node = {-1, false, {NONE, 0, NULL}, {-1}, {-1}, NULL, NULL, 0, 0,
-                   0, 0, 0, 0, 0, -1};
+Node dummy_node = {-1, false, {NONE, 0, NULL}, NULL, 0, NULL, 0, 0, 0, 0, 0, 0, -1};
 Edge dummy_edge = {-1, false, {NONE, 0, NULL}, -1, -1, -1};
 
 /* ===============
@@ -9,61 +8,60 @@ Edge dummy_edge = {-1, false, {NONE, 0, NULL}, -1, -1, -1};
  * =============== */
 Graph *newGraph(int nodes, int edges) 
 {
-    int index;
+   Graph *graph = malloc(sizeof(Graph));
+   if(graph == NULL) 
+   {
+     printf("Memory exhausted during graph construction.\n");
+     exit(1);
+   }
+   graph->nodes = calloc(nodes, sizeof(Node));
+   if(graph->nodes == NULL)
+   {
+     print_to_log("Memory exhausted during graph construction.\n");
+     exit(1);
+   }
+   graph->free_node_slots = calloc(nodes, sizeof(int));
+   if(graph->free_node_slots == NULL)
+   {
+     print_to_log("Memory exhausted during graph construction.\n");
+     exit(1);
+   }
+   int index;
+   for(index = 0; index < nodes; index ++)
+   {
+      graph->nodes[index] = dummy_node;
+      graph->free_node_slots[index] = -1;
+   }
 
-    Graph *graph = malloc(sizeof(Graph));
-    if(graph == NULL) 
-    {
-      printf("Memory exhausted during graph construction.\n");
-      exit(1);
-    }
-    graph->nodes = calloc(nodes, sizeof(Node));
-    if(graph->nodes == NULL)
-    {
-      print_to_log("Memory exhausted during graph construction.\n");
-      exit(1);
-    }
-    graph->free_node_slots = calloc(nodes, sizeof(int));
-    if(graph->free_node_slots == NULL)
-    {
-      print_to_log("Memory exhausted during graph construction.\n");
-      exit(1);
-    }
-    for(index = 0; index < nodes; index ++)
-    {
-       graph->nodes[index] = dummy_node;
-       graph->free_node_slots[index] = -1;
-    }
- 
-    graph->edges = calloc(edges, sizeof(Edge));
-    if(graph->edges == NULL)
-    {
-      print_to_log("Memory exhausted during graph construction.\n");
-      exit(1);
-    }
-    graph->free_edge_slots = calloc(edges, sizeof(int));
-    if(graph->free_edge_slots == NULL)
-    {
-      print_to_log("Memory exhausted during graph construction.\n");
-      exit(1);
-    }
-    for(index = 0; index < edges; index ++)
-    {
-       graph->edges[index] = dummy_edge;
-       graph->free_edge_slots[index] = -1;
-    }
-    graph->node_pool_size = nodes;
-    graph->edge_pool_size = edges;
-    graph->free_node_index = 0;
-    graph->free_edge_index = 0;
-    graph->node_index = 0;
-    graph->edge_index = 0;
-    graph->number_of_nodes = 0;
-    graph->number_of_edges = 0;
-    graph->node_classes = NULL;
-    graph->edge_classes = NULL;
-    graph->root_nodes = NULL;
-    return graph;
+   graph->edges = calloc(edges, sizeof(Edge));
+   if(graph->edges == NULL)
+   {
+     print_to_log("Memory exhausted during graph construction.\n");
+     exit(1);
+   }
+   graph->free_edge_slots = calloc(edges, sizeof(int));
+   if(graph->free_edge_slots == NULL)
+   {
+     print_to_log("Memory exhausted during graph construction.\n");
+     exit(1);
+   }
+   for(index = 0; index < edges; index ++)
+   {
+      graph->edges[index] = dummy_edge;
+      graph->free_edge_slots[index] = -1;
+   }
+   graph->node_pool_size = nodes;
+   graph->edge_pool_size = edges;
+   graph->free_node_index = 0;
+   graph->free_edge_index = 0;
+   graph->node_index = 0;
+   graph->edge_index = 0;
+   graph->number_of_nodes = 0;
+   graph->number_of_edges = 0;
+   graph->node_classes = NULL;
+   graph->edge_classes = NULL;
+   graph->root_nodes = NULL;
+   return graph;
 }
 
 int addNode(Graph *graph, bool root, Label label) 
@@ -178,59 +176,37 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
     * (3) Increment the source's out index and outdegree, or increment the
     *     target's out index and indegree. */
    Node *source = getNode(graph, source_index);
-   if(source->out_index >= source->out_pool_size + MAX_INCIDENT_EDGES)
+   if(source->out_index == source->out_pool_size)
    {
-      if(source->extra_out_edges == NULL) 
-           source->out_pool_size = MAX_INCIDENT_EDGES;
+      if(source->out_pool_size == 0) source->out_pool_size = 2;
       else source->out_pool_size *= 2;
 
-      source->extra_out_edges = realloc(source->extra_out_edges,
-                                        source->out_pool_size * sizeof(int));
-      if(source->extra_out_edges == NULL)
+      source->out_edges = realloc(source->out_edges, 
+                                  source->out_pool_size * sizeof(int));
+      if(source->out_edges == NULL)
       {
-         print_to_log("Memory exhausted during extra incident outedge "
-                      "allocation.\n");
+         print_to_log("Error (addEdge): malloc failure.\n");
          exit(1);
       }
    }
-   if(source->extra_out_edges != NULL)
-   {
-      /* source->out_index includes the indices of the edges array.
-       * Subtract the size of that array to get the correct index into
-       * the extra edges array. */
-      int out_index = source->out_index - MAX_INCIDENT_EDGES;
-      source->extra_out_edges[out_index] = index;
-   }
-   else source->out_edges[source->out_index] = index;
-   source->out_index++;
+   source->out_edges[source->out_index++] = index;
    if(bidirectional) source->bidegree++; else source->outdegree++;
 
    Node *target = getNode(graph, target_index);
-   if(target->in_index >= target->in_pool_size + MAX_INCIDENT_EDGES)
+   if(target->in_index >= target->in_pool_size)
    {
-      if(target->extra_in_edges == NULL) 
-           target->in_pool_size = MAX_INCIDENT_EDGES;
-      else target->in_pool_size *=2;
+      if(target->in_pool_size == 0) target->in_pool_size = 2;
+      else target->in_pool_size *= 2;
 
-      target->extra_in_edges = realloc(target->extra_in_edges,
-                                       target->in_pool_size * sizeof(int));
-      if(target->extra_in_edges == NULL)
+      target->in_edges = realloc(target->in_edges,
+                                 target->in_pool_size * sizeof(int));
+      if(target->in_edges == NULL)
       {
-         print_to_log("Memory exhausted during extra incident inedge "
-                      "allocation.\n");
+         print_to_log("Error (addEdge): malloc failure.\n");
          exit(1);
       }
    }
-   if(target->extra_in_edges != NULL)
-   {
-      /* target->in_index includes the indices of the edges array.
-       * Subtract the size of that array to get the correct index into
-       * the extra edges array. */
-      int in_index = target->in_index - MAX_INCIDENT_EDGES;
-      target->extra_in_edges[in_index] = index;
-   }
-   else target->in_edges[target->in_index] = index;
-   target->in_index++;
+   target->in_edges[target->in_index++] = index;
    if(bidirectional) target->bidegree++; else target->indegree++;
 
    graph->number_of_edges++;
@@ -252,8 +228,8 @@ void removeNode(Graph *graph, int index)
    removeLabelClassIndex(graph, true, node->label, node->label_table_index);
    /* Deallocate memory in the node structure. */
    freeLabel(node->label);
-   if(node->extra_out_edges) free(node->extra_out_edges);
-   if(node->extra_in_edges) free(node->extra_in_edges); 
+   if(node->out_edges != NULL) free(node->out_edges);
+   if(node->in_edges != NULL) free(node->in_edges); 
    if(node->root) removeRootNode(graph, index);
    
    graph->nodes[index] = dummy_node;
@@ -299,117 +275,47 @@ void removeEdge(Graph *graph, int index)
    Node *source = getNode(graph, edge->source);
    Node *target = getNode(graph, edge->target);
    int counter;
-   bool source_found = false, target_found = false;
-
-   /* Search for the edge pointer in the out-edge array of the source node
-    * and in the in-edge array of the target node. The bools source_found
-    * and target_found control the for loop to minimise array checks. */
-   for(counter = 0; counter < MAX_INCIDENT_EDGES; counter++)
+   for(counter = 0; counter < source->out_index; counter++)
    {
-      if(!source_found)
+      if(source->out_edges[counter] == index) 
       {
-         if(source->out_edges[counter] == index) 
-         {
-            source->out_edges[counter] = -1;
-            source_found = true;
-            /* If the index of the removed edge directly precedes the source's
-             * out-index, decrement the out-index until it refers to an array
-             * element one place beyond the right-most -1 element. */
-            if(counter == source->out_index - 1) 
-            {
-               source->out_index--;
-               while(source->out_index > 0)
-               {
-                  if(source->out_edges[source->out_index - 1] == -1)
-                     source->out_index--;
-                  else break;
-               }
-            }
-            if(target_found) break;
-         }
-      }
-      if(!target_found)
-      {
-         if(target->in_edges[counter] == index) 
-         {
-            target->in_edges[counter] = -1;
-            target_found = true;
-            /* If the index of the removed edge directly precedes the target's
-             * in-index, decrement the in-index until it refers to an array
-             * element one place beyond the right-most -1 element. */
-            if(counter == target->in_index - 1) 
-            {
-               target->in_index--;
-               while(target->in_index > 0)
-               {
-                  if(target->in_edges[target->in_index - 1] == -1) 
-                     target->in_index--;
-                  else break;
-               }
-            }
-            if(source_found) break;
-         }
-      }
-   }
-   /* If the source was not found in the normal store, search the extra out
-    * edges array. */
-   if(!source_found)
-   {
-      if(source->extra_out_edges == NULL)
-      {
-         print_to_log("Error (removeEdge): Outedge pointer not found.\n");
-         return;
-      }
-      for(counter = 0; counter < source->out_index - MAX_INCIDENT_EDGES; counter++)
-      if(source->extra_out_edges[counter] == index) 
-      {
-         source->extra_out_edges[counter] = -1;
+         source->out_edges[counter] = -1;
          /* If the index of the removed edge directly precedes the source's
-          * out-index, decrement the out-index until it refers to an array
+          * out_index, decrement out_index until it refers to an array
           * element one place beyond the right-most -1 element. */
          if(counter == source->out_index - 1) 
          {
             source->out_index--;
             while(source->out_index > 0)
             {
-               if(source->extra_out_edges[source->out_index - 1] == -1) 
+               if(source->out_edges[source->out_index - 1] == -1)
                   source->out_index--;
                else break;
             }
          }
-         break;
       }
    }
-   /* ...and again for the target. */
-   if(!target_found)
+   for(counter = 0; counter < target->in_index; counter++)
    {
-      if(target->extra_in_edges == NULL)
+      if(target->in_edges[counter] == index) 
       {
-         print_to_log("Error (removeEdgee): Inedge pointer not found.\n");
-         return;
-      }
-      for(counter = 0; counter < target->in_index - MAX_INCIDENT_EDGES; counter++)
-      if(target->extra_in_edges[counter] == index) 
-      {
-         target->extra_in_edges[counter] = -1;
+         target->in_edges[counter] = -1;
          /* If the index of the removed edge directly precedes the target's
-          * in-index, decrement the in-index until it refers to an array
+          * in_index, decrement in_index until it refers to an array
           * element one place beyond the right-most -1 element. */
          if(counter == target->in_index - 1) 
          {
             target->in_index--;
             while(target->in_index > 0)
             {
-               if(target->extra_in_edges[target->in_index - 1] == -1) 
+               if(target->in_edges[target->in_index - 1] == -1)
                   target->in_index--;
                else break;
-               }
+            }
          }
-         break;
       }
    }
-   /* Rule graphs are not modified after their creation. Specifically,
-    * removeEdge is never called on a rule graph, so there is no need to
+   /* removeEdge is never called on a rule graph, so there is no need to
     * check whether to decrement the bidegrees. */
    source->outdegree--;
    target->indegree--;
@@ -610,11 +516,8 @@ int getOutEdge(Node *node, int index)
                    "node's out_edges array.\n");
       exit(1);
    }
-   if(index >= MAX_INCIDENT_EDGES) 
-      return node->extra_out_edges[index - MAX_INCIDENT_EDGES];
-   else return node->out_edges[index];
+   return node->out_edges[index];
 }
-
 
 int getInEdge(Node *node, int index)
 {
@@ -624,9 +527,7 @@ int getInEdge(Node *node, int index)
                    "node's in_edges array.\n");
       exit(1);
    }
-   if(index >= MAX_INCIDENT_EDGES) 
-      return node->extra_in_edges[index - MAX_INCIDENT_EDGES];
-   else return node->in_edges[index];
+   return node->in_edges[index];
 }
 
 int getSource(Edge *edge) 
@@ -639,23 +540,27 @@ int getTarget(Edge *edge)
    return edge->target;
 }
 
-Label getNodeLabel(Node *node) 
+Label getNodeLabel(Graph *graph, int index) 
 {
+   Node *node = getNode(graph, index);
    return node->label;
 }
 
-Label getEdgeLabel(Edge *edge) 
+Label getEdgeLabel(Graph *graph, int index) 
 {
+   Edge *edge = getEdge(graph, index);
    return edge->label;
 }
 
-int getIndegree(Node *node) 
+int getIndegree(Graph *graph, int index) 
 {
+   Node *node = getNode(graph, index);
    return node->indegree;
 }
 
-int getOutdegree(Node *node) 
+int getOutdegree(Graph *graph, int index) 
 {
+   Node *node = getNode(graph, index);
    return node->outdegree;
 }
 
@@ -724,7 +629,6 @@ void printGraph(Graph *graph, FILE *file)
 void freeGraph(Graph *graph) 
 {
    if(graph == NULL) return;
-
    int index;
    for(index = 0; index < graph->node_index; index++)
    {
@@ -732,8 +636,8 @@ void freeGraph(Graph *graph)
       if(node->index >= 0)
       {
          freeLabel(node->label);
-         if(node->extra_out_edges) free(node->extra_out_edges);
-         if(node->extra_in_edges) free(node->extra_in_edges);
+         if(node->out_edges != NULL) free(node->out_edges);
+         if(node->in_edges != NULL) free(node->in_edges);
       }  
    }
    if(graph->nodes) free(graph->nodes);

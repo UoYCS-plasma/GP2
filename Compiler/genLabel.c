@@ -551,10 +551,8 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
             PTFI("Label host_label;\n", indent);
             host_label_declared = true;
          }
-         if(node) PTFI("host_label = getNodeLabel(getNode(host, "
-                       "host_node_index));\n", indent);
-         else PTFI("host_label = getEdgeLabel(getEdge(host, "
-                   "host_edge_index));\n", indent);
+         if(node) PTFI("host_label = getNodeLabel(host, host_node_index));\n", indent);
+         else PTFI("host_label = getEdgeLabel(host, host_edge_index));\n", indent);
          PTFI("label = makeEmptyLabel(host_label.mark);\n\n", indent);
       }
       else PTFI("label = makeEmptyLabel(%d);\n\n", indent, label.mark);
@@ -702,10 +700,8 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
          PTFI("Label host_label;\n", indent);
          host_label_declared = true;
       } 
-      if(node) PTFI("host_label = getNodeLabel(getNode(host, "
-                    "host_node_index));\n", indent);
-      else PTFI("host_label = getEdgeLabel(getEdge(host, "
-                "host_edge_index));\n", indent);
+      if(node) PTFI("host_label = getNodeLabel(host, host_node_index);\n", indent);
+      else PTFI("host_label = getEdgeLabel(host, host_edge_index);\n", indent);
       if(list_variable == NULL) 
          PTFI("label = makeHostLabel(host_label.mark, %d, list%d);\n\n",
                indent, label.length, count);

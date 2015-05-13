@@ -12,8 +12,6 @@
 #ifndef INC_GRAPH_H
 #define INC_GRAPH_H
 
-#define MAX_INCIDENT_EDGES 16
-
 #include "error.h"
 #include "globals.h"
 #include "label.h"
@@ -86,20 +84,11 @@ typedef struct Node {
    bool root;
    Label label;
 
-   /* Fixed-size arrays for the node's outgoing and incoming edges. */
-   int out_edges[MAX_INCIDENT_EDGES];
-   int in_edges[MAX_INCIDENT_EDGES];
+   /* Dynamic integer arrays for the node's outgoing and incoming edges. */
+   int *out_edges, out_index, *in_edges, in_index;
    
-   /* Pointers to extra incident edge index storage in case the array's
-    * bounds are exceeded. Initially, these are NULL pointers. */
-   int *extra_out_edges, *extra_in_edges;
-   /* The size of the extra_out_edges and extra_in_edges arrays respectively. */
+   /* The size of the out_edges and in_edges arrays respectively. */
    int out_pool_size, in_pool_size;
-
-   /* If extra edge arrays have been allocated, you must subtract
-    * MAX_INCIDENT_EDGES from this number to get the correct index into the
-    * extra edge array. */
-   int out_index, in_index;
 
    /* Bidirectional edges, and hence bidegrees, exist only in rule graphs.
     * A bidirectional edge is internally represented as either a single outedge
@@ -181,10 +170,10 @@ int getInEdge(Node *node, int index);
 int getOutEdge(Node *node, int index);
 int getSource(Edge *edge);
 int getTarget(Edge *edge);
-Label getNodeLabel(Node *node);
-Label getEdgeLabel(Edge *edge);
-int getIndegree(Node *node);
-int getOutdegree(Node *node);
+Label getNodeLabel(Graph *graph, int index);
+Label getEdgeLabel(Graph *graph, int index); 
+int getIndegree(Graph *graph, int index);
+int getOutdegree(Graph *graph, int index);
 LabelClassTable *getNodesByLabel(Graph *graph, Label label);
 LabelClassTable *getEdgesByLabel(Graph *graph, Label label);
 

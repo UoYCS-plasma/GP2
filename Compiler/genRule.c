@@ -754,9 +754,9 @@ void generateApplicationCode(Rule *rule)
          }
          else PTFI("node_index = lookupNode(morphism, %d);\n", 3, index);
          if(item->indegree_argument) 
-            PTFI("int indegree%d = getIndegree(getNode(host, node_index));\n", 3, index);
+            PTFI("int indegree%d = getIndegree(host, node_index);\n", 3, index);
          if(item->outdegree_argument) 
-            PTFI("int outdegree%d = getOutdegree(getNode(host, node_index));\n", 3, index);
+            PTFI("int outdegree%d = getOutdegree(host, node_index);\n", 3, index);
       }
    }
    bool label_declared = false;

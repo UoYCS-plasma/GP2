@@ -51,7 +51,7 @@ void copyGraph(Graph *graph)
          table->items = calloc(table->pool_size, sizeof(int));
          if(table->items == NULL)
          {
-            print_to_log("Error: Memory exhausted during graph copying.\n");
+            print_to_log("Error: (copyGraph): malloc failure.\n");
             exit(1);
          }
          memcpy(table->items, graph->node_classes[index]->items, 
@@ -63,7 +63,7 @@ void copyGraph(Graph *graph)
          table->items = calloc(table->pool_size, sizeof(int));
          if(table->items == NULL)
          {
-            print_to_log("Error: Memory exhausted during graph copying.\n");
+            print_to_log("Error: (copyGraph): malloc failure.\n");
             exit(1);
          }
          memcpy(table->items, graph->edge_classes[index]->items, 
@@ -84,28 +84,28 @@ void copyGraph(Graph *graph)
          Node *original_node = getNode(graph, index);
          copyLabel(&(original_node->label), &(node->label));
  
-         /* If necessary, copy the extra edges arrays of the original node. */
-         if(original_node->extra_out_edges != NULL)
+         /* If necessary, copy the edges arrays of the original node. */
+         if(original_node->out_edges != NULL)
          {
-            node->extra_out_edges = calloc(node->out_pool_size, sizeof(int));
-            if(node->extra_out_edges == NULL)
+            node->out_edges = calloc(node->out_pool_size, sizeof(int));
+            if(node->out_edges == NULL)
             {
-               print_to_log("Error: Memory exhausted during graph copying.\n");
+               print_to_log("Error: (copyGraph): malloc failure.\n");
                exit(1);
             }
-            memcpy(node->extra_out_edges, original_node->extra_out_edges,
+            memcpy(node->out_edges, original_node->out_edges,
                    node->out_pool_size * sizeof(int));
          }
-         if(original_node->extra_in_edges != NULL)
+         if(original_node->in_edges != NULL)
          {
-            node->extra_in_edges = calloc(node->in_pool_size, sizeof(int));
-            if(node->extra_in_edges == NULL)
+            node->in_edges = calloc(node->in_pool_size, sizeof(int));
+            if(node->in_edges == NULL)
             {
-               print_to_log("Error: Memory exhausted during graph copying.\n");
+               print_to_log("Error: (copyGraph): malloc failure.\n");
                exit(1);
             }
-            memcpy(node->extra_in_edges, original_node->extra_in_edges,
-                   (node->in_pool_size - MAX_INCIDENT_EDGES) * sizeof(int));
+            memcpy(node->in_edges, original_node->in_edges,
+                   node->in_pool_size * sizeof(int));
          }
          /* Populate the root nodes list. */
          if(node->root) addRootNode(graph_copy, node->index);

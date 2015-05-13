@@ -34,14 +34,14 @@ Rule *makeRule(GPRule *ast_rule)
       int index;
       for(index = 0; index < rule->rhs->node_index; index++)
       {
-         Label label = getNodeLabel(getNode(rule->rhs, index));
+         Label label = getNodeLabel(rule->rhs, index);
          int list_index;
          for(list_index = 0; list_index < label.length; list_index++) 
             scanRHSAtom(rule, label.list[list_index]);
       }
       for(index = 0; index < rule->rhs->edge_index; index++)
       {
-         Label label = getEdgeLabel(getEdge(rule->rhs, index));
+         Label label = getEdgeLabel(rule->rhs, index);
          int list_index;
          for(list_index = 0; list_index < label.length; list_index++) 
             scanRHSAtom(rule, label.list[list_index]);

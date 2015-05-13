@@ -35,7 +35,7 @@ bool validGraph(Graph *graph)
    }
 
    bool valid_graph = true, slot_found = false;
-   int graph_index, node_index, edge_index, node_count = 0, edge_count = 0;
+   int graph_index, node_index, node_count = 0, edge_count = 0;
    
    for(graph_index = 0; graph_index < graph->node_index; graph_index++)    
    {
@@ -65,7 +65,6 @@ bool validGraph(Graph *graph)
       {
          /* Keep a count of the number of nodes in the array. */
          node_count++;
-
          for(node_index = 0; node_index < node->out_index; node_index++)
          {
             Edge *node_edge = getEdge(graph, getOutEdge(node, node_index));
@@ -165,45 +164,22 @@ bool validGraph(Graph *graph)
          bool source_found = false, target_found = false;
          /* Search for the edge in the out_edges array of its source and the
           * in_edges array of its target. */
-         for(counter = 0; counter < MAX_INCIDENT_EDGES; counter++)
+         for(counter = 0; counter < source->out_index; counter++)
          {
             if(source->out_edges[counter] == edge->index)
             {
                source_found = true;
-               if(target_found) break;
+               break;
             }
+         }
+         for(counter = 0; counter < target->in_index; counter++)
+         {
             if(target->in_edges[counter] == edge->index)
             {
                target_found = true;
-               if(source_found) break;
+               break;
             }
          }
-         /* Check the extra edge arrays if necessary. */
-         if(!source_found && source->extra_out_edges != NULL)
-         { 
-            for(counter = 0; counter < source->out_index - MAX_INCIDENT_EDGES;
-                counter++)
-            {
-               if(source->extra_out_edges[counter] == edge->index)
-               {
-                  source_found = true;
-                  break;
-               }
-            }
-         }
-         if(!target_found && target->extra_in_edges != NULL)
-         { 
-            for(counter = 0; counter < target->in_index - MAX_INCIDENT_EDGES;
-                counter++)
-            {
-               if(target->extra_in_edges[counter] == edge->index)
-               {
-                  target_found = true;
-                  break;
-               }
-            }
-         }
-
          /* Invariant (9) */
          if(!source_found)
          {
@@ -259,111 +235,142 @@ bool validGraph(Graph *graph)
 
 void printVerboseRule(Rule *rule, FILE *file)
 {
-   fprintf(file, "Rule %s\n\n", rule->name);
-   fprintf(file, "LHS\n===\n");
+   PTF("Rule %s\n\n", rule->name);
+   PTF("LHS\n===\n");
    if(rule->lhs) printVerboseGraph(rule->lhs, file);
-   else fprintf(file, "Empty Graph\n\n");
+   else PTF("Empty Graph\n\n");
 
-   fprintf(file, "RHS\n===\n");
+   PTF("RHS\n===\n");
    if(rule->rhs) printVerboseGraph(rule->rhs, file);
-   else fprintf(file, "Empty Graph\n\n");
+   else PTF("Empty Graph\n\n");
 
    PreservedItemList *item = rule->preserved_nodes;
-   fprintf(file, "Preserved nodes: ");
+   PTF("Preserved nodes: ");
    while(item != NULL)
    {
-      fprintf(file, "%d", item->left_index);
-      if(item->next != NULL) fprintf(file, ", ");
+      PTF("%d", item->left_index);
+      if(item->next != NULL) PTF(", ");
       item = item->next;
    }
 
    item = rule->preserved_edges;
-   fprintf(file, "\nPreserved edges: ");
+   PTF("\nPreserved edges: ");
    while(item != NULL)
    {
-      fprintf(file, "%d", item->left_index);
-      if(item->next != NULL) fprintf(file, ", ");
+      PTF("%d", item->left_index);
+      if(item->next != NULL) PTF(", ");
       item = item->next;
    }
 
    ItemList *iterator = rule->added_nodes;
-   fprintf(file, "\nAdded nodes: ");
+   PTF("\nAdded nodes: ");
    while(iterator != NULL)
    {
-      fprintf(file, "%d ", iterator->index);
+      PTF("%d ", iterator->index);
       iterator = iterator->next;
    }
    
    iterator = rule->deleted_nodes;
-   fprintf(file, "\nDeleted nodes: ");
+   PTF("\nDeleted nodes: ");
    while(iterator != NULL)
    {
-      fprintf(file, "%d ", iterator->index);
+      PTF("%d ", iterator->index);
       iterator = iterator->next;
    }
 
-   fprintf(file, "\nAdded edges:\n");
+   PTF("\nAdded edges:\n");
 
    NewEdgeList *edge = rule->added_edges;
    while(edge != NULL)
    {
-      fprintf(file, "Edge %d. Source %c-%d. Target %c-%d.\n",
+      PTF("Edge %d. Source %c-%d. Target %c-%d.\n",
             edge->edge_index, edge->source_location, edge->source_index,
             edge->target_location, edge->target_index);
       edge = edge->next;
    }
-   fprintf(file, "\n");
+   PTF("\n");
 }
 
 
 void printVerboseGraph(Graph *graph, FILE *file) 
 {
     int index;
-    fprintf(file, "Nodes\n=====\n");
+    PTF("Nodes\n=====\n");
     for(index = 0; index < graph->node_index; index++)
     {
        Node *node = getNode(graph, index);
        if(node->index >= 0) printVerboseNode(node, file);
     }    
  
-    fprintf(file, "Edges\n=====\n");
+    PTF("Edges\n=====\n");
     for(index = 0; index < graph->edge_index; index++)
     {
        Edge *edge = getEdge(graph, index);
        if(edge->index >= 0) printVerboseEdge(edge, file);
     } 
-    fprintf(file, "\n");
+    PTF("\n");
 
-    fprintf(file, "Root Node List\n==============\n");
+    PTF("Root Node List\n==============\n");
     RootNodes *iterator = graph->root_nodes;
     while(iterator != NULL)
     {
-       if(iterator->next == NULL) fprintf(file, "%d\n", iterator->index);
-       else fprintf(file, "%d, ", iterator->index);
+       if(iterator->next == NULL) PTF("%d\n", iterator->index);
+       else PTF("%d, ", iterator->index);
        iterator = iterator->next;
     }
 }
 
 void printVerboseNode(Node *node, FILE *file)
 {
-    fprintf(file, "Index: %d", node->index);
-    if(node->root) fprintf(file, " (Root)");
-    fprintf(file, "\n");
-    fprintf(file, "Label: ");
+    PTF("Index: %d", node->index);
+    if(node->root) PTF(" (Root)");
+    PTF("\n");
+    PTF("Label: ");
     printLabel(node->label, file);
-    fprintf(file, "\n");
-    fprintf(file, "Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
-           node->indegree, node->outdegree, node->bidegree);
+    PTF("\n");
+    PTF("Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
+        node->indegree, node->outdegree, node->bidegree);
+    int index;
+    PTF("Inedges: ");
+    for(index = 0; index < node->in_pool_size; index++)
+    {
+       int in_edge = node->in_edges[index];
+       if(in_edge >= 0) 
+       {
+          if(index == node->in_pool_size - 1) PTF("%d\n", in_edge);
+          else 
+          {
+             PTF("%d, ", in_edge);
+             /* 20 node indices per line. */
+             if(index > 0 && index % 20 == 0) PTF("\n         ");
+          }
+       }
+    }
+    PTF("Outedges: ");
+    for(index = 0; index < node->out_pool_size; index++)
+    {
+       int out_edge = node->out_edges[index];
+       if(out_edge >= 0) 
+       {
+          if(index == node->out_pool_size - 1) PTF("%d\n", out_edge);
+          else 
+          {
+             PTF("%d, ", out_edge);
+             /* 20 edge indices per line. */
+             if(index > 0 && index % 20 == 0) PTF("\n          ");
+          }
+       }
+    }
 }
 
 void printVerboseEdge(Edge *edge, FILE *file) 
 {
-    fprintf(file, "Index: %d", edge->index);
-    if(edge->bidirectional) fprintf(file, " (Bidirectional)");
-    fprintf(file, "\n");
-    fprintf(file, "Label: ");
+    PTF("Index: %d", edge->index);
+    if(edge->bidirectional) PTF(" (Bidirectional)");
+    PTF("\n");
+    PTF("Label: ");
     printLabel(edge->label, file);
-    fprintf(file, "\n");
-    fprintf(file, "Source: %d. Target: %d\n\n", edge->source, edge->target);
+    PTF("\n");
+    PTF("Source: %d. Target: %d\n\n", edge->source, edge->target);
 }
 
