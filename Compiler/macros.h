@@ -3,12 +3,10 @@
 
 #define MAKE_MATCHED_NODES_ARRAY                \
    int count;                                   \
-   int matched_nodes[left_nodes];               \
    for(count = 0; count < left_nodes; count++)  \
        matched_nodes[count] = -1;                
 
 #define MAKE_MATCHED_EDGES_ARRAY                \
-   int matched_edges[left_edges];               \
    for(count = 0; count < left_edges; count++)  \
        matched_edges[count] = -1;                
 

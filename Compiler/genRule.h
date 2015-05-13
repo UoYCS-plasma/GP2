@@ -48,28 +48,14 @@ void generateRuleCode(Rule *rule, bool predicate);
  * The subsequent matching functions operate in the same way, apart from the
  * last function f_n. If f_n finds a match it returns true, signalling match_R 
  * to return the morphism.
+ * This function is also responsible for printing the source file's main
+ * matching function and its global variables. 
  *
- * Argument 1: The name of the rule, passed to emitRuleMatcher so that it 
- *             writes the correct function names.
+ * Argument 1: The name of the rule.
  * Argument 2: The LHS graph of the rule. Used to generate the searchplan.
  * Argument 3: The list of nodes that the rule deletes. The dangling condition
- *             is checked for candidate host graph nodes that match a deleted
- *             node.  */
+ *             is checked for candidate host graph nodes that match a deleted node. */
 void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes);
-
-
-/* Emits the declaration and definition of the main matching function 
- * match_<rule_name>. The body of the function contains a check that returns 
- * false if the LHS has more nodes or more edges than the host graph, and the 
- * call to the first matching function.
- *
- * Argument 1: The name of the rule, used to write the function name.
- * Argument 2: The first operation in the searchplan, used to write the call
- *             to the first matching function.
- * Argument 3: The number of nodes in the LHS.
- * Argument 4: The number of edges in the LHS. */
-void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes, 
-                     int left_edges);
 
 /* The four emitMatcher functions take an LHS item and emit a function that 
  * searches for a matching host item. The generated code queries the host graph

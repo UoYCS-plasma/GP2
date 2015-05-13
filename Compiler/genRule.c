@@ -126,42 +126,21 @@ void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes)
       {
          case 'n':
          case 'r':
-              node = getNode(lhs, operation->index);
-              if(operation->next == NULL)
-                 PTF("static bool match_n%d(Morphism *morphism, "
-                      "int *matched_nodes);\n", node->index);
-              else
-                 PTF("static bool match_n%d(Morphism *morphism, "
-                      "int *matched_nodes, int *matched_edges);\n", 
-                      node->index);
+              PTF("static bool match_n%d(Morphism *morphism);\n", operation->index);
               break;
 
          case 'i': 
          case 'o': 
          case 'b':
-              node = getNode(lhs, operation->index);
-              if(operation->next == NULL)
-                 PTF("static bool match_n%d(Morphism *morphism, "
-                      "Edge *host_edge, int *matched_nodes);\n",
-                      node->index);
-              else
-                 PTF("static bool match_n%d(Morphism *morphism, "
-                      "Edge *host_edge, int *matched_nodes, "
-                      "int *matched_edges);\n", node->index);
+              PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge);\n",
+                  operation->index);
               break;
 
          case 'e': 
          case 's': 
          case 't':
          case 'l':
-              edge = getEdge(lhs, operation->index);
-              if(operation->next == NULL)
-                 PTF("static bool match_e%d(Morphism *morphism, "
-                      "int *matched_edges);\n", edge->index);
-              else
-                 PTF("static bool match_e%d(Morphism *morphism, "
-                      "int *matched_nodes, int *matched_edges);\n", 
-                      edge->index);
+              PTF("static bool match_e%d(Morphism *morphism);\n", operation->index);
               break;
 
          default:
@@ -171,11 +150,27 @@ void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes)
       }
       operation = operation->next;
    }
-   /* Print the main matching function which sets up the matching environment
-    * and calls the first matcher in the searchplan. */
-   emitRuleMatcher(rule_name, searchplan->first, lhs->number_of_nodes, 
-                   lhs->number_of_edges);
-   PTF("\n\n");
+   /* Print the main matching function which sets up the matching environment. */
+   PTH("bool match%s(Morphism *morphism);\n", rule_name);
+   PTF("\nconst int left_nodes = %d, left_edges = %d;\n", 
+       lhs->number_of_nodes, lhs->number_of_edges);
+   PTF("int matched_nodes[%d];\n", lhs->number_of_nodes);
+   if(lhs->number_of_edges > 0) PTF("int matched_edges[%d];\n\n", lhs->number_of_edges);
+   else PTF("\n");
+   PTF("bool match%s(Morphism *morphism)\n{\n", rule_name);
+   PTFI("if(left_nodes > host->number_of_nodes ||\n", 3);
+   PTFI("left_edges > host->number_of_edges) return false;\n\n", 6);
+   PTFI("int count;\n", 3);
+   PTFI("for(count = 0; count < left_nodes; count++) matched_nodes[count] = -1;\n", 3);
+   if(lhs->number_of_edges > 0) 
+      PTFI("for(count = 0; count < left_edges; count++) matched_edges[count] = -1;\n", 3);
+
+   /* Call the first matcher in the searchplan. */
+   char item = searchplan->first->is_node ? 'n' : 'e';
+   PTFI("if(match_%c%d(morphism)) return true;\n", 3, item, searchplan->first->index);
+   PTFI("else\n   {\n", 3);
+   PTFI("initialiseMorphism(morphism);\n", 6);
+   PTFI("return false;\n   }\n}\n\n", 6);
    operation = searchplan->first;
    while(operation != NULL)
    {
@@ -231,47 +226,10 @@ void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes)
    freeSearchplan(searchplan);
 }
 
-void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes, 
-                     int left_edges)
-{
-   PTH("bool match%s(Morphism *morphism);\n", rule_name);
-
-   PTF("\nstatic int left_nodes = %d, left_edges = %d;\n\n", left_nodes, left_edges);
-   PTF("bool match%s(Morphism *morphism)\n{\n", rule_name);
-   PTFI("if(left_nodes > host->number_of_nodes ||\n", 3);
-   PTFI("left_edges > host->number_of_edges) return false;\n\n", 6);
-   PTFI("MAKE_MATCHED_NODES_ARRAY;\n", 3);
-
-   /* The matched edges array should not be created when there are no host
-    * edges: if there are no host edges, the generated code will exit
-    * before this point is reached because left_edges > host_edges. */
-   if(left_edges > 0) PTFI("MAKE_MATCHED_EDGES_ARRAY;\n\n", 3);
-
-   char item = first_op->is_node ? 'n' : 'e';
-   if(first_op->next == NULL)
-      PTFI("if(match_%c%d(morphism, matched_nodes)) return true;\n",
-           3, item, first_op->index);
-   else
-      PTFI("if(match_%c%d(morphism, matched_nodes, matched_edges)) return true;\n",
-           3, item, first_op->index);
-   PTFI("else\n", 3);
-   PTFI("{\n", 3);
-   PTFI("initialiseMorphism(morphism);\n", 6);
-   PTFI("return false;\n", 6);
-   PTFI("}\n", 3);
-   PTF("}\n");
-}
-
 void emitRootNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *next_op)
 {
    int left_index = left_node->index;
-   if(next_op == NULL)
-      PTF("static bool match_n%d(Morphism *morphism, int *matched_nodes)\n"
-          "{\n", left_index);
-   else
-      PTF("static bool match_n%d(Morphism *morphism, int *matched_nodes, "
-          "int *matched_edges)\n"
-          "{\n", left_index);
+   PTF("static bool match_n%d(Morphism *morphisms)\n{\n", left_index);
    PTFI("bool node_matched = false;\n", 3);
    PTFI("RootNodes *nodes = getRootNodeList(host);\n", 3);   
    PTFI("while(nodes != NULL)\n   {\n", 3);
@@ -311,34 +269,25 @@ void emitRootNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *nex
 void emitNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *next_op)
 {
    int left_index = left_node->index;
-   
-   if(next_op == NULL)
-      PTF("static bool match_n%d(Morphism *morphism, int *matched_nodes)\n"
-           "{\n", left_index);
-   else
-      PTF("static bool match_n%d(Morphism *morphism, int *matched_nodes, "
-           "int *matched_edges)\n"
-           "{\n", left_index);
-
-    PTFI("bool node_matched = false;\n", 3);
-    /* Writes a double for loop. The outer loop iterates over variable mark_index.
-     * The inner loop iterates over variable class_index. */
-    generateIteratorCode(left_node->label, 3, file);
-
-    PTFI("LabelClassTable *table = host->node_classes[mark_index * "
-         "NUMBER_OF_CLASSES + class_index];\n", 9);
-    PTFI("if(table == NULL) continue;\n", 9);
-    PTFI("int items_index;\n", 9);
-    PTFI("for(items_index = 0; items_index < table->pool_size; items_index++)\n", 9);
-    PTFI("{\n", 9);
-    PTFI("int host_index = table->items[items_index];\n", 12);
-    PTFI("if(host_index == -1) continue;\n", 12);
-    PTFI("Node *host_node = getNode(host, host_index);\n", 12);
-    PTFI("if(host_node == NULL) continue;\n\n", 12);
-    PTFI("node_matched = false;\n", 12);
-    PTFI("/* Set node_matched to true if the node has already been matched.*/\n", 12);
-    PTFI("int index;\n", 12);
-    PTFI("CHECK_MATCHED_NODE;\n\n", 12);
+   PTF("static bool match_n%d(Morphism *morphism)\n{\n", left_index);
+   PTFI("bool node_matched = false;\n", 3);
+   /* Writes a double for loop. The outer loop iterates over variable mark_index.
+    * The inner loop iterates over variable class_index. */
+   generateIteratorCode(left_node->label, 3, file);
+   PTFI("LabelClassTable *table = host->node_classes[mark_index * "
+        "NUMBER_OF_CLASSES + class_index];\n", 9);
+   PTFI("if(table == NULL) continue;\n", 9);
+   PTFI("int items_index;\n", 9);
+   PTFI("for(items_index = 0; items_index < table->pool_size; items_index++)\n", 9);
+   PTFI("{\n", 9);
+   PTFI("int host_index = table->items[items_index];\n", 12);
+   PTFI("if(host_index == -1) continue;\n", 12);
+   PTFI("Node *host_node = getNode(host, host_index);\n", 12);
+   PTFI("if(host_node == NULL) continue;\n\n", 12);
+   PTFI("node_matched = false;\n", 12);
+   PTFI("/* Set node_matched to true if the node has already been matched.*/\n", 12);
+   PTFI("int index;\n", 12);
+   PTFI("CHECK_MATCHED_NODE;\n\n", 12);
    /* Emit code to check the node_matched flag and to test if the candidate 
     * host node is consistent with the left node with respect to mark and
     * degrees. If not, this node cannot participate in a valid match. */
@@ -373,12 +322,7 @@ void emitNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *next_op
 void emitNodeFromEdgeMatcher(Node *left_node, char type, ItemList *deleted_nodes,
                              SearchOp *next_op)
 {
-   if(next_op == NULL)
-        PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge, "
-            "int *matched_nodes)\n{\n", left_node->index);
-   else PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge, "
-            "int *matched_nodes, int *matched_edges)\n{\n", left_node->index);
-
+   PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge)\n{\n", left_node->index);
    if(type == 'i' || type == 'b') 
         PTFI("Node *host_node = getNode(host, getTarget(host_edge));\n\n", 3);
    else PTFI("Node *host_node = getNode(host, getSource(host_edge));\n\n", 3);
@@ -458,15 +402,10 @@ void generateNodeMatchResultCode(int index, SearchOp *next_op, int indent)
 
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 {
-   if(next_op == NULL) PTF("static bool match_e%d(Morphism *morphism,"
-                            "int *matched_edges)\n{\n", left_edge->index);
-   else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
-             "int *matched_edges)\n{\n", left_edge->index);
-
+   PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
    /* Writes a double for loop. The outer loop iterates over variable mark_index.
     * The inner loop iterates over variable class_index. */
    generateIteratorCode(left_edge->label, 3, file);
-
    PTFI("bool edge_matched = false;\n", 3);
    PTFI("LabelClassTable *table = host->edge_classes[mark_index * "
         "NUMBER_OF_CLASSES + class_index];\n", 9);
@@ -510,10 +449,7 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 
 void emitLoopEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 {
-   if(next_op == NULL) PTF("static bool match_e%d(Morphism *morphism, "
-                           "int *matched_edges)\n{\n", left_edge->index);
-   else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
-            "int *matched_edges)\n{\n", left_edge->index);
+   PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
    PTFI("/* Matching a loop. */\n", 3);
    PTFI("int node_index = lookupNode(morphism, %d);\n", 3, left_edge->source);
    PTFI("if(node_index < 0) return false;\n", 3);
@@ -553,10 +489,7 @@ void emitEdgeFromSourceMatcher(Edge *left_edge, bool initialise, bool exit,
 {
    if(initialise)
    {
-      if(next_op == NULL) PTF("static bool match_e%d(Morphism *morphism, "
-                              "int *matched_edges)\n{\n", left_edge->index);
-      else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
-               "int *matched_edges)\n{\n", left_edge->index);
+      PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
       PTFI("int source_index = lookupNode(morphism, %d);\n", 3, left_edge->source);
       PTFI("int target_index = lookupNode(morphism, %d);\n", 3, left_edge->target);
       PTFI("if(source_index < 0) return false;\n", 3);
@@ -604,11 +537,7 @@ void emitEdgeFromTargetMatcher(Edge *left_edge, bool initialise, bool exit,
 {
    if(initialise)
    {
-      if(next_op == NULL) PTF("static bool match_e%d(Morphism *morphism, "
-                              "int *matched_edges)\n{\n", left_edge->index);
-      else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
-               "int *matched_edges)\n{\n", left_edge->index);
-
+      PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
       PTFI("int target_index = lookupNode(morphism, %d);\n", 3, left_edge->target);
       PTFI("int source_index = lookupNode(morphism, %d);\n", 3, left_edge->source);
       PTFI("if(target_index < 0) return false;\n", 3);
@@ -694,43 +623,27 @@ void emitNextMatcherCall(SearchOp *next_operation, int indent)
    {
       case 'n':
       case 'r':
-           if(next_operation->next == NULL)
-              PTFI("bool result = match_n%d(morphism, matched_nodes);\n", 
-	            indent, next_operation->index);
-           else 
-              PTFI("bool result = match_n%d(morphism, matched_nodes, "
-                    "matched_edges);\n", indent, next_operation->index);
+           PTFI("bool result = match_n%d(morphism);\n", indent, next_operation->index);
            break;
 
       case 'i':
       case 'o':
       case 'b':
-           if(next_operation->next == NULL)
-              PTFI("bool result = match_n%d(morphism, host_edge, "
-                    "matched_nodes);\n", indent, next_operation->index);
-           else 
-              PTFI("bool result = match_n%d(morphism, host_edge, "
-                    "matched_nodes, matched_edges);\n", indent, 
-                    next_operation->index);
+           PTFI("bool result = match_n%d(morphism, host_edge);\n", indent,
+                next_operation->index);
            break;
   
       case 'e':
       case 's':
       case 't':
       case 'l':
-           if(next_operation->next == NULL)
-              PTFI("bool result = match_e%d(morphism, matched_edges);\n",
-                    indent, next_operation->index);
-           else 
-              PTFI("bool result = match_e%d(morphism, matched_nodes, "
-                    "matched_edges);\n", indent, next_operation->index);
+           PTFI("bool result = match_e%d(morphism);\n", indent, next_operation->index);
            break;
 
       default:
            print_to_log("Error (emitNextMatcherCall): Unexpected "
                            "operation type %c.\n", next_operation->type);
            break;
-   
    }
 }
 
