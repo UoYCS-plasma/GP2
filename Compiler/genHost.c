@@ -54,7 +54,6 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
     * to the graph. */
    if(host_nodes <= BUFFER_SIZE)
    {
-      PTFI("int index;\n", 3);
       PTFI("Label label;\n\n", 3);
       int node_count = 0;
       while(nodes != NULL)
@@ -65,7 +64,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             PTFI("label = blank_label;\n", 3);
          else generateLabelCode(label, node_count++, file);
 
-         PTFI("index = addNode(host, %d, label);\n", 3, root);
+         PTFI("addNode(host, %d, label);\n", 3, root);
          nodes = nodes->next;   
       }
       PTF("\n");

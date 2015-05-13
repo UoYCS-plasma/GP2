@@ -18,8 +18,9 @@
 #include "globals.h"
 #include "label.h"
 
-#define MARKS 7 
-#define LABEL_CLASSES 7
+/* There are 7 marks, but the 'any' mark does not occur in host graphs. */
+#define NUMBER_OF_MARKS 6 
+#define NUMBER_OF_CLASSES 7
 
 /* ================================
  * Graph Data Structure + Functions
@@ -138,12 +139,6 @@ typedef struct Edge {
 } Edge;
 
 extern struct Edge dummy_edge;
-
-/* Access requirements:
- * 'Any' mark: An entire column (all rows == all marks)
- * List variable: An entire row (all column == all label classes).
- * 'Any' and list variable: Iterate over the node/edge array. Maybe.
- * Other mark/structure combinations map to exactly one label class table element. */
 
 /* ========================================
  * Label Class Table Definition + Functions

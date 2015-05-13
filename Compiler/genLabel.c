@@ -1,5 +1,70 @@
 #include "genLabel.h"
 
+void generateIteratorCode(Label label, int indent, FILE *file)
+{
+   PTFI("int mark_index, class_index;\n", indent);
+
+   /* Generate the outer loop which iterates over the rows of the label class array. */
+   if(label.mark == ANY)
+      PTFI("for(mark_index = 0; mark_index < NUMBER_OF_MARKS; mark_index++)\n", indent);
+   else PTFI("for(mark_index = %d; mark_index < %d; mark_index++)\n", 
+             indent, label.mark, label.mark + 1);
+   PTFI("{\n", indent);
+
+   /* Generate the inner loop which iterates over the columns of the label class array. */
+   if(hasListVariable(label))
+   {
+      /* The generated loop depends on the number of non-list variable atoms. */
+      int atoms = label.length - 1;
+      if(atoms < 2) 
+           PTFI("for(class_index = %d; class_index < NUMBER_OF_CLASSES; class_index++)\n",
+                indent + 3, atoms);
+      /* There are two label class indices for lists of length 1, so the index for lists of
+       * length x > 1 is x + 1. This is why atoms + 1 is passed to PTFI. */
+      else PTFI("for(class_index = %d; class_index < NUMBER_OF_CLASSES; class_index++)\n",
+                indent + 3, atoms + 1);
+      PTFI("{\n", 3);
+   }
+   else
+   {
+      if(label.length == 0)
+         PTFI("for(class_index = 0; class_index < 1; class_index++)\n", indent + 3);
+      else if(label.length > 1)
+         PTFI("for(class_index = %d; class_index < %d; class_index++)\n", indent + 3,
+              label.length + 1, label.length + 2);
+      else
+      {
+         Atom atom = label.list[0];
+         switch(atom.type)
+         {
+            case INTEGER_CONSTANT:
+                 PTFI("for(class_index = 1; class_index < 2; class_index++)\n", indent + 3);
+                 break;
+
+            case STRING_CONSTANT:
+            case CONCAT:
+                 PTFI("for(class_index = 2; class_index < 3; class_index++)\n", indent + 3);
+
+            case VARIABLE:
+                 if(atom.variable.type == INTEGER_VAR)
+                    PTFI("for(class_index = 1; class_index < 2; class_index++)\n", indent + 3);
+                 else if(atom.variable.type == STRING_VAR || 
+                         atom.variable.type == CHARACTER_VAR)
+                    PTFI("for(class_index = 2; class_index < 3; class_index++)\n", indent + 3);
+                 else if(atom.variable.type == ATOM_VAR)
+                    PTFI("for(class_index = 1; class_index < 3; class_index++)\n", indent + 3);
+                 break;
+
+            default:
+                 print_to_log("Error (generateIteratorCode): Unexpected atom type %d.\n", 
+                              atom.type);
+                 break;
+         }
+      }
+   }
+   PTFI("{\n", indent + 3);
+}
+
 /* Global flag set to true if the 'result' variable has been declared in the
  * emitted code. These flags are scattered throughout the file before functions
  * that print variables that may be declared more than once in the runtime. */
@@ -34,7 +99,7 @@ void generateVariableListMatchingCode(Label label, int indent, FILE *file)
    /* The empty rule list is only matched by the empty host list. */
    if(label.length == 0)
    {
-      PTFI("bool match = label.length == 0 ? true : false;\n", indent);
+      PTFI("match = label.length == 0 ? true : false;\n", indent);
       return;
    }
    
@@ -52,7 +117,6 @@ void generateVariableListMatchingCode(Label label, int indent, FILE *file)
          break;
       }
    }
-   PTFI("bool match = false;\n", indent);
    PTFI("int new_assignments = 0;\n", indent);
    PTFI("index = 0;\n", indent);
    PTFI("do {\n", indent);
@@ -94,7 +158,7 @@ void generateVariableListMatchingCode(Label label, int indent, FILE *file)
    PTF("\n");
    PTFI("/* Matching list variable \"%s\". */\n", indent + 3, list_variable_name);
    PTFI("if(index == start_index - 1)\n", indent + 3);
-   PTFI("result = verifyListVariable(%s, NULL, 0, morphism);\n", 
+   PTFI("result = addListAssignment(\"%s\", NULL, 0, morphism);\n", 
         indent + 6, list_variable_name);
    PTFI("else\n", indent + 3);
    PTFI("{\n", indent + 3);
@@ -463,8 +527,7 @@ void generateVariableCode(string name, GPType type, FILE *file)
            PTFI("Assignment *assignment_%s = lookupVariable(morphism, \"%s\");\n",
                 3, name, name);
            PTFI("Atom *%s_var = getListValue(\"%s\", morphism);\n", 3, name, name);
-           PTFI("list_var_length = assignment_%s->length);\n", 3, name);
-           PTFI("has_list_variable = true;\n", 3);
+           PTFI("list_var_length = assignment_%s->length;\n", 3, name);
            break;
       
       default:
@@ -474,18 +537,33 @@ void generateVariableCode(string name, GPType type, FILE *file)
 }
 
 bool length_declared = false, assignment_declared = false, i_declared = false;
-bool node_index_declared = false;
+bool node_index_declared = false, host_label_declared = false;
 
 /* Global variables used to generate unique integer/string variable names in
  * the runtime. Reset at the end of each call to generateRHSLabelCode and 
  * before */
 int i_vars = 0, i_vars2 = 0, s_vars = 0, s_vars2 = 0;
 
-void generateRHSLabelCode(Label label, int count, int indent, FILE *file)
+void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *file)
 {
    if(label.length == 0)
-   {
-      PTFI("label = makeEmptyLabel(%d);\n\n", indent, label.mark);
+   { 
+      /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
+       * host item's label. */
+      if(label.mark == ANY)
+      {
+         if(!host_label_declared)
+         {
+            PTFI("Label host_label;\n", indent);
+            host_label_declared = true;
+         }
+         if(node) PTFI("host_label = getNodeLabel(getNode(host, "
+                       "host_node_index));\n", indent);
+         else PTFI("host_label = getEdgeLabel(getEdge(host, "
+                   "host_edge_index));\n", indent);
+         PTFI("label = makeEmptyLabel(host_label.mark);\n\n", indent);
+      }
+      else PTFI("label = makeEmptyLabel(%d);\n\n", indent, label.mark);
       return;
    }
    int index;
@@ -538,7 +616,7 @@ void generateRHSLabelCode(Label label, int count, int indent, FILE *file)
                  PTFI("list%d[index].type = INTEGER_CONSTANT;\n", indent + 3, count);
                  PTFI("list%d[index++].number = %s_var;\n", indent + 3, count, name);
                  PTFI("}\n", indent);
-                 PTFI("else /* type == STIRNG_CONSTANT */\n", indent);
+                 PTFI("else /* type == STRING_CONSTANT */\n", indent);
                  PTFI("{\n", indent);
                  PTFI("list%d[index].type = STRING_CONSTANT;\n", indent + 3, count);
                  PTFI("list%d[index++].string = strdup(%s_var);\n", indent + 3, count, name);
@@ -599,6 +677,8 @@ void generateRHSLabelCode(Label label, int count, int indent, FILE *file)
          case SUBTRACT:
          case MULTIPLY:
          case DIVIDE:  
+              /* Generates integer variables to store integer constants to be
+               * evaluated in the generated integer expression. */
               generateIntEvalCode(atom, count, indent, file);
               PTFI("list%d[index].type = INTEGER_CONSTANT;\n", indent, count);
               PTFI("list%d[index++].number = ", indent, count);
@@ -613,13 +693,16 @@ void generateRHSLabelCode(Label label, int count, int indent, FILE *file)
                  length_declared = true;
               }
               else PTFI("length = 0;\n", indent);
+              /* Generates string variables to store string literals to be 
+               * concatenated, and updates the runtime length variable with the 
+               * total length of the concatenated string. */
               generateStringEvalCode(atom, count, indent, file);
-              PTFI("\nlist%d[index].type = STRING_CONSTANT;\n", indent, count);
               /* Build host_string from the evaluated strings that make up the
-              * RHS label. */
+               * RHS label. */
               PTFI("char host_string[length + 1];\n", indent);
               generateStringExpression(atom, count, true, indent, file);
-              PTFI("host_string[length] = '\\0';\n", indent);
+              PTFI("host_string[length] = '\\0';\n\n", indent);
+              PTFI("list%d[index].type = STRING_CONSTANT;\n", indent, count);
               PTFI("list%d[index++].string = strdup(host_string);\n\n", indent, count);
               break;
       
@@ -629,8 +712,24 @@ void generateRHSLabelCode(Label label, int count, int indent, FILE *file)
               break;
       }
    }      
-   PTFI("label = makeHostLabel(%d, %d, list%d);\n\n",
-         indent, label.mark, label.length, count);
+   if(label.mark == ANY)
+   /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
+    * host item's label. */
+   {
+      if(!host_label_declared)
+      {
+         PTFI("Label host_label;\n", indent);
+         host_label_declared = true;
+      } 
+      if(node) PTFI("host_label = getNodeLabel(getNode(host, "
+                    "host_node_index));\n", indent);
+      else PTFI("host_label = getEdgeLabel(getEdge(host, "
+                "host_edge_index));\n", indent);
+      PTFI("label = makeHostLabel(host_label.mark, %d, list%d);\n\n",
+           indent, label.length, count);
+   }
+   else PTFI("label = makeHostLabel(%d, %d, list%d);\n\n",
+             indent, label.mark, label.length, count);
    i_vars = 0; i_vars2 = 0; s_vars = 0; s_vars2 = 0;
 }
 
@@ -699,6 +798,10 @@ void generateIntEvalCode(Atom atom, int count, int indent, FILE *file)
       case ADD:
       case SUBTRACT:
       case MULTIPLY:
+           generateIntEvalCode(*(atom.bin_op.left_exp), count, indent, file);
+           generateIntEvalCode(*(atom.bin_op.right_exp), count, indent, file);
+           break;
+
       case DIVIDE:     
            generateIntEvalCode(*(atom.bin_op.left_exp), count, indent, file);
            generateIntEvalCode(*(atom.bin_op.right_exp), count, indent, file);

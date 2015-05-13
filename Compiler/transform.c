@@ -168,8 +168,8 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
    while(edges != NULL)
    {
       GPEdge *ast_edge = edges->edge;
-      /* Use the node map to get the correct pointers for the edge's source
-       * and target to pass to newEdge. */
+      /* Use the node map to get the correct indices for the edge's source
+       * and target to pass to addEdge. */
       IndexMap *source_map = findMapFromId(*node_map, ast_edge->source);
       if(source_map == NULL)
       {

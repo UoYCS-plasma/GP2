@@ -26,43 +26,33 @@
          edge_matched = true;                      \
    }                                               \
 
-#define IF_INVALID_NODE(lclass, nmark, indeg, outdeg, bideg)  \
-   if(node_matched ||                                         \
-      host_node->label_class != (lclass) ||                   \
-      (host_node->label.mark != (nmark) && (nmark) != 6) ||   \
-      host_node->indegree < (indeg) ||                        \
-      host_node->outdegree < (outdeg) ||                      \
-      ((host_node->outdegree + host_node->indegree            \
-        - (indeg) - (outdeg)) < (bideg)))                     \
+/* The host node does not match the rule node if:
+ * (1) The marks differ and the rule node's mark is not ANY
+ *     (ANY is equivalent to 6 in the enumerated type MarkType).
+ * (2) The host node's indegree is strictly less than the rule node's indegree.
+ * (3) The host node's outdegree is strictly less than the rule node's outdegree.
+ * (4) The number of edges incident to the host node is strictly less than the
+ *     number of edges incident to the rule node. */
+#define IF_INVALID_NODE(nmark, indeg, outdeg, bideg)           \
+   if(node_matched ||                                          \
+      (host_node->label.mark != (nmark) && (nmark) != 6) ||    \
+      host_node->indegree < (indeg) ||                         \
+      host_node->outdegree < (outdeg) ||                       \
+      ((host_node->outdegree + host_node->indegree             \
+        - (indeg) - (outdeg) - (bideg)) < 0))                  \
 
-#define IF_INVALID_DANGLING_NODE(lclass, nmark, indeg, outdeg, bideg)  \
-   if(node_matched ||                                                  \
-      host_node->label_class != (lclass) ||                            \
-      (host_node->label.mark != (nmark) && (nmark) != 6) ||            \
-      host_node->indegree < (indeg) ||                                 \
-      host_node->outdegree < (outdeg) ||                               \
-      host_node->outdegree - (outdeg) != (bideg) ||                    \
-      host_node->indegree - (indeg) != (bideg))                        \
-
-
-#define IF_INVALID_EDGE(lclass, emark)                     \
-   if(edge_matched ||                                      \
-      host_edge->label_class != (lclass) ||                \
-      (host_edge->label.mark != (emark) && (emark) != 6))
-
-#define IF_INVALID_LOOP_EDGE(lclass, emark)                \
-   if(edge_matched ||                                      \
-      host_edge->source != host_edge->target ||            \
-      host_edge->label_class != (lclass) ||                \
-      (host_edge->label.mark != (emark) && (emark) != 6))
-
-#define HANDLE_RESULT(lindex)       \
-  if(result) return true;           \
-  else                              \
-  {                                 \
-     removeNodeMap(morphism);       \
-     matched_nodes[(lindex)] = -1;  \
-  } 
+/* As above, but with the fourth condition made stricter:
+ * (4) The number of edges incident to the host node is not equal to the 
+ *     number of edges incident to the rule node. Indeed, if it is less,
+ *     then standard matching is violated (above). If it is greater,
+ *     then the dangling condition is violated. */
+#define IF_INVALID_DANGLING_NODE(nmark, indeg, outdeg, bideg)  \
+   if(node_matched ||                                          \
+      (host_node->label.mark != (nmark) && (nmark) != 6) ||    \
+      host_node->indegree < (indeg) ||                         \
+      host_node->outdegree < (outdeg) ||                       \
+      ((host_node->outdegree + host_node->indegree             \
+        - (indeg) - (outdeg) - (bideg)) != 0))                 \
 
 /* Deletes all the host items in the morphism from the host graph. Edges are
  * deleted first so that there is no chance of dangling edges from node

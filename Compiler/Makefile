@@ -66,6 +66,6 @@ searchplan.o:	graph.h globals.h searchplan.h
 analysis.o:	ast.h globals.h pretty.h analysis.h
 genHost.o:	ast.h error.h genLabel.h globals.h transform.h genHost.h
 genLabel.o:     error.h globals.h label.h genLabel.h
-genRule.o:	error.h genLabel.h globals.h rule.h searchplan.h transform.h genRule.h
+genRule.o:	error.h genLabel.h globals.h label.h rule.h searchplan.h transform.h genRule.h
 genProgram.o:	ast.h error.h globals.h genProgram.h
 

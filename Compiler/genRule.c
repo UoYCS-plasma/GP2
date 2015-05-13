@@ -9,7 +9,6 @@
 
 FILE *header = NULL;
 FILE *file = NULL;
- 
 Searchplan *searchplan = NULL;
 
 void generateRules(List *declarations)
@@ -90,11 +89,11 @@ void generateRuleCode(Rule *rule, bool predicate)
    free(file_name);
 
    PTH("#include \"../globals.h\"\n"
-        "#include \"../graph.h\"\n"
-        "#include \"../graphStacks.h\"\n"
-        "#include \"../macros.h\"\n"
-        "#include \"host/host.h\"\n"
-        "#include \"morphism.h\"\n\n");
+       "#include \"../graph.h\"\n"
+       "#include \"../graphStacks.h\"\n"
+       "#include \"../macros.h\"\n"
+       "#include \"host/host.h\"\n"
+       "#include \"morphism.h\"\n\n");
    PTF("#include \"%s.h\"\n\n", rule_name);
 
    if(rule->lhs == NULL) generateApplicationCode(rule, true, false);
@@ -198,12 +197,12 @@ void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes)
       {        
          case 'n': 
               node = getNode(lhs, operation->index);
-              emitNodeMatcher(node, false, deleted_nodes, operation->next);
+              emitNodeMatcher(node, deleted_nodes, operation->next);
               break;
 
          case 'r': 
               node = getNode(lhs, operation->index);
-              emitNodeMatcher(node, true, deleted_nodes, operation->next);
+              emitRootNodeMatcher(node, deleted_nodes, operation->next);
               break;
 
          case 'i': 
@@ -221,17 +220,19 @@ void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes)
 
          case 'l':
               edge = getEdge(lhs, operation->index);
-              emitEdgeFromNodeMatcher(edge, true, operation->next);
+              emitLoopEdgeMatcher(edge, operation->next);
               break;
 
          case 's': 
               edge = getEdge(lhs, operation->index);
-              emitEdgeFromNodeMatcher(edge, false, operation->next);
+              if(edge->bidirectional) emitBiEdgeFromSourceMatcher(edge, operation->next);
+              else emitEdgeFromSourceMatcher(edge, true, true, false, operation->next);
               break;
 
          case 't':
               edge = getEdge(lhs, operation->index);
-              emitEdgeToNodeMatcher(edge, operation->next);
+              if(edge->bidirectional) emitBiEdgeFromTargetMatcher(edge, operation->next);
+              else emitEdgeFromTargetMatcher(edge, true, true, false, operation->next);
               break;
          
          default:
@@ -247,44 +248,83 @@ void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes)
 void emitRuleMatcher(string rule_name, SearchOp *first_op, int left_nodes, 
                      int left_edges)
 {
-   char item;
-   if(first_op->is_node) item = 'n';
-   else item = 'e';
-
    PTH("bool match%s(Morphism *morphism);\n", rule_name);
-   PTF("\nstatic int left_nodes = %d, left_edges = %d;\n\n"
-        "bool match%s(Morphism *morphism)\n"
-        "{\n" 
-        "   if(left_nodes > host->number_of_nodes ||\n"
-        "      left_edges > host->number_of_edges) return false;\n\n"
-        "   MAKE_MATCHED_NODES_ARRAY\n",
-        left_nodes, left_edges, rule_name);
+
+   PTF("\nstatic int left_nodes = %d, left_edges = %d;\n\n", left_nodes, left_edges);
+   PTF("bool match%s(Morphism *morphism)\n{\n", rule_name);
+   PTFI("if(left_nodes > host->number_of_nodes ||\n", 3);
+   PTFI("left_edges > host->number_of_edges) return false;\n\n", 6);
+   PTFI("MAKE_MATCHED_NODES_ARRAY;\n", 3);
 
    /* The matched edges array should not be created when there are no host
     * edges: if there are no host edges, the generated code will exit
     * before this point is reached because left_edges > host_edges. */
-   if(left_edges > 0)
-      PTF("   MAKE_MATCHED_EDGES_ARRAY\n\n");
+   if(left_edges > 0) PTFI("MAKE_MATCHED_EDGES_ARRAY;\n\n", 3);
 
+   char item = first_op->is_node ? 'n' : 'e';
    if(first_op->next == NULL)
       PTFI("if(match_%c%d(morphism, matched_nodes)) return true;\n",
-            3, item, first_op->index);
+           3, item, first_op->index);
    else
       PTFI("if(match_%c%d(morphism, matched_nodes, matched_edges)) return true;\n",
-            3, item, first_op->index);
-   PTF("   else\n"
-        "   {\n"
-        "      initialiseMorphism(morphism);\n"
-        "      return false;\n"
-        "   }\n"
-        "}\n");
+           3, item, first_op->index);
+   PTFI("else\n", 3);
+   PTFI("{\n", 3);
+   PTFI("initialiseMorphism(morphism);\n", 6);
+   PTFI("return false;\n", 6);
+   PTFI("}\n", 3);
+   PTF("}\n");
 }
 
-void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
-                     SearchOp *next_op)
+void emitRootNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *next_op)
 {
    int left_index = left_node->index;
-   bool dangling_node = queryItemList(deleted_nodes, left_index);
+   if(next_op == NULL)
+      PTF("static bool match_n%d(Morphism *morphism, int *matched_nodes)\n"
+          "{\n", left_index);
+   else
+      PTF("static bool match_n%d(Morphism *morphism, int *matched_nodes, "
+          "int *matched_edges)\n"
+          "{\n", left_index);
+   PTFI("bool node_matched = false;\n", 3);
+   PTFI("RootNodes *nodes = getRootNodeList(host);\n", 3);   
+   PTFI("while(nodes != NULL)\n   {\n", 3);
+   PTFI("Node *host_node = getNode(host, nodes->index);\n", 6);
+   PTFI("if(host_node == NULL) continue;\n\n", 6);
+   PTFI("node_matched = false;\n", 6);
+   PTFI("int index;\n", 6);
+   PTFI("/* Search matched_nodes, set node_matched to true if the node is in the array.*/\n", 6);
+   PTFI("CHECK_MATCHED_NODE;\n\n", 6);
+
+   /* Emit code to check the node_matched flag and to test if the candidate 
+    * host node is consistent with the left node with respect to mark and
+    * degrees. If not, the node can be discarded before label matching. */
+   PTFI("/* Arguments: mark, indegree, outdegree, bidegree. */\n", 6);
+   /* queryItemList returns true if the passed node is deleted by the rule. */
+   if(queryItemList(deleted_nodes, left_index))
+        PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d) continue;\n\n", 6,
+             left_node->label.mark, left_node->indegree, left_node->outdegree,
+             left_node->bidegree);
+   else PTFI("IF_INVALID_NODE(%d, %d, %d, %d) continue;\n\n", 6,
+             left_node->label.mark, left_node->indegree, left_node->outdegree,
+             left_node->bidegree); 
+
+   PTFI("Label label = host_node->label;\n", 6);
+   PTFI("bool match = false;\n", 6);
+   if(hasListVariable(left_node->label))
+      generateVariableListMatchingCode(left_node->label, 6, file);
+   else generateFixedListMatchingCode(left_node->label, 6, file);
+
+   generateNodeMatchResultCode(left_index, next_op, 6);
+   PTFI("nodes = nodes->next;\n", 6);
+   PTFI("}\n", 3);
+   PTFI("return false;\n", 3);
+   PTF("}\n\n");
+}
+
+void emitNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *next_op)
+{
+   int left_index = left_node->index;
    
    if(next_op == NULL)
       PTF("static bool match_n%d(Morphism *morphism, int *matched_nodes)\n"
@@ -293,59 +333,47 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
       PTF("static bool match_n%d(Morphism *morphism, int *matched_nodes, "
            "int *matched_edges)\n"
            "{\n", left_index);
-   /* Emit code to initialise the iteration over the candidate nodes. 
-    * If the left node is rooted, interrogate the root node list of the host
-    * graph, otherwise query the appropriate nodes-by-label-class list. */
-    if(is_root) 
-    {
-       PTFI("bool node_matched = false;\n", 3);
-       PTFI("RootNodes *nodes = NULL;\n", 3);   
-       PTFI("for(nodes = getRootNodeList(host); nodes != NULL;", 3);
-       PTFI("nodes = nodes->next)\n", 1);
-       PTFI("{\n", 3);
-       PTFI("Node *host_node = getNode(host, nodes->index);\n", 6);
-    }
-    else
-    {
-       PTFI("bool node_matched = false;\n", 3);
-       PTFI("int count;\n", 3);
-       PTFI("LabelClassTable nodes = getNodesByLabel(host, %d);\n", 3,
-             left_node->label_class);
-       PTFI("for(count = 0; count < nodes.index; count++)\n", 3);
-       PTFI("{\n", 3);
-       PTFI("Node *host_node = getNode(host, nodes.items[count]);\n", 6);
-    }
-    PTFI("if(host_node == NULL) continue;\n\n", 6);
-    PTFI("node_matched = false;\n", 6);
-    PTFI("/* Set node_matched to true if the node has already been matched.*/\n", 6);
-    PTFI("int index;\n", 6);
-    PTFI("CHECK_MATCHED_NODE\n\n", 6);
-   /* Emit code to check the node_matched flag and to test if the candidate 
-    * host node is consistent with the left node with respect to label class, 
-    * mark, and degrees. If not, the loop will continue without entering the 
-    * potentially expensive label matching code. */
-   PTFI("/* Arguments: label class, mark, indegree, outdegree, bidegree. */\n", 6);
-   if(dangling_node)
-        PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d, %d) continue;\n\n", 6,
-              left_node->label_class, left_node->label.mark, 
-              left_node->indegree, left_node->outdegree, left_node->bidegree);
-   else PTFI("IF_INVALID_NODE(%d, %d, %d, %d, %d) continue;\n\n", 6,
-              left_node->label_class, left_node->label.mark, 
-              left_node->indegree, left_node->outdegree, left_node->bidegree); 
 
-   PTFI("Label label = host_node->label;\n\n", 6);
-   PTFI("bool match = false;\n", 6);
-   if(left_node->label_class == LIST_VAR_L)
-      generateVariableListMatchingCode(left_node->label, 6, file);
-   else generateFixedListMatchingCode(left_node->label, 6, file);
-   PTFI("if(match)\n", 6);
-   PTFI("{\n", 6);
-   PTFI("addNodeMap(morphism, %d, host_node->index, new_assignments);\n", 9, left_index);
-   PTFI("matched_nodes[%d] = host_node->index;\n", 9, left_index);
-   bool total_match = emitNextMatcherCall(next_op, 9);
-   if(!total_match) PTFI("HANDLE_RESULT(%d)\n", 9, left_index);
+    PTFI("bool node_matched = false;\n", 3);
+    /* Writes a double for loop. The outer loop iterates over variable mark_index.
+     * The inner loop iterates over variable class_index. */
+    generateIteratorCode(left_node->label, 3, file);
+
+    PTFI("LabelClassTable *table = host->node_classes[mark_index * "
+         "NUMBER_OF_CLASSES + class_index];\n", 9);
+    PTFI("if(table == NULL) continue;\n", 9);
+    PTFI("int items_index;\n", 9);
+    PTFI("for(items_index = 0; items_index < table->pool_size; items_index++)\n", 9);
+    PTFI("{\n", 9);
+    PTFI("int host_index = table->items[items_index];\n", 12);
+    PTFI("if(host_index == -1) continue;\n", 12);
+    PTFI("Node *host_node = getNode(host, host_index);\n", 12);
+    PTFI("if(host_node == NULL) continue;\n\n", 12);
+    PTFI("node_matched = false;\n", 12);
+    PTFI("/* Set node_matched to true if the node has already been matched.*/\n", 12);
+    PTFI("int index;\n", 12);
+    PTFI("CHECK_MATCHED_NODE;\n\n", 12);
+   /* Emit code to check the node_matched flag and to test if the candidate 
+    * host node is consistent with the left node with respect to mark and
+    * degrees. If not, this node cannot participate in a valid match. */
+   PTFI("/* Arguments: mark, indegree, outdegree, bidegree. */\n", 12);
+   if(queryItemList(deleted_nodes, left_index))
+        PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d) continue;\n\n", 12,
+             left_node->label.mark, left_node->indegree, left_node->outdegree,
+             left_node->bidegree);
+   else PTFI("IF_INVALID_NODE(%d, %d, %d, %d) continue;\n\n", 12,
+             left_node->label.mark, left_node->indegree, left_node->outdegree,
+             left_node->bidegree); 
+
+   PTFI("Label label = host_node->label;\n", 12);
+   PTFI("bool match = false;\n", 12);
+   if(hasListVariable(left_node->label))
+      generateVariableListMatchingCode(left_node->label, 12, file);
+   else generateFixedListMatchingCode(left_node->label, 12, file);
+
+   generateNodeMatchResultCode(left_index, next_op, 12);
+   PTFI("}\n", 9);
    PTFI("}\n", 6);
-   PTFI("else removeAssignments(morphism, new_assignments);\n", 6);
    PTFI("}\n", 3);
    PTFI("return false;\n", 3);
    PTF("}\n\n");
@@ -359,17 +387,11 @@ void emitNodeMatcher(Node *left_node, bool is_root, ItemList *deleted_nodes,
 void emitNodeFromEdgeMatcher(Node *left_node, char type, ItemList *deleted_nodes,
                              SearchOp *next_op)
 {
-   int left_index = left_node->index;
-   bool dangling_node = queryItemList(deleted_nodes, left_index);
-
    if(next_op == NULL)
-      PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge, "
-           "int *matched_nodes)\n"
-           "{\n", left_index);
-   else
-      PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge, "
-           "int *matched_nodes, int *matched_edges)\n"
-           "{\n", left_index);
+        PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge, "
+            "int *matched_nodes)\n{\n", left_node->index);
+   else PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge, "
+            "int *matched_nodes, int *matched_edges)\n{\n", left_node->index);
 
    if(type == 'i' || type == 'b') 
         PTFI("Node *host_node = getNode(host, getTarget(host_edge));\n\n", 3);
@@ -377,20 +399,19 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type, ItemList *deleted_nodes
    PTFI("/* Set node_matched to true if the node has already been matched. */\n", 3);
    PTFI("bool node_matched = false;\n", 3);
    PTFI("int index;\n", 3);
-   PTFI("CHECK_MATCHED_NODE\n\n", 3);
+   PTFI("CHECK_MATCHED_NODE;\n\n", 3);
    /* Emit code to check the node_matched flag and to test if the candidate 
-    * host node is consistent with the left node with respect to label class, 
-    * mark, and degrees. If not, the loop will continue without entering the 
-    * potentially expensive label matching code. */
-   PTFI(" /* Arguments: label class, mark, indegree, outdegree, bidegree. */\n", 3);
-   if(dangling_node)
-        PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d, %d)", 3,
-              left_node->label_class, left_node->label.mark, 
+    * host node is consistent with the left node with respect to mark and
+    * degrees. If not, this node cannot participate in a valid match. */
+   PTFI(" /* Arguments: mark, indegree, outdegree, bidegree. */\n", 3);
+   if(queryItemList(deleted_nodes, left_node->index))
+        PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d)", 3, left_node->label.mark, 
               left_node->indegree, left_node->outdegree, left_node->bidegree);
-   else PTFI("IF_INVALID_NODE(%d, %d, %d, %d, %d)", 3,
-              left_node->label_class, left_node->label.mark, 
+   else PTFI("IF_INVALID_NODE(%d, %d, %d, %d)", 3, left_node->label.mark, 
               left_node->indegree, left_node->outdegree, left_node->bidegree); 
 
+   /* If the above check fails and the edge is bidirectional, check the other 
+    * node incident to the host edge. Otherwise return false. */
    if(type == 'b')
    {
       PTF("\n   {\n"); 
@@ -400,36 +421,54 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type, ItemList *deleted_nodes
       else PTFI("host_node = getNode(host, getTarget(host_edge));\n\n", 6);
       PTFI("bool node_matched = false;\n", 6);
       PTFI("/* Set node_matched to true if the node has already been matched. */\n", 6);
-      PTFI("CHECK_MATCHED_NODE\n\n", 6);
-      PTFI(" /* Arguments: label class, mark, indegree, outdegree, bidegree. */\n", 6);
-      if(dangling_node)
-           PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d, %d) return false;\n", 6,
-                 left_node->label_class, left_node->label.mark, 
-                 left_node->indegree, left_node->outdegree, left_node->bidegree);
-      else PTFI("IF_INVALID_NODE(%d, %d, %d, %d, %d) return false;\n", 6,
-                 left_node->label_class, left_node->label.mark, 
-                 left_node->indegree, left_node->outdegree, left_node->bidegree); 
+      PTFI("CHECK_MATCHED_NODE;\n\n", 6);
+      PTFI("/* Arguments: mark, indegree, outdegree, bidegree. */\n", 6);
+      if(queryItemList(deleted_nodes, left_node->index))
+           PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d) return false;\n", 6,
+                left_node->label.mark, left_node->indegree, left_node->outdegree,
+                left_node->bidegree);
+      else PTFI("IF_INVALID_NODE(%d, %d, %d, %d) return false;\n", 6,
+                left_node->label.mark, left_node->indegree, left_node->outdegree,
+                left_node->bidegree); 
       PTFI("}\n\n", 3);
    }
    else PTF(" return false;\n\n");
  
-   PTFI("Label label = host_node->label;\n\n", 3);
+   PTFI("Label label = host_node->label;\n", 3);
    PTFI("bool match = false;\n", 3);
-   if(left_node->label_class == LIST_VAR_L)
+   if(hasListVariable(left_node->label))
       generateVariableListMatchingCode(left_node->label, 3, file);
    else generateFixedListMatchingCode(left_node->label, 3, file);
-   PTFI("if(match)\n", 3);
-   PTFI("{\n", 3);
-   PTFI("addNodeMap(morphism, %d, host_node->index, new_assignments);\n", 6, left_index);
-   PTFI("matched_nodes[%d] = host_node->index;\n", 6, left_index);
-   bool total_match = emitNextMatcherCall(next_op, 6); 
-   if(!total_match) PTFI("HANDLE_RESULT(%d)\n", 9, left_index);
-   PTFI("}\n", 3);
-   PTFI("else removeAssignments(morphism, new_assignments);\n", 6);
+
+   generateNodeMatchResultCode(left_node->index, next_op, 3);
    PTFI("return false;\n", 3);
    PTF("}\n\n");
 }
 
+void generateNodeMatchResultCode(int index, SearchOp *next_op, int indent)
+{
+   PTFI("if(match)\n", indent);
+   PTFI("{\n", indent);
+   PTFI("addNodeMap(morphism, %d, host_node->index, new_assignments);\n", indent + 3, index);
+   PTFI("matched_nodes[%d] = host_node->index;\n", indent + 3, index);
+   if(next_op == NULL)
+   {
+      PTFI("/* All items matched! */\n", indent);
+      PTFI("return true;\n", indent);
+   }
+   else
+   {
+      emitNextMatcherCall(next_op, indent + 3);
+      PTFI("if(result) return true;\n", indent + 3);           
+      PTFI("else\n", indent + 3);
+      PTFI("{\n", indent + 3);                              
+      PTFI("removeNodeMap(morphism);\n", indent + 6);
+      PTFI("matched_nodes[%d] = -1;\n", indent + 6, index);  
+      PTFI("}\n", indent + 3);
+   } 
+   PTFI("}\n", indent);
+   PTFI("else removeAssignments(morphism, new_assignments);\n", indent);
+}
 
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 {
@@ -438,100 +477,118 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
    else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
              "int *matched_edges)\n{\n", left_edge->index);
 
-   PTFI("int count;\n", 3);
+   /* Writes a double for loop. The outer loop iterates over variable mark_index.
+    * The inner loop iterates over variable class_index. */
+   generateIteratorCode(left_edge->label, 3, file);
+
    PTFI("bool edge_matched = false;\n", 3);
-   PTFI("LabelClassTable edges = getEdgesByLabel(host, %d);\n", 3,
-         left_edge->label_class);
-   PTFI("for(count = 0; count < edges.index; count++)", 3);
-   PTFI("{\n", 3);
-   PTFI("Edge *host_edge = getEdge(host, edges.items[count];\n\n", 6);
-   PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", 6);
-   PTFI("int index;\n", 6);
-   PTFI("CHECK_MATCHED_EDGE\n\n", 6);
-   PTFI("if(edge_matched) continue;\n\n", 6);
+   PTFI("LabelClassTable *table = host->edge_classes[mark_index * "
+        "NUMBER_OF_CLASSES + class_index];\n", 9);
+   PTFI("if(table == NULL) continue;\n", 9);
+   PTFI("int items_index;\n", 9);
+   PTFI("for(items_index = 0; items_index < table->pool_size; items_index++)\n", 9);
+   PTFI("{\n", 9);
+   PTFI("int host_index = table->items[items_index];\n", 12);
+   PTFI("if(host_index == -1) continue;\n", 12);
+   PTFI("Edge *host_edge = getEdge(host, host_index);\n", 12);
+   PTFI("if(host_edge == NULL) continue;\n\n", 12);
+   PTFI("edge_matched = false;\n", 12);
+   PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", 12);
+   PTFI("int index;\n", 12);
+   PTFI("CHECK_MATCHED_EDGE;\n\n", 12);
+   PTFI("if(edge_matched) continue;\n\n", 12);
 
    /* Emit code to test the matched_edge flag and if the candidate host edge 
     * is consistent with the left edge with respect to label class, mark, and
     * loopiness. If not, the loop will continue without entering the 
     * potentially expensive label matching code. */
-   PTFI(" /* Arguments: label class, mark. */\n", 6);
+   PTFI(" /* Arguments: mark. */\n", 6);
    if(left_edge->source == left_edge->target) 
-        PTFI("IF_INVALID_LOOP_EDGE(%d, %d)\n\n", 6,
-              left_edge->label_class, left_edge->label.mark);
-   else PTFI("IF_INVALID_EDGE(%d, %d)\n\n", 6, 
-              left_edge->label_class, left_edge->label.mark);
-   PTFI("/* If either endpoint has been matched, check that the corresponding\n", 6);
-   PTFI(" * endpoint of the host edge is the image of the node in question. */\n", 6);
-   PTFI("continue;\n\n", 6);
-   PTFI("int source_index = lookupNode(morphism, %d);\n", left_edge->source, 6);
-   PTFI("if(source_index >= 0 && host_edge->source != source_index) continue;\n", 6);
-   PTFI("int target_index = lookupNode(morphism, %d);\n", left_edge->target, 6);
-   PTFI("if(target_index >= 0 && host_edge->target != target_index) continue;\n", 6);
+        PTFI("if(host_edge->source != host_edge->target) continue;\n\n", 12);
+   else PTFI("if(edge_matched || ((%d != 6) && (host_edge->label.mark != %d))) "
+             "continue;\n\n", 6, left_edge->label.mark, left_edge->label.mark);
 
-   PTFI("Label label = host_edge->label;\n\n", 6);
-   PTFI("bool match = false;\n", 6);
-   if(left_edge->label_class == LIST_VAR_L)
-      generateVariableListMatchingCode(left_edge->label, 6, file);
-   else generateFixedListMatchingCode(left_edge->label, 6, file);
-   PTFI("if(match)\n", 6);
-   PTFI("{\n", 6);
-   PTFI("addEdgeMap(morphism, %d, host_edge->index, new_assignments);\n", 9, left_edge->index);
-   PTFI("matched_edges[%d] = host_edge->index;\n", 9, left_edge->index);
+   PTFI("Label label = host_edge->label;\n", 12);
+   PTFI("bool match = false;\n", 12);
+   if(hasListVariable(left_edge->label))
+      generateVariableListMatchingCode(left_edge->label, 12, file);
+   else generateFixedListMatchingCode(left_edge->label, 12, file);
 
-   bool total_match = emitNextMatcherCall(next_op, 9);
-   if(!total_match)
-   {
-      PTFI("if(result) return true;\n", 9);
-      PTFI("else\n", 9);
-      PTFI("{\n", 9);
-      PTFI("removeEdgeMap(morphism);\n", 12);
-      PTFI("matched_edges[%d] = -1;\n", 12, left_edge->index);
-      PTFI("}\n", 9);
-   }
+   generateEdgeMatchResultCode(left_edge->index, next_op, 12);
+   PTFI("}\n", 9);
    PTFI("}\n", 6);
-   PTFI("else removeAssignments(morphism, new_assignments);\n", 6);
    PTFI("}\n", 3);
    PTFI("return false;\n", 3);
    PTF("}\n\n");
 }
 
-/* Unlike matching a node from an edge, the LHS-node from which this LHS-edge
- * is matched may not necessarily be the previously matched node in the 
- * searchplan. The generated code uses the index of the source of the LHS-edge 
- * to find the host node to which it has been matched (lookupNode). Edges 
- * in the outedge list of that host node are the candidate edges to match 
- * left_edge. */
-void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
+void emitLoopEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 {
    if(next_op == NULL) PTF("static bool match_e%d(Morphism *morphism, "
-                            "int *matched_edges)\n{\n", left_edge->index);
+                           "int *matched_edges)\n{\n", left_edge->index);
    else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
-             "int *matched_edges)\n{\n", left_edge->index);
-
-   PTFI("int source_index = lookupNode(morphism, %d);\n", 3,
-         left_edge->source);
-   PTFI("if(source_index < 0) return false;\n", 3);
-   PTFI("Node *host_node = getNode(host, source_index);\n\n", 3);
-   PTFI("int target_index = lookupNode(morphism, %d);\n", 3,
-         left_edge->target);
-   PTFI("int counter;\n", 3);
+            "int *matched_edges)\n{\n", left_edge->index);
+   PTFI("/* Matching a loop. */\n", 3);
+   PTFI("int node_index = lookupNode(morphism, %d);\n", 3, left_edge->source);
+   PTFI("if(node_index < 0) return false;\n", 3);
+   PTFI("Node *host_node = getNode(host, node_index);\n\n", 3);
+   PTFI("int counter;\n\n", 3);
    PTFI("bool edge_matched = false;\n", 3);
-   PTFI("for(counter = host_node->out_index - 1; counter >= 0; counter--)\n", 3);
-   PTFI("{\n", 3);
+
+   PTFI("for(counter = host_node->out_index - 1; counter >= 0; counter--)\n   {\n", 3);
+   PTFI("Edge *host_edge = getEdge(host, getOutEdge(host_node, counter));\n", 6);
+   PTFI("if(host_edge == NULL) continue;\n", 6);
+   PTFI("if(host_edge->source != host_edge->target) continue;\n\n", 6);
+   PTFI("edge_matched = false;\n", 6);
+   PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", 6);
+   PTFI("int index;\n", 6);
+   PTFI("CHECK_MATCHED_EDGE;\n\n", 6);
+   PTFI("if(edge_matched || ((%d != 6) && (host_edge->label.mark != %d))) "
+        "continue;\n\n", 6, left_edge->label.mark, left_edge->label.mark);
+   PTFI("Label label = host_edge->label;\n", 6);
+   PTFI("bool match = false;\n", 6);
+   if(hasListVariable(left_edge->label))
+      generateVariableListMatchingCode(left_edge->label, 6, file);
+   else generateFixedListMatchingCode(left_edge->label, 6, file);
+
+   generateEdgeMatchResultCode(left_edge->index, next_op, 6);
+   PTFI("}\n", 3);
+   PTFI("return false;\n}\n\n", 3);
+}
+
+/* Unlike matching a node from an edge, the LHS-node from which this LHS-edge
+ * is matched may not necessarily be the previously matched node in the 
+ * searchplan. The generated code uses the index of the target of the LHS-edge 
+ * to find the host node to which it has been matched (lookupNode). Edges 
+ * in the inedge list of that host node are the candidate edges to match 
+ * left_edge. */
+void emitEdgeFromSourceMatcher(Edge *left_edge, bool initialise, bool exit,
+                               bool bidirectional, SearchOp *next_op)
+{
+   if(initialise)
+   {
+      if(next_op == NULL) PTF("static bool match_e%d(Morphism *morphism, "
+                              "int *matched_edges)\n{\n", left_edge->index);
+      else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
+               "int *matched_edges)\n{\n", left_edge->index);
+      PTFI("int source_index = lookupNode(morphism, %d);\n", 3, left_edge->source);
+      PTFI("int target_index = lookupNode(morphism, %d);\n", 3, left_edge->target);
+      PTFI("if(source_index < 0) return false;\n", 3);
+      PTFI("Node *host_node = getNode(host, source_index);\n\n", 3);
+      PTFI("int counter;\n\n", 3);
+      PTFI("bool edge_matched = false;\n", 3);
+   }
+
+   PTFI("for(counter = host_node->out_index - 1; counter >= 0; counter--)\n   {\n", 3);
    PTFI("Edge *host_edge = getEdge(host, getOutEdge(host_node, counter));\n", 6);
    PTFI("if(host_edge == NULL) continue;\n\n", 6);
    PTFI("edge_matched = false;\n", 6);
    PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", 6);
    PTFI("int index;\n", 6);
-   PTFI("CHECK_MATCHED_EDGE\n\n", 6);
-   PTFI("/* Arguments: label class, mark. */\n", 6);
-   if(is_loop) 
-        PTFI("IF_INVALID_LOOP_EDGE(%d, %d) continue;\n\n", 6,
-              left_edge->label_class, left_edge->label.mark);
-   else PTFI("IF_INVALID_EDGE(%d, %d) continue;\n\n", 6, 
-              left_edge->label_class, left_edge->label.mark);
-
-   if(left_edge->bidirectional)
+   PTFI("CHECK_MATCHED_EDGE;\n\n", 6);
+   PTFI("if(edge_matched || ((%d != 6) && (host_edge->label.mark != %d))) "
+        "continue;\n\n", 6, left_edge->label.mark, left_edge->label.mark);
+   if(bidirectional)
    {
       PTFI("/* If the rule edge's target has been matched, check that either\n", 6);
       PTFI(" * the source or target of the host edge is the image of the rule\n", 6);
@@ -545,123 +602,45 @@ void emitEdgeFromNodeMatcher(Edge *left_edge, bool is_loop, SearchOp *next_op)
       PTFI(" * target of the host edge is the image of the rule edge's target. */\n", 6);
       PTFI("if(target_index >= 0 && host_edge->target != target_index) continue;\n", 6);
    }
- 
-   PTFI("Label label = host_edge->label;\n\n", 6);
+   PTFI("Label label = host_edge->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(left_edge->label_class == LIST_VAR_L)
+   if(hasListVariable(left_edge->label))
       generateVariableListMatchingCode(left_edge->label, 6, file);
    else generateFixedListMatchingCode(left_edge->label, 6, file);
-   PTFI("if(match)\n", 6);
-   PTFI("{\n", 6);
-   PTFI("addEdgeMap(morphism, %d, host_edge->index, new_assignments);\n", 9, left_edge->index);
-   PTFI("matched_edges[%d] = host_edge->index;\n", 9, left_edge->index);
-   bool total_match = emitNextMatcherCall(next_op, 9);
-   if(!total_match) 
-   {
-      PTFI("if(result) return true;\n", 9);
-      PTFI("else\n", 9);
-      PTFI("{\n", 9);
-      PTFI("removeEdgeMap(morphism);\n", 12);
-      PTFI("matched_edges[%d] = -1;\n", 12, left_edge->index);
-      PTFI("}\n", 9);
-   }   
-   PTFI("}\n", 6);
-   PTFI("else removeAssignments(morphism, new_assignments);\n", 6);
+
+   generateEdgeMatchResultCode(left_edge->index, next_op, 6);
    PTFI("}\n", 3);
-
-   if(left_edge->bidirectional)
-   /* Emit code to try and match an edge in the opposite direction. */
-   {
-      PTFI("for(counter = host_node->in_index - 1; counter >= 0; counter--)\n", 3);
-      PTFI("{\n", 3);
-      PTFI("Edge *host_edge = getEdge(host, getInEdge(host_node, counter));\n", 6);
-      PTFI("if(host_edge == NULL) continue;\n\n", 6);
-      PTFI("edge_matched = false;\n", 6);
-      PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", 6);
-      PTFI("CHECK_MATCHED_EDGE\n\n", 6);
-      PTFI(" /* Arguments: label class, mark. */\n", 6);
-      if(is_loop)
-           PTFI("IF_INVALID_LOOP_EDGE(%d, %d) continue;\n\n", 6,
-                 left_edge->label_class, left_edge->label.mark);
-      else PTFI("IF_INVALID_EDGE(%d, %d) continue;\n\n", 6, 
-                 left_edge->label_class, left_edge->label.mark);
-      if(left_edge->bidirectional)
-      {
-         PTFI("/* If the rule edge's source has been matched, check that either\n", 6);
-         PTFI(" * the source or target of the host edge is the image of the rule\n", 6);
-         PTFI(" * edge's source. */\n", 6);
-         PTFI("if(source_index >= 0 && host_edge->source != source_index &&\n", 6);
-         PTFI("host_edge->target != source_index) continue;\n", 9);
-      }
-      else
-      {
-         PTFI("/* If the rule edge's source has been matched, check that the source\n", 6);
-         PTFI(" * of the host edge is the image of the rule edge's source. */\n", 6);
-         PTFI("if(source_index >= 0 && host_edge->source != source_index) continue;\n", 6);
-      }
-
-      /* TODO: Call to label matcher goes here. */
-      PTFI("Label label = host_edge->label;\n\n", 6);
-      PTFI("bool match = false;\n", 6);
-      if(left_edge->label_class == LIST_VAR_L)
-         generateVariableListMatchingCode(left_edge->label, 6, file);
-      else generateFixedListMatchingCode(left_edge->label, 6, file);
-      PTFI("if(match)\n", 6);
-      PTFI("{\n", 6);
-      PTFI("addEdgeMap(morphism, %d, host_edge->index, new_assignments);\n", 9, left_edge->index);
-      PTFI("matched_edges[%d] = host_edge->index;\n", 9, left_edge->index);
-   
-      bool total_match = emitNextMatcherCall(next_op, 9);
-      if(!total_match) 
-      {
-         PTFI("if(result) return true;\n", 9);
-         PTFI("else\n", 9);
-         PTFI("{\n", 9);
-         PTFI("removeEdgeMap(morphism);\n", 12);
-         PTFI("matched_edges[%d] = -1;\n", 12, left_edge->index);
-         PTFI("}\n", 9);
-      }
-      PTFI("}\n", 6);
-      PTFI("else removeAssignments(morphism, new_assignments);\n", 6);
-      PTFI("}\n", 3);
-   }
-   PTFI("return false;\n", 3);
-   PTF("}\n\n");
+   if(exit) PTFI("return false;\n}\n\n", 3);
 }
 
-/* Unlike matching a node from an edge, the LHS-node from which this LHS-edge
- * is matched may not necessarily be the previously matched node in the 
- * searchplan. The generated code uses the index of the target of the LHS-edge 
- * to find the host node to which it has been matched (lookupNode). Edges 
- * in the inedge list of that host node are the candidate edges to match 
- * left_edge. */
-void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
+void emitEdgeFromTargetMatcher(Edge *left_edge, bool initialise, bool exit,
+                               bool bidirectional, SearchOp *next_op)
 {
-   if(next_op == NULL) PTF("static bool match_e%d(Morphism *morphism, "
-                            "int *matched_edges)\n{\n", left_edge->index);
-   else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
-             "int *matched_edges)\n{\n", left_edge->index);
+   if(initialise)
+   {
+      if(next_op == NULL) PTF("static bool match_e%d(Morphism *morphism, "
+                              "int *matched_edges)\n{\n", left_edge->index);
+      else PTF("static bool match_e%d(Morphism *morphism, int *matched_nodes, "
+               "int *matched_edges)\n{\n", left_edge->index);
 
-   PTFI("int target_index = lookupNode(morphism, %d);\n", 3,
-         left_edge->target);
-   PTFI("if(target_index < 0) return false;\n", 3);
-   PTFI("Node *host_node = getNode(host, target_index);\n\n", 3);
-   PTFI("int source_index = lookupNode(morphism, %d);\n", 3,
-         left_edge->source);
-   PTFI("int counter;\n\n", 3);
-   PTFI("bool edge_matched = false;\n", 3);
-   PTFI("for(counter = host_node->in_index - 1; counter >= 0; counter--)\n", 3);
-   PTFI("{\n", 3);
+      PTFI("int target_index = lookupNode(morphism, %d);\n", 3, left_edge->target);
+      PTFI("int source_index = lookupNode(morphism, %d);\n", 3, left_edge->source);
+      PTFI("if(target_index < 0) return false;\n", 3);
+      PTFI("Node *host_node = getNode(host, target_index);\n\n", 3);
+      PTFI("int counter;\n\n", 3);
+      PTFI("bool edge_matched = false;\n", 3);
+   }
+
+   PTFI("for(counter = host_node->in_index - 1; counter >= 0; counter--)\n   {\n", 3);
    PTFI("Edge *host_edge = getEdge(host, getInEdge(host_node, counter));\n", 6);
    PTFI("if(host_edge == NULL) continue;\n\n", 6);
    PTFI("edge_matched = false;\n", 6);
    PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", 6);
    PTFI("int index;\n", 6);
-   PTFI("CHECK_MATCHED_EDGE\n\n", 6);
-   PTFI(" /* Arguments: label class, mark. */\n", 6);
-   PTFI("IF_INVALID_EDGE(%d, %d) continue;\n\n", 6, 
-         left_edge->label_class, left_edge->label.mark);
-   if(left_edge->bidirectional)
+   PTFI("CHECK_MATCHED_EDGE;\n\n", 6);
+   PTFI("if(edge_matched || ((%d != 6) && (host_edge->label.mark != %d))) "
+        "continue;\n\n", 6, left_edge->label.mark, left_edge->label.mark);
+   if(bidirectional)
    {
       PTFI("/* If the rule edge's source has been matched, check that either\n", 6);
       PTFI(" * the source or target of the host edge is the image of the rule\n", 6);
@@ -675,93 +654,56 @@ void emitEdgeToNodeMatcher(Edge *left_edge, SearchOp *next_op)
       PTFI(" * source of the host edge is the image of the rule edge's source. */\n", 6);
       PTFI("if(source_index >= 0 && host_edge->source != source_index) continue;\n", 6);
    }
-
-   PTFI("Label label = host_edge->label;\n\n", 6);
+   PTFI("Label label = host_edge->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(left_edge->label_class == LIST_VAR_L)
+   if(hasListVariable(left_edge->label))
       generateVariableListMatchingCode(left_edge->label, 6, file);
    else generateFixedListMatchingCode(left_edge->label, 6, file);
-   PTFI("if(match)\n", 6);
-   PTFI("{\n", 6);
-   PTFI("addEdgeMap(morphism, %d, host_edge->index, new_assignments);\n", 9, left_edge->index);
-   PTFI("matched_edges[%d] = host_edge->index;\n", 9, left_edge->index);
-   bool total_match = emitNextMatcherCall(next_op, 9);
-   if(!total_match) 
-   {
-      PTFI("if(result) return true;\n", 9);
-      PTFI("else\n", 9);
-      PTFI("{\n", 9);
-      PTFI("removeEdgeMap(morphism);\n", 12);
-      PTFI("matched_edges[%d] = -1;\n", 12, left_edge->index);
-      PTFI("}\n", 9);
-   }  
-   PTFI("}\n", 6);
-   PTFI("else removeAssignments(morphism, new_assignments);\n", 6);
-   PTFI("}\n", 3);
-   if(left_edge->bidirectional)
-   /* Emit code to try and match an edge in the opposite direction. */
-   {
-      PTFI("for(counter = host_node->out_index - 1; counter >= 0; counter--)\n", 3);
-      PTFI("{\n", 3);
-      PTFI("Edge *host_edge = getEdge(host, getOutEdge(host_node, counter));\n", 6);
-      PTFI("if(host_edge == NULL) continue;\n\n", 6);
-      PTFI("edge_matched = false;\n", 6);
-      PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", 6);
-      PTFI("CHECK_MATCHED_EDGE\n\n", 6);
-      PTFI(" /* Arguments: label class, mark. */\n", 6);
-      PTFI("IF_INVALID_EDGE(%d, %d) continue;\n\n", 6, 
-            left_edge->label_class, left_edge->label.mark);
-      if(left_edge->bidirectional)
-      {
-         PTFI("/* If the rule edge's target has been matched, check that either\n", 6);
-         PTFI(" * the source or target of the host edge is the image of the rule\n", 6);
-         PTFI(" * edge's target. */\n", 6);
-         PTFI("if(target_index >= 0 && host_edge->source != target_index &&\n", 6);
-         PTFI("   host_edge->target != target_index) continue;\n", 6);
-      }
-      else
-      {
-         PTFI("/* If the rule edge's target has been matched, check that the\n", 6);
-         PTFI(" * target of the host edge is the image of the rule edge's target. */\n", 6);
-         PTFI("if(target_index >= 0 && host_edge->target != target_index) continue;\n", 6);
-      }
 
-      PTFI("Label label = host_edge->label;\n\n", 6);
-      PTFI("bool match = false;\n", 6);
-      if(left_edge->label_class == LIST_VAR_L)
-         generateVariableListMatchingCode(left_edge->label, 6, file);
-      else generateFixedListMatchingCode(left_edge->label, 6, file);
-      PTFI("if(match)\n", 6);
-      PTFI("{\n", 6);
-      PTFI("addEdgeMap(morphism, %d, host_edge->index, new_assignments);\n", 9, left_edge->index);
-      PTFI("matched_edges[%d] = host_edge->index;\n", 9, left_edge->index);
-   
-      bool total_match = emitNextMatcherCall(next_op, 9);
-      if(!total_match) 
-      {
-         PTFI("if(result) return true;\n", 9);
-         PTFI("else\n", 9);
-         PTFI("{\n", 9);
-         PTFI("removeEdgeMap(morphism);\n", 12);
-         PTFI("matched_edges[%d] = -1;\n", 12, left_edge->index);
-         PTFI("}\n", 9);
-      } 
-      PTFI("}\n", 6);
-      PTFI("else removeAssignments(morphism, new_assignments);\n", 6);
-      PTFI("}\n", 3);
-   } 
-   PTFI("return false;\n", 3);
-   PTF("}\n\n");
+   generateEdgeMatchResultCode(left_edge->index, next_op, 6);
+   PTFI("}\n", 3);
+   if(exit) PTFI("return false;\n}\n\n", 3);
 }
 
-bool emitNextMatcherCall(SearchOp *next_operation, int indent)
+void emitBiEdgeFromSourceMatcher(Edge *left_edge, SearchOp *next_op)
 {
-   if(next_operation == NULL)    
+   emitEdgeFromSourceMatcher(left_edge, true, false, true, next_op);
+   emitEdgeFromTargetMatcher(left_edge, false, true, true, next_op);
+}
+
+void emitBiEdgeFromTargetMatcher(Edge *left_edge, SearchOp *next_op)
+{
+   emitEdgeFromTargetMatcher(left_edge, true, false, true, next_op);
+   emitEdgeFromSourceMatcher(left_edge, false, true, true, next_op);
+}
+
+void generateEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
+{
+   PTFI("if(match)\n", indent);
+   PTFI("{\n", indent);
+   PTFI("addEdgeMap(morphism, %d, host_edge->index, new_assignments);\n",  indent + 3, index);
+   PTFI("matched_edges[%d] = host_edge->index;\n", indent + 3, index);
+   if(next_op == NULL)
    {
       PTFI("/* All items matched! */\n", indent);
       PTFI("return true;\n", indent);
-      return true;
    }
+   else
+   {
+      emitNextMatcherCall(next_op, indent + 3);
+      PTFI("if(result) return true;\n", indent + 3);           
+      PTFI("else\n", indent + 3);
+      PTFI("{\n", indent + 3);                              
+      PTFI("removeEdgeMap(morphism);\n", indent + 6);
+      PTFI("matched_edges[%d] = -1;\n", indent + 6, index);  
+      PTFI("}\n", indent + 3);
+   } 
+   PTFI("}\n", indent);
+   PTFI("else removeAssignments(morphism, new_assignments);\n", indent);
+}
+
+void emitNextMatcherCall(SearchOp *next_operation, int indent)
+{
    switch(next_operation->type)
    {
       case 'n':
@@ -804,7 +746,6 @@ bool emitNextMatcherCall(SearchOp *next_operation, int indent)
            break;
    
    }
-   return false;
 }
 
 void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
@@ -848,7 +789,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
             PTFI("index = addNode(host, %d, blank_label);\n", 3, rule_node->root);
          else
          {
-            generateRHSLabelCode(rule_node->label, index, 3, file);
+            generateRHSLabelCode(rule_node->label, true, index, 3, file);
             PTFI("index = addNode(host, %d, label);\n", 3, rule_node->root);
          }
          if(rule->added_edges != NULL) PTFI("map[%d] = index;\n", 3, rule_node->index);
@@ -865,7 +806,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
                  3, iterator->source_index, iterator->target_index);
          else
          {
-            generateRHSLabelCode(rule_edge->label, index, 3, file);
+            generateRHSLabelCode(rule_edge->label, false, index, 3, file);
             PTFI("index = addEdge(host, false, label, map[%d], map[%d]);\n\n",
                  3, iterator->source_index, iterator->target_index);
          }
@@ -927,11 +868,9 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
       {
          /* Generate code to remove the edge. */
          PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
-         PTFI("if(record_changes)\n", 3);
-         PTFI("{\n", 3);
+         PTFI("if(record_changes)\n   {\n", 3);
          PTFI("Edge *edge = getEdge(host, host_edge_index);\n", 6);
-         PTFI("pushRemovedEdge(false, edge->label, edge->source, edge->target);\n", 6);
-         PTFI("}\n", 3);
+         PTFI("pushRemovedEdge(false, edge->label, edge->source, edge->target);\n   }\n", 6);
          PTFI("removeEdge(host, host_edge_index);\n\n", 3);   
       }
       else
@@ -941,12 +880,11 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
             /* Generate code to relabel the edge. */
             PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
             Label label = *(item->new_label);
+            PTFI("if(record_changes)\n   {\n", 3);
+            PTFI("Edge *edge = getEdge(host, host_edge_index);\n", 6);
+            PTFI("pushRelabelledEdge(host_edge_index, edge->label);\n   }\n", 6);
             if(label.length == 0 && label.mark == NONE)
-            {
-               PTFI("relabelEdge(host, host_edge_index, blank_label);\n", 3);
-               PTFI("if(record_changes)\n", 3);
-               PTFI("pushRelabelledEdge(host_edge_index, false, blank_label);\n\n", 6);
-            }
+                PTFI("relabelEdge(host, host_edge_index, blank_label);\n", 3);
             else
             {
                if(!label_declared) 
@@ -954,10 +892,8 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
                   PTFI("Label label;\n", 3);
                   label_declared = true;
                }
-               generateRHSLabelCode(label, index, 3, file);
+               generateRHSLabelCode(label, false, index, 3, file);
                PTFI("relabelEdge(host, host_edge_index, label);\n\n", 3);
-               PTFI("if(record_changes)\n", 3);
-               PTFI("pushRelabelledEdge(host_edge_index, false, label);\n\n", 6);
             }
          }
       }
@@ -967,20 +903,20 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
    for(index = 0; index < lhs->number_of_nodes; index++)
    { 
       PreservedItemList *item = queryPItemList(rule->preserved_nodes, index);
-      if(item != NULL) 
+      if(item == NULL) 
       {
-         if(item->new_label == NULL)
-         {   
-            /* Generate code to remove the node. */
-            PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
-            PTFI("if(record_changes)\n", 3);
-            PTFI("{\n", 3);
-            PTFI("Node *node = getNode(host, host_node_index);\n", 6);
-            PTFI("pushRemovedNode(node->root, node->label);\n", 6);
-            PTFI("}\n", 3);
-            PTFI("removeNode(host, host_node_index);\n\n", 3);   
-         }
-         else
+         /* Generate code to remove the node. */
+         PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
+         PTFI("if(record_changes)\n", 3);
+         PTFI("{\n", 3);
+         PTFI("Node *node = getNode(host, host_node_index);\n", 6);
+         PTFI("pushRemovedNode(node->root, node->label);\n", 6);
+         PTFI("}\n", 3);
+         PTFI("removeNode(host, host_node_index);\n\n", 3);   
+      }
+      else
+      {
+         if(item->new_label != NULL)
          {
             /* Generate code to relabel the node. */
             PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
@@ -989,11 +925,28 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
              * (1) The LHS node is rooted and the RHS node is non-rooted.
              * (2) The LHS node is non-rooted, the RHS node is rooted, and
              *     the matched host node is non-rooted. 
-             * The second case has to be handled at runtime. */
-            bool change_root = false;
+             * The second case is handled at runtime. */
             Node *lhs_node = getNode(lhs, index);
+            if(!change_root_declared) 
+            {
+               PTFI("bool change_root = false;\n", 3);
+               change_root_declared = true;
+            }
+            else PTFI("change_root = false;\n", 3);
+            PTFI("Node *node%d = getNode(host, host_node_index);\n", 3, index);
+            /* Case (2) */
+            if(lhs_node->root && item->rhs_root) 
+               PTFI("if(!(node%d->root)) change_root = true;\n", 3, index);
             /* Case (1) */
-            if(lhs_node->root && !item->rhs_root) change_root = true;
+            else if(lhs_node->root && !item->rhs_root) 
+            {
+               PTFI("if(change_root)\n   {\n", 3);
+               PTFI("changeRoot(host, host_node_index);\n", 6);
+               PTFI("change_root = true;\n   }\n", 6);
+            }
+            PTFI("if(record_changes) pushRelabelledNode(host_node_index, ", 3);
+            PTF("change_root, node%d->label);\n", index);
+
             if(label.length == 0 && label.mark == NONE)
                PTFI("relabelNode(host, host_node_index, blank_label);\n", 3);
             else
@@ -1003,33 +956,9 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
                   PTFI("Label label;\n", 3);
                   label_declared = true;
                }
-               generateRHSLabelCode(label, index, 3, file);
+               generateRHSLabelCode(label, true, index, 3, file);
                PTFI("relabelNode(host, host_node_index, label);\n\n", 3);
             }
-            if(!change_root_declared) 
-            {
-               PTFI("bool change_root = false;\n", 3);
-               change_root_declared = true;
-            }
-            else PTFI("change_root = false;\n", 3);
-            if(change_root) 
-            {
-               PTFI("changeRoot(host, host_node_index);\n", 3);
-               PTFI("change_root = true;\n", 3);
-            }
-            /* Case (2) */
-            if(lhs_node->root && item->rhs_root) 
-            {
-               PTFI("Node *node%d = getNode(host, host_node_index);\n", 3, index);
-               PTFI("if(!(node%d->root))\n", 3, index);
-               PTFI("{\n", 3);
-               PTFI("changeRoot(host, host_node_index);\n", 6);
-               PTFI("change_root = true;\n", 6);
-               PTFI("}\n", 3);
-            }
-            PTFI("if(record_changes) ", 3);
-            PTF("pushRelabelledNode(host_node_index, change_root, blank_label);\n");
-            PTF("\n");
          }
       }
    }
@@ -1057,7 +986,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
             PTFI("Label label;\n", 3);
             label_declared = true;
          }
-         generateRHSLabelCode(rule_node->label, index, 3, file);
+         generateRHSLabelCode(rule_node->label, true, index, 3, file);
          PTFI("host_node_index = addNode(host, %d, label);\n", 3, rule_node->root);
       }
       PTFI("if(record_changes) pushAddedNode(host_node_index);\n", 3);
@@ -1096,7 +1025,7 @@ void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs)
             PTFI("Label label;\n", 3);
             label_declared = true;
          }
-         generateRHSLabelCode(rule_edge->label, index, 3, file);
+         generateRHSLabelCode(rule_edge->label, false, index, 3, file);
          PTFI("host_edge_index = addEdge(host, false, label, source, target);\n", 3);
       }
       PTFI("if(record_changes) pushAddedEdge(host_edge_index);\n", 3);

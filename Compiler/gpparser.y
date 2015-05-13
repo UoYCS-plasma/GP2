@@ -501,6 +501,7 @@ HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); }
      					                 "middle of a list.\n"); }
 
 HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
+       | '-' NUM %prec UMINUS 	        { $$ = newASTNumber(@$, -($2)); } 
        | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }
 
 %%

@@ -38,8 +38,8 @@ void freeSymbolList(gpointer key, gpointer value, gpointer user_data)
 }
 
 
-void addBiEdge(BiEdgeList *list, string scope, string containing_rule, 
-               char graph, string source, string target)
+BiEdgeList *addBiEdge(BiEdgeList *list, string scope, string rule_name,
+                      char graph, string source, string target)
 {
    BiEdgeList *new_edge = malloc(sizeof(BiEdgeList));
    if(new_edge == NULL)
@@ -48,20 +48,12 @@ void addBiEdge(BiEdgeList *list, string scope, string containing_rule,
       exit(1);
    }
    new_edge->value.scope = strdup(scope); 
-   new_edge->value.containing_rule = strdup(containing_rule);
+   new_edge->value.rule_name = strdup(rule_name);
    new_edge->value.graph = graph;
    new_edge->value.source = strdup(source);
    new_edge->value.target = strdup(target);
-   new_edge->next = NULL;
-
-   /* Append new_edge to bidirectional_edges. */
-   if(list == NULL) list = new_edge;
-   else 
-   { 
-      BiEdgeList *iterator = list;
-      while(iterator->next) iterator = iterator->next; 
-      iterator->next = new_edge;
-   }
+   new_edge->next = list;
+   return new_edge;
 }
 
 void freeBiEdgeList(BiEdgeList *list) 
@@ -69,7 +61,7 @@ void freeBiEdgeList(BiEdgeList *list)
     if(list == NULL) return;
     BiEdge bi_edge = list->value;
     if(bi_edge.scope) free(bi_edge.scope);
-    if(bi_edge.containing_rule) free(bi_edge.containing_rule);
+    if(bi_edge.rule_name) free(bi_edge.rule_name);
     if(bi_edge.source) free(bi_edge.source);
     if(bi_edge.target) free(bi_edge.target);
       

@@ -77,7 +77,7 @@ void pushAddedEdge(int index);
 void pushRemovedNode(bool root, Label label);
 void pushRemovedEdge(bool bidirectional, Label label, int source, int target);
 void pushRelabelledNode(int index, bool change_flag, Label old_label);
-void pushRelabelledEdge(int index, bool change_flag, Label old_label);
+void pushRelabelledEdge(int index, Label old_label);
 void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);
 void freeGraphChange(GraphChange change); 

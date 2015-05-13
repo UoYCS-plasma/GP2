@@ -32,6 +32,11 @@ StringList *stringExpToList(StringList *list, Atom *string_exp);
 StringList *appendStringExp(StringList *list, int type, string value);
 void freeStringList(StringList *list);
 
+/* When matching an isolated node or edge, this function is called. It uses
+ * the passed label to generate the appropriate for loops to iterate over the 
+ * host graph's label class array. */
+void generateIteratorCode(Label label, int indent, FILE *file);
+
 /* Two functions to generate code matching a particular rule list to a list in
  * the host graph. Fixed-length rule lists (lists not containing a list variable)
  * and variable-length rule lists are handled by two distinct functions. 
@@ -73,7 +78,7 @@ void generateVariableCode(string name, GPType type, FILE *file);
 /* Takes a RHS label and generates code to build the corresponding host label,
  * including code to evaluate expressions and substitute variables for values
  * according to the assignment in the morphism. */
-void generateRHSLabelCode(Label label, int count, int indent, FILE *file);
+void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *file);
 
 /* Called by generateRHSLabelCode if it encounters an arithmetic operator or 
  * the length operator. generateIntEvalCode is responsible for navigating the

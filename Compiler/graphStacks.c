@@ -35,12 +35,12 @@ void copyGraph(Graph *graph)
    graph_copy->number_of_edges = graph->number_of_edges;
 
    memcpy(graph_copy->node_classes, graph->node_classes,
-          sizeof(LabelClassTable*) * MARKS * LABEL_CLASSES);
+          sizeof(LabelClassTable*) * NUMBER_OF_MARKS * NUMBER_OF_CLASSES);
    memcpy(graph_copy->edge_classes, graph->edge_classes,
-          sizeof(LabelClassTable*) * MARKS * LABEL_CLASSES);
+          sizeof(LabelClassTable*) * NUMBER_OF_MARKS * NUMBER_OF_CLASSES);
 
    int index;
-   for(index = 0; index < MARKS * LABEL_CLASSES; index++)
+   for(index = 0; index < NUMBER_OF_MARKS * NUMBER_OF_CLASSES; index++)
    {
       /* If the pool size is greater than 0, allocate memory to the items 
        * array of the copied LabelClassTable and copy the corresponding array
@@ -230,13 +230,13 @@ void pushRelabelledNode(int index, bool change_flag, Label old_label)
    graph_change_stack[gci].data.relabelled_node.old_label = old_label;
 }
 
-void pushRelabelledEdge(int index, bool change_flag, Label old_label)
+void pushRelabelledEdge(int index, Label old_label)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
    graph_change_stack[gci].type = RELABELLED_NODE;
    graph_change_stack[gci].data.relabelled_edge.index = index;
-   graph_change_stack[gci].data.relabelled_edge.change_flag = change_flag;
+   graph_change_stack[gci].data.relabelled_edge.change_flag = false;
    graph_change_stack[gci].data.relabelled_edge.old_label = old_label;
 }
    

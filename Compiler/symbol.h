@@ -81,7 +81,7 @@ void freeSymbolList(gpointer key, gpointer value, gpointer user_data);
  */
 typedef struct BiEdge {
   string scope;
-  string containing_rule;
+  string rule_name;
   char graph;
   string source;
   string target;
@@ -92,8 +92,8 @@ typedef struct BiEdgeList {
   struct BiEdgeList *next;
 } BiEdgeList;
 
-void addBiEdge(BiEdgeList *list, string scope, string containing_rule, 
-               char graph, string source, string target);
+BiEdgeList *addBiEdge(BiEdgeList *list, string scope, string rule_name, 
+                      char graph, string source, string target);
 void freeBiEdgeList(BiEdgeList *list); 
 
 #endif /* INC_SYMBOL_TABLE_H */

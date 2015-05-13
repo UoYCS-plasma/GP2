@@ -210,7 +210,7 @@ bool semanticCheck(List *declarations, string scope)
     * end of the global declaration list. */
    if(!strcmp(scope, "Main"))
    {
-      if(bidirectional_edges) freeBiEdgeList(bidirectional_edges);
+      if(bidirectional_edges != NULL) freeBiEdgeList(bidirectional_edges);
    }
    return abort_compilation;
 }   
@@ -558,21 +558,21 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
        * the AST. */
       string node_id = strdup(node_list->node->name);
       symbol_list = g_hash_table_lookup(symbol_table, node_id);
-      SymbolList *iterator = symbol_list;
+      SymbolList *symbol = symbol_list;
 
       bool add_node = true;
-      while(iterator) 
+      while(symbol != NULL) 
       {
 	 /* Print an error if there already exists a node in the same graph, 
 	  * rule and scope with the same name. */
-         if(iterator->type == node_type && symbolInScope(iterator, scope, rule_name))
+         if(symbol->type == node_type && symbolInScope(symbol, scope, rule_name))
 	 {
 	     print_to_log("Warning (%s): Node ID %s not unique in the "
                           "%s.\n", rule_name, node_id, graph_type);  
 	     add_node = false;
 	     break;
 	 }
-         iterator = iterator->next;      
+         symbol = symbol->next;      
       }
       if(node_list->node->label->mark == DASHED)
       {
@@ -580,39 +580,55 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
 	               "\"dashed\".\n", rule_name, node_id, graph_type);
           abort_compilation = true; 
       }
+      bool wildcard = node_list->node->label->mark == ANY;
       if(add_node) 
       { 
-         bool wildcard = node_list->node->label->mark == ANY;
          symbol_list = addSymbol(symbol_list, node_type, scope, rule_name,
                                  false, false, wildcard, false);
          g_hash_table_replace(symbol_table, node_id, symbol_list);         
       }      
-      /* If the node is in the RHS and has an 'any' mark, the corresponding LHS node
-       * must also have an 'any' mark. */
-      if(side == 'r' && node_list->node->label->mark == ANY) 
+      /* Check that RHS wildcard nodes exist in the interface and that they
+       * have a corresponding LHS wildcard. */
+      if(wildcard && side == 'r')
       {
-         /* The current node has just been prepended to the symbol list.
-          * Hence the first entry in the symbol list is an RHS node. 
-          * The corresponding LHS node is to be located. Therefore the search
-          * starts at the second element in the symbol list. */
-         iterator = symbol_list->next;
-         while(iterator) 
+         bool in_interface = false;
+         List *iterator = interface;
+         while(iterator != NULL)  
          {
-	    /* Find a node in the same rule. If that node is in the LHS
-             * and is not a wildcard (any mark) then report an error. */
-            if(symbolInScope(iterator, scope, rule_name))	
-  	    {
-                if(iterator->type == LEFT_NODE_S && !(iterator->wildcard)) 
-                {
-	           print_to_log("Error (%s): RHS wildcard node %s has no "
-                                "matching LHS wildcard.", rule_name, node_id);  
-                   abort_compilation = true; 
-                }
-                /* Regardless of the outcome of the inner if statement, exit
-                 * the loop as the single appropriate node has been located. */
-                break;   
-	    }
-            iterator = iterator->next;      
+            if(!strcmp(node_id, iterator->node_id))
+            {
+               in_interface = true;
+               break;
+            }
+            iterator = iterator->next;
+         }
+         if(!in_interface) 
+         {
+            print_error("Error (%s): Wildcard node %s in %s graph not in the "
+                        "interface.\n", rule_name, node_id, graph_type);
+            abort_compilation = true;  
+         }
+         else
+         {
+            symbol = symbol_list;
+            while(symbol != NULL) 
+            {
+               /* Find a node in the same rule. If that node is in the LHS
+                * and is not a wildcard then report an error. */
+               if(symbolInScope(symbol, scope, rule_name))	
+               {
+                  if(symbol->type == LEFT_NODE_S && !(symbol->wildcard)) 
+                  {
+                     print_to_log("Error (%s): RHS wildcard node %s has no "
+                                  "matching LHS wildcard.", rule_name, node_id);  
+                     abort_compilation = true; 
+                  }
+                  /* Regardless of the outcome of the inner if statement, exit
+                   * the loop as the single appropriate node has been located. */
+                  break;
+               }
+               symbol = symbol->next;
+            }
          }
       }
       gpListScan(&(node_list->node->label->gp_list), interface, scope, rule_name, side);
@@ -635,63 +651,62 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
       string target_id = edge_list->edge->target;
 
       symbol_list = g_hash_table_lookup(symbol_table, edge_id);
-      SymbolList *iterator = symbol_list;
-      while(iterator) 
+      SymbolList *symbol = symbol_list;
+      while(symbol != NULL) 
       {
 	 /* Print an error if there already exists an edge in the same graph,
 	  * rule and scope with the same name. */
-         if(iterator->type == edge_type && symbolInScope(iterator, scope, rule_name))
+         if(symbol->type == edge_type && symbolInScope(symbol, scope, rule_name))
          {
 	     print_to_log("Warning (%s): Edge ID %s not unique in the %s "
                           "graph.\n", rule_name, edge_id, graph_type);
 	     add_edge = false;
 	     break;
 	 }
-         iterator = iterator->next; 
+         symbol = symbol->next; 
       }
+      bool wildcard = edge_list->edge->label->mark == ANY; 
+      bool bidirectional = edge_list->edge->bidirectional; 
       if(add_edge) 
       {
-         bool wildcard = edge_list->edge->label->mark == ANY; 
-         bool bidirectional = edge_list->edge->bidirectional; 
          symbol_list = addSymbol(symbol_list, edge_type, scope, rule_name, 
                                  false, false, wildcard, bidirectional);
          g_hash_table_replace(symbol_table, edge_id, symbol_list);
       }
-      if(side == 'r' && edge_list->edge->label->mark == ANY) 
+      /* Check that RHS wildcard edges exist in the interface and that they
+       * have a corresponding LHS wildcard.
+       * TODO: No interface checking yet. This would allow multiple RHS wildcard
+       * edges and fewer LHS wildcard edges. I think. */
+      if(wildcard && side == 'r')
       {
-         /* The current edge has just been prepended to the symbol list.
-          * Hence the first entry in the symbol list is this RHS edge. 
-          * The corresponding LHS edge is to be located, hence search
-          * might as well start at the second element in the symbol list. */
-         iterator = symbol_list->next;
-         while(iterator) 
+         symbol = symbol_list;
+         while(symbol) 
          {
-	    /* Find an edge in the same rule. If that edge is in the LHS
-             * and is not a wildcard (any mark) then report an error. */
-            if(symbolInScope(iterator, scope, rule_name))
-  	    {
-                if(iterator->type == LEFT_EDGE_S && !(iterator->wildcard)) 
-                {
-	           print_to_log("Error (%s): RHS wildcard edge %s has no "
-                                "matching LHS wildcard.\n", 
-                                rule_name, edge_id);  
-                   abort_compilation = true;
-                }
-                /* Exit the loop as the single appropriate edge has been 
-                 * located. */ 
-                break;   
-	    }
-            iterator = iterator->next;      
+            /* Find an edge in the same rule. If that edge is in the LHS
+             * and is not a wildcard then report an error. */
+            if(symbolInScope(symbol, scope, rule_name))	
+            {
+               if(symbol->type == LEFT_EDGE_S && !(symbol->wildcard)) 
+               {
+                  print_to_log("Error (%s): RHS wildcard edge %s has no "
+                               "matching LHS wildcard.", rule_name, edge_id);  
+                  abort_compilation = true; 
+               }
+               /* Regardless of the outcome of the inner if statement, exit
+                  * the loop as the single appropriate node has been located. */
+               break;
+            }
+            symbol = symbol->next;
          }
       }
       /* Two semantic checks are made for bidirectional edges (BEs):
        * (1) A BE in the RHS must have a corresponding BE in the LHS.
        * (2) At most one BE is allowed between a pair of nodes. 
        *
-       * Items of type struct BidirectionalEdge, defined in the header,
-       * are placed in GSList *bidirectional_edges to keep track of all
+       * Items of type struct BiEdgeList, defined in the header, are placed
+       * in the global BiEdgeList *bidirectional_edges to keep track of all
        * the bidirectional edges encountered. */
-      if(edge_list->edge->bidirectional) 
+      if(bidirectional) 
       {
          /* bidirectional_edges may be written to later, hence a copy is made
           * of the root pointer. */
@@ -706,7 +721,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
              * incident node IDs as the current edge. Edge direction is 
              * irrelevant for this check. */
             if(!strcmp(list_edge.scope, scope) &&
-               !strcmp(list_edge.containing_rule, rule_name) &&
+               !strcmp(list_edge.rule_name, rule_name) &&
                /* Either source = source and target = target... */
                ((!strcmp(list_edge.source, source_id) &&
                 !strcmp(list_edge.target, target_id))   ||
@@ -738,8 +753,9 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
             abort_compilation = true; 
          }
          /* Only add an edge to the BE list if it is not a parallel edge. */
-         if(add_bi_edge) addBiEdge(bidirectional_edges, scope, rule_name, side,
-                                   source_id, target_id);
+         if(add_bi_edge) 
+            bidirectional_edges = addBiEdge(bidirectional_edges, scope, rule_name,
+                                            side, source_id, target_id);
       }
       /* Verify source node exists in the graph. */
       symbol_list = g_hash_table_lookup(symbol_table, source_id);
@@ -899,14 +915,15 @@ void conditionScan(GPCondition *condition, List *interface, string scope,
       case EDGE_PRED:
       {
            bool in_interface = false;
-           while(interface != NULL)  
+           List *iterator = interface;
+           while(iterator != NULL)  
            {
-              if(!strcmp(condition->edge_pred.source, interface->node_id))
+              if(!strcmp(condition->edge_pred.source, iterator->node_id))
               {
                  in_interface = true;
                  break;
               }
-              interface = interface->next;
+              iterator = iterator->next;
            }
            if(!in_interface) 
            {
@@ -916,14 +933,15 @@ void conditionScan(GPCondition *condition, List *interface, string scope,
            }
            in_interface = false;
 
-           while(interface != NULL)  
+           iterator = interface;
+           while(iterator != NULL)  
            {
-              if(!strcmp(condition->edge_pred.target, interface->node_id))
+              if(!strcmp(condition->edge_pred.target, iterator->node_id))
               {
                  in_interface = true;
                  break;
               }
-              interface = interface->next;
+              iterator = iterator->next;
            }
            if(!in_interface) 
            {
@@ -1060,14 +1078,15 @@ void atomScan(GPAtom *atom, List *interface, string scope, string rule_name,
            else /* location == 'c' || location == 'r' */
            {
               bool in_interface = false;
-              while(interface != NULL)  
+              List *iterator = interface;
+              while(iterator != NULL)  
               {
-                 if(!strcmp(atom->node_id, interface->node_id))
+                 if(!strcmp(atom->node_id, iterator->node_id))
                  {
                     in_interface = true;
                     break;
                  }
-                 interface = interface->next;
+                 iterator = iterator->next;
               }
               if(!in_interface) 
               {

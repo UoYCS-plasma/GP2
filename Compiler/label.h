@@ -15,9 +15,8 @@
 #include "globals.h"
 
 /* AtomType defined in globals.h. I place the enumerated type here for reference.
- * {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, STRING_CONSTANT, INDEGREE,
- *  OUTDEGREE, LENGTH, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType; 
- * All types above except for EMPTY are used in this label structure. */
+ * {INTEGER_CONSTANT = 0, STRING_CONSTANT, VARIABLE, LENGTH, INDEGREE,
+ *  OUTDEGREE, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType; */
 typedef struct Atom { 
    AtomType type;
    union {
@@ -76,6 +75,7 @@ bool equalRuleAtoms(Atom *left_atom, Atom *right_atom);
 
 /* Returns the label class of a host graph label. */
 LabelClass getLabelClass(Label label);
+bool hasListVariable(Label label);
 
 /* Allocates memory for an array with <length> number of atoms. */
 Atom *makeList(int length);
