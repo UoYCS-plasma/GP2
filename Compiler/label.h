@@ -75,7 +75,9 @@ bool equalRuleAtoms(Atom *left_atom, Atom *right_atom);
 
 /* Returns the label class of a host graph label. */
 LabelClass getLabelClass(Label label);
-bool hasListVariable(Label label);
+/* If the label's list contains a list variable, return the name of that
+ * variable, otherwise return NULL. */
+string getListVariable(Label label);
 
 /* Allocates memory for an array with <length> number of atoms. */
 Atom *makeList(int length);

@@ -81,47 +81,40 @@ void generateVariableCode(string name, GPType type, FILE *file);
 void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *file);
 
 /* Called by generateRHSLabelCode if it encounters an arithmetic operator or 
- * the length operator. generateIntEvalCode is responsible for navigating the
- * AST subtree of the expression and generating fresh integer variables 
- * to store the components of the expression. Subsequently, generateIntExpression
- * performs a second traversal of the subtree to write the expression.
+ * the length operator. generateIntExpression is responsible for navigating the
+ * AST subtree of the expression and writing the arithmetic expression it 
+ * represents.
  *
- * For example, given the RHS label (i + 1) * 2, generateIntEvalCode would
- * be responsible for printing something like:
- * int i0 = getIntegerValue("i", morphism);
- * int i1 = 1;
- * int i2 = 2;
- *
- * generateIntExpression would then print the expression:
- * <host_list_element> = (i0 + i1) * i2;
- *
- * Correct code generation comes from the fact that both functions traverse
- * the same AST subtree in the same order. */
-void generateIntEvalCode(Atom atom, int count, int indent, FILE *file);
-void generateIntExpression(Atom atom, int count, bool nested, FILE *file);
+ * For example, given the RHS label (i + 1) * length(s), where i is an integer
+ * variable and s is a string variable, generateIntExpression would print:
+ * (i_var + 1) * (int)strlen(s_var); */
+void generateIntExpression(Atom atom, bool nested, FILE *file);
 
-/* Similar to the above. As an example, the code generated for the RHS label
- * "a".s.c (s string variable, c character variable) is as follows.
+/* The string case is analogous to the above but complicated by the fact that
+ * the runtime code builds a string whose length needs to be known in advance.
+ * Therefore two functions are used to generate the string expression.
+ * The first obtains the total length of the evaluated RHS string and assigns
+ * it to a runtime variable. The second generates the string.
  *
- * generateStringEvalCode prints:
- * length = 0;
- * string s0 = "a"; length += strlen(s0);
- * string s1 = getStringValue("s", morphism); length += strlen(s1);
- * string s2 = getStringValue("c", morphism); length += strlen(s2);
+ * For example, "a".s.c (s string variable, c character variable) is as follows.
+ * generateStringLengthCode prints:
+ * length = 0; 
+ * length += strlen("a"); 
+ * length += strlen(s_var);
+ * length += strlen(c_var);
  *
  * The character array host_string of size <length> is created by the caller
- * before calling generateStringExpression. This is because it is a recursive 
- * function; it was simplier to print that code externally.
+ * before calling generateStringExpression. 
  *
  * generateStringExpression prints:
- * host_string = strcpy(host_string, s0); 
- * host_string = strcat(host_string, s1); 
- * host_string = strcat(host_string, s2);
+ * host_string = strcpy(host_string, "a"); 
+ * host_string = strcat(host_string, s_var); 
+ * host_string = strcat(host_string, c_var);
  *
  * The 'bool first' argument of generateStringExpression is used to control
  * which of 'strcpy' and 'strcat' is printed. C doesn't like it when you call
  * strcpy on a newly-created character array. */
-void generateStringEvalCode(Atom atom, int count, int indent, FILE *file);
-void generateStringExpression(Atom atom, int count, bool first, int indent, FILE *file);
+void generateStringLengthCode(Atom atom, int indent, FILE *file);
+void generateStringExpression(Atom atom, bool first, int indent, FILE *file);
 
 #endif /* INC_GEN_LABEL_H */

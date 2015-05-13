@@ -12,6 +12,7 @@ VariableList *addVariable(VariableList *variable_list, string name, GPType type)
 
    new_variable_list->variable = strdup(name);
    new_variable_list->type = type;   
+   new_variable_list->used_by_rule = false;   
    new_variable_list->next = variable_list;
 
    return new_variable_list;
@@ -183,6 +184,8 @@ PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index,
    }
    new_list->left_index = left_index;   
    new_list->rhs_root = rhs_root;
+   new_list->indegree_argument = false;
+   new_list->outdegree_argument = false;
    new_list->new_label = new_label;
    new_list->next = list;
 

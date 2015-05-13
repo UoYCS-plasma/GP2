@@ -54,28 +54,6 @@
       ((host_node->outdegree + host_node->indegree             \
         - (indeg) - (outdeg) - (bideg)) != 0))                 \
 
-/* Deletes all the host items in the morphism from the host graph. Edges are
- * deleted first so that there is no chance of dangling edges from node
- * deletion. Called when the RHS of a rule is the empty graph. */
-#define REMOVE_RHS                                                         \
-   do {                                                                    \
-   for(count = 0; count < morphism->edges; count++)                        \
-      if(record_changes)                                                   \
-      {                                                                    \
-         Edge *edge = getEdge(host, morphism->edge_map[count].host_index); \
-         pushRemovedEdge(false, edge->label, edge->source, edge->target);  \
-      }                                                                    \
-      removeEdge(host, morphism->edge_map[count].host_index);              \
-                                                                           \
-   for(count = 0; count < morphism->nodes; count++)                        \
-      if(record_changes)                                                   \
-      {                                                                    \
-         Node *node = getNode(host, morphism->node_map[count].host_index); \
-         pushRemovedNode(node->root, node->label);                         \
-      }                                                                    \
-      removeNode(host, morphism->node_map[count].host_index);              \
-   } while(0);                                                             \
-
 #define PROCESS_EDGE_MORPHISMS                                               \
    do {                                                                      \
    for(count = 0; count < morphism->edges; count++)                          \

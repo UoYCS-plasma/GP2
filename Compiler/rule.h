@@ -19,7 +19,8 @@
 
 typedef struct VariableList {
   string variable;
-  GPType type; 
+  GPType type;
+  bool used_by_rule;
   struct VariableList *next;
 } VariableList;
 
@@ -74,6 +75,8 @@ void freeItemList(ItemList *item_list);
 typedef struct PreservedItemList {
    int left_index;
    bool rhs_root;
+   bool indegree_argument;
+   bool outdegree_argument;
    Label *new_label;
    struct PreservedItemList *next;
 } PreservedItemList;
@@ -104,7 +107,7 @@ void freeNewEdgeList(NewEdgeList *new_edge);
 
 
 typedef struct Condition {
-  ConditionType exp_type;		/* globals.h */
+  ConditionType exp_type;		
   union {
     string var; 		/* INT_CHECK, CHAR_CHECK, STRING_CHECK, 
 				 * ATOM_CHECK */

@@ -12,7 +12,7 @@ void generateIteratorCode(Label label, int indent, FILE *file)
    PTFI("{\n", indent);
 
    /* Generate the inner loop which iterates over the columns of the label class array. */
-   if(hasListVariable(label))
+   if(getListVariable(label) != NULL)
    {
       /* The generated loop depends on the number of non-list variable atoms. */
       int atoms = label.length - 1;
@@ -518,16 +518,15 @@ void generateVariableCode(string name, GPType type, FILE *file)
       case ATOM_VAR:
            PTFI("Assignment *assignment_%s = lookupVariable(morphism, \"%s\");\n",
                 3, name, name);
-           PTFI("if(assignment_%s->type == INTEGER_VAR)\n", 3, name);
-           PTFI("int %s_var = getIntegerValue(\"%s\", morphism);\n", 6, name, name);
-           PTFI("else string %s_var = getStringValue(\"%s\", morphism);\n", 3, name, name);
+           PTFI("union { int num; string str; } %s_var;\n", 3, name);
+           PTFI("if(assignment_%s->type == INTEGER_VAR) "
+                "%s_var.num = getIntegerValue(\"%s\", morphism);\n", 3, name, name, name);
+           PTFI("else %s_var.str = getStringValue(\"%s\", morphism);\n", 3, name, name);
            break;
          
       case LIST_VAR:
            PTFI("Assignment *assignment_%s = lookupVariable(morphism, \"%s\");\n",
                 3, name, name);
-           PTFI("Atom *%s_var = getListValue(\"%s\", morphism);\n", 3, name, name);
-           PTFI("list_var_length = assignment_%s->length;\n", 3, name);
            break;
       
       default:
@@ -538,11 +537,6 @@ void generateVariableCode(string name, GPType type, FILE *file)
 
 bool length_declared = false, assignment_declared = false, i_declared = false;
 bool node_index_declared = false, host_label_declared = false;
-
-/* Global variables used to generate unique integer/string variable names in
- * the runtime. Reset at the end of each call to generateRHSLabelCode and 
- * before */
-int i_vars = 0, i_vars2 = 0, s_vars = 0, s_vars2 = 0;
 
 void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *file)
 {
@@ -572,9 +566,12 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
     * The <count> integer variable is used to create a fresh Atom * variable
     * name in case more than one list is created at runtime. */
    PTFI("Atom *list%d = NULL;\n", indent, count);
-   PTFI("if(list_var_length >= 0) list%d = makeList(%d + list_var_length);\n", 
-        indent, count, label.length - 1);
-   PTFI("else list%d = makeList(%d);\n", indent, count, label.length);
+   string list_variable = getListVariable(label);
+   if(list_variable == NULL) 
+        PTFI("list%d = makeList(%d);\n", indent, count, label.length);
+   else PTFI("list%d = makeList(%d + assignment_%s->length - 1);\n",
+             indent, count, label.length, list_variable);
+
    PTFI("int index = 0;\n", indent);
    for(index = 0; index < label.length; index++)
    {
@@ -624,12 +621,13 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
               }
               else if(atom.variable.type == LIST_VAR)
               {
+                 PTFI("Atom *%s_var = getListValue(\"%s\", morphism);\n", 3, name, name);
                  if(!i_declared)
                  {
                     PTFI("int i;\n", indent);
                     i_declared = true;
                  }
-                 PTFI("for(i = 0; i < list_var_length; i++)\n", indent);
+                 PTFI("for(i = 0; i < assignment_%s->length; i++)\n", indent, name);
                  PTFI("{\n", indent);
                  PTFI("if(%s_var[i].type == INTEGER_CONSTANT)\n", indent + 3, name);
                  PTFI("{\n", indent + 3);
@@ -648,27 +646,13 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
               break;
          }
          case INDEGREE:
-              if(!node_index_declared)
-              {
-                 PTFI("int node_index = lookupNode(morphism, %d);\n", indent, atom.node_id);
-                 node_index_declared = true;
-              }
-              else PTFI("node_index = lookupNode(morphism, %d);\n", indent, atom.node_id);
               PTFI("list%d[index].type = INTEGER_CONSTANT;\n", indent, count);
-              PTFI("list%d[index++].number = getIndegree(getNode(host, node_index));\n", 
-                   indent, count); 
+              PTFI("list%d[index++].number = indegree%d;\n", indent, count, atom.node_id); 
               break;
            
          case OUTDEGREE:
-              if(!node_index_declared)
-              {
-                 PTFI("int node_index = lookupNode(morphism, %d);\n", indent, atom.node_id);
-                 node_index_declared = true;
-              }
-              else PTFI("node_index = lookupNode(morphism, %d);\n", indent, atom.node_id);
               PTFI("list%d[index].type = INTEGER_CONSTANT;\n", indent, count);
-              PTFI("list%d[index++].number = getOutdegree(getNode(host, node_index));\n", 
-                   indent, count); 
+              PTFI("list%d[index++].number = outdegree%d;\n", indent, count, atom.node_id); 
               break;
 
          case LENGTH:
@@ -677,12 +661,9 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
          case SUBTRACT:
          case MULTIPLY:
          case DIVIDE:  
-              /* Generates integer variables to store integer constants to be
-               * evaluated in the generated integer expression. */
-              generateIntEvalCode(atom, count, indent, file);
               PTFI("list%d[index].type = INTEGER_CONSTANT;\n", indent, count);
               PTFI("list%d[index++].number = ", indent, count);
-              generateIntExpression(atom, count, false, file);
+              generateIntExpression(atom, false, file);
               PTF(";\n");
               break;
 
@@ -696,11 +677,11 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
               /* Generates string variables to store string literals to be 
                * concatenated, and updates the runtime length variable with the 
                * total length of the concatenated string. */
-              generateStringEvalCode(atom, count, indent, file);
+              generateStringLengthCode(atom, indent, file);
               /* Build host_string from the evaluated strings that make up the
                * RHS label. */
               PTFI("char host_string[length + 1];\n", indent);
-              generateStringExpression(atom, count, true, indent, file);
+              generateStringExpression(atom, true, indent, file);
               PTFI("host_string[length] = '\\0';\n\n", indent);
               PTFI("list%d[index].type = STRING_CONSTANT;\n", indent, count);
               PTFI("list%d[index++].string = strdup(host_string);\n\n", indent, count);
@@ -725,140 +706,91 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
                     "host_node_index));\n", indent);
       else PTFI("host_label = getEdgeLabel(getEdge(host, "
                 "host_edge_index));\n", indent);
+      if(list_variable == NULL) 
+         PTFI("label = makeHostLabel(host_label.mark, %d, list%d);\n\n",
+               indent, label.length, count);
+      else PTFI("label = makeHostLabel(host_label.mark, %d + assignment_%s->length - 1, "
+                "list%d);\n\n", indent, label.length, list_variable, count);
       PTFI("label = makeHostLabel(host_label.mark, %d, list%d);\n\n",
            indent, label.length, count);
    }
-   else PTFI("label = makeHostLabel(%d, %d, list%d);\n\n",
-             indent, label.mark, label.length, count);
-   i_vars = 0; i_vars2 = 0; s_vars = 0; s_vars2 = 0;
+   if(list_variable == NULL) 
+        PTFI("label = makeHostLabel(%d, %d, list%d);\n\n",
+            indent, label.mark, label.length, count);
+   else PTFI("label = makeHostLabel(%d, %d + assignment_%s->length - 1, list%d);\n\n",
+             indent, label.mark, label.length, list_variable, count);
 }
 
-void generateIntEvalCode(Atom atom, int count, int indent, FILE *file)
+void generateIntExpression(Atom atom, bool nested, FILE *file)
 {
-   /* Unique integer variable names are controlled by the function argument <count>
-    * and the global variable <i_var>. The former is static for the duration
-    * of this function call, while i_var is incremented when a fresh runtime
-    * variable is created. */
    switch(atom.type)
    {
       case INTEGER_CONSTANT:
-           PTFI("int i%d%d = %d;\n", indent, count, i_vars++, atom.number);
-           break;
-
-      case VARIABLE:
-           PTFI("int i%d%d = %s_var;\n", indent, count,
-                i_vars++, atom.variable.name);
-           break;
-
-      case INDEGREE:
-           if(!node_index_declared)
-           {
-              PTFI("int node_index = lookupNode(morphism, %d);\n", indent, atom.node_id);
-              node_index_declared = true;
-           }
-           else PTFI("node_index = lookupNode(morphism, %d);\n", indent, atom.node_id);
-           PTFI("int i%d%d = getIndegree(getNode(host, node_index));\n", indent, count, i_vars++); 
-           break;
-           
-      case OUTDEGREE:
-           if(!node_index_declared)
-           {
-              PTFI("int node_index = lookupNode(morphism, %d);\n", indent, atom.node_id);
-              node_index_declared = true;
-           }
-           else PTFI("node_index = lookupNode(morphism, %d);\n", indent, atom.node_id);
-           PTFI("int i%d%d = getOutdegree(getNode(host, node_index));\n", indent, count, i_vars++); 
+           PTF("%d", atom.number);
            break;
 
       case LENGTH:
            if(atom.variable.type == STRING_VAR)
-              PTFI("int i%d%d = (int)strlen(%s_var);\n", 
-                   indent, count, i_vars++, atom.variable.name);
+              PTF("(int)strlen(%s_var)", atom.variable.name);
+
            else if(atom.variable.type == ATOM_VAR)
-           {
-              PTFI("int i%d%d;\n", indent, count, i_vars);
-              PTFI("if(assignment_%s->type == INTEGER_VAR) i%d%d = 1;\n", 
-                   indent, atom.variable.name, count, i_vars);
-              PTFI("else i%d%d = (int)strlen(%s_var);\n", indent, count, i_vars++, 
-                   atom.variable.name);
-           }
+              PTF("((assignment_%s->type == STRING_VAR) ? (int)strlen(%s_var.str) : 1)", 
+                  atom.variable.name, atom.variable.name);
+
            else if(atom.variable.type == LIST_VAR)
-           {
-              PTFI("int i%d%d = list_var_length;\n", indent, count, i_vars++);
-           }
+              PTF("assignment_%s->length", atom.variable.name);
+
            else
               print_to_log("Error (generateIntegerExpressionCode): Unexpected "
                            "variable type of length argument.\n");
            break;
-
-      case NEG:
-           generateIntEvalCode(atom, count, indent, file);
-           break;
-
-      case ADD:
-      case SUBTRACT:
-      case MULTIPLY:
-           generateIntEvalCode(*(atom.bin_op.left_exp), count, indent, file);
-           generateIntEvalCode(*(atom.bin_op.right_exp), count, indent, file);
-           break;
-
-      case DIVIDE:     
-           generateIntEvalCode(*(atom.bin_op.left_exp), count, indent, file);
-           generateIntEvalCode(*(atom.bin_op.right_exp), count, indent, file);
-           break;
-
-      default:
-           print_to_log("Error (generateIntEvalCode): Unexpected "
-                        "atom type %d.\n", atom.type);
-           break;
-   }
-}
-
-void generateIntExpression(Atom atom, int count, bool nested, FILE *file)
-{
-   switch(atom.type)
-   {
-      case INTEGER_CONSTANT:
+      
       case VARIABLE:
+           if(atom.variable.type == ATOM_VAR) PTF("%s_var.num", atom.variable.name);
+           else PTF("%s_var", atom.variable.name);
+           break;
+
       case INDEGREE:
+           PTF("indegree%d", atom.node_id);
+           break;
+
       case OUTDEGREE:
-      case LENGTH:
-           PTF("i%d%d", count, i_vars2++);
+           PTF("outdegree%d", atom.node_id);
            break;
 
       case NEG:
-           PTF("(-i%d%d)", count, i_vars2++);
+           PTF("(-%d)", atom.number);
            break;
 
       case ADD:
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), count, true, file);
+           generateIntExpression(*(atom.bin_op.left_exp), true, file);
            PTF(" + ");
-           generateIntExpression(*(atom.bin_op.right_exp), count, true, file);
+           generateIntExpression(*(atom.bin_op.right_exp), true, file);
            if(nested) PTF(")");
            break;
 
       case SUBTRACT:
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), count, true, file);
+           generateIntExpression(*(atom.bin_op.left_exp), true, file);
            PTF(" - ");
-           generateIntExpression(*(atom.bin_op.right_exp), count, true, file);
+           generateIntExpression(*(atom.bin_op.right_exp), true, file);
            if(nested) PTF(")");
            break;
 
       case MULTIPLY:
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), count, true, file);
+           generateIntExpression(*(atom.bin_op.left_exp), true, file);
            PTF(" * ");
-           generateIntExpression(*(atom.bin_op.right_exp), count, true, file);
+           generateIntExpression(*(atom.bin_op.right_exp), true, file);
            if(nested) PTF(")");
            break;
 
       case DIVIDE:     
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), count, true, file);
+           generateIntExpression(*(atom.bin_op.left_exp), true, file);
            PTF(" / ");
-           generateIntExpression(*(atom.bin_op.right_exp), count, true, file);
+           generateIntExpression(*(atom.bin_op.right_exp), true, file);
            if(nested) PTF(")");
            break;
 
@@ -869,23 +801,21 @@ void generateIntExpression(Atom atom, int count, bool nested, FILE *file)
    }
 }
    
-void generateStringEvalCode(Atom atom, int count, int indent, FILE *file)
+void generateStringLengthCode(Atom atom, int indent, FILE *file)
 {
    switch(atom.type)
    {
       case STRING_CONSTANT:
-           PTFI("string s%d%d = \"%s\";", indent, count, s_vars, atom.string);
-           PTFI("length += strlen(s%d%d);\n", 1, count, s_vars++);
+           PTFI("length += strlen(\"%s\");\n", indent, atom.string);
            break;
 
       case VARIABLE:
-           PTFI("string s%d%d = %s_var;", indent, count, s_vars, atom.variable.name);
-           PTFI("length += strlen(s%d%d);\n", 1, count, s_vars++);
+           PTFI("length += strlen(%s_var);\n", indent, atom.variable.name);
            break;
 
       case CONCAT:
-           generateStringEvalCode(*(atom.bin_op.left_exp), count, indent, file);
-           generateStringEvalCode(*(atom.bin_op.right_exp), count, indent, file);
+           generateStringLengthCode(*(atom.bin_op.left_exp), indent, file);
+           generateStringLengthCode(*(atom.bin_op.right_exp), indent, file);
            break;
           
       default:
@@ -895,19 +825,22 @@ void generateStringEvalCode(Atom atom, int count, int indent, FILE *file)
    }
 }
 
-void generateStringExpression(Atom atom, int count, bool first, int indent, FILE *file)
+void generateStringExpression(Atom atom, bool first, int indent, FILE *file)
 {
    switch(atom.type)
    { 
       case STRING_CONSTANT:
+           if(first) PTFI("strcpy(host_string, \"%s\");\n", indent, atom.string);
+           else PTFI("strcat(host_string, \"%s\");\n", indent, atom.string);
+
       case VARIABLE:
-           if(first) PTFI("strcpy(host_string, s%d%d);\n", indent, count, s_vars2++);
-           else PTFI("strcat(host_string, s%d%d);\n",indent, count, s_vars2++);
+           if(first) PTFI("strcpy(host_string, %s_var );\n", indent, atom.variable.name);
+           else PTFI("strcat(host_string, %s_var);\n", indent, atom.variable.name);
            break;
 
       case CONCAT:
-           generateStringExpression(*(atom.bin_op.left_exp), count, first, indent, file);
-           generateStringExpression(*(atom.bin_op.right_exp), count, false, indent, file);
+           generateStringExpression(*(atom.bin_op.left_exp), first, indent, file);
+           generateStringExpression(*(atom.bin_op.right_exp), false, indent, file);
            break;
           
       default:

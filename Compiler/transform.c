@@ -1,5 +1,8 @@
 #include "transform.h"
 
+IndexMap *node_map = NULL;
+IndexMap *edge_map = NULL;
+
 Rule *makeRule(GPRule *ast_rule)
 {
    Rule *rule = malloc(sizeof(Rule));
@@ -12,28 +15,37 @@ Rule *makeRule(GPRule *ast_rule)
    rule->name = strdup(ast_rule->name);
    rule->number_of_variables = ast_rule->variable_count;
    rule->variables = scanVariableList(NULL, ast_rule->variables);
-
-   IndexMap *node_map = NULL;
-   IndexMap *edge_map = NULL;
-
+   rule->lhs = NULL;
+   rule->rhs = NULL;
    rule->preserved_nodes = NULL;
    rule->preserved_edges = NULL;
    rule->deleted_nodes = NULL;
    rule->added_nodes = NULL;
    rule->added_edges = NULL;
 
-   if(ast_rule->lhs->nodes == NULL) rule->lhs = NULL;
-   else rule->lhs = scanLHS(ast_rule->lhs, ast_rule->interface, &node_map,
-                            &edge_map, &(rule->deleted_nodes), &(rule->is_rooted));
-
-   if(ast_rule->rhs->nodes == NULL) rule->rhs = NULL;
-   else
+   if(ast_rule->lhs->nodes != NULL) scanLHS(rule, ast_rule->lhs, ast_rule->interface);
+   if(ast_rule->rhs->nodes != NULL) 
    {
-      rule->rhs = scanRHSNodes(ast_rule->rhs, ast_rule->interface, &node_map,
-                               &(rule->preserved_nodes), &(rule->added_nodes));
-      rule->added_edges = scanRHSEdges(ast_rule->rhs, rule->rhs,
-                                       ast_rule->interface, node_map, 
-                                       &edge_map, &(rule->preserved_edges));
+      scanRHSNodes(rule, ast_rule->rhs, ast_rule->interface);
+      scanRHSEdges(rule, ast_rule->rhs, ast_rule->interface);
+      /* The rule's RHS graph has been created by the previous two function calls.
+       * Now iterate over the labels in this graph to get information about 
+       * variables used in the rule and nodes whose degrees are queried in the RHS. */
+      int index;
+      for(index = 0; index < rule->rhs->node_index; index++)
+      {
+         Label label = getNodeLabel(getNode(rule->rhs, index));
+         int list_index;
+         for(list_index = 0; list_index < label.length; list_index++) 
+            scanRHSAtom(rule, label.list[list_index]);
+      }
+      for(index = 0; index < rule->rhs->edge_index; index++)
+      {
+         Label label = getEdgeLabel(getEdge(rule->rhs, index));
+         int list_index;
+         for(list_index = 0; list_index < label.length; list_index++) 
+            scanRHSAtom(rule, label.list[list_index]);
+      }
    } 
    if(node_map) freeIndexMap(node_map);
    if(edge_map) freeIndexMap(edge_map);
@@ -130,22 +142,21 @@ int getArraySize(int number_of_items, int minimum_size)
    return number_of_items + 1;
 }
 
-Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map, 
-               IndexMap **edge_map, ItemList **deleted_nodes, bool *is_rooted)
+void scanLHS(Rule *rule, GPGraph *ast_lhs, List *interface)
 {
    int lhs_nodes = getArraySize(countNodes(ast_lhs), 0);
    int lhs_edges = getArraySize(countEdges(ast_lhs), 0);
-   Graph *lhs = newGraph(lhs_nodes, lhs_edges);
+   rule->lhs = newGraph(lhs_nodes, lhs_edges);
 
    List *nodes = ast_lhs->nodes;
    while(nodes != NULL)
    {
       GPNode *ast_node = nodes->node;
-      if(ast_node->root) *is_rooted = true;
+      if(ast_node->root) rule->is_rooted = true;
       Label label = transformLabel(ast_node->label, NULL);
-      int node_index = addNode(lhs, ast_node->root, label);
-      *node_map = addIndexMap(*node_map, ast_node->name, ast_node->root,
-                              node_index, -1, NULL, NULL, label);
+      int node_index = addNode(rule->lhs, ast_node->root, label);
+      node_map = addIndexMap(node_map, ast_node->name, ast_node->root,
+                             node_index, -1, NULL, NULL, label);
       bool node_in_interface = false;
       List *iterator = interface;
       /* If the node is not an interface node, add it to the deleted nodes
@@ -160,7 +171,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
          else iterator = iterator->next;
       }
       if(!node_in_interface) 
-         *deleted_nodes = addItem(*deleted_nodes, node_index);
+         rule->deleted_nodes = addItem(rule->deleted_nodes, node_index);
       nodes = nodes->next;   
    }
 
@@ -170,7 +181,7 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       GPEdge *ast_edge = edges->edge;
       /* Use the node map to get the correct indices for the edge's source
        * and target to pass to addEdge. */
-      IndexMap *source_map = findMapFromId(*node_map, ast_edge->source);
+      IndexMap *source_map = findMapFromId(node_map, ast_edge->source);
       if(source_map == NULL)
       {
          printf("Error (scanLHS): Edge's source %s not found in the node map. "
@@ -180,14 +191,14 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
       Label label = transformLabel(ast_edge->label, NULL);
       if(!strcmp(ast_edge->source, ast_edge->target))
       {
-         int edge_index = addEdge(lhs, ast_edge->bidirectional, label, 
+         int edge_index = addEdge(rule->lhs, ast_edge->bidirectional, label, 
                                   source_map->left_index, source_map->left_index);
-         *edge_map = addIndexMap(*edge_map, ast_edge->name, false, edge_index, -1,
-                                 ast_edge->source, ast_edge->target, label);
+         edge_map = addIndexMap(edge_map, ast_edge->name, false, edge_index, -1,
+                                ast_edge->source, ast_edge->target, label);
       }
       else
       {
-         IndexMap *target_map = findMapFromId(*node_map, ast_edge->target);
+         IndexMap *target_map = findMapFromId(node_map, ast_edge->target);
          if(target_map == NULL)
          {
             printf("Error (scanLHS): Edge's target %s not found in the node map. "
@@ -195,38 +206,36 @@ Graph *scanLHS(GPGraph *ast_lhs, List *interface, IndexMap **node_map,
             exit(1);
          }
 
-         int edge_index = addEdge(lhs, ast_edge->bidirectional, label,
+         int edge_index = addEdge(rule->lhs, ast_edge->bidirectional, label,
                                   source_map->left_index, target_map->left_index);
-         *edge_map = addIndexMap(*edge_map, ast_edge->name, false, edge_index, -1,
-                                 ast_edge->source, ast_edge->target, label);
+         edge_map = addIndexMap(edge_map, ast_edge->name, false, edge_index, -1,
+                                ast_edge->source, ast_edge->target, label);
       }
       edges = edges->next;   
    }
-   return lhs;
 }
 
-Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
-                    PreservedItemList **nodes, ItemList **added_nodes)
+void scanRHSNodes(Rule *rule, GPGraph *ast_rhs, List *interface)
 {
    int rhs_nodes = getArraySize(countNodes(ast_rhs), 0);
    int rhs_edges = getArraySize(countEdges(ast_rhs), 0);
-   Graph *rhs = newGraph(rhs_nodes, rhs_edges);
+   rule->rhs = newGraph(rhs_nodes, rhs_edges);
 
    List *ast_nodes = ast_rhs->nodes;
    while(ast_nodes != NULL)
    {
       GPNode *ast_node = ast_nodes->node;
-      Label label = transformLabel(ast_node->label, *node_map);
-      int node_index = addNode(rhs, ast_node->root, label);
+      Label label = transformLabel(ast_node->label, node_map);
+      int node_index = addNode(rule->rhs, ast_node->root, label);
 
-      IndexMap *map = findMapFromId(*node_map, ast_node->name);
+      IndexMap *map = findMapFromId(node_map, ast_node->name);
       if(map == NULL) 
       {
          /* If the node is not in the map, add a new map for this node with
           * left index -1, and add the node to the added nodes list. */
-         *node_map = addIndexMap(*node_map, ast_node->name, false, -1,
-                                 node_index, NULL, NULL, label);
-         *added_nodes = addItem(*added_nodes, node_index);
+         node_map = addIndexMap(node_map, ast_node->name, false, -1,
+                                node_index, NULL, NULL, label);
+         rule->added_nodes = addItem(rule->added_nodes, node_index);
       }
       else
       {
@@ -257,21 +266,18 @@ Graph *scanRHSNodes(GPGraph *ast_rhs, List *interface, IndexMap **node_map,
                }
                copyLabel(&label, new_label);
             }
-            *nodes = addPreservedItem(*nodes, map->left_index, ast_node->root, new_label);
+            rule->preserved_nodes = addPreservedItem(rule->preserved_nodes, map->left_index,
+                                                     ast_node->root, new_label);
          }
-         else *added_nodes = addItem(*added_nodes, node_index);
+         else rule->added_nodes = addItem(rule->added_nodes, node_index);
          map->right_index = node_index;
       }
       ast_nodes = ast_nodes->next;   
    }
-   return rhs;
 }
 
-NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface, 
-                          IndexMap *node_map, IndexMap **edge_map,
-                          PreservedItemList **edges)
+void scanRHSEdges(Rule *rule, GPGraph *ast_rhs, List *interface)
 {
-   NewEdgeList *added_edges = NULL;
    List *ast_edges = ast_rhs->edges;
    while(ast_edges != NULL)
    {
@@ -287,7 +293,7 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
                 "\n", source_id);
          exit(1);
       }
-      Node *source = getNode(rhs, source_map->right_index);
+      Node *source = getNode(rule->rhs, source_map->right_index);
 
       IndexMap *target_map = findMapFromId(node_map, target_id);
       if(target_map == NULL)
@@ -296,10 +302,10 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
                   "map. \n", target_id);
          exit(1);
       }
-      Node *target = getNode(rhs, target_map->right_index);
+      Node *target = getNode(rule->rhs, target_map->right_index);
 
       Label label = transformLabel(ast_edge->label, NULL);
-      int edge_index = addEdge(rhs, ast_edge->bidirectional, label, 
+      int edge_index = addEdge(rule->rhs, ast_edge->bidirectional, label, 
                                source->index, target->index);
       /* Flags to signify whether the source and target nodes exist in the
        * interface. This is used to create the NewEdge structure with the
@@ -333,16 +339,16 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
       {
          /* Search in the edge map for an edge whose source and target 
           * correspond with that of the current edge. */
-         IndexMap *map = findMapFromSrcTgt(*edge_map, source_id, target_id);
+         IndexMap *map = findMapFromSrcTgt(edge_map, source_id, target_id);
          if(map == NULL && ast_edge->bidirectional)
-            map = findMapFromSrcTgt(*edge_map, target_id, source_id);
+            map = findMapFromSrcTgt(edge_map, target_id, source_id);
          if(map == NULL)
             /* No such map exists, thus the edge is added by the rule. Both
              * source and target come from the LHS because they are both in
              * the interface. */
-            added_edges = 
-                addNewEdge(added_edges, edge_index, 'l', source_map->left_index,
-                          'l', target_map->left_index);
+            rule->added_edges = addNewEdge(rule->added_edges, edge_index, 'l',
+                                           source_map->left_index, 'l', 
+                                           target_map->left_index);
          else 
          {
             /* A map has been found, therefore the edge is preserved by the
@@ -358,10 +364,11 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
                }
                copyLabel(&label, new_label);
             }
-            *edges = addPreservedItem(*edges, map->left_index, false, new_label);
+            rule->preserved_edges = addPreservedItem(rule->preserved_edges, map->left_index,
+                                                     false, new_label);
             /* The map is removed to ensure that a parallel RHS-edge is not
              * associated with this edge. */
-            *edge_map = removeMap(*edge_map, map);     
+            edge_map = removeMap(edge_map, map);     
          }
       }
       else
@@ -369,25 +376,79 @@ NewEdgeList *scanRHSEdges(GPGraph *ast_rhs, Graph *rhs, List *interface,
          /* At most one of interface_source and interface_target is true. */
          if(interface_source)
             /* The source node is preserved and the target is created. */
-            added_edges = addNewEdge(added_edges, edge_index, 
-                                     'l', source_map->left_index,
-                                     'r', target->index);
+            rule->added_edges = addNewEdge(rule->added_edges, edge_index, 'l',
+                                           source_map->left_index, 'r', target->index);
          else
          {
             if(interface_target)
             /* The target node is preserved and the source is created. */
-               added_edges = addNewEdge(added_edges, edge_index, 
-                                        'r', source->index,
-                                        'l', target_map->left_index);
+               rule->added_edges = addNewEdge(rule->added_edges, edge_index, 'r', 
+                                              source->index, 'l', target_map->left_index);
             else 
                /* Both the source and the target are created. */
-               added_edges = addNewEdge(added_edges, edge_index, 'r', 
-                                        source->index, 'r', target->index);
+               rule->added_edges = addNewEdge(rule->added_edges, edge_index, 'r', 
+                                              source->index, 'r', target->index);
          }
       }
       ast_edges = ast_edges->next;   
    }
-   return added_edges;
+}
+
+void scanRHSAtom(Rule *rule, Atom atom)
+{
+   switch(atom.type)
+   {
+      case VARIABLE:
+      case LENGTH:
+      {
+           VariableList *variables = rule->variables;
+           while(variables != NULL)
+           {
+              if(!strcmp(atom.variable.name, variables->variable))
+              {
+                 variables->used_by_rule = true;
+                 break;
+              }
+              variables = variables->next;
+           }
+           break;
+      }
+
+      case INDEGREE:
+      {
+           PreservedItemList *list = queryPItemList(rule->preserved_nodes, atom.node_id);
+           if(list == NULL)
+              print_to_log("Error (scanRHSLabel): Argument of indegree operator %d"
+                           "not in preserved nodes list.\n", atom.node_id);
+           else list->indegree_argument = true;
+           break;
+      }
+
+      case OUTDEGREE:
+      {
+           PreservedItemList *list = queryPItemList(rule->preserved_nodes, atom.node_id);
+           if(list == NULL)
+              print_to_log("Error (scanRHSLabel): Argument of outdegree operator %d"
+                           "not in preserved nodes list.\n", atom.node_id);
+           else list->outdegree_argument = true;
+           break;
+      }
+
+      case NEG:
+           scanRHSAtom(rule, *(atom.neg_exp));
+           break;
+
+      case ADD:
+      case SUBTRACT:
+      case MULTIPLY:
+      case DIVIDE:
+      case CONCAT:
+           scanRHSAtom(rule, *(atom.bin_op.left_exp));
+           scanRHSAtom(rule, *(atom.bin_op.right_exp));
+           break;
+
+      default: break;
+   }
 }
 
 Label transformLabel(GPLabel *ast_label, IndexMap *node_map)

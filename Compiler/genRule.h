@@ -154,11 +154,22 @@ void generateEdgeMatchResultCode(int index, SearchOp *next_op, int indent);
 /* Writes a call to a matching function according to the passed searchplan operation. */
 void emitNextMatcherCall(SearchOp* next_operation, int indent);
 
-/* Emits the function apply_<rule_name> that makes the necessary changes to
- * the host graph according to the rule and morphism. apply_<rule_name>
- * takes a morphism and the host graph as arguments. In the special cases
- * that either the LHS or RHS is the empty graph, less code needs to be 
- * generated to apply the rule. */
-void generateApplicationCode(Rule *rule, bool empty_lhs, bool empty_rhs);
+/* The three functions below write the function apply_<rule_name> that makes the 
+ * necessary changes to the host graph according to the rule and morphism. 
+ *
+ * generateRemoveLHSCode is called when the RHS is the empty graph. The generated
+ * function uses the morphism to remove the image of the LHS from the host graph.
+ *
+ * generateAddRHSCode is called when the LHS is the empty graph. The generated
+ * function does not take the morphism as an argument, as that is not needed to
+ * add the RHS to the host graph.
+ *
+ * generateApplicationCode is called when both the LHS and the RHS are not the 
+ * empty graph. It generates full rule application code, including the evaluation
+ * of RHS labels, supported by the RHS label generation functions in the genLabel
+ * module. */ 
+void generateRemoveLHSCode(string rule_name);
+void generateAddRHSCode(Rule *rule);
+void generateApplicationCode(Rule *rule);
 
 #endif /* INC_GEN_RULE_H */
