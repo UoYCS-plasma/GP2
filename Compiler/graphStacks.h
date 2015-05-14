@@ -15,7 +15,7 @@
 #ifndef INC_GRAPH_STACKS_H
 #define INC_GRAPH_STACKS_H
 
-#define GRAPH_STACK_SIZE 8
+#define GRAPH_STACK_SIZE 4
 #define GRAPH_CHANGE_STACK_SIZE 32
 
 #include "error.h"

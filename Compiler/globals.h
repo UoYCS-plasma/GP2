@@ -32,11 +32,15 @@
 #define PTF printToFile
 #define PTFI printToFileIndented
   
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h> 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 typedef char* string;
 

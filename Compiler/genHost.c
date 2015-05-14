@@ -2,13 +2,34 @@
 
 void generateHostGraphCode(GPGraph *ast_host_graph)
 {
+   /* UNIX-dependent code. */
+   DIR *dir = opendir("runtime/host");
+   /* Opendir succeeded: directory exists. */
+   if(dir != NULL) closedir(dir);
+   /* Directory does not exist. Make it! */
+   else if(errno == ENOENT)
+   {
+      int result = mkdir("runtime/host", 0755);
+      if(result == -1)
+      {
+         print_to_log("Error: mkdir failure.\n");
+         exit(1);
+      }
+   }
+   /* Opendir failed for another reason. */
+   else
+   {
+      print_to_log("Error: opendir failure.\n");
+      exit(1);
+   }
+
    /* The host header contains the declaration of both the host graph and 
     * any functions that add a batch of nodes or edges to the host graph in
     * case of the host graph being sufficiently large. */
    FILE *host_file = fopen("runtime/host/host.h", "w");
    if(host_file == NULL) { 
-     perror("runtime/host/host.h");
-     exit(1);
+      perror("runtime/host/host.h");
+      exit(1);
    }  
    fprintf(host_file, "#ifndef INC_HOST_H\n");
    fprintf(host_file, "#define INC_HOST_H\n\n");
@@ -18,13 +39,13 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
     * code to gather host graph metrics for dynamic matching strategies. */
    FILE *header = fopen("runtime/buildHost.h", "w");
    if(header == NULL) { 
-     perror("init_runtime.h");
-     exit(1);
+      perror("init_runtime.h");
+      exit(1);
    } 
    FILE *file = fopen("runtime/buildHost.c", "w");
    if(file == NULL) { 
-     perror("init_runtime.c");
-     exit(1);
+      perror("init_runtime.c");
+      exit(1);
    }
    PTH("#include \"../graph.h\"\n"
        "#include \"host/host.h\"\n"

@@ -27,7 +27,7 @@ bool analyseProgram(List *gp_program, bool debug, string program_name)
      g_hash_table_foreach(symbol_table, freeSymbolList, NULL);
      g_hash_table_destroy(symbol_table); 
    }
-   return !abort;
+   return abort;
 }
 
 bool declarationScan(List *ast, string scope)

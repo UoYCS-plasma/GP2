@@ -10,6 +10,12 @@ void copyGraph(Graph *graph)
       print_to_log("Error: copyGraph called with a full graph stack.\n");
       return;
    }
+   if(graph_stack == NULL) graph_stack = calloc(GRAPH_STACK_SIZE, sizeof(Graph*));
+   if(graph_stack == NULL)
+   {
+      print_to_log("Error (copyGraph): malloc failure.\n");
+      exit(1);
+   }
    Graph *graph_copy = newGraph(graph->node_pool_size, graph->edge_pool_size); 
 
    /* The node array, edge array, free node slots array, free edge slots array,
@@ -125,7 +131,6 @@ void copyGraph(Graph *graph)
          copyLabel(&(original_edge->label), &(edge->label));
       }
    }  
-   if(graph_stack == NULL) graph_stack = calloc(GRAPH_STACK_SIZE, sizeof(Graph*));
    graph_stack[graph_stack_index++] = graph_copy;
 }
 
