@@ -4,39 +4,25 @@
   Graph Module
   ============
                              
-  An API for GP2 graphs. Defines structures for graphs, nodes and edges.  
+  An API for GP2 graphs. Defines structures for graphs, nodes, edges, label
+  class tables and functions that operate on these structures.
 
 /////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_GRAPH_H
 #define INC_GRAPH_H
 
-#define MAX_INCIDENT_EDGES 16
-
 #include "error.h"
 #include "globals.h"
 #include "label.h"
 
-typedef struct LabelClassTable {
-   int pool_size;
-   int index;
-   int *items;
-} LabelClassTable;
+/* There are 7 marks, but the 'any' mark does not occur in host graphs. */
+#define NUMBER_OF_MARKS 6 
+#define NUMBER_OF_CLASSES 7
 
-/* Responsible for allocating heap memory to a LabelClassTable. 
- * Only called by addNode, relabelNode, addEdge and relabelEdge. 
- * initial_size is either the graph's node pool size or the graph's edge pool 
- * size. initial_size / 4 items are allocated to the table's items array
- * for the first allocation. */
-int addLabelClassIndex(LabelClassTable *table, int index, int initial_size);
-/* Only called by removeNode and removeEdge. */
-void removeLabelClassIndex(LabelClassTable *table, int index);
-
-typedef struct RootNodes {
-   int index;
-   struct RootNodes *next;
-} RootNodes;
-
+/* ================================
+ * Graph Data Structure + Functions
+ * ================================ */
 typedef struct Graph 
 {
    struct Node *nodes;
@@ -61,42 +47,48 @@ typedef struct Graph
     * number_of_nodes + free_node_index = node_index. 
     * number_of_edges + free_edge_index = edge_index. */
    int number_of_nodes, number_of_edges;
-
-   /* Arrays of LabelClassTable indexed by label class. 
-    * Each LabelClassTable is a dynamically-allocated array of node or edge
-    * indices. Initially these arrays are NULL; memory is allocated on demand
-    * since not all label classes are likely to be represented in a single
-    * GP 2 program. */
-   struct LabelClassTable nodes_by_label[LABEL_CLASSES];
-   struct LabelClassTable edges_by_label[LABEL_CLASSES];
-
+   
    /* Root nodes referenced in a linked list for fast access. */
    struct RootNodes *root_nodes;
+
+   /* Arrays of pointers to LabelClassTables.
+    * These arrays are only allocated for host graphs. Functions that access
+    * these arrays must check if these pointers are NULL before accessing. */
+   struct LabelClassTable **node_classes, **edge_classes;
 } Graph;
 
-void addRootNode(Graph *graph, int index);
-void removeRootNode(Graph *graph, int index);
+/* The arguments nodes and edges are the initial sizes of the node array and the
+ * edge array respectively. */
+Graph *newGraph(int nodes, int edges);
 
+/* Nodes and edges are created and added to the graph with the addNode and addEdge
+ * functions. They take the necessary construction data as their arguments and 
+ * return their index in the graph. */
+int addNode(Graph *graph, bool root, Label label);
+void addRootNode(Graph *graph, int index);
+int addEdge(Graph *graph, bool bidirectional, Label label, int source_index, 
+            int target_index);
+void removeNode(Graph *graph, int index);
+void removeRootNode(Graph *graph, int index);
+void removeEdge(Graph *graph, int index);
+void relabelNode(Graph *graph, int index, Label new_label);
+void changeRoot(Graph *graph, int index);
+void relabelEdge(Graph *graph, int index, Label new_label);
+void changeBidirectional(Graph *graph, int index);
+
+/* =========================
+ * Node and Edge Definitions
+ * ========================= */
 typedef struct Node {
    int index;
    bool root;
-   LabelClass label_class;
-   Label *label;
+   Label label;
 
-   /* Fixed-size arrays for the node's outgoing and incoming edges. */
-   int out_edges[MAX_INCIDENT_EDGES];
-   int in_edges[MAX_INCIDENT_EDGES];
+   /* Dynamic integer arrays for the node's outgoing and incoming edges. */
+   int *out_edges, out_index, *in_edges, in_index;
    
-   /* Pointers to extra incident edge index storage in case the array's
-    * bounds are exceeded. Initially, these are NULL pointers. */
-   int *extra_out_edges, *extra_in_edges;
-   /* The size of the extra_out_edges and extra_in_edges arrays respectively. */
+   /* The size of the out_edges and in_edges arrays respectively. */
    int out_pool_size, in_pool_size;
-
-   /* If extra edge arrays have been allocated, you must subtract
-    * MAX_INCIDENT_EDGES from this number to get the correct index into the
-    * extra edge array. */
-   int out_index, in_index;
 
    /* Bidirectional edges, and hence bidegrees, exist only in rule graphs.
     * A bidirectional edge is internally represented as either a single outedge
@@ -120,11 +112,15 @@ typedef struct Node {
 
 extern struct Node dummy_node;
 
+typedef struct RootNodes {
+   int index;
+   struct RootNodes *next;
+} RootNodes;
+
 typedef struct Edge {
    int index;
    bool bidirectional;
-   LabelClass label_class;
-   Label *label;
+   Label label;
    int source, target;
    /* The index of the edge in its label class table. Used to quickly remove
     * the entry from the potentially large table. */
@@ -133,44 +129,53 @@ typedef struct Edge {
 
 extern struct Edge dummy_edge;
 
-/* The arguments nodes and edges are the initial sizes of the node array and the
- * edge array respectively. */
-Graph *newGraph(int nodes, int edges);
+/* ========================================
+ * Label Class Table Definition + Functions
+ * ========================================
+ * An array of node/edge indices with a certain mark and label class.
+ * <items> is a dynamic array storing these indices.
+ * <pool_size> is the number of indices allocated to the items array. Its
+ * initial value is 4, which is doubled on reallocations.
+ * <index> is the smallest unassigned index. */
+typedef struct LabelClassTable {
+   int pool_size;
+   int index;
+   int *items;
+} LabelClassTable;
 
-/* Nodes and edges are created and added to the graph with the addNode and addEdge
- * functions. They take the necessary construction data as their arguments and 
- * return their index in the graph. 
- *
- * To assign the empty label to a node or edge, pass NULL as the label 
- * argument. This also applies to the relabelling functions. */
-int addNode(Graph *graph, bool root, Label *label);
-int addEdge(Graph *graph, bool bidirectional, Label *label, int source_index, 
-            int target_index);
-void removeNode(Graph *graph, int index);
-void removeEdge(Graph *graph, int index);
+/* Allocates an array of MARKS * LABEL_CLASSES pointers. The intention is for
+ * this to act as a 2-dimensional array whose elements can be indexed by 
+ * pointer arithmetic. */
+LabelClassTable **makeLabelClassTable(void);
 
-/* The relabel functions take boolean arguments to control if the label is 
- * updated and if the boolean flag of the item should be changed. For nodes, 
- * this is the root flag. For edges, this is the bidirectional flag. */
-void relabelNode(Graph *graph, int index, Label *new_label, bool change_root); 
-void relabelEdge(Graph *graph, int index, Label *new_label, 
-                 bool change_bidirectional);
+/* Argument 1: The graph.
+ * Argument 2: Flag to inform the function of which LabelClassTable to access.
+ * Argument 3: The label of the item to be added. Used to obtain the mark and
+ *             label class which are the array indices.
+ * Argument 4: For addLabelClassIndex, the index of the node or edge.
+ *             For removeLabelClassIndex, the index of the node or edge in its
+ *             table (node/edge->label_table_index). */
+void addLabelClassIndex(Graph *graph, bool node, Label label, int index);
+void removeLabelClassIndex(Graph *graph, bool node, Label label, int item_index);
 
+/* ========================
+ * Graph Querying Functions
+ * ======================== */
 Node *getNode(Graph *graph, int index);
 Edge *getEdge(Graph *graph, int index);
 RootNodes *getRootNodeList(Graph *graph);
-LabelClassTable getNodesByLabel(Graph *graph, LabelClass label_class);
-LabelClassTable getEdgesByLabel(Graph *graph, LabelClass label_class);
 /* The following four functions return indices. To get pointers to the items,
  * pass the return value to getNode or getEdge with the appropriate graph. */
 int getInEdge(Node *node, int index);
 int getOutEdge(Node *node, int index);
 int getSource(Edge *edge);
 int getTarget(Edge *edge);
-Label *getNodeLabel(Node *node);
-Label *getEdgeLabel(Edge *edge);
-int getIndegree(Node *node);
-int getOutdegree(Node *node);
+Label getNodeLabel(Graph *graph, int index);
+Label getEdgeLabel(Graph *graph, int index); 
+int getIndegree(Graph *graph, int index);
+int getOutdegree(Graph *graph, int index);
+LabelClassTable *getNodesByLabel(Graph *graph, Label label);
+LabelClassTable *getEdgesByLabel(Graph *graph, Label label);
 
 void printGraph(Graph *graph, FILE *file);
 void freeGraph(Graph *graph);

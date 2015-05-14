@@ -1,4 +1,6 @@
-ROBJECTS := $(patsubst %.c, %.o, $(wildcard *.c))
+# Runtime objects.
+ROBJECTS := $(patsubst %.c, %.o, $(wildcard *.c)) $(patsubst %.c, %.o, $(wildcard host/*.c)) 
+# Library objects.
 LOBJECTS = ../debug.o ../error.o ../label.o ../graph.o ../graphStacks.o ../rule.o 
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
@@ -13,7 +15,8 @@ default:	$(OBJECTS)
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<
 
-# Delete all files except Makefile, match.c and match.h. 
+# Delete all files except Makefile, labelMatch*, and morphism*. 
 clean:		
-		ls | grep -v 'Makefile\|match' | xargs rm
-		rm match.o
+		ls | grep -v 'host\|Makefile\|labelMatch\|morphism' | xargs rm
+		rm host/*
+		rm morphism.o

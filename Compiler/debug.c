@@ -5,8 +5,9 @@
  *     if node_array[i].index is -1, then i is in the free node slot array.
  * (2) The number of non-dummy nodes in the node array is equal to 
  *     graph->number_of_nodes.
- * (3) The index of a node with label class L is in the nodes_by_label table 
- *     entry indexed by L.
+ * (3) The index of a node with mark M and label class L is in the (M, L)th
+ *     table of the node_classes 2D array. Moreover, the node's index in that
+ *     table is node->label_table_index.
  * (4) The number of valid edge indices in the outedges array is equal to 
  *     node.outdegree.
  * (5) The number of valid edge indices in the inedges array is equal to 
@@ -15,8 +16,9 @@
  *     if edge_array[i].index is -1, then i is in the free edge slot array.
  * (7) The number of non-dummy edges in the edge array is equal to 
  *     graph->number_of_edges.
- * (8) The index of an edge with label class L is in the edges_by_label table 
- *     entry indexed by L.
+ * (8) The index of an edge with mark M and label class L is in the (M, L)th
+ *     table of the edge_classes 2D array. Moreover, the edge's index in that
+ *     table is edge->label_table_index.
  * (9) Source and target consistency: For all edges E, if S is E's source and
  *     T is E's target, then E is in S's outedge list and E is in T's inedge list. 
  */
@@ -32,8 +34,8 @@ bool validGraph(Graph *graph)
       return true;
    }
 
-   bool valid_graph = true, slot_found = false, item_found = false;
-   int graph_index, node_index, edge_index, node_count = 0, edge_count = 0;
+   bool valid_graph = true, slot_found = false;
+   int graph_index, node_index, node_count = 0, edge_count = 0;
    
    for(graph_index = 0; graph_index < graph->node_index; graph_index++)    
    {
@@ -63,7 +65,6 @@ bool validGraph(Graph *graph)
       {
          /* Keep a count of the number of nodes in the array. */
          node_count++;
-
          for(node_index = 0; node_index < node->out_index; node_index++)
          {
             Edge *node_edge = getEdge(graph, getOutEdge(node, node_index));
@@ -97,25 +98,27 @@ bool validGraph(Graph *graph)
          edge_count = 0;
 
          /* Invariant (3) */
-         LabelClassTable node_list = getNodesByLabel(graph, node->label_class);
-         if(node_list.items != NULL)
+         if(node->label_table_index > -1)
          {
-            for(node_index = 0; node_index < node_list.index; node_index++)
+            LabelClassTable *table = getNodesByLabel(graph, node->label);
+            LabelClass label_class = getLabelClass(node->label);
+            if(table == NULL)
             {
-               if(node_list.items[node_index] == node->index)
-               {
-                  item_found = true;
-                  break;
-               }
+               print_to_console("(3) Node %d's label class table (Mark %d, LC %d) "
+                                "is empty!\n", node->index, node->label.mark, label_class);   
+               valid_graph = false;
             }
+            else
+            {
+               if(table->items[node->label_table_index] != node->index)
+               {
+                  print_to_console("(3) Node %d's label table index is inconsistent "
+                                   "with its label class table (Mark %d, LC %d).\n",
+                                   node->index, node->label.mark, label_class);   
+                  valid_graph = false;
+               }
+            } 
          }
-         if(!item_found)
-         {
-            print_to_console("(3) Node %d does not occcur in the list of "
-                             "its label class (%d).\n", 
-                             graph_index, node->label_class);   
-            valid_graph = false;
-         }   
       }
    }
    /* Invariant (2) */
@@ -161,45 +164,22 @@ bool validGraph(Graph *graph)
          bool source_found = false, target_found = false;
          /* Search for the edge in the out_edges array of its source and the
           * in_edges array of its target. */
-         for(counter = 0; counter < MAX_INCIDENT_EDGES; counter++)
+         for(counter = 0; counter < source->out_index; counter++)
          {
             if(source->out_edges[counter] == edge->index)
             {
                source_found = true;
-               if(target_found) break;
+               break;
             }
+         }
+         for(counter = 0; counter < target->in_index; counter++)
+         {
             if(target->in_edges[counter] == edge->index)
             {
                target_found = true;
-               if(source_found) break;
+               break;
             }
          }
-         /* Check the extra edge arrays if necessary. */
-         if(!source_found && source->extra_out_edges != NULL)
-         { 
-            for(counter = 0; counter < source->out_index - MAX_INCIDENT_EDGES;
-                counter++)
-            {
-               if(source->extra_out_edges[counter] == edge->index)
-               {
-                  source_found = true;
-                  break;
-               }
-            }
-         }
-         if(!target_found && target->extra_in_edges != NULL)
-         { 
-            for(counter = 0; counter < target->in_index - MAX_INCIDENT_EDGES;
-                counter++)
-            {
-               if(target->extra_in_edges[counter] == edge->index)
-               {
-                  target_found = true;
-                  break;
-               }
-            }
-         }
-
          /* Invariant (9) */
          if(!source_found)
          {
@@ -215,25 +195,27 @@ bool validGraph(Graph *graph)
          }   
 
          /* Invariant (8) */
-         LabelClassTable edge_list = getEdgesByLabel(graph, edge->label_class);
-         if(edge_list.items != NULL)
+         if(edge->label_table_index > -1)
          {
-            for(edge_index = 0; edge_index < edge_list.index; edge_index++)
+            LabelClassTable *table = getEdgesByLabel(graph, edge->label);
+            LabelClass label_class = getLabelClass(edge->label);
+            if(table == NULL)
             {
-               if(edge_list.items[edge_index] == edge->index)
-               {
-                  item_found = true;
-                  break;
-               }
+               print_to_console("(3) Edge %d's label class table (Mark %d, LC %d) "
+                                "is empty!\n", edge->index, edge->label.mark, label_class);   
+               valid_graph = false;
             }
+            else
+            {
+               if(table->items[edge->label_table_index] != edge->index)
+               {
+                  print_to_console("(3) Edge %d's label table index is inconsistent "
+                                   "with its label class table (Mark %d, LC %d).\n",
+                                   edge->index, edge->label.mark, label_class);   
+                  valid_graph = false;
+               }
+            } 
          }
-         if(!item_found)
-         {
-            print_to_console("(8) Edge %d does not occcur in the list of "
-                             "its label class (%d).\n", 
-                             graph_index, edge->label_class);   
-            valid_graph = false;
-         }   
       }
    }
    /* Invariant (7) */
@@ -253,115 +235,142 @@ bool validGraph(Graph *graph)
 
 void printVerboseRule(Rule *rule, FILE *file)
 {
-   fprintf(file, "Rule %s\n\n", rule->name);
-   fprintf(file, "LHS\n===\n");
+   PTF("Rule %s\n\n", rule->name);
+   PTF("LHS\n===\n");
    if(rule->lhs) printVerboseGraph(rule->lhs, file);
-   else fprintf(file, "Empty Graph\n\n");
+   else PTF("Empty Graph\n\n");
 
-   fprintf(file, "RHS\n===\n");
+   PTF("RHS\n===\n");
    if(rule->rhs) printVerboseGraph(rule->rhs, file);
-   else fprintf(file, "Empty Graph\n\n");
+   else PTF("Empty Graph\n\n");
 
    PreservedItemList *item = rule->preserved_nodes;
-   fprintf(file, "Preserved nodes: ");
+   PTF("Preserved nodes: ");
    while(item != NULL)
    {
-      fprintf(file, "%d", item->left_index);
-      if(item->next != NULL) fprintf(file, ", ");
+      PTF("%d", item->left_index);
+      if(item->next != NULL) PTF(", ");
       item = item->next;
    }
 
    item = rule->preserved_edges;
-   fprintf(file, "\nPreserved edges: ");
+   PTF("\nPreserved edges: ");
    while(item != NULL)
    {
-      fprintf(file, "%d", item->left_index);
-      if(item->next != NULL) fprintf(file, ", ");
+      PTF("%d", item->left_index);
+      if(item->next != NULL) PTF(", ");
       item = item->next;
    }
 
    ItemList *iterator = rule->added_nodes;
-   fprintf(file, "\nAdded nodes: ");
+   PTF("\nAdded nodes: ");
    while(iterator != NULL)
    {
-      fprintf(file, "%d ", iterator->index);
+      PTF("%d ", iterator->index);
       iterator = iterator->next;
    }
    
    iterator = rule->deleted_nodes;
-   fprintf(file, "\nDeleted nodes: ");
+   PTF("\nDeleted nodes: ");
    while(iterator != NULL)
    {
-      fprintf(file, "%d ", iterator->index);
+      PTF("%d ", iterator->index);
       iterator = iterator->next;
    }
 
-   fprintf(file, "\nAdded edges:\n");
+   PTF("\nAdded edges:\n");
 
    NewEdgeList *edge = rule->added_edges;
    while(edge != NULL)
    {
-      fprintf(file, "Edge %d. Source %c-%d. Target %c-%d.\n",
+      PTF("Edge %d. Source %c-%d. Target %c-%d.\n",
             edge->edge_index, edge->source_location, edge->source_index,
             edge->target_location, edge->target_index);
       edge = edge->next;
    }
-   fprintf(file, "\n");
+   PTF("\n");
 }
 
 
 void printVerboseGraph(Graph *graph, FILE *file) 
 {
     int index;
-    fprintf(file, "Nodes\n=====\n");
+    PTF("Nodes\n=====\n");
     for(index = 0; index < graph->node_index; index++)
     {
        Node *node = getNode(graph, index);
        if(node->index >= 0) printVerboseNode(node, file);
     }    
  
-    fprintf(file, "Edges\n=====\n");
+    PTF("Edges\n=====\n");
     for(index = 0; index < graph->edge_index; index++)
     {
        Edge *edge = getEdge(graph, index);
        if(edge->index >= 0) printVerboseEdge(edge, file);
     } 
-    fprintf(file, "\n");
+    PTF("\n");
 
-    fprintf(file, "Root Node List\n==============\n");
+    PTF("Root Node List\n==============\n");
     RootNodes *iterator = graph->root_nodes;
     while(iterator != NULL)
     {
-       if(iterator->next == NULL) fprintf(file, "%d\n", iterator->index);
-       else fprintf(file, "%d, ", iterator->index);
+       if(iterator->next == NULL) PTF("%d\n", iterator->index);
+       else PTF("%d, ", iterator->index);
        iterator = iterator->next;
     }
 }
 
 void printVerboseNode(Node *node, FILE *file)
 {
-    fprintf(file, "Index: %d", node->index);
-    if(node->root) fprintf(file, " (Root)");
-    fprintf(file, "\n");
-    fprintf(file, "Label Class: %d\n", node->label_class);
-    fprintf(file, "Label: ");
-    printGP2List(node->label->list, file);
-    fprintf(file, "\n");
-    printMark(node->label->mark, true, file);
-    fprintf(file, "Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
-           node->indegree, node->outdegree, node->bidegree);
+    PTF("Index: %d", node->index);
+    if(node->root) PTF(" (Root)");
+    PTF("\n");
+    PTF("Label: ");
+    printLabel(node->label, file);
+    PTF("\n");
+    PTF("Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
+        node->indegree, node->outdegree, node->bidegree);
+    int index;
+    PTF("Inedges: ");
+    for(index = 0; index < node->in_pool_size; index++)
+    {
+       int in_edge = node->in_edges[index];
+       if(in_edge >= 0) 
+       {
+          if(index == node->in_pool_size - 1) PTF("%d\n", in_edge);
+          else 
+          {
+             PTF("%d, ", in_edge);
+             /* 20 node indices per line. */
+             if(index > 0 && index % 20 == 0) PTF("\n         ");
+          }
+       }
+    }
+    PTF("Outedges: ");
+    for(index = 0; index < node->out_pool_size; index++)
+    {
+       int out_edge = node->out_edges[index];
+       if(out_edge >= 0) 
+       {
+          if(index == node->out_pool_size - 1) PTF("%d\n", out_edge);
+          else 
+          {
+             PTF("%d, ", out_edge);
+             /* 20 edge indices per line. */
+             if(index > 0 && index % 20 == 0) PTF("\n          ");
+          }
+       }
+    }
 }
 
 void printVerboseEdge(Edge *edge, FILE *file) 
 {
-    fprintf(file, "Index: %d", edge->index);
-    if(edge->bidirectional) fprintf(file, " (Bidirectional)");
-    fprintf(file, "\n");
-    fprintf(file, "Label Class: %d\n", edge->label_class);
-    fprintf(file, "Label: ");
-    printGP2List(edge->label->list, file);
-    fprintf(file, "\n");
-    printMark(edge->label->mark, true, file);
-    fprintf(file, "Source: %d. Target: %d\n\n", edge->source, edge->target);
+    PTF("Index: %d", edge->index);
+    if(edge->bidirectional) PTF(" (Bidirectional)");
+    PTF("\n");
+    PTF("Label: ");
+    printLabel(edge->label, file);
+    PTF("\n");
+    PTF("Source: %d. Target: %d\n\n", edge->source, edge->target);
 }
 

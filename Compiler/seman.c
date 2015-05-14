@@ -2,7 +2,7 @@
 
 GHashTable *symbol_table = NULL; 
 
-bool analyseProgram(List *gp_program, bool debug, string prefix)
+bool analyseProgram(List *gp_program, bool debug, string program_name)
 {
   /* Create a new GHashTable with strings as keys.
    * g_str_hash is glib's default string hashing function.
@@ -10,57 +10,37 @@ bool analyseProgram(List *gp_program, bool debug, string prefix)
    * lookups.
    * free is the function called by glib to free keys during hash table
    * insertions and in the g_hash_table_destroy function.
-   * The fourth argument is a function to free values. I do this explicitly
-   * with the function freeSymbolList defined above. */
-   symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL);  
-
-   if(debug)
-   {
-      int length = strlen(prefix) + 2;
-      char file_name[length]; 
-      strcpy(file_name, prefix);
-      strcat(file_name,"_1"); 
-      printDotAST(gp_program, file_name);
-   }
+   * The fourth argument is a function to free. I do this explicitly
+   * with the function freeSymbolList defined in the symbol module. */
+   symbol_table = g_hash_table_new_full(g_str_hash, g_str_equal, free, NULL); 
 
    bool abort = declarationScan(gp_program, "Main");
    if(abort) return false;
-
    abort = semanticCheck(gp_program, "Main");
-   if(debug)
+   if(debug) 
    {
-      int length = strlen(prefix) + 2;
-      char file_name[length]; 
-      strcpy(file_name, prefix);
-      strcat(file_name,"_2"); 
-      printDotAST(gp_program, file_name);
-      printSymbolTable(symbol_table, prefix);
+      printDotAST(gp_program, program_name, "_1");
+      printSymbolTable(symbol_table, program_name);
    }
-
-   /* The call to g_hash_table_foreach frees all the hash table values,
-    * namely linked lists of struct Symbols, with the function freeSymbolList 
-    * defined in this file.
-    * g_hash_table_destroy uses the key-freeing function passed to 
-    * g_hash_table_full above to free the dynamically allocated keys.
-    */
-   if(symbol_table) {
+   if(symbol_table) 
+   {
      g_hash_table_foreach(symbol_table, freeSymbolList, NULL);
      g_hash_table_destroy(symbol_table); 
    }
    return !abort;
 }
 
-bool declarationScan(List *ast, string const scope)
+bool declarationScan(List *ast, string scope)
 {
-   /* These variables are declared static so that their values are unchanged
+   /* These variables are declared static so that their  are unchanged
     * on recursive calls. */
    static int main_count = 0;
    static bool name_clash = false;
 
-   GSList *symbol_list = NULL;
+   SymbolList *symbol_list = NULL;
    while(ast != NULL)
    {     
-      switch(ast->value.declaration->decl_type) 
+      switch(ast->declaration->decl_type) 
       {
          case MAIN_DECLARATION:
               main_count += 1;
@@ -68,15 +48,13 @@ bool declarationScan(List *ast, string const scope)
   
          case PROCEDURE_DECLARATION:
          {
-              GPProcedure *procedure = ast->value.declaration->value.procedure;
+              GPProcedure *procedure = ast->declaration->procedure;
               GPProcedure *duplicate = 
                  findProcedureDeclaration(ast, procedure->name, procedure);
               if(duplicate != NULL)
               {
-                 print_to_console("Error: Procedure %s declared more " 
-                                  "than once.\n", procedure->name);
-	         print_to_log("Error: Procedure %s declared more " 
-                              "than once.\n", procedure->name);
+                 print_error("Error: Procedure %s declared more than once.\n", 
+                             procedure->name);
 	         name_clash = true;
 	      }
 	      if(procedure->local_decls) 
@@ -91,17 +69,15 @@ bool declarationScan(List *ast, string const scope)
               }
               break;
          }
-  
          case RULE_DECLARATION:
          {
-  	      string old_rule_name = ast->value.declaration->value.rule->name;
+  	      string old_rule_name = ast->declaration->rule->name;
               string rule_name = makeRuleIdentifier(old_rule_name, scope);
-              ast->value.declaration->value.rule->name = rule_name;
+              ast->declaration->rule->name = rule_name;
               free(old_rule_name);
  
               symbol_list = g_hash_table_lookup(symbol_table, rule_name);      
-
-	      GSList *iterator = symbol_list;
+	      SymbolList *iterator = symbol_list;
               bool add_rule = true;	      
 
               /* Report an error if two rules with the same name are declared
@@ -109,25 +85,13 @@ bool declarationScan(List *ast, string const scope)
                * list whose key is rule_name. */
               while(iterator != NULL)   
               {
-                 string symbol_scope = ((Symbol*)iterator->data)->scope;
-   
-                 if(((Symbol*)iterator->data)->type == RULE_S &&
-		    !strcmp(scope,symbol_scope))
+                 if(iterator->type == RULE_S && !strcmp(iterator->scope, scope))
 		 {
                     if(!strcmp(scope, "Main")) 
-                    {
-                       print_to_console("Error: Rule %s declared twice in " 
-                                        "global scope %s.\n", rule_name, scope);
-                       print_to_log("Error: Rule %s declared twice in " 
-                                    "global scope %s.\n", rule_name, scope);
-                    }
-                    else 
-                    { 
-                       print_to_console("Error: Rule %s declared twice in " 
-                                        "procedure %s.\n", rule_name, scope);
-                       print_to_log("Error: Rule %s declared twice in " 
-                                    "procedure %s.\n", rule_name, scope);
-                    }
+                         print_error("Error: Rule %s declared twice in " 
+                                     "global scope %s.\n", rule_name, scope); 
+                    else print_error("Error: Rule %s declared twice in " 
+                                     "procedure %s.\n", rule_name, scope);
 		    add_rule = false;
                     name_clash = true;
 		    /* Report the error only once for this declaration. */
@@ -135,41 +99,22 @@ bool declarationScan(List *ast, string const scope)
                  }                 
 		 iterator = iterator->next;
               }             
-
 	      if(add_rule) 
               {
-	         /* Create a symbol for the rule name */
-	         Symbol *rule_symbol = malloc(sizeof(Symbol));
- 
-	         if(rule_symbol == NULL) {
-                    print_to_log("Error (declarationScan): malloc failure.\n");
-	            exit(1);
-	         }
-	         rule_symbol->type = RULE_S;
-	         rule_symbol->scope = strdup(scope);
-	         rule_symbol->containing_rule = NULL;
-                 rule_symbol->is_var = false;
-                 rule_symbol->in_lhs = false;
-                 rule_symbol->wildcard = false;
-                 rule_symbol->bidirectional = false;
-
-                 symbol_list = g_slist_prepend(symbol_list, rule_symbol);      
-
+	         symbol_list = addSymbol(symbol_list, RULE_S, scope, NULL, false,
+                                         false, false, false); 
                  /* If rule_name is not copied here, it would be freed twice: 
-                  * once when the rule is freed, and twice when the hash table
+                  * once when the rule is freed, and again when the hash table
                   * keys are freed. */
                  string rule_name_copy = strdup(rule_name);
                  g_hash_table_replace(symbol_table, rule_name_copy, symbol_list);  
 	      }
-              else if(rule_name) free(rule_name); 
               break;
          }
-
          default: 
-             print_to_log("Error: Unexpected node type %d at AST node %d\n\n", 
-                          ast->value.declaration->decl_type, 
-		          ast->value.declaration->node_id);
-             break; 
+              print_to_log("Error: Unexpected node type %d at AST node %d\n\n", 
+                           ast->declaration->decl_type, ast->declaration->id);
+              break; 
       }     
       ast = ast->next;  	
    }
@@ -179,18 +124,31 @@ bool declarationScan(List *ast, string const scope)
    {
      if(main_count == 0) 
      {
-        print_to_console("Error: No Main procedure.\n");
-        print_to_log("Error: No Main procedure.\n");
+        print_error("Error: No Main procedure.\n");
         return false;
      }
      if(main_count > 1) 
      {
-        print_to_console("Error: More than one Main declaration.\n");
-        print_to_log("Error: More than one Main declaration.\n");
+        print_error("Error: More than one Main declaration.\n");
         return false;
      }
    }  
    return name_clash;
+}
+
+string makeRuleIdentifier(string rule_name, string scope)
+{
+   int length = strlen(rule_name) + strlen(scope) + 2;
+   char *new_rule_name = malloc(length);
+   if(new_rule_name == NULL)
+   {
+      print_to_log("Error: Memory exhausted during rule name creation.\n");
+      exit(1);
+   }
+   new_rule_name = strcpy(new_rule_name, scope);
+   new_rule_name = strcat(new_rule_name, "_");
+   new_rule_name = strcat(new_rule_name, rule_name);
+   return new_rule_name;
 }
 
 /* bidirectional_edges is a linked list of the bidirectional edges encountered
@@ -200,15 +158,15 @@ bool declarationScan(List *ast, string const scope)
  */
 BiEdgeList *bidirectional_edges = NULL; 
 
-/* The return value of semanticCheck. It is modified by many of the functions
+/* The return of semanticCheck. It is modified by many of the functions
  * called by semanticCheck, so I declare it as a static global variable. */
 static bool abort_compilation = false; 
 
-bool semanticCheck(List *declarations, string const scope)
+bool semanticCheck(List *declarations, string scope)
 {
    while(declarations) 
    {
-      GPDeclaration *current_declaration = declarations->value.declaration;
+      GPDeclaration *current_declaration = declarations->declaration;
    
       switch(current_declaration->decl_type)
       {
@@ -216,15 +174,15 @@ bool semanticCheck(List *declarations, string const scope)
 	      /* An empty main program does not comform to the grammar. The
 	       * parser should catch it and report a syntax error, but there is
 	       * no harm in checking here as well. */
-              if(current_declaration->value.main_program)
-		 commandScan(current_declaration->value.main_program,
+              if(current_declaration->main_program)
+		 commandScan(current_declaration->main_program,
                              scope, declarations, false);
 	      else print_to_log("Error: Main procedure has no program. \n");
               break;
 
          case PROCEDURE_DECLARATION: 
 	 {
-              GPProcedure *procedure = current_declaration->value.procedure;
+              GPProcedure *procedure = current_declaration->procedure;
 	      /* An empty procedure program does not comform to the grammar. The
 	       * parser should catch it and report a syntax error, but there is
 	       * no harm in checking here as well. */
@@ -236,15 +194,14 @@ bool semanticCheck(List *declarations, string const scope)
                                                    procedure->name);
               break;
 	 }    
-
          case RULE_DECLARATION:              
-              ruleScan(current_declaration->value.rule, scope);
+              ruleScan(current_declaration->rule, scope);
               break;  
 
          default: print_to_log("Error (semanticCheck): Unexpected declaration "
                                "type %d at AST node %d\n", 
                                current_declaration->decl_type,
-                               current_declaration->node_id);
+                               current_declaration->id);
               break;
       } 
    declarations = declarations->next;  
@@ -253,46 +210,30 @@ bool semanticCheck(List *declarations, string const scope)
     * end of the global declaration list. */
    if(!strcmp(scope, "Main"))
    {
-      if(bidirectional_edges) freeBiEdgeList(bidirectional_edges);
+      if(bidirectional_edges != NULL) freeBiEdgeList(bidirectional_edges);
    }
    return abort_compilation;
 }   
 
-
-void freeBiEdgeList(BiEdgeList *edge_list) 
-{
-    BiEdge bi_edge = edge_list->value;
-    if(bi_edge.scope) free(bi_edge.scope);
-    if(bi_edge.containing_rule) free(bi_edge.containing_rule);
-    if(bi_edge.source) free(bi_edge.source);
-    if(bi_edge.target) free(bi_edge.target);
-      
-    if(edge_list->next) freeBiEdgeList(edge_list->next);             
-    if(edge_list) free(edge_list);
-}
-
-
-void commandScan(GPCommand *const command, string const scope, 
-                 List *declarations, bool in_loop) 
+void commandScan(GPCommand *command, string scope, List *declarations, bool in_loop)
 {
    switch(command->command_type) 
    {
       case COMMAND_SEQUENCE: 
       {
-           command->value.commands = reverse(command->value.commands);
-           List *command_list = command->value.commands;
+           command->commands = reverse(command->commands);
+           List *command_list = command->commands;
 
            while(command_list) 
            {
-              commandScan(command_list->value.command, scope, declarations, in_loop);
+              commandScan(command_list->command, scope, declarations, in_loop);
               command_list = command_list->next;   
            }           
            break;
       }
-
       case RULE_CALL:
       {
-           string name = command->value.rule_call.rule_name;
+           string name = command->rule_call.rule_name;
            GPProcedure *procedure = NULL;
            /* If not in global scope, get a pointer to the procedure in which to
             * start search for the rule declaration. */
@@ -302,28 +243,25 @@ void commandScan(GPCommand *const command, string const scope,
            GPRule *rule = findRuleDeclaration(declarations, name, procedure);
            if(rule == NULL)
            {
-              print_to_console("Error: Rule %s called but not declared in a "
-                               "visible scope.\n", name);     
-              print_to_log("Error: Rule %s called but not declared in a "
-                           "visible scope.\n", name);
+              print_error("Error: Rule %s called but not declared in a "
+                          "visible scope.\n", name);     
               abort_compilation = true;
            }
            else
            {
               free(name);
-              command->value.rule_call.rule_name = strdup(rule->name);
-              command->value.rule_call.rule = rule;
+              command->rule_call.rule_name = strdup(rule->name);
+              command->rule_call.rule = rule;
            }
            break;
       }
-
       case RULE_SET_CALL: 
       {
-           command->value.rule_set = reverse(command->value.rule_set);
-           List *rule_list = command->value.rule_set;
+           command->rule_set = reverse(command->rule_set);
+           List *rule_list = command->rule_set;
            while(rule_list)
            {
-              string name = rule_list->value.rule_call.rule_name;
+              string name = rule_list->rule_call.rule_name;
               GPProcedure *procedure = NULL;
               /* If not in global scope, get a pointer to the procedure in 
                * which to start search for the rule declaration. */
@@ -333,61 +271,50 @@ void commandScan(GPCommand *const command, string const scope,
               GPRule *rule = findRuleDeclaration(declarations, name, procedure);
               if(rule == NULL)
               {
-                 print_to_console("Error: Rule %s called but not declared in a "
-                                  "visible scope.\n", name);     
-                 print_to_log("Error: Rule %s called but not declared in a "
-                              "visible scope.\n", name);
+                 print_error("Error: Rule %s called but not declared in a "
+                             "visible scope.\n", name);     
                  abort_compilation = true;
               }
               else
               {
                  free(name);
-                 rule_list->value.rule_call.rule_name = strdup(rule->name);
-                 rule_list->value.rule_call.rule = rule;
+                 rule_list->rule_call.rule_name = strdup(rule->name);
+                 rule_list->rule_call.rule = rule;
               }
               rule_list = rule_list->next;
            }           
            break;
       }
-
       case PROCEDURE_CALL:   
       {
-           string name = command->value.proc_call.proc_name;
+           string name = command->proc_call.proc_name;
            GPProcedure *procedure = findProcedureDeclaration(declarations, name, NULL);
            if(procedure == NULL)
            {
-              print_to_console("Error: Procedure %s called but not declared.\n", name);    
-              print_to_log("Error: Procedure %s called but not declared.\n", name);
+              print_error("Error: Procedure %s called but not declared.\n", name);    
               abort_compilation = true;
            }
            else 
            {
-              command->value.proc_call.procedure = procedure;
+              command->proc_call.procedure = procedure;
               commandScan(procedure->commands, name, declarations, in_loop);
            }
            break;
       }
-
       case IF_STATEMENT:
       case TRY_STATEMENT:
-           commandScan(command->value.cond_branch.condition, 
-                       scope, declarations, false);
-           commandScan(command->value.cond_branch.then_command, 
-                       scope, declarations, in_loop);
-           commandScan(command->value.cond_branch.else_command, 
-                       scope, declarations, in_loop);
+           commandScan(command->cond_branch.condition, scope, declarations, false);
+           commandScan(command->cond_branch.then_command, scope, declarations, in_loop);
+           commandScan(command->cond_branch.else_command, scope, declarations, in_loop);
            break;
 
       case ALAP_STATEMENT:
-           commandScan(command->value.loop_stmt.loop_body, scope,
-                       declarations, true);
+           commandScan(command->loop_stmt.loop_body, scope, declarations, true);
            break;
 
       case PROGRAM_OR:
-           commandScan(command->value.or_stmt.left_command, scope,
-                       declarations, in_loop);
-           commandScan(command->value.or_stmt.right_command, scope, 
-                       declarations, in_loop);
+           commandScan(command->or_stmt.left_command, scope, declarations, in_loop);
+           commandScan(command->or_stmt.right_command, scope, declarations, in_loop);
            break;
 
       case SKIP_STATEMENT: 
@@ -407,14 +334,13 @@ void commandScan(GPCommand *const command, string const scope,
            break;
 
       default: print_to_log("Error (commandScan): Unexpected type %d at "
-                             "AST node %d\n", 
-                             command->command_type, command->node_id);
+                             "AST node %d\n", command->command_type, command->id);
                abort_compilation = true;
                break;   
    }
 }             
 
-GPRule *findRuleDeclaration(List *global_declarations, string const name,
+GPRule *findRuleDeclaration(List *global_declarations, string name,
                             GPProcedure *procedure)
 {
    /* The code in the body of the if statement searches the local declarations
@@ -426,23 +352,23 @@ GPRule *findRuleDeclaration(List *global_declarations, string const name,
       List *local_declarations = procedure->local_decls;
       while(local_declarations != NULL)
       {
-         GPDeclaration *declaration = local_declarations->value.declaration;
+         GPDeclaration *declaration = local_declarations->declaration;
          if(declaration->decl_type == RULE_DECLARATION)
          {
            /* The rule name in the declaration is of the form 
             * "<proc_name>_<rule_name>". Disregard "<proc_name>_" for the 
             * comparison. */
-            int length = strlen(declaration->value.rule->name) -
+            int length = strlen(declaration->rule->name) -
                          strlen(procedure->name) + 1;
-            if(!strcmp(declaration->value.rule->name + length, name))
-               return declaration->value.rule;
+            if(!strcmp(declaration->rule->name + length, name))
+               return declaration->rule;
          }
          if(declaration->decl_type == PROCEDURE_DECLARATION)
          {
             /* Search for the rule declaration in the local declaration list of
              * the procedure and any local procedures. */
             GPRule *rule = findRuleDeclaration(local_declarations, name,  
-                                               declaration->value.procedure);
+                                               declaration->procedure);
             if(rule != NULL) return rule;
          }                           
          local_declarations = local_declarations->next;
@@ -450,35 +376,34 @@ GPRule *findRuleDeclaration(List *global_declarations, string const name,
    }
    while(global_declarations != NULL)
    {
-      GPDeclaration *declaration = global_declarations->value.declaration;
+      GPDeclaration *declaration = global_declarations->declaration;
       if(declaration->decl_type == RULE_DECLARATION)
       {
           /* The rule name in the declaration node is of the form
            * "Main_<rule_name>". Disregard "Main_" for the comparison. */
-          if(!strcmp(declaration->value.rule->name + 5, name))
-             return declaration->value.rule;
+          if(!strcmp(declaration->rule->name + 5, name))
+             return declaration->rule;
       }
       global_declarations = global_declarations->next;
    }
    return NULL;
 }   
 
-GPProcedure *findProcedureDeclaration(List *declarations, string const name,
+GPProcedure *findProcedureDeclaration(List *declarations, string name,
                                       GPProcedure *excluded_procedure) 
 {
    while(declarations != NULL)
    {
-      GPDeclaration *declaration = declarations->value.declaration;
+      GPDeclaration *declaration = declarations->declaration;
       if(declaration->decl_type == PROCEDURE_DECLARATION)
       {
-         if(!strcmp(declaration->value.procedure->name, name) &&
-            declaration->value.procedure != excluded_procedure)
-            return declaration->value.procedure;
+         if(!strcmp(declaration->procedure->name, name) &&
+            declaration->procedure != excluded_procedure)
+            return declaration->procedure;
          /* Search for the procdure declaration in the local declaration list
           * of the procedure and any local procedures. */
          GPProcedure *procedure =
-            findProcedureDeclaration(declaration->value.procedure->local_decls, 
-                                     name, NULL);
+            findProcedureDeclaration(declaration->procedure->local_decls, name, NULL);
          if(procedure != NULL) return procedure;
       }                           
       declarations = declarations->next;
@@ -486,7 +411,7 @@ GPProcedure *findProcedureDeclaration(List *declarations, string const name,
    return NULL;
 }
 
-void ruleScan(GPRule *const rule, string const scope)
+void ruleScan(GPRule *rule, string scope)
 {  
    /* Reverse the list of declaration types and the interface list. */
    if(rule->variables) rule->variables = reverse(rule->variables);
@@ -504,59 +429,56 @@ void ruleScan(GPRule *const rule, string const scope)
    while(variable_list)
    {
       /* Reverse the list of variables */
-      variable_list->value.variables = reverse(variable_list->value.variables);	   
+      variable_list->variables = reverse(variable_list->variables);	   
       switch(variable_list->list_type) 
       {
          case INT_DECLARATIONS:
-              checkDeclaration(rule, variable_list->value.variables, scope,
+              checkDeclaration(rule, variable_list->variables, scope,
                                INT_S, integer_count++, "integer");  
 	      break;
 
          case CHAR_DECLARATIONS:
-              checkDeclaration(rule, variable_list->value.variables, scope,
+              checkDeclaration(rule, variable_list->variables, scope,
                                CHAR_S, character_count++, "character");  
 	      break;
 
          case STRING_DECLARATIONS:
-              checkDeclaration(rule, variable_list->value.variables, scope,
+              checkDeclaration(rule, variable_list->variables, scope,
                                STRING_S, string_count++, "string");  
               break;
    	
          case ATOM_DECLARATIONS:
-              checkDeclaration(rule, variable_list->value.variables, scope,
+              checkDeclaration(rule, variable_list->variables, scope,
                                ATOM_S, atom_count++, "atom"); 
 	      break; 
 
 	 case LIST_DECLARATIONS:
-              checkDeclaration(rule, variable_list->value.variables, scope,
+              checkDeclaration(rule, variable_list->variables, scope,
                                LIST_S, list_count++, "list"); 
 	      break;  	 
 
 	 default:
 	      print_to_log("Error: Unexpected list type %d in AST node %d\n",
-		           variable_list->list_type, variable_list->node_id);
+		           variable_list->list_type, variable_list->id);
               abort_compilation = true;
 	      break;
       }
       variable_list = variable_list->next;
    }
-   graphScan(rule, scope, rule->name, 'l');
-   graphScan(rule, scope, rule->name, 'r');
+   graphScan(rule, rule->interface, scope, rule->name, 'l');
+   graphScan(rule, rule->interface, scope, rule->name, 'r');
    if(rule->interface) interfaceScan(rule->interface, scope, rule->name);
-   if(rule->condition) conditionScan(rule->condition, scope, rule->name);
+   if(rule->condition) conditionScan(rule->condition, rule->interface, 
+                                     scope, rule->name);
 }   
 
-void checkDeclaration(GPRule *const rule, List *variables, string const scope,
-                      SymbolType const type, int count, string type_name)
+void checkDeclaration(GPRule *rule, List *variables, string scope,
+                      SymbolType type, int count, string type_name)
 {
    if(count > 1) 
-   {
-      print_to_console("Warning (%s): More than one %s list in the variable "
-                       "declaration section. Only the first list is "
-                       "considered.\n", rule->name, type_name);
-      print_to_log("Warning (%s): More than one %s list in the variable "
-                   "declaration section.\n", rule->name, type_name);
-   }
+      print_error("Warning (%s): More than one %s list in the variable "
+                  "declaration section. Only the first list is considered.\n",
+                  rule->name, type_name);
    else 
    {
       int count = enterVariables(type, variables, scope, rule->name);
@@ -564,33 +486,25 @@ void checkDeclaration(GPRule *const rule, List *variables, string const scope,
    }
 }
 
-int enterVariables(SymbolType const type, List *variables, 
-                   string const scope, string const rule_name)
+int enterVariables(SymbolType type, List *variables, string scope, string rule_name)
 {
-   int variable_count;
-   while(variables) 
+   int variable_count = 0;
+   while(variables != NULL) 
    {
       variable_count++;
-      string variable_name = strdup(variables->value.variable_name);	   
-      GSList *symbol_list = g_hash_table_lookup(symbol_table, variable_name);
-      /* symbol_list is preserved as a new symbol is prepended to it */
-      GSList *iterator = symbol_list;
+      string variable_name = strdup(variables->variable_name);	   
+      SymbolList *symbol_list = g_hash_table_lookup(symbol_table, variable_name);
+      SymbolList *iterator = symbol_list;
 
       bool add_variable = true;
       while(iterator) 
       {
-         Symbol *current_var = (Symbol*)(iterator->data);
-
 	 /* Print an error if there already exists a variable in the same rule
 	  * and scope with the same name. */
-         if(current_var->is_var && 
-            !strcmp(current_var->scope,scope) &&
-	    !strcmp(current_var->containing_rule,rule_name))
+         if(iterator->is_var && symbolInScope(iterator, scope, rule_name))
 	 {	 
-	    print_to_console("Warning (%s): Variable %s declared twice.\n", 
-                             rule_name, variable_name);
-	    print_to_log("Warning (%s): Variable %s declared twice.\n", 
-                         rule_name, variable_name);
+	    print_error("Warning (%s): Variable %s declared twice.\n", 
+                        rule_name, variable_name);
 	    add_variable = false;
             break;
 	 }
@@ -598,37 +512,20 @@ int enterVariables(SymbolType const type, List *variables,
       }
       if(add_variable)
       {
-         /* Create a symbol for the variable */
-         Symbol *var_symbol = malloc(sizeof(Symbol));
-         if(var_symbol == NULL)  
-         {
-            print_to_log("Error (enterVariables): malloc failure.\n");
-            exit(1);
-         }
-         var_symbol->type = type;
-         var_symbol->scope = strdup(scope);
-         var_symbol->containing_rule = strdup(rule_name);
-         var_symbol->is_var = true;      
-         var_symbol->in_lhs = false;
-         var_symbol->wildcard = false;
-         var_symbol->bidirectional = false;
-
-         symbol_list = g_slist_prepend(symbol_list, var_symbol);  
-         
+         symbol_list = addSymbol(symbol_list, type, scope, rule_name, true,
+                                 false, false, false);
          g_hash_table_replace(symbol_table, variable_name, symbol_list);
      }
      /* The malloc'd string variable_name is not used as a key to the symbol
       * table in the else case. It needs to be freed before the loop breaks. */
      else free(variable_name);
-  
      /* Move to the next variable in the declaration list. */
      variables = variables->next;
    }
    return variable_count;
 }  
 
-void graphScan(GPRule *rule, string const scope, string const rule_name,
-               char const side)
+void graphScan(GPRule *rule, List *interface, string scope, string rule_name, char side)
 {
    GPGraph *graph = NULL;
    if(side == 'l') graph = rule->lhs;
@@ -637,8 +534,7 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
     * and error reporting. */
    SymbolType node_type, edge_type;
    string graph_type = NULL;
-
-   GSList *symbol_list = NULL;
+   SymbolList *symbol_list = NULL;
  
    if(side == 'l') {
       node_type = LEFT_NODE_S;
@@ -653,105 +549,90 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
 
    /* Reverse the node list */
    graph->nodes = reverse(graph->nodes);
-   
    List *node_list = graph->nodes;
-
    while(node_list)  
    {
       if(side == 'l') rule->left_nodes++;
       /* node_id is used as a key, so it is duplicated as node_id will be freed
        * by g_hash_table_insert. I do not want to also free the node->name in
        * the AST. */
-      string node_id = strdup(node_list->value.node->name);
+      string node_id = strdup(node_list->node->name);
       symbol_list = g_hash_table_lookup(symbol_table, node_id);
-      /* symbol_list is preserved as a new symbol will be prepended to it */
-      GSList *iterator = symbol_list;
+      SymbolList *symbol = symbol_list;
 
       bool add_node = true;
-      while(iterator) 
+      while(symbol != NULL) 
       {
-         Symbol *current_node = (Symbol*)(iterator->data);
 	 /* Print an error if there already exists a node in the same graph, 
 	  * rule and scope with the same name. */
-         if( current_node->type == node_type && 
-	     !strcmp(current_node->scope,scope) && 
-	     !strcmp(current_node->containing_rule,rule_name) )	
+         if(symbol->type == node_type && symbolInScope(symbol, scope, rule_name))
 	 {
 	     print_to_log("Warning (%s): Node ID %s not unique in the "
                           "%s.\n", rule_name, node_id, graph_type);  
 	     add_node = false;
 	     break;
 	 }
-         iterator = iterator->next;      
+         symbol = symbol->next;      
       }
-      if(node_list->value.node->label->mark == DASHED)
+      if(node_list->node->label->mark == DASHED)
       {
           print_to_log("Error (%s): Node %s in %s graph has invalid mark " 
-	               "\"dashed\".\n", 
-                       rule_name, node_id, graph_type);
+	               "\"dashed\".\n", rule_name, node_id, graph_type);
           abort_compilation = true; 
       }
+      bool wildcard = node_list->node->label->mark == ANY;
       if(add_node) 
-      {
-         Symbol *node_symbol = malloc(sizeof(Symbol));
-
-         if(node_symbol == NULL)
-         {
-            print_to_log("Error (graphScan): malloc failure.\n");
-            exit(1);
-         }
-         node_symbol->type = node_type;      
-         node_symbol->scope = strdup(scope);
-         node_symbol->containing_rule = strdup(rule_name);
-         node_symbol->is_var = false;
-         node_symbol->in_lhs = false;      
-         node_symbol->wildcard = (node_list->value.node->label->mark == ANY);    
-         node_symbol->bidirectional = false;      
- 
-         symbol_list = g_slist_prepend(symbol_list, node_symbol);         
+      { 
+         symbol_list = addSymbol(symbol_list, node_type, scope, rule_name,
+                                 false, false, wildcard, false);
          g_hash_table_replace(symbol_table, node_id, symbol_list);         
       }      
-      /* If the node is in the RHS and has an 'any' mark, the corresponding LHS node
-       * must also have an 'any' mark. */
-      if(side == 'r' && node_list->value.node->label->mark == ANY) 
+      /* Check that RHS wildcard nodes exist in the interface and that they
+       * have a corresponding LHS wildcard. */
+      if(wildcard && side == 'r')
       {
-         /* The current node has just been prepended to the symbol list.
-          * Hence the first entry in the symbol list is an RHS node. 
-          * The corresponding LHS node is to be located. Therefore I start
-          * the saerch at the second element in the symbol list. */
-         iterator = symbol_list->next;
-         while(iterator) 
+         bool in_interface = false;
+         List *iterator = interface;
+         while(iterator != NULL)  
          {
-            Symbol *current_node = (Symbol*)(iterator->data);
-
-	    /* Find a node in the same rule. If that node is in the LHS
-             * and is not a wildcard (any mark) then report an error.
-             * Note there is only one such LHS node because for each scope,
-             * rule, and graph (LHS/RHS), only one node with a particular
-             * ID is entered into the symbol table. */
-            if(!strcmp(current_node->scope,scope) && 
-	       !strcmp(current_node->containing_rule,rule_name))	
-  	    {
-                if(current_node->type == LEFT_NODE_S &&
-                   !current_node->wildcard) 
-                {
-	           print_to_log("Error (%s): RHS wildcard node %s has no "
-                                "matching LHS wildcard.", 
-                                rule_name, node_id);  
-                   abort_compilation = true; 
-                }
-                /* Regardless of the outcome of the inner if statement, exit
-                 * the loop as the single appropriate node has been located. */
-                break;   
-	    }
-            iterator = iterator->next;      
+            if(!strcmp(node_id, iterator->node_id))
+            {
+               in_interface = true;
+               break;
+            }
+            iterator = iterator->next;
+         }
+         if(!in_interface) 
+         {
+            print_error("Error (%s): Wildcard node %s in %s graph not in the "
+                        "interface.\n", rule_name, node_id, graph_type);
+            abort_compilation = true;  
+         }
+         else
+         {
+            symbol = symbol_list;
+            while(symbol != NULL) 
+            {
+               /* Find a node in the same rule. If that node is in the LHS
+                * and is not a wildcard then report an error. */
+               if(symbolInScope(symbol, scope, rule_name))	
+               {
+                  if(symbol->type == LEFT_NODE_S && !(symbol->wildcard)) 
+                  {
+                     print_to_log("Error (%s): RHS wildcard node %s has no "
+                                  "matching LHS wildcard.", rule_name, node_id);  
+                     abort_compilation = true; 
+                  }
+                  /* Regardless of the outcome of the inner if statement, exit
+                   * the loop as the single appropriate node has been located. */
+                  break;
+               }
+               symbol = symbol->next;
+            }
          }
       }
-      gpListScan(&(node_list->value.node->label->gp_list), scope, 
-		   rule_name, side);
-
+      gpListScan(&(node_list->node->label->gp_list), interface, scope, rule_name, side);
       node_list = node_list->next;   
- 
       if(!add_node && node_id) free(node_id);  
    }   
 
@@ -765,101 +646,71 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
       /* edge_id is used as a key, so it is duplicated as edge_id will be freed
        * by g_hash_table_insert. I do not also want to free the edge->name in
        * the AST. */
-      string edge_id = strdup(edge_list->value.edge->name);
-      string source_id = edge_list->value.edge->source;
-      string target_id = edge_list->value.edge->target;
+      string edge_id = strdup(edge_list->edge->name);
+      string source_id = edge_list->edge->source;
+      string target_id = edge_list->edge->target;
 
       symbol_list = g_hash_table_lookup(symbol_table, edge_id);
-      /* symbol_list is preserved as a new symbol will be prepended to it */
-      GSList *iterator = symbol_list;
-
-      while(iterator) 
+      SymbolList *symbol = symbol_list;
+      while(symbol != NULL) 
       {
-         Symbol *current_edge = (Symbol*)(iterator->data);
-
 	 /* Print an error if there already exists an edge in the same graph,
 	  * rule and scope with the same name. */
-         if(current_edge->type == edge_type && 
-	    !strcmp(current_edge->scope,scope) && 
-	    !strcmp(current_edge->containing_rule,rule_name))	
+         if(symbol->type == edge_type && symbolInScope(symbol, scope, rule_name))
          {
 	     print_to_log("Warning (%s): Edge ID %s not unique in the %s "
-                          "graph.\n", 
-                          rule_name, edge_id, graph_type);
+                          "graph.\n", rule_name, edge_id, graph_type);
 	     add_edge = false;
 	     break;
 	 }
-         iterator = iterator->next; 
+         symbol = symbol->next; 
       }
+      bool wildcard = edge_list->edge->label->mark == ANY; 
+      bool bidirectional = edge_list->edge->bidirectional; 
       if(add_edge) 
       {
-         Symbol *edge_symbol = malloc(sizeof(Symbol));
-
-         if(edge_symbol == NULL)
-         {
-            print_to_log("Error (graphScan): malloc failure.\n");
-            exit(1);
-         }
-         edge_symbol->type = edge_type;      
-         edge_symbol->scope = strdup(scope);
-         edge_symbol->containing_rule = strdup(rule_name);
-         edge_symbol->is_var = false;
-         edge_symbol->in_lhs = false;             
-         edge_symbol->wildcard = (edge_list->value.edge->label->mark == ANY); 
-         edge_symbol->bidirectional = (edge_list->value.edge->bidirectional); 
-
-         symbol_list = g_slist_prepend(symbol_list, edge_symbol);   
+         symbol_list = addSymbol(symbol_list, edge_type, scope, rule_name, 
+                                 false, false, wildcard, bidirectional);
          g_hash_table_replace(symbol_table, edge_id, symbol_list);
       }
-      if(side == 'r' && edge_list->value.edge->label->mark == ANY) 
+      /* Check that RHS wildcard edges exist in the interface and that they
+       * have a corresponding LHS wildcard.
+       * TODO: No interface checking yet. This would allow multiple RHS wildcard
+       * edges and fewer LHS wildcard edges. I think. */
+      if(wildcard && side == 'r')
       {
-         /* The current edge has just been prepended to the symbol list.
-          * Hence the first entry in the symbol list is this RHS edge. 
-          * The corresponding LHS edge is to be located, hence search
-          * might as well start at the second element in the symbol list. */
-         iterator = symbol_list->next;
-         while(iterator) 
+         symbol = symbol_list;
+         while(symbol) 
          {
-            Symbol *current_edge = (Symbol*)(iterator->data);
-
-	    /* Find an edge in the same rule. If that edge is in the LHS
-             * and is not a wildcard (any mark) then report an error.
-             * Note there is only one such LHS edge because for each scope,
-             * rule, and graph (LHS/RHS), only one edge with a particular
-             * ID is entered into the symbol table.  */
-            if(!strcmp(current_edge->scope,scope) && 
-	       !strcmp(current_edge->containing_rule,rule_name))	
-  	    {
-                if(current_edge->type == LEFT_EDGE_S &&
-                   !current_edge->wildcard) 
-                {
-	           print_to_log("Error (%s): RHS wildcard edge %s has no "
-                                "matching LHS wildcard.\n", 
-                                rule_name, edge_id);  
-                   abort_compilation = true;
-                }
-                /* Exit the loop as the single appropriate edge has been 
-                 * located. */ 
-                break;   
-	    }
-            iterator = iterator->next;      
+            /* Find an edge in the same rule. If that edge is in the LHS
+             * and is not a wildcard then report an error. */
+            if(symbolInScope(symbol, scope, rule_name))	
+            {
+               if(symbol->type == LEFT_EDGE_S && !(symbol->wildcard)) 
+               {
+                  print_to_log("Error (%s): RHS wildcard edge %s has no "
+                               "matching LHS wildcard.", rule_name, edge_id);  
+                  abort_compilation = true; 
+               }
+               /* Regardless of the outcome of the inner if statement, exit
+                  * the loop as the single appropriate node has been located. */
+               break;
+            }
+            symbol = symbol->next;
          }
       }
-
       /* Two semantic checks are made for bidirectional edges (BEs):
        * (1) A BE in the RHS must have a corresponding BE in the LHS.
        * (2) At most one BE is allowed between a pair of nodes. 
        *
-       * Items of type struct BidirectionalEdge, defined in the header,
-       * are placed in GSList *bidirectional_edges to keep track of all
+       * Items of type struct BiEdgeList, defined in the header, are placed
+       * in the global BiEdgeList *bidirectional_edges to keep track of all
        * the bidirectional edges encountered. */
-      if(edge_list->value.edge->bidirectional) 
+      if(bidirectional) 
       {
          /* bidirectional_edges may be written to later, hence a copy is made
-          * of the root pointer.
-          */
+          * of the root pointer. */
          BiEdgeList *iterator = bidirectional_edges;
-
          bool add_bi_edge = true;
          bool matching_bi_edge = false;
  
@@ -870,7 +721,7 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
              * incident node IDs as the current edge. Edge direction is 
              * irrelevant for this check. */
             if(!strcmp(list_edge.scope, scope) &&
-               !strcmp(list_edge.containing_rule, rule_name) &&
+               !strcmp(list_edge.rule_name, rule_name) &&
                /* Either source = source and target = target... */
                ((!strcmp(list_edge.source, source_id) &&
                 !strcmp(list_edge.target, target_id))   ||
@@ -881,7 +732,6 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
                /* Semantic check (1) */
                if(side == 'r' && list_edge.graph == 'l') 
                   matching_bi_edge = true;
-
                /* Semantic check (2) */
                else 
                {
@@ -896,69 +746,37 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
             }
             iterator = iterator->next;       
          }
-
          if(side == 'r' && !matching_bi_edge) 
          {
 	    print_to_log("Error (%s): RHS bidirectional edge %s has no "
-                         "matching LHS bidirectional edge.\n", 
-                         rule_name, edge_id);
+                         "matching LHS bidirectional edge.\n", rule_name, edge_id);
             abort_compilation = true; 
          }
-
          /* Only add an edge to the BE list if it is not a parallel edge. */
          if(add_bi_edge) 
-         {
-            BiEdge bi_edge =
-                  {.scope = strdup(scope),
-                   .containing_rule = strdup(rule_name),
-                   .graph = side,
-                   .source = strdup(source_id),
-                   .target = strdup(target_id) };
-
-            BiEdgeList *new_edge = malloc(sizeof(BiEdgeList));
-            if(new_edge == NULL)
-            {
-               print_to_log("Error (graphScan): malloc failure.\n");
-               exit(1);
-            }
-            new_edge->value = bi_edge;
-            new_edge->next = NULL;
-
-            /* Append new_edge to bidirectional_edges. */
-            if(bidirectional_edges == NULL) bidirectional_edges = new_edge;
-            else 
-            { 
-               BiEdgeList *iterator = bidirectional_edges;
-               while(iterator->next) iterator = iterator->next; 
-               iterator->next = new_edge;
-            }
-         }
+            bidirectional_edges = addBiEdge(bidirectional_edges, scope, rule_name,
+                                            side, source_id, target_id);
       }
-
       /* Verify source node exists in the graph. */
       symbol_list = g_hash_table_lookup(symbol_table, source_id);
       if(symbol_list == NULL) 
       {
 	 print_to_log("Error (%s): Source node %s of edge %s does not "
-                      "exist in %s graph.\n",
-                      rule_name, source_id, edge_id, graph_type);     
+                      "exist in %s graph.\n", rule_name, source_id, edge_id, 
+                      graph_type);     
          abort_compilation = true; 
       }
       else
       {
-         /* Keep track of the symbol currently being looked at. */
-         Symbol *current_sym = (Symbol*)(symbol_list->data);
-                
          /* The while loop condition is true if the current symbol is not
           * the node in the same rule and graph as the current edge.
           * Hence the loop breaks if the appropriate node is found.
           * At each pass a check is made to see if the end of the list
           * has been reached. If not, check the next symbol in the symbol
-          * list. Otherwise, print an error and break.
-          */
-         while(current_sym->type != node_type   ||
-               strcmp(current_sym->scope,scope) ||
-               strcmp(current_sym->containing_rule,rule_name))
+          * list. Otherwise, print an error and break. */
+         while(symbol_list->type != node_type    ||
+               strcmp(symbol_list->scope, scope)  ||
+               strcmp(symbol_list->rule_name, rule_name))
          {   
             if(symbol_list->next == NULL) 
             {
@@ -968,7 +786,7 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
                abort_compilation = true; 
                break;
             }
-            else current_sym = (Symbol*)(symbol_list->next->data);             
+            else symbol_list = symbol_list->next;             
          } 
       }
       /* Verify target node exists in the graph. */
@@ -982,18 +800,15 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
       } 
       else 
       {
-         /* Keep track of the symbol currently being looked at. */
-         Symbol *current_sym = (Symbol*)(symbol_list->data);
-
          /* The while loop condition is true if the current symbol is not
           * the node in the same rule and graph as the current edge.
           * Hence the loop breaks if the appropriate node is found.
           * At each pass a check is made to see if the end of the list
           * has been reached. If not, check the next symbol in the symbol
           * list. Otherwise, print an error and break. */               
-         while(current_sym->type != node_type   ||
-               strcmp(current_sym->scope,scope) ||
-               strcmp(current_sym->containing_rule,rule_name))
+         while(symbol_list->type != node_type    ||
+               strcmp(symbol_list->scope, scope) ||
+               strcmp(symbol_list->rule_name, rule_name))
          {
             if(symbol_list->next == NULL) 
             {
@@ -1003,82 +818,72 @@ void graphScan(GPRule *rule, string const scope, string const rule_name,
                abort_compilation = true; 
                break;
             }
-            else current_sym = (Symbol*)(symbol_list->next->data);             
+            else symbol_list = symbol_list->next;             
          }
       }	 
-      gpListScan(&(edge_list->value.edge->label->gp_list), scope, 
-		   rule_name, side);
+      gpListScan(&(edge_list->edge->label->gp_list), interface, scope, rule_name, side);
       edge_list = edge_list->next;
       if(!add_edge && edge_id) free(edge_id);
    }
 }
 
-void interfaceScan(List *interface, string const scope, string const rule_name)
+void interfaceScan(List *interface, string scope, string rule_name)
 {
-  /* Linked list to store node IDs encountered to check for uniqueness */
-  GSList *interface_ids = NULL, *iterator = NULL;
-  bool in_lhs, in_rhs;
+   /* Linked list to store node IDs encountered to check for uniqueness */
+   GSList *interface_ids = NULL, *iterator = NULL;
+   bool in_lhs, in_rhs;
 
-  while(interface)
-  {
-     in_lhs = false, in_rhs = false;
-     string current_node_id = interface->value.node_id;
-
-     /* g_slist_insert_sorted inserts elements and maintains lexicographic
-      * order of its elements with use of the function strcmp. This makes
-      * checking for duplicate nodes easier. */
-     interface_ids = g_slist_insert_sorted(interface_ids, current_node_id,
-		                           (GCompareFunc)strcmp);
-     GSList *node_list = g_hash_table_lookup(symbol_table, current_node_id);     
-     while(node_list) 
-     {
-        Symbol *current_node = (Symbol*)node_list->data;     
-
-	if(!strcmp(current_node->scope,scope) && 
-	   !strcmp(current_node->containing_rule,rule_name))  
-	{
-	   if(current_node->type == LEFT_NODE_S) in_lhs = true;
-	   if(current_node->type == RIGHT_NODE_S) in_rhs = true;
-	}
-
-	/* If both the LHS node and RHS node have been found, no need to look
-	 * further down the symbol list. */         
-	if(in_lhs && in_rhs) break;
-	node_list = node_list->next;
-     }
-     if(!in_lhs)  
-     {
-        print_to_log("Error (%s): Interface node %s not in the LHS "
-	   	     "graph.\n",
-                     rule_name, current_node_id);
-        abort_compilation = true; 
-     }
-     if(!in_rhs) 
-     {
-        print_to_log("Error (%s): Interface node %s not in the RHS "
-		     "graph.\n", 
-                     rule_name, current_node_id);
-        abort_compilation = true; 
-     }
-     interface = interface->next;   
-  }
-  /* Since interface_ids is sorted, each element in the list only needs to be 
-   * compared to its successor. */
-  for(iterator = interface_ids; iterator->next; iterator = iterator->next)
-  {
-     if(!strcmp(iterator->data,iterator->next->data))
-        print_to_log("Warning (%s): Node %s occurs twice in "
-                     "interface list.\n",
-                     rule_name, (char*)(iterator->data));
-  }
-  g_slist_free(interface_ids); 
+   while(interface != NULL)
+   {
+      in_lhs = false, in_rhs = false;
+      /* g_slist_insert_sorted inserts elements and maintains lexicographic
+       * order of its elements with use of the function strcmp. This makes
+       * checking for duplicate nodes easier. */
+      interface_ids = g_slist_insert_sorted(interface_ids, interface->node_id,
+                                            (GCompareFunc)strcmp);
+      SymbolList *node_symbol = g_hash_table_lookup(symbol_table, interface->node_id);     
+      while(node_symbol) 
+      {
+         if(symbolInScope(node_symbol, scope, rule_name))
+         {
+            if(node_symbol->type == LEFT_NODE_S) in_lhs = true;
+            if(node_symbol->type == RIGHT_NODE_S) in_rhs = true;
+         }
+         /* If both the LHS node and RHS node have been found, no need to look
+          * further down the symbol list. */         
+         if(in_lhs && in_rhs) break;
+         node_symbol = node_symbol->next;
+      }
+      if(!in_lhs)  
+      {
+         print_to_log("Error (%s): Interface node %s not in the LHS "
+                      "graph.\n", rule_name, interface->node_id);
+         abort_compilation = true; 
+      }
+      if(!in_rhs) 
+      {
+         print_to_log("Error (%s): Interface node %s not in the RHS "
+                      "graph.\n", rule_name, interface->node_id);
+         abort_compilation = true; 
+      }
+      interface = interface->next;   
+   }
+   /* Since interface_ids is sorted, each element in the list only needs to be 
+    * compared to its successor. */
+   for(iterator = interface_ids; iterator->next; iterator = iterator->next)
+   {
+      if(!strcmp(iterator->data, iterator->next->data))
+         print_to_log("Warning (%s): Node %s occurs twice in interface list.\n",
+                      rule_name, (char*)(iterator->data));
+   }
+   g_slist_free(interface_ids); 
 }
         
 
-void conditionScan(GPCondExp * const condition, string const scope, 
-                   string const rule_name)
+void conditionScan(GPCondition *condition, List *interface, string scope, 
+                   string rule_name)
 {
-   switch(condition->exp_type) 
+   switch(condition->type) 
    {
       case INT_CHECK:
       case CHAR_CHECK:
@@ -1086,199 +891,150 @@ void conditionScan(GPCondExp * const condition, string const scope,
       case ATOM_CHECK: 
       {
            bool in_rule = false; 
-           GSList *var_list = 
-              g_hash_table_lookup(symbol_table, condition->value.var);
+           SymbolList *var_list = g_hash_table_lookup(symbol_table, condition->var);
 	   /* Go through the list of symbols with the name in question
-            * to check if any variables exist in this rule.
-            */
+            * to check if any variables exist in this rule. */
            while(var_list != NULL) 
            {
- 	      Symbol *current_var = (Symbol*)var_list->data;
-
-              if(current_var->is_var && 
-                 !strcmp(current_var->scope, scope) && 
-	         !strcmp(current_var->containing_rule, rule_name)) 
+              if(var_list->is_var && symbolInScope(var_list, scope, rule_name))
               {
                   in_rule = true;
                   break;
               }
-                 
               var_list = var_list->next;            
            }
            /* Not a critical error: if a variable in a type check predicate is 
             * not in the rule, the condition evaluates to false. */
            if(!in_rule) 
-           {
-              print_to_console("Warning (%s): Variable %s in condition not "
-                               "declared.\n", rule_name, condition->value.var);
-              print_to_log("Warning (%s): Variable %s in condition not "
-                           "declared.\n", rule_name, condition->value.var);
-           }
+              print_error("Warning (%s): Variable %s in condition not "
+                          "declared.\n", rule_name, condition->var);
            break;
       }
       /* For an edge predicate, the source and target node IDs must be present
-       * in the LHS of the rule. The optional label argument is also scanned. */
+       * in the interface of the rule. The optional label argument is also scanned. */
       case EDGE_PRED:
       {
-           bool in_lhs = false;
-           GSList *node_list = g_hash_table_lookup(symbol_table,
-                                  condition->value.edge_pred.source);
-           while(node_list != NULL)  
+           bool in_interface = false;
+           List *iterator = interface;
+           while(iterator != NULL)  
            {
-              Symbol* current_node = (Symbol*)node_list->data;      
-
-              if(current_node->type == LEFT_NODE_S &&
-                 !strcmp(current_node->scope,scope) && 
-                 !strcmp(current_node->containing_rule,rule_name))  
+              if(!strcmp(condition->edge_pred.source, iterator->node_id))
               {
-                 in_lhs = true;
+                 in_interface = true;
                  break;
               }
-              node_list = node_list->next;
+              iterator = iterator->next;
            }
-           if(!in_lhs) 
+           if(!in_interface) 
            {
-              print_to_console("Error (%s): Node %s in edge predicate not "
-                               "in LHS.\n", rule_name,
-                               condition->value.edge_pred.source);
-              print_to_log("Error (%s): Node %s in edge predicate not in "
-                           "LHS.\n", rule_name,
-                           condition->value.edge_pred.source);
+              print_error("Error (%s): Node %s in edge predicate not in the "
+                          "interface.\n", rule_name, condition->edge_pred.source);
               abort_compilation = true;  
            }
-           in_lhs = false;
+           in_interface = false;
 
-           node_list = g_hash_table_lookup(symbol_table, 
-                          condition->value.edge_pred.target);
-           while(node_list != NULL) 
+           iterator = interface;
+           while(iterator != NULL)  
            {
-		 Symbol* current_node = (Symbol*)node_list->data;      
-
-         	 if(current_node->type == LEFT_NODE_S &&
-                    !strcmp(current_node->scope,scope) && 
-	            !strcmp(current_node->containing_rule,rule_name))  
-                 {
-                    in_lhs = true;
-                    break;
-                 }
-                 node_list = node_list->next;
+              if(!strcmp(condition->edge_pred.target, iterator->node_id))
+              {
+                 in_interface = true;
+                 break;
+              }
+              iterator = iterator->next;
            }
-           if(!in_lhs) 
+           if(!in_interface) 
            {
-              print_to_console("Error (%s): Node %s in edge predicate not "
-                               "in LHS.\n", rule_name,
-                               condition->value.edge_pred.target);
-              print_to_log("Error (%s): Node %s in edge predicate not in "
-                           "LHS.\n", rule_name,
-                           condition->value.edge_pred.target);
+              print_error("Error (%s): Node %s in edge predicate not in the "
+                          "interface.\n", rule_name, condition->edge_pred.target);
               abort_compilation = true;  
            }
-           in_lhs = false;
-
 	   /* Scan the label argument if it exists. */
-           if(condition->value.edge_pred.label)
-              gpListScan(&(condition->value.edge_pred.label->gp_list), 
-		         scope, rule_name, 'c');
+           if(condition->edge_pred.label)
+              gpListScan(&(condition->edge_pred.label->gp_list), interface, 
+                         scope, rule_name, 'c');
            break;
       }
 
       case EQUAL:
       case NOT_EQUAL:
-           gpListScan(&(condition->value.list_cmp.left_list), scope, rule_name, 'c');
-           gpListScan(&(condition->value.list_cmp.right_list), scope, rule_name, 'c');
+           gpListScan(&(condition->list_cmp.left_list), interface, scope, rule_name, 'c');
+           gpListScan(&(condition->list_cmp.right_list), interface, scope, rule_name, 'c');
            break;
 
       case GREATER:
       case GREATER_EQUAL:
       case LESS:
       case LESS_EQUAL:
-           atomicExpScan(condition->value.atom_cmp.left_exp, scope,
-                         rule_name, 'c', true, false);
-           atomicExpScan(condition->value.atom_cmp.right_exp, scope,
-                         rule_name, 'c', true, false);
+           atomScan(condition->atom_cmp.left_exp, interface, scope, rule_name, 'c', true, false);
+           atomScan(condition->atom_cmp.right_exp, interface, scope, rule_name, 'c', true, false);
            break;
 
       case BOOL_NOT:
-           conditionScan(condition->value.not_exp, scope, rule_name);
+           conditionScan(condition->not_exp, interface, scope, rule_name);
            break;
 
       case BOOL_OR:
       case BOOL_AND:
-           conditionScan(condition->value.bin_exp.left_exp, scope, rule_name);
-           conditionScan(condition->value.bin_exp.right_exp, scope, rule_name);
+           conditionScan(condition->bin_exp.left_exp, interface, scope, rule_name);
+           conditionScan(condition->bin_exp.right_exp, interface, scope, rule_name);
            break;
 
       default:
-	      print_to_log("Error: Unexpected condition type %d at AST node %d\n",
-		           condition->exp_type, condition->node_id);
-              abort_compilation = true; 
- 
-	      break;
+	   print_to_log("Error: Unexpected condition type %d at AST node %d\n",
+	                condition->type, condition->id);
+           abort_compilation = true; 
+           break;
       }
 }
 
-/* Variables used by gpListScan and AtomicExpScan. */
+/* Variables used by gpListScan and atomScan. */
 static int list_var_count = 0;
 static int string_var_count = 0;
-static bool lhs_non_simple_exp = false;
+static bool lhs_not_simple = false;
 
-void gpListScan(List **gp_list, string const scope, string const rule_name, 
+void gpListScan(List **gp_list, List *interface, string scope, string rule_name, 
                 char location)
 {
-   if((*gp_list)->list_type == EMPTY_LIST) return;
    *gp_list = reverse(*gp_list);
 
    List *iterator = *gp_list;
    while(iterator) 
    {
-      atomicExpScan(iterator->value.atom, scope, rule_name, location,
-                    false, false);
+      atomScan(iterator->atom, interface, scope, rule_name, location, false, false);
       iterator = iterator->next; 
    } 
-   if(list_var_count > 1) 
-   { 
-      print_to_console("Error (%s): More than one list variable in LHS "
-	               "label.\n", rule_name);
-      print_to_log("Error (%s): More than one list variable in LHS "
-	           "label.\n", rule_name);
+   if(list_var_count > 1) print_error("Error (%s): More than one list variable "
+                                      "in LHS label.\n", rule_name);
+
+   if(string_var_count > 1) print_error("Error (%s): More than one string variable "
+                                        "in LHS string expression.\n", rule_name);
+
+   if(lhs_not_simple) print_error("Error (%s): Non-simple expression in LHS "
+                                      "label. \n", rule_name);
+
+   if(list_var_count > 1 || string_var_count > 1 || lhs_not_simple) 
       abort_compilation = true;
-   }
-   if(string_var_count > 1) 
-   {
-      print_to_console("Error (%s): More than one string variable in LHS "
-	               "string expression.\n", rule_name);
-      print_to_log("Error (%s): More than one string variable in LHS "
-	           "string expression.\n", rule_name);
-      abort_compilation = true;
-   }
-   if(lhs_non_simple_exp) 
-   {
-      print_to_console("Error (%s): Non-simple expression in LHS label. \n",
-                       rule_name);
-      print_to_log("Error (%s): Non-simple expression in LHS label. \n",
-                   rule_name);
-      abort_compilation = true;
-   }
    /* Reset variables. */
    list_var_count = 0;
    string_var_count = 0;
-   lhs_non_simple_exp = false;
+   lhs_not_simple = false;
 }
 
-void atomicExpScan(GPAtomicExp * const atom_exp, string const scope,
-                   string const rule_name, char const location, 
-                   bool const int_exp, bool const string_exp)
+/* Initially called with int_exp and string_exp set to false. Recursive calls
+ * set one of these flags to true. Specifically, the atoms in degree operators,
+ * the length operator and arithmetic expressions are called with int_exp true.
+ * The atoms in concat expressions are called with string_exp true. */
+void atomScan(GPAtom *atom, List *interface, string scope, string rule_name, 
+              char location, bool int_exp, bool string_exp)
 {
-   switch(atom_exp->exp_type) 
+   switch(atom->type) 
    {
       case INTEGER_CONSTANT:
-
            if(string_exp) 
            {
-              print_to_console("Error (%s): Integer constant appears in a "
-                               "string expression.\n", rule_name);
-              print_to_log("Error (%s): Integer constant appears in a "
-                           "string expression.\n", rule_name);
+              print_error("Error (%s): Integer constant appears in a string "
+                          "expression.\n", rule_name);
               abort_compilation = true;
            }             
            break;
@@ -1286,219 +1042,69 @@ void atomicExpScan(GPAtomicExp * const atom_exp, string const scope,
       case STRING_CONSTANT:
            if(int_exp) 
            {
-              print_to_console("Error (%s): String constant appears in an "
-                               "integer expression.\n", rule_name);
-              print_to_log("Error (%s): String constant appears in an "
-                           "integer expression.\n", rule_name);
+              print_error("Error (%s): String constant appears in an integer "
+                          "expression.\n", rule_name);
 	      abort_compilation = true;
            }
            break;
 
       case VARIABLE:
-      {
-         /* var_list is pointed to the symbol_list of symbols with the same
-          * identifier as the variable. */
-         GSList *var_list = g_hash_table_lookup(symbol_table,atom_exp->value.name);           
-         bool in_rule = false;
-         while(var_list)
-         {
-            Symbol *current_var = (Symbol*)(var_list->data);
-            /* Locate the variable with the appropriate scope and rule 
-             * name. If it exists, there is only one, as duplicates are 
-             * erroneous and not entered into the symbol table. */
-            if(current_var->is_var &&
-               !strcmp(current_var->scope,scope) &&
-               !strcmp(current_var->containing_rule,rule_name)) 
-            {
-               in_rule = true;
-               if(location == 'l') 
-               {
-	          current_var->in_lhs = true;   
-	          /* We need to keep track of the number of list and string 
-                   * variables in the LHS to verify that all expressions are
-		   * simple. */
-		  if(current_var->type == LIST_S) list_var_count++;
-		  if(current_var->type == STRING_S) string_var_count++;
-	       }
-               if(!in_rule) 
-               {
-                  print_to_console("Error (%s): Variable %s in "
-                                   "expression but not declared.\n",
-                                   rule_name, atom_exp->value.name);
-                  print_to_log("Error (%s): Variable %s in expression "
-                               "but not declared.\n", rule_name,
-                               atom_exp->value.name);
-                  abort_compilation = true;
-               }
-	       /* Other semantic errors are reported in the else clause:
-	        * there is no need to report these if the variable has not
-	        * been declared. */
-               else /* location == 'r' || location == 'c' */
-               {
-	          /* Check if a RHS variable exists in the LHS */
-                  if(location == 'r' && !(current_var->in_lhs))
-                  {
-                     print_to_console("Error (%s): Variable %s in RHS but "
-                                      "not in LHS.\n", rule_name,
-                                      atom_exp->value.name);
-                     print_to_log("Error (%s): Variable %s in RHS but "
-                                  "not in LHS.\n", rule_name,
-                                  atom_exp->value.name);
-	             abort_compilation = true;
-                  }
-	          /* Type checking */
-                  if(int_exp && current_var->type != INT_S) 
-                  {
-                     print_to_console("Error(%s): Variable %s occurs in "
-                                      "an integer expression but not declared "
-                                      "as an integer.\n", rule_name, 
-                                      atom_exp->value.name);
-                     print_to_log("Error(%s): Variable %s occurs in an "
-                                  "integer expression but not declared as "
-                                  "an integer.\n", rule_name, 
-                                  atom_exp->value.name);
-                     abort_compilation = true;
-		  }
+           variableScan(atom, scope, rule_name, location, int_exp, string_exp, false);
+           break;
 
-                  if(string_exp && current_var->type != CHAR_S
-                                && current_var->type != STRING_S )
-                  {
-                     print_to_console("Error(%s): Variable %s occurs in a "
-                             "string expression but not declared as a string "
-                             "or character. \n", rule_name, 
-                             atom_exp->value.name);
-                     print_to_log("Error(%s): Variable %s occurs in a "
-                             "string expression but not declared as a string."
-                             "or character. \n", rule_name, 
-                             atom_exp->value.name);
-                     abort_compilation = true;
-                  }
-	       }
- 	      /* We have found the variable in the rule with the appropriate
-               * name. enterVariables ensures there is only one such variable
-               * variable in the symbol list. There is no need to look further. */
-               break;	
-	    }              
-	    var_list = var_list->next;
-	 } 
-         break;
-      }
+       case LENGTH:
+            if(string_exp) 
+            {
+               print_error("Error (%s): Length operator appears in string "
+                           "expression.\n", rule_name);
+               abort_compilation = true;
+            }
+            if(location == 'l') lhs_not_simple = true;
+            variableScan(atom, scope, rule_name, location, int_exp, string_exp, true);
+            break;
+
       case INDEGREE:
       case OUTDEGREE:
       {
            if(string_exp) 
            {
-	      print_to_console("Error (%s): Degree operator appears in "
-                               "string expression.\n", rule_name);
-	      print_to_log("Error (%s): Degree operator appears in "
-                           "string expression.\n", rule_name);
+	      print_error("Error (%s): Degree operator appears in string "
+                          "expression.\n", rule_name);
 	      abort_compilation = true;
            }
-           if(location == 'l') lhs_non_simple_exp = true;
-           /* If the degree operator is in a condition, its argument must exist
-            * in the LHS graph. */
-           if(location == 'c') 
+           if(location == 'l') lhs_not_simple = true;
+           /* If the degree operator is in a condition or a RHS-label, its argument 
+            * must exist in the interface. */
+           else /* location == 'c' || location == 'r' */
            {
-	      bool in_lhs = false;
-	      GSList *node_list = 
-		      g_hash_table_lookup(symbol_table, atom_exp->value.node_id);
-    
-	      while(node_list != NULL) 
+              bool in_interface = false;
+              List *iterator = interface;
+              while(iterator != NULL)  
               {
-		 Symbol *current_node = (Symbol*)node_list->data;     
-
-		 if(current_node->type == LEFT_NODE_S &&
-		    !strcmp(current_node->scope,scope) && 
-		    !strcmp(current_node->containing_rule,rule_name))  
-		 {
-		    in_lhs = true;
-		    break;
-		 }
-
-		 node_list = node_list->next;
-	      }
-	      if(!in_lhs) 
-              {
-		 print_to_console("Error (%s): Node %s in degree operator is "
-			 "not in the LHS.\n", rule_name, atom_exp->value.node_id);
-		 print_to_log("Error (%s): Node %s in degree operator is "
-			 "not in the LHS.\n", rule_name,atom_exp->value.node_id);
-              abort_compilation = true;
+                 if(!strcmp(atom->node_id, iterator->node_id))
+                 {
+                    in_interface = true;
+                    break;
+                 }
+                 iterator = iterator->next;
               }
-           }
-           /* If the degree operator is in a right-label, its argument must exist
-            * in the RHS graph.  */
-           if(location == 'r') 
-           {
-              bool in_rhs = false;
-	      GSList *node_list = 
-		      g_hash_table_lookup(symbol_table, atom_exp->value.node_id);
-	      while(node_list != NULL) 
+              if(!in_interface) 
               {
-		 Symbol *current_node = (Symbol*)node_list->data;     
-
-		 if(current_node->type == RIGHT_NODE_S &&
-		    !strcmp(current_node->scope,scope) && 
-		    !strcmp(current_node->containing_rule,rule_name))  
-		 {
-		    in_rhs = true;
-		    break;
-		 }
-
-		 node_list = node_list->next;
-	      }
-	      if(!in_rhs)  
-              {
-		 print_to_console("Error (%s): Node %s in degree operator is "
-			 "not in the RHS.\n", rule_name,atom_exp->value.node_id);
-		 print_to_log("Error (%s): Node %s in degree operator is "
-			 "not in the RHS.\n", rule_name,atom_exp->value.node_id);
-              abort_compilation = true;
+                 print_error("Error (%s): Node %s in degree operator not in the "
+                             "interface.\n", rule_name, atom->node_id);
+                 abort_compilation = true;  
               }
            }
            break;
        }
-       case LIST_LENGTH: 
-            if(string_exp) 
-            {
-                print_to_console("Error (%s): Length operator appears in "
-                                 "string expression.\n", rule_name);
-                print_to_log("Error (%s): Length operator appears in "
-                             "string expression.\n", rule_name);
-                abort_compilation = true;
-            }
-
-            if(location == 'l') lhs_non_simple_exp = true;
-            gpListScan(&(atom_exp->value.list_arg), scope, rule_name,
-                         location);
-            break;
-
-       case STRING_LENGTH:
-            if(string_exp) 
-            {
-               print_to_console("Error (%s): Length operator appears in "
-                                "string expression.\n", rule_name);
-               print_to_log("Error (%s): Length operator appears in "
-                            "string expression.\n", rule_name);
-               abort_compilation = true; 
-            }
-            if(location == 'l') lhs_non_simple_exp = true;
-
-	    atomicExpScan(atom_exp->value.str_arg, scope, rule_name, 
-			    location, false, true);
-            break;
-
        case NEG:
             if(string_exp) 
             {
-               print_to_console("Error (%s): Arithmetic operator appears "
-                                "in string expression.\n", rule_name);
-               print_to_log("Error (%s): Arithmetic operator appears in "
-                            "string expression.\n", rule_name);
+               print_error("Error (%s): Arithmetic operator appears in string "
+                           "expression.\n", rule_name);
+               abort_compilation = true;
             }
-
-            atomicExpScan(atom_exp->value.exp, scope, rule_name,
-                          location, true, false);
+            atomScan(atom->neg_exp, interface, scope, rule_name, location, true, false);
             break;
 
        case ADD:
@@ -1507,138 +1113,151 @@ void atomicExpScan(GPAtomicExp * const atom_exp, string const scope,
        case DIVIDE:
             if(string_exp) 
             {
-               print_to_console("Error (%s): Arithmetic operator appears in "
-                                "string expression.\n", rule_name);
-               print_to_log("Error (%s): Arithmetic operator appears in "
-                            "string expression.\n", rule_name);
+               print_error("Error (%s): Arithmetic operator appears in string "
+                           "expression.\n", rule_name);
                abort_compilation = true;
             }
-            if(location == 'l') lhs_non_simple_exp = true;
-            atomicExpScan(atom_exp->value.bin_op.left_exp, scope,
-                          rule_name, location, true, false);
-            atomicExpScan(atom_exp->value.bin_op.right_exp, scope,
-                          rule_name, location, true, false);       
+            if(location == 'l') lhs_not_simple = true;
+            atomScan(atom->bin_op.left_exp, interface, scope, rule_name, 
+                     location, true, false);
+            atomScan(atom->bin_op.right_exp, interface, scope, rule_name,
+                     location, true, false);       
             break;
 
        case CONCAT:     
             if(int_exp) 
             {
-               print_to_console("Error (%s): String operator appears in "
-                                "integer expression.\n", rule_name);
-               print_to_log("Error (%s): String operator appears in "
-                            "integer expression.\n", rule_name);
+               print_error("Error (%s): String operator appears in integer "
+                           "expression.\n", rule_name);
                abort_compilation = true;
             }
-            atomicExpScan(atom_exp->value.bin_op.left_exp, scope,
-                          rule_name, location, false, true);
-            atomicExpScan(atom_exp->value.bin_op.right_exp, scope,
-                          rule_name, location, false, true); 
+            atomScan(atom->bin_op.left_exp, interface, scope, rule_name,
+                     location, false, true);
+            atomScan(atom->bin_op.right_exp, interface, scope, rule_name, 
+                     location, false, true); 
 	    if(string_var_count > 1) 
             {
-	       print_to_console("Error (%s): More than one string variable "
-		                "in LHS string expression.\n", rule_name);
-	       print_to_log("Error (%s): More than one string variable "
-		            "in LHS string expression.\n", rule_name);
+	       print_error("Error (%s): More than one string variable in LHS "
+		           "string expression.\n", rule_name);
 	       string_var_count = 0;
             }
             break;
 
-       default: print_to_log("Error: Unexpected atomic expression type %d "
-		             "at AST node %d.\n", 
-                             atom_exp->exp_type, atom_exp->node_id);
-                abort_compilation = true;
-
-                break;                
+       default:
+            print_to_log("Error: Unexpected atom type %d at AST node %d.\n",
+		         atom->type, atom->id);
+            abort_compilation = true;
+            break;                
     }
-}                
+}               
 
-List *reverse (List *listHead) 
+void variableScan(GPAtom *atom, string scope, string rule_name, 
+                  char location, bool int_exp, bool string_exp, bool length)
 {
-   List *currentNode = listHead;
-   List *tempNode = NULL;
-   List *previousNode = NULL;
-
-   /* invariant: currentNode points to the node being worked on and
-    * previousNode points to the original parent of currentNode. */
-   while(currentNode != NULL) 
+   /* var_list is pointed to the symbol_list of symbols with the same
+    * identifier as the variable. */
+   SymbolList *var_list = g_hash_table_lookup(symbol_table, atom->variable.name);      
+   bool in_rule = false;
+   while(var_list)
    {
-      /* Maintain a pointer to currentNode->next before reassignment. */
-      tempNode = currentNode->next; 
-      /* reversing the 'next' pointer of currentNode. */
-      currentNode->next = previousNode; 
-      /* setting the invariant for the next iteration */
-      previousNode = currentNode;
-      currentNode = tempNode;
-   }
-   /* Return the tail of the original list i.e. the head of the reversed 
-    * list. */
-   return previousNode;
-}     
-
-void reverseGraphAST (GPGraph *graph)
-{
-   if(graph->nodes)
-   {
-      graph->nodes = reverse(graph->nodes);  
-      List *iterator = graph->nodes;
-      while(iterator) 
+      /* Locate the variable with the appropriate scope and rule name. If it 
+       * exists, there is only one, as duplicates are not entered into the 
+       * symbol table. */
+      if(var_list->is_var && symbolInScope(var_list, scope, rule_name)) in_rule = true;
+      else 
       {
-           iterator->value.node->label->gp_list = 
-             reverse(iterator->value.node->label->gp_list);
-           iterator = iterator->next;
+         var_list = var_list->next;
+         continue;
       }
-   }
-   if(graph->edges)
-   {
-      graph->edges = reverse(graph->edges);
-      List *iterator = graph->edges;
-
-      while(iterator)  
+      switch(var_list->type)
       {
-           iterator->value.edge->label->gp_list = 
-             reverse(iterator->value.edge->label->gp_list);
-           iterator = iterator->next;
+         case INT_S:
+              atom->variable.type = INTEGER_VAR;
+              if(location == 'l') var_list->in_lhs = true;
+              if(length) 
+              {
+                 print_error("Error (%s): Integer variable %s in length "
+                             "operator.\n", rule_name, atom->variable.name);
+                 abort_compilation = true;
+              }
+              break;
+
+         case CHAR_S:
+              atom->variable.type = CHARACTER_VAR;
+              if(location == 'l') var_list->in_lhs = true;
+              if(length) 
+              {
+                 print_error("Error (%s): Character variable %s in length "
+                             "operator.\n", rule_name, atom->variable.name);
+                 abort_compilation = true;
+              }
+              break;
+         
+         case STRING_S:
+              atom->variable.type = STRING_VAR;
+              if(location == 'l') 
+              {
+                 var_list->in_lhs = true;
+                 string_var_count++;
+              }
+              break;
+
+         case ATOM_S:
+              atom->variable.type = ATOM_VAR;
+              if(location == 'l') 
+              {
+                 var_list->in_lhs = true;
+                 string_var_count++;
+              }
+              break;
+
+         case LIST_S:
+              atom->variable.type = LIST_VAR;
+              if(location == 'l') 
+              {
+                 var_list->in_lhs = true;
+                 list_var_count++;
+              }
+              break;
+
+         default:
+              print_to_log("Error (variableCheck): Unexpected symbol type "
+                            "%d.\n", var_list->type);
+              break;
       }
+      /* Check if a RHS variable exists in the LHS */
+      if(location == 'r' && !(var_list->in_lhs))
+      {
+         print_error("Error (%s): Variable %s in RHS but not in LHS.\n",
+                     rule_name, atom->variable.name);
+         abort_compilation = true;
+      }
+      /* Type checking */
+      if(int_exp && var_list->type != INT_S && !length) 
+      {
+         print_error("Error (%s): Variable %s occurs in an integer "
+                     "expression but not declared as an integer.\n",
+                     rule_name, atom->variable.name);
+         abort_compilation = true;
+      }
+      if(string_exp && var_list->type != CHAR_S && var_list->type != STRING_S)
+      {
+         print_error("Error (%s): Variable %s occurs in a string expression "
+                     "but not declared as a string or character.\n",
+                     rule_name, atom->variable.name);
+         abort_compilation = true;
+      }
+      /* We have found the variable in the rule with the appropriate
+       * name. enterVariables ensures there is only one such variable
+       * variable in the symbol list. There is no need to look further. */
+      if(in_rule) break;	
+      var_list = var_list->next;
    }
-}
 
-string makeRuleIdentifier(string rule_name, string scope)
-{
-   int length = strlen(rule_name) + strlen(scope) + 2;
-   char *new_rule_name = malloc(length);
-   if(new_rule_name == NULL)
+   if(!in_rule) 
    {
-      print_to_log("Error: Memory exhausted during rule name creation.\n");
-      exit(1);
-   }
-   new_rule_name = strcpy(new_rule_name, scope);
-   new_rule_name = strcat(new_rule_name, "_");
-   new_rule_name = strcat(new_rule_name, rule_name);
-   return new_rule_name;
+      print_error("Error (%s): Variable %s in expression but not declared.\n",
+                  rule_name, atom->variable.name);
+      abort_compilation = true;
+   } 
 }
-
-/* freeSymbolList iterates through the symbol list, freeing each symbol
- * individually. struct Symbol contains some string fields which
- * are dynamically allocated. These are explicitly freed. */
-void freeSymbolList(gpointer key, gpointer value, gpointer data) 
-{
-   /* iterator keeps a pointer to the current GSList node */
-   GSList *iterator = (GSList*)value;
-
-   while(iterator != NULL) 
-   {
-      Symbol *symbol_to_free = (Symbol*)iterator->data;
-
-      string symbol_scope = symbol_to_free->scope;
-      string symbol_rule = symbol_to_free->containing_rule;
-
-      if(symbol_scope) free(symbol_scope); 
-      if(symbol_rule) free(symbol_rule); 
-      if(symbol_to_free) free(symbol_to_free);
-
-      iterator = iterator->next;
-   }
-   /* A glib function is used to free the GSList. */
-   g_slist_free((GSList*)value);
-}
-
