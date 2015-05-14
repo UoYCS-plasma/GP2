@@ -360,8 +360,12 @@ Type: INT				{ $$ = INT_DECLARATIONS; }
  /* Grammar for GP2 Graph Definitions. */
 
 Graph: '[' '|' ']'			 { $$ = newASTGraph(@$, NULL, NULL); }
+     | '[' Position '|' '|' ']'	         { $$ = newASTGraph(@$, NULL, NULL); }
      | '[' NodeList '|' ']'		 { $$ = newASTGraph(@$, $2, NULL); }
+     | '[' Position '|' NodeList '|' ']' { $$ = newASTGraph(@$, $4, NULL); }
      | '[' NodeList '|' EdgeList ']' 	 { $$ = newASTGraph(@$, $2, $4); }
+     | '[' Position '|' NodeList '|' EdgeList ']'  
+     					 { $$ = newASTGraph(@$, $4, $6); }
 	
 NodeList: Node				{ $$ = addASTNode(@1, $1, NULL); }
         | NodeList Node			{ $$ = addASTNode(@2, $2, $1); }
@@ -369,16 +373,20 @@ NodeList: Node				{ $$ = addASTNode(@1, $1, NULL); }
 Node: '(' NodeID RootNode ',' Label ')' { $$ = newASTNode(@2, is_root, $2, $5); 
  					  is_root = false; 	
 					  if($2) free($2); } 
-
+    | '(' NodeID RootNode ',' Label Position ')'
+    				        { $$ = newASTNode(@2, is_root, $2, $5); 
+ 					  is_root = false; 	
+					  if($2) free($2); } 
 EdgeList: Edge				{ $$ = addASTEdge(@1, $1, NULL); }
         | EdgeList Edge			{ $$ = addASTEdge(@2, $2, $1); }
 
 Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
 					{ $$ = newASTEdge(@2, is_bidir, $2, $5, $7, $9);
-                                          is_bidir = false;
-					  if($2) free($2); 
-					  if($5) free($5); 
-					  if($7) free($7); }
+                                          is_bidir = false; if($2) free($2); 
+					  if($5) free($5); if($7) free($7); }
+
+ /* Layout information for the editor. This is ignored by the parser. */
+Position: '(' NUM ',' NUM ')'           { } 
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
@@ -467,14 +475,23 @@ Variable: ID		  		/* default $$ = $1 */
  */
 
 HostGraph: '[' '|' ']'  		{ $$ = newASTGraph(@$, NULL, NULL); }
+         | '[' Position '|' '|' ']'  	{ $$ = newASTGraph(@$, NULL, NULL); }
          | '[' HostNodeList '|' ']'  	{ $$ = newASTGraph(@$, $2, NULL); }
+         | '[' Position '|' HostNodeList '|' ']' 
+	 				{ $$ = newASTGraph(@$, $4, NULL); }
          | '[' HostNodeList '|' HostEdgeList ']' 
-     					{ $$ = newASTGraph(@$, $2, $4); }
+	 				{ $$ = newASTGraph(@$, $2, $4); }
+         | '[' Position '|' HostNodeList '|' HostEdgeList ']' 
+     					{ $$ = newASTGraph(@$, $4, $6); }
 
 HostNodeList: HostNode			{ $$ = addASTNode(@1, $1, NULL); }
             | HostNodeList HostNode	{ $$ = addASTNode(@2, $2, $1); }
 
 HostNode: '(' NodeID RootNode ',' HostLabel ')'
+    					{ $$ = newASTNode(@2, is_root, $2, $5); 
+ 					  is_root = false; 	
+					  if($2) free($2); } 
+HostNode: '(' NodeID RootNode ',' HostLabel Position ')'
     					{ $$ = newASTNode(@2, is_root, $2, $5); 
  					  is_root = false; 	
 					  if($2) free($2); } 
