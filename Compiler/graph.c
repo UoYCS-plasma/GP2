@@ -411,104 +411,98 @@ void changeBidirectional(Graph *graph, int index)
 /* ===========================
  * Label Class Table Functions 
  * =========================== */
-LabelClassTable **makeLabelClassTable(void)
-{
-   LabelClassTable **table = malloc(sizeof(LabelClassTable*) * NUMBER_OF_MARKS * 
-                                    NUMBER_OF_CLASSES);
-   if(table == NULL)
-   {
-      print_to_log("error (makeLabelClassTable): malloc failure.\n");
-      exit(1);
-   }
-   int index;
-   for(index = 0; index < NUMBER_OF_MARKS * NUMBER_OF_CLASSES; index++) table[index] = NULL;
-   return table;
-}
-
 void addLabelClassIndex(Graph *graph, bool node, Label label, int index)
 {
-   /* Rule graphs do not have memory allocated to their node_classes and
-    * edge_classes tables, so this function has no effect on them. */
-   if(node && graph->node_classes == NULL) return;
-   if(!node && graph->edge_classes == NULL) return;
-
-   LabelClassTable *current_table = NULL;
-   if(node) current_table = getNodesByLabel(graph, label);
-   else current_table = getEdgesByLabel(graph, label);
-   
-   /* Allocate memory for a new LabelClassTable and an initial items array
-    * of four items. */
-   if(current_table == NULL)
+   /* Temporary - will be removed when I separate host and rule graph data
+    * structures. */
+   if(!graph->classes) return;
+   LabelClass label_class = getLabelClass(label);
+   LabelClassTable *table = node ? getNodeLabelTable(graph, label.mark, label_class): 
+                                   getEdgeLabelTable(graph, label.mark, label_class);
+   /* If the table for this label class and mark does not exist, allocate 
+    * memory for a new LabelClassTable and an initial items array of four
+    * items. */
+   if(table == NULL)
    {
-      LabelClass label_class = getLabelClass(label);
-      int table_index = label.mark * NUMBER_OF_CLASSES + label_class;
-
-      LabelClassTable *table = malloc(sizeof(LabelClassTable));
-      if(table == NULL)
+      LabelClassTable *new_table = malloc(sizeof(LabelClassTable));
+      if(new_table == NULL)
       {
-         print_to_log("Error (addNodeLabelClassIndex): malloc failure.\n");
+         print_to_log("Error (addLabelClassIndex): malloc failure.\n");
          exit(1);
       }
-      table->pool_size = 4;
-      table->index = 1;
-      table->items = calloc(table->pool_size, sizeof(int));
-      if(table->items == NULL)
+      new_table->mark = label.mark;
+      new_table->label_class = label_class;
+      new_table->pool_size = 4;
+      new_table->index = 1;
+      new_table->items = calloc(new_table->pool_size, sizeof(int));
+      if(new_table->items == NULL)
       {
-         print_to_log("Error (addNodeLabelClassIndex): malloc failure.\n");
+         print_to_log("Error (addLabelClassIndex): malloc failure.\n");
          exit(1);
       }
-      table->items[0] = index;
+      new_table->items[0] = index;
       /* Initialise the rest of items. */
-      table->items[1] = -1;
-      table->items[2] = -1;
-      table->items[3] = -1;
+      new_table->items[1] = -1;
+      new_table->items[2] = -1;
+      new_table->items[3] = -1;
+
+      /* Prepend the new table to the appropriate list. */
       if(node) 
       {
-         graph->node_classes[table_index] = table;
+         new_table->next = graph->node_classes;
+         graph->node_classes = new_table;
          graph->nodes[index].label_table_index = 0;
       }
       else 
       {
-         graph->edge_classes[table_index] = table;
+         new_table->next = graph->edge_classes;
+         graph->edge_classes = new_table;
          graph->edges[index].label_table_index = 0;
       }
    }
+   /* The table for this label class and mark exists. Update its array with 
+    * the new index. */
    else
    {
       /* If the items array is full, double the allocated memory. */
-      if(current_table->index == current_table->pool_size)
+      if(table->index == table->pool_size)
       {
-         current_table->pool_size *= 2;
-         int *new_items = realloc(current_table->items, 
-                                  current_table->pool_size * sizeof(int));
+         table->pool_size *= 2;
+         int *new_items = realloc(table->items, table->pool_size * sizeof(int));
          if(new_items == NULL)
          {
             print_to_log("Error (addNodeLabelClassIndex): malloc failure.\n");
             exit(1);
          }
-         current_table->items = new_items;
+         table->items = new_items;
          int count;
-         for(count = current_table->index; count < current_table->pool_size; count++)
-            current_table->items[count] = -1;
+         /* Initialise the newly allocated array elements. */
+         for(count = table->index; count < table->pool_size; count++) 
+            table->items[count] = -1;
       }
-      current_table->items[current_table->index] = index;
-      if(node) graph->nodes[index].label_table_index = current_table->index;
-      else graph->edges[index].label_table_index = current_table->index;
-      current_table->index++;
+      table->items[table->index] = index;
+      if(node) graph->nodes[index].label_table_index = table->index;
+      else graph->edges[index].label_table_index = table->index;
+      table->index++;
    }
 }
 
 void removeLabelClassIndex(Graph *graph, bool node, Label label, int item_index)
 {
-   /* Rule graphs do not have memory allocated to their node_classes and
-    * edge_classes tables, so this function has no effect on them. */
-   if(node && graph->node_classes == NULL) return;
-   if(!node && graph->edge_classes == NULL) return;
-
-   LabelClassTable *table = NULL;
-   if(node) table = getNodesByLabel(graph, label);
-   else table = getEdgesByLabel(graph, label);
-
+   /* Temporary - will be removed when I separate host and rule graph data
+    * structures. */
+   if(!graph->classes) return;
+   LabelClass label_class = getLabelClass(label);
+   LabelClassTable *table = node ? getNodeLabelTable(graph, label.mark, label_class): 
+                                   getEdgeLabelTable(graph, label.mark, label_class);
+   /* This shouldn't happen. */
+   if(table == NULL)
+   {
+      string item = node ? "node" : "edge";
+      print_to_log("Error (removeLabelClassIndex): Label class table of %s"
+                   "does not exist.\n", item);
+      return;
+   }
    table->items[item_index] = -1;
    /* If the index of the removed item directly precedes the last index,
     * decrement the index until it refers to an array element one place
@@ -522,6 +516,38 @@ void removeLabelClassIndex(Graph *graph, bool node, Label label, int item_index)
          else break;
       }
    }
+}
+
+LabelClassTable *copyLabelClassTable(LabelClassTable *table)
+{
+   if(table == NULL) return NULL;
+   LabelClassTable *copy = malloc(sizeof(LabelClassTable));
+   if(copy == NULL)
+   {
+      print_to_log("Error (addLabelClassIndex): malloc failure.\n");
+      exit(1);
+   }
+   copy->mark = table->mark;
+   copy->label_class = table->label_class;
+   copy->pool_size = table->pool_size;
+   copy->index = table->index;
+   copy->items = calloc(copy->pool_size, sizeof(int));
+   if(copy->items == NULL)
+   {
+      print_to_log("Error: (copyLabelClassTable): malloc failure.\n");
+      exit(1);
+   }
+   memcpy(copy->items, table->items, copy->pool_size * sizeof(int));      
+   copy->next = copyLabelClassTable(table->next);
+   return copy;
+}
+
+void freeLabelClassTable(LabelClassTable *table)
+{
+   if(table == NULL) return;
+   if(table->items != NULL) free(table->items);
+   freeLabelClassTable(table->next);
+   free(table);
 }
 
 /* ========================
@@ -612,25 +638,35 @@ int getOutdegree(Graph *graph, int index)
    return node->outdegree;
 }
 
-LabelClassTable *getNodesByLabel(Graph *graph, Label label) 
+LabelClassTable *getNodeLabelTable(Graph *graph, MarkType mark, LabelClass label_class)
 {
-   if(graph->node_classes == NULL) return NULL;
-   LabelClass label_class = getLabelClass(label);
-   /* <label.mark> * NUMBER_OF_CLASSES is the index of the first column of row
-    * <label.mark>. label_class is added to this to get the correct column. */
-   return graph->node_classes[label.mark * NUMBER_OF_CLASSES + label_class];
+   LabelClassTable *table = graph->node_classes;
+   while(table != NULL)
+   {
+      if(table->mark == mark && table->label_class == label_class) return table;
+      table = table->next;
+   }
+   return NULL;
 }
    
-LabelClassTable *getEdgesByLabel(Graph *graph, Label label) 
+LabelClassTable *getEdgeLabelTable(Graph *graph, MarkType mark, LabelClass label_class) 
 {
-   if(graph->edge_classes == NULL) return NULL;
-   LabelClass label_class = getLabelClass(label);
-   return graph->edge_classes[label.mark * NUMBER_OF_CLASSES + label_class];
+   LabelClassTable *table = graph->edge_classes;
+   while(table != NULL)
+   {
+      if(table->mark == mark && table->label_class == label_class) return table;
+      table = table->next;
+   }
+   return NULL;
 }
 
 
 void printGraph(Graph *graph, FILE *file) 
 {
+   /* The node and edge counts are used in the IDs of the printed graph. The item's 
+    * index in the graph is not suitable for this purpose because there may be holes
+    * in the graph's node array. The counts are also used to control the number of
+    * nodes and edges printed per line. */
    int index, node_count = 0, edge_count = 0;
    if(graph == NULL || graph->number_of_nodes == 0) 
    {
@@ -645,9 +681,8 @@ void printGraph(Graph *graph, FILE *file)
       {
          /* Five nodes per line */
          if(node_count != 0 && node_count % 5 == 0) fprintf(file, "\n  ");
-         node_count++;
-         if(node->root) fprintf(file, "(n%d(R), ", index);
-         else fprintf(file, "(n%d, ", index);
+         if(node->root) fprintf(file, "(n%d(R), ", node_count++);
+         else fprintf(file, "(n%d, ", node_count++);
          printLabel(node->label, file);
          fprintf(file, ") ");
       }
@@ -665,9 +700,8 @@ void printGraph(Graph *graph, FILE *file)
       {
          /* Three edges per line */
          if(edge_count != 0 && edge_count % 3 == 0) fprintf(file, "\n  ");
-         edge_count++;
-         if(edge->bidirectional) fprintf(file, "(e%d(B), ", index);
-         else fprintf(file, "(e%d, ", index);
+         if(edge->bidirectional) fprintf(file, "(e%d(B), ", edge_count++);
+         else fprintf(file, "(e%d, ", edge_count++);
          fprintf(file, "n%d, n%d, ", edge->source, edge->target);
          printLabel(edge->label, file);
          fprintf(file, ") ");
@@ -690,45 +724,20 @@ void freeGraph(Graph *graph)
          if(node->in_edges != NULL) free(node->in_edges);
       }  
    }
-   if(graph->nodes) free(graph->nodes);
+   if(graph->nodes != NULL) free(graph->nodes);
 
    for(index = 0; index < graph->edge_index; index++)
    {
       Edge *edge = getEdge(graph, index);
       if(edge->index >= 0) freeLabel(edge->label);
    }
-   if(graph->edges) free(graph->edges);
+   if(graph->edges != NULL) free(graph->edges);
 
-   if(graph->free_node_slots) free(graph->free_node_slots);
-   if(graph->free_edge_slots) free(graph->free_edge_slots);
+   if(graph->free_node_slots != NULL) free(graph->free_node_slots);
+   if(graph->free_edge_slots != NULL) free(graph->free_edge_slots);
 
-   if(graph->node_classes != NULL)
-   {
-      for(index = 0; index < NUMBER_OF_MARKS * NUMBER_OF_CLASSES; index++)
-      {
-         if(graph->node_classes[index] != NULL)
-         {
-            if(graph->node_classes[index]->items != NULL) 
-               free(graph->node_classes[index]->items); 
-            free(graph->node_classes[index]);
-         }
-      }
-      free(graph->node_classes);
-   }
-   
-   if(graph->edge_classes != NULL)
-   {
-      for(index = 0; index < NUMBER_OF_MARKS * NUMBER_OF_CLASSES; index++)
-      { 
-         if(graph->edge_classes[index] != NULL)
-         {
-            if(graph->edge_classes[index]->items != NULL) 
-               free(graph->edge_classes[index]->items); 
-            free(graph->edge_classes[index]);
-         }
-      }
-      free(graph->edge_classes);
-   }
+  freeLabelClassTable(graph->node_classes);
+  freeLabelClassTable(graph->edge_classes);
 
    if(graph->root_nodes != NULL) 
    {

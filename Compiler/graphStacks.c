@@ -40,70 +40,11 @@ void copyGraph(Graph *graph)
    graph_copy->number_of_nodes = graph->number_of_nodes;
    graph_copy->number_of_edges = graph->number_of_edges;
 
-   if(graph->node_classes != NULL)
-   {
-      graph_copy->node_classes = makeLabelClassTable(); 
-      memcpy(graph_copy->node_classes, graph->node_classes,
-             sizeof(LabelClassTable*) * NUMBER_OF_MARKS * NUMBER_OF_CLASSES);
-   }
-   if(graph->edge_classes != NULL)
-   {
-      graph_copy->edge_classes = makeLabelClassTable(); 
-      memcpy(graph_copy->edge_classes, graph->edge_classes,
-             sizeof(LabelClassTable*) * NUMBER_OF_MARKS * NUMBER_OF_CLASSES);
-   }
-
-   int index;
-   for(index = 0; index < NUMBER_OF_MARKS * NUMBER_OF_CLASSES; index++)
-   {
-      /* If the pool size is greater than 0, allocate memory to the items 
-       * array of the copied LabelClassTable and copy the corresponding array
-       * from the original graph. */
-      LabelClassTable *table_copy = NULL;
-      if(graph->node_classes[index] != NULL)
-      {
-         table_copy = malloc(sizeof(LabelClassTable));
-         if(table_copy == NULL)
-         {
-            print_to_log("Error (copyGraph): malloc failure.\n");
-            exit(1);
-         }
-         table_copy->pool_size = graph->node_classes[index]->pool_size;  
-         table_copy->index = graph->node_classes[index]->index;  
-         table_copy->items = calloc(table_copy->pool_size, sizeof(int));
-         if(table_copy->items == NULL)
-         {
-            print_to_log("Error: (copyGraph): malloc failure.\n");
-            exit(1);
-         }
-         memcpy(table_copy->items, graph->node_classes[index]->items, 
-                table_copy->pool_size * sizeof(int));
-         graph_copy->node_classes[index] = table_copy;
-      }
-      table_copy = NULL;
-      if(graph->edge_classes[index] != NULL)
-      {
-         table_copy = malloc(sizeof(LabelClassTable));
-         if(table_copy == NULL)
-         {
-            print_to_log("Error (copyGraph): malloc failure.\n");
-            exit(1);
-         }
-         table_copy->pool_size = graph->edge_classes[index]->pool_size;  
-         table_copy->index = graph->edge_classes[index]->index;  
-         table_copy->items = calloc(table_copy->pool_size, sizeof(int));
-         if(table_copy->items == NULL)
-         {
-            print_to_log("Error: (copyGraph): malloc failure.\n");
-            exit(1);
-         }
-         memcpy(table_copy->items, graph->edge_classes[index]->items, 
-                table_copy->pool_size * sizeof(int));
-         graph_copy->edge_classes[index] = table_copy;
-      }
-   }
+   graph_copy->node_classes = copyLabelClassTable(graph->node_classes); 
+   graph_copy->edge_classes = copyLabelClassTable(graph->edge_classes); 
    graph_copy->root_nodes = NULL;
-
+ 
+   int index;
    /* For each node, make a copy of its label and, if necessary, make a copy
     * of its extra edges arrays. */
    for(index = 0; index < graph_copy->node_index; index++)

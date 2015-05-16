@@ -259,7 +259,7 @@ void emitRootNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *nex
 
    PTFI("Label label = host_node->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(getListVariable(left_node->label) != NULL)
+   if(hasListVariable(left_node->label))
       generateVariableListMatchingCode(left_node->label, 6, file);
    else generateFixedListMatchingCode(left_node->label, 6, file);
 
@@ -278,8 +278,7 @@ void emitNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *next_op
    /* Writes a double for loop. The outer loop iterates over variable mark_index.
     * The inner loop iterates over variable class_index. */
    generateIteratorCode(left_node->label, 3, file);
-   PTFI("LabelClassTable *table = host->node_classes[mark_index * "
-        "NUMBER_OF_CLASSES + class_index];\n", 9);
+   PTFI("LabelClassTable *table = getNodeLabelTable(host, mark, label_class);\n", 9);
    PTFI("if(table == NULL) continue;\n", 9);
    PTFI("int items_index;\n", 9);
    PTFI("for(items_index = 0; items_index < table->index; items_index++)\n", 9);
@@ -305,7 +304,7 @@ void emitNodeMatcher(Node *left_node, ItemList *deleted_nodes, SearchOp *next_op
 
    PTFI("Label label = host_node->label;\n", 12);
    PTFI("bool match = false;\n", 12);
-   if(getListVariable(left_node->label) != NULL)
+   if(hasListVariable(left_node->label))
       generateVariableListMatchingCode(left_node->label, 12, file);
    else generateFixedListMatchingCode(left_node->label, 12, file);
 
@@ -369,7 +368,7 @@ void emitNodeFromEdgeMatcher(Node *left_node, char type, ItemList *deleted_nodes
  
    PTFI("Label label = host_node->label;\n", 3);
    PTFI("bool match = false;\n", 3);
-   if(getListVariable(left_node->label) != NULL)
+   if(hasListVariable(left_node->label))
       generateVariableListMatchingCode(left_node->label, 3, file);
    else generateFixedListMatchingCode(left_node->label, 3, file);
 
@@ -406,12 +405,11 @@ void generateNodeMatchResultCode(int index, SearchOp *next_op, int indent)
 void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 {
    PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
-   /* Writes a double for loop. The outer loop iterates over variable mark_index.
-    * The inner loop iterates over variable class_index. */
+   /* Writes a double for loop. The outer loop iterates over variable mark.
+    * The inner loop iterates over variable label_class. */
    generateIteratorCode(left_edge->label, 3, file);
    PTFI("bool edge_matched = false;\n", 3);
-   PTFI("LabelClassTable *table = host->edge_classes[mark_index * "
-        "NUMBER_OF_CLASSES + class_index];\n", 9);
+   PTFI("LabelClassTable *table = getEdgeLabelTable(host, mark, label_class);\n", 9);
    PTFI("if(table == NULL) continue;\n", 9);
    PTFI("int items_index;\n", 9);
    PTFI("for(items_index = 0; items_index < table->index; items_index++)\n", 9);
@@ -437,7 +435,7 @@ void emitEdgeMatcher(Edge *left_edge, SearchOp *next_op)
 
    PTFI("Label label = host_edge->label;\n", 12);
    PTFI("bool match = false;\n", 12);
-   if(getListVariable(left_edge->label) != NULL)
+   if(hasListVariable(left_edge->label))
       generateVariableListMatchingCode(left_edge->label, 12, file);
    else generateFixedListMatchingCode(left_edge->label, 12, file);
 
@@ -471,7 +469,7 @@ void emitLoopEdgeMatcher(Edge *left_edge, SearchOp *next_op)
         "continue;\n\n", 6, left_edge->label.mark, left_edge->label.mark);
    PTFI("Label label = host_edge->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(getListVariable(left_edge->label) != NULL)
+   if(hasListVariable(left_edge->label))
       generateVariableListMatchingCode(left_edge->label, 6, file);
    else generateFixedListMatchingCode(left_edge->label, 6, file);
 
@@ -525,7 +523,7 @@ void emitEdgeFromSourceMatcher(Edge *left_edge, bool initialise, bool exit,
    }
    PTFI("Label label = host_edge->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(getListVariable(left_edge->label) != NULL)
+   if(hasListVariable(left_edge->label))
       generateVariableListMatchingCode(left_edge->label, 6, file);
    else generateFixedListMatchingCode(left_edge->label, 6, file);
 
@@ -573,7 +571,7 @@ void emitEdgeFromTargetMatcher(Edge *left_edge, bool initialise, bool exit,
    }
    PTFI("Label label = host_edge->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(getListVariable(left_edge->label) != NULL)
+   if(hasListVariable(left_edge->label))
       generateVariableListMatchingCode(left_edge->label, 6, file);
    else generateFixedListMatchingCode(left_edge->label, 6, file);
 
@@ -680,12 +678,18 @@ void generateRemoveLHSCode(string rule_name)
 void generateAddRHSCode(Rule *rule)
 {
    PTH("void apply%s(bool record_changes);\n", rule->name);
-   PTF("void apply%s(bool record_changes)\n", rule->name);
-   PTF("{\n");
+   PTF("void apply%s(bool record_changes)\n{\n", rule->name);
    PTFI("int index;\n", 3);
    PTFI("Label label;\n\n", 3);
    /* Generate code to retrieve the values assigned to the variables in the
     * matching phase. */
+   VariableList *variables = rule->variables;
+   while(variables != NULL)
+   {
+      if(variables->used_by_rule) 
+         generateVariableCode(variables->variable, variables->type, file);
+      variables = variables->next;
+   }
    int index;
    Graph *rhs = rule->rhs;
    /* Flag to prevent repeated writing of "label = blank_label" when
@@ -747,6 +751,8 @@ void generateApplicationCode(Rule *rule)
    PTH("void apply%s(Morphism *morphism, bool record_changes);\n", rule->name);
    PTF("void apply%s(Morphism *morphism, bool record_changes)\n{\n", rule->name);
    
+   /* Generate code to retrieve the values assigned to the variables in the
+    * matching phase. */
    VariableList *variables = rule->variables;
    while(variables != NULL)
    {

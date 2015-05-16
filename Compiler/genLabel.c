@@ -2,34 +2,37 @@
 
 void generateIteratorCode(Label label, int indent, FILE *file)
 {
-   PTFI("int mark_index, class_index;\n", indent);
+   PTFI("int mark, label_class;\n", indent);
 
    /* Generate the outer loop which iterates over the rows of the label class array. */
    if(label.mark == ANY)
-      PTFI("for(mark_index = 0; mark_index < NUMBER_OF_MARKS; mark_index++)\n", indent);
-   else PTFI("for(mark_index = %d; mark_index < %d; mark_index++)\n", 
+      PTFI("for(mark = 0; mark < NUMBER_OF_MARKS; mark++)\n", indent);
+   else PTFI("for(mark = %d; mark < %d; mark++)\n", 
              indent, label.mark, label.mark + 1);
    PTFI("{\n", indent);
 
    /* Generate the inner loop which iterates over the columns of the label class array. */
-   if(getListVariable(label) != NULL)
+   if(hasListVariable(label))
    {
       /* The generated loop depends on the number of non-list variable atoms. */
-      int atoms = label.length - 1;
-      if(atoms < 2) 
-           PTFI("for(class_index = %d; class_index < NUMBER_OF_CLASSES; class_index++)\n",
-                indent + 3, atoms);
+      int number_of_atoms = label.length - 1;
+      if(number_of_atoms == 0) 
+           PTFI("for(label_class = 0; label_class < NUMBER_OF_CLASSES; label_class++)\n",
+                indent + 3);
+      else if(number_of_atoms == 1) 
+           PTFI("for(label_class = 1; label_class < NUMBER_OF_CLASSES; label_class++)\n",
+                indent + 3);
       /* There are two label class indices for lists of length 1, so the index for lists of
-       * length x > 1 is x + 1. This is why atoms + 1 is passed to PTFI. */
-      else PTFI("for(class_index = %d; class_index < NUMBER_OF_CLASSES; class_index++)\n",
-                indent + 3, atoms + 1);
+       * length x > 1 is x + 1. This is why number_of_atoms + 1 is passed. */
+      else PTFI("for(label_class = %d; label_class < NUMBER_OF_CLASSES; label_class++)\n",
+                indent + 3, number_of_atoms + 1);
    }
    else
    {
       if(label.length == 0)
-         PTFI("for(class_index = 0; class_index < 1; class_index++)\n", indent + 3);
+         PTFI("for(label_class = 0; label_class < 1; label_class++)\n", indent + 3);
       else if(label.length > 1)
-         PTFI("for(class_index = %d; class_index < %d; class_index++)\n", indent + 3,
+         PTFI("for(label_class = %d; label_class < %d; label_class++)\n", indent + 3,
               label.length + 1, label.length + 2);
       else
       {
@@ -37,21 +40,21 @@ void generateIteratorCode(Label label, int indent, FILE *file)
          switch(atom.type)
          {
             case INTEGER_CONSTANT:
-                 PTFI("for(class_index = 1; class_index < 2; class_index++)\n", indent + 3);
+                 PTFI("for(label_class = 1; label_class < 2; label_class++)\n", indent + 3);
                  break;
 
             case STRING_CONSTANT:
             case CONCAT:
-                 PTFI("for(class_index = 2; class_index < 3; class_index++)\n", indent + 3);
+                 PTFI("for(label_class = 2; label_class < 3; label_class++)\n", indent + 3);
 
             case VARIABLE:
                  if(atom.variable.type == INTEGER_VAR)
-                    PTFI("for(class_index = 1; class_index < 2; class_index++)\n", indent + 3);
+                    PTFI("for(label_class = 1; label_class < 2; label_class++)\n", indent + 3);
                  else if(atom.variable.type == STRING_VAR || 
                          atom.variable.type == CHARACTER_VAR)
-                    PTFI("for(class_index = 2; class_index < 3; class_index++)\n", indent + 3);
+                    PTFI("for(label_class = 2; label_class < 3; label_class++)\n", indent + 3);
                  else if(atom.variable.type == ATOM_VAR)
-                    PTFI("for(class_index = 1; class_index < 3; class_index++)\n", indent + 3);
+                    PTFI("for(label_class = 1; label_class < 3; label_class++)\n", indent + 3);
                  break;
 
             default:
@@ -547,7 +550,7 @@ void generateVariableCode(string name, GPType type, FILE *file)
            PTFI("union { int num; string str; } %s_var;\n", 3, name);
            PTFI("if(assignment_%s->type == INTEGER_VAR) "
                 "%s_var.num = getIntegerValue(\"%s\", morphism);\n", 3, name, name, name);
-           PTFI("else %s_var.str = getStringValue(\"%s\", morphism);\n", 3, name, name);
+           PTFI("else %s_var.str = getStringValue(\"%s\", morphism);\n\n", 3, name, name);
            break;
          
       case LIST_VAR:
@@ -584,17 +587,22 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
       host_label_count++;
       return;
    }
-   int index;
-   /* In the runtime, calloc's first argument depends on the presence of a
-    * list variable in the rule label. 
-    * The <count> integer variable is used to create a fresh Atom * variable
-    * name in case more than one list is created at runtime. */
-   PTFI("Atom *list%d = NULL;\n", indent, count);
-   string list_variable = getListVariable(label);
-   if(list_variable == NULL) 
-        PTFI("list%d = makeList(%d);\n", indent, count, label.length);
-   else PTFI("list%d = makeList(%d + assignment_%s->length - 1);\n",
-             indent, count, label.length, list_variable);
+   /* The length of the list to make at runtime is not static because right labels
+    * contain an arbitrary number of list variables. For each list variable in the 
+    * label, add its length to the runtime accumulator <list_var_length>. A compile
+    * time accumulator <number_of_atoms> counts the number of non-list-variable atoms. */
+   int index, number_of_atoms = 0;
+   PTFI("int list_var_length%d = 0;\n", indent, count);
+   for(index = 0; index < label.length; index++)
+   {
+      Atom atom = label.list[index];
+      if(atom.type == VARIABLE && atom.variable.type == LIST_VAR)
+         PTFI("list_var_length%d += assignment_%s->length;\n", 
+              indent, count, atom.variable.name);
+      else number_of_atoms++;
+   }
+   PTFI("Atom *list%d = makeList(%d + list_var_length%d);\n", 
+        indent, count, number_of_atoms, count);
 
    PTFI("int index%d = 0;\n", indent, count);
    for(index = 0; index < label.length; index++)
@@ -725,20 +733,12 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
                     indent, host_label_count);
       else PTFI("Label host_label%d = getEdgeLabel(host, host_edge_index);\n",
                 indent, host_label_count);
-      if(list_variable == NULL) 
-           PTFI("label = makeHostLabel(host_label%d.mark, %d, list%d);\n\n",
-                indent, host_label_count, label.length, count);
-      else PTFI("label = makeHostLabel(host_label%d.mark, %d + assignment_%s->length - 1, "
-                "list%d);\n\n", indent, host_label_count, label.length, list_variable, count);
-      PTFI("label = makeHostLabel(host_label%d.mark, %d, list%d);\n\n",
-           indent, host_label_count, label.length, count);
+      PTFI("label = makeHostLabel(host_label%d.mark, %d + list_var_length%d, list%d);\n\n", 
+           indent, host_label_count, number_of_atoms, count, count);
       host_label_count++;
    }
-   if(list_variable == NULL) 
-        PTFI("label = makeHostLabel(%d, %d, list%d);\n\n",
-            indent, label.mark, label.length, count);
-   else PTFI("label = makeHostLabel(%d, %d + assignment_%s->length - 1, list%d);\n\n",
-             indent, label.mark, label.length, list_variable, count);
+   else PTFI("label = makeHostLabel(%d, %d + list_var_length%d, list%d);\n\n", 
+             indent, label.mark, number_of_atoms, count, count);
 }
 
 void generateIntExpression(Atom atom, bool nested, FILE *file)

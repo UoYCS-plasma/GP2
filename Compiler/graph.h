@@ -51,10 +51,12 @@ typedef struct Graph
    /* Root nodes referenced in a linked list for fast access. */
    struct RootNodes *root_nodes;
 
-   /* Arrays of pointers to LabelClassTables.
-    * These arrays are only allocated for host graphs. Functions that access
-    * these arrays must check if these pointers are NULL before accessing. */
-   struct LabelClassTable **node_classes, **edge_classes;
+   /* Flag to prevent graph operations from manipulating LabelClassTables in
+    * rule graphs. Set to true for host graphs and false for rule graphs.
+    * This is temporary - I intend to separate host and rule graphs in the 
+    * future. */
+   bool classes;
+   struct LabelClassTable *node_classes, *edge_classes;
 } Graph;
 
 /* The arguments nodes and edges are the initial sizes of the node array and the
@@ -134,31 +136,32 @@ extern struct Edge dummy_edge;
 /* ========================================
  * Label Class Table Definition + Functions
  * ========================================
- * An array of node/edge indices with a certain mark and label class.
- * <items> is a dynamic array storing these indices.
- * <pool_size> is the number of indices allocated to the items array. Its
+ * A linked list of structures storing a collection of node/edge indices 
+ * with a certain mark and label class.
+ * <pool_size> is the number of indices allocated to <items> array. Its
  * initial value is 4, which is doubled on reallocations.
- * <index> is the smallest unassigned index. */
+ * <index> is the smallest unassigned index of <items>. 
+ * <items> is a dynamic array storing these indices. */
 typedef struct LabelClassTable {
+   MarkType mark;
+   LabelClass label_class;
    int pool_size;
    int index;
    int *items;
+   struct LabelClassTable *next;
 } LabelClassTable;
-
-/* Allocates an array of MARKS * LABEL_CLASSES pointers. The intention is for
- * this to act as a 2-dimensional array whose elements can be indexed by 
- * pointer arithmetic. */
-LabelClassTable **makeLabelClassTable(void);
 
 /* Argument 1: The graph.
  * Argument 2: Flag to inform the function of which LabelClassTable to access.
  * Argument 3: The label of the item to be added. Used to obtain the mark and
- *             label class which are the array indices.
+ *             label class.
  * Argument 4: For addLabelClassIndex, the index of the node or edge.
  *             For removeLabelClassIndex, the index of the node or edge in its
  *             table (node/edge->label_table_index). */
 void addLabelClassIndex(Graph *graph, bool node, Label label, int index);
 void removeLabelClassIndex(Graph *graph, bool node, Label label, int item_index);
+LabelClassTable *copyLabelClassTable(LabelClassTable *table);
+void freeLabelClassTable(LabelClassTable *table);
 
 /* ========================
  * Graph Querying Functions
@@ -176,8 +179,8 @@ Label getNodeLabel(Graph *graph, int index);
 Label getEdgeLabel(Graph *graph, int index); 
 int getIndegree(Graph *graph, int index);
 int getOutdegree(Graph *graph, int index);
-LabelClassTable *getNodesByLabel(Graph *graph, Label label);
-LabelClassTable *getEdgesByLabel(Graph *graph, Label label);
+LabelClassTable *getNodeLabelTable(Graph *graph, MarkType mark, LabelClass label_class); 
+LabelClassTable *getEdgeLabelTable(Graph *graph, MarkType mark, LabelClass label_class); 
 
 void printGraph(Graph *graph, FILE *file);
 void freeGraph(Graph *graph);

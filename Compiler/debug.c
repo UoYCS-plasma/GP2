@@ -5,9 +5,9 @@
  *     if node_array[i].index is -1, then i is in the free node slot array.
  * (2) The number of non-dummy nodes in the node array is equal to 
  *     graph->number_of_nodes.
- * (3) The index of a node with mark M and label class L is in the (M, L)th
- *     table of the node_classes 2D array. Moreover, the node's index in that
- *     table is node->label_table_index.
+ * (3) The index of a node with mark M and label class L is in the appropriate
+ *     table of the node_classes list. Moreover, the node's index in that
+ *     table's items array is node->label_table_index.
  * (4) The number of valid edge indices in the outedges array is equal to 
  *     node.outdegree.
  * (5) The number of valid edge indices in the inedges array is equal to 
@@ -16,9 +16,9 @@
  *     if edge_array[i].index is -1, then i is in the free edge slot array.
  * (7) The number of non-dummy edges in the edge array is equal to 
  *     graph->number_of_edges.
- * (8) The index of an edge with mark M and label class L is in the (M, L)th
- *     table of the edge_classes 2D array. Moreover, the edge's index in that
- *     table is edge->label_table_index.
+ * (8) The index of an edge with mark M and label class L is in the appropriate
+ *     table of the edge_classes list. Moreover, the edge's index in that
+ *     table's items array is edge->label_table_index.
  * (9) Source and target consistency: For all edges E, if S is E's source and
  *     T is E's target, then E is in S's outedge list and E is in T's inedge list. 
  */
@@ -100,12 +100,12 @@ bool validGraph(Graph *graph)
          /* Invariant (3) */
          if(node->label_table_index > -1)
          {
-            LabelClassTable *table = getNodesByLabel(graph, node->label);
             LabelClass label_class = getLabelClass(node->label);
+            LabelClassTable *table = getNodeLabelTable(graph, node->label.mark, label_class);
             if(table == NULL)
             {
                print_to_console("(3) Node %d's label class table (Mark %d, LC %d) "
-                                "is empty!\n", node->index, node->label.mark, label_class);   
+                                "does not exist.\n", node->index, node->label.mark, label_class);   
                valid_graph = false;
             }
             else
@@ -197,12 +197,12 @@ bool validGraph(Graph *graph)
          /* Invariant (8) */
          if(edge->label_table_index > -1)
          {
-            LabelClassTable *table = getEdgesByLabel(graph, edge->label);
             LabelClass label_class = getLabelClass(edge->label);
+            LabelClassTable *table = getEdgeLabelTable(graph, edge->label.mark, label_class);
             if(table == NULL)
             {
                print_to_console("(3) Edge %d's label class table (Mark %d, LC %d) "
-                                "is empty!\n", edge->index, edge->label.mark, label_class);   
+                                "does not exist.\n", edge->index, edge->label.mark, label_class);   
                valid_graph = false;
             }
             else

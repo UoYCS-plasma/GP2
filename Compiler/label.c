@@ -94,16 +94,15 @@ LabelClass getLabelClass(Label label)
    return EMPTY_L;
 }   
 
-string getListVariable(Label label)
+bool hasListVariable(Label label)
 {
    int index;
    for(index = 0; index < label.length; index++)
    {
       if(label.list[index].type == VARIABLE && 
-         label.list[index].variable.type == LIST_VAR)
-         return label.list[index].variable.name;
+         label.list[index].variable.type == LIST_VAR) return true;
    }
-   return NULL;
+   return false;
 }
 
 Atom *makeList(int length)

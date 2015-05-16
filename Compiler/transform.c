@@ -35,8 +35,8 @@ Rule *makeRule(GPRule *ast_rule)
       for(index = 0; index < rule->rhs->node_index; index++)
       {
          PreservedItemList *list = queryPItemList(rule->preserved_nodes, index);
-         bool relabelled = false;
-         if(list != NULL) relabelled = list->new_label != NULL;
+         bool relabelled = true;
+         if(list != NULL) relabelled = (list->new_label != NULL);
          
          Label label = getNodeLabel(rule->rhs, index);
          int list_index;
@@ -46,8 +46,8 @@ Rule *makeRule(GPRule *ast_rule)
       for(index = 0; index < rule->rhs->edge_index; index++)
       {
          PreservedItemList *list = queryPItemList(rule->preserved_edges, index);
-         bool relabelled = false;
-         if(list != NULL) relabelled = list->new_label != NULL;
+         bool relabelled = true;
+         if(list != NULL) relabelled = (list->new_label != NULL);
 
          Label label = getEdgeLabel(rule->rhs, index);
          int list_index;
@@ -158,6 +158,8 @@ void scanLHS(Rule *rule, GPGraph *ast_lhs, List *interface)
    int lhs_nodes = getArraySize(countNodes(ast_lhs), 0);
    int lhs_edges = getArraySize(countEdges(ast_lhs), 0);
    rule->lhs = newGraph(lhs_nodes, lhs_edges);
+   /* TEMPORARY */
+   rule->lhs->classes = false;
 
    List *nodes = ast_lhs->nodes;
    while(nodes != NULL)
@@ -231,6 +233,8 @@ void scanRHSNodes(Rule *rule, GPGraph *ast_rhs, List *interface)
    int rhs_nodes = getArraySize(countNodes(ast_rhs), 0);
    int rhs_edges = getArraySize(countEdges(ast_rhs), 0);
    rule->rhs = newGraph(rhs_nodes, rhs_edges);
+   /* TEMPORARY */
+   rule->rhs->classes = false;
 
    List *ast_nodes = ast_rhs->nodes;
    while(ast_nodes != NULL)
