@@ -11,41 +11,40 @@ Graph *newGraph(int nodes, int edges)
    Graph *graph = malloc(sizeof(Graph));
    if(graph == NULL) 
    {
-     printf("Memory exhausted during graph construction.\n");
-     exit(1);
+      print_to_log("Error (newGraph): malloc failure.\n");
+      exit(1);
    }
    graph->nodes = calloc(nodes, sizeof(Node));
    if(graph->nodes == NULL)
    {
-     print_to_log("Memory exhausted during graph construction.\n");
-     exit(1);
+      print_to_log("Error (newGraph): malloc failure.\n");
+      exit(1);
    }
    graph->free_node_slots = calloc(nodes, sizeof(int));
    if(graph->free_node_slots == NULL)
    {
-     print_to_log("Memory exhausted during graph construction.\n");
-     exit(1);
+      print_to_log("Error (newGraph): malloc failure.\n");
+      exit(1);
    }
    int index;
-   for(index = 0; index < nodes; index ++)
+   for(index = 0; index < nodes; index++)
    {
       graph->nodes[index] = dummy_node;
       graph->free_node_slots[index] = -1;
    }
-
    graph->edges = calloc(edges, sizeof(Edge));
    if(graph->edges == NULL)
    {
-     print_to_log("Memory exhausted during graph construction.\n");
-     exit(1);
+      print_to_log("Error (newGraph): malloc failure.\n");
+      exit(1);
    }
    graph->free_edge_slots = calloc(edges, sizeof(int));
    if(graph->free_edge_slots == NULL)
    {
-     print_to_log("Memory exhausted during graph construction.\n");
-     exit(1);
+      print_to_log("Error (newGraph): malloc failure.\n");
+      exit(1);
    }
-   for(index = 0; index < edges; index ++)
+   for(index = 0; index < edges; index++)
    {
       graph->edges[index] = dummy_edge;
       graph->free_edge_slots[index] = -1;
@@ -73,21 +72,32 @@ int addNode(Graph *graph, bool root, Label label)
    if(index == -1) 
    {
       index = graph->node_index++;
-      if(index >= graph->node_pool_size) 
+      if(index == graph->node_pool_size) 
       {
          graph->node_pool_size *= 2;
-         graph->nodes = realloc(graph->nodes, graph->node_pool_size * sizeof(Node));
-         if(graph->nodes == NULL)
+         Node *new_nodes = realloc(graph->nodes, graph->node_pool_size * sizeof(Node));
+         if(new_nodes == NULL)
          {
-            print_to_log("Memory exhausted during node array allocation.\n");
+            print_to_log("Error (addNode): malloc failure.\n");
             exit(1);
          }
-         graph->free_node_slots = realloc(graph->free_node_slots,
-                                          graph->node_pool_size * sizeof(Node));
-         if(graph->free_node_slots == NULL)
+         graph->nodes = new_nodes;
+
+         int *new_node_slots = realloc(graph->free_node_slots,
+                                       graph->node_pool_size * sizeof(int));
+         if(new_node_slots == NULL)
          {
-            print_to_log("Memory exhausted during node array allocation.\n");
+            print_to_log("Error (addNode): malloc failure.\n");
             exit(1);
+         }
+         graph->free_node_slots = new_node_slots;
+
+         /* Initialise the new array elements. */
+         int count;
+         for(count = index; count < graph->node_pool_size; count++)
+         {
+            graph->nodes[count] = dummy_node;
+            graph->free_node_slots[count] = -1;
          }
       }
    }
@@ -132,22 +142,32 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
    if(index == -1) 
    {
       index = graph->edge_index++;
-      if(index >= graph->edge_pool_size) 
+      if(index == graph->edge_pool_size) 
       {
          graph->edge_pool_size *= 2;
-         graph->edges = realloc(graph->edges, 
-                                graph->edge_pool_size * sizeof(Edge));
-         if(graph->edges == NULL)
+         Edge *new_edges = realloc(graph->edges, graph->edge_pool_size * sizeof(Edge));
+         if(new_edges == NULL)
          {
             print_to_log("Memory exhausted during extra edge allocation.\n");
             exit(1);
          }
-         graph->free_edge_slots = realloc(graph->free_edge_slots,
-                                          graph->edge_pool_size * sizeof(Edge));
-         if(graph->free_edge_slots == NULL)
+         graph->edges = new_edges;
+
+         int *new_edge_slots = realloc(graph->free_edge_slots,
+                                       graph->edge_pool_size * sizeof(int));
+         if(new_edge_slots == NULL)
          {
             print_to_log("Memory exhausted during extra edge allocation.\n");
             exit(1);
+         }
+         graph->free_edge_slots = new_edge_slots;
+
+         /* Initialise the new array elements. */
+         int count;
+         for(count = index; count < graph->edge_pool_size; count++)
+         {
+            graph->edges[count] = dummy_edge;
+            graph->free_edge_slots[count] = -1;
          }
       }
    }
@@ -181,13 +201,17 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
       if(source->out_pool_size == 0) source->out_pool_size = 2;
       else source->out_pool_size *= 2;
 
-      source->out_edges = realloc(source->out_edges, 
-                                  source->out_pool_size * sizeof(int));
-      if(source->out_edges == NULL)
+      int *new_out_edges = realloc(source->out_edges, source->out_pool_size * sizeof(int));
+      if(new_out_edges == NULL)
       {
          print_to_log("Error (addEdge): malloc failure.\n");
          exit(1);
       }
+      source->out_edges = new_out_edges;
+      /* Initialise the new array elements. */
+      int count;
+      for(count = source->out_index; count < source->out_pool_size; count++)
+         source->out_edges[count] = -1;
    }
    source->out_edges[source->out_index++] = index;
    if(bidirectional) source->bidegree++; else source->outdegree++;
@@ -198,13 +222,17 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
       if(target->in_pool_size == 0) target->in_pool_size = 2;
       else target->in_pool_size *= 2;
 
-      target->in_edges = realloc(target->in_edges,
-                                 target->in_pool_size * sizeof(int));
-      if(target->in_edges == NULL)
+      int *new_in_edges = realloc(target->in_edges, target->in_pool_size * sizeof(int));
+      if(new_in_edges == NULL)
       {
          print_to_log("Error (addEdge): malloc failure.\n");
          exit(1);
       }
+      target->in_edges = new_in_edges;
+      /* Initialise the new array elements. */
+      int count;
+      for(count = target->in_index; count < target->in_pool_size; count++)
+         target->in_edges[count] = -1;
    }
    target->in_edges[target->in_index++] = index;
    if(bidirectional) target->bidegree++; else target->indegree++;
@@ -213,10 +241,9 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
    return index;
 }
 
-void removeNode(Graph *graph, int index)
+void removeNode(Graph *graph, int index, bool free_label)
 {   
    Node *node = getNode(graph, index);  
-
    if(node->indegree > 0 || node->outdegree > 0)
    {
       print_to_console("Error (removeNode): Cannot remove node (%d) with "
@@ -227,7 +254,7 @@ void removeNode(Graph *graph, int index)
    }
    removeLabelClassIndex(graph, true, node->label, node->label_table_index);
    /* Deallocate memory in the node structure. */
-   freeLabel(node->label);
+   if(free_label) freeLabel(node->label);
    if(node->out_edges != NULL) free(node->out_edges);
    if(node->in_edges != NULL) free(node->in_edges); 
    if(node->root) removeRootNode(graph, index);
@@ -266,11 +293,11 @@ void removeRootNode(Graph *graph, int index)
    }
 }
 
-void removeEdge(Graph *graph, int index) 
+void removeEdge(Graph *graph, int index, bool free_label) 
 {
    Edge *edge = getEdge(graph, index);
    removeLabelClassIndex(graph, false, edge->label, edge->label_table_index);
-   freeLabel(edge->label);
+   if(free_label) freeLabel(edge->label);
 
    Node *source = getNode(graph, edge->source);
    Node *target = getNode(graph, edge->target);
@@ -337,7 +364,7 @@ void removeEdge(Graph *graph, int index)
    }
 }
 
-void relabelNode(Graph *graph, int index, Label new_label) 
+void relabelNode(Graph *graph, int index, Label new_label, bool free_label) 
 {
    Node *node = getNode(graph, index);
    LabelClass old_label_class = getLabelClass(node->label);
@@ -348,7 +375,7 @@ void relabelNode(Graph *graph, int index, Label new_label)
       removeLabelClassIndex(graph, true, node->label, node->label_table_index);
       addLabelClassIndex(graph, true, new_label, index);
    }
-   freeLabel(node->label); 
+   if(free_label) freeLabel(node->label); 
    node->label = new_label;
 }
 
@@ -360,7 +387,7 @@ void changeRoot(Graph *graph, int index)
    node->root = !node->root;
 }
 
-void relabelEdge(Graph *graph, int index, Label new_label)
+void relabelEdge(Graph *graph, int index, Label new_label, bool free_label)
 {	
    Edge *edge = getEdge(graph, index);
    LabelClass old_label_class = getLabelClass(edge->label);
@@ -368,10 +395,10 @@ void relabelEdge(Graph *graph, int index, Label new_label)
    /* If the label classes or the marks differ, update the label class tables. */
    if(edge->label.mark != new_label.mark || old_label_class != new_label_class)
    {
-      removeLabelClassIndex(graph, true, edge->label, edge->label_table_index);
-      addLabelClassIndex(graph, true, new_label, index);
+      removeLabelClassIndex(graph, false, edge->label, edge->label_table_index);
+      addLabelClassIndex(graph, false, new_label, index);
    }
-   freeLabel(edge->label); 
+   if(free_label) freeLabel(edge->label); 
    edge->label = new_label;
 }
 
@@ -400,66 +427,87 @@ LabelClassTable **makeLabelClassTable(void)
 
 void addLabelClassIndex(Graph *graph, bool node, Label label, int index)
 {
+   /* Rule graphs do not have memory allocated to their node_classes and
+    * edge_classes tables, so this function has no effect on them. */
    if(node && graph->node_classes == NULL) return;
    if(!node && graph->edge_classes == NULL) return;
 
-   LabelClassTable *table = NULL;
-   LabelClass label_class = getLabelClass(label);
-   /* <label.mark> * NUMBER_OF_CLASSES is the index of the first column of row
-    * <label.mark>. label_class is added to this to get the correct column. */
-   int table_index = label.mark * NUMBER_OF_CLASSES + label_class;
-   if(node) table = graph->node_classes[table_index];
-   else table = graph->edge_classes[table_index];
-
-   if(table == NULL)
+   LabelClassTable *current_table = NULL;
+   if(node) current_table = getNodesByLabel(graph, label);
+   else current_table = getEdgesByLabel(graph, label);
+   
+   /* Allocate memory for a new LabelClassTable and an initial items array
+    * of four items. */
+   if(current_table == NULL)
    {
-      table = malloc(sizeof(LabelClassTable));
+      LabelClass label_class = getLabelClass(label);
+      int table_index = label.mark * NUMBER_OF_CLASSES + label_class;
+
+      LabelClassTable *table = malloc(sizeof(LabelClassTable));
       if(table == NULL)
       {
-         print_to_log("error (addNodeLabelClassIndex): malloc failure.\n");
+         print_to_log("Error (addNodeLabelClassIndex): malloc failure.\n");
          exit(1);
       }
       table->pool_size = 4;
-      table->index = 0;
+      table->index = 1;
       table->items = calloc(table->pool_size, sizeof(int));
       if(table->items == NULL)
       {
          print_to_log("Error (addNodeLabelClassIndex): malloc failure.\n");
          exit(1);
       }
-      if(node) graph->node_classes[table_index] = table;
-      else graph->edge_classes[table_index] = table;
+      table->items[0] = index;
+      /* Initialise the rest of items. */
+      table->items[1] = -1;
+      table->items[2] = -1;
+      table->items[3] = -1;
+      if(node) 
+      {
+         graph->node_classes[table_index] = table;
+         graph->nodes[index].label_table_index = 0;
+      }
+      else 
+      {
+         graph->edge_classes[table_index] = table;
+         graph->edges[index].label_table_index = 0;
+      }
    }
    else
    {
-      if(table->index == table->pool_size)
+      /* If the items array is full, double the allocated memory. */
+      if(current_table->index == current_table->pool_size)
       {
-         table->pool_size *= 2;
-         table->items = realloc(table->items, table->pool_size * sizeof(int));
-         if(table->items == NULL)
+         current_table->pool_size *= 2;
+         int *new_items = realloc(current_table->items, 
+                                  current_table->pool_size * sizeof(int));
+         if(new_items == NULL)
          {
             print_to_log("Error (addNodeLabelClassIndex): malloc failure.\n");
             exit(1);
          }
+         current_table->items = new_items;
+         int count;
+         for(count = current_table->index; count < current_table->pool_size; count++)
+            current_table->items[count] = -1;
       }
+      current_table->items[current_table->index] = index;
+      if(node) graph->nodes[index].label_table_index = current_table->index;
+      else graph->edges[index].label_table_index = current_table->index;
+      current_table->index++;
    }
-   table->items[table->index++] = index;
-   if(node) graph->nodes[index].label_table_index = table->index - 1;
-   else graph->edges[index].label_table_index = table->index - 1;
 }
 
 void removeLabelClassIndex(Graph *graph, bool node, Label label, int item_index)
 {
+   /* Rule graphs do not have memory allocated to their node_classes and
+    * edge_classes tables, so this function has no effect on them. */
    if(node && graph->node_classes == NULL) return;
    if(!node && graph->edge_classes == NULL) return;
+
    LabelClassTable *table = NULL;
-   LabelClass label_class = getLabelClass(label);
-   /* LABEL_CLASS is the number of columns. <mark> * LABEL_CLASS is the index
-    * of the first column of row <mark>. label_class is added to this to get
-    * the correct column. */
-   int table_index = label.mark * NUMBER_OF_CLASSES + label_class;
-   if(node) table = graph->node_classes[table_index];
-   else table = graph->edge_classes[table_index];
+   if(node) table = getNodesByLabel(graph, label);
+   else table = getEdgesByLabel(graph, label);
 
    table->items[item_index] = -1;
    /* If the index of the removed item directly precedes the last index,
@@ -568,6 +616,8 @@ LabelClassTable *getNodesByLabel(Graph *graph, Label label)
 {
    if(graph->node_classes == NULL) return NULL;
    LabelClass label_class = getLabelClass(label);
+   /* <label.mark> * NUMBER_OF_CLASSES is the index of the first column of row
+    * <label.mark>. label_class is added to this to get the correct column. */
    return graph->node_classes[label.mark * NUMBER_OF_CLASSES + label_class];
 }
    

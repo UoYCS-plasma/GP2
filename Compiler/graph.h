@@ -68,12 +68,12 @@ int addNode(Graph *graph, bool root, Label label);
 void addRootNode(Graph *graph, int index);
 int addEdge(Graph *graph, bool bidirectional, Label label, int source_index, 
             int target_index);
-void removeNode(Graph *graph, int index);
+void removeNode(Graph *graph, int index, bool free_label);
 void removeRootNode(Graph *graph, int index);
-void removeEdge(Graph *graph, int index);
-void relabelNode(Graph *graph, int index, Label new_label);
+void removeEdge(Graph *graph, int index, bool free_label);
+void relabelNode(Graph *graph, int index, Label new_label, bool free_label);
 void changeRoot(Graph *graph, int index);
-void relabelEdge(Graph *graph, int index, Label new_label);
+void relabelEdge(Graph *graph, int index, Label new_label, bool free_label);
 void changeBidirectional(Graph *graph, int index);
 
 /* =========================
@@ -84,7 +84,9 @@ typedef struct Node {
    bool root;
    Label label;
 
-   /* Dynamic integer arrays for the node's outgoing and incoming edges. */
+   /* Dynamic integer arrays for the node's outgoing and incoming edges.
+    * To iterate over these arrays, use out_index and in_index as the
+    * upper bound. */
    int *out_edges, out_index, *in_edges, in_index;
    
    /* The size of the out_edges and in_edges arrays respectively. */

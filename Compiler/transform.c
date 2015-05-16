@@ -34,22 +34,33 @@ Rule *makeRule(GPRule *ast_rule)
       int index;
       for(index = 0; index < rule->rhs->node_index; index++)
       {
+         PreservedItemList *list = queryPItemList(rule->preserved_nodes, index);
+         bool relabelled = false;
+         if(list != NULL) relabelled = list->new_label != NULL;
+         
          Label label = getNodeLabel(rule->rhs, index);
          int list_index;
          for(list_index = 0; list_index < label.length; list_index++) 
-            scanRHSAtom(rule, label.list[list_index]);
+            scanRHSAtom(rule, relabelled, label.list[list_index]);
       }
       for(index = 0; index < rule->rhs->edge_index; index++)
       {
+         PreservedItemList *list = queryPItemList(rule->preserved_edges, index);
+         bool relabelled = false;
+         if(list != NULL) relabelled = list->new_label != NULL;
+
          Label label = getEdgeLabel(rule->rhs, index);
          int list_index;
          for(list_index = 0; list_index < label.length; list_index++) 
-            scanRHSAtom(rule, label.list[list_index]);
+            scanRHSAtom(rule, relabelled, label.list[list_index]);
       }
    } 
-   if(node_map) freeIndexMap(node_map);
-   if(edge_map) freeIndexMap(edge_map);
    rule->condition = NULL;
+
+   if(node_map != NULL) freeIndexMap(node_map);
+   if(edge_map != NULL) freeIndexMap(edge_map);
+   node_map = NULL;
+   edge_map = NULL;
    return rule;
 }
 
@@ -394,13 +405,14 @@ void scanRHSEdges(Rule *rule, GPGraph *ast_rhs, List *interface)
    }
 }
 
-void scanRHSAtom(Rule *rule, Atom atom)
+void scanRHSAtom(Rule *rule, bool relabelled, Atom atom)
 {
    switch(atom.type)
    {
       case VARIABLE:
       case LENGTH:
       {
+           if(atom.type == VARIABLE && !relabelled) break;
            VariableList *variables = rule->variables;
            while(variables != NULL)
            {
@@ -435,7 +447,7 @@ void scanRHSAtom(Rule *rule, Atom atom)
       }
 
       case NEG:
-           scanRHSAtom(rule, *(atom.neg_exp));
+           scanRHSAtom(rule, relabelled, *(atom.neg_exp));
            break;
 
       case ADD:
@@ -443,8 +455,8 @@ void scanRHSAtom(Rule *rule, Atom atom)
       case MULTIPLY:
       case DIVIDE:
       case CONCAT:
-           scanRHSAtom(rule, *(atom.bin_op.left_exp));
-           scanRHSAtom(rule, *(atom.bin_op.right_exp));
+           scanRHSAtom(rule, relabelled, *(atom.bin_op.left_exp));
+           scanRHSAtom(rule, relabelled, *(atom.bin_op.right_exp));
            break;
 
       default: break;
@@ -455,7 +467,7 @@ Label transformLabel(GPLabel *ast_label, IndexMap *node_map)
 {
    Label label;
    label.mark = ast_label->mark;
-   label.length = getListLength(ast_label);
+   label.length = getASTListLength(ast_label);
    if(label.length == 0)
    {
       if(label.mark == NONE) return blank_label;
@@ -476,7 +488,7 @@ Label transformLabel(GPLabel *ast_label, IndexMap *node_map)
    return label;
 }
 
-int getListLength(GPLabel *ast_label)
+int getASTListLength(GPLabel *ast_label)
 {
    int length = 0;
    List *list = ast_label->gp_list;

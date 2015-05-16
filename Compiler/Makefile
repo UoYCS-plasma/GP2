@@ -11,15 +11,15 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
 # Usage: make F1=<path_to_program_file> F2=<path_to_host_graph_file>
 default:	$(OBJECTS)
 		make build
-		./GP2-compile $(F1) $(F2)
+		./GP2-compile $(prog) $(host)
 		cd runtime && make
 
 program:	
-		./GP2-compile -p $(F1)
+		./GP2-compile -p $(prog)
 		cd runtime && make
 
 host:	
-		./GP2-compile -h $(F1)
+		./GP2-compile -h $(host)
 		cd runtime && make
 
 # Builds the executable GP2-compile.
@@ -28,20 +28,23 @@ build:		$(OBJECTS)
 
 # Builds everything and runs valgrind on the runtime executable.
 debug:		$(OBJECTS)	
-		./GP2-compile $(F1) $(F2) 
+		./GP2-compile $(prog) $(host) 
 		cd runtime && make && $(VALGRIND) ./GP2-run 
 
 # Builds the executable GP2-compile and runs it with valgrind.
 compile-debug:	$(OBJECTS)
 		make build
-		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-compile $(F1) $(F2)
+		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-compile $(prog) $(host)
 
 clean:
-		make clean-obj
 		cd runtime && make clean
 
 clean-obj:
 		rm *.o 
+
+clean-all:
+		make clean-obj
+		make clean
 
 parser.c parser.h: gpparser.y ast.h error.h
 		bison gpparser.y

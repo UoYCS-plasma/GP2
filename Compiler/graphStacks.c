@@ -40,10 +40,18 @@ void copyGraph(Graph *graph)
    graph_copy->number_of_nodes = graph->number_of_nodes;
    graph_copy->number_of_edges = graph->number_of_edges;
 
-   memcpy(graph_copy->node_classes, graph->node_classes,
-          sizeof(LabelClassTable*) * NUMBER_OF_MARKS * NUMBER_OF_CLASSES);
-   memcpy(graph_copy->edge_classes, graph->edge_classes,
-          sizeof(LabelClassTable*) * NUMBER_OF_MARKS * NUMBER_OF_CLASSES);
+   if(graph->node_classes != NULL)
+   {
+      graph_copy->node_classes = makeLabelClassTable(); 
+      memcpy(graph_copy->node_classes, graph->node_classes,
+             sizeof(LabelClassTable*) * NUMBER_OF_MARKS * NUMBER_OF_CLASSES);
+   }
+   if(graph->edge_classes != NULL)
+   {
+      graph_copy->edge_classes = makeLabelClassTable(); 
+      memcpy(graph_copy->edge_classes, graph->edge_classes,
+             sizeof(LabelClassTable*) * NUMBER_OF_MARKS * NUMBER_OF_CLASSES);
+   }
 
    int index;
    for(index = 0; index < NUMBER_OF_MARKS * NUMBER_OF_CLASSES; index++)
@@ -51,29 +59,47 @@ void copyGraph(Graph *graph)
       /* If the pool size is greater than 0, allocate memory to the items 
        * array of the copied LabelClassTable and copy the corresponding array
        * from the original graph. */
-      LabelClassTable *table = graph_copy->node_classes[index];
-      if(table->pool_size > 0)
+      LabelClassTable *table_copy = NULL;
+      if(graph->node_classes[index] != NULL)
       {
-         table->items = calloc(table->pool_size, sizeof(int));
-         if(table->items == NULL)
+         table_copy = malloc(sizeof(LabelClassTable));
+         if(table_copy == NULL)
+         {
+            print_to_log("Error (copyGraph): malloc failure.\n");
+            exit(1);
+         }
+         table_copy->pool_size = graph->node_classes[index]->pool_size;  
+         table_copy->index = graph->node_classes[index]->index;  
+         table_copy->items = calloc(table_copy->pool_size, sizeof(int));
+         if(table_copy->items == NULL)
          {
             print_to_log("Error: (copyGraph): malloc failure.\n");
             exit(1);
          }
-         memcpy(table->items, graph->node_classes[index]->items, 
-                table->pool_size * sizeof(int));
+         memcpy(table_copy->items, graph->node_classes[index]->items, 
+                table_copy->pool_size * sizeof(int));
+         graph_copy->node_classes[index] = table_copy;
       }
-      table = graph_copy->edge_classes[index];
-      if(table->pool_size > 0)
+      table_copy = NULL;
+      if(graph->edge_classes[index] != NULL)
       {
-         table->items = calloc(table->pool_size, sizeof(int));
-         if(table->items == NULL)
+         table_copy = malloc(sizeof(LabelClassTable));
+         if(table_copy == NULL)
+         {
+            print_to_log("Error (copyGraph): malloc failure.\n");
+            exit(1);
+         }
+         table_copy->pool_size = graph->edge_classes[index]->pool_size;  
+         table_copy->index = graph->edge_classes[index]->index;  
+         table_copy->items = calloc(table_copy->pool_size, sizeof(int));
+         if(table_copy->items == NULL)
          {
             print_to_log("Error: (copyGraph): malloc failure.\n");
             exit(1);
          }
-         memcpy(table->items, graph->edge_classes[index]->items, 
-                table->pool_size * sizeof(int));
+         memcpy(table_copy->items, graph->edge_classes[index]->items, 
+                table_copy->pool_size * sizeof(int));
+         graph_copy->edge_classes[index] = table_copy;
       }
    }
    graph_copy->root_nodes = NULL;
@@ -254,11 +280,11 @@ void undoChanges(Graph *graph, int restore_point)
       switch(change.type)
       {
          case ADDED_NODE:
-              removeNode(graph, change.data.added_node_index);
+              removeNode(graph, change.data.added_node_index, true);
               break;
 
          case ADDED_EDGE:
-              removeEdge(graph, change.data.added_edge_index);
+              removeEdge(graph, change.data.added_edge_index, true);
               break;
 
          case REMOVED_NODE:
@@ -276,14 +302,14 @@ void undoChanges(Graph *graph, int restore_point)
          case RELABELLED_NODE:
          {
               int index = change.data.relabelled_node.index;
-              relabelNode(graph, index, change.data.relabelled_node.old_label);
+              relabelNode(graph, index, change.data.relabelled_node.old_label, true);
               if(change.data.relabelled_node.change_flag) changeRoot(graph, index);           
               break;
          }
          case RELABELLED_EDGE:
          {
               int index = change.data.relabelled_edge.index;
-              relabelEdge(graph, index, change.data.relabelled_edge.old_label);
+              relabelEdge(graph, index, change.data.relabelled_edge.old_label, true);
               if(change.data.relabelled_edge.change_flag) 
                  changeBidirectional(graph, index);
               break;

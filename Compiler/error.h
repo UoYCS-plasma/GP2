@@ -30,8 +30,7 @@
 
 extern FILE *log_file;
 /* Open the log file gp2.log for writing. */
-void openLogFile(void);
+void openLogFile(string log_file_name);
 void closeLogFile(void);
 
 #endif /* INC_ERROR_H */
-

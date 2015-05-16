@@ -35,7 +35,7 @@ void generateDeclarationCode(List *declarations)
 {
    PTF("int main(void)\n{\n");
    PTFI("srand(time(NULL));\n", 3);
-   PTFI("openLogFile();\n", 3);
+   PTFI("openLogFile(\"../gp2.log\");\n", 3);
    PTFI("host = buildHostGraph();\n\n", 3);
    #ifdef GRAPH_TRACE
       PTFI("print_to_log(\"/* Start Graph. */\\n\");\n", 3);

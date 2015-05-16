@@ -30,7 +30,7 @@ The latter two options allow the user to compile a new program while retaining a
 
 Running
 
-> make F1=/path/to/program-file F2=/path/to/host-graph-file
+> make prog=/path/to/program-file host=/path/to/host-graph-file
 
 builds the compiler, calls it on the passed program and host graph files, and builds the runtime system.
 

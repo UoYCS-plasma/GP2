@@ -76,8 +76,12 @@ void scanRHSEdges(Rule *rule, GPGraph *ast_rhs, List *interface);
 /* (1) Update the rule's variable list with the variables that appear in a
  *     RHS label.
  * (2) Update the rule's preserved nodes list with the node that appear in a
- *     degree operator in a RHS label.*/
-void scanRHSAtom(Rule *rule, Atom atom);
+ *     degree operator in a RHS label. 
+ * The relabelled argument is false if the RHS item containing the atom is
+ * preserved and unchanged by the rule. In this case, any variables in this
+ * atom are not flagged for runtime code generation, preventing unused 
+ * variables in the runtime code. */
+void scanRHSAtom(Rule *rule, bool relabelled, Atom atom);
 
 /* Generates a Label from the AST representation of a label. The data
  * structures for atoms are extremely similar, admitting a straightforward
@@ -87,7 +91,7 @@ void scanRHSAtom(Rule *rule, Atom atom);
  * transformation functions to get the appropriate index from the string
  * node identifier. */
 Label transformLabel(GPLabel *ast_label, IndexMap *node_map);
-int getListLength(GPLabel *ast_label);
+int getASTListLength(GPLabel *ast_label);
 Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map);
 
 #endif /* INC_TRANSFORM_H */

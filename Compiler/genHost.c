@@ -70,6 +70,21 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    PTFI("host->edge_classes = makeLabelClassTable();\n", 3);
 
    List *nodes = ast_host_graph->nodes;
+   if(nodes == NULL) 
+   {
+      PTF("\n   return host;\n");
+      PTF("}\n");
+      fprintf(host_file, "\n#endif\n");
+      fclose(host_file);
+      fclose(header);
+      fclose(file);
+      return;
+   }
+
+   /* Flag to prevent repeated writing of "label = blank_label" when
+    * consecutive blank nodes are added to the graph. */
+   bool blank_label = false;
+
    /* Build the host graph in init_runtime.c if the number of nodes is small 
     * enough. Otherwise, create new source files to add BUFFER_SIZE nodes
     * to the graph. */
@@ -81,10 +96,19 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       {
          GPLabel *label = nodes->node->label;
          bool root = nodes->node->root;
-         if(label->mark == NONE && getListLength(label) == 0)
-            PTFI("label = blank_label;\n", 3);
-         else generateLabelCode(label, node_count++, file);
-
+         if(label->mark == NONE && getASTListLength(label) == 0)
+         {
+            if(!blank_label)
+            {
+               PTFI("label = blank_label;\n", 3);
+               blank_label = true;
+            }
+         }
+         else
+         {
+            generateLabelCode(label, node_count++, file);
+            blank_label = false;
+         }
          PTFI("addNode(host, %d, label);\n", 3, root);
          nodes = nodes->next;   
       }
@@ -115,13 +139,24 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          /* Emit code to add BUFFER_SIZE nodes. */
          fprintf(node_file, "   Label label;\n\n");
          int node_count = 0;
+         blank_label = false;
          while(nodes != NULL && node_count < BUFFER_SIZE)
          {
             GPLabel *label = nodes->node->label;
             bool root = nodes->node->root;
-            if(label->mark == NONE && getListLength(label) == 0)
-               fprintf(node_file, "   label = blank_label;\n");
-            else generateLabelCode(label, node_count++, node_file);
+            if(label->mark == NONE && getASTListLength(label) == 0)
+            {
+               if(!blank_label)
+               {
+                  fprintf(node_file, "   label = blank_label;\n");
+                  blank_label = true;
+               }
+            }
+            else
+            {
+               generateLabelCode(label, node_count++, node_file);
+               blank_label = false;
+            }
             fprintf(node_file, "   addNode(host, %d, label);\n", root);
             nodes = nodes->next;   
          }
@@ -134,6 +169,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    List *edges = ast_host_graph->edges;
    if(host_edges <= BUFFER_SIZE)
    {
+      /* label is only declared if host_nodes <= BUFFER_SIZE. */
       if(host_nodes > BUFFER_SIZE) PTF("   Label label;\n\n");
       int edge_count = host_nodes <= BUFFER_SIZE ? host_nodes : 0; 
       while(edges != NULL)
@@ -147,9 +183,19 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
 
          GPLabel *label = edges->edge->label;
-         if(label->mark == NONE && getListLength(label) == 0)
-            PTFI("label = blank_label;\n", 3);
-         else generateLabelCode(label, edge_count++, file);
+         if(label->mark == NONE && getASTListLength(label) == 0)
+         {
+            if(!blank_label)
+            {
+               PTFI("label = blank_label;\n", 3);
+               blank_label = true;
+            }
+         }
+         else 
+         {
+            generateLabelCode(label, edge_count++, file);
+            blank_label = false;
+         }
          PTFI("addEdge(host, false, label, %d, %d);\n", 3, source_index, target_index);
          edges = edges->next;   
       }
@@ -179,6 +225,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          /* Emit code to add BUFFER_SIZE edges. */
          fprintf(edge_file, "   Label label;\n\n");
          int edge_count = 0;
+         bool blank_label = false;
          while(edges != NULL && edge_count < BUFFER_SIZE)
          {
            /* The call to strtol extracts the number after the 'n' in the node
@@ -187,9 +234,19 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
 
             GPLabel *label = edges->edge->label;
-            if(label->mark == NONE && getListLength(label) == 0)
-               PTFI("label = blank_label;\n", 3);
-            else generateLabelCode(label, edge_count++, edge_file);
+            if(label->mark == NONE && getASTListLength(label) == 0)
+            {
+               if(!blank_label)
+               {
+                  fprintf(edge_file, "   label = blank_label;\n");
+                  blank_label = true;
+               }
+            }
+            else
+            {
+               generateLabelCode(label, edge_count++, edge_file);
+               blank_label = false;
+            }
             PTFI("addEdge(host, false, label, %d, %d,);\n", 3, source_index, target_index);
          }
          fprintf(edge_file, "}\n");
@@ -197,7 +254,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          if(edges == NULL) break;
       }
    }
-   PTF("   return host;\n");
+   PTF("\n   return host;\n");
    PTF("}\n");
    fprintf(host_file, "\n#endif\n");
    fclose(host_file);

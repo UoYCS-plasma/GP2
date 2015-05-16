@@ -24,7 +24,7 @@
 #include "pretty.h"
 #include "seman.h" 
 
-#define DEBUG_PROGRAM
+#undef DEBUG_PROGRAM
 /* Warning: for very large host graphs (in the order of 100,000 nodes + edges),
  * printing the host graph's AST causes stack overflow. Only switch this on
  * for small host graphs! */
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
       print_to_console("%s", usage);
       return 0;
    }
-   openLogFile();
+   openLogFile("gp2.log");
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
@@ -134,6 +134,8 @@ int main(int argc, char **argv)
               print_to_console("Program %s is invalid.\n", program_file);   
          else print_to_console("Program is invalid. Build aborted.\n");     
          fclose(yyin);
+         if(gp_program) freeAST(gp_program); 
+         closeLogFile();
          return 0;
       }
       gp_program = reverse(gp_program);
