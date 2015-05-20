@@ -12,6 +12,7 @@ VariableList *addVariable(VariableList *variable_list, string name, GPType type)
 
    new_variable_list->variable = strdup(name);
    new_variable_list->type = type;   
+   new_variable_list->used_by_rule = false;   
    new_variable_list->next = variable_list;
 
    return new_variable_list;
@@ -39,7 +40,7 @@ void freeVariableList(VariableList *variable_list)
 
 IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index,
                       int right_index, string source_id, string target_id,
-                      Label *label)
+                      Label label)
 {
    IndexMap *new_map = malloc(sizeof(IndexMap));
    if(new_map == NULL)
@@ -181,9 +182,10 @@ PreservedItemList *addPreservedItem(PreservedItemList *list, int left_index,
       print_to_log("Error: Memory exhausted during rule construction.\n");
       exit(1);
    }
-
    new_list->left_index = left_index;   
    new_list->rhs_root = rhs_root;
+   new_list->indegree_argument = false;
+   new_list->outdegree_argument = false;
    new_list->new_label = new_label;
    new_list->next = list;
 
@@ -203,6 +205,11 @@ PreservedItemList *queryPItemList(PreservedItemList *list, int left_index)
 void freePItemList(PreservedItemList *list)
 {
    if(list == NULL) return;
+   if(list->new_label != NULL)
+   {
+      freeLabel(*(list->new_label));
+      free(list->new_label);
+   }
    if(list->next) freePItemList(list->next);
    free(list);
 }

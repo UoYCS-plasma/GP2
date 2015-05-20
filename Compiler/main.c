@@ -21,9 +21,14 @@
 #include "genProgram.h"
 #include "genRule.h"
 #include "parser.h"
+#include "pretty.h"
 #include "seman.h" 
 
-#define DEBUG
+#undef DEBUG_PROGRAM
+/* Warning: for very large host graphs (in the order of 100,000 nodes + edges),
+ * printing the host graph's AST causes stack overflow. Only switch this on
+ * for small host graphs! */
+#undef DEBUG_HOST
 #undef PARSER_TRACE 	
 
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
@@ -39,113 +44,171 @@ int parse_target = 0;
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "GP2-compile <program_file> <host_file>\n"
-                        "GP2-compile -h <host_file>\n"
-                        "GP2-compile -p <program_file>\n";
-   if(argc != 3) {
-     print_to_console("%s", usage);
-     return 0;
-   }
-   openLogFile();
+                        "GP2-compile [-v] <program_file> <host_file>\n"
+                        "GP2-compile -[v]h <host_file>\n"
+                        "GP2-compile -[v]p <program_file>\n";
 
-   /* 0 - Build both program and host graph. 
-    * 1 - Build only host graph.
-    * 2 - Build only program. */
+   if(argc != 3 && argc != 4) {
+      print_to_console("%s", usage);
+      return 0;
+   }
+   openLogFile("gp2.log");
+
+   /* If true, only parsing and semantic analysis executed on the GP2 source files. */
+   bool validate = false;
+
+   /* 0 - Takes both the program and the host graph source files. 
+    * 1 - Takes only the program source file.
+    * 2 - Takes only the host graph source file. */
    int mode = 0;
    string program_file = NULL, host_file = NULL;
 
-   /* Check for options. */
-   if(argv[1][0] != '-')
+   /* Check for command-line options. */
+   if(argv[1][0] == '-')
+   {
+      if(strcmp(argv[1], "-v") == 0)
+      {
+         if(argc == 4)
+         {
+            validate = true;
+            program_file = argv[2];
+            host_file = argv[3];
+         }
+         else
+         {
+            print_to_console("%s", usage);
+            return 0;
+         }
+      }
+      else if(strcmp(argv[1], "-p") == 0)
+      {
+         mode = 1;
+         program_file = argv[2];
+      }
+      else if(strcmp(argv[1], "-h") == 0)
+      {
+         mode = 2;
+         host_file = argv[2];
+      }
+      else if(strcmp(argv[1], "-vp") == 0)
+      {
+         validate = true;
+         mode = 1;
+         program_file = argv[2];
+      }
+      else if(strcmp(argv[1], "-vh") == 0)
+      {
+         validate = true;
+         mode = 2;
+         host_file = argv[2];
+      }
+      else
+      {
+         print_to_console("%s", usage);
+         return 0;
+      }
+   }
+   else /* No options provided. */
    {
      program_file = argv[1];
      host_file = argv[2];
    }
-   else
+
+   /* Program code is generated in modes 0 and 1. */
+   if(mode == 0 || mode == 1)
    {
-      if(argv[1][1] == 'h')
-      {
-         mode = 1;
-         host_file = argv[2];
-      }
-      else if(argv[1][1] == 'p')
-      {
-         mode = 2;
-         program_file = argv[2];
-      }
-      else
-      {
-        print_to_console("%s", usage);
-        return 0;
-      }
-   }
-   
-   /* GP 2 program parser. */
-   if(mode != 1)
-   {
+      /* Set up and run the GP 2 program parser. */
       if(!(yyin = fopen(program_file, "r"))) 
       {  
          perror(program_file);
          return 1;
       }
       #ifdef PARSER_TRACE 
-      yydebug = 1; /* Bison outputs a trace of its parse to stderr. */
+         yydebug = 1; /* Bison outputs a trace of its parse to stderr. */
       #endif
       parse_target = GP_PROGRAM;
-      printf("\nProcessing %s...\n\n", program_file);
-
-      if(yyparse() == 0) print_to_console("GP2 program parse succeeded.\n\n");
-      else 
+      if(yyparse() == 0) print_to_console("Program parse succeeded.\n");
+      else  
       {
-         print_to_console("GP2 program parse failed.\n\n");     
+         if(validate)
+              print_to_console("Program %s is invalid.\n", program_file);   
+         else print_to_console("Program is invalid. Build aborted.\n");     
          fclose(yyin);
+         if(gp_program) freeAST(gp_program); 
+         closeLogFile();
          return 0;
       }
       gp_program = reverse(gp_program);
-      #ifdef DEBUG
-      bool valid_program = analyseProgram(gp_program, true, program_file);
+      #ifdef DEBUG_PROGRAM
+         /* analyseProgram prints the symbol table before exiting. */
+         bool semantic_error = analyseProgram(gp_program, true, program_file);
       #else
-      bool valid_program = analyseProgram(gp_program, false, NULL);
+         bool semantic_error = analyseProgram(gp_program, false, NULL);
       #endif
-      if(valid_program && !syntax_error) 
+      bool valid_program = !syntax_error && !semantic_error;
+      if(valid_program && !validate) 
       {
          print_to_console("Generating program code...\n\n");
          generateRules(gp_program);
-         #ifdef DEBUG
-            staticAnalysis(gp_program, true, program_file);   
-         #else
-            staticAnalysis(gp_program, false, NULL);
+         staticAnalysis(gp_program);   
+         #ifdef DEBUG_PROGRAM
+            printDotAST(gp_program, program_file, "_2");
          #endif
          generateRuntimeCode(gp_program);
       }
-      else print_to_console("Build aborted. Please consult the file gp2.log "
-                            "for a detailed error report.\n");   
+      if(!valid_program && validate)
+         print_to_console("Program %s is invalid.\n", program_file);   
+      if(!valid_program && !validate)
+         print_to_console("Program is invalid. Build aborted.\n");   
+      if(valid_program && validate)
+         print_to_console("Program %s is valid.\n", program_file);
    }
-   /* GP 2 host graph parser. */
-   if(mode != 2)
+
+   /* Host graph code is generated in modes 0 and 2. */
+   if(mode == 0 || mode == 2)
    {
+      /* Set up and run the host graph parser. */
       if(!(yyin = fopen(host_file, "r"))) {  
          perror(host_file);
          return 1;
       }
       parse_target = GP_GRAPH;
-      printf("\nProcessing %s...\n\n", host_file);
-   
-      if(yyparse() == 0) print_to_console("GP2 graph parse succeeded.\n\n");
-      else 
+      bool valid_graph = yyparse() == 0;
+      if(valid_graph && !validate)
       {
-         print_to_console("GP2 graph parse failed.\n\n");
-         fclose(yyin);
-         if(gp_program) freeAST(gp_program); 
-         return 0;
-      }   
-      reverseGraphAST(ast_host_graph);
-      #ifdef DEBUG 
-         printDotHostGraph(ast_host_graph, host_file);
-      #endif
-      print_to_console("Generating host graph code...\n\n");
-      generateHostGraphCode(ast_host_graph);
+         print_to_console("Host graph parse succeeded.\n");
+         reverseGraphAST(ast_host_graph);
+         #ifdef DEBUG_HOST 
+            printDotHostGraph(ast_host_graph, host_file);
+         #endif
+         print_to_console("Generating host graph code...\n\n");
+         generateHostGraphCode(ast_host_graph);
+      }
+      if(!valid_graph && validate)
+         print_to_console("Host graph %s is invalid.\n", host_file);   
+      if(!valid_graph && !validate)
+         print_to_console("Host graph is invalid.\n");
+      if(valid_graph && validate)
+         print_to_console("Host graph %s is valid.\n", host_file);
    }
-
+   /* If a host graph is already generated (checked by the existence of the
+    * directory runtime/host), do nothing, otherwise generate code for the
+    * empty host graph. */
+   if(mode == 1)
+   {
+      /* UNIX-dependent code. */
+      DIR *dir = opendir("runtime/host");
+      /* Opendir succeeded: directory exists. */
+      if(dir != NULL) closedir(dir);
+      /* Directory does not exist. */
+      else if(errno == ENOENT) generateHostGraphCode(NULL); 
+      /* Opendir failed for another reason. */
+      else
+      {
+         print_to_log("Error (main): opendir failure.\n");
+         exit(1);
+      }
+   }
    fclose(yyin);
    if(gp_program) freeAST(gp_program); 
    if(ast_host_graph) freeASTGraph(ast_host_graph); 

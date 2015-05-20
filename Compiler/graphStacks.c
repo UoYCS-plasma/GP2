@@ -10,6 +10,12 @@ void copyGraph(Graph *graph)
       print_to_log("Error: copyGraph called with a full graph stack.\n");
       return;
    }
+   if(graph_stack == NULL) graph_stack = calloc(GRAPH_STACK_SIZE, sizeof(Graph*));
+   if(graph_stack == NULL)
+   {
+      print_to_log("Error (copyGraph): malloc failure.\n");
+      exit(1);
+   }
    Graph *graph_copy = newGraph(graph->node_pool_size, graph->edge_pool_size); 
 
    /* The node array, edge array, free node slots array, free edge slots array,
@@ -34,42 +40,11 @@ void copyGraph(Graph *graph)
    graph_copy->number_of_nodes = graph->number_of_nodes;
    graph_copy->number_of_edges = graph->number_of_edges;
 
-   memcpy(graph_copy->nodes_by_label, graph->nodes_by_label, sizeof(LabelClassTable));
-   memcpy(graph_copy->edges_by_label, graph->edges_by_label, sizeof(LabelClassTable));
-
-   int index;
-   for(index = 0; index < LABEL_CLASSES; index++)
-   {
-      /* If the pool size is greater than 0, allocate memory to the items 
-       * array of the copied LabelClassTable and copy the corresponding array
-       * from the original graph. */
-      LabelClassTable *list = &graph_copy->nodes_by_label[index];
-      if(list->pool_size > 0)
-      {
-         list->items = calloc(list->pool_size, sizeof(int));
-         if(list->items == NULL)
-         {
-            print_to_log("Error: Memory exhausted during graph copying.\n");
-            exit(1);
-         }
-         memcpy(list->items, graph->nodes_by_label[index].items, 
-                list->pool_size * sizeof(int));
-      }
-      list = &graph_copy->edges_by_label[index];
-      if(list->pool_size > 0)
-      {
-         list->items = calloc(list->pool_size, sizeof(int));
-         if(list->items == NULL)
-         {
-            print_to_log("Error: Memory exhausted during graph copying.\n");
-            exit(1);
-         }
-         memcpy(list->items, graph->edges_by_label[index].items, 
-                list->pool_size * sizeof(int));
-      }
-   }
+   graph_copy->node_classes = copyLabelClassTable(graph->node_classes); 
+   graph_copy->edge_classes = copyLabelClassTable(graph->edge_classes); 
    graph_copy->root_nodes = NULL;
-
+ 
+   int index;
    /* For each node, make a copy of its label and, if necessary, make a copy
     * of its extra edges arrays. */
    for(index = 0; index < graph_copy->node_index; index++)
@@ -80,30 +55,30 @@ void copyGraph(Graph *graph)
       if(node->index >= 0)
       {
          Node *original_node = getNode(graph, index);
-         node->label = copyLabel(original_node->label);
+         copyLabel(&(original_node->label), &(node->label));
  
-         /* If necessary, copy the extra edges arrays of the original node. */
-         if(original_node->extra_out_edges != NULL)
+         /* If necessary, copy the edges arrays of the original node. */
+         if(original_node->out_edges != NULL)
          {
-            node->extra_out_edges = calloc(node->out_pool_size, sizeof(int));
-            if(node->extra_out_edges == NULL)
+            node->out_edges = calloc(node->out_pool_size, sizeof(int));
+            if(node->out_edges == NULL)
             {
-               print_to_log("Error: Memory exhausted during graph copying.\n");
+               print_to_log("Error: (copyGraph): malloc failure.\n");
                exit(1);
             }
-            memcpy(node->extra_out_edges, original_node->extra_out_edges,
+            memcpy(node->out_edges, original_node->out_edges,
                    node->out_pool_size * sizeof(int));
          }
-         if(original_node->extra_in_edges != NULL)
+         if(original_node->in_edges != NULL)
          {
-            node->extra_in_edges = calloc(node->in_pool_size, sizeof(int));
-            if(node->extra_in_edges == NULL)
+            node->in_edges = calloc(node->in_pool_size, sizeof(int));
+            if(node->in_edges == NULL)
             {
-               print_to_log("Error: Memory exhausted during graph copying.\n");
+               print_to_log("Error: (copyGraph): malloc failure.\n");
                exit(1);
             }
-            memcpy(node->extra_in_edges, original_node->extra_in_edges,
-                   (node->in_pool_size - MAX_INCIDENT_EDGES) * sizeof(int));
+            memcpy(node->in_edges, original_node->in_edges,
+                   node->in_pool_size * sizeof(int));
          }
          /* Populate the root nodes list. */
          if(node->root) addRootNode(graph_copy, node->index);
@@ -120,10 +95,9 @@ void copyGraph(Graph *graph)
       if(edge->index >= 0)
       {
          Edge *original_edge = getEdge(graph, index);
-         edge->label = copyLabel(original_edge->label);
+         copyLabel(&(original_edge->label), &(edge->label));
       }
    }  
-   if(graph_stack == NULL) graph_stack = calloc(GRAPH_STACK_SIZE, sizeof(Graph*));
    graph_stack[graph_stack_index++] = graph_copy;
 }
 
@@ -198,7 +172,7 @@ void pushAddedEdge(int index)
    graph_change_stack[gci].data.added_edge_index = index;
 }
 
-void pushRemovedNode(bool root, Label *label)
+void pushRemovedNode(bool root, Label label)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
@@ -207,7 +181,7 @@ void pushRemovedNode(bool root, Label *label)
    graph_change_stack[gci].data.removed_node.label = label;
 }
 
-void pushRemovedEdge(bool bidirectional, Label *label, int source, int target)
+void pushRemovedEdge(bool bidirectional, Label label, int source, int target)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
@@ -218,7 +192,7 @@ void pushRemovedEdge(bool bidirectional, Label *label, int source, int target)
    graph_change_stack[gci].data.removed_edge.target = target;
 }
 
-void pushRelabelledNode(int index, bool change_flag, Label *old_label)
+void pushRelabelledNode(int index, bool change_flag, Label old_label)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
@@ -228,13 +202,13 @@ void pushRelabelledNode(int index, bool change_flag, Label *old_label)
    graph_change_stack[gci].data.relabelled_node.old_label = old_label;
 }
 
-void pushRelabelledEdge(int index, bool change_flag, Label *old_label)
+void pushRelabelledEdge(int index, Label old_label)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
    graph_change_stack[gci].type = RELABELLED_NODE;
    graph_change_stack[gci].data.relabelled_edge.index = index;
-   graph_change_stack[gci].data.relabelled_edge.change_flag = change_flag;
+   graph_change_stack[gci].data.relabelled_edge.change_flag = false;
    graph_change_stack[gci].data.relabelled_edge.old_label = old_label;
 }
    
@@ -247,11 +221,11 @@ void undoChanges(Graph *graph, int restore_point)
       switch(change.type)
       {
          case ADDED_NODE:
-              removeNode(graph, change.data.added_node_index);
+              removeNode(graph, change.data.added_node_index, true);
               break;
 
          case ADDED_EDGE:
-              removeEdge(graph, change.data.added_edge_index);
+              removeEdge(graph, change.data.added_edge_index, true);
               break;
 
          case REMOVED_NODE:
@@ -267,17 +241,20 @@ void undoChanges(Graph *graph, int restore_point)
               break; 
 
          case RELABELLED_NODE:
-              relabelNode(graph, change.data.relabelled_node.index,
-                          change.data.relabelled_node.old_label,
-                          change.data.relabelled_node.change_flag);           
+         {
+              int index = change.data.relabelled_node.index;
+              relabelNode(graph, index, change.data.relabelled_node.old_label, true);
+              if(change.data.relabelled_node.change_flag) changeRoot(graph, index);           
               break;
-
+         }
          case RELABELLED_EDGE:
-              relabelEdge(graph, change.data.relabelled_edge.index,
-                          change.data.relabelled_edge.old_label,
-                          change.data.relabelled_edge.change_flag);           
+         {
+              int index = change.data.relabelled_edge.index;
+              relabelEdge(graph, index, change.data.relabelled_edge.old_label, true);
+              if(change.data.relabelled_edge.change_flag) 
+                 changeBidirectional(graph, index);
               break;
-              
+         }
          default: 
               print_to_log("Error (restoreGraph): Unexepected change type %d.\n",
                            change.type); 
@@ -301,20 +278,14 @@ void freeGraphChange(GraphChange change)
       case ADDED_EDGE:
            break;
 
-      case REMOVED_NODE:
-           if(!isConstantLabel(change.data.removed_node.label))
-             freeLabel(change.data.removed_node.label);
+      case REMOVED_NODE: freeLabel(change.data.removed_node.label);
            break;
 
-      case REMOVED_EDGE:
-           if(!isConstantLabel(change.data.removed_edge.label))
-             freeLabel(change.data.removed_edge.label);
+      case REMOVED_EDGE: freeLabel(change.data.removed_edge.label);
            break;
 
       case RELABELLED_NODE:
-      case RELABELLED_EDGE:
-           if(!isConstantLabel(change.data.relabelled_edge.old_label)) 
-              freeLabel(change.data.relabelled_edge.old_label);
+      case RELABELLED_EDGE: freeLabel(change.data.relabelled_edge.old_label);
            break;
 
       default: 

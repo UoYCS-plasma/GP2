@@ -1,5 +1,5 @@
 ================================
-Author: Chris Bak (April 16th 2015)
+Author: Chris Bak (May 14th 2015)
 GP 2: Graph Programming
 ================================
 
@@ -26,11 +26,11 @@ This creates the executable GP2-compile which is called in one of three ways:
 
 > ./GP2-compile -h /path/to/host-graph-file
 
-The last two options allow the user to compile a modified or new program while retaining a previously-built host graph, or to compile a new host graph with an existing program.
+The latter two options allow the user to compile a new program while retaining a previously-built host graph, or to compile a new host graph without destroying an existing program.
 
 Running
 
-> make F1=/path/to/program-file F2=/path/to/host-graph-file
+> make prog=/path/to/program-file host=/path/to/host-graph-file
 
 builds the compiler, calls it on the passed program and host graph files, and builds the runtime system.
 

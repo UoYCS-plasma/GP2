@@ -15,7 +15,7 @@
 #include "globals.h"
 #include "pretty.h"
 
-void staticAnalysis(List *declarations, bool debug, string prefix);
+void staticAnalysis(List *declarations);
 
 /* Traverses the AST of the GP 2 program, recursively calling annotate
  * on subcommands. Calls getCommandType on if/try conditions and loop

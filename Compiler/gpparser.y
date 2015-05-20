@@ -60,7 +60,7 @@ bool syntax_error = false;
 /* Single character tokens do not need to be explicitly declared. */
 %token MAIN IF TRY THEN ELSE SKIP FAIL BREAK
 %token WHERE EDGETEST   
-%token INDEG OUTDEG LLEN SLEN					
+%token INDEG OUTDEG _LENGTH					
 %token INT CHARACTER STRING ATOM LIST 	                               
 %token INTERFACE _EMPTY INJECTIVE 	
 %token <mark> MARK ANY_MARK			                        
@@ -91,9 +91,9 @@ bool syntax_error = false;
   struct GPNode *node;
   struct GPEdge *edge;
   struct GPPos *pos;
-  struct GPCondExp *cond_exp;
+  struct GPCondition *cond_exp;
   struct GPLabel *label;  
-  struct GPAtomicExp *atom_exp;
+  struct GPAtom *atom_exp;
 
   int list_type; /* enum ListType */
   int check_type; /* enum CondExpType */
@@ -131,7 +131,7 @@ bool syntax_error = false;
 %destructor { freeASTEdge($$); } <edge>
 %destructor { freeASTCondition($$); } <cond_exp>
 %destructor { freeASTLabel($$); } <label>
-%destructor { freeASTAtomicExp($$); } <atom_exp>
+%destructor { freeASTAtom($$); } <atom_exp>
 
 %error-verbose
 
@@ -360,8 +360,12 @@ Type: INT				{ $$ = INT_DECLARATIONS; }
  /* Grammar for GP2 Graph Definitions. */
 
 Graph: '[' '|' ']'			 { $$ = newASTGraph(@$, NULL, NULL); }
+     | '[' Position '|' '|' ']'	         { $$ = newASTGraph(@$, NULL, NULL); }
      | '[' NodeList '|' ']'		 { $$ = newASTGraph(@$, $2, NULL); }
+     | '[' Position '|' NodeList '|' ']' { $$ = newASTGraph(@$, $4, NULL); }
      | '[' NodeList '|' EdgeList ']' 	 { $$ = newASTGraph(@$, $2, $4); }
+     | '[' Position '|' NodeList '|' EdgeList ']'  
+     					 { $$ = newASTGraph(@$, $4, $6); }
 	
 NodeList: Node				{ $$ = addASTNode(@1, $1, NULL); }
         | NodeList Node			{ $$ = addASTNode(@2, $2, $1); }
@@ -369,24 +373,26 @@ NodeList: Node				{ $$ = addASTNode(@1, $1, NULL); }
 Node: '(' NodeID RootNode ',' Label ')' { $$ = newASTNode(@2, is_root, $2, $5); 
  					  is_root = false; 	
 					  if($2) free($2); } 
-
+    | '(' NodeID RootNode ',' Label Position ')'
+    				        { $$ = newASTNode(@2, is_root, $2, $5); 
+ 					  is_root = false; 	
+					  if($2) free($2); } 
 EdgeList: Edge				{ $$ = addASTEdge(@1, $1, NULL); }
         | EdgeList Edge			{ $$ = addASTEdge(@2, $2, $1); }
 
 Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
 					{ $$ = newASTEdge(@2, is_bidir, $2, $5, $7, $9);
-                                          is_bidir = false;
-					  if($2) free($2); 
-					  if($5) free($5); 
-					  if($7) free($7); }
+                                          is_bidir = false; if($2) free($2); 
+					  if($5) free($5); if($7) free($7); }
+
+ /* Layout information for the editor. This is ignored by the parser. */
+Position: '(' NUM ',' NUM ')'           { } 
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
 
 Bidirection: /* empty */ 
 	   | BIDIRECTIONAL		{ is_bidir = true; }
-
-/* Position: '(' NUM ',' NUM ')' 	{ $$ = newASTPosition(@$, $2, $4); } */
 
 
  /* Grammar for GP2 Conditions. */
@@ -421,33 +427,37 @@ LabelArg: /* empty */ 			{ $$ = NULL; }
  /* Grammar for GP2 Labels */
 
 Label: List				{ $$ = newASTLabel(@$, NONE, $1); }
+     | _EMPTY				{ $$ = newASTLabel(@$, NONE, NULL); }
      | List '#' MARK	  		{ $$ = newASTLabel(@$, $3, $1); }
+     | _EMPTY '#' MARK	  		{ $$ = newASTLabel(@$, $3, NULL); }
      /* Any has a distinct token since it cannot occur in the host graph. */
      | List '#' ANY_MARK		{ $$ = newASTLabel(@$, $3, $1); }
+     | _EMPTY '#' ANY_MARK		{ $$ = newASTLabel(@$, $3, NULL); }
 
 
 List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); } 
     | List ':' AtomExp 			{ $$ = addASTAtom(@3, $3, $1); }
-    | _EMPTY				{ $$ = addASTEmptyList(@$); }
+    /* The empty keyword in the middle of a list is a syntax error. */
+    | List ':' _EMPTY			{ $$ = $1;
+    					  report_warning("Empty symbol in the "
+     					                 "middle of a list.\n"); }
 
 
 AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
        | NUM 				{ $$ = newASTNumber(@$, $1); }
-       | STR 				{ $$ = newASTString(@$, $1); 
-					  if($1) free($1); }
+       | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }
        | INDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(INDEGREE, @$, $3); 
 					  if($3) free($3); }
        | OUTDEG '(' NodeID ')' 		{ $$ = newASTDegreeOp(OUTDEGREE, @$, $3); 
 				 	  if($3) free($3); }
-       | LLEN '(' List ')' 		{ $$ = newASTListLength(@$, $3); }
-       | SLEN '(' AtomExp ')' 		{ $$ = newASTStringLength(@$, $3); }
+       | _LENGTH '(' Variable ')' 	{ $$ = newASTLength(@$, $3); if($3) free($3); }
        | '-' AtomExp %prec UMINUS 	{ $$ = newASTNegExp(@$, $2); } 
        | '(' AtomExp ')' 		{ $$ = $2; }
        | AtomExp '+' AtomExp 		{ $$ = newASTBinaryOp(ADD, @$, $1, $3);  }
        | AtomExp '-' AtomExp 		{ $$ = newASTBinaryOp(SUBTRACT, @$, $1, $3); }
        | AtomExp '*' AtomExp 		{ $$ = newASTBinaryOp(MULTIPLY, @$, $1, $3); }
        | AtomExp '/' AtomExp 		{ $$ = newASTBinaryOp(DIVIDE, @$, $1, $3); }
-       | AtomExp '.' AtomExp 		{ $$ = newASTBinaryOp(CONCAT, @$, $1, $3); }
+       | AtomExp '.' AtomExp 		{ $$ = newASTConcat(@$, $1, $3); }
 
  /* GP2 Identifiers */
 
@@ -465,14 +475,23 @@ Variable: ID		  		/* default $$ = $1 */
  */
 
 HostGraph: '[' '|' ']'  		{ $$ = newASTGraph(@$, NULL, NULL); }
+         | '[' Position '|' '|' ']'  	{ $$ = newASTGraph(@$, NULL, NULL); }
          | '[' HostNodeList '|' ']'  	{ $$ = newASTGraph(@$, $2, NULL); }
+         | '[' Position '|' HostNodeList '|' ']' 
+	 				{ $$ = newASTGraph(@$, $4, NULL); }
          | '[' HostNodeList '|' HostEdgeList ']' 
-     					{ $$ = newASTGraph(@$, $2, $4); }
+	 				{ $$ = newASTGraph(@$, $2, $4); }
+         | '[' Position '|' HostNodeList '|' HostEdgeList ']' 
+     					{ $$ = newASTGraph(@$, $4, $6); }
 
 HostNodeList: HostNode			{ $$ = addASTNode(@1, $1, NULL); }
             | HostNodeList HostNode	{ $$ = addASTNode(@2, $2, $1); }
 
 HostNode: '(' NodeID RootNode ',' HostLabel ')'
+    					{ $$ = newASTNode(@2, is_root, $2, $5); 
+ 					  is_root = false; 	
+					  if($2) free($2); } 
+HostNode: '(' NodeID RootNode ',' HostLabel Position ')'
     					{ $$ = newASTNode(@2, is_root, $2, $5); 
  					  is_root = false; 	
 					  if($2) free($2); } 
@@ -487,14 +506,19 @@ HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
                      			  if($6) free($6); }
 
 HostLabel: HostList			{ $$ = newASTLabel(@$, NONE, $1); }
+         | _EMPTY			{ $$ = newASTLabel(@$, NONE, NULL); }
          | HostList '#' MARK	  	{ $$ = newASTLabel(@$, $3, $1); }
+         | _EMPTY '#' MARK	  	{ $$ = newASTLabel(@$, $3, NULL); }
 
 HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); } 
         | HostList ':' HostExp 		{ $$ = addASTAtom(@3, $3, $1); }
-        | _EMPTY			{ $$ = addASTEmptyList(@$); }
-
+        /* The empty keyword in the middle of a list is a syntax error. */
+        | HostList ':' _EMPTY	        { $$ = $1;
+					  report_warning("Error: empty symbol in the "
+     					                 "middle of a list.\n"); }
 
 HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
+       | '-' NUM %prec UMINUS 	        { $$ = newASTNumber(@$, -($2)); } 
        | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }
 
 %%
@@ -503,9 +527,7 @@ HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
  * messages to stderr and log_file. */
 void yyerror(const char *error_message)
 {
-   fprintf(stderr, "%d.%d-%d.%d: Error at '%s': %s\n\n", 
-           yylloc.first_line, yylloc.first_column, yylloc.last_line, 
-           yylloc.last_column, yytext, error_message);
+   fprintf(stderr, "Error at '%s': %s\n\n", error_message);
    fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, yytext, error_message);
@@ -516,9 +538,7 @@ void yyerror(const char *error_message)
  * the value of yytext may be misleading. */
 void report_warning(const char *error_message)
 {
-   fprintf(stderr, "%d.%d-%d.%d: Error: %s\n\n", 
-           yylloc.first_line, yylloc.first_column, yylloc.last_line, 
-           yylloc.last_column, error_message);
+   fprintf(stderr, "Error: %s\n\n", error_message);
    fprintf(log_file, "%d.%d-%d.%d: Error: %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, error_message);

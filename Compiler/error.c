@@ -2,9 +2,9 @@
 
 FILE *log_file = NULL;
 
-void openLogFile()
+void openLogFile(string log_file_name)
 {
-   log_file = fopen("gp2.log", "w");
+   log_file = fopen(log_file_name, "a");
    if(log_file == NULL)
    { 
       perror("gp2.log");

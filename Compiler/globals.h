@@ -11,12 +11,36 @@
 #ifndef INC_GLOBALS_H
 #define INC_GLOBALS_H
 
-#include <assert.h>
+/* Convenience macros for the code generating modules that write to C header
+ * and C source files. The source file pointer in each module is named "file"
+ * to avoid any potential confusion with sources in graphs. */
+#define printToHeader(code, ...)	       \
+  do { fprintf(header, code, ##__VA_ARGS__); } \
+  while(0) 
+
+#define printToFile(code, ...)	               \
+  do { fprintf(file, code, ##__VA_ARGS__); }   \
+  while(0) 
+
+/* A wrapper to a call to fprintf which indents the line written
+ * to the file with <indent> number of spaces. */
+#define printToFileIndented(code, indent, ...)	        	 \
+  do { fprintf(file, "%*s" code, indent, " ", ##__VA_ARGS__); }  \
+  while(0) 
+
+#define PTH printToHeader
+#define PTF printToFile
+#define PTFI printToFileIndented
+  
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h> 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 typedef char* string;
 
@@ -33,17 +57,16 @@ typedef struct YYLTYPE {
 
 # define YYLTYPE_IS_DECLARED 1 /* Tells Bison that YYLTYPE is defined here. */
 
-/* Abstract data type for GP2's marks. */
+/* GP 2's variable types. */
+typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} GPType;
+
 typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; 
 
-/* Abstract data type for conditions. */
 typedef enum {INT_CHECK = 0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
               EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
-	      BOOL_NOT, BOOL_OR, BOOL_AND } CondExpType;
+	      BOOL_NOT, BOOL_OR, BOOL_AND } ConditionType;
 
-/* Abstract data type for atomic expressions. */
-typedef enum {EMPTY = 0, VARIABLE, INTEGER_CONSTANT, STRING_CONSTANT, INDEGREE,
-              OUTDEGREE, LIST_LENGTH, STRING_LENGTH, NEG, ADD, SUBTRACT,
-              MULTIPLY, DIVIDE, CONCAT} AtomExpType;
+typedef enum {INTEGER_CONSTANT = 0, STRING_CONSTANT, VARIABLE, LENGTH, INDEGREE,
+              OUTDEGREE, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType;
 
 #endif /* INC_GLOBALS_H */
