@@ -9,8 +9,8 @@ import ParseGraph
 import Text.Parsec
 import OilrMachine.Instructions
 import OilrMachine.Compile
-import OilrMachine.Analysis
-import OilrMachine.HostCompile
+-- import OilrMachine.Analysis
+-- import OilrMachine.HostCompile
 import OilrMachine.NullBackend
 import OilrMachine.CBackend
 
@@ -43,7 +43,7 @@ main = do
                   Right prog -> do
                     putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
                     -- putStrLn $ show prog
-                    _ <- mapM putStrLn $ map show $ map characteriseRule $ extractDecls prog
+                    -- _ <- mapM putStrLn $ map show $ map characteriseRule $ extractDecls prog
                     putStrLn ""
                     -- let code = cCompile $ compileGPProg prog
                     -- writeFile targ code

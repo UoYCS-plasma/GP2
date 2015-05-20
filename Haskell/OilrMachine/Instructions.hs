@@ -4,38 +4,52 @@ type Prog = [Instr]
 
 type Addr = Int
 type Deg  = Int
+type Sig  = Int
+type Bits = Int
+type SpId = Int
+type TrId = Int
+type PrId = Int
 
 data Instr = 
+      OILR Bits Bits Bits Bits
+    
     ----------------------------------
     --  Node and edge finding prims
     ----------------------------------
 
     -- Add an element to a search plan
     | PLANS | ENDP
-    | SPC Deg Deg Deg Deg
+    | SPC Sig
 
     -- Add a traverser
     | TRAVS | ENDT
-    | TRAV Deg Deg Deg Deg
+    | TRAV SpId SpId PrId
+
+    -- Start and end a match
+    | MTCH | ENDM
+
+    | NODE TrId | EDTO TrId TrId | EDFR TrId TrId | EDNO TrId TrId
+
+    | RESET TrId
 
     ----------------------------------
     -- Graph manipulation
     ----------------------------------
 
     -- delete a node in a TRAV register
-    | DELN Int
+    | DELN TrId
 
     -- delete an edge in a TRAV register
-    | DELE Int
+    | DELE TrId
     
     -- introduce a new edge between src and tgt TRAVS
-    | NEWE Int Int
+    | NEWE TrId TrId
 
-    -- introduce a new node
-    | NEWN
+    -- introduce a new node, storing it in a dummy trav
+    | NEWN TrId
 
-    -- Set and unset root flag on a node
-    | ROOT Int | TOOR Int
+    -- Set and unset root flag on a node held in a Trav
+    | ROOT TrId | TOOR TrId
 
     ----------------------------------
     -- Program control prims
@@ -53,10 +67,10 @@ data Instr =
     | RET
 
     -- if success flag is unset exit current proc
-    | ORFAIL
-    -- if success flag is unset go back to an 
-    -- earlier trav.
-    | ORBACK
+    | ORFAIL TrId
+    -- if success flag is unset reset specified Trav 
+    -- and go back to the previous trav
+    | ORBACK TrId
 
     ----------------------------------
     -- Miscellaneous prims

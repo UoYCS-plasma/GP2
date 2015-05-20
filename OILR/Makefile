@@ -1,4 +1,4 @@
-CC=gcc -g -Wall -Werror
+CC=gcc -g -O2 -Wall -Werror
 
 TARGETS=oilrrt.a
 OBJS=graph.o

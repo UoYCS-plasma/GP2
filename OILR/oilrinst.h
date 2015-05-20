@@ -75,18 +75,13 @@ success = 1;
 /* o, i, l, and r are number of bits devoted to 
  * each indexing dimension */
 
-#define O_BITS
-#define I_BITS
-#define L_BITS
-#define R_BITS
-
 
 #define OILR(o, i, l, r)  \
 int signature(Node *n) { \
 	return  ( min( (1<<o)-1, outdeg(n)  ) << (i+l+r) \
 			| min( (1<<i)-1, indeg(n)   ) << (l+r)   \
 			| min( (1<<l)-1, loopdeg(n) ) << r       \
-			| min( (1<<r)-1, root(n)    ) );         \
+			| min( (1<<r)-1, rooted(n)  ) );         \
 }
 
 
