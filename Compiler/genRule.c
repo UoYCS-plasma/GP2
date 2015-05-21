@@ -23,7 +23,7 @@ void generateRules(List *declarations)
 
          case RULE_DECLARATION:
          {
-              Rule *rule = makeRule(decl->rule);
+              Rule *rule = transformRule(decl->rule);
               decl->rule->empty_lhs = rule->lhs == NULL;
               decl->rule->is_predicate = isPredicate(rule);
               generateRuleCode(rule, decl->rule->is_predicate);
@@ -89,6 +89,14 @@ void generateRuleCode(Rule *rule, bool predicate)
        "#include \"morphism.h\"\n\n");
    PTF("#include \"%s.h\"\n\n", rule_name);
 
+   if(rule->condition != NULL)
+   {
+      PTF("bool evalCond_%s(void)\n{\n", rule_name);
+      PTFI("return ", 3);
+      generateBoolExpression(rule->condition, false);
+      PTF("}\n\n");
+   }
+
    if(rule->lhs == NULL) generateAddRHSCode(rule);
    else
    {
@@ -99,6 +107,37 @@ void generateRuleCode(Rule *rule, bool predicate)
    fclose(header);
    fclose(file);
    return;
+}
+
+void generateBoolExpression(Condition *condition, bool nested)
+{
+   static int bool_count = 0;
+   switch(condition->type)
+   {
+      case BOOL_NOT:
+           PTF("!b%d", bool_count++);
+           break;
+
+      case BOOL_AND:
+           if(nested) PTF("(");
+           generateBoolExpression(condition->bin_op.left_exp, true);
+           PTF(" && ");
+           generateBoolExpression(condition->bin_op.right_exp, true);
+           if(nested) PTF(")");
+           break;
+           
+      case BOOL_OR:
+           if(nested) PTF("(");
+           generateBoolExpression(condition->bin_op.left_exp, true);
+           PTF(" || ");
+           generateBoolExpression(condition->bin_op.right_exp, true);
+           if(nested) PTF(")");
+           break;
+
+      default:
+           PTF("b%d", bool_count++);
+           break;
+   }
 }
 
 void generateMatchingCode(string rule_name, Graph *lhs, ItemList *deleted_nodes)

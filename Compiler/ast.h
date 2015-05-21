@@ -255,6 +255,7 @@ typedef struct GPRule {
   int left_nodes;
   int left_edges;
   int variable_count;
+  int predicate_count;
   bool empty_lhs;
   bool is_predicate;
 } GPRule;

@@ -1,5 +1,19 @@
 #include "genHost.h"
 
+int getArraySize(int number_of_items, int minimum_size)
+{
+   if(number_of_items < minimum_size) return minimum_size;
+   if(number_of_items == 0) return 0;
+   /* Return the smallest power of 2 greater than number_of_items. */
+   number_of_items--;
+   number_of_items |= number_of_items >> 1;
+   number_of_items |= number_of_items >> 2;
+   number_of_items |= number_of_items >> 4;
+   number_of_items |= number_of_items >> 8;
+   number_of_items |= number_of_items >> 16;
+   return number_of_items + 1;
+}
+
 void generateHostGraphCode(GPGraph *ast_host_graph)
 {
    /* UNIX-dependent code. */
@@ -96,7 +110,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
       {
          GPLabel *label = nodes->node->label;
          bool root = nodes->node->root;
-         if(label->mark == NONE && getASTListLength(label) == 0)
+         if(label->mark == NONE && getASTListLength(label->gp_list) == 0)
          {
             if(!blank_label)
             {
@@ -144,7 +158,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          {
             GPLabel *label = nodes->node->label;
             bool root = nodes->node->root;
-            if(label->mark == NONE && getASTListLength(label) == 0)
+            if(label->mark == NONE && getASTListLength(label->gp_list) == 0)
             {
                if(!blank_label)
                {
@@ -183,7 +197,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
          int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
 
          GPLabel *label = edges->edge->label;
-         if(label->mark == NONE && getASTListLength(label) == 0)
+         if(label->mark == NONE && getASTListLength(label->gp_list) == 0)
          {
             if(!blank_label)
             {
@@ -234,7 +248,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             int target_index = (int)strtol((edges->edge->target) + 1, NULL, 0);
 
             GPLabel *label = edges->edge->label;
-            if(label->mark == NONE && getASTListLength(label) == 0)
+            if(label->mark == NONE && getASTListLength(label->gp_list) == 0)
             {
                if(!blank_label)
                {

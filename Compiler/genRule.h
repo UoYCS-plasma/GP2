@@ -21,7 +21,7 @@
 #include "label.h"
 #include "rule.h"
 #include "searchplan.h"
-#include "transform.h"
+#include "transformRule.h"
 
 FILE *rule_header;
 FILE *rule_source;
@@ -37,7 +37,9 @@ void generateRules(List *declarations);
  * emitMatchingCode and emitApplicationCode depending on the structure
  * of the rule.  */
 void generateRuleCode(Rule *rule, bool predicate);
- 
+
+void generateBoolExpression(Condition *condition, bool nested);
+
 /* Generates the searchplan from the LHS which is used to emit the matching
  * code. The generated matching code is structure as follows:
  * For a searchplan op_1,...,op_n and corresponding generated C functions

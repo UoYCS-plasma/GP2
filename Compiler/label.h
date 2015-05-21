@@ -79,7 +79,6 @@ bool hasListVariable(Label label);
 
 /* Allocates memory for an array with <length> number of atoms. */
 Atom *makeList(int length);
-void addAtom(Atom atom, Label label, int position);
 
 /* Creates a copy of source and assigns it to target. The assumption is that 
  * target points to a Label-sized portion of heap. Heap memory is allocated

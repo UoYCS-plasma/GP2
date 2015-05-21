@@ -670,44 +670,48 @@ void printGraph(Graph *graph, FILE *file)
    int index, node_count = 0, edge_count = 0;
    if(graph == NULL || graph->number_of_nodes == 0) 
    {
-      fprintf(file, "[ | ]\n");
+      PTF("[ | ]\n");
       return;
    }
-   fprintf(file, "[ ");
+   PTF("[ ");
+   /* Maps a node's graph-index to the ID it is printed with (node_count). */
+   int output_indices[graph->node_index];
    for(index = 0; index < graph->node_index; index++)
    {
       Node *node = getNode(graph, index);
-      if(node->index >= 0) 
+      if(node->index == -1) 
       {
-         /* Five nodes per line */
-         if(node_count != 0 && node_count % 5 == 0) fprintf(file, "\n  ");
-         if(node->root) fprintf(file, "(n%d(R), ", node_count++);
-         else fprintf(file, "(n%d, ", node_count++);
-         printLabel(node->label, file);
-         fprintf(file, ") ");
+         output_indices[index] = -1;
+         continue; 
       }
+      /* Five nodes per line */
+      if(node_count != 0 && node_count % 5 == 0) PTF("\n  ");
+      output_indices[index] = node_count;
+      if(node->root) PTF("(n%d(R), ", node_count++);
+      else PTF("(n%d, ", node_count++);
+      printLabel(node->label, file);
+      PTF(") ");
    }
    if(graph->number_of_edges == 0)
    {
-      fprintf(file, "| ]\n\n");
+      PTF("| ]\n\n");
       return;
    }
-   fprintf(file, "|\n  ");
+   PTF("|\n  ");
    for(index = 0; index < graph->edge_index; index++)
    {
       Edge *edge = getEdge(graph, index);
-      if(edge->index >= 0) 
-      {
-         /* Three edges per line */
-         if(edge_count != 0 && edge_count % 3 == 0) fprintf(file, "\n  ");
-         if(edge->bidirectional) fprintf(file, "(e%d(B), ", edge_count++);
-         else fprintf(file, "(e%d, ", edge_count++);
-         fprintf(file, "n%d, n%d, ", edge->source, edge->target);
-         printLabel(edge->label, file);
-         fprintf(file, ") ");
-      }
+      if(edge->index == 0) continue; 
+
+      /* Three edges per line */
+      if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
+      if(edge->bidirectional) PTF("(e%d(B), ", edge_count++);
+      else PTF("(e%d, ", edge_count++);
+      PTF("n%d, n%d, ", output_indices[edge->source], output_indices[edge->target]);
+      printLabel(edge->label, file);
+      PTF(") ");
    }
-   fprintf(file, "]\n\n");
+   PTF("]\n\n");
 }
 
 void freeGraph(Graph *graph) 

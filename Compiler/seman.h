@@ -188,15 +188,16 @@ void interfaceScan(List *interface, string scope, string rule_name);
 /* conditionScan navigates a subtree of the AST with a GPCondition node
  * as its root. It performs semantic checking on all possible types
  * of GP2 conditions, sometimes calling auxiliary functions. This function
- * is called only by ruleScan.
+ * is called only by ruleScan. It returns the number of predicates in
+ * the condition.
  *
  * Argument 1: Pointer to a struct GPCondition.
  * Argument 2: The rule's interface, used to check node IDs in the edge
  *             predicate.
  * Argument 3: The current scope.
  * Argument 4: The current rule being processed. */   
-void conditionScan(GPCondition *condition, List *interface, string scope, 
-                   string rule_name);
+int conditionScan(GPCondition *condition, List *interface, string scope, 
+                  string rule_name);
 
 
 /* gpListScan takes as input the head of a GP2 list expression in the AST.

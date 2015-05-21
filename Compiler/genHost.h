@@ -26,7 +26,13 @@
 #include "error.h"
 #include "genLabel.h"
 #include "globals.h"
-#include "transform.h"
+#include "transformRule.h"
+
+/* Generates an appropriate initial node/edge array size for a graph. 
+ * Returns the maximum of minimum_size and the smallest power of 2 greater 
+ * than the number_of_items in the passed graph. number_of_items is obtained
+ * from a call to countNodes or countEdges. */
+int getArraySize(int number_of_items, int minimum_size);
 
 /* Emit code to build the host graph at runtime. For sufficiently small graphs,
  * all the code is emitted to the file runtime/buildHost.c. Otherwise,

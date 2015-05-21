@@ -1,5 +1,5 @@
 OBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o symbol.o \
-          transform.o label.o graph.o graphStacks.o rule.o searchplan.o \
+          transformRule.o label.o graph.o graphStacks.o rule.o searchplan.o \
           analysis.o genHost.o genLabel.o genRule.o genProgram.o main.o
 CC = gcc
 CFLAGS = -g -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
@@ -67,11 +67,11 @@ label.o:	error.h globals.h label.h
 graph.o:	error.h globals.h label.h graph.h 
 graphStacks.o:  error.h globals.h graph.h graphStacks.h
 rule.o:		error.h globals.h graph.h rule.h
-transform.o:	ast.h error.h globals.h graph.h label.h rule.h transform.h 
+transformRule.o:	ast.h error.h globals.h graph.h label.h rule.h transformRule.h 
 searchplan.o:	graph.h globals.h searchplan.h
 analysis.o:	ast.h globals.h pretty.h analysis.h
-genHost.o:	ast.h error.h genLabel.h globals.h transform.h genHost.h
+genHost.o:	ast.h error.h genLabel.h globals.h transformRule.h genHost.h
 genLabel.o:     error.h globals.h label.h genLabel.h
-genRule.o:	error.h genLabel.h globals.h label.h rule.h searchplan.h transform.h genRule.h
+genRule.o:	error.h genLabel.h globals.h label.h rule.h searchplan.h transformRule.h genRule.h
 genProgram.o:	ast.h error.h globals.h genProgram.h
 

@@ -20,21 +20,15 @@
 
 /* Allocates memory for the rule data structure and populates it using the
  * AST representation of the rule and the functions in this module. */
-Rule *makeRule(GPRule *rule);
+Rule *transformRule(GPRule *ast_rule);
 
 /* Populates the rule's variable list from the variable declaration lists in
  * the AST. */
-VariableList *scanVariableList(VariableList *variable_list, List *declarations);
+void scanVariableList(Rule *rule, List *declarations);
 
 /* Counts the number of nodes/edges in a graph from its AST representation. */
 int countNodes(GPGraph *graph);
 int countEdges(GPGraph *graph);
-
-/* Generates an appropriate initial node/edge array size for a graph. 
- * Returns the maximum of minimum_size and the smallest power of 2 greater 
- * than the number_of_items in the passed graph. number_of_items is obtained
- * from a call to countNodes or countEdges. */
-int getArraySize(int number_of_items, int minimum_size);
 
 /* (1) Create and returns the graph data structure for the LHS graph.
  * (2) Add all LHS-nodes and LHS-edges to node and edge maps. Each map is an
@@ -46,7 +40,7 @@ int getArraySize(int number_of_items, int minimum_size);
  * (4) Set the is_rooted flag if there exists a root node in the LHS.
  * (5) Set the deletes_nodes flag if the rule deletes a node.
  */
-void scanLHS(Rule *rule, GPGraph *ast_lhs, List *interface);
+void scanLHS(Rule *rule, GPGraph *ast_lhs);
 
 /* (1) Create and returns the graph data structure for the graph containing
  *     the nodes of the RHS graph.
@@ -58,7 +52,7 @@ void scanLHS(Rule *rule, GPGraph *ast_lhs, List *interface);
  *     is in the interface, its RHS-index and left-index (obtained from the 
  *     node map) is added to the list. 
  */
-void scanRHSNodes(Rule *rule, GPGraph *ast_rhs, List *interface);
+void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface);
 
 /* (1) Add the RHS-edges to the RHS graph.
  * (2) Populate the list of preserved edge index pairs. Preserved edges
@@ -71,7 +65,7 @@ void scanRHSNodes(Rule *rule, GPGraph *ast_rhs, List *interface);
  *     exists with the appropriate source and target, the edge is added
  *     to the added edges list with the appropriate information.
  */
-void scanRHSEdges(Rule *rule, GPGraph *ast_rhs, List *interface);
+
 
 /* (1) Update the rule's variable list with the variables that appear in a
  *     RHS label.
@@ -79,8 +73,8 @@ void scanRHSEdges(Rule *rule, GPGraph *ast_rhs, List *interface);
  *     degree operator in a RHS label. 
  * The relabelled argument is false if the RHS item containing the atom is
  * preserved and unchanged by the rule. In this case, any variables in this
- * atom are not flagged for runtime code generation, preventing unused 
- * variables in the runtime code. */
+ * atom are not flagged for code generation, preventing unused variables in
+ * the runtime code. */
 void scanRHSAtom(Rule *rule, bool relabelled, Atom atom);
 
 /* Generates a Label from the AST representation of a label. The data
@@ -91,7 +85,12 @@ void scanRHSAtom(Rule *rule, bool relabelled, Atom atom);
  * transformation functions to get the appropriate index from the string
  * node identifier. */
 Label transformLabel(GPLabel *ast_label, IndexMap *node_map);
-int getASTListLength(GPLabel *ast_label);
+int getASTListLength(List *list);
+Atom *transformList(List *ast_list, int length, IndexMap *node_map);
 Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map);
+
+Condition *transformCondition(Rule *rule, GPCondition *ast_condition, IndexMap *node_map);
+void scanListForPredicates(Rule *rule, Atom *list, int length, Predicate *predicate);
+void scanAtomForPredicates(Rule *rule, Atom atom, Predicate *predicate);
 
 #endif /* INC_TRANSFORM_H */

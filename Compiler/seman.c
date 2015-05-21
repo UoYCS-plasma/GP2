@@ -468,8 +468,9 @@ void ruleScan(GPRule *rule, string scope)
    graphScan(rule, rule->interface, scope, rule->name, 'l');
    graphScan(rule, rule->interface, scope, rule->name, 'r');
    if(rule->interface) interfaceScan(rule->interface, scope, rule->name);
-   if(rule->condition) conditionScan(rule->condition, rule->interface, 
-                                     scope, rule->name);
+   if(rule->condition)
+      rule->predicate_count = conditionScan(rule->condition, rule->interface, 
+                                            scope, rule->name);
 }   
 
 void checkDeclaration(GPRule *rule, List *variables, string scope,
@@ -880,9 +881,10 @@ void interfaceScan(List *interface, string scope, string rule_name)
 }
         
 
-void conditionScan(GPCondition *condition, List *interface, string scope, 
-                   string rule_name)
+int conditionScan(GPCondition *condition, List *interface, string scope, 
+                  string rule_name)
 {
+   int predicate_count = 0;
    switch(condition->type) 
    {
       case INT_CHECK:
@@ -890,6 +892,7 @@ void conditionScan(GPCondition *condition, List *interface, string scope,
       case STRING_CHECK:
       case ATOM_CHECK: 
       {
+           predicate_count++;
            bool in_rule = false; 
            SymbolList *var_list = g_hash_table_lookup(symbol_table, condition->var);
 	   /* Go through the list of symbols with the name in question
@@ -913,7 +916,8 @@ void conditionScan(GPCondition *condition, List *interface, string scope,
       /* For an edge predicate, the source and target node IDs must be present
        * in the interface of the rule. The optional label argument is also scanned. */
       case EDGE_PRED:
-      {
+      { 
+           predicate_count++;
            bool in_interface = false;
            List *iterator = interface;
            while(iterator != NULL)  
@@ -958,6 +962,7 @@ void conditionScan(GPCondition *condition, List *interface, string scope,
 
       case EQUAL:
       case NOT_EQUAL:
+           predicate_count++;
            gpListScan(&(condition->list_cmp.left_list), interface, scope, rule_name, 'c');
            gpListScan(&(condition->list_cmp.right_list), interface, scope, rule_name, 'c');
            break;
@@ -966,18 +971,21 @@ void conditionScan(GPCondition *condition, List *interface, string scope,
       case GREATER_EQUAL:
       case LESS:
       case LESS_EQUAL:
+           predicate_count++;
            atomScan(condition->atom_cmp.left_exp, interface, scope, rule_name, 'c', true, false);
            atomScan(condition->atom_cmp.right_exp, interface, scope, rule_name, 'c', true, false);
            break;
 
       case BOOL_NOT:
-           conditionScan(condition->not_exp, interface, scope, rule_name);
+           predicate_count += conditionScan(condition->not_exp, interface, scope, rule_name);
            break;
 
       case BOOL_OR:
       case BOOL_AND:
-           conditionScan(condition->bin_exp.left_exp, interface, scope, rule_name);
-           conditionScan(condition->bin_exp.right_exp, interface, scope, rule_name);
+           predicate_count += conditionScan(condition->bin_exp.left_exp, 
+                                            interface, scope, rule_name);
+           predicate_count += conditionScan(condition->bin_exp.right_exp, 
+                                            interface, scope, rule_name);
            break;
 
       default:
@@ -985,7 +993,8 @@ void conditionScan(GPCondition *condition, List *interface, string scope,
 	                condition->type, condition->id);
            abort_compilation = true; 
            break;
-      }
+   }
+   return predicate_count;
 }
 
 /* Variables used by gpListScan and atomScan. */

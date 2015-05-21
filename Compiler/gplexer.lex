@@ -122,18 +122,16 @@ empty		    return _EMPTY;
 length		    return _LENGTH;
 
  /* Keywords for node and edge marks */
-
 red		    { yylval.mark = RED; return MARK; } 
 green		    { yylval.mark = GREEN; return MARK; } 
 blue		    { yylval.mark = BLUE; return MARK; } 
 grey		    { yylval.mark = GREY; return MARK; } 
 dashed		    { yylval.mark = DASHED; return MARK; }
- /* Cyan has a distinct token since it cannot appear in the host graph and
+ /* Any has a distinct token since it cannot appear in the host graph and
     therefore must be distinguished from the other marks. */
 any		    { yylval.mark = ANY; return ANY_MARK; } 
 
- /* keywords for GP2 types */
-
+ /* Keywords for GP2 types */
 int		    return INT;  
 char		    return CHARACTER;
 string		    return STRING;  

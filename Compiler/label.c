@@ -117,11 +117,6 @@ Atom *makeList(int length)
    return list;
 }
 
-void addAtom(Atom atom, Label label, int position)
-{
-   label.list[position] = atom;
-}
-
 void copyLabel(Label *source, Label *target)
 {
    target->mark = source->mark;
