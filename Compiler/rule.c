@@ -114,10 +114,20 @@ int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
    graph->edges[index].source = source;
    graph->edges[index].target = target;
    graph->edges[index].label = label;
-   source->outedges = addIncidentEdge(source->outedges, &(graph->edges[index]));
-   if(bidirectional) source->bidegree++; else source->outdegree++;
-   target->inedges = addIncidentEdge(target->inedges, &(graph->edges[index]));
-   if(bidirectional) target->bidegree++; else target->indegree++;
+   if(bidirectional) 
+   {
+      source->biedges = addIncidentEdge(source->biedges, &(graph->edges[index]));
+      source->bidegree++;
+      target->biedges = addIncidentEdge(target->biedges, &(graph->edges[index]));
+      target->bidegree++;
+   }
+   else
+   {
+      source->outedges = addIncidentEdge(source->outedges, &(graph->edges[index]));
+      source->outdegree++;
+      target->inedges = addIncidentEdge(target->inedges, &(graph->edges[index]));
+      target->indegree++;
+   }
    return index;
 }
 
@@ -449,6 +459,9 @@ void freeRuleGraph(RuleGraph *graph)
    for(index = 0; index < graph->node_index; index++)
    {
       RuleNode *node = getRuleNode(graph, index);
+      freeRuleEdges(node->outedges);
+      freeRuleEdges(node->inedges);
+      freeRuleEdges(node->biedges);
       freeLabel(node->label);
       if(node->predicates) free(node->predicates);
    }
@@ -459,6 +472,13 @@ void freeRuleGraph(RuleGraph *graph)
    }
    free(graph->nodes);
    free(graph->edges);
+}
+
+void freeRuleEdges(RuleEdges *edges)
+{
+   if(edges == NULL) return;
+   freeRuleEdges(edges->next);
+   free(edges);
 }
 
 void freeCondition(Condition *condition)

@@ -71,7 +71,7 @@ typedef struct RuleNode {
     * corresponding node in the other rule graph. Otherwise, it is NULL. */
    struct RuleNode *interface; 
    /* Linked lists of edge pointers. */
-   struct RuleEdges *outedges, *inedges;
+   struct RuleEdges *outedges, *inedges, *biedges;
    Label label;
    struct Predicate **predicates;
    int indegree, outdegree, bidegree;
@@ -100,7 +100,7 @@ typedef struct RuleEdge {
 typedef struct Condition {
    char type; /* (e)xpression, (n)egated expression, (o)r, (a)nd */
    union {
-      Predicate *predicate;
+      struct Predicate *predicate;
       struct Condition *neg_predicate;
       struct {
          struct Condition *left_predicate;
@@ -198,6 +198,7 @@ void printCondition(Condition *condition, FILE *file);
 
 void freeRule(Rule *rule);
 void freeRuleGraph(RuleGraph *graph);
+void freeRuleEdges(RuleEdges *edges);
 void freeCondition(Condition *condition);
 void freePredicate(Predicate *predicate);
 

@@ -68,7 +68,7 @@ graph.o:	error.h globals.h label.h graph.h
 graphStacks.o:  error.h globals.h graph.h graphStacks.h
 rule.o:		error.h globals.h graph.h rule.h
 transformRule.o:	ast.h error.h globals.h graph.h label.h rule.h transformRule.h 
-searchplan.o:	graph.h globals.h searchplan.h
+searchplan.o:	globals.h rule.h searchplan.h
 analysis.o:	ast.h globals.h pretty.h analysis.h
 genHost.o:	ast.h error.h genLabel.h globals.h transformRule.h genHost.h
 genLabel.o:     error.h globals.h label.h genLabel.h
