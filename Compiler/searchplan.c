@@ -153,17 +153,6 @@ void traverseNode(Searchplan *searchplan, RuleGraph *lhs, RuleNode *node, char t
          else traverseEdge(searchplan, lhs, edge, 't', offset);
       }
    }
-   iterator = node->biedges;
-   for(index = 0; index < node->bidegree; index++)
-   {
-      RuleEdge *edge = iterator->edge;
-      if(!tagged_edges[edge->index])
-      {
-         if(edge->source == edge->target)
-              traverseEdge(searchplan, lhs, edge, 'l', offset);
-         else traverseEdge(searchplan, lhs, edge, 't', offset);
-      }
-   }
 }
 
 void traverseEdge(Searchplan *searchplan, RuleGraph *lhs, RuleEdge *edge, char type, int offset)

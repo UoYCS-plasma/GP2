@@ -10,6 +10,8 @@ Rule *makeRule(int variables, int left_nodes, int left_edges,
       exit(1);
    }
    rule->is_rooted = false;
+   rule->adds_nodes = false;
+   rule->adds_edges = false;
    rule->variables = calloc(variables, sizeof(Variable));
    if(rule->variables == NULL)
    {
@@ -30,6 +32,7 @@ void addVariable(Rule *rule, string name, GPType type)
    rule->variables[rule->variable_index].name = strdup(name);
    rule->variables[rule->variable_index].type = type;  
    rule->variables[rule->variable_index].predicates = NULL;
+   rule->variables[rule->variable_index].predicate_count = 0;
    rule->variables[rule->variable_index].used_by_rule = false;   
    rule->variable_index++;
 }
@@ -97,6 +100,7 @@ int addRuleNode(RuleGraph *graph, bool root, Label label)
    graph->nodes[index].inedges = NULL;
    graph->nodes[index].label = label;
    graph->nodes[index].predicates = NULL;
+   graph->nodes[index].predicate_count = 0;
    graph->nodes[index].indegree = 0;
    graph->nodes[index].outdegree = 0;
    graph->nodes[index].bidegree = 0;
@@ -114,18 +118,16 @@ int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
    graph->edges[index].source = source;
    graph->edges[index].target = target;
    graph->edges[index].label = label;
+   source->outedges = addIncidentEdge(source->outedges, &(graph->edges[index]));
+   target->inedges = addIncidentEdge(target->inedges, &(graph->edges[index]));
    if(bidirectional) 
    {
-      source->biedges = addIncidentEdge(source->biedges, &(graph->edges[index]));
       source->bidegree++;
-      target->biedges = addIncidentEdge(target->biedges, &(graph->edges[index]));
       target->bidegree++;
    }
    else
    {
-      source->outedges = addIncidentEdge(source->outedges, &(graph->edges[index]));
       source->outdegree++;
-      target->inedges = addIncidentEdge(target->inedges, &(graph->edges[index]));
       target->indegree++;
    }
    return index;
@@ -144,15 +146,75 @@ RuleEdges *addIncidentEdge(RuleEdges *edges, RuleEdge *edge)
    return new_edge;
 }
 
+Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string variable)
+{
+   Predicate *predicate = malloc(sizeof(Predicate));
+   if(predicate == NULL)
+   {
+      print_to_log("Error (makePredicate): malloc failure.\n");
+      exit(1);
+   }
+   predicate->bool_id = bool_id;
+   predicate->negated = negated;
+   predicate->type = type;
+   predicate->variable = variable;
+   return predicate;
+}
+   
+Predicate *makeEdgePred(int bool_id, bool negated, int source, int target, Label *label)
+{
+   Predicate *predicate = malloc(sizeof(Predicate));
+   if(predicate == NULL)
+   {
+      print_to_log("Error (makePredicate): malloc failure.\n");
+      exit(1);
+   }
+   predicate->bool_id = bool_id;
+   predicate->negated = negated;
+   predicate->type = EDGE_PRED;
+   predicate->edge_pred.source = source;
+   predicate->edge_pred.target = target;
+   if(label == NULL) predicate->edge_pred.label = NULL;
+   else
+   {
+      predicate->edge_pred.label = malloc(sizeof(Label));
+      if(predicate->edge_pred.label == NULL)
+      {
+         print_to_log("Error (makePredicate): malloc failure.\n");
+         exit(1);
+      }
+      copyLabel(label, predicate->edge_pred.label);
+   }
+   return predicate;
+}
+
+Predicate *makeRelationalCheck(int bool_id, bool negated, ConditionType type,
+                               Label left_label, Label right_label)
+{
+   Predicate *predicate = malloc(sizeof(Predicate));
+   if(predicate == NULL)
+   {
+      print_to_log("Error (makePredicate): malloc failure.\n");
+      exit(1);
+   }
+   predicate->bool_id = bool_id;
+   predicate->negated = negated;
+   predicate->type = type;
+   predicate->comparison.left_label = left_label;
+   predicate->comparison.right_label = right_label;
+   return predicate;
+}
+
 void addVariablePredicate(Rule *rule, string name, Predicate *predicate)
 {
    int index;
    for(index = 0; index < rule->variable_index; index++)   
    {
       Variable variable = rule->variables[index];
-      if(strcmp(variable.name, name))
+      if(strcmp(variable.name, name) == 0)
       {
          addPredicate(variable.predicates, predicate, rule->predicate_count);
+         variable.predicate_count++;
          break;
       }
    }
@@ -183,64 +245,6 @@ Predicate **addPredicate(Predicate **predicates, Predicate *predicate, int size)
       }
    }
    return predicates;
-}
-
-Predicate *makeTypeCheck(int bool_id, ConditionType type, string variable)
-{
-   Predicate *predicate = malloc(sizeof(Predicate));
-   if(predicate == NULL)
-   {
-      print_to_log("Error (makePredicate): malloc failure.\n");
-      exit(1);
-   }
-   predicate->bool_id = bool_id;
-   predicate->type = type;
-   predicate->variable = variable;
-   return predicate;
-}
-   
-Predicate *makeEdgePred(int bool_id, int source, int target, Label *label)
-{
-   Predicate *predicate = malloc(sizeof(Predicate));
-   if(predicate == NULL)
-   {
-      print_to_log("Error (makePredicate): malloc failure.\n");
-      exit(1);
-   }
-   predicate->bool_id = bool_id;
-   predicate->type = EDGE_PRED;
-   predicate->edge_pred.source = source;
-   predicate->edge_pred.target = target;
-   if(label == NULL) predicate->edge_pred.label = NULL;
-   else
-   {
-      predicate->edge_pred.label = malloc(sizeof(Label));
-      if(predicate->edge_pred.label == NULL)
-      {
-         print_to_log("Error (makePredicate): malloc failure.\n");
-         exit(1);
-      }
-      copyLabel(label, predicate->edge_pred.label);
-   }
-   return predicate;
-}
-
-Predicate *makeRelationalCheck(int bool_id, ConditionType type, Atom *left_list,
-                               int left_length, Atom *right_list, int right_length)
-{
-   Predicate *predicate = malloc(sizeof(Predicate));
-   if(predicate == NULL)
-   {
-      print_to_log("Error (makePredicate): malloc failure.\n");
-      exit(1);
-   }
-   predicate->bool_id = bool_id;
-   predicate->type = type;
-   predicate->comparison.left_list = left_list;
-   predicate->comparison.left_length = left_length;
-   predicate->comparison.right_list = right_list;
-   predicate->comparison.right_length = right_length;
-   return predicate;
 }
 
 Condition *makeCondition(void)
@@ -397,16 +401,16 @@ void printCondition(Condition *condition, FILE *file)
          case GREATER_EQUAL:
          case LESS:
          case LESS_EQUAL:
-              printList(predicate->comparison.left_list, 
-                        predicate->comparison.left_length, file);
+              printList(predicate->comparison.left_label.list, 
+                        predicate->comparison.left_label.length, file);
               if(predicate->type == EQUAL) PTF(" = ");
               if(predicate->type == NOT_EQUAL) PTF(" != ");
               if(predicate->type == GREATER) PTF(" > ");
               if(predicate->type == GREATER_EQUAL) PTF(" >= ");
               if(predicate->type == LESS) PTF(" < ");
               if(predicate->type == LESS_EQUAL) PTF(" <= ");
-              printList(predicate->comparison.right_list, 
-                        predicate->comparison.right_length, file);
+              printList(predicate->comparison.right_label.list, 
+                        predicate->comparison.right_label.length, file);
               break;
 
          default: break;
@@ -461,7 +465,6 @@ void freeRuleGraph(RuleGraph *graph)
       RuleNode *node = getRuleNode(graph, index);
       freeRuleEdges(node->outedges);
       freeRuleEdges(node->inedges);
-      freeRuleEdges(node->biedges);
       freeLabel(node->label);
       if(node->predicates) free(node->predicates);
    }
@@ -515,10 +518,8 @@ void freePredicate(Predicate *predicate)
       case GREATER_EQUAL:
       case LESS:
       case LESS_EQUAL:
-           freeList(predicate->comparison.left_list, 
-                    predicate->comparison.left_length);
-           freeList(predicate->comparison.right_list,  
-                    predicate->comparison.right_length);
+           freeLabel(predicate->comparison.left_label);
+           freeLabel(predicate->comparison.right_label);
            break;
 
       default: break;

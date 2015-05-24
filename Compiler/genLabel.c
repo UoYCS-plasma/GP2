@@ -1,6 +1,6 @@
 #include "genLabel.h"
 
-void generateIteratorCode(Label label, int indent, FILE *file)
+void generateIteratorCode(Label label, int indent)
 {
    PTFI("int mark, label_class;\n", indent);
 
@@ -73,7 +73,7 @@ void generateIteratorCode(Label label, int indent, FILE *file)
  * runtime. */
 bool result_declared = false;
 
-void generateFixedListMatchingCode(Label label, int indent, FILE *file)
+void generateFixedListMatchingCode(Rule *rule, Label label, int indent)
 {
    PTFI("/* Label Matching */\n", indent);
    PTFI("int new_assignments = 0;\n", indent);
@@ -95,7 +95,7 @@ void generateFixedListMatchingCode(Label label, int indent, FILE *file)
       PTFI("/* Matching rule atom %d. */\n", indent + 3, index);
       /* Break if the end of the rule list is reached. */
       if(index == label.length) break;
-      generateAtomMatchingCode(atom, indent + 3, file);
+      generateAtomMatchingCode(rule, atom, indent + 3);
       PTFI("index++;\n\n", indent + 3);
    }
    PTFI("/* If there are no more host atoms to match, success! */\n", indent + 3);
@@ -105,7 +105,7 @@ void generateFixedListMatchingCode(Label label, int indent, FILE *file)
    result_declared = false;
 }
 
-void generateVariableListMatchingCode(Label label, int indent, FILE *file)
+void generateVariableListMatchingCode(Rule *rule, Label label, int indent)
 { 
    PTFI("/* Label Matching */\n", indent);
    /* Analyse the label for the list variable's index in the rule list.
@@ -136,16 +136,19 @@ void generateVariableListMatchingCode(Label label, int indent, FILE *file)
       }
       PTFI("result = addListAssignment(\"%s\", label.list, label.length, "
            "morphism);\n", indent, list_variable_name);
-      PTFI("if(result >= 0)\n", indent);
-      PTFI("{\n", indent);
-      PTFI("new_assignments += result;\n", indent + 3);
-      PTFI("match = true;\n", indent + 3);
-      PTFI("}\n", indent);
+      bool in_condition = generateVariableConditionCode(rule, list_variable_name, indent + 6);
+      if(!in_condition) 
+      {
+         PTFI("if(result >= 0)\n", indent);
+         PTFI("{\n", indent);
+         PTFI("new_assignments += result;\n", indent + 3);
+         PTFI("match = true;\n", indent + 3);
+         PTFI("}\n", indent);
+      }
       /* Reset the flag before function exit. */
       result_declared = false;
       return;
    }
-
    PTFI("index = 0;\n", indent);
    PTFI("do\n", indent);
    PTFI("{\n", indent);
@@ -159,7 +162,7 @@ void generateVariableListMatchingCode(Label label, int indent, FILE *file)
    {
       Atom atom = label.list[index];
       PTFI("/* Matching rule atom %d */\n", indent + 3, index);
-      generateAtomMatchingCode(atom, indent + 3, file);
+      generateAtomMatchingCode(rule, atom, indent + 3);
       PTFI("index++;\n", indent + 3);
    }   
    PTFI("/* The current host index marks the start of the list .\n", indent + 3);
@@ -175,7 +178,7 @@ void generateVariableListMatchingCode(Label label, int indent, FILE *file)
    {
       Atom atom = label.list[index];
       PTFI("/* Matching rule atom %d */\n", indent + 3, index);
-      generateAtomMatchingCode(atom, indent + 3, file);
+      generateAtomMatchingCode(rule, atom, indent + 3);
       PTFI("index--;\n", indent + 3);
    }
    /* Assign the list variable to the rest of the host list. */
@@ -210,23 +213,27 @@ void generateVariableListMatchingCode(Label label, int indent, FILE *file)
    PTFI("result = addListAssignment(\"%s\", list, index - start_index + 1, morphism);\n",
         indent + 6, list_variable_name);
    PTFI("}\n", indent + 3);
-   PTFI("if(result >= 0)\n", indent + 3);
-   PTFI("{\n", indent + 3);
-   PTFI("new_assignments += result;\n", indent + 6);
-   PTFI("match = true;\n", indent + 6);
-   PTFI("}\n", indent + 3);
+   bool in_condition = generateVariableConditionCode(rule, list_variable_name, indent + 6);
+   if(!in_condition) 
+   {
+      PTFI("if(result >= 0)\n", indent + 3);
+      PTFI("{\n", indent + 3);
+      PTFI("new_assignments += result;\n", indent + 6);
+      PTFI("match = true;\n", indent + 6);
+      PTFI("}\n", indent + 3);
+   }
    PTFI("} while(false);\n\n", indent);
    /* Reset the flag before function exit. */
    result_declared = false;
 }
 
 
-void generateAtomMatchingCode(Atom atom, int indent, FILE *file)
+void generateAtomMatchingCode(Rule *rule, Atom atom, int indent)
 {
    switch(atom.type)
    {
       case VARIABLE:
-           generateVariableMatchingCode(atom, indent, file);
+           generateVariableMatchingCode(rule, atom, indent);
            break;
       
       case INTEGER_CONSTANT:
@@ -244,7 +251,7 @@ void generateAtomMatchingCode(Atom atom, int indent, FILE *file)
            PTFI("if(label.list[index].type != STRING_CONSTANT) break;\n", indent);
            PTFI("else\n", indent);
            PTFI("{\n", indent);
-           generateConcatMatchingCode(atom, indent + 3, file);
+           generateConcatMatchingCode(rule, atom, indent + 3);
            PTFI("}\n", indent);
            break;
 
@@ -255,13 +262,14 @@ void generateAtomMatchingCode(Atom atom, int indent, FILE *file)
    }
 }
 
-void generateVariableMatchingCode(Atom atom, int indent, FILE *file)
+void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
 {
    if(!result_declared)
    {
       PTFI("int result;\n", indent);
       result_declared = true;
    }
+   bool in_condition = false;
    switch(atom.variable.type)
    {
       case INTEGER_VAR:
@@ -269,7 +277,9 @@ void generateVariableMatchingCode(Atom atom, int indent, FILE *file)
            PTFI("if(label.list[index].type != INTEGER_CONSTANT) break;\n", indent);
            PTFI("result = addIntegerAssignment(\"%s\", label.list[index].number, "
                 "morphism);\n", indent, atom.variable.name);
-           PTFI("if(result == -1) break; else new_assignments += result;\n", indent);
+           in_condition = generateVariableConditionCode(rule, atom.variable.name, indent + 3);
+           if(!in_condition) 
+              PTFI("if(result >= 0) new_assignments += result; else break;\n", indent + 3);
            break;
 
       case CHARACTER_VAR:
@@ -278,7 +288,9 @@ void generateVariableMatchingCode(Atom atom, int indent, FILE *file)
            PTFI("if(strlen(label.list[index].string) != 1) break;\n", indent);
            PTFI("result = addStringAssignment(\"%s\", label.list[index].string, "
                 "morphism);\n", indent, atom.variable.name);
-           PTFI("if(result == -1) break; else new_assignments += result;\n", indent);
+           in_condition = generateVariableConditionCode(rule, atom.variable.name, indent + 3);
+           if(!in_condition) 
+              PTFI("if(result >= 0) new_assignments += result; else break;\n", indent + 3);
            break;
 
       case STRING_VAR:
@@ -286,7 +298,9 @@ void generateVariableMatchingCode(Atom atom, int indent, FILE *file)
            PTFI("if(label.list[index].type != STRING_CONSTANT) break;\n", indent);
            PTFI("result = addStringAssignment(\"%s\", label.list[index].string, "
                 "morphism);\n", indent, atom.variable.name);
-           PTFI("if(result == -1) break; else new_assignments += result;\n", indent);
+          in_condition = generateVariableConditionCode(rule, atom.variable.name, indent + 3);
+           if(!in_condition) 
+              PTFI("if(result >= 0) new_assignments += result; else break;\n", indent + 3);
            break;
 
       case ATOM_VAR:
@@ -297,7 +311,9 @@ void generateVariableMatchingCode(Atom atom, int indent, FILE *file)
            PTFI("else if(label.list[index].type == STRING_CONSTANT)\n", indent);
            PTFI("result = addStringAssignment(\"%s\", label.list[index].string, "
                 "morphism);\n", indent, atom.variable.name);
-           PTFI("if(result == -1) break; else new_assignments += result;\n", indent);
+           in_condition = generateVariableConditionCode(rule, atom.variable.name, indent + 3);
+           if(!in_condition) 
+              PTFI("if(result >= 0) new_assignments += result; else break;\n", indent + 3);
            break;
 
       case LIST_VAR:
@@ -312,7 +328,7 @@ void generateVariableMatchingCode(Atom atom, int indent, FILE *file)
    }
 }
 
-void generateConcatMatchingCode(Atom atom, int indent, FILE *file)
+void generateConcatMatchingCode(Rule *rule, Atom atom, int indent)
 {
    StringList *list = NULL;
    list = stringExpToList(list, atom.bin_op.left_exp);
@@ -341,7 +357,7 @@ void generateConcatMatchingCode(Atom atom, int indent, FILE *file)
       while(iterator != NULL) 
       {
          PTFI("if(start >= strlen(host_string)) break;\n", indent);
-         generateStringMatchingCode(iterator, true, indent, file);
+         generateStringMatchingCode(rule, iterator, true, indent);
          iterator = iterator->next;
       }
    }
@@ -354,7 +370,7 @@ void generateConcatMatchingCode(Atom atom, int indent, FILE *file)
       while(iterator->type != 3) 
       {
          PTFI("if(start >= strlen(host_string)) break;\n", indent);
-         generateStringMatchingCode(iterator, true, indent, file);
+         generateStringMatchingCode(rule, iterator, true, indent);
          iterator = iterator->next;
       }
       PTFI("if(start > strlen(host_string)) break;\n", indent);
@@ -371,7 +387,7 @@ void generateConcatMatchingCode(Atom atom, int indent, FILE *file)
       while(iterator->type != 3) 
       {
          PTFI("if(end < start) break;\n", indent );
-         generateStringMatchingCode(iterator, false, indent, file);
+         generateStringMatchingCode(rule, iterator, false, indent);
          iterator = iterator->prev;
       }
    }
@@ -392,13 +408,16 @@ void generateConcatMatchingCode(Atom atom, int indent, FILE *file)
    PTFI("substring[end - start + 1] = '\\0';\n", indent + 3);
    PTFI("result = addStringAssignment(\"%s\", substring, morphism);\n", 
         indent + 3, iterator->value);
-   PTFI("if(result == -1) break; else new_assignments += result;\n", indent + 3);
+   bool in_condition = generateVariableConditionCode(rule, iterator->value, indent + 3);
+   if(!in_condition) 
+      PTFI("if(result >= 0) new_assignments += result; else break;\n", indent + 3);
    PTFI("}\n", indent);
    freeStringList(list);
 }
 
 bool offset_declared = false, host_character_declared = false;
-void generateStringMatchingCode(StringList *string_exp, bool prefix, int indent, FILE *file)
+
+void generateStringMatchingCode(Rule *rule, StringList *string_exp, bool prefix, int indent)
 {
    /* String Constant */
    if(string_exp->type == 1)
@@ -452,10 +471,48 @@ void generateStringMatchingCode(StringList *string_exp, bool prefix, int indent,
       }
       PTFI("result = addStringAssignment(\"%s\", host_character, morphism);\n",
            indent, string_exp->value);
-      PTFI("if(result == -1) break; else new_assignments += result;\n", indent );
+      bool in_condition = generateVariableConditionCode(rule, string_exp->value, indent);
+      if(!in_condition) 
+         PTFI("if(result >= 0) new_assignments += result; else break;\n", indent);
    }
 }
 
+bool generateVariableConditionCode(Rule *rule, string name, int indent)
+{
+   int index;
+   for(index = 0; index < rule->variable_index; index++)   
+   {
+      Variable variable = rule->variables[index];
+      if(strcmp(variable.name, name) == 0)
+      {
+         if(variable.predicates == NULL) return false;
+         PTFI("if(result >= 0)\n", indent);
+         PTFI("{\n", indent);
+         PTFI("/* Update global bools for the variable's predicates. */\n", indent + 3);
+         int p_index;
+         for(p_index = 0; p_index < variable.predicate_count; p_index++)
+            PTFI("if(!evalPredicate%d()) break;", indent + 3, 
+                 variable.predicates[p_index]->bool_id);
+         PTFI("if(!evalCondition_%s) new_assignments += result;\n", 
+              indent + 3, rule->name);
+         PTFI("else\n", indent + 3); 
+         PTFI("{\n", indent + 3);
+         PTFI("/* Reset the boolean variables in the predicates of this variable. */\n",
+              indent + 6);
+         for(p_index = 0; p_index < variable.predicate_count; p_index++)
+         { 
+            Predicate *predicate = variable.predicates[p_index];
+            if(predicate->negated) PTFI("b%d = false;\n", indent + 6, predicate->bool_id);
+            else PTFI("b%d = true;\n", indent + 6, predicate->bool_id);
+         }
+         PTFI("break;\n", indent + 6);
+         PTFI("}\n", indent + 3);
+         PTFI("}\n", indent);
+      }
+   }
+   return true;
+}
+ 
 StringList *stringExpToList(StringList *list, Atom *string_exp)
 {
    switch(string_exp->type)
@@ -531,7 +588,7 @@ void freeStringList(StringList *list)
    free(list);
 }
 
-void generateVariableCode(string name, GPType type, FILE *file)
+void generateVariableCode(string name, GPType type)
 {
    switch(type)
    {
@@ -569,8 +626,18 @@ void generateVariableCode(string name, GPType type, FILE *file)
  * declarationse errors and unused variable warnings in the runtime code. */
 int length_count = 0, i_count = 0, host_label_count = 0;
 
-void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *file)
+/* Predicate argument:
+ * -1 - RHS label
+ * 0 - Label argument of edge predicate.
+ * 1 - First label argument of relational.
+ * 2 - Second label argument of relational. */
+void generateRHSLabelCode(Label label, bool node, int count, int predicate, int indent)
 {
+   string label_name;
+   if(predicate == -1 || predicate == 0) label_name = "label";
+   else if(predicate == 1) label_name = "left_label";
+   else if(predicate == 2) label_name = "right_label";
+
    if(label.length == 0)
    { 
       /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
@@ -581,9 +648,10 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
                        indent, host_label_count);
          else PTFI("Label host_label%d = getEdgeLabel(host, host_edge_index));\n", 
                    indent, host_label_count);
-         PTFI("label = makeEmptyLabel(host_label%d.mark);\n\n", indent, host_label_count);
+         PTFI("%s = makeEmptyLabel(host_label%d.mark);\n\n", indent, label_name,
+              host_label_count);
       }
-      else PTFI("label = makeEmptyLabel(%d);\n\n", indent, label.mark);
+      else PTFI("%s = makeEmptyLabel(%d);\n\n", indent, label_name, label.mark);
       host_label_count++;
       return;
    }
@@ -601,8 +669,12 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
               indent, count, atom.variable.name);
       else number_of_atoms++;
    }
-   PTFI("Atom *list%d = makeList(%d + list_var_length%d);\n", 
-        indent, count, number_of_atoms, count);
+   /* For predicate labels, allocate a static Atom array. */
+   if(predicate == -1) 
+        PTFI("Atom *list%d = makeList(%d + list_var_length%d);\n", indent, count,
+             number_of_atoms, count);
+   else PTFI("Atom list%d[%d + list_var_length%d];\n", indent, count,
+             number_of_atoms, count);
 
    PTFI("int index%d = 0;\n", indent, count);
    for(index = 0; index < label.length; index++)
@@ -635,8 +707,12 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
                       atom.variable.type == STRING_VAR)
               {
                  PTFI("list%d[index%d].type = STRING_CONSTANT;\n", indent, count, count);
-                 PTFI("list%d[index%d++].string = strdup(%s_var);\n",
-                      indent, count, count, name);
+                 /* Do not strdup for predicate labels. */
+                 if(predicate == -1) 
+                      PTFI("list%d[index%d++].string = strdup(%s_var);\n", 
+                           indent, count, count, name);
+                 else PTFI("list%d[index%d++].string = %s_var;\n", indent, count, count, name);
+
               }
               else if(atom.variable.type == ATOM_VAR)
               {
@@ -650,8 +726,11 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
                  PTFI("else /* type == STRING_CONSTANT */\n", indent);
                  PTFI("{\n", indent);
                  PTFI("list%d[index%d].type = STRING_CONSTANT;\n", indent + 3, count, count);
-                 PTFI("list%d[index%d++].string = strdup(%s_var.str);\n",
-                      indent + 3, count, count, name);
+                 /* No strdup for predicate labels. */
+                 if(predicate == -1)
+                      PTFI("list%d[index%d++].string = strdup(%s_var.str);\n",
+                           indent + 3, count, count, name);
+                 else PTFI("list%d[index%d++].string = %s_var;\n", indent, count, count, name);
                  PTFI("}\n", indent);
               }
               else if(atom.variable.type == LIST_VAR)
@@ -670,8 +749,12 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
                  PTFI("else /* type == STRING_CONSTANT */\n", indent + 3);
                  PTFI("{\n", indent + 3);
                  PTFI("list%d[index%d].type = STRING_CONSTANT;\n", indent + 6, count, count);
-                 PTFI("list%d[index%d++].string = strdup(%s_var[i%d].string);\n",
-                       indent + 6, count, count, name, i_count);
+                 /* No strdup for predicate labels. */
+                 if(predicate == -1) 
+                      PTFI("list%d[index%d++].string = strdup(%s_var[i%d].string);\n",
+                           indent + 6, count, count, name, i_count);
+                 else PTFI("list%d[index%d++].string = %s_var[i%d].string;\n",
+                           indent + 6, count, count, name, i_count);
                  PTFI("}\n", indent + 3);
                  PTFI("}\n", indent);
                  i_count++;
@@ -680,14 +763,22 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
          }
          case INDEGREE:
               PTFI("list%d[index%d].type = INTEGER_CONSTANT;\n", indent, count, count);
-              PTFI("list%d[index%d++].number = indegree%d;\n", 
-                   indent, count, count, atom.node_id); 
+              /* Call getInDegree directly for predicate labels. */
+              if(predicate == -1)
+                   PTFI("list%d[index%d++].number = indegree%d;\n", 
+                        indent, count, count, atom.node_id); 
+              else PTFI("list%d[index%d++].number = getIndegree(host, %d);\n", 
+                        indent, count, count, atom.node_id); 
               break;
            
          case OUTDEGREE:
               PTFI("list%d[index%d].type = INTEGER_CONSTANT;\n", indent, count, count);
-              PTFI("list%d[index%d++].number = outdegree%d;\n", 
-                   indent, count, count, atom.node_id); 
+              /* Call getOutDegree directly for predicate labels. */
+              if(predicate == -1)
+                   PTFI("list%d[index%d++].number = outdegree%d;\n", 
+                        indent, count, count, atom.node_id); 
+              else PTFI("list%d[index%d++].number = getOutdegree(host, %d);\n", 
+                        indent, count, count, atom.node_id); 
               break;
 
          case LENGTH:
@@ -698,7 +789,7 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
          case DIVIDE:  
               PTFI("list%d[index%d].type = INTEGER_CONSTANT;\n", indent, count, count);
               PTFI("list%d[index%d++].number = ", indent, count, count);
-              generateIntExpression(atom, false, file);
+              generateIntExpression(atom, false);
               PTF(";\n");
               break;
 
@@ -707,15 +798,19 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
               /* Generates string variables to store string literals to be 
                * concatenated, and updates the runtime length variable with the 
                * total length of the concatenated string. */
-              generateStringLengthCode(atom, indent, file);
+              generateStringLengthCode(atom, indent);
               /* Build host_string from the evaluated strings that make up the
                * RHS label. */
               PTFI("char host_string%d[length%d + 1];\n", indent, length_count, length_count);
-              generateStringExpression(atom, true, indent, file);
+              generateStringExpression(atom, true, indent);
               PTFI("host_string%d[length%d] = '\\0';\n\n", indent, length_count, length_count);
               PTFI("list%d[index%d].type = STRING_CONSTANT;\n", indent, count, count);
-              PTFI("list%d[index%d++].string = strdup(host_string%d);\n\n", 
-                   indent, count, count, length_count);
+              /* No strdup for predicate labels. */
+              if(predicate == -1)
+                   PTFI("list%d[index%d++].string = strdup(host_string%d);\n\n", 
+                        indent, count, count, length_count);
+              else PTFI("list%d[index%d++].string = host_string%d;\n\n", 
+                        indent, count, count, length_count);
               length_count++;
               break;
       
@@ -733,15 +828,15 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
                     indent, host_label_count);
       else PTFI("Label host_label%d = getEdgeLabel(host, host_edge_index);\n",
                 indent, host_label_count);
-      PTFI("label = makeHostLabel(host_label%d.mark, %d + list_var_length%d, list%d);\n\n", 
-           indent, host_label_count, number_of_atoms, count, count);
+      PTFI("%s = makeHostLabel(host_label%d.mark, %d + list_var_length%d, list%d);\n\n", 
+           indent, label_name, host_label_count, number_of_atoms, count, count);
       host_label_count++;
    }
-   else PTFI("label = makeHostLabel(%d, %d + list_var_length%d, list%d);\n\n", 
-             indent, label.mark, number_of_atoms, count, count);
+   else PTFI("%s = makeHostLabel(%d, %d + list_var_length%d, list%d);\n\n", 
+             indent, label_name, label.mark, number_of_atoms, count, count);
 }
 
-void generateIntExpression(Atom atom, bool nested, FILE *file)
+void generateIntExpression(Atom atom, bool nested)
 {
    switch(atom.type)
    {
@@ -784,33 +879,33 @@ void generateIntExpression(Atom atom, bool nested, FILE *file)
 
       case ADD:
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), true, file);
+           generateIntExpression(*(atom.bin_op.left_exp), true);
            PTF(" + ");
-           generateIntExpression(*(atom.bin_op.right_exp), true, file);
+           generateIntExpression(*(atom.bin_op.right_exp), true);
            if(nested) PTF(")");
            break;
 
       case SUBTRACT:
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), true, file);
+           generateIntExpression(*(atom.bin_op.left_exp), true);
            PTF(" - ");
-           generateIntExpression(*(atom.bin_op.right_exp), true, file);
+           generateIntExpression(*(atom.bin_op.right_exp), true);
            if(nested) PTF(")");
            break;
 
       case MULTIPLY:
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), true, file);
+           generateIntExpression(*(atom.bin_op.left_exp), true);
            PTF(" * ");
-           generateIntExpression(*(atom.bin_op.right_exp), true, file);
+           generateIntExpression(*(atom.bin_op.right_exp), true);
            if(nested) PTF(")");
            break;
 
       case DIVIDE:     
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), true, file);
+           generateIntExpression(*(atom.bin_op.left_exp), true);
            PTF(" / ");
-           generateIntExpression(*(atom.bin_op.right_exp), true, file);
+           generateIntExpression(*(atom.bin_op.right_exp), true);
            if(nested) PTF(")");
            break;
 
@@ -821,7 +916,7 @@ void generateIntExpression(Atom atom, bool nested, FILE *file)
    }
 }
    
-void generateStringLengthCode(Atom atom, int indent, FILE *file)
+void generateStringLengthCode(Atom atom, int indent)
 {
    switch(atom.type)
    {
@@ -834,8 +929,8 @@ void generateStringLengthCode(Atom atom, int indent, FILE *file)
            break;
 
       case CONCAT:
-           generateStringLengthCode(*(atom.bin_op.left_exp), indent, file);
-           generateStringLengthCode(*(atom.bin_op.right_exp), indent, file);
+           generateStringLengthCode(*(atom.bin_op.left_exp), indent);
+           generateStringLengthCode(*(atom.bin_op.right_exp), indent);
            break;
           
       default:
@@ -845,7 +940,7 @@ void generateStringLengthCode(Atom atom, int indent, FILE *file)
    }
 }
 
-void generateStringExpression(Atom atom, bool first, int indent, FILE *file)
+void generateStringExpression(Atom atom, bool first, int indent)
 {
    switch(atom.type)
    { 
@@ -863,8 +958,8 @@ void generateStringExpression(Atom atom, bool first, int indent, FILE *file)
            break;
 
       case CONCAT:
-           generateStringExpression(*(atom.bin_op.left_exp), first, indent, file);
-           generateStringExpression(*(atom.bin_op.right_exp), false, indent, file);
+           generateStringExpression(*(atom.bin_op.left_exp), first, indent);
+           generateStringExpression(*(atom.bin_op.right_exp), false, indent);
            break;
           
       default:

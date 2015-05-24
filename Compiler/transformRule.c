@@ -37,7 +37,7 @@ Rule *transformRule(GPRule *ast_rule)
       }
    } 
    rule->predicate_count = ast_rule->predicate_count;
-   rule->condition = transformCondition(rule, ast_rule->condition, node_map);
+   rule->condition = transformCondition(rule, ast_rule->condition, false, node_map);
    if(node_map != NULL) freeIndexMap(node_map);
    if(edge_map != NULL) freeIndexMap(edge_map);
    node_map = NULL;
@@ -176,6 +176,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
           * left index -1, and add the node to the added nodes list. */
          node_map = addIndexMap(node_map, ast_node->name, false, -1,
                                 node_index, NULL, NULL);
+         rule->adds_nodes = true;
       }
       else
       {
@@ -195,6 +196,8 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
                   right_node->relabelled = false;
                break;
             }
+            /* The node is not an interface node, so this node is added by the rule. */
+            if(iterator->next == NULL) rule->adds_nodes = true;
             else iterator = iterator->next;
          }
          map->right_index = node_index;
@@ -231,9 +234,9 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
       Label label = transformLabel(ast_edge->label, node_map);
       int edge_index = addRuleEdge(rule->rhs, ast_edge->bidirectional, 
                                    source, target, label);
+      RuleEdge *edge = getRuleEdge(rule->rhs, edge_index);
       /* Flags to signify whether the source and target nodes exist in the
        * interface. */
-      RuleEdge *edge = getRuleEdge(rule->rhs, edge_index);
       bool interface_source = edge->source->interface != NULL;
       bool interface_target = edge->target->interface != NULL;
       if(interface_source && interface_target)
@@ -255,7 +258,9 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
              * associated with this edge. */
             edge_map = removeMap(edge_map, map);     
          }
+         else rule->adds_edges = true;
       }
+      else rule->adds_edges = true;
       ast_edges = ast_edges->next;   
    }
 }
@@ -424,7 +429,8 @@ Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map)
    return atom;
 }
 
-Condition *transformCondition(Rule *rule, GPCondition *ast_condition, IndexMap *node_map)
+Condition *transformCondition(Rule *rule, GPCondition *ast_condition, 
+                              bool negated, IndexMap *node_map)
 {
    if(ast_condition == NULL) return NULL;
    Condition *condition = makeCondition();
@@ -436,7 +442,7 @@ Condition *transformCondition(Rule *rule, GPCondition *ast_condition, IndexMap *
       case CHAR_CHECK:
       case STRING_CHECK:
       case ATOM_CHECK:
-           predicate = makeTypeCheck(bool_count++, ast_condition->type, 
+           predicate = makeTypeCheck(bool_count++, negated, ast_condition->type, 
                                      ast_condition->var);
            condition->type = 'e';
            condition->predicate = predicate;
@@ -450,76 +456,79 @@ Condition *transformCondition(Rule *rule, GPCondition *ast_condition, IndexMap *
            int target_index = findLeftIndexFromId(node_map, ast_condition->edge_pred.target);
 
            if(ast_condition->edge_pred.label == NULL)
-              predicate = makeEdgePred(bool_count++, source_index, target_index, NULL);
+              predicate = makeEdgePred(bool_count++, negated, source_index, target_index, NULL);
            else 
            {
               Label label = transformLabel(ast_condition->edge_pred.label, node_map);
-              predicate = makeEdgePred(bool_count++, source_index, target_index, &label);
+              predicate = makeEdgePred(bool_count++, negated, source_index, target_index, &label);
            }
            condition->predicate = predicate;
            RuleNode *source = getRuleNode(rule->lhs, source_index);
            RuleNode *target = getRuleNode(rule->lhs, target_index);
            source->predicates = addPredicate(source->predicates, predicate, 
                                              rule->predicate_count);
+           source->predicate_count++;
            target->predicates = addPredicate(target->predicates, predicate, 
                                              rule->predicate_count);
+           target->predicate_count++;
            break;
       }
 
       case EQUAL:
       case NOT_EQUAL:
-      {
-           condition->type = 'e';
-           int left_length = getASTListLength(ast_condition->list_cmp.left_list);
-           Atom *left_list = transformList(ast_condition->list_cmp.left_list,
-                                           left_length, node_map);
-           int right_length = getASTListLength(ast_condition->list_cmp.right_list);
-           Atom *right_list = transformList(ast_condition->list_cmp.right_list, 
-                                            right_length, node_map);
-           predicate = makeRelationalCheck(bool_count++, ast_condition->type, left_list,
-                                           left_length, right_list, right_length);
-           condition->predicate = predicate;
-           scanListForPredicates(rule, left_list, left_length, predicate);
-           scanListForPredicates(rule, right_list, right_length, predicate);
-           break;
-      }
-
       case GREATER:
       case GREATER_EQUAL:
       case LESS:
       case LESS_EQUAL:
       {
            condition->type = 'e';
-           Atom *left_list = transformList(ast_condition->list_cmp.left_list, 1, node_map);
-           Atom *right_list = transformList(ast_condition->list_cmp.right_list, 1, node_map);
-           predicate = makeRelationalCheck(bool_count++, ast_condition->type,
-                                           left_list, 1, right_list, 1);
+           int left_length, right_length;
+           if(ast_condition->type == EQUAL || ast_condition->type == NOT_EQUAL)
+           {
+              left_length = getASTListLength(ast_condition->list_cmp.left_list);
+              right_length = getASTListLength(ast_condition->list_cmp.right_list);
+           }
+           else
+           {
+              left_length = 1;
+              right_length = 1;
+           }
+           Atom *left_list = transformList(ast_condition->list_cmp.left_list,
+                                           left_length, node_map);
+           Label left_label = { .mark = NONE, .length = left_length, .list = left_list };
+           Atom *right_list = transformList(ast_condition->list_cmp.right_list, 
+                                            right_length, node_map);
+           Label right_label = { .mark = NONE, .length = right_length, .list = right_list };
+           predicate = makeRelationalCheck(bool_count++, negated, ast_condition->type,
+                                           left_label, right_label);
            condition->predicate = predicate;
-           scanListForPredicates(rule, left_list, 1, predicate);
-           scanListForPredicates(rule, right_list, 1, predicate);
+           int index;
+           for(index = 0; index < left_length; index++) 
+              scanAtomForPredicates(rule, left_list[index], negated, predicate);
+           for(index = 0; index < right_length; index++) 
+              scanAtomForPredicates(rule, right_list[index], negated, predicate);
            break;
       }
-
       case BOOL_NOT:
            condition->type = 'n';
            condition->neg_predicate = 
-              transformCondition(rule, ast_condition->not_exp, node_map);
+              transformCondition(rule, ast_condition->not_exp, !negated, node_map);
            break;
 
       case BOOL_OR:
            condition->type = 'o';
            condition->left_predicate = 
-              transformCondition(rule, ast_condition->bin_exp.left_exp, node_map);
+              transformCondition(rule, ast_condition->bin_exp.left_exp, negated, node_map);
            condition->right_predicate = 
-              transformCondition(rule, ast_condition->bin_exp.right_exp, node_map);
+              transformCondition(rule, ast_condition->bin_exp.right_exp, negated, node_map);
            break;
 
       case BOOL_AND:
            condition->type = 'a';
            condition->left_predicate = 
-              transformCondition(rule, ast_condition->bin_exp.left_exp, node_map);
+              transformCondition(rule, ast_condition->bin_exp.left_exp, negated, node_map);
            condition->right_predicate = 
-              transformCondition(rule, ast_condition->bin_exp.right_exp, node_map);
+              transformCondition(rule, ast_condition->bin_exp.right_exp, negated, node_map);
            break;
 
       default:
@@ -530,14 +539,7 @@ Condition *transformCondition(Rule *rule, GPCondition *ast_condition, IndexMap *
    return condition;
 }
 
-void scanListForPredicates(Rule *rule, Atom *list, int length, Predicate *predicate)
-{
-   int index;
-   for(index = 0; index < length; index++) 
-      scanAtomForPredicates(rule, list[index], predicate);
-}
-
-void scanAtomForPredicates(Rule *rule, Atom atom, Predicate *predicate)
+void scanAtomForPredicates(Rule *rule, Atom atom, bool negated, Predicate *predicate)
 {
    switch(atom.type)
    {
@@ -552,6 +554,7 @@ void scanAtomForPredicates(Rule *rule, Atom atom, Predicate *predicate)
            RuleNode *node = getRuleNode(rule->lhs, atom.node_id);
            node->predicates = addPredicate(node->predicates, predicate, 
                                            rule->predicate_count);
+           node->predicate_count++;
            break;
       }
 
@@ -560,11 +563,14 @@ void scanAtomForPredicates(Rule *rule, Atom atom, Predicate *predicate)
       case MULTIPLY:
       case DIVIDE:
       case CONCAT:
-           scanAtomForPredicates(rule, *(atom.bin_op.left_exp), predicate);
-           scanAtomForPredicates(rule, *(atom.bin_op.right_exp), predicate);
+           scanAtomForPredicates(rule, *(atom.bin_op.left_exp), negated, predicate);
+           scanAtomForPredicates(rule, *(atom.bin_op.right_exp), negated, predicate);
            break;
 
-      default: break;
+      default:
+           print_to_log("Error (scanAtomForPredicates): Unexpected type %d.\n", 
+                        atom.type);
+           break;
    }
 }
 

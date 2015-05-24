@@ -14,6 +14,10 @@
 #include "error.h"
 #include "globals.h"
 #include "label.h"
+#include "rule.h"
+
+/* Used by genLabel, genRule and genCondition. Defined in genRule. */
+extern FILE *file;
 
 /* Concatenated string expressions are flattened into a doubly-linked list
  * structure. This is because it is difficult to match a tree structure
@@ -35,7 +39,7 @@ void freeStringList(StringList *list);
 /* When matching an isolated node or edge, this function is called. It uses
  * the passed label to generate the appropriate for loops to iterate over the 
  * host graph's label class array. */
-void generateIteratorCode(Label label, int indent, FILE *file);
+void generateIteratorCode(Label label, int indent);
 
 /* Two functions to generate code matching a particular rule list to a list in
  * the host graph. Fixed-length rule lists (lists not containing a list variable)
@@ -45,22 +49,24 @@ void generateIteratorCode(Label label, int indent, FILE *file);
  * as it establishes the length of the list variable, generated code to
  * match the atoms either side of the list variable, and matches the list
  * variable at the very end. */
-void generateFixedListMatchingCode(Label label, int indent, FILE *file);
-void generateVariableListMatchingCode(Label label, int indent, FILE *file);
+void generateFixedListMatchingCode(Rule *rule, Label label, int indent);
+void generateVariableListMatchingCode(Rule *rule, Label label, int indent);
 
 /* The following functions generate code to match a LHS rule atom with a 
  * corresponding host atom. generateAtomMatchingCode directly handles constants. 
  * It passes variables and concatenated expressions to their respective functions. */
-void generateAtomMatchingCode(Atom atom, int indent, FILE *file);
-void generateVariableMatchingCode(Atom atom, int indent, FILE *file);
+void generateAtomMatchingCode(Rule *rule, Atom atom, int indent);
+void generateVariableMatchingCode(Rule *rule, Atom atom, int indent);
 
 /* generateConcatMatchingCode builds a StringList from the AST representation
  * of a concatenated string. It then iterates the resulting StringList, calling
  * generateStringMatchingCode on each element, similar to how list matching
  * code is generated. The string variable, if it exists, is the last item
  * to be matched. */
-void generateConcatMatchingCode(Atom atom, int indent, FILE *file);
-void generateStringMatchingCode(StringList *string_exp, bool prefix, int indent, FILE *file);
+void generateConcatMatchingCode(Rule *rule, Atom atom, int indent);
+void generateStringMatchingCode(Rule *rule, StringList *string_exp, bool prefix, int indent);
+
+bool generateVariableConditionCode(Rule *rule, string name, int indent);
 
 /* Called before generateRHSLabelCode. For each variable in the rule, code is
  * generated to assign that variable's value (from the morphism) to a local
@@ -73,12 +79,12 @@ void generateStringMatchingCode(StringList *string_exp, bool prefix, int indent,
  * 
  * Uniqueness of variable names in a rule ensures uniqueness of the variable
  * name generated. */
-void generateVariableCode(string name, GPType type, FILE *file);
+void generateVariableCode(string name, GPType type);
 
 /* Takes a RHS label and generates code to build the corresponding host label,
  * including code to evaluate expressions and substitute variables for values
  * according to the assignment in the morphism. */
-void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *file);
+void generateRHSLabelCode(Label label, bool node, int count, int predicate, int indent);
 
 /* Called by generateRHSLabelCode if it encounters an arithmetic operator or 
  * the length operator. generateIntExpression is responsible for navigating the
@@ -88,7 +94,7 @@ void generateRHSLabelCode(Label label, bool node, int count, int indent, FILE *f
  * For example, given the RHS label (i + 1) * length(s), where i is an integer
  * variable and s is a string variable, generateIntExpression would print:
  * (i_var + 1) * (int)strlen(s_var); */
-void generateIntExpression(Atom atom, bool nested, FILE *file);
+void generateIntExpression(Atom atom, bool nested);
 
 /* The string case is analogous to the above but complicated by the fact that
  * the runtime code builds a string whose length needs to be known in advance.
@@ -114,7 +120,7 @@ void generateIntExpression(Atom atom, bool nested, FILE *file);
  * The 'bool first' argument of generateStringExpression is used to control
  * which of 'strcpy' and 'strcat' is printed. C doesn't like it when you call
  * strcpy on a newly-created character array. */
-void generateStringLengthCode(Atom atom, int indent, FILE *file);
-void generateStringExpression(Atom atom, bool first, int indent, FILE *file);
+void generateStringLengthCode(Atom atom, int indent);
+void generateStringExpression(Atom atom, bool first, int indent);
 
 #endif /* INC_GEN_LABEL_H */

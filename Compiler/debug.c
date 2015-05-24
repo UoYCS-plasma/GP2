@@ -232,66 +232,6 @@ bool validGraph(Graph *graph)
    return valid_graph;
 }
 
-
-void printVerboseRule(Rule *rule, FILE *file)
-{
-   PTF("Rule %s\n\n", rule->name);
-   PTF("LHS\n===\n");
-   if(rule->lhs) printVerboseGraph(rule->lhs, file);
-   else PTF("Empty Graph\n\n");
-
-   PTF("RHS\n===\n");
-   if(rule->rhs) printVerboseGraph(rule->rhs, file);
-   else PTF("Empty Graph\n\n");
-
-   PreservedItemList *item = rule->preserved_nodes;
-   PTF("Preserved nodes: ");
-   while(item != NULL)
-   {
-      PTF("%d", item->left_index);
-      if(item->next != NULL) PTF(", ");
-      item = item->next;
-   }
-
-   item = rule->preserved_edges;
-   PTF("\nPreserved edges: ");
-   while(item != NULL)
-   {
-      PTF("%d", item->left_index);
-      if(item->next != NULL) PTF(", ");
-      item = item->next;
-   }
-
-   ItemList *iterator = rule->added_nodes;
-   PTF("\nAdded nodes: ");
-   while(iterator != NULL)
-   {
-      PTF("%d ", iterator->index);
-      iterator = iterator->next;
-   }
-   
-   iterator = rule->deleted_nodes;
-   PTF("\nDeleted nodes: ");
-   while(iterator != NULL)
-   {
-      PTF("%d ", iterator->index);
-      iterator = iterator->next;
-   }
-
-   PTF("\nAdded edges:\n");
-
-   NewEdgeList *edge = rule->added_edges;
-   while(edge != NULL)
-   {
-      PTF("Edge %d. Source %c-%d. Target %c-%d.\n",
-            edge->edge_index, edge->source_location, edge->source_index,
-            edge->target_location, edge->target_index);
-      edge = edge->next;
-   }
-   PTF("\n");
-}
-
-
 void printVerboseGraph(Graph *graph, FILE *file) 
 {
     int index;

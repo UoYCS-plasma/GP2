@@ -61,8 +61,7 @@ extern struct Label blank_label;
 typedef enum {EMPTY_L = 0, INT_L, STRING_L, LIST2_L, LIST3_L, LIST4_L, 
               LONG_LIST_L} LabelClass;
 
-/* Called at runtime to build labels. makeHostLabel expects an atom array in
- * heap as its third argument. */
+/* Called at runtime to build labels. */
 Label makeEmptyLabel(MarkType mark);
 Label makeHostLabel(MarkType mark, int length, Atom *list);
 

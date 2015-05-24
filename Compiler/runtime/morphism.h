@@ -20,10 +20,10 @@
  * assignment is the type of its value. This is either INT_VAR, STRING_VAR
  * or LIST_VAR. */
 typedef struct Assignment {
-  string variable;
-  GPType type;
-  int length;
-  Atom *value;
+   string variable;
+   GPType type;
+   int length;
+   Atom *value;
 } Assignment;
 
 typedef struct Map {

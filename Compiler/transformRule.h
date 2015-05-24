@@ -89,8 +89,8 @@ int getASTListLength(List *list);
 Atom *transformList(List *ast_list, int length, IndexMap *node_map);
 Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map);
 
-Condition *transformCondition(Rule *rule, GPCondition *ast_condition, IndexMap *node_map);
-void scanListForPredicates(Rule *rule, Atom *list, int length, Predicate *predicate);
-void scanAtomForPredicates(Rule *rule, Atom atom, Predicate *predicate);
+Condition *transformCondition(Rule *rule, GPCondition *ast_condition, 
+                              bool negated, IndexMap *node_map);
+void scanAtomForPredicates(Rule *rule, Atom atom, bool negated, Predicate *predicate);
 
 #endif /* INC_TRANSFORM_H */

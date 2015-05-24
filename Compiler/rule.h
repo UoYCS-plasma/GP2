@@ -27,7 +27,7 @@
  * is used to allocate memory for Predicate pointer arrays in nodes and variables. */
 typedef struct Rule {
    string name; 
-   bool is_rooted;
+   bool is_rooted, adds_nodes, adds_edges;
    struct Variable *variables; 
    int variable_index;
    struct RuleGraph *lhs; 
@@ -47,6 +47,7 @@ typedef struct Variable {
    string name;
    GPType type;
    struct Predicate **predicates;
+   int predicate_count;
    bool used_by_rule;
 } Variable;
 
@@ -71,9 +72,10 @@ typedef struct RuleNode {
     * corresponding node in the other rule graph. Otherwise, it is NULL. */
    struct RuleNode *interface; 
    /* Linked lists of edge pointers. */
-   struct RuleEdges *outedges, *inedges, *biedges;
+   struct RuleEdges *outedges, *inedges;
    Label label;
    struct Predicate **predicates;
+   int predicate_count;
    int indegree, outdegree, bidegree;
 } RuleNode;
 
@@ -115,9 +117,10 @@ Condition *makeCondition(void);
  * These are the leaves of the condition tree. Each predicate has a unique
  * integer identifier, used to generate unique boolean variables to store
  * the results of each predicate at runtime. Nodes and variables contain
- * pointers to any predicates taking that node or variable asn argument. */
+ * pointers to any predicates taking that node or variable as an argument. */
 typedef struct Predicate {
    int bool_id;
+   bool negated;
    ConditionType type;
    union {
       string variable; /* Subtype predicates. */
@@ -127,10 +130,8 @@ typedef struct Predicate {
          Label *label;
       } edge_pred; /* Edge predicate. */
       struct {
-         Atom *left_list;
-         int left_length;
-         Atom *right_list;
-         int right_length;
+         Label left_label;
+         Label right_label;
       } comparison; /* Relational operators over lists/atoms. */
    };
 } Predicate;
@@ -163,10 +164,10 @@ RuleEdges *addIncidentEdge(RuleEdges *edges, RuleEdge *edge);
 
 /* Allocates memory for a Predicate and populates its fields according to the
  * type of the predicate and the arguments passed to the function. */
-Predicate *makeTypeCheck(int bool_id, ConditionType type, string variable);
-Predicate *makeEdgePred(int bool_id, int source, int target, Label *label);
-Predicate *makeRelationalCheck(int bool_id, ConditionType type, Atom *left_list,
-                               int left_length, Atom *right_list, int right_length);
+Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string variable);
+Predicate *makeEdgePred(int bool_id, bool negated, int source, int target, Label *label);
+Predicate *makeRelationalCheck(int bool_id, bool negated, ConditionType type, 
+                               Label left_label, Label right_label);
 
 /* Searches for the variable <name> in the rule's variable array and calls 
  * addPredicate on its predicate pointer array. */
@@ -177,7 +178,6 @@ void addVariablePredicate(Rule *rule, string name, Predicate *predicate);
  * elements. The <predicate_count> field of the rule should be passed as the
  * third argument. */
 Predicate **addPredicate(Predicate **predicates, Predicate *predicate, int size);
-
 
 /* Rule Operations and Queries *
  * =========================== */
