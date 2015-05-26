@@ -100,7 +100,7 @@ typedef struct RuleEdge {
 
 /* The condition is stored as a binary tree of predicates. */
 typedef struct Condition {
-   char type; /* (e)xpression, (n)egated expression, (o)r, (a)nd */
+   char type; /* (e)xpression, (n)egated expression, (o)r, (a)nd. */
    union {
       struct Predicate *predicate;
       struct Condition *neg_predicate;
@@ -110,8 +110,6 @@ typedef struct Condition {
       };
    };
 } Condition;
-
-Condition *makeCondition(void);
 
 /* Representation of all the predicate expressions used in GP 2 conditions. 
  * These are the leaves of the condition tree. Each predicate has a unique
@@ -132,7 +130,11 @@ typedef struct Predicate {
       struct {
          Label left_label;
          Label right_label;
-      } comparison; /* Relational operators over lists/atoms. */
+      } list_comp; /* Relational operators over lists. */
+      struct {
+         Atom left_atom;
+         Atom right_atom;
+      } atom_comp; /* Relational operators over atoms. */
    };
 } Predicate;
 
@@ -144,23 +146,18 @@ typedef struct Predicate {
 Rule *makeRule(int variables, int left_nodes, int left_edges, int right_nodes, 
                int right_edges);
 
-/* Allocates memory for a RuleGraph, its node array, and its edge array. 
- * Returns a pointer to the RuleGraph. */
-RuleGraph *makeRuleGraph(int nodes, int edges);
-
 /* Populates the <rule->variable_index>th element of the rule's variable array
  * and increments the variable index. */
 void addVariable(Rule *rule, string name, GPType type);
 
-/* Populates the array entry of the appropriate graph array and returns the
+/* Initialises the array entry of the appropriate graph array and returns the
  * index of the added item. */
 int addRuleNode(RuleGraph *graph, bool root, Label label);
 int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
                 RuleNode *target, Label label);
 
-/* Prepends a RuleEdge pointer to the passed RuleEdges list.
- * Called by addRuleEdge on the incident edge array of the edge's source and target. */           
-RuleEdges *addIncidentEdge(RuleEdges *edges, RuleEdge *edge);
+/* Allocates memory for a Condition. */
+Condition *makeCondition(void);
 
 /* Allocates memory for a Predicate and populates its fields according to the
  * type of the predicate and the arguments passed to the function. */
@@ -168,10 +165,6 @@ Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string v
 Predicate *makeEdgePred(int bool_id, bool negated, int source, int target, Label *label);
 Predicate *makeRelationalCheck(int bool_id, bool negated, ConditionType type, 
                                Label left_label, Label right_label);
-
-/* Searches for the variable <name> in the rule's variable array and calls 
- * addPredicate on its predicate pointer array. */
-void addVariablePredicate(Rule *rule, string name, Predicate *predicate);
 
 /* Adds the passed predicate pointer to the passed predicate pointer array.
  * Passing NULL as the argument will create a Predicate pointer array with <size>
@@ -189,44 +182,18 @@ bool isPredicate(Rule *rule);
 /* Returns the type of a variable in the rule's variable list. */
 GPType lookupType(Rule *rule, string name);
 
+Variable *getVariable(Rule *rule, string name);
 RuleNode *getRuleNode(RuleGraph *graph, int index);
 RuleEdge *getRuleEdge(RuleGraph *graph, int index);
 
 void printRule(Rule *rule, FILE *file);
 void printRuleGraph(RuleGraph *graph, FILE *file);
-void printCondition(Condition *condition, FILE *file);
+void printCondition(Condition *condition, bool nested, FILE *file);
 
 void freeRule(Rule *rule);
 void freeRuleGraph(RuleGraph *graph);
 void freeRuleEdges(RuleEdges *edges);
 void freeCondition(Condition *condition);
 void freePredicate(Predicate *predicate);
-
-/* When processing a rule's AST, two lists of index maps (one for nodes and one 
- * for edges) are maintained. They store the ID of the item, its indices in the 
- * LHS and RHS graphs, and the source and target IDs of edges. 
- *
- * These are used to obtain the correct source and targets when creating edges
- * and to obtain information about edges created by the rule. */
-typedef struct IndexMap {
-   string id;
-   bool root;
-   int left_index;
-   int right_index;
-   string source_id;
-   string target_id;
-   struct IndexMap *next;
-} IndexMap;
-
-/* Prepends a new map with the passed information to the given list and returns
- * a pointer to the new first map in the list. */
-IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index, 
-                      int right_index, string source_id, string target_id);
-int findLeftIndexFromId(IndexMap *map, string id);                      
-IndexMap *findMapFromId(IndexMap *map, string id);
-/* Used to find a map for an edge with the passed source and target IDs. */
-IndexMap *findMapFromSrcTgt(IndexMap *map, string source, string target);
-IndexMap *removeMap(IndexMap *map, IndexMap *map_to_remove);
-void freeIndexMap(IndexMap *map);
 
 #endif /* INC_RULE_H */

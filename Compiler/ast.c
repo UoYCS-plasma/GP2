@@ -286,7 +286,7 @@ GPCondition *newASTEdgePred(YYLTYPE location, string source, string target,
 }
 
 GPCondition *newASTListComparison(ConditionType type, YYLTYPE location,
-	                        List *left_list, List *right_list)
+	                          List *left_list, List *right_list)
 {
     GPCondition *cond = makeGPCondition();
     cond->type = type; 
@@ -297,7 +297,7 @@ GPCondition *newASTListComparison(ConditionType type, YYLTYPE location,
 }
 
 GPCondition *newASTAtomComparison(ConditionType type, YYLTYPE location,
-	                        GPAtom *left_exp, GPAtom *right_exp)
+	                          GPAtom *left_exp, GPAtom *right_exp)
 {
     GPCondition *cond = makeGPCondition();
     cond->type = type; 

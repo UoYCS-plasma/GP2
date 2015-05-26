@@ -27,29 +27,6 @@ Rule *makeRule(int variables, int left_nodes, int left_edges,
    return rule;
 }
 
-void addVariable(Rule *rule, string name, GPType type) 
-{
-   rule->variables[rule->variable_index].name = strdup(name);
-   rule->variables[rule->variable_index].type = type;  
-   rule->variables[rule->variable_index].predicates = NULL;
-   rule->variables[rule->variable_index].predicate_count = 0;
-   rule->variables[rule->variable_index].used_by_rule = false;   
-   rule->variable_index++;
-}
-
-/* I assume this called only when a variable is known to be in the list. */
-GPType lookupType(Rule *rule, string name) 
-{ 
-   int index;
-   for(index = 0; index < rule->variable_index; index++)   
-   {
-      if(strcmp(rule->variables[index].name, name) == 0) 
-         return rule->variables[index].type;
-   }
-   print_to_log("Error: lookupType called with variable %s not in the rule.", name);
-   exit(0);         
-}
-
 RuleGraph *makeRuleGraph(int nodes, int edges)
 {
    RuleGraph *graph = malloc(sizeof(RuleGraph));
@@ -75,18 +52,16 @@ RuleGraph *makeRuleGraph(int nodes, int edges)
    return graph;
 }
 
-RuleNode *getRuleNode(RuleGraph *graph, int index)
+void addVariable(Rule *rule, string name, GPType type) 
 {
-   RuleNode *node = &(graph->nodes[index]);
-   return node;
+   rule->variables[rule->variable_index].name = strdup(name);
+   rule->variables[rule->variable_index].type = type;  
+   rule->variables[rule->variable_index].predicates = NULL;
+   rule->variables[rule->variable_index].predicate_count = 0;
+   rule->variables[rule->variable_index].used_by_rule = false;   
+   rule->variable_index++;
 }
-
-RuleEdge *getRuleEdge(RuleGraph *graph, int index)
-{
-   RuleEdge *edge = &(graph->edges[index]);
-   return edge;
-}
-
+         
 int addRuleNode(RuleGraph *graph, bool root, Label label)
 {
    int index = graph->node_index++;
@@ -146,6 +121,17 @@ RuleEdges *addIncidentEdge(RuleEdges *edges, RuleEdge *edge)
    return new_edge;
 }
 
+Condition *makeCondition(void)
+{
+   Condition *condition = malloc(sizeof(Condition));
+   if(condition == NULL)
+   {
+      print_to_log("Error (makeCondition): malloc failure.\n");
+      exit(1);
+   }
+   return condition;
+}
+
 Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string variable)
 {
    Predicate *predicate = malloc(sizeof(Predicate));
@@ -188,8 +174,8 @@ Predicate *makeEdgePred(int bool_id, bool negated, int source, int target, Label
    return predicate;
 }
 
-Predicate *makeRelationalCheck(int bool_id, bool negated, ConditionType type,
-                               Label left_label, Label right_label)
+Predicate *makeListComp(int bool_id, bool negated, ConditionType type,
+                        Label left_label, Label right_label)
 {
    Predicate *predicate = malloc(sizeof(Predicate));
    if(predicate == NULL)
@@ -200,24 +186,26 @@ Predicate *makeRelationalCheck(int bool_id, bool negated, ConditionType type,
    predicate->bool_id = bool_id;
    predicate->negated = negated;
    predicate->type = type;
-   predicate->comparison.left_label = left_label;
-   predicate->comparison.right_label = right_label;
+   predicate->list_comp.left_label = left_label;
+   predicate->list_comp.right_label = right_label;
    return predicate;
 }
 
-void addVariablePredicate(Rule *rule, string name, Predicate *predicate)
+Predicate *makeAtomComp(int bool_id, bool negated, ConditionType type,
+                        Atom left_atom, Atom right_atom)
 {
-   int index;
-   for(index = 0; index < rule->variable_index; index++)   
+   Predicate *predicate = malloc(sizeof(Predicate));
+   if(predicate == NULL)
    {
-      Variable variable = rule->variables[index];
-      if(strcmp(variable.name, name) == 0)
-      {
-         addPredicate(variable.predicates, predicate, rule->predicate_count);
-         variable.predicate_count++;
-         break;
-      }
+      print_to_log("Error (makePredicate): malloc failure.\n");
+      exit(1);
    }
+   predicate->bool_id = bool_id;
+   predicate->negated = negated;
+   predicate->type = type;
+   predicate->atom_comp.left_atom = left_atom;
+   predicate->list_comp.right_atom = right_atom;
+   return predicate;
 }
 
 Predicate **addPredicate(Predicate **predicates, Predicate *predicate, int size)
@@ -247,17 +235,6 @@ Predicate **addPredicate(Predicate **predicates, Predicate *predicate, int size)
    return predicates;
 }
 
-Condition *makeCondition(void)
-{
-   Condition *condition = malloc(sizeof(Condition));
-   if(condition == NULL)
-   {
-      print_to_log("Error (makeCondition): malloc failure.\n");
-      exit(1);
-   }
-   return condition;
-}
-
 bool isPredicate(Rule *rule)
 {
    int index;
@@ -274,7 +251,6 @@ bool isPredicate(Rule *rule)
       RuleEdge *edge = getRuleEdge(rule->rhs, index);
       if(edge->relabelled || edge->interface == NULL) return false;
    }
-
    /* Return false if the rule deletes any items. The rule deletes an item
     * if there exists a LHS item that is not in the interface. */
    for(index = 0; index < rule->lhs->node_index; index++)
@@ -288,6 +264,42 @@ bool isPredicate(Rule *rule)
       if(edge->interface == NULL) return false;
    }
    return true;
+}
+
+/* I assume this called only when a variable is known to be in the list. */
+GPType lookupType(Rule *rule, string name) 
+{ 
+   int index;
+   for(index = 0; index < rule->variable_index; index++)   
+   {
+      if(strcmp(rule->variables[index].name, name) == 0) 
+         return rule->variables[index].type;
+   }
+   print_to_log("Error: lookupType called with variable %s not in the rule.", name);
+   exit(0);         
+}
+
+Variable *getVariable(Rule *rule, string name)
+{
+   int index;
+   for(index = 0; index < rule->variable_index; index++)
+   {
+      if(strcmp(name, rule->variables[index].name) == 0)
+         return &(rule->variables[index]);
+   }
+   return NULL;
+}
+
+RuleNode *getRuleNode(RuleGraph *graph, int index)
+{
+   RuleNode *node = &(graph->nodes[index]);
+   return node;
+}
+
+RuleEdge *getRuleEdge(RuleGraph *graph, int index)
+{
+   RuleEdge *edge = &(graph->edges[index]);
+   return edge;
 }
 
 void printRule(Rule *rule, FILE *file)
@@ -325,7 +337,7 @@ void printRule(Rule *rule, FILE *file)
    }
    PTF("\n");
    PTF("Condition:\n");
-   printCondition(rule->condition, file);
+   printCondition(rule->condition, false, file);
 }
 
 void printRuleGraph(RuleGraph *graph, FILE *file)
@@ -367,7 +379,7 @@ void printRuleGraph(RuleGraph *graph, FILE *file)
    PTF("]\n\n");
 }
    
-void printCondition(Condition *condition, FILE *file)
+void printCondition(Condition *condition, bool nested, FILE *file)
 {
    if(condition->type == 'e')
    {
@@ -397,20 +409,23 @@ void printCondition(Condition *condition, FILE *file)
 
          case EQUAL:
          case NOT_EQUAL:
+              printList(predicate->list_comp.left_label.list, 
+                        predicate->list_comp.left_label.length, file);
+              if(predicate->type == EQUAL) PTF(" = ");
+              if(predicate->type == NOT_EQUAL) PTF(" != ");
+              printList(predicate->list_comp.right_label.list, 
+                        predicate->list_comp.right_label.length, file);
+
          case GREATER:
          case GREATER_EQUAL:
          case LESS:
          case LESS_EQUAL:
-              printList(predicate->comparison.left_label.list, 
-                        predicate->comparison.left_label.length, file);
-              if(predicate->type == EQUAL) PTF(" = ");
-              if(predicate->type == NOT_EQUAL) PTF(" != ");
+              printAtom(predicate->atom_comp.left_atom, false, file);
               if(predicate->type == GREATER) PTF(" > ");
               if(predicate->type == GREATER_EQUAL) PTF(" >= ");
               if(predicate->type == LESS) PTF(" < ");
               if(predicate->type == LESS_EQUAL) PTF(" <= ");
-              printList(predicate->comparison.right_label.list, 
-                        predicate->comparison.right_label.length, file);
+              printAtom(predicate->atom_comp.right_atom, false, file);
               break;
 
          default: break;
@@ -419,19 +434,23 @@ void printCondition(Condition *condition, FILE *file)
    else if(condition->type == 'n')
    {
       PTF("not ");
-      printCondition(condition->neg_predicate, file);
+      printCondition(condition->neg_predicate, nested, file);
    }
    else if(condition->type == 'o')
    {
-      printCondition(condition->left_predicate, file);
+      if(nested) PTF("(");
+      printCondition(condition->left_predicate, true, file);
       PTF(" or ");
-      printCondition(condition->right_predicate, file);
+      printCondition(condition->right_predicate, true, file);
+      if(nested) PTF(")");
    }
    else if(condition->type == 'a')
    {
-      printCondition(condition->left_predicate, file);
+      if(nested) PTF("(");
+      printCondition(condition->left_predicate, true, file);
       PTF(" and ");
-      printCondition(condition->right_predicate, file);
+      printCondition(condition->right_predicate, true, file);
+      if(nested) PTF(")");
    }
 }
 
@@ -452,8 +471,7 @@ void freeRule(Rule *rule)
    }
    if(rule->lhs != NULL) freeRuleGraph(rule->lhs);
    if(rule->rhs != NULL) freeRuleGraph(rule->rhs);
-   /* Conditions currently ignored. No function exists to free a condition. */
-   if(rule->condition) freeCondition(rule->condition);
+   if(rule->condition != NULL) freeCondition(rule->condition);
    free(rule);
 }
 
@@ -514,115 +532,18 @@ void freePredicate(Predicate *predicate)
 
       case EQUAL:
       case NOT_EQUAL:
+           freeLabel(predicate->list_comp.left_label);
+           freeLabel(predicate->list_comp.right_label);
+
       case GREATER:
       case GREATER_EQUAL:
       case LESS:
       case LESS_EQUAL:
-           freeLabel(predicate->comparison.left_label);
-           freeLabel(predicate->comparison.right_label);
+           freeAtom(predicate->atom_comp.left_atom, false);
+           freeAtom(predicate->atom_comp.right_atom, false);
            break;
 
       default: break;
    }
    free(predicate);
 }
-
-
-IndexMap *addIndexMap(IndexMap *map, string id, bool root, int left_index,
-                      int right_index, string source_id, string target_id)
-{
-   IndexMap *new_map = malloc(sizeof(IndexMap));
-   if(new_map == NULL)
-   {
-      print_to_log("Error: Memory exhausted during map construction.\n");
-      exit(1);
-   }
-   new_map->id = strdup(id);
-   new_map->root = root;
-   new_map->left_index = left_index;
-   new_map->right_index = right_index;
-   if(source_id == NULL) new_map->source_id = NULL;
-   else new_map->source_id = strdup(source_id);
-   if(target_id == NULL) new_map->target_id = NULL;
-   else new_map->target_id = strdup(target_id);
-   new_map->next = map;
-
-   return new_map;
-}
-
-int findLeftIndexFromId(IndexMap *map, string id)
-{
-   while(map != NULL)
-   {
-      if(!strcmp(map->id, id)) return map->left_index;
-      else map = map->next;
-   }
-   return -1; 
-}
-
-IndexMap *findMapFromId(IndexMap *map, string id)
-{
-   while(map != NULL)
-   {
-      if(!strcmp(map->id, id)) return map;
-      else map = map->next;
-   }
-   return NULL; 
-}
-
-IndexMap *findMapFromSrcTgt(IndexMap *map, string source, string target)
-{
-   while(map != NULL)
-   {
-      if(!strcmp(map->source_id, source) && !strcmp(map->target_id, target))
-         return map;
-      else map = map->next;
-   }
-   return NULL; 
-}
-
-
-IndexMap *removeMap(IndexMap *map, IndexMap *map_to_remove)
-{
-   if(map == map_to_remove)
-   {
-      IndexMap *temp = map;
-      map = map->next;
-      if(temp->id) free(temp->id);
-      if(temp->source_id) free(temp->source_id);
-      if(temp->target_id) free(temp->target_id);
-      free(temp);
-   }
-   else
-   {
-      IndexMap *iterator = map;
-      while(iterator != NULL)
-      {
-         if(iterator->next == NULL) break;
-         if(iterator->next == map_to_remove)
-         {
-            IndexMap *temp = iterator->next;
-            iterator->next = iterator->next->next;
-            if(temp->id) free(temp->id);
-            if(temp->source_id) free(temp->source_id);
-            if(temp->target_id) free(temp->target_id);
-            free(temp);
-            break;
-         }
-         else iterator = iterator->next;
-      }
-   }
-   return map;
-}
-
-void freeIndexMap(IndexMap *map)
-{
-   if(map == NULL) return;
-   
-   if(map->id) free(map->id);
-   if(map->source_id) free(map->source_id);
-   if(map->target_id) free(map->target_id);
-   if(map->next) freeIndexMap(map->next);
-   free(map);
-}
-

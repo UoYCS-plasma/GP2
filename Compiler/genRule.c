@@ -9,14 +9,12 @@ void generateRules(List *declarations)
    while(declarations != NULL)
    {
       GPDeclaration *decl = declarations->declaration;
-     
       switch(decl->decl_type)
       {
          case MAIN_DECLARATION:
               break;
 
          case PROCEDURE_DECLARATION:
-
               if(decl->procedure->local_decls != NULL)
                  generateRules(decl->procedure->local_decls);
               break;
@@ -24,13 +22,15 @@ void generateRules(List *declarations)
          case RULE_DECLARATION:
          {
               Rule *rule = transformRule(decl->rule);
+              /* Annotate the AST's rule declaration node with information about
+               * the rule. This is used when generating code to execute the GP 2
+               * program. */
               decl->rule->empty_lhs = rule->lhs == NULL;
               decl->rule->is_predicate = isPredicate(rule);
               generateRuleCode(rule, decl->rule->is_predicate);
               freeRule(rule);
               break;
          }
-
          default: 
               print_to_log("Error (generateRules): Unexpected declaration type "
                            "%d at AST node %d\n", decl->decl_type, decl->id);
@@ -40,6 +40,7 @@ void generateRules(List *declarations)
    }
 }
 
+/* Create a C module to match and apply the rule. */
 void generateRuleCode(Rule *rule, bool predicate)
 {
    /* Create files runtime/<rule name>.h and runtime/<rule name>.c */
@@ -75,16 +76,15 @@ void generateRuleCode(Rule *rule, bool predicate)
 
    if(rule->condition != NULL)
    {
-      generateConditionCode(rule->condition, true, false);
-      PTF("\n");
-      PTF("bool evalCond_%s(void)\n{\n", rule->name);
-      PTFI("return ", 3);
-      generateConditionCode(rule->condition, false, false);
-      PTF("}\n\n");
-      /* TODO: Iterate over conditions and call generatePredicateCode on all predicates.
-       * Also make distinct the three functions that iterate over conditions. */
+      /* The condition is iterated over three times.
+       * The first iteration declares and initialises the runtime global boolean
+       * varables, one for each predicate in the condition.
+       * The second iteration writes the function to evaluate the condition.
+       * The third iteration writes the functions to evaluate the predicates. */
+      generateConditionVariables(rule->condition);
+      generateConditionEvaluator(rule->condition, false);
+      generatePredicateEvaluators(rule->conditiom);
    }
-
    if(rule->lhs == NULL) generateAddRHSCode(rule);
    else
    {
@@ -107,12 +107,7 @@ void generateMatchingCode(Rule *rule)
       return;
    }
    SearchOp *operation = searchplan->first;
-   /* The searchplan is iterated over twice. On the first iteration, the
-    * prototypes of the matching functions are printed to the generated 
-    * source file. 
-    * The second iteration prints the definitions of those functions.
-    * The type of the searchplan operation determines which emitMatcher
-    * function is called and which parameters are passed. */
+   /* Iterator over the searchplan to print the prototypes of the matching functions. */
    while(operation != NULL)
    {
       char type = operation->type;
@@ -144,14 +139,17 @@ void generateMatchingCode(Rule *rule)
       }
       operation = operation->next;
    }
-   /* Print the main matching function which sets up the runtime matching environment. */
-   PTH("bool match%s(Morphism *morphism);\n", rule->name);
-   PTF("\nstatic int left_nodes = %d, left_edges = %d;\n", 
+   /* Generate the global variables used during rule matching. */
+   PTH("bool match%s(Morphism *morphism);\n\n", rule->name);
+   PTF("static int left_nodes = %d, left_edges = %d;\n", 
        rule->lhs->node_index, rule->lhs->edge_index);
    PTF("static int matched_nodes[%d];\n", rule->lhs->node_index);
    if(rule->lhs->node_index > 0) 
       PTF("static int matched_edges[%d];\n\n", rule->lhs->edge_index);
    else PTF("\n");
+   
+   /* Generate the main matching function which sets up the runtime matching 
+    * environment and calls the first matching function. */
    PTF("bool match%s(Morphism *morphism)\n{\n", rule->name);
    PTFI("if(left_nodes > host->number_of_nodes ||\n", 3);
    PTFI("left_edges > host->number_of_edges) return false;\n\n", 6);
@@ -159,13 +157,15 @@ void generateMatchingCode(Rule *rule)
    PTFI("for(count = 0; count < left_nodes; count++) matched_nodes[count] = -1;\n", 3);
    if(rule->lhs->edge_index > 0) 
       PTFI("for(count = 0; count < left_edges; count++) matched_edges[count] = -1;\n", 3);
-
-   /* Call the first matcher in the searchplan. */
    char item = searchplan->first->is_node ? 'n' : 'e';
    PTFI("if(match_%c%d(morphism)) return true;\n", 3, item, searchplan->first->index);
-   PTFI("else\n   {\n", 3);
+   PTFI("else\n", 3);
+   PTFI("{\n", 3);
    PTFI("initialiseMorphism(morphism);\n", 6);
-   PTFI("return false;\n   }\n}\n\n", 6);
+   PTFI("return false;\n", 6);
+   PTFI("}\n}\n\n", 3);
+
+   /* Iterator over the searchplan to print the definitions of the matching functions. */
    operation = searchplan->first;
    RuleNode *node = NULL;
    RuleEdge *edge = NULL;
@@ -222,10 +222,34 @@ void generateMatchingCode(Rule *rule)
    freeSearchplan(searchplan);
 }
 
+/* The emitMatcher functions in this module take an LHS item and emits a function 
+ * that searches for a matching host item. The generated code queries the host graph
+ * for the appropriate item or list of items according to the LHS item and the
+ * searchplan operation from which the code is generated.
+ *
+ * Several checks are made by each function to check if a host item matches
+ * the LHS-item in the order presented below.
+ * The host item must:
+ * (1) Not have been matched already (GP2 requires injective matching).
+ *     A boolean array, indexed by host indices, is maintained at runtime to 
+ *     facilitate this check. The arrays are named matched_nodes and 
+ *     matched_edges.
+ * (2) Have the same mark as the the LHS-item.
+ * (3) [Nodes only] Have degree compatibility with the LHS-node. For instance,
+ *     if the candidate host node has fewer outgoing edges than the rule node,
+ *     no match is possible.
+ * (4) Have label compatibility with the LHS-item. This is the last step because
+ *     label matching is, more computationally demanding than the other steps.
+ *
+ * If a valid host item is found, the generated code pushes its index to the
+ * appropriate morphism stack and calls the function for the following 
+ * searchplan operation (see emitNextMatcherCall). If there are no operations 
+ * left, code is generated to return true. */
 void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism)\n{\n", left_node->index);
    PTFI("bool node_matched = false;\n", 3);
+   /* Iterate over the root node list of the host graph. */
    PTFI("RootNodes *nodes = getRootNodeList(host);\n", 3);   
    PTFI("while(nodes != NULL)\n   {\n", 3);
    PTFI("Node *host_node = getNode(host, nodes->index);\n", 6);
@@ -235,9 +259,6 @@ void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    PTFI("/* Search matched_nodes, set node_matched to true if the node is in the array.*/\n", 6);
    PTFI("CHECK_MATCHED_NODE;\n\n", 6);
 
-   /* Emit code to check the node_matched flag and to test if the candidate 
-    * host node is consistent with the left node with respect to mark and
-    * degrees. If not, the node can be discarded before label matching. */
    PTFI("/* Arguments: mark, indegree, outdegree, bidegree. */\n", 6);
    /* The node is deleted by the rule if it has no corresponding node in the interface. */
    if(left_node->interface == NULL)
@@ -254,7 +275,6 @@ void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 
    PTFI("Label label = host_node->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(left_node->predicates != NULL) PTFI("bool condition = true;\n", 3);
    if(hasListVariable(left_node->label))
       generateVariableListMatchingCode(rule, left_node->label, 6);
    else generateFixedListMatchingCode(rule, left_node->label, 6);
@@ -266,12 +286,13 @@ void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    PTF("}\n\n");
 }
 
+/* The rule node is matched "in isolation", in that it is not the source or
+ * target of a previously-matched edge. In this case, the candidate host
+ * graph nodes are obtained from the appropriate label class tables. */
 void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism)\n{\n", left_node->index);
    PTFI("bool node_matched = false;\n", 3);
-   /* Writes a double for loop. The outer loop iterates over variable mark_index.
-    * The inner loop iterates over variable class_index. */
    generateIteratorCode(left_node->label, 3);
    PTFI("LabelClassTable *table = getNodeLabelTable(host, mark, label_class);\n", 9);
    PTFI("if(table == NULL) continue;\n", 9);
@@ -285,9 +306,6 @@ void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    PTFI("/* Set node_matched to true if the node has already been matched.*/\n", 12);
    PTFI("int index;\n", 12);
    PTFI("CHECK_MATCHED_NODE;\n\n", 12);
-   /* Emit code to check the node_matched flag and to test if the candidate 
-    * host node is consistent with the left node with respect to mark and
-    * degrees. If not, this node cannot participate in a valid match. */
    PTFI("/* Arguments: mark, indegree, outdegree, bidegree. */\n", 12);
    /* The node is deleted by the rule if it has no corresponding node in the interface. */
    if(left_node->interface == NULL)
@@ -300,7 +318,6 @@ void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 
    PTFI("Label label = host_node->label;\n", 12);
    PTFI("bool match = false;\n", 12);
-   if(left_node->predicates != NULL) PTFI("bool condition = true;\n", 3);
    if(hasListVariable(left_node->label))
       generateVariableListMatchingCode(rule, left_node->label, 12);
    else generateFixedListMatchingCode(rule, left_node->label, 12);
@@ -314,10 +331,11 @@ void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 }
 
 /* Matching a node from a matched incident edge always follow an edge match in
- * the searchplan. Thus the generated function takes the host edge matched by  
+ * the searchplan. The generated function takes the host edge matched by  
  * the previous searchplan function as one of its arguments. It gets the
  * appropriate host node (source or target of the host edge) and checks if this
- * node is compatible with left_node. */
+ * node is compatible with the rule node. 
+ * The type argument is either 'i', 'o', or 'b'. */
 void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge)\n{\n", left_node->index);
@@ -328,9 +346,6 @@ void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchO
    PTFI("bool node_matched = false;\n", 3);
    PTFI("int index;\n", 3);
    PTFI("CHECK_MATCHED_NODE;\n\n", 3);
-   /* Emit code to check the node_matched flag and to test if the candidate 
-    * host node is consistent with the left node with respect to mark and
-    * degrees. If not, this node cannot participate in a valid match. */
    PTFI(" /* Arguments: mark, indegree, outdegree, bidegree. */\n", 3);
    /* The node is deleted by the rule if it has no corresponding node in the interface. */
    if(left_node->interface == NULL)
@@ -338,7 +353,6 @@ void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchO
               left_node->indegree, left_node->outdegree, left_node->bidegree);
    else PTFI("IF_INVALID_NODE(%d, %d, %d, %d)", 3, left_node->label.mark, 
               left_node->indegree, left_node->outdegree, left_node->bidegree); 
-
    /* If the above check fails and the edge is bidirectional, check the other 
     * node incident to the host edge. Otherwise return false. */
    if(type == 'b')
@@ -366,7 +380,6 @@ void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchO
  
    PTFI("Label label = host_node->label;\n", 3);
    PTFI("bool match = false;\n", 3);
-   if(left_node->predicates != NULL) PTFI("bool condition = true;\n", 3);
    if(hasListVariable(left_node->label))
       generateVariableListMatchingCode(rule, left_node->label, 3);
    else generateFixedListMatchingCode(rule, left_node->label, 3);
@@ -376,6 +389,12 @@ void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchO
    PTF("}\n\n");
 }
 
+/* Generates code to test the result of label matching a node. If the label
+ * matching succeeds, any predicates in which the node participates are evaluated
+ * and the condition checked. If everything succeeds, the morphism and matched_nodes
+ * array are updated, and matching continues. If not, any runtime boolean variables
+ * modified by predicate evaluation are reset, and any assignments made during label
+ * matching are undone. */
 void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, int indent)
 {
    PTFI("if(match)\n", indent);
@@ -389,10 +408,22 @@ void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, 
       for(index = 0; index < node->predicate_count; index++)
          PTFI("if(!evalPredicate%d()) break;", indent + 6, 
               node->predicates[index]->bool_id);
-      PTFI("condition = evalCondition_%s;\n", indent + 6, rule->name);
+      PTFI("if(!evalCondition_%s());\n", indent + 6, rule->name);
+      PTFI("{\n", indent + 6);
+      PTFI("/* Reset the boolean variables in the predicates of this node. */\n", indent + 9);
+      int index;
+      for(index = 0; index < node->predicate_count; index++)
+      { 
+         Predicate *predicate = node->predicates[index];
+         if(predicate->negated) PTFI("b%d = false;\n", indent + 9, predicate->bool_id);
+         else PTFI("b%d = true;\n", indent + 9, predicate->bool_id);
+      }
+      PTFI("match = false;\n", indent + 9);
+      PTFI("}\n", indent + 6);
       PTFI("} while(false);\n", indent + 3);
       PTFI("}\n", indent);
-      PTFI("if(match && condition)\n", indent);
+      PTFI("if(match)\n", indent);
+      PTFI("{\n", indent);
    }
    PTFI("addNodeMap(morphism, %d, host_node->index, new_assignments);\n",
         indent + 3, node->index);
@@ -414,29 +445,15 @@ void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, 
       PTFI("}\n", indent + 3);
    } 
    PTFI("}\n", indent);
-   if(node->predicates != NULL)
-   {
-      PTFI("else\n", indent);
-      PTFI("{\n", indent);
-      PTFI("/* Reset the boolean variables in the predicates of this node. */\n", indent + 3);
-      int index;
-      for(index = 0; index < node->predicate_count; index++)
-      { 
-         Predicate *predicate = node->predicates[index];
-         if(predicate->negated) PTFI("b%d = false;\n", indent + 3, predicate->bool_id);
-         else PTFI("b%d = true;\n", indent + 3, predicate->bool_id);
-      }
-      PTFI("removeAssignments(morphism, new_assignments);\n", indent + 3);
-      PTFI("}\n", indent);
-   }
-   else PTFI("else removeAssignments(morphism, new_assignments);\n", indent);
+   PTFI("else removeAssignments(morphism, new_assignments);\n", indent);
 }
 
+/* The rule edge is matched "in isolation", in that it is not incident to a
+ * previously-matched node. In this case, the candidate host graph edges
+ * are obtained from the appropriate label class tables. */
 void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
-   /* Writes a double for loop. The outer loop iterates over variable mark.
-    * The inner loop iterates over variable label_class. */
    generateIteratorCode(left_edge->label, 3);
    PTFI("bool edge_matched = false;\n", 3);
    PTFI("LabelClassTable *table = getEdgeLabelTable(host, mark, label_class);\n", 9);
@@ -453,10 +470,6 @@ void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
    PTFI("CHECK_MATCHED_EDGE;\n\n", 12);
    PTFI("if(edge_matched) continue;\n\n", 12);
 
-   /* Emit code to test the matched_edge flag and if the candidate host edge 
-    * is consistent with the left edge with respect to label class, mark, and
-    * loopiness. If not, the loop will continue without entering the 
-    * potentially expensive label matching code. */
    PTFI(" /* Arguments: mark. */\n", 6);
    if(left_edge->source == left_edge->target) 
         PTFI("if(host_edge->source != host_edge->target) continue;\n\n", 12);
@@ -508,12 +521,22 @@ void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
    PTFI("return false;\n}\n\n", 3);
 }
 
-/* Unlike matching a node from an edge, the LHS-node from which this LHS-edge
- * is matched may not necessarily be the previously matched node in the 
- * searchplan. The generated code uses the index of the target of the LHS-edge 
- * to find the host node to which it has been matched (lookupNode). Edges 
- * in the inedge list of that host node are the candidate edges to match 
- * left_edge. */
+/* The following two functions match a rule edge from one of its matched incident
+ * nodes. Unlike matching a node from a matched incident edge, the LHS-node from
+ * which this LHS-edge is matched may not necessarily be the previously matched 
+ * node in the searchplan. The generated code uses the index of the target of the 
+ * LHS-edge to find the host node to which it has been matched. Then the candidate
+ * host edges come from the inedge list of that host node. 
+ *
+ * The three flags are used to control the printing of various components of this 
+ * matcher because the matcher can be called in various contexts when matching
+ * bidirectional edges.
+ * The 'initialise' argument is used to control which matching code is written.
+ * When set to false, the function header and local variable declarations are not
+ * written. 
+ * The 'exit' argument controls the printing of the code to return false.
+ * The 'bidirectional' argument turns on the printing of filtering code which is
+ * specific to bidirectional edges. */
 void emitEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
                                bool exit, bool bidirectional, SearchOp *next_op)
 {
@@ -612,6 +635,14 @@ void emitEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
    if(exit) PTFI("return false;\n}\n\n", 3);
 }
 
+/* To match a bidirectional rule edge from a rule node, all edges (incoming and outgoing)
+ * incident to the host node have to be considered. This is achieved by calls to 
+ * the previous two functions, with certain flags set to prevent the generation of
+ * incorrect C code. 
+ * Only the first function call prints the header and local variable initialisation of
+ * the runtime matching function (first boolean argument).
+ * Only the second function call prints "return false;" (second boolean argument). 
+ * Both functions print bidirectional edge filtering code (third boolean argument). */
 void emitBiEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    emitEdgeFromSourceMatcher(rule, left_edge, true, false, true, next_op);
@@ -624,6 +655,9 @@ void emitBiEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next
    emitEdgeFromSourceMatcher(rule, left_edge, false, true, true, next_op);
 }
 
+/* Generates code to test the result of label matching a edge. If the label matching
+ * succeeds, the morphism and matched_edges array are updated, and matching
+ * continues. If not,  any assignments made during label matching are undone. */
 void generateEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
 {
    PTFI("if(match)\n", indent);
@@ -744,7 +778,7 @@ void generateAddRHSCode(Rule *rule)
             blank_label = true;
          }
       }
-      else generateRHSLabelCode(node->label, true, index, -1, 3);
+      else generateLabelEvaluationCode(node->label, true, index, 0, 3);
       PTFI("index = addNode(host, %d, label);\n", 3, node->root);
       if(rule->adds_edges) PTFI("map[%d] = index;\n", 3, node->index);
       PTFI("if(record_changes) pushAddedNode(index);\n", 3);
@@ -761,7 +795,7 @@ void generateAddRHSCode(Rule *rule)
             blank_label = true;
          }
       }
-      else generateRHSLabelCode(edge->label, false, index, -1, 3);
+      else generateLabelEvaluationCode(edge->label, false, index, 0, 3);
       /* The host-source and host-target of added edges are taken from the 
        * map populated in the previous loop. */
       PTFI("index = addEdge(host, false, label, map[%d], map[%d]);\n",
@@ -815,7 +849,7 @@ void generateApplicationCode(Rule *rule)
     * added edges may be added nodes. Edges must be deleted before nodes are
     * deleted because deleting nodes first may leave dangling edges. */
 
-   /* Variable passed to generateRHSLabelCode. */
+   /* Variable passed to generateLabelEvaluationCode. */
    int list_count = 0;
    /* (1) Delete/relabel edges. */
    for(index = 0; index < rule->lhs->edge_index; index++)
@@ -861,7 +895,7 @@ void generateApplicationCode(Rule *rule)
                   PTFI("Label label;\n", 3);
                   label_declared = true;
                }
-               generateRHSLabelCode(label, false, list_count++, -1, 3);
+               generateLabelEvaluationCode(label, false, list_count++, -1, 3);
                PTFI("relabelEdge(host, host_edge_index, label, !record_changes);\n\n", 3);
             }
          }
@@ -938,7 +972,7 @@ void generateApplicationCode(Rule *rule)
                   PTFI("Label label;\n", 3);
                   label_declared = true;
                }
-               generateRHSLabelCode(label, true, list_count++, -1, 3);
+               generateLabelEvaluationCode(label, true, list_count++, -1, 3);
                PTFI("relabelNode(host, host_node_index, label, !record_changes);\n\n", 3);
             }
          }
@@ -971,7 +1005,7 @@ void generateApplicationCode(Rule *rule)
             PTFI("Label label;\n", 3);
             label_declared = true;
          }
-         generateRHSLabelCode(node->label, true, list_count++, -1, 3);
+         generateLabelEvaluationCode(node->label, true, list_count++, -1, 3);
          PTFI("host_node_index = addNode(host, %d, label);\n", 3, node->root);
       }
       PTFI("if(record_changes) pushAddedNode(host_node_index);\n", 3);
@@ -1007,7 +1041,7 @@ void generateApplicationCode(Rule *rule)
             PTFI("Label label;\n", 3);
             label_declared = true;
          }
-         generateRHSLabelCode(edge->label, false, list_count++, -1, 3);
+         generateLabelEvaluationCode(edge->label, false, list_count++, -1, 3);
          PTFI("host_edge_index = addEdge(host, false, label, source, target);\n", 3);
       }
       PTFI("if(record_changes) pushAddedEdge(host_edge_index);\n", 3);
