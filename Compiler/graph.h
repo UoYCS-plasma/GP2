@@ -51,10 +51,7 @@ typedef struct Graph
    /* Root nodes referenced in a linked list for fast access. */
    struct RootNodes *root_nodes;
 
-   /* Flag to prevent graph operations from manipulating LabelClassTables in
-    * rule graphs. Set to true for host graphs and false for rule graphs.
-    * This is temporary - I intend to separate host and rule graphs in the 
-    * future. */
+   /* Flag to switch the label class indexing on and off. */
    bool classes;
    struct LabelClassTable *node_classes, *edge_classes;
 } Graph;

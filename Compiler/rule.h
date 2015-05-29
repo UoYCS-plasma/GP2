@@ -103,10 +103,10 @@ typedef struct Condition {
    char type; /* (e)xpression, (n)egated expression, (o)r, (a)nd. */
    union {
       struct Predicate *predicate;
-      struct Condition *neg_predicate;
+      struct Condition *neg_condition;
       struct {
-         struct Condition *left_predicate;
-         struct Condition *right_predicate;
+         struct Condition *left_condition;
+         struct Condition *right_condition;
       };
    };
 } Condition;
@@ -163,8 +163,10 @@ Condition *makeCondition(void);
  * type of the predicate and the arguments passed to the function. */
 Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string variable);
 Predicate *makeEdgePred(int bool_id, bool negated, int source, int target, Label *label);
-Predicate *makeRelationalCheck(int bool_id, bool negated, ConditionType type, 
-                               Label left_label, Label right_label);
+Predicate *makeListComp(int bool_id, bool negated, ConditionType type,
+                        Label left_label, Label right_label);
+Predicate *makeAtomComp(int bool_id, bool negated, ConditionType type,
+                        Atom left_atom, Atom right_atom);
 
 /* Adds the passed predicate pointer to the passed predicate pointer array.
  * Passing NULL as the argument will create a Predicate pointer array with <size>
@@ -179,21 +181,11 @@ Predicate **addPredicate(Predicate **predicates, Predicate *predicate, int size)
  * deletes nor relabels any items. */
 bool isPredicate(Rule *rule);
 
-/* Returns the type of a variable in the rule's variable list. */
-GPType lookupType(Rule *rule, string name);
-
 Variable *getVariable(Rule *rule, string name);
 RuleNode *getRuleNode(RuleGraph *graph, int index);
 RuleEdge *getRuleEdge(RuleGraph *graph, int index);
 
 void printRule(Rule *rule, FILE *file);
-void printRuleGraph(RuleGraph *graph, FILE *file);
-void printCondition(Condition *condition, bool nested, FILE *file);
-
 void freeRule(Rule *rule);
-void freeRuleGraph(RuleGraph *graph);
-void freeRuleEdges(RuleEdges *edges);
-void freeCondition(Condition *condition);
-void freePredicate(Predicate *predicate);
 
 #endif /* INC_RULE_H */

@@ -312,8 +312,8 @@ void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
 
       case PROCEDURE_DECLARATION:
            decl->id = next_id++;
-           printDeclarationNode(Procedure \\n Declaration, proc, next_id);
            prettyPrint(decl->procedure, Procedure);
+           printDeclarationNode(Procedure \\n Declaration, proc, decl->procedure->id);
            break;
 
       case RULE_DECLARATION:
@@ -398,6 +398,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
                print_to_log("Error (printASTCommand): Undefined procedure "
                            "ame at AST node %d", command->id);
            }
+           prettyPrint(command->proc_call.procedure, Procedure);
            if(command->proc_call.procedure != NULL)
               print_to_dot_file("node%d->node%d[label=\"procedure\"]\n",
                                 command->id, command->proc_call.procedure->id);

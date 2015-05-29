@@ -1,6 +1,6 @@
 #include "genCondition.h"
 
-/* For eaech predicate in the condition, generate a boolean value 'bx', where x
+/* For each predicate in the condition, generate a boolean value 'bx', where x
  * is the ID of the predicate. The variables are initialised in such a way that
  * the condition always evaluates to true, so that the condition isn't erroneously
  * falsified when one of these variables is modified by the evaluation of a 
@@ -22,8 +22,8 @@ void generateConditionVariables(Condition *condition)
 
       case 'a':
       case 'o':
-           generateConditionVariables(condition->left_predicate, variables, nested);
-           generateConditionVariables(condition->right_predicate, variables, nested);
+           generateConditionVariables(condition->left_condition);
+           generateConditionVariables(condition->right_condition);
            break;
 
       default:
@@ -37,10 +37,10 @@ void generateConditionVariables(Condition *condition)
  * The tree structure of the condition is used to print the correct expression. */
 void generateConditionEvaluator(Condition *condition, bool nested)
 {
+   static int bool_count = 0;
    PTF("static bool evaluateCondition(void)\n");
    PTF("{\n");
    PTFI("return (", 3);
-   static int bool_count = 0;
    switch(condition->type)
    {
       case 'e':
@@ -53,17 +53,17 @@ void generateConditionEvaluator(Condition *condition, bool nested)
 
       case 'a':
            if(nested) PTF("(");
-           generateConditionCode(condition->left_predicate, variables, nested);
+           generateConditionEvaluator(condition->left_condition, true);
            PTF(" && ");
-           generateConditionCode(condition->right_predicate, variables, nested);
+           generateConditionEvaluator(condition->right_condition, true);
            if(nested) PTF(")");
            break;
            
       case 'o':
            if(nested) PTF("(");
-           generateConditionCode(condition->left_predicate, variables, nested);
+           generateConditionEvaluator(condition->left_condition, true);
            PTF(" || ");
-           generateConditionCode(condition->right_predicate, variables, nested);
+           generateConditionEvaluator(condition->right_condition, true);
            if(nested) PTF(")");
            break;
 
@@ -76,36 +76,11 @@ void generateConditionEvaluator(Condition *condition, bool nested)
    PTF("}\n\n");
 }
 
-generatePredicateEvaluators(Condition *condition)
-{
-   switch(condition->type)
-   {
-      case 'e':
-           PTF("b%d", bool_count++);
-           break;
-
-      case 'n':
-           PTF("!b%d", bool_count++);
-           break;
-
-      case 'a':
-      case 'o':
-           generatePredicateEvaluators(condition->left_predicate);
-           generatePredicateEvaluators(condition->right_predicate);
-           break;
-
-      default:
-           print_to_log("Error (generatePredicateEvaluators): Unexpected condition "
-                        "type '%c'.\n", condition->type);
-           break;
-   }
-}
-
 /* Writes a function that evaluates a predicate. The generated function checks
  * if all appropriate nodes and variables are instantiated. If so, it sets the
  * appropriate runtime boolean value to the result of the predicate's evalution
  * and returns true. Otherwise, it returns false. */
-void generatePredicateCode(Rule *rule, Predicate *predicate)
+static void generatePredicateCode(Rule *rule, Predicate *predicate)
 {
    PTF("static bool evaluatePredicate%d(void)\n", predicate->bool_id);
    PTF("{\n");
@@ -246,9 +221,9 @@ void generatePredicateCode(Rule *rule, Predicate *predicate)
       case EQUAL:
       case NOT_EQUAL:
            PTFI("Label left_label, right_label;\n", 3);
-           generateLabelEvaluationCode(predicate->comparison.left_label, false, 
+           generateLabelEvaluationCode(predicate->list_comp.left_label, false, 
                                        list_count++, 1, 3);
-           generateLabelEvaluationCode(predicate->comparison.right_label, false, 
+           generateLabelEvaluationCode(predicate->list_comp.right_label, false, 
                                        list_count++, 1, 3);
            if(predicate->type == EQUAL) PTFI("if(equalHostLabels(label0, label1));\n", 3);
            if(predicate->type == NOT_EQUAL) PTFI("if(equalHostLabels(label0, label1));\n", 3);
@@ -273,5 +248,31 @@ void generatePredicateCode(Rule *rule, Predicate *predicate)
            break;
    }
    PTFI("return true;\n", 3);
-   PTF("}\n");
+   PTF("}\n\n");
 }
+
+void generatePredicateEvaluators(Rule *rule, Condition *condition)
+{
+   switch(condition->type)
+   {
+      case 'e':
+           generatePredicateCode(rule, condition->predicate);
+           break;
+
+      case 'n':
+           generatePredicateEvaluators(rule, condition->neg_condition);
+           break;
+
+      case 'a':
+      case 'o':
+           generatePredicateEvaluators(rule, condition->left_condition);
+           generatePredicateEvaluators(rule, condition->right_condition);
+           break;
+
+      default:
+           print_to_log("Error (generatePredicateEvaluators): Unexpected condition "
+                        "type '%c'.\n", condition->type);
+           break;
+   }
+}
+

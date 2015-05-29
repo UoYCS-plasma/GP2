@@ -1,6 +1,20 @@
 #include "genHost.h"
 
-int getArraySize(int number_of_items, int minimum_size)
+/* If the host graph contains fewer than MIN_HOST_NODE_SIZE nodes, the host
+ * graph is allocated memory for that number of nodes. Similarly for edges. */
+#define MIN_HOST_NODE_SIZE 256
+#define MIN_HOST_EDGE_SIZE 256
+
+/* For large host graphs, compile time is significantly shorter if the host
+ * graph build is distributed among many source files. Hence BUFFER_SIZE is
+ * the maximum amount of nodes/edges added to the graph in one source file. */
+#define BUFFER_SIZE 2000
+
+/* Generates an appropriate initial node/edge array size for a graph. 
+ * Returns the maximum of minimum_size and the smallest power of 2 greater 
+ * than the number_of_items in the passed graph. number_of_items is obtained
+ * from a call to countNodes or countEdges. */
+static int getArraySize(int number_of_items, int minimum_size)
 {
    if(number_of_items < minimum_size) return minimum_size;
    if(number_of_items == 0) return 0;
@@ -14,6 +28,52 @@ int getArraySize(int number_of_items, int minimum_size)
    return number_of_items + 1;
 }
 
+/* Generates code to build a host label from the label's AST. 
+ * The argument <list_count> is used to generate unique runtime identifiers
+ * for Atom arrays. */
+static void generateLabelCode(GPLabel *ast_label, int list_count, FILE *file)
+{
+   int length = 0;
+   List *list = ast_label->gp_list;
+   while(list != NULL)
+   {
+      length++;
+      list = list->next;
+   }
+   if(length == 0) PTFI("label = makeEmptyLabel(%d);\n", 3, ast_label->mark);
+   else
+   {
+      PTFI("Atom *list%d = makeList(%d);\n", 3, list_count, length);
+      int index = 0;
+      list = ast_label->gp_list;
+      while(list != NULL)
+      {
+         GPAtom *atom = list->atom;
+         if(atom->type == INTEGER_CONSTANT)
+         {
+            PTFI("list%d[%d].type = INTEGER_CONSTANT; ", 3, list_count, index);
+            PTF("list%d[%d].number = %d;\n", list_count, index, atom->number);
+         }
+         else if(atom->type == STRING_CONSTANT)
+         {
+            PTFI("list%d[%d].type = STRING_CONSTANT; ", 3, list_count, index);
+            PTF("list%d[%d].string = strdup(\"%s\");\n", 
+                list_count, index, atom->string);
+         }
+         else 
+         {
+            print_to_log("Error (generateLabelCode): Unexpected host atom "
+                         "type %d.\n", atom->type);
+            break;
+         }
+         index++;
+         list = list->next;
+      }
+      PTFI("label = makeHostLabel(%d, %d, list%d);\n", 3,
+           ast_label->mark, length, list_count);
+   }
+}
+      
 void generateHostGraphCode(GPGraph *ast_host_graph)
 {
    /* UNIX-dependent code. */
@@ -49,7 +109,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    fprintf(host_file, "#define INC_HOST_H\n\n");
    fprintf(host_file, "extern Graph *host;\n");
 
-   /* init_runtime has the code for building the host graph and, in the future,
+   /* buildHost has the code for building the host graph and, in the future,
     * code to gather host graph metrics for dynamic matching strategies. */
    FILE *header = fopen("runtime/buildHost.h", "w");
    if(header == NULL) { 
@@ -80,7 +140,6 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
    int node_file_count = 0, edge_file_count = 0;
    PTFI("Graph *host = newGraph(%d, %d);\n\n", 3, host_node_size, host_edge_size);
-   /* TEMPORARY */
    PTFI("host->classes = true;\n", 3);
 
    List *nodes = ast_host_graph->nodes;
@@ -276,46 +335,4 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    fclose(file);
 }
 
-void generateLabelCode(GPLabel *ast_label, int list_count, FILE *file)
-{
-   int length = 0;
-   List *list = ast_label->gp_list;
-   while(list != NULL)
-   {
-      length++;
-      list = list->next;
-   }
-   if(length == 0) PTFI("label = makeEmptyLabel(%d);\n", 3, ast_label->mark);
-   else
-   {
-      PTFI("Atom *list%d = makeList(%d);\n", 3, list_count, length);
-      int index = 0;
-      list = ast_label->gp_list;
-      while(list != NULL)
-      {
-         GPAtom *atom = list->atom;
-         if(atom->type == INTEGER_CONSTANT)
-         {
-            PTFI("list%d[%d].type = INTEGER_CONSTANT; ", 3, list_count, index);
-            PTF("list%d[%d].number = %d;\n", list_count, index, atom->number);
-         }
-         else if(atom->type == STRING_CONSTANT)
-         {
-            PTFI("list%d[%d].type = STRING_CONSTANT; ", 3, list_count, index);
-            PTF("list%d[%d].string = strdup(\"%s\");\n", 
-                list_count, index, atom->string);
-         }
-         else 
-         {
-            print_to_log("Error (generateLabelCode): Unexpected host atom "
-                         "type %d.\n", atom->type);
-            break;
-         }
-         index++;
-         list = list->next;
-      }
-      PTFI("label = makeHostLabel(%d, %d, list%d);\n", 3,
-           ast_label->mark, length, list_count);
-   }
-}
-      
+

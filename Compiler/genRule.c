@@ -1,5 +1,21 @@
 #include "genRule.h"
 
+static void generateMatchingCode(Rule *rule);
+static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op);
+static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op);
+static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchOp *next_op);
+static void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, int indent);
+static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op);
+static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op);
+static void emitEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
+                                      bool exit, bool bidirectional, SearchOp *next_op);
+static void emitEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
+                                      bool exit, bool bidirectional, SearchOp *next_op);
+static void emitBiEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op);
+static void emitBiEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op);
+static void generateEdgeMatchResultCode(int index, SearchOp *next_op, int indent);
+static void emitNextMatcherCall(SearchOp *next_operation, int indent);
+
 FILE *header = NULL;
 FILE *file = NULL;
 Searchplan *searchplan = NULL;
@@ -83,7 +99,7 @@ void generateRuleCode(Rule *rule, bool predicate)
        * The third iteration writes the functions to evaluate the predicates. */
       generateConditionVariables(rule->condition);
       generateConditionEvaluator(rule->condition, false);
-      generatePredicateEvaluators(rule->conditiom);
+      generatePredicateEvaluators(rule, rule->condition);
    }
    if(rule->lhs == NULL) generateAddRHSCode(rule);
    else
@@ -97,7 +113,7 @@ void generateRuleCode(Rule *rule, bool predicate)
    return;
 }
 
-void generateMatchingCode(Rule *rule)
+static void generateMatchingCode(Rule *rule)
 {
    searchplan = generateSearchplan(rule->lhs); 
    if(searchplan->first == NULL)
@@ -245,7 +261,7 @@ void generateMatchingCode(Rule *rule)
  * appropriate morphism stack and calls the function for the following 
  * searchplan operation (see emitNextMatcherCall). If there are no operations 
  * left, code is generated to return true. */
-void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
+static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism)\n{\n", left_node->index);
    PTFI("bool node_matched = false;\n", 3);
@@ -289,7 +305,7 @@ void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 /* The rule node is matched "in isolation", in that it is not the source or
  * target of a previously-matched edge. In this case, the candidate host
  * graph nodes are obtained from the appropriate label class tables. */
-void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
+static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism)\n{\n", left_node->index);
    PTFI("bool node_matched = false;\n", 3);
@@ -336,7 +352,7 @@ void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
  * appropriate host node (source or target of the host edge) and checks if this
  * node is compatible with the rule node. 
  * The type argument is either 'i', 'o', or 'b'. */
-void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchOp *next_op)
+static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge)\n{\n", left_node->index);
    if(type == 'i' || type == 'b') 
@@ -395,7 +411,7 @@ void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchO
  * array are updated, and matching continues. If not, any runtime boolean variables
  * modified by predicate evaluation are reset, and any assignments made during label
  * matching are undone. */
-void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, int indent)
+static void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, int indent)
 {
    PTFI("if(match)\n", indent);
    PTFI("{\n", indent);
@@ -411,7 +427,6 @@ void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, 
       PTFI("if(!evalCondition_%s());\n", indent + 6, rule->name);
       PTFI("{\n", indent + 6);
       PTFI("/* Reset the boolean variables in the predicates of this node. */\n", indent + 9);
-      int index;
       for(index = 0; index < node->predicate_count; index++)
       { 
          Predicate *predicate = node->predicates[index];
@@ -451,7 +466,7 @@ void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, 
 /* The rule edge is matched "in isolation", in that it is not incident to a
  * previously-matched node. In this case, the candidate host graph edges
  * are obtained from the appropriate label class tables. */
-void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
+static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
    generateIteratorCode(left_edge->label, 3);
@@ -490,7 +505,7 @@ void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
    PTF("}\n\n");
 }
 
-void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
+static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
    PTFI("/* Matching a loop. */\n", 3);
@@ -537,8 +552,8 @@ void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
  * The 'exit' argument controls the printing of the code to return false.
  * The 'bidirectional' argument turns on the printing of filtering code which is
  * specific to bidirectional edges. */
-void emitEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
-                               bool exit, bool bidirectional, SearchOp *next_op)
+static void emitEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
+                                      bool exit, bool bidirectional, SearchOp *next_op)
 {
    if(initialise)
    {
@@ -586,8 +601,8 @@ void emitEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
    if(exit) PTFI("return false;\n}\n\n", 3);
 }
 
-void emitEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
-                               bool exit, bool bidirectional, SearchOp *next_op)
+static void emitEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
+                                      bool exit, bool bidirectional, SearchOp *next_op)
 {
    if(initialise)
    {
@@ -643,13 +658,13 @@ void emitEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
  * the runtime matching function (first boolean argument).
  * Only the second function call prints "return false;" (second boolean argument). 
  * Both functions print bidirectional edge filtering code (third boolean argument). */
-void emitBiEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
+static void emitBiEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    emitEdgeFromSourceMatcher(rule, left_edge, true, false, true, next_op);
    emitEdgeFromTargetMatcher(rule, left_edge, false, true, true, next_op);
 }
 
-void emitBiEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
+static void emitBiEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    emitEdgeFromTargetMatcher(rule, left_edge, true, false, true, next_op);
    emitEdgeFromSourceMatcher(rule, left_edge, false, true, true, next_op);
@@ -658,7 +673,7 @@ void emitBiEdgeFromTargetMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next
 /* Generates code to test the result of label matching a edge. If the label matching
  * succeeds, the morphism and matched_edges array are updated, and matching
  * continues. If not,  any assignments made during label matching are undone. */
-void generateEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
+static void generateEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
 {
    PTFI("if(match)\n", indent);
    PTFI("{\n", indent);
@@ -684,7 +699,7 @@ void generateEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
    PTFI("else removeAssignments(morphism, new_assignments);\n", indent);
 }
 
-void emitNextMatcherCall(SearchOp *next_operation, int indent)
+static void emitNextMatcherCall(SearchOp *next_operation, int indent)
 {
    switch(next_operation->type)
    {

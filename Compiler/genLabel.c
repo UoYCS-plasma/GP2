@@ -11,6 +11,46 @@ typedef struct StringList {
    struct StringList *prev;
 } StringList;
 
+static void generateAtomMatchingCode(Rule *rule, Atom atom, int indent);
+static void generateVariableMatchingCode(Rule *rule, Atom atom, int indent);
+static void generateConcatMatchingCode(Rule *rule, Atom atom, int indent);
+static void generateStringMatchingCode(Rule *rule, StringList *string_exp, 
+                                       bool prefix, int indent);
+static void generateStringLengthCode(Atom atom, int indent);
+static void generateStringExpression(Atom atom, bool first, int indent);
+
+StringList *appendStringExp(StringList *list, int type, string value)
+{
+   StringList *string_exp = malloc(sizeof(StringList));
+   if(string_exp == NULL)
+   {
+      print_to_log("Error (appendStringExp): malloc failure.\n");
+      exit(1);
+   }
+   string_exp->type = type;
+   string_exp->value = value;
+   string_exp->next = NULL;
+
+   if(list == NULL) 
+   {
+      string_exp->prev = NULL;
+      return string_exp;
+   }
+   else
+   {
+      /* Locate the last element in the passed list. This may be NULL. */
+      StringList *iterator = list;
+      while(iterator != NULL)
+      {
+         if(iterator->next == NULL) break;
+         iterator = iterator->next;
+      }
+      string_exp->prev = iterator;
+      iterator->next = string_exp;
+      return list;
+   }
+}
+
 /* Uses appendStringExp to grow the passed StringList according to the value
  * of the passed Atom. */
 StringList *stringExpToList(StringList *list, Atom *string_exp)
@@ -46,38 +86,6 @@ StringList *stringExpToList(StringList *list, Atom *string_exp)
            break;
    }
    return list;
-}
-
-StringList *appendStringExp(StringList *list, int type, string value)
-{
-   StringList *string_exp = malloc(sizeof(StringList));
-   if(string_exp == NULL)
-   {
-      print_to_log("Error (appendStringExp): malloc failure.\n");
-      exit(1);
-   }
-   string_exp->type = type;
-   string_exp->value = value;
-   string_exp->next = NULL;
-
-   if(list == NULL) 
-   {
-      string_exp->prev = NULL;
-      return string_exp;
-   }
-   else
-   {
-      /* Locate the last element in the passed list. This may be NULL. */
-      StringList *iterator = list;
-      while(iterator != NULL)
-      {
-         if(iterator->next == NULL) break;
-         iterator = iterator->next;
-      }
-      string_exp->prev = iterator;
-      iterator->next = string_exp;
-      return list;
-   }
 }
 
 void freeStringList(StringList *list)
@@ -173,6 +181,8 @@ void generateIteratorCode(Label label, int indent)
    PTFI("{\n", indent + 3);
 }
 
+
+
 /* The 'result' variable is used in the matching code to store results of variable-value 
  * assignments function calls. The 'result_declared' flag ensures that this variable is
  * declared at most once per label at runtime. */
@@ -245,7 +255,7 @@ void generateVariableListMatchingCode(Rule *rule, Label label, int indent)
       }
       PTFI("result = addListAssignment(\"%s\", label.list, label.length, morphism);\n",
            indent, list_variable_name);
-      generateVariableResultCode(rule, string_exp->value, true, indent);
+      generateVariableResultCode(rule, list_variable_name, true, indent);
       /* Reset the flag before function exit. */
       result_declared = false;
       return;
@@ -316,13 +326,13 @@ void generateVariableListMatchingCode(Rule *rule, Label label, int indent)
    PTFI("result = addListAssignment(\"%s\", list, host_list_position - start_index + 1,"
         "morphism);\n", indent + 6, list_variable_name);
    PTFI("}\n", indent + 3);
-   generateVariableResultCode(rule, string_exp->value, true, indent);
+   generateVariableResultCode(rule, list_variable_name, true, indent);
    PTFI("} while(false);\n\n", indent);
    /* Reset the flag before function exit. */
    result_declared = false;
 }
 
-void generateAtomMatchingCode(Rule *rule, Atom atom, int indent)
+static void generateAtomMatchingCode(Rule *rule, Atom atom, int indent)
 {
    switch(atom.type)
    {
@@ -356,14 +366,13 @@ void generateAtomMatchingCode(Rule *rule, Atom atom, int indent)
    }
 }
 
-void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
+static void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
 {
    if(!result_declared)
    {
       PTFI("int result;\n", indent);
       result_declared = true;
    }
-   bool in_condition = false;
    switch(atom.variable.type)
    {
       case INTEGER_VAR:
@@ -371,7 +380,7 @@ void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
            PTFI("if(label.list[index].type != INTEGER_CONSTANT) break;\n", indent);
            PTFI("result = addIntegerAssignment(\"%s\", label.list[index].number, "
                 "morphism);\n", indent, atom.variable.name);
-           generateVariableResultCode(rule, string_exp->value, false, indent);
+           generateVariableResultCode(rule, atom.variable.name, false, indent);
            break;
 
       case CHARACTER_VAR:
@@ -380,7 +389,7 @@ void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
            PTFI("if(strlen(label.list[index].string) != 1) break;\n", indent);
            PTFI("result = addStringAssignment(\"%s\", label.list[index].string, "
                 "morphism);\n", indent, atom.variable.name);
-           generateVariableResultCode(rule, string_exp->value, false, indent);
+           generateVariableResultCode(rule, atom.variable.name, false, indent);
            break;
 
       case STRING_VAR:
@@ -388,7 +397,7 @@ void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
            PTFI("if(label.list[index].type != STRING_CONSTANT) break;\n", indent);
            PTFI("result = addStringAssignment(\"%s\", label.list[index].string, "
                 "morphism);\n", indent, atom.variable.name);
-           generateVariableResultCode(rule, string_exp->value, false, indent);
+           generateVariableResultCode(rule, atom.variable.name, false, indent);
            break;
 
       case ATOM_VAR:
@@ -399,7 +408,7 @@ void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
            PTFI("else if(label.list[index].type == STRING_CONSTANT)\n", indent);
            PTFI("result = addStringAssignment(\"%s\", label.list[index].string, "
                 "morphism);\n", indent, atom.variable.name);
-           generateVariableResultCode(rule, string_exp->value, false, indent);
+           generateVariableResultCode(rule, atom.variable.name, false, indent);
            break;
 
       case LIST_VAR:
@@ -414,7 +423,7 @@ void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
    }
 }
 
-void generateConcatMatchingCode(Rule *rule, Atom atom, int indent)
+static void generateConcatMatchingCode(Rule *rule, Atom atom, int indent)
 {
    StringList *list = NULL;
    list = stringExpToList(list, atom.bin_op.left_exp);
@@ -492,14 +501,15 @@ void generateConcatMatchingCode(Rule *rule, Atom atom, int indent)
    PTFI("substring[end - start + 1] = '\\0';\n", indent + 3);
    PTFI("result = addStringAssignment(\"%s\", substring, morphism);\n", 
         indent + 3, iterator->value);
-   generateVariableResultCode(rule, string_exp->value, false, indent);
+   generateVariableResultCode(rule, iterator->value, false, indent);
    PTFI("}\n", indent);
    freeStringList(list);
 }
 
 bool offset_declared = false, host_character_declared = false;
 
-void generateStringMatchingCode(Rule *rule, StringList *string_exp, bool prefix, int indent)
+static void generateStringMatchingCode(Rule *rule, StringList *string_exp, 
+                                       bool prefix, int indent)
 {
    /* String Constant */
    if(string_exp->type == 1)
@@ -557,15 +567,10 @@ void generateStringMatchingCode(Rule *rule, StringList *string_exp, bool prefix,
    }
 }
 
-/* Success code for atomic variables: new_assignments += result;
- * Failure code for atoms: break;
- * Success code for list variables: new_assignments += result; match = true;
- * Failure code for list variables: Nothing. */
 void generateVariableResultCode(Rule *rule, string name, bool list_variable, int indent)
 {
    PTFI("if(result >= 0)\n", indent);
    PTFI("{\n", indent);
-   int index;
    Variable *variable = getVariable(rule, name);
    assert(variable != NULL);
    if(variable->predicates != NULL)
@@ -574,12 +579,13 @@ void generateVariableResultCode(Rule *rule, string name, bool list_variable, int
       PTFI("{\n", indent + 3);
       PTFI("/* Update global booleans for the variable's predicates. */\n", indent + 6);
       int p_index;
-      for(p_index = 0; p_index < variable.predicate_count; p_index++)
+      for(p_index = 0; p_index < variable->predicate_count; p_index++)
          PTFI("if(!evalPredicate%d()) break;", indent + 6, 
-               variable.predicates[p_index]->bool_id);
+              variable->predicates[p_index]->bool_id);
       PTFI("if(!evalCondition_%s());\n", indent + 6, rule->name);
       PTFI("{\n", indent + 6);
-      PTFI("/* Reset the boolean variables in the predicates of this variable. */\n", indent + 9);
+      PTFI("/* Reset the boolean variables in the predicates of this variable. */\n", 
+           indent + 9);
       int index;
       for(index = 0; index < variable->predicate_count; index++)
       { 
@@ -593,11 +599,11 @@ void generateVariableResultCode(Rule *rule, string name, bool list_variable, int
       PTFI("}\n", indent);
       PTFI("if(result >= 0)\n", indent);
       PTFI("{\n", indent);
+   }
    PTFI("new_assignments += results;\n", indent + 3);
    if(list_variable) PTFI("match = true;\n", indent + 3);
    PTFI("}\n", indent);
    if(!list_variable) PTFI("else break;\n", indent); 
-   return true;
 }
 
 /* For each variable in the rule, code is generated to assign that variable's value
@@ -922,34 +928,16 @@ void generateIntExpression(Atom atom, int context, bool nested)
            break;
 
       case ADD:
-           if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), true);
-           PTF(" + ");
-           generateIntExpression(*(atom.bin_op.right_exp), true);
-           if(nested) PTF(")");
-           break;
-
       case SUBTRACT:
-           if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), true);
-           PTF(" - ");
-           generateIntExpression(*(atom.bin_op.right_exp), true);
-           if(nested) PTF(")");
-           break;
-
       case MULTIPLY:
+      case DIVIDE:
            if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), true);
-           PTF(" * ");
-           generateIntExpression(*(atom.bin_op.right_exp), true);
-           if(nested) PTF(")");
-           break;
-
-      case DIVIDE:     
-           if(nested) PTF("(");
-           generateIntExpression(*(atom.bin_op.left_exp), true);
-           PTF(" / ");
-           generateIntExpression(*(atom.bin_op.right_exp), true);
+           generateIntExpression(*(atom.bin_op.left_exp), context, true);
+           if(atom.type == ADD) PTF(" + ");
+           if(atom.type == SUBTRACT) PTF(" - ");
+           if(atom.type == MULTIPLY) PTF(" * ");
+           if(atom.type == DIVIDE) PTF(" / ");
+           generateIntExpression(*(atom.bin_op.right_exp), context, true);
            if(nested) PTF(")");
            break;
 

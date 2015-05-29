@@ -33,11 +33,4 @@ void scanLHS(Rule *rule, GPGraph *ast_lhs);
  * used to support code generation. */
 void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface);
 
-/* Creates and returns a Label from the AST representation of a label. */
-Label transformLabel(GPLabel *ast_label, IndexMap *node_map);
-
-/* Creates and returns a Condition from the AST representation of a condition. */
-Condition *transformCondition(Rule *rule, GPCondition *ast_condition, 
-                              bool negated, IndexMap *node_map);
-
 #endif /* INC_TRANSFORM_H */

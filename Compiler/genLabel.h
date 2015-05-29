@@ -29,9 +29,8 @@ void generateFixedListMatchingCode(Rule *rule, Label label, int indent);
 /* Generates code to match a rule list containing a list variable to a host graph list. */
 void generateVariableListMatchingCode(Rule *rule, Label label, int indent);
 
-/* Generates code to evaluate predicates containing the given variable. 
- * Returns false if the variable does not appear in any predicates. */
-bool generateVariableResultCode(Rule *rule, string name, bool list_variable, int indent);
+/* Generates code to evaluate predicates containing the given variable. */
+void generateVariableResultCode(Rule *rule, string name, bool list_variable, int indent);
 
 /* Generate runtime C variables to store the values of the GP 2 values used
  * in rule application. */
@@ -42,5 +41,8 @@ void generateVariableCode(string name, GPType type);
  * from concatenated expressions and code to substitute variables for values
  * according to the assignment in the morphism. */
 void generateLabelEvaluationCode(Label label, bool node, int count, int predicate, int indent);
+
+/* Emits C code for the integer expression represented by the passed atom. */
+void generateIntExpression(Atom atom, int context, bool nested);
 
 #endif /* INC_GEN_LABEL_H */

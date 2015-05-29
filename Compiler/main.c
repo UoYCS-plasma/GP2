@@ -24,7 +24,7 @@
 #include "pretty.h"
 #include "seman.h" 
 
-#undef DEBUG_PROGRAM
+#define DEBUG_PROGRAM
 /* Warning: for very large host graphs (in the order of 100,000 nodes + edges),
  * printing the host graph's AST causes stack overflow. Only switch this on
  * for small host graphs! */
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
          #ifdef DEBUG_PROGRAM
             printDotAST(gp_program, program_file, "_2");
          #endif
-         generateRuntimeCode(gp_program);
+         generateRuntimeMain(gp_program);
       }
       if(!valid_program && validate)
          print_to_console("Program %s is invalid.\n", program_file);   

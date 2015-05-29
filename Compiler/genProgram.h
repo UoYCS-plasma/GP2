@@ -4,8 +4,9 @@
   Generate Program Module
   =======================    
 
-  The code generating module. Generates the main function of the runtime 
-  system from the AST of the control sequence of the GP 2 program. 
+  Generates the main function of the runtime system, which processes the host
+  graph and calls the functions to apply and match rules according to the
+  control constructs of the GP 2 program.
 
 /////////////////////////////////////////////////////////////////////////// */
 
@@ -16,62 +17,154 @@
 #include "error.h"
 #include "globals.h"
 
-/* The contexts of a GP2 program determine the code that is generated. In
- * particular, the code generated when a rule match fails is determined by
- * its context. The context also has some impact on graph copying. */
-typedef enum {MAIN_BODY, PROC_BODY, IF_BODY, TRY_BODY, LOOP_BODY} ContextType;
+void generateRuntimeMain(List *declarations);
 
-/* The main function for code generation. Creates the runtime module and 
- * populates header and source with their preliminaries. The main code
- * generation phase is initiated with a call to generateDeclarationCode on
- * the root of the GP2 program AST. */
-void generateRuntimeCode(List *declarations);
-
-/* Walks the declaration lists of the AST and acts according to the three
- * declaration types:
+/* Each GP 2 control construct is translated into a fragment of C code. 
+ * I give the "broad strokes" translation here, excluding the more fiddly
+ * details such as the management of graph backtracking. The runtime code
+ * has a global boolean variable 'success' whose value is set to control
+ * program flow.
  *
- * Main
- * ====
- * Emit code to define the runtime global variables and to print the main
- * function and call generateProgramCode on the body of the Main GP2 procedure.
- * The generated code is placed in the body of the main function.
+ * The bulk of the generated code comes from rule calls and failure to match
+ * a rule, The rest of the control constructs translate to C control structures
+ * wrapped around rule calls and failures.
  *
- * Procedure 
- * =========
- * Emit the function proc_<proc_name> and call generateProgramCode on the
- * procedure body. The generated code is placed in the body of the procedure
- * function. If the procedure has a local declaration list, a recursive call
- * to generateDeclarationCall is made.
+ * Rule Call (R)
+ * =============
+ * There are several cases depending on the structure of R. 
+ * (1) R has no LHS: 
+ * applyR();
+ * success = true;
  *
- * Rule
- * ====
- * Create the rule data structure by calling makeRule (transform.h) on the
- * AST of the rule and call generateRuleCode on that data structure. This
- * will create a module to match and apply that rule.
+ * (2) R does not change the host graph:
+ * if(matchR(M_R))
+ * {
+ *    initialiseMorphism(M_R);
+ *    success = true;
+ * }
+ * else
+ * {
+      <context-dependent failure code>
+ * }
+ *
+ * (3) R has a non-empty LHS and changes the host graph:
+ * if(matchR(M_R))
+ * {
+ *    applyR(M_R);
+ *    initialiseMorphism(M_R);
+ *    success = true;
+ * }
+ * else
+ * {
+      <context-dependent failure code>
+ * }
+ *
+ * Notes: 
+ * - The functions to apply a rule take a boolean argument to signal whether
+ *   graph changes should be recorded. These are omitted. 
+ * - M_R is the name of the morphism structure associated with rule R.
+ * - For empty-LHS rules, the generated rule application function takes no
+ *   morphism argument.
+ * - initialiseMorphism resets the values of the morphism to their default,
+ *   values, so that matches of a rule are not influenced by values from a
+ *   previous match. 
+ *
+ * Failure Code
+ * ============
+ * The code generated for a failure to match a rule depends on the context of
+ * the rule call.
+ *
+ * Failure code for rules at the 'top level' is:
+ * print_to_console("No output graph: rule <rule_name> not applicable.\n");
+ * OR
+ * print_to_console("No output graph: Fail statement invoked.\n");
+ * garbageCollect();
+ * return 0;
+ *
+ * Failure code for rules within a loop body is:
+ * success = false;
+ * <code to revert the host graph to the start of the loop if necessary>
+ *
+ * Failure code for rules within a branch condition is:
+ * success = false;
+ * break; (branch conditions are generated in a do-while loop)
+ *
+ *
+ * Rule Set Call {R1, R2}
+ * ==========================
+ * The rules are executed sequentially within a do-while loop so that execution
+ * execution can jump outside the rule set if a rule match succeeds before the
+ * end of the rule set.
+ *
+ * do
+ * {
+ *    if(matchR1(M_R1))
+ *    {
+ *       <matching success code>
+ *       break;
+ *    }
+ *
+ *    if(matchR2(M_R2))
+ *    {
+ *       <matching success code>
+ *    }
+ *    else <context-dependent failure code>
+ * } while(false);
+ *
+ *
+ * Conditional Branch if/try C then P else Q
+ * ===========================================
+ * If statements and try statements the same C code module restoring the host
+ * graph to its state before the condition was entered. The condition program 
+ * is generated within a do-while-false loop so the code exits that subprogram
+ * as soon as possible on failure detection.
+ *
+ * do
+ * {
+ *    <program code for C>
+ * } while(false);
+ * <host graph restoration code for if statements>
+ * if(success)
+ * {
+ *    <program code for P>
+ * }
+ * else
+ * {
+ *    <host graph restoration code for try statements>
+ *    <program code for Q>
+ * }
+ *
+ *
+ * Loop Statement P!
+ * =================
+ * Nothing special here, just a trivial translation to a C loop:
+ * while(success)
+ * {
+ *    <program code for P>
+ * }
+ * The program code will set the success flag to false when a rule application
+ * fails (in some contexts) which will break the loop.
+ *
+ * Or Statement P or Q
+ * ===================
+ * C's rand function is used to nondeterministically choose between the two programs.
+ *
+ * int random = rand();
+ * if((random %% 2) == 0)
+ * {
+ *    <program code for P>
+ * }
+ * else
+ * {
+ *    <program code for Q>
+ * }
+ *   
+ * Skip, Fail and Break
+ * ====================
+ * 'skip' => success = true;
+ * 'fail' => <context-dependent failure code>
+ * 'break' => <code to handle graph backtracking>; break;
  */
-void generateDeclarationCode(List *declarations);
-void generateMorphismCode(List *declarations, char type);
-void generateProgramCode(GPCommand *command, ContextType context, 
-                         int restore_point, int roll_back, int indent);
-void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
-                      ContextType context, int restore_point, 
-                      int roll_back, bool last_rule, int indent);
-void generateRuleSetCall(List *rules, ContextType context, int restore_point, 
-                         int roll_back, int indent);
-void generateBranchStatement(GPCommand *command, ContextType context,
-                             int restore_point, int roll_back, int indent);
-void generateLoopStatement(GPCommand *command, int undo_point, int indent);
 
-/* Generates code to handle failure, which is context-dependent. There are two
- * types of failure: 
- *
- * (1) A rule fails to match. The name of the rule is passed as the first 
- *     argument. 
- * (2) The fail statement is called. NULL is passed as the first argument.
- *
- * The rule_name argument is used in the MAIN_BODY context to report the nature
- * of the failure before execution terminates. */
-void generateFailureCode(string rule_name, ContextType context, 
-                         int restore_point, int roll_back, int indent);
 
 #endif /* INC_GEN_PROGRAM_H */

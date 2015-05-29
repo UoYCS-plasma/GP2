@@ -1,5 +1,30 @@
 #include "rule.h"
 
+static RuleGraph *makeRuleGraph(int nodes, int edges)
+{
+   RuleGraph *graph = malloc(sizeof(RuleGraph));
+   if(graph == NULL)
+   {
+      print_to_log("Error (makeRuleGraph): malloc failure.\n");
+      exit(1);
+   }
+   graph->nodes = calloc(nodes, sizeof(RuleNode));
+   if(graph->nodes == NULL)
+   {
+      print_to_log("Error (makeRuleGraph): malloc failure.\n");
+      exit(1);
+   }
+   graph->edges = calloc(edges, sizeof(RuleEdge));
+   if(graph->edges == NULL)
+   {
+      print_to_log("Error (makeRuleGraph): malloc failure.\n");
+      exit(1);
+   }
+   graph->node_index = 0;
+   graph->edge_index = 0;
+   return graph;
+}
+
 Rule *makeRule(int variables, int left_nodes, int left_edges,
                int right_nodes, int right_edges)
 {
@@ -25,31 +50,6 @@ Rule *makeRule(int variables, int left_nodes, int left_edges,
    else rule->rhs = NULL;
    rule->condition = NULL;
    return rule;
-}
-
-RuleGraph *makeRuleGraph(int nodes, int edges)
-{
-   RuleGraph *graph = malloc(sizeof(RuleGraph));
-   if(graph == NULL)
-   {
-      print_to_log("Error (makeRuleGraph): malloc failure.\n");
-      exit(1);
-   }
-   graph->nodes = calloc(nodes, sizeof(RuleNode));
-   if(graph->nodes == NULL)
-   {
-      print_to_log("Error (makeRuleGraph): malloc failure.\n");
-      exit(1);
-   }
-   graph->edges = calloc(edges, sizeof(RuleEdge));
-   if(graph->edges == NULL)
-   {
-      print_to_log("Error (makeRuleGraph): malloc failure.\n");
-      exit(1);
-   }
-   graph->node_index = 0;
-   graph->edge_index = 0;
-   return graph;
 }
 
 void addVariable(Rule *rule, string name, GPType type) 
@@ -82,6 +82,19 @@ int addRuleNode(RuleGraph *graph, bool root, Label label)
    return index;
 }
 
+static RuleEdges *addIncidentEdge(RuleEdges *edges, RuleEdge *edge)
+{
+   RuleEdges *new_edge = malloc(sizeof(RuleEdges));
+   if(new_edge == NULL)
+   {
+      print_to_log("Error (addIncidentEdge): malloc failure.\n");
+      exit(1);
+   }
+   new_edge->edge = edge;
+   new_edge->next = edges;
+   return new_edge;
+}
+
 int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
                 RuleNode *target, Label label)
 {
@@ -106,19 +119,6 @@ int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
       target->indegree++;
    }
    return index;
-}
-
-RuleEdges *addIncidentEdge(RuleEdges *edges, RuleEdge *edge)
-{
-   RuleEdges *new_edge = malloc(sizeof(RuleEdges));
-   if(new_edge == NULL)
-   {
-      print_to_log("Error (addIncidentEdge): malloc failure.\n");
-      exit(1);
-   }
-   new_edge->edge = edge;
-   new_edge->next = edges;
-   return new_edge;
 }
 
 Condition *makeCondition(void)
@@ -204,7 +204,7 @@ Predicate *makeAtomComp(int bool_id, bool negated, ConditionType type,
    predicate->negated = negated;
    predicate->type = type;
    predicate->atom_comp.left_atom = left_atom;
-   predicate->list_comp.right_atom = right_atom;
+   predicate->atom_comp.right_atom = right_atom;
    return predicate;
 }
 
@@ -266,19 +266,6 @@ bool isPredicate(Rule *rule)
    return true;
 }
 
-/* I assume this called only when a variable is known to be in the list. */
-GPType lookupType(Rule *rule, string name) 
-{ 
-   int index;
-   for(index = 0; index < rule->variable_index; index++)   
-   {
-      if(strcmp(rule->variables[index].name, name) == 0) 
-         return rule->variables[index].type;
-   }
-   print_to_log("Error: lookupType called with variable %s not in the rule.", name);
-   exit(0);         
-}
-
 Variable *getVariable(Rule *rule, string name)
 {
    int index;
@@ -302,45 +289,7 @@ RuleEdge *getRuleEdge(RuleGraph *graph, int index)
    return edge;
 }
 
-void printRule(Rule *rule, FILE *file)
-{
-   if(rule == NULL) 
-   {
-      print_to_log("Error (printRule): NULL rule pointer.\n\n");
-      return;
-   }
-   PTF("%s\n\n", rule->name);
-   printRuleGraph(rule->lhs, file);
-   PTF("\n=>\n\n");
-   printRuleGraph(rule->rhs, file);
-   PTF("\n");
-
-   if(rule->variables == NULL) PTF("No variables.\n\n");
-   else 
-   {
-      PTF("Variables:\n");
-      int index;
-      for(index = 0; index < rule->variable_index; index++)   
-      {
-         Variable variable = rule->variables[index];
-         PTF("%s, type %d.", variable.name, variable.type);
-         if(variable.predicates != NULL) PTF(" In predicates ");
-         int i;
-         for(i = 0; i < rule->predicate_count; i++)
-         {
-            PTF("%d", variable.predicates[i]->bool_id);
-            if(i == rule->predicate_count - 1) PTF(".\n");
-            else PTF(", ");
-         }
-         PTF("\n");
-      }
-   }
-   PTF("\n");
-   PTF("Condition:\n");
-   printCondition(rule->condition, false, file);
-}
-
-void printRuleGraph(RuleGraph *graph, FILE *file)
+static void printRuleGraph(RuleGraph *graph, FILE *file)
 {
    int index, node_count = 0, edge_count = 0;
    if(graph == NULL || graph->node_index == 0) 
@@ -379,7 +328,7 @@ void printRuleGraph(RuleGraph *graph, FILE *file)
    PTF("]\n\n");
 }
    
-void printCondition(Condition *condition, bool nested, FILE *file)
+static void printCondition(Condition *condition, bool nested, FILE *file)
 {
    if(condition->type == 'e')
    {
@@ -420,12 +369,12 @@ void printCondition(Condition *condition, bool nested, FILE *file)
          case GREATER_EQUAL:
          case LESS:
          case LESS_EQUAL:
-              printAtom(predicate->atom_comp.left_atom, false, file);
+              printAtom(&(predicate->atom_comp.left_atom), false, file);
               if(predicate->type == GREATER) PTF(" > ");
               if(predicate->type == GREATER_EQUAL) PTF(" >= ");
               if(predicate->type == LESS) PTF(" < ");
               if(predicate->type == LESS_EQUAL) PTF(" <= ");
-              printAtom(predicate->atom_comp.right_atom, false, file);
+              printAtom(&(predicate->atom_comp.right_atom), false, file);
               break;
 
          default: break;
@@ -434,48 +383,72 @@ void printCondition(Condition *condition, bool nested, FILE *file)
    else if(condition->type == 'n')
    {
       PTF("not ");
-      printCondition(condition->neg_predicate, nested, file);
+      printCondition(condition->neg_condition, nested, file);
    }
    else if(condition->type == 'o')
    {
       if(nested) PTF("(");
-      printCondition(condition->left_predicate, true, file);
+      printCondition(condition->left_condition, true, file);
       PTF(" or ");
-      printCondition(condition->right_predicate, true, file);
+      printCondition(condition->right_condition, true, file);
       if(nested) PTF(")");
    }
    else if(condition->type == 'a')
    {
       if(nested) PTF("(");
-      printCondition(condition->left_predicate, true, file);
+      printCondition(condition->left_condition, true, file);
       PTF(" and ");
-      printCondition(condition->right_predicate, true, file);
+      printCondition(condition->right_condition, true, file);
       if(nested) PTF(")");
    }
 }
 
-void freeRule(Rule *rule)
+void printRule(Rule *rule, FILE *file)
 {
-   if(rule == NULL) return;
-   if(rule->name != NULL) free(rule->name);
-   if(rule->variables != NULL) 
+   if(rule == NULL) 
    {
+      print_to_log("Error (printRule): NULL rule pointer.\n\n");
+      return;
+   }
+   PTF("%s\n\n", rule->name);
+   printRuleGraph(rule->lhs, file);
+   PTF("\n=>\n\n");
+   printRuleGraph(rule->rhs, file);
+   PTF("\n");
+
+   if(rule->variables == NULL) PTF("No variables.\n\n");
+   else 
+   {
+      PTF("Variables:\n");
       int index;
       for(index = 0; index < rule->variable_index; index++)   
       {
          Variable variable = rule->variables[index];
-         if(variable.name != NULL) free(variable.name);
-         if(variable.predicates != NULL) free(variable.predicates);
+         PTF("%s, type %d.", variable.name, variable.type);
+         if(variable.predicates != NULL) PTF(" In predicates ");
+         int i;
+         for(i = 0; i < rule->predicate_count; i++)
+         {
+            PTF("%d", variable.predicates[i]->bool_id);
+            if(i == rule->predicate_count - 1) PTF(".\n");
+            else PTF(", ");
+         }
+         PTF("\n");
       }
-      free(rule->variables);
    }
-   if(rule->lhs != NULL) freeRuleGraph(rule->lhs);
-   if(rule->rhs != NULL) freeRuleGraph(rule->rhs);
-   if(rule->condition != NULL) freeCondition(rule->condition);
-   free(rule);
+   PTF("\n");
+   PTF("Condition:\n");
+   printCondition(rule->condition, false, file);
 }
 
-void freeRuleGraph(RuleGraph *graph)
+static void freeRuleEdges(RuleEdges *edges)
+{
+   if(edges == NULL) return;
+   freeRuleEdges(edges->next);
+   free(edges);
+}
+
+static void freeRuleGraph(RuleGraph *graph)
 {
    int index;
    for(index = 0; index < graph->node_index; index++)
@@ -495,26 +468,7 @@ void freeRuleGraph(RuleGraph *graph)
    free(graph->edges);
 }
 
-void freeRuleEdges(RuleEdges *edges)
-{
-   if(edges == NULL) return;
-   freeRuleEdges(edges->next);
-   free(edges);
-}
-
-void freeCondition(Condition *condition)
-{
-   if(condition->type == 'e') freePredicate(condition->predicate);
-   else if(condition->type == 'n') freeCondition(condition->neg_predicate);
-   else if(condition->type == 'o' || condition->type == 'a')
-   {
-      freeCondition(condition->left_predicate);
-      freeCondition(condition->right_predicate);
-   }
-   free(condition);
-}
-
-void freePredicate(Predicate *predicate)
+static void freePredicate(Predicate *predicate)
 {
    switch(predicate->type)
    {
@@ -539,11 +493,45 @@ void freePredicate(Predicate *predicate)
       case GREATER_EQUAL:
       case LESS:
       case LESS_EQUAL:
-           freeAtom(predicate->atom_comp.left_atom, false);
-           freeAtom(predicate->atom_comp.right_atom, false);
+           freeAtom(&(predicate->atom_comp.left_atom), false);
+           freeAtom(&(predicate->atom_comp.right_atom), false);
            break;
 
       default: break;
    }
    free(predicate);
 }
+
+static void freeCondition(Condition *condition)
+{
+   if(condition->type == 'e') freePredicate(condition->predicate);
+   else if(condition->type == 'n') freeCondition(condition->neg_condition);
+   else if(condition->type == 'o' || condition->type == 'a')
+   {
+      freeCondition(condition->left_condition);
+      freeCondition(condition->right_condition);
+   }
+   free(condition);
+}
+
+void freeRule(Rule *rule)
+{
+   if(rule == NULL) return;
+   if(rule->name != NULL) free(rule->name);
+   if(rule->variables != NULL) 
+   {
+      int index;
+      for(index = 0; index < rule->variable_index; index++)   
+      {
+         Variable variable = rule->variables[index];
+         if(variable.name != NULL) free(variable.name);
+         if(variable.predicates != NULL) free(variable.predicates);
+      }
+      free(rule->variables);
+   }
+   if(rule->lhs != NULL) freeRuleGraph(rule->lhs);
+   if(rule->rhs != NULL) freeRuleGraph(rule->rhs);
+   if(rule->condition != NULL) freeCondition(rule->condition);
+   free(rule);
+}
+

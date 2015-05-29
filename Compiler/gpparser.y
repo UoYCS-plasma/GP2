@@ -232,7 +232,7 @@ LocalDecls: /* empty */			{ $$ = NULL; }
 
 ComSeq: Command 			{ $$ = addASTCommand(@1, $1, NULL); }
       | ComSeq ';' Command  		{ $$ = addASTCommand(@3, $3, $1); }
-      /* Error-catching productions */
+      /* Error-catching production */
       | ComSeq ',' Command		{ $$ = addASTCommand(@3, $3, $1);
                                           report_warning("Incorrect use of comma "
 					    "to separate commands. Perhaps you "
@@ -258,7 +258,7 @@ Command: Block 				/* default $$ = $1 */
                                                 $2, $4, $6); }
 
 
-Block: '(' ComSeq ')' 	                { $$ = newASTCommandSequence(@$,$2); }
+Block: '(' ComSeq ')' 	                { $$ = newASTCommandSequence(@$, $2); }
      | '(' ComSeq ')' '!' 		{ $$ = newASTAlap(@$, 
                                                newASTCommandSequence(@2, $2)); } 
      /* If an error is found in a code block, continue parsing after the right

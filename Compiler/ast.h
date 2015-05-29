@@ -60,6 +60,7 @@ typedef struct List {
 } List;
 
 List *makeGPList(void);
+int getASTListLength(List *list);
 List *addASTDecl(ListType list_type, YYLTYPE location, 
 	         struct GPDeclaration *declaration, struct List *next);
 List *addASTCommand (YYLTYPE location, struct GPCommand *command, 
@@ -273,7 +274,8 @@ typedef struct GPGraph {
 } GPGraph;
 
 GPGraph *newASTGraph(YYLTYPE location, List *nodes, List *edges);
-
+int countNodes(GPGraph *graph);
+int countEdges(GPGraph *graph);
 
 typedef struct GPNode {
   int id;

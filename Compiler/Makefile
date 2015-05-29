@@ -71,7 +71,7 @@ transformRule.o:	ast.h error.h globals.h graph.h label.h rule.h transformRule.h
 searchplan.o:	globals.h rule.h searchplan.h
 analysis.o:	ast.h globals.h pretty.h analysis.h
 genCondition.o: error.h genLabel.h globals.h rule.h genCondition.h
-genHost.o:	ast.h error.h genLabel.h globals.h transformRule.h genHost.h
+genHost.o:	ast.h error.h globals.h genHost.h
 genLabel.o:     error.h globals.h label.h rule.h genLabel.h
 genRule.o:	error.h genCondition.h genLabel.h globals.h label.h rule.h searchplan.h transformRule.h genRule.h
 genProgram.o:	ast.h error.h globals.h genProgram.h

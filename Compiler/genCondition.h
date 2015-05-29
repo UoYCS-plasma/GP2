@@ -53,7 +53,7 @@
  *    int n0 = lookupNode(morphism, 0);
  *    if(n0 == -1) return false;
  *    
- *    if(getIndegree(host, 0) > 1) bool b0 = true;
+ *    if(getIndegree(host, 0) > 1) b0 = true;
  *    return true;
  * }
  *
@@ -62,6 +62,6 @@
 
 void generateConditionVariables(Condition *condition);
 void generateConditionEvaluator(Condition *condition, bool nested);
-void generatePredicateEvaluators(Condition *condition);
+void generatePredicateEvaluators(Rule *rule, Condition *condition);
 
 #endif /* INC_GEN_CONDITION_H */

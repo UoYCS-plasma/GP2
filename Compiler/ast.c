@@ -11,6 +11,17 @@ List *makeGPList(void)
    return list;
 }
 
+int getASTListLength(List *list)
+{
+   int length = 0;
+   while(list != NULL)
+   {
+      length++;
+      list = list->next;
+   }
+   return length;
+}
+
 List *addASTDecl(ListType list_type, YYLTYPE location, GPDeclaration *declaration,
 	         List *next)
 { 
@@ -22,14 +33,45 @@ List *addASTDecl(ListType list_type, YYLTYPE location, GPDeclaration *declaratio
     return new_decl;
 }
 
+/* The programs r1; r2; r3 and r1; (r2; r3) are semantically equivalent, but they
+ * generate different parse trees. This is because the brackets trigger a call
+ * to make a new command sequence, which is correct behaviour in most instances,
+ * but not in others, such as the above (which could occur indirectly from a
+ * procedure call in the program text). The resulting trees are below, where C
+ * is a List pointing to a GPCommand and the next List node, and Cs is a
+ * GPCommand pointing to the head of a List of GPCommand.
+ *
+ * C -> C -> C -> NULL   C -> C (-> r1) -> NULL
+ * |    |    |           | 
+ * r3   r2   r1          Cs -> C -> C -> NULL
+ *                             |    |
+ *                             r3   r2
+ *
+ * I would like the tree generated in the second case to match the first one.
+ * In the second case, the command pointer argument passed is the pointer to Cs
+ * in the right-hand parse tree above. The list pointer argument is the pointer
+ * to C (-> r1) -> NULL. The list pointer should be appended to the list on the
+ * second row of the right-hand tree if the command argument is a command sequence. */
+
 List *addASTCommand(YYLTYPE location, GPCommand *command, List *next)
-{ 
-    List *new_command = makeGPList();
-    new_command->list_type = COMMANDS;
-    new_command->location = location;
-    new_command->command = command;
-    new_command->next = next;
-    return new_command;
+{
+    /* The if body handles that nasty stuff described in the comment above. */
+    if(command->command_type == COMMAND_SEQUENCE)
+    {
+       List *commands = command->commands, *iterator = command->commands;
+       while(iterator->next != NULL) iterator = iterator->next;
+       iterator->next = next;
+       /* The child of 'command' (the Cs node in the diagram) is returned
+        * to the parser. The parent is no longer needed. Free the parent! */
+       free(command);
+       return commands;
+    }
+    List *new_commands = makeGPList();
+    new_commands->list_type = COMMANDS;
+    new_commands->location = location;
+    new_commands->command = command;
+    new_commands->next = next;
+    return new_commands;
 }
 
 List *addASTRule(YYLTYPE location, string rule_name, List *next)
@@ -548,6 +590,24 @@ GPGraph *newASTGraph(YYLTYPE location, List *nodes, List *edges)
     graph->nodes = nodes;
     graph->edges = edges;
     return graph;
+}
+
+int countNodes(GPGraph *graph)
+{
+   int nodes = 0;
+   List *iterator;
+   for(iterator = graph->nodes; iterator != NULL; iterator = iterator->next) 
+       nodes++;
+   return nodes;
+}
+
+int countEdges(GPGraph *graph)
+{
+   int edges = 0;
+   List *iterator;
+   for(iterator = graph->edges; iterator != NULL; iterator = iterator->next) 
+       edges++;
+   return edges;
 }
 
 GPNode *newASTNode(YYLTYPE location, bool root, string name, GPLabel *label)
