@@ -1,5 +1,11 @@
 #include "analysis.h"
 
+typedef enum {NO_BACKTRACK = 0, RECORD_CHANGES, COPY} copyType;
+
+static void annotate(GPCommand *command, int restore_point)
+static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequence)
+static bool neverFails(GPCommand *command)
+
 void staticAnalysis(List *declarations)
 {
    List *iterator = declarations;
@@ -30,7 +36,9 @@ void staticAnalysis(List *declarations)
    }
 }
 
-void annotate(GPCommand *command, int restore_point)
+/* Searches for conditional branching statements and loop bodies so that they 
+ * can be analysed with respect to host graph backtracking. */
+static void annotate(GPCommand *command, int restore_point)
 {
    switch(command->command_type)
    {
@@ -47,7 +55,6 @@ void annotate(GPCommand *command, int restore_point)
            }
            break;
       }
-
       case RULE_CALL:
       case RULE_SET_CALL:
            break;
@@ -58,7 +65,6 @@ void annotate(GPCommand *command, int restore_point)
            annotate(procedure->commands, restore_point);
            break;
       }
-
       case IF_STATEMENT:
       case TRY_STATEMENT:
       {
@@ -75,9 +81,8 @@ void annotate(GPCommand *command, int restore_point)
             * the state before executing the condition. */
            if(if_body || !neverFails(condition))
            {
-              copyType type = getCommandType(condition, 0, if_body, false); 
-              if(type == RECORD_CHANGES) 
-                 command->cond_branch.roll_back = true;
+              copyType type = getCommandType(condition, if_body, false); 
+              if(type == RECORD_CHANGES) command->cond_branch.roll_back = true;
               if(type == COPY)
               {
                  command->cond_branch.restore_point = restore_point;
@@ -89,7 +94,6 @@ void annotate(GPCommand *command, int restore_point)
            annotate(else_command, restore_point);
            break;
       }
-
       case ALAP_STATEMENT:
       {
            GPCommand *loop_body = command->loop_stmt.loop_body;
@@ -98,9 +102,8 @@ void annotate(GPCommand *command, int restore_point)
             * for the loop body to fail. */
            if(!neverFails(loop_body))
            {
-              copyType type = getCommandType(loop_body, 0, false, false);
-              if(type == RECORD_CHANGES)
-                 command->loop_stmt.roll_back = true;
+              copyType type = getCommandType(loop_body, false, false);
+              if(type == RECORD_CHANGES) command->loop_stmt.roll_back = true;
               if(type == COPY)
               {
                  command->loop_stmt.restore_point = restore_point;
@@ -110,13 +113,10 @@ void annotate(GPCommand *command, int restore_point)
            annotate(loop_body, loop_restore_point);
            break;
       }
-
       case PROGRAM_OR:
-      {
            annotate(command->or_stmt.left_command, restore_point);
            annotate(command->or_stmt.right_command, restore_point);
            break;
-      }
 
       case BREAK_STATEMENT:
       case SKIP_STATEMENT:
@@ -130,7 +130,124 @@ void annotate(GPCommand *command, int restore_point)
    }
 }
 
-bool neverFails(GPCommand *command)
+static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequence)
+{
+   switch(command->command_type)
+   {
+      case COMMAND_SEQUENCE:
+      {
+           List *commands = command->commands;
+           int command_position = 1;
+           copyType type = NO_BACKTRACK;
+           while(commands != NULL)
+           {
+              if(commands->command->command_type != ALAP_STATEMENT)
+              {
+                 copyType type = getCommandType(commands->command, if_body, true);
+                 if(type == COPY) return COPY;
+                 command_position++;
+              }
+              else
+              { 
+                 /* The host graph before entering the loop always needs to be kept
+                  * for if statements. */
+                 if(if_body) return COPY;
+
+                 /* Check if the remainder of the command sequence consists of 
+                  * non-failing commands. If so, recording of graph changes stops here:
+                  * the context is a try body or a loop body, where the host graph
+                  * is not backtracked on success. Otherwise, there is a possibility of
+                  * failure, requiring the host graph to be copied before entering the
+                  * command sequence. */
+                 GPCommand *first_loop = commands->command;
+                 commands = commands->next;
+                 while(commands != NULL)
+                 {
+                    if(!neverFails(commands->command)) return COPY;
+                    else commands = commands->next;
+                 }
+                 /* The sequence from first_loop to the end cannot fail. Switch on
+                  * the stop recording flag of the first loop. */
+                 first_loop->stop_recording = true;
+                 /* The loop is the second item in a never-failing command sequence
+                  * e.g. (r1; r2!; r3!). If the first command requires no backtracking 
+                  * by itself, then no backtracking is required overall. Note that 
+                  * this does not apply if there is more than one command before the
+                  * start of the never-failing sequence. */ 
+                 if(command_position <= 2)
+                 {
+                    /* For command_position == 2, type is set by the previous loop
+                     * iteration. */
+                    if(type == NO_BACKTRACK) return NO_BACKTRACK;
+                    else return RECORD_CHANGES;
+                 }
+                 else return RECORD_CHANGES;
+              }
+              commands = commands->next;
+           }
+           return RECORD_CHANGES;
+      }
+      case RULE_CALL:
+      case RULE_SET_CALL:
+           return NO_BACKTRACK;
+
+      case PROCEDURE_CALL:
+           return getCommandType(command->proc_call.procedure->commands, 
+                                 if_body, in_sequence);
+
+      case IF_STATEMENT:
+      case TRY_STATEMENT:
+      {
+           copyType cond_type = getCommandType(command->cond_branch.condition,
+                                               if_body, in_sequence);
+           copyType then_type = getCommandType(command->cond_branch.then_command,
+                                               if_body, in_sequence);
+           copyType else_type = getCommandType(command->cond_branch.else_command, 
+                                               if_body, in_sequence);
+           /* No graph backtracking is required in, for example, 
+            * "try (if C then r1 else r2) then P else Q" because the inner if
+            * statement simplifies to a single rule application on the current
+            * graph. This is not guaranteed if the inner statement is a try
+            * statement because the changes to the graph performed by the
+            * condition may be kept. */
+           if(!in_sequence && if_body && then_type == NO_BACKTRACK && 
+              else_type == NO_BACKTRACK) return NO_BACKTRACK;                                  
+           if(cond_type == COPY || then_type == COPY || else_type == COPY) return COPY;
+           else return RECORD_CHANGES;
+      }
+
+      case ALAP_STATEMENT:
+           /* Loops within a command sequence are handled in the COMMAND_SEQUENCE case.
+            * Therefore this case only deals with a single looped statement. */
+           if(if_body) return COPY; else return NO_BACKTRACK;
+
+      case PROGRAM_OR:
+      {
+           /* Return the "max" of the two branches. */
+           copyType left_type = getCommandType(command->or_stmt.left_command, 
+                                               if_body, in_sequence);
+           copyType right_type = getCommandType(command->or_stmt.right_command,
+                                                if_body, in_sequence);
+           return left_type > right_type ? left_type : right_type;
+      }
+
+      case SKIP_STATEMENT:
+      case FAIL_STATEMENT:
+      case BREAK_STATEMENT:
+           return NO_BACKTRACK;
+
+      default:
+           print_to_log("Error (getCommandType): Unexpected command type %d.\n",
+                        command->command_type);
+           break;
+   }
+   return COPY;
+}
+
+/* Returns true if the passed GP 2 command always succeeds. Used to test
+ * conditions and loop bodies: if these always succeed, then backtracking
+ * is not necessary for try statements and loops. */
+static bool neverFails(GPCommand *command)
 {
    switch(command->command_type)
    {
@@ -179,115 +296,3 @@ bool neverFails(GPCommand *command)
    }
    return false;
 }
-
-/* Depth 0: initial value, not within any command sequence.
- * Depth 1: within the top level command sequence.
- * Depth 2: within a nested command sequence. */
-copyType getCommandType(GPCommand *command, int depth, bool if_body,
-                        bool last_command)
-{
-   switch(command->command_type)
-   {
-      case COMMAND_SEQUENCE:
-      { 
-           List *commands = command->commands;
-           /* Special case for sequences containing a single command. 
-            * The second expression in the if condition below handles strange
-            * programs like "(((r1; r2)); r3)" which would otherwise be treated
-            * as "(r1; r2)", because "((r1; r2))" is parsed as a command sequence
-            * containing the single command "(r1; r2)". */
-           if(commands->next == NULL &&
-              commands->command->command_type != COMMAND_SEQUENCE)
-              return getCommandType(commands->command, depth, if_body, true);
-           else
-           {
-              int new_depth = 1;
-              /* Set the new depth to 2 if the depth is already 2 or if not at 
-               * the last command in the top level command sequence. 
-               * Main = "(r1; (r2; r3!))" -> Second command sequence is depth 1.
-               * Main = "(r1; (r2; r3!); r4)" -> Second command sequence is depth 2.
-               * This is significant for a special case when processing loops. See
-               * the case ALAP_STATEMENT below for details. */
-              if(depth == 2 || (depth == 1 && !last_command)) new_depth = 2;
-              while(commands != NULL)
-              {
-                 copyType type = getCommandType(commands->command, new_depth, if_body,
-                                                commands->next == NULL);
-                 if(type == COPY) return COPY;
-                 else commands = commands->next;
-              }
-              return RECORD_CHANGES;
-           }
-      }
-      case RULE_CALL:
-      case RULE_SET_CALL:
-           return NO_BACKTRACK;
-
-      case PROCEDURE_CALL:
-           return getCommandType(command->proc_call.procedure->commands, 
-                                 depth, if_body, last_command);
-
-      case IF_STATEMENT:
-      case TRY_STATEMENT:
-      {
-           copyType cond_type = getCommandType(command->cond_branch.condition,
-                                               depth, if_body, last_command);
-           copyType then_type = getCommandType(command->cond_branch.then_command,
-                                               depth, if_body, last_command);
-           copyType else_type = getCommandType(command->cond_branch.else_command, 
-                                               depth, if_body, last_command);
-           /* No graph backtracking is required in, for example, 
-            * "try (if C then r1 else r2) then P else Q" because the inner if
-            * statement simplifies to a single rule application on the current
-            * graph. This is not guaranteed if the inner statement is a try
-            * statement because the changes to the graph performed by the
-            * condition may be kept. */
-           if(depth == 0 && if_body && then_type == NO_BACKTRACK && 
-              else_type == NO_BACKTRACK) return NO_BACKTRACK;                                  
-           if(cond_type == COPY || then_type == COPY || else_type == COPY) return COPY;
-           else return RECORD_CHANGES;
-      }
-
-      case ALAP_STATEMENT:
-           if(if_body) return COPY;
-           /* Loop statements always succeed, so it is not necessary to cater
-            * for backtracking if the loop is the last command in a sequence.
-            * For instance, "try (r1; r2; (C!))" only need record graph changes
-            * until the start of the loop. After that point, it is certain that
-            * the then branch will be taken, so there is no need to record
-            * further changes throughout the execution of "C!". */
-           else
-           {
-              /* If not for this condition, the loop in (r1; (r2; r3!); r4)
-               * would "stop recording" and NO_BACKTRACK would be returned. 
-               * This is why depth 2 is required. */
-              if(depth == 2) return COPY;
-              if(depth == 1 && !last_command) return COPY;
-              if(depth == 1 && last_command)
-                 command->loop_stmt.stop_recording = true;
-           }
-           return NO_BACKTRACK;
-
-      /* Return the "max" of the two branches. */
-      case PROGRAM_OR:
-      {
-           copyType left_type = getCommandType(command->or_stmt.left_command, 
-                                               depth, if_body, last_command);
-           copyType right_type = getCommandType(command->or_stmt.right_command,
-                                                depth, if_body, last_command);
-           return left_type > right_type ? left_type : right_type;
-      }
-
-      case SKIP_STATEMENT:
-      case FAIL_STATEMENT:
-      case BREAK_STATEMENT:
-           return NO_BACKTRACK;
-
-      default:
-           print_to_log("Error (getCommandType): Unexpected command type %d.\n",
-                        command->command_type);
-           break;
-   }
-   return COPY;
-}
-

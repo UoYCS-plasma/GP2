@@ -452,6 +452,9 @@ static void generateBranchStatement(GPCommand *command, ContextType context, int
    return;
 }
 
+/* TODO: Implement 'stop recording'. Only the first loop in the sequence has this flag
+ * set. Need to be able to carry this over to all over commands in the sequence. Probably
+ * a global bool variable will suffice. */
 void generateLoopStatement(GPCommand *command, int indent)
 {
    /* If restore_point != -1, then the host graph is copied before the loop body

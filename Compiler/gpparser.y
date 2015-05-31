@@ -245,7 +245,7 @@ Command: Block 				/* default $$ = $1 */
                                                $2, $4, $6); }
        /* Error-catching production */
        | IF Block ELSE Block	   	{ $$ = newASTCondBranch(IF_STATEMENT, @$,
-                                               $2, NULL, $4);
+                                               $2, newASTSkip(@$), $4);
                                           report_warning("No 'then' clause in if "
 						         "statement."); }
        | TRY Block 			{ $$ = newASTCondBranch(TRY_STATEMENT, @$,

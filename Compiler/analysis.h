@@ -4,7 +4,9 @@
   Static Analysis Module  
   ======================                      
  
-  Functions that analyse the AST of a GP2 program to support code generation.
+  Functions for static analysis of a GP 2 program. The analysis is responsible
+  for determining at which points to copy the host graph and which subprograms 
+  should track changes made to the host graph.
 
 //////////////////////////////////////////////////////////////////////////// */
 
@@ -17,45 +19,49 @@
 
 void staticAnalysis(List *declarations);
 
-/* Traverses the AST of the GP 2 program, recursively calling annotate
- * on subcommands. Calls getCommandType on if/try conditions and loop
- * bodies, and annotates the corresponding AST nodes according to their
- * copy type. */
-void annotate(GPCommand *command, int restore_point);
-
-/* Returns true if the passed GP 2 command always succeeds. Used to test
- * conditions and loop bodies: if these always succeed, then backtracking
- * is not necessary for try statements and loops. */
-bool neverFails(GPCommand *command);
-
-typedef enum {NO_BACKTRACK = 0, RECORD_CHANGES, COPY} copyType;
-/* Assigns a copy type to commands that require graph backtracking, namely
- * a command in a loop body or a command in the conditional part of an 
- * if/try statement. In addition to the command in question, the function
- * takes three arguments to handle special cases:
+/* The static analysis for GP 2 programs annotates the AST with restore points 
+ * and a roll back flag. A restore point marks points at which the host graph
+ * is copied at runtime. A roll back flag set to true marks subprograms that
+ * record modifications to the host graph. This analysis scrutinises bodies
+ * of if/try conditionals and loop bodies, for conditional branching and loops
+ * are the only GP 2 program constructs that may require an older host graph
+ * state to be restored. I call these "critical subprograms".
  *
- * (1) The depth of the passed command in terms of nested command sequences.
- *     For example, the rule r2 has depth 0 in r2, depth 1 in (r1; r2), and 
- *     depth 2 in (r1; (r2; r3); r4). Depth 2 may seem superfluous but it is
- *     required for a special case.
- * (2) A flag set to true if the command is in the condition part of an if
- *     statement.
- * (3) A flag set to true if the command is the last command in a sequence.
+ * I follow a simple heuristic: if a loop occurs in critical subprograms, the host 
+ * graph is copied before entering the critical subprogram. Otherwise, the host
+ * graph is recorded. Recording all the changes made by a looped subprogram, and
+ * undoing them all later, is likely to be much more expensive than copying the
+ * graph to a stack and popping it later. In contrast, for a subprogram of a few
+ * sequenced rule applications, it is more cost-effective to track and undo
+ * the small amount of host graph modifications made by those rule applications
+ * than to copy a potentially large host graph. There are corner  cases that breach
+ * this heuristic, some of which are provided in the examples below.
+ *
+ * Examples
+ * ========
+ * Let G be the host graph before entering program P. r1-r4 are rules.
+ *
+ * (1) P = if (r1; r2)! then r3 else r4
+ * Q = (r1; r2)! is the critical subprogram. G is copied before entering Q.
+ * The if statement will apply r3 or r4 to G, not the graph after applying Q to G.
+ *
+ * (2) P = (r1; r2; r3)!
+ * Q = (r1; r2; r3) is the critical subprogram. Changes to the host graph made by Q
+ * are recorded. If r1 or r2 fails, GP 2's semantics states that the loop exits
+ * with G as the current host graph.
+ *
+ * (3) P = try (r1!; r2!) then r3 else r4
+ * Q = (r1!; r2!) is the critical subprogram. No graph backtracking is required.
+ * This is because loops are guaranteed to succeed, and a try statement does not
+ * roll back the host graph when branching to its 'then' branch. 
  *   
- * NO_BACKTRACK is returned if the passed command is a rule call, a rule set
- * call, skip, fail, or an OR statement of any of the above.
- * COPY is returned if the passed command contains a loop except in a couple
- * of cases.
- * RECORD_CHANGES is returned in other cases.
- * Procedure calls, conditional branches and OR statements are evaluated by
- * recursive calls. For conditional branches, if any of its statements 
- * (condition, then branch, else branch) have type COPY, the whole command
- * has type COPY, otherwise it has type RECORD_CHANGES.
+ * (4) P = try (r1!; r2; r3!) then r3 else r4
+ * Q = (r1!; r2; r3!) is the critical subprogram. G is copied before entering Q.
+ * This is because r2 could fail, in which case the sequence fails, and the 'else'
+ * branch is taken, applying r4 to G.
  *
  * The above is an informal description of the function's operation. Refer
  * to the source file or GP 2 documentation for a description of the special
  * cases. */
-copyType getCommandType(GPCommand *command, int depth, bool if_body, 
-                        bool last_command);
 
 #endif /* INC_ANALYSIS_H */
