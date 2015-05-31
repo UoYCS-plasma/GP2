@@ -12,10 +12,13 @@ static FILE *file = NULL;
 typedef enum {MAIN_BODY, IF_BODY, TRY_BODY, LOOP_BODY} ContextType;
 
 static void generateMorphismCode(List *declarations, char type);
-static void generateProgramCode(GPCommand *command, ContextType context, int indent);
+static void generateProgramCode(GPCommand *command, ContextType context, 
+                                bool stop_recording, int indent);
 static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
-                             ContextType context, bool last_rule, int indent);
-static void generateBranchStatement(GPCommand *command, ContextType context, int indent);
+                             ContextType context, bool stop_recording,
+                             bool last_rule, int indent);
+static void generateBranchStatement(GPCommand *command, ContextType context, 
+                                    bool stop_recording, int indent);
 static void generateLoopStatement(GPCommand *command, int indent);
 static void generateFailureCode(string rule_name, ContextType context, int indent);
 
@@ -64,8 +67,8 @@ void generateRuntimeMain(List *declarations)
    while(iterator != NULL)
    {
       GPDeclaration *decl = iterator->declaration;
-      if(decl->decl_type == MAIN_DECLARATION)
-         generateProgramCode(decl->main_program, MAIN_BODY, 3);
+      if(decl->type == MAIN_DECLARATION)
+         generateProgramCode(decl->main_program, MAIN_BODY, false, 3);
       iterator = iterator->next;
    }
 
@@ -112,7 +115,7 @@ static void generateMorphismCode(List *declarations, char type)
    while(declarations != NULL)
    {
       GPDeclaration *decl = declarations->declaration;
-      switch(decl->decl_type)
+      switch(decl->type)
       {
          case MAIN_DECLARATION:
               break;
@@ -140,7 +143,7 @@ static void generateMorphismCode(List *declarations, char type)
          default: 
               print_to_log("Error (generateMorphismCode): Unexpected "
                            "declaration type %d at AST node %d\n", 
-                           decl->decl_type, decl->id);
+                           decl->type, decl->id);
               break;
       }
       declarations = declarations->next;
@@ -166,16 +169,23 @@ static void generateMorphismCode(List *declarations, char type)
 int restore_point = -1;
 int undo_point = 0;
 
-static void generateProgramCode(GPCommand *command, ContextType context, int indent)
+static void generateProgramCode(GPCommand *command, ContextType context, bool stop_recording,
+                                int indent)
 {
-   switch(command->command_type)
+   switch(command->type)
    {
       case COMMAND_SEQUENCE:
       {
            List *commands = command->commands;
+           bool stop_recording = false;
            while(commands != NULL)
            {
-              generateProgramCode(commands->command, context, indent);
+              /* If this if statement is executed, stop_recording remains true for
+               * the remainder of the command sequence. */
+              if(commands->command->type == ALAP_STATEMENT &&
+                 commands->command->loop_stmt.stop_recording)
+                 stop_recording = true;
+              generateProgramCode(commands->command, context, stop_recording, indent);
               if(context == LOOP_BODY && commands->next != NULL)
                  PTFI("if(!success) break;\n", indent);             
               commands = commands->next;
@@ -185,7 +195,8 @@ static void generateProgramCode(GPCommand *command, ContextType context, int ind
       case RULE_CALL:
            PTFI("/* Rule Call */\n", indent);
            generateRuleCall(command->rule_call.rule_name, command->rule_call.rule->empty_lhs,
-                            command->rule_call.rule->is_predicate, context, true, indent);
+                            command->rule_call.rule->is_predicate, context, stop_recording, 
+                            true, indent);
            break;
 
       case RULE_SET_CALL:
@@ -198,7 +209,7 @@ static void generateProgramCode(GPCommand *command, ContextType context, int ind
               string rule_name = rules->rule_call.rule_name;
               bool empty_lhs = rules->rule_call.rule->empty_lhs;
               bool predicate = rules->rule_call.rule->is_predicate;
-              generateRuleCall(rule_name, empty_lhs, predicate, context,
+              generateRuleCall(rule_name, empty_lhs, predicate, context, stop_recording,
                                rules->next == NULL, indent + 3);
               rules = rules->next;
            }
@@ -208,14 +219,12 @@ static void generateProgramCode(GPCommand *command, ContextType context, int ind
       case PROCEDURE_CALL:
       {
            GPProcedure *procedure = command->proc_call.procedure;
-           generateProgramCode(procedure->commands, context, indent);
+           generateProgramCode(procedure->commands, context, stop_recording, indent);
            break;
       }
-
       case IF_STATEMENT:
-
       case TRY_STATEMENT:
-           generateBranchStatement(command, context, indent);
+           generateBranchStatement(command, context, stop_recording, indent);
            break;
 
       case ALAP_STATEMENT:
@@ -229,11 +238,11 @@ static void generateProgramCode(GPCommand *command, ContextType context, int ind
            PTFI("int random = rand();\n", indent);
            PTFI("if((random %% 2) == 0)\n", indent);
            PTFI("{\n", indent);
-           generateProgramCode(command->or_stmt.left_command, context, indent + 3);
+           generateProgramCode(command->or_stmt.left_command, context, stop_recording, indent + 3);
            PTFI("}\n", indent);
            PTFI("else\n", indent);
            PTFI("{\n", indent);
-           generateProgramCode(command->or_stmt.right_command, context, indent + 3);
+           generateProgramCode(command->or_stmt.right_command, context, stop_recording, indent + 3);
            PTFI("}\n", indent);
            if(context == IF_BODY || context == TRY_BODY) 
               PTFI("break;\n", indent);
@@ -276,7 +285,7 @@ static void generateProgramCode(GPCommand *command, ContextType context, int ind
            
       default: 
            print_to_log("Error (generateProgramCode): Unexpected command type "
-                        "%d at AST node %d\n", command->command_type, command->id);
+                        "%d at AST node %d\n", command->type, command->id);
            break;
    }
 }
@@ -290,18 +299,23 @@ static void generateProgramCode(GPCommand *command, ContextType context, int ind
  * predicate: If this flag is set, code to apply the rule is not generated.
  * context: The context of the rule call. Used to generate code for a special
  *          case, and it is passed to generateFailureCode.
+ * stop_recording: If this flag is set, the rule is part of a command sequence
+ *                 that was recording graph changes up to a point. This prevents
+ *                 the generation of recording code, even if the undo point is 
+ *                 greater than zero.
  * last_rule: Set if this is the last rule in a rule set call. Controls the
  *            generation of failure code. */
 
 static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
-                             ContextType context, bool last_rule, int indent)
+                             ContextType context, bool stop_recording, 
+                             bool last_rule, int indent)
 {
    if(empty_lhs)
    {
       #ifdef RULE_TRACE
          PTFI("print_to_log(\"Matched %s. (empty rule)\\n\\n\");\n", indent, rule_name);
       #endif
-      if(undo_point >= 0) PTFI("apply%s(true);\n", indent, rule_name);
+      if(undo_point >= 0 && !stop_recording) PTFI("apply%s(true);\n", indent, rule_name);
       else PTFI("apply%s(false);\n", indent, rule_name);
       #ifdef GRAPH_TRACE
          PTFI("printGraph(host, log_file);\n\n", indent);
@@ -327,8 +341,8 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
           * in the GP2 if condition. */
          if(context != IF_BODY || restore_point >= 0)
          { 
-            if(undo_point >= 0) 
-               PTFI("apply%s(M_%s, true);\n", indent + 3, rule_name, rule_name);
+            if(undo_point >= 0 && !stop_recording) 
+                 PTFI("apply%s(M_%s, true);\n", indent + 3, rule_name, rule_name);
             else PTFI("apply%s(M_%s, false);\n", indent + 3, rule_name, rule_name);
             #ifdef GRAPH_TRACE
                PTFI("printGraph(host, log_file);\n\n", indent + 3);
@@ -362,7 +376,8 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
    }
 }
 
-static void generateBranchStatement(GPCommand *command, ContextType context, int indent)
+static void generateBranchStatement(GPCommand *command, ContextType context, 
+                                    bool stop_recording, int indent)
 {
    /* If restore_point != -1, then the host graph is copied before the conditional
     * subprogram is executed. If the roll_back flag is set, then changes to the host
@@ -371,7 +386,7 @@ static void generateBranchStatement(GPCommand *command, ContextType context, int
    restore_point = command->cond_branch.restore_point;
    bool roll_back = command->cond_branch.roll_back;
    assert(restore_point == -1 || !roll_back);
-   ContextType new_context = command->command_type == IF_STATEMENT ? IF_BODY : TRY_BODY;
+   ContextType new_context = command->type == IF_STATEMENT ? IF_BODY : TRY_BODY;
 
    if(new_context == IF_BODY) PTFI("/* If Statement */\n", indent);
    else PTFI("/* Try Statement */\n", indent);
@@ -394,7 +409,7 @@ static void generateBranchStatement(GPCommand *command, ContextType context, int
       #endif
       PTFI("copyGraph(host);\n", indent + 3);
    }
-   generateProgramCode(command->cond_branch.condition, new_context, indent + 3);
+   generateProgramCode(command->cond_branch.condition, new_context, false, indent + 3);
 
    PTFI("} while(false);\n\n", indent);
    if(new_context == IF_BODY)
@@ -419,7 +434,8 @@ static void generateBranchStatement(GPCommand *command, ContextType context, int
    PTFI("/* Then Branch */\n", indent);
    PTFI("if(success)\n", indent);
    PTFI("{\n", indent);
-   generateProgramCode(command->cond_branch.then_command, context, indent + 3);
+   generateProgramCode(command->cond_branch.then_command, context,
+                       stop_recording, indent + 3);
    PTFI("}\n", indent);
    PTFI("/* Else Branch */\n", indent);
    PTFI("else\n", indent);
@@ -445,16 +461,14 @@ static void generateBranchStatement(GPCommand *command, ContextType context, int
          #endif
       }
    }
-   generateProgramCode(command->cond_branch.else_command, context, indent + 3);
+   generateProgramCode(command->cond_branch.else_command, context,
+                       stop_recording, indent + 3);
    PTFI("}\n", indent);
    if(context == IF_BODY || context == TRY_BODY) PTFI("break;\n", indent);
    if(roll_back) undo_point++;
    return;
 }
 
-/* TODO: Implement 'stop recording'. Only the first loop in the sequence has this flag
- * set. Need to be able to carry this over to all over commands in the sequence. Probably
- * a global bool variable will suffice. */
 void generateLoopStatement(GPCommand *command, int indent)
 {
    /* If restore_point != -1, then the host graph is copied before the loop body
@@ -463,7 +477,6 @@ void generateLoopStatement(GPCommand *command, int indent)
     * mutually exclusive. */
    restore_point = command->loop_stmt.restore_point;
    bool roll_back = command->loop_stmt.roll_back;   
-   bool stop_recording = command->loop_stmt.stop_recording;
    assert(restore_point == -1 || !roll_back);
 
    PTFI("/* Loop Statement */\n", indent);
@@ -486,7 +499,7 @@ void generateLoopStatement(GPCommand *command, int indent)
               indent + 3, undo_point);
       #endif
    }
-   generateProgramCode(command->loop_stmt.loop_body, LOOP_BODY, indent + 3);
+   generateProgramCode(command->loop_stmt.loop_body, LOOP_BODY, false, indent + 3);
 
    if(restore_point >= 0)
    {

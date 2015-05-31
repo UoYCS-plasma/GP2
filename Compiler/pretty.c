@@ -103,11 +103,11 @@ void resetRuleAndProcedureIds(List *list)
 {
    while(list != NULL)
    {
-      if(list->list_type == GLOBAL_DECLARATIONS || list->list_type == LOCAL_DECLARATIONS)
+      if(list->type == GLOBAL_DECLARATIONS || list->type == LOCAL_DECLARATIONS)
       {
          GPDeclaration *declaration = list->declaration;
-         if(declaration->decl_type == RULE_DECLARATION) declaration->rule->id = 0;
-         if(declaration->decl_type == PROCEDURE_DECLARATION)
+         if(declaration->type == RULE_DECLARATION) declaration->rule->id = 0;
+         if(declaration->type == PROCEDURE_DECLARATION)
          {
             declaration->procedure->id = 0;
             resetRuleAndProcedureIds(declaration->procedure->local_decls);
@@ -156,7 +156,7 @@ void printDotHostGraph(GPGraph *const host_graph_ast, string file_name)
  * LOCATION_ARGS, defined in the header file. */
 void printASTList(List *const list, FILE *dot_file)
 {
-   switch(list->list_type)
+   switch(list->type)
    {
      case GLOBAL_DECLARATIONS:
           list->id = next_id++;
@@ -294,7 +294,7 @@ void printASTList(List *const list, FILE *dot_file)
           break;
 
      default: print_to_log("Error (printASTList): Unexpected type: %d\n",
-                           (int)list->list_type); 
+                           (int)list->type); 
               break;	 
      }
 }
@@ -302,7 +302,7 @@ void printASTList(List *const list, FILE *dot_file)
 
 void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
 {
-   switch(decl->decl_type) 
+   switch(decl->type) 
    {
       case MAIN_DECLARATION:
            decl->id = next_id++;
@@ -323,7 +323,7 @@ void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
            break;
 
       default: print_to_log("Error (printASTDeclaration): Unexpected type: "
-                            "%d\n", (int)decl->decl_type);
+                            "%d\n", (int)decl->type);
                break;
    }
 }
@@ -331,7 +331,7 @@ void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file)
 
 void printASTCommand(GPCommand *const command, FILE *dot_file)
 {
-  switch(command->command_type)
+  switch(command->type)
   {
       case COMMAND_SEQUENCE:	
            command->id = next_id++;
@@ -470,7 +470,7 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
            break;
       
       default: print_to_log("Error (printASTCommand): Unexpected type: "
-                           "%d\n", (int)command->command_type); 
+                           "%d\n", (int)command->type); 
                break;
       }
 }

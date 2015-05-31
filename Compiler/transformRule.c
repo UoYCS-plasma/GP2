@@ -151,7 +151,7 @@ static void initialiseVariableList(Rule *rule, List *declarations)
       GPType type = LIST_VAR;
       /* Set 'type' to the value to pass to addVariable before iterating over
        * the variable declaration list. */
-      switch(declarations->list_type)
+      switch(declarations->type)
       {
          case INT_DECLARATIONS:
               type = INTEGER_VAR;
@@ -175,7 +175,7 @@ static void initialiseVariableList(Rule *rule, List *declarations)
 
          default:
               print_to_log("Error (scanVariableList): Unexpected type %d\n", 
-                           declarations->list_type);
+                           declarations->type);
               break;
       }
       List *variables = declarations->variables;

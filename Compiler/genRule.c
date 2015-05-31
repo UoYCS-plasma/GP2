@@ -25,7 +25,7 @@ void generateRules(List *declarations)
    while(declarations != NULL)
    {
       GPDeclaration *decl = declarations->declaration;
-      switch(decl->decl_type)
+      switch(decl->type)
       {
          case MAIN_DECLARATION:
               break;
@@ -49,7 +49,7 @@ void generateRules(List *declarations)
          }
          default: 
               print_to_log("Error (generateRules): Unexpected declaration type "
-                           "%d at AST node %d\n", decl->decl_type, decl->id);
+                           "%d at AST node %d\n", decl->type, decl->id);
               break;
       }
       declarations = declarations->next;

@@ -2,9 +2,9 @@
 
 typedef enum {NO_BACKTRACK = 0, RECORD_CHANGES, COPY} copyType;
 
-static void annotate(GPCommand *command, int restore_point)
-static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequence)
-static bool neverFails(GPCommand *command)
+static void annotate(GPCommand *command, int restore_point);
+static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequence);
+static bool neverFails(GPCommand *command);
 
 void staticAnalysis(List *declarations)
 {
@@ -12,7 +12,7 @@ void staticAnalysis(List *declarations)
    while(iterator != NULL)
    {
       GPDeclaration *decl = iterator->declaration;
-      switch(decl->decl_type)
+      switch(decl->type)
       {
          case MAIN_DECLARATION:
               annotate(decl->main_program, 0);
@@ -29,7 +29,7 @@ void staticAnalysis(List *declarations)
          default: 
               print_to_log("Error (enterPredicateRules): Unexpected "
                            "declaration type %d at AST node %d\n", 
-                           decl->decl_type, decl->id);
+                           decl->type, decl->id);
               break;
       }
       iterator = iterator->next;
@@ -40,7 +40,7 @@ void staticAnalysis(List *declarations)
  * can be analysed with respect to host graph backtracking. */
 static void annotate(GPCommand *command, int restore_point)
 {
-   switch(command->command_type)
+   switch(command->type)
    {
       case COMMAND_SEQUENCE:
       {
@@ -68,7 +68,7 @@ static void annotate(GPCommand *command, int restore_point)
       case IF_STATEMENT:
       case TRY_STATEMENT:
       {
-           bool if_body = command->command_type == IF_STATEMENT;
+           bool if_body = command->type == IF_STATEMENT;
            int new_restore_point = restore_point;
            GPCommand *condition = command->cond_branch.condition;
            GPCommand *then_command = command->cond_branch.then_command;
@@ -125,14 +125,14 @@ static void annotate(GPCommand *command, int restore_point)
 
       default:
            print_to_log("Error (findRestorePoints): Unexpected command type %d.\n",
-                        command->command_type);
+                        command->type);
            break;
    }
 }
 
 static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequence)
 {
-   switch(command->command_type)
+   switch(command->type)
    {
       case COMMAND_SEQUENCE:
       {
@@ -141,7 +141,7 @@ static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequenc
            copyType type = NO_BACKTRACK;
            while(commands != NULL)
            {
-              if(commands->command->command_type != ALAP_STATEMENT)
+              if(commands->command->type != ALAP_STATEMENT)
               {
                  copyType type = getCommandType(commands->command, if_body, true);
                  if(type == COPY) return COPY;
@@ -168,7 +168,7 @@ static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequenc
                  }
                  /* The sequence from first_loop to the end cannot fail. Switch on
                   * the stop recording flag of the first loop. */
-                 first_loop->stop_recording = true;
+                 first_loop->loop_stmt.stop_recording = true;
                  /* The loop is the second item in a never-failing command sequence
                   * e.g. (r1; r2!; r3!). If the first command requires no backtracking 
                   * by itself, then no backtracking is required overall. Note that 
@@ -238,7 +238,7 @@ static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequenc
 
       default:
            print_to_log("Error (getCommandType): Unexpected command type %d.\n",
-                        command->command_type);
+                        command->type);
            break;
    }
    return COPY;
@@ -249,7 +249,7 @@ static copyType getCommandType(GPCommand *command, bool if_body, bool in_sequenc
  * is not necessary for try statements and loops. */
 static bool neverFails(GPCommand *command)
 {
-   switch(command->command_type)
+   switch(command->type)
    {
       case COMMAND_SEQUENCE:
       { 
@@ -291,7 +291,7 @@ static bool neverFails(GPCommand *command)
 
       default:
            print_to_log("Error (neverFails): Unexpected command type %d.\n",
-                        command->command_type);
+                        command->type);
            break;
    }
    return false;

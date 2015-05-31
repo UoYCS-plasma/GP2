@@ -40,7 +40,7 @@ bool declarationScan(List *ast, string scope)
    SymbolList *symbol_list = NULL;
    while(ast != NULL)
    {     
-      switch(ast->declaration->decl_type) 
+      switch(ast->declaration->type) 
       {
          case MAIN_DECLARATION:
               main_count += 1;
@@ -113,7 +113,7 @@ bool declarationScan(List *ast, string scope)
          }
          default: 
               print_to_log("Error: Unexpected node type %d at AST node %d\n\n", 
-                           ast->declaration->decl_type, ast->declaration->id);
+                           ast->declaration->type, ast->declaration->id);
               break; 
       }     
       ast = ast->next;  	
@@ -168,7 +168,7 @@ bool semanticCheck(List *declarations, string scope)
    {
       GPDeclaration *current_declaration = declarations->declaration;
    
-      switch(current_declaration->decl_type)
+      switch(current_declaration->type)
       {
          case MAIN_DECLARATION:
 	      /* An empty main program does not comform to the grammar. The
@@ -200,7 +200,7 @@ bool semanticCheck(List *declarations, string scope)
 
          default: print_to_log("Error (semanticCheck): Unexpected declaration "
                                "type %d at AST node %d\n", 
-                               current_declaration->decl_type,
+                               current_declaration->type,
                                current_declaration->id);
               break;
       } 
@@ -217,7 +217,7 @@ bool semanticCheck(List *declarations, string scope)
 
 void commandScan(GPCommand *command, string scope, List *declarations, bool in_loop)
 {
-   switch(command->command_type) 
+   switch(command->type) 
    {
       case COMMAND_SEQUENCE: 
       {
@@ -334,7 +334,7 @@ void commandScan(GPCommand *command, string scope, List *declarations, bool in_l
            break;
 
       default: print_to_log("Error (commandScan): Unexpected type %d at "
-                             "AST node %d\n", command->command_type, command->id);
+                             "AST node %d\n", command->type, command->id);
                abort_compilation = true;
                break;   
    }
@@ -353,7 +353,7 @@ GPRule *findRuleDeclaration(List *global_declarations, string name,
       while(local_declarations != NULL)
       {
          GPDeclaration *declaration = local_declarations->declaration;
-         if(declaration->decl_type == RULE_DECLARATION)
+         if(declaration->type == RULE_DECLARATION)
          {
            /* The rule name in the declaration is of the form 
             * "<proc_name>_<rule_name>". Disregard "<proc_name>_" for the 
@@ -363,7 +363,7 @@ GPRule *findRuleDeclaration(List *global_declarations, string name,
             if(!strcmp(declaration->rule->name + length, name))
                return declaration->rule;
          }
-         if(declaration->decl_type == PROCEDURE_DECLARATION)
+         if(declaration->type == PROCEDURE_DECLARATION)
          {
             /* Search for the rule declaration in the local declaration list of
              * the procedure and any local procedures. */
@@ -377,7 +377,7 @@ GPRule *findRuleDeclaration(List *global_declarations, string name,
    while(global_declarations != NULL)
    {
       GPDeclaration *declaration = global_declarations->declaration;
-      if(declaration->decl_type == RULE_DECLARATION)
+      if(declaration->type == RULE_DECLARATION)
       {
           /* The rule name in the declaration node is of the form
            * "Main_<rule_name>". Disregard "Main_" for the comparison. */
@@ -395,7 +395,7 @@ GPProcedure *findProcedureDeclaration(List *declarations, string name,
    while(declarations != NULL)
    {
       GPDeclaration *declaration = declarations->declaration;
-      if(declaration->decl_type == PROCEDURE_DECLARATION)
+      if(declaration->type == PROCEDURE_DECLARATION)
       {
          if(!strcmp(declaration->procedure->name, name) &&
             declaration->procedure != excluded_procedure)
@@ -419,7 +419,7 @@ void ruleScan(GPRule *rule, string scope)
 
    List *variable_list = rule->variables;
    /* Variables to count how many times each type is encountered. These are
-    * incremented, according to the list_type encountered, and a warning is
+    * incremented, according to the type encountered, and a warning is
     * printed if any variable becomes greater than 1. Hence only the 
     * variables in the first declaration list for a type are added to the
     * symbol table; the rest are ignored. */ 
@@ -430,7 +430,7 @@ void ruleScan(GPRule *rule, string scope)
    {
       /* Reverse the list of variables */
       variable_list->variables = reverse(variable_list->variables);	   
-      switch(variable_list->list_type) 
+      switch(variable_list->type) 
       {
          case INT_DECLARATIONS:
               checkDeclaration(rule, variable_list->variables, scope,
@@ -459,7 +459,7 @@ void ruleScan(GPRule *rule, string scope)
 
 	 default:
 	      print_to_log("Error: Unexpected list type %d in AST node %d\n",
-		           variable_list->list_type, variable_list->id);
+		           variable_list->type, variable_list->id);
               abort_compilation = true;
 	      break;
       }

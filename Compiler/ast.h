@@ -37,7 +37,7 @@ typedef enum {GLOBAL_DECLARATIONS = 0, LOCAL_DECLARATIONS, COMMANDS,
 
 typedef struct List {
   int id;
-  ListType list_type;  
+  ListType type;  
   YYLTYPE location;  /* location of symbol in the source file */
   union {
     struct GPDeclaration *declaration; /* GLOBAL_DECLARATIONS, 
@@ -59,14 +59,14 @@ typedef struct List {
   struct List *next;
 } List;
 
-List *makeGPList(void);
+List *makeGPList(YYLTYPE location, ListType type);
 int getASTListLength(List *list);
-List *addASTDecl(ListType list_type, YYLTYPE location, 
+List *addASTDecl(ListType type, YYLTYPE location, 
 	         struct GPDeclaration *declaration, struct List *next);
 List *addASTCommand (YYLTYPE location, struct GPCommand *command, 
                      struct List *next);
 List *addASTRule (YYLTYPE location, string rule_name, struct List *next);
-List *addASTVariableDecl (ListType list_type, YYLTYPE location, 
+List *addASTVariableDecl (ListType type, YYLTYPE location, 
                           struct List *variables, struct List *next);
 List *addASTVariable (YYLTYPE location, string variable_name, struct List *next);
 List *addASTNodeID (YYLTYPE location, string node_id, struct List *next);
@@ -79,7 +79,7 @@ typedef enum {MAIN_DECLARATION = 0, PROCEDURE_DECLARATION, RULE_DECLARATION} Dec
 
 typedef struct GPDeclaration {
   int id;
-  DeclType decl_type;
+  DeclType type;
   YYLTYPE location;
   union {
     struct GPCommand *main_program; 	/* MAIN_DECLARATION */
@@ -88,7 +88,7 @@ typedef struct GPDeclaration {
   };
 } GPDeclaration;
 
-GPDeclaration *makeDeclaration(void);
+GPDeclaration *makeDeclaration(YYLTYPE location, DeclType type);
 GPDeclaration *newASTMainDecl (YYLTYPE location, struct GPCommand *main_program);
 GPDeclaration *newASTProcedureDecl (YYLTYPE location, struct GPProcedure *procedure);
 GPDeclaration *newASTRuleDecl (YYLTYPE location, struct GPRule *rule);
@@ -101,7 +101,7 @@ typedef enum {COMMAND_SEQUENCE = 0, RULE_CALL, RULE_SET_CALL, PROCEDURE_CALL,
 
 typedef struct GPCommand {
   int id;
-  CommandType command_type;
+  CommandType type;
   YYLTYPE location;
   union {    
     struct List *commands; 		/* COMMAND_SEQUENCE */
@@ -136,19 +136,18 @@ typedef struct GPCommand {
   };
 } GPCommand;
 
-GPCommand *makeGPCommand(void);
+GPCommand *makeGPCommand(YYLTYPE location, CommandType type);
 GPCommand *newASTCommandSequence(YYLTYPE location, List *cmd_seq);
 GPCommand *newASTRuleCall(YYLTYPE location, string rule_name);
 GPCommand *newASTRuleSetCall(YYLTYPE location, List *rule_set);
 GPCommand *newASTProcCall(YYLTYPE location, string proc_name);
-GPCommand *newASTCondBranch(CommandType statement_type, YYLTYPE location, 
+GPCommand *newASTCondBranch(CommandType type, YYLTYPE location, 
 	                    GPCommand *condition, GPCommand *then_stmt, 
 	                    GPCommand *else_stmt);
 GPCommand *newASTAlap(YYLTYPE location, GPCommand *loop_body);
 GPCommand *newASTOrStmt(YYLTYPE location, GPCommand *left_stmt, GPCommand *right_stmt);
 GPCommand *newASTSkip(YYLTYPE location);
-GPCommand *newASTFail(YYLTYPE location);
-GPCommand *newASTBreak(YYLTYPE location);
+GPCommand *newASTEmptyStatement(YYLTYPE location, CommandType type);
 
 
 /* Definition of AST nodes for conditional expressions.*/
@@ -184,7 +183,7 @@ typedef struct GPCondition {
   };
 } GPCondition;
 
-GPCondition *makeGPCondition(void);
+GPCondition *makeGPCondition(YYLTYPE location, CommandType type);
 GPCondition *newASTSubtypePred(ConditionType exp_type, YYLTYPE location, string var);
 GPCondition *newASTEdgePred(YYLTYPE location, string source, string target,
 	                    struct GPLabel *label);
@@ -217,7 +216,7 @@ typedef struct GPAtom {
   };
 } GPAtom;
 
-GPAtom *makeGPAtom(void);
+GPAtom *makeGPAtom(YYLTYPE location, AtomType type);
 GPAtom *newASTVariable (YYLTYPE location, string name);
 GPAtom *newASTNumber (YYLTYPE location, int number);
 GPAtom *newASTCharacter (YYLTYPE location, string character);

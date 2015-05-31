@@ -268,8 +268,8 @@ Block: '(' ComSeq ')' 	                { $$ = newASTCommandSequence(@$, $2); }
      | SimpleCommand '!'		{ $$ = newASTAlap(@$, $1); }
      | Block OR Block 			{ $$ = newASTOrStmt(@$, $1, $3); }
      | SKIP				{ $$ = newASTSkip(@$); }
-     | FAIL				{ $$ = newASTFail(@$); }
-     | BREAK				{ $$ = newASTBreak(@$); }
+     | FAIL				{ $$ = newASTEmptyStatement(@$, FAIL_STATEMENT); }
+     | BREAK				{ $$ = newASTEmptyStatement(@$, BREAK_STATEMENT); }
 
 SimpleCommand: RuleSetCall 	        { $$ = newASTRuleSetCall(@$, $1); }
              | RuleID                   { $$ = newASTRuleCall(@$, $1); if($1) free($1); }
