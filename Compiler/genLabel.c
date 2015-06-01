@@ -229,20 +229,21 @@ int generateIteratorCode(Label label, bool node)
       PTFI("for(label_class = %d; label_class < %d; label_class++)\n", 
            3, class_start, class_end);
       PTFI("{\n", 3);
-      PTFI("LabelClassTable *table = %s(host %d, label_class);\n",
+      PTFI("LabelClassTable *table = %s(host, %d, label_class);\n",
            6, query_name, class_start);
       return 1;
    }
-   else if(mark_start < mark_end && class_start == class_end)
+   else if(mark_start < mark_end && class_start < class_end)
    {
       /* Iterate over both marks and label classes. */
       PTFI("int mark, label_class;\n", 3);
       PTFI("for(mark = %d; mark < %d; mark++)\n", 3, mark_start, mark_end);
       PTFI("{\n", 3);
-      PTFI("for(mark = %d; mark < %d; mark++)\n", 6, class_start, class_end);
+      PTFI("for(label_class = %d; label_class < %d; label_class++)\n", 6,
+           class_start, class_end);
       PTFI("{\n", 6);
-      PTFI("LabelClassTable *table = %s(host, mark, %d);\n",
-           9, query_name, class_start);
+      PTFI("LabelClassTable *table = %s(host, mark, label_class);\n",
+           9, query_name);
       return 2;
    }
    return 0;
@@ -269,8 +270,8 @@ void generateFixedListMatchingCode(Rule *rule, Label label, int indent)
     * at any time with a break statement the moment an atom match fails. */
    PTFI("do\n", indent);
    PTFI("{\n", indent);
-   PTFI("/* The rule list does not contain a list variable, so there is no\n", indent);
-   PTFI(" * match if the host list has a different length. */\n", indent);
+   PTFI("/* The rule list does not contain a list variable, so there is no\n", indent + 3);
+   PTFI(" * match if the host list has a different length. */\n", indent + 3);
    PTFI("if(label.length != %d) break;\n", indent + 3, label.length); 
    /* Lists without list variables admit relatively simple code generation as each
     * rule atom maps directly to the host atom in the same position. */
@@ -665,7 +666,7 @@ void generateVariableResultCode(Rule *rule, string name, bool list_variable, int
       PTFI("if(result >= 0)\n", indent);
       PTFI("{\n", indent);
    }
-   PTFI("new_assignments += results;\n", indent + 3);
+   PTFI("new_assignments += result;\n", indent + 3);
    if(list_variable) PTFI("match = true;\n", indent + 3);
    PTFI("}\n", indent);
    if(!list_variable) PTFI("else break;\n", indent); 
@@ -738,6 +739,7 @@ void generateLabelEvaluationCode(Label label, bool node, int count, int context,
    /* The name of the runtime variable to store the label depends on its context.
     * In particular, labels in relational expressions are directly compared, so they
     * require different names. */
+   assert(context >= 0 && context < 4);
    string label_name;
    if(context == 0 || context == 1) label_name = "label";
    else if(context == 2) label_name = "left_label";

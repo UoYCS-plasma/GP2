@@ -262,8 +262,12 @@ static bool neverFails(GPCommand *command)
            return true;
       }
       case RULE_CALL:
+           if(command->rule_call.rule->empty_lhs) return true;
+           else return false;
+
       case RULE_SET_CALL:
-           return false;
+           if(command->rule_set->rule_call.rule->empty_lhs) return true;
+           else return false;
 
       case PROCEDURE_CALL:
            return neverFails(command->proc_call.procedure->commands);

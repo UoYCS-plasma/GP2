@@ -237,6 +237,7 @@ Predicate **addPredicate(Predicate **predicates, Predicate *predicate, int size)
 
 bool isPredicate(Rule *rule)
 {
+   if(rule->lhs == NULL && rule->rhs == NULL) return true;
    int index;
    /* Return false if the rule relabels or adds any items. The rule adds an
     * item if there exists an RHS item that is not in the interface.
@@ -466,6 +467,7 @@ static void freeRuleGraph(RuleGraph *graph)
    }
    free(graph->nodes);
    free(graph->edges);
+   free(graph);
 }
 
 static void freePredicate(Predicate *predicate)

@@ -231,33 +231,33 @@ GPAtom *newASTConcat(YYLTYPE location, GPAtom *left_exp, GPAtom *right_exp);
 typedef enum {PROCEDURE = 0, RULE, NODE_PAIR, GRAPH, NODE, EDGE, LABEL} ASTNodeType;
 
 typedef struct GPProcedure {
-  int id;
-  ASTNodeType node_type;
-  YYLTYPE location;
-  string name; 
-  struct List *local_decls; 
-  struct GPCommand *commands;
+   int id;
+   ASTNodeType node_type;
+   YYLTYPE location;
+   string name; 
+   struct List *local_decls; 
+   struct GPCommand *commands;
 } GPProcedure;
 
 GPProcedure *newASTProcedure(YYLTYPE location, string name, List *local_decls,
                              GPCommand *cmd_seq);
 
 typedef struct GPRule {
-  int id;
-  ASTNodeType node_type;
-  YYLTYPE location;
-  string name; 
-  struct List *variables;
-  struct GPGraph *lhs;
-  struct GPGraph *rhs;
-  struct List *interface;
-  struct GPCondition *condition;
-  int left_nodes;
-  int left_edges;
-  int variable_count;
-  int predicate_count;
-  bool empty_lhs;
-  bool is_predicate;
+   int id;
+   ASTNodeType node_type;
+   YYLTYPE location;
+   string name; 
+   struct List *variables;
+   struct GPGraph *lhs;
+   struct GPGraph *rhs;
+   struct List *interface;
+   struct GPCondition *condition;
+   int left_nodes;
+   int left_edges;
+   int variable_count;
+   int predicate_count;
+   bool empty_lhs;
+   bool is_predicate;
 } GPRule;
 
 GPRule *newASTRule(YYLTYPE location, string name, List *variables, 
@@ -265,11 +265,11 @@ GPRule *newASTRule(YYLTYPE location, string name, List *variables,
                    GPCondition *condition);
 
 typedef struct GPGraph {
-  int id;
-  ASTNodeType node_type;	
-  YYLTYPE location;
-  struct List *nodes;
-  struct List *edges;
+   int id;
+   ASTNodeType node_type;	
+   YYLTYPE location;
+   struct List *nodes;
+   struct List *edges;
 } GPGraph;
 
 GPGraph *newASTGraph(YYLTYPE location, List *nodes, List *edges);
@@ -277,37 +277,37 @@ int countNodes(GPGraph *graph);
 int countEdges(GPGraph *graph);
 
 typedef struct GPNode {
-  int id;
-  ASTNodeType node_type;	
-  YYLTYPE location; 
-  bool root;
-  string name; 
-  struct GPLabel *label; 
+   int id;
+   ASTNodeType node_type;	
+   YYLTYPE location; 
+   bool root;
+   string name; 
+   struct GPLabel *label; 
 } GPNode;
 
 GPNode *newASTNode(YYLTYPE location, bool root, string name, struct GPLabel *label);
 
 
 typedef struct GPEdge {
-  int id;
-  ASTNodeType node_type;	
-  YYLTYPE location; 
-  bool bidirectional; 
-  string name; 
-  string source; 
-  string target; 
-  struct GPLabel *label; 
+   int id;
+   ASTNodeType node_type;	
+   YYLTYPE location; 
+   bool bidirectional; 
+   string name; 
+   string source; 
+   string target; 
+   struct GPLabel *label; 
 } GPEdge;
 
 GPEdge *newASTEdge(YYLTYPE location, bool bidirectional, string name, 
                    string source, string target, struct GPLabel *label);
 
 typedef struct GPLabel {
-  int id;
-  ASTNodeType node_type; 
-  YYLTYPE location; 
-  MarkType mark;
-  struct List *gp_list;
+   int id;
+   ASTNodeType node_type; 
+   YYLTYPE location; 
+   MarkType mark;
+   struct List *gp_list;
 } GPLabel;
 
 GPLabel *newASTLabel(YYLTYPE location, MarkType mark, List *gp_list);

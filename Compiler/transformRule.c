@@ -129,12 +129,12 @@ Rule *transformRule(GPRule *ast_rule)
    int rhs_nodes = countNodes(ast_rule->rhs);
    int rhs_edges = countEdges(ast_rule->rhs);
    Rule *rule = makeRule(ast_rule->variable_count, lhs_nodes, lhs_edges, rhs_nodes, rhs_edges);
-   rule->name = ast_rule->name;
+   rule->name = strdup(ast_rule->name);
 
    initialiseVariableList(rule, ast_rule->variables);
 
-   if(lhs_nodes >= 0) scanLHS(rule, ast_rule->lhs);
-   if(rhs_nodes >= 0) scanRHS(rule, ast_rule->rhs, ast_rule->interface);
+   if(lhs_nodes > 0) scanLHS(rule, ast_rule->lhs);
+   if(rhs_nodes > 0) scanRHS(rule, ast_rule->rhs, ast_rule->interface);
    rule->predicate_count = ast_rule->predicate_count;
    rule->condition = transformCondition(rule, ast_rule->condition, false, node_map);
    if(node_map != NULL) freeIndexMap(node_map);

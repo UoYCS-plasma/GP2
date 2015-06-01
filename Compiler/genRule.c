@@ -101,12 +101,18 @@ void generateRuleCode(Rule *rule, bool predicate)
       generateConditionEvaluator(rule->condition, false);
       generatePredicateEvaluators(rule, rule->condition);
    }
-   if(rule->lhs == NULL) generateAddRHSCode(rule);
-   else
+   if(rule->lhs != NULL) 
    {
       generateMatchingCode(rule);
-      if(rule->rhs == NULL && !predicate) generateRemoveLHSCode(rule->name);
-      else if(rule->rhs != NULL && !predicate) generateApplicationCode(rule);
+      if(!predicate)
+      {
+         if(rule->rhs == NULL) generateRemoveLHSCode(rule->name);
+         else generateApplicationCode(rule);
+      }
+   }
+   else
+   {
+      if(rule->rhs != NULL) generateAddRHSCode(rule);
    }
    fclose(header);
    fclose(file);
@@ -160,7 +166,7 @@ static void generateMatchingCode(Rule *rule)
    PTF("static int left_nodes = %d, left_edges = %d;\n", 
        rule->lhs->node_index, rule->lhs->edge_index);
    PTF("static int matched_nodes[%d];\n", rule->lhs->node_index);
-   if(rule->lhs->node_index > 0) 
+   if(rule->lhs->edge_index > 0) 
       PTF("static int matched_edges[%d];\n\n", rule->lhs->edge_index);
    else PTF("\n");
    
@@ -322,12 +328,13 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
        * continue. */
       if(loops == 0) PTFI("if(table == NULL) return false;\n", indent - 3);
       else PTFI("if(table == NULL) continue;\n", indent - 3);
+      PTFI("int items_index;\n", indent - 3);
       PTFI("for(items_index = 0; items_index < table->index; items_index++)\n", indent - 3);
       PTFI("{\n", indent - 3);
       PTFI("int host_index = table->items[items_index];\n", indent);
    #else
       PTFI("int host_index;\n", 3);
-      PTFI("for(host_index = 0; host_index < node_index; host_index++)\n", 3);
+      PTFI("for(host_index = 0; host_index < host->node_index; host_index++)\n", 3);
       PTFI("{\n", 3);
       int indent = 6;
    #endif
@@ -361,14 +368,9 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
     * class table array. */
    #ifdef LABEL_CLASS_INDEXING
       if(loops == 2) PTFI("}\n", 9);
-      if(loops >= 1)
-      {
-         PTFI("}\n", 6);
-         PTFI("}\n", 3);
-      }
-   #else
-      PTFI("}\n", 3);
+      if(loops >= 1) PTFI("}\n", 6);
    #endif
+   PTFI("}\n", 3);
    PTFI("return false;\n", 3);
    PTF("}\n\n");
 }
@@ -472,8 +474,8 @@ static void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *ne
    PTFI("matched_nodes[%d] = host_node->index;\n", indent + 3, node->index);
    if(next_op == NULL)
    {
-      PTFI("/* All items matched! */\n", indent);
-      PTFI("return true;\n", indent);
+      PTFI("/* All items matched! */\n", indent + 3);
+      PTFI("return true;\n", indent + 3);
    }
    else
    {
@@ -510,12 +512,13 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
        * continue. */
       if(loops == 0) PTFI("if(table == NULL) return false;\n", indent - 3);
       else PTFI("if(table == NULL) continue;\n", indent - 3);
+      PTFI("int items_index;\n", indent - 3);
       PTFI("for(items_index = 0; items_index < table->index; items_index++)\n", indent - 3);
       PTFI("{\n", indent - 3);
       PTFI("int host_index = table->items[items_index];\n", indent);
    #else
       PTFI("int host_index;\n", 3);
-      PTFI("for(host_index = 0; host_index < node_index; host_index++)\n", 3);
+      PTFI("for(host_index = 0; host_index < host->edge_index; host_index++)\n", 3);
       PTFI("{\n", 3);
       int indent = 6;
    #endif
@@ -542,18 +545,13 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
    else generateFixedListMatchingCode(rule, left_edge->label, indent);
    generateEdgeMatchResultCode(left_edge->index, next_op, indent);
 
-   /* Close the for loops iterating over the label class table and the label
+   /* Close the for loops iterating over the label class table and over the label
     * class table array. */
    #ifdef LABEL_CLASS_INDEXING
       if(loops == 2) PTFI("}\n", 9);
-      if(loops >= 1)
-      {
-         PTFI("}\n", 6);
-         PTFI("}\n", 3);
-      }
-   #else
-      PTFI("}\n", 3);
+      if(loops >= 1) PTFI("}\n", 6);
    #endif
+   PTFI("}\n", 3);
    PTFI("return false;\n", 3);
    PTF("}\n\n");
 }
@@ -963,7 +961,7 @@ void generateApplicationCode(Rule *rule)
                   PTFI("Label label;\n", 3);
                   label_declared = true;
                }
-               generateLabelEvaluationCode(label, false, list_count++, -1, 3);
+               generateLabelEvaluationCode(label, false, list_count++, 0, 3);
                PTFI("relabelEdge(host, host_edge_index, label, !record_changes);\n\n", 3);
             }
          }
@@ -1040,7 +1038,7 @@ void generateApplicationCode(Rule *rule)
                   PTFI("Label label;\n", 3);
                   label_declared = true;
                }
-               generateLabelEvaluationCode(label, true, list_count++, -1, 3);
+               generateLabelEvaluationCode(label, true, list_count++, 0, 3);
                PTFI("relabelNode(host, host_node_index, label, !record_changes);\n\n", 3);
             }
          }
@@ -1073,7 +1071,7 @@ void generateApplicationCode(Rule *rule)
             PTFI("Label label;\n", 3);
             label_declared = true;
          }
-         generateLabelEvaluationCode(node->label, true, list_count++, -1, 3);
+         generateLabelEvaluationCode(node->label, true, list_count++, 0, 3);
          PTFI("host_node_index = addNode(host, %d, label);\n", 3, node->root);
       }
       PTFI("if(record_changes) pushAddedNode(host_node_index);\n", 3);
@@ -1109,7 +1107,7 @@ void generateApplicationCode(Rule *rule)
             PTFI("Label label;\n", 3);
             label_declared = true;
          }
-         generateLabelEvaluationCode(edge->label, false, list_count++, -1, 3);
+         generateLabelEvaluationCode(edge->label, false, list_count++, 0, 3);
          PTFI("host_edge_index = addEdge(host, false, label, source, target);\n", 3);
       }
       PTFI("if(record_changes) pushAddedEdge(host_edge_index);\n", 3);
