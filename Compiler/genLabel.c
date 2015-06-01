@@ -95,70 +95,91 @@ void freeStringList(StringList *list)
    free(list);
 }
 
-void generateIteratorCode(Label label, int indent)
+int generateIteratorCode(Label label, bool node)
 {
-   PTFI("int mark, label_class;\n", indent);
-   /* Generate the outer loop which iterates over the rows of the label class array.
-    * If the LHS mark is ANY, then iterate over all marks. Otherwise only iterate
-    * over the LHS mark. The latter for loop is technically unnecessary as there is
-    * always exactly one iteration, but it is printed because the generated matching
-    * code depends on the double for loop structure. */
+   /* Variables to describe the range of marks and label classes to be iterated
+    * over at runtime. If the starts and ends are equal, then only one mark or
+    * label class is considered. */
+   int mark_start = 0, mark_end = 0, class_start = 0, class_end = 0;
    if(label.mark == ANY)
-      PTFI("for(mark = 0; mark < NUMBER_OF_MARKS; mark++)\n", indent);
-   else PTFI("for(mark = %d; mark < %d; mark++)\n", indent, label.mark, label.mark + 1);
-   PTFI("{\n", indent);
-
-   /* Generate the inner loop which iterates over the columns of the label class array.
-    * If the LHS-list contains a list variable, the generated loop depends on the number 
-    * of non-list variable atoms. */
+   {
+      mark_start = 0;
+      mark_end = NUMBER_OF_MARKS;
+   }
+   else 
+   {
+      mark_start = label.mark;
+      mark_end = label.mark;
+   }
    if(hasListVariable(label))
    {
       int number_of_atoms = label.length - 1;
       if(number_of_atoms == 0) 
-           /* The LHS list contains only a single list variable. Iterate over all label
-            * classes. */
-           PTFI("for(label_class = 0; label_class < NUMBER_OF_CLASSES; label_class++)\n",
-                indent + 3);
+      {
+         /* The LHS list contains only a single list variable. Iterate over all label
+          * classes. */
+         class_start = 0;
+         class_end = NUMBER_OF_CLASSES;
+      }
       else if(number_of_atoms == 1) 
-           /* The LHS list contains a list variable and one other atom. Iterate over all
-            * label classes except the one representing the empty list (0). */
-           PTFI("for(label_class = 1; label_class < NUMBER_OF_CLASSES; label_class++)\n",
-                indent + 3);
-           /* The LHS list contains a list variable and more than one other atom. 
-            * Iterate over all label classes representing lists of length > 1.
-            * These are label classes 3-6. */
-      else PTFI("for(label_class = %d; label_class < NUMBER_OF_CLASSES; label_class++)\n",
-                indent + 3, number_of_atoms + 1);
+      {
+        /* The LHS list contains a list variable and one other atom. Iterate over all
+         * label classes except the class representing the empty list (0). */
+         class_start = 1;
+         class_end = NUMBER_OF_CLASSES;
+      }
+      else 
+      {
+         /* The LHS list contains a list variable and more than one other atom. 
+          * Iterate over all appropriate label classes representing lists of length > 1.
+          * Note that lists of length 2 are represented by the label class 3 and so on.
+          * This is why 1 is added to number_of_atoms below. */
+         class_start = number_of_atoms + 1;
+         class_end = NUMBER_OF_CLASSES;
+      }
    }
    /* For LHS-lists not containing a list variable, the generated loop is dependent
     * on the length of the list. */
    else
    {
       if(label.length == 0)
+      {
          /* The LHS-list is the empty list. Only one label class (0) matches the empty list. */
-         PTFI("for(label_class = 0; label_class < 1; label_class++)\n", indent + 3);
+         class_start = 0;
+         class_end = 0;
+      }
       else if(label.length == 1)
       {
-
          Atom atom = label.list[0];
          switch(atom.type)
          {
             case INTEGER_CONSTANT:
-                 PTFI("for(label_class = 1; label_class < 2; label_class++)\n", indent + 3);
+                 class_start = 1;
+                 class_end = 1;
                  break;
 
             case STRING_CONSTANT:
             case CONCAT:
-                 PTFI("for(label_class = 2; label_class < 3; label_class++)\n", indent + 3);
+                 class_start = 2;
+                 class_end = 2;
+                 break;
 
             case VARIABLE:
                  if(atom.variable.type == INTEGER_VAR)
-                    PTFI("for(label_class = 1; label_class < 2; label_class++)\n", indent + 3);
-                 else if(atom.variable.type == STRING_VAR || 
-                         atom.variable.type == CHARACTER_VAR)
-                    PTFI("for(label_class = 2; label_class < 3; label_class++)\n", indent + 3);
+                 {
+                    class_start = 1;
+                    class_end = 1;
+                 }
+                 else if(atom.variable.type == STRING_VAR || atom.variable.type == CHARACTER_VAR)
+                 {
+                    class_start = 2;
+                    class_end = 2;
+                 }
                  else if(atom.variable.type == ATOM_VAR)
-                    PTFI("for(label_class = 1; label_class < 3; label_class++)\n", indent + 3);
+                 {
+                    class_start = 1;
+                    class_end = 3;
+                 }
                  break;
 
             default:
@@ -168,20 +189,64 @@ void generateIteratorCode(Label label, int indent)
          }
       }
       else if(label.length > 1 || label.length < 5)
+      {
          /* For LHS-lists of length 2-4, generate the loop that iterates over the label
           * class of the appropriate length. These classes are LIST2_L (3), LIST3_L (4)
           * and LIST4_L (5). */
-         PTFI("for(label_class = %d; label_class < %d; label_class++)\n", indent + 3,
-              label.length + 1, label.length + 2);
+          class_start = label.length + 1;
+          class_end = label.length + 1;
+      }
       else 
+      {
          /* The LHS-list contains more than four atoms. Iterate over label class 
           * LONG_LIST_L (6). */
-         PTFI("for(label_class = 6; label_class < 7; label_class++)\n", indent + 3);
+          class_start = 6;
+          class_end = 6;
+      }
    }
-   PTFI("{\n", indent + 3);
+   string query_name = node ? "getNodeLabelTable" : "getEdgeLabelTable";
+   if(mark_start == mark_end && class_start == class_end)
+   {
+      /* Only one label class table. */
+      PTFI("LabelClassTable *table = %s(host, %d, %d);\n",
+           3, query_name, mark_start, class_start);
+      return 0;
+   }
+   else if(mark_start < mark_end && class_start == class_end)
+   {
+      /* Iterate over marks; label class is fixed. */
+      PTFI("int mark;\n", 3);
+      PTFI("for(mark = %d; mark < %d; mark++)\n", 3, mark_start, mark_end);
+      PTFI("{\n", 3);
+      PTFI("LabelClassTable *table = %s(host, mark, %d);\n",
+           6, query_name, class_start);
+      return 1;
+   }
+   else if(mark_start == mark_end && class_start < class_end)
+   {
+      /* Iterate over label classes; mark is fixed. */
+      PTFI("int label_class;\n", 3);
+      PTFI("for(label_class = %d; label_class < %d; label_class++)\n", 
+           3, class_start, class_end);
+      PTFI("{\n", 3);
+      PTFI("LabelClassTable *table = %s(host %d, label_class);\n",
+           6, query_name, class_start);
+      return 1;
+   }
+   else if(mark_start < mark_end && class_start == class_end)
+   {
+      /* Iterate over both marks and label classes. */
+      PTFI("int mark, label_class;\n", 3);
+      PTFI("for(mark = %d; mark < %d; mark++)\n", 3, mark_start, mark_end);
+      PTFI("{\n", 3);
+      PTFI("for(mark = %d; mark < %d; mark++)\n", 6, class_start, class_end);
+      PTFI("{\n", 6);
+      PTFI("LabelClassTable *table = %s(host, mark, %d);\n",
+           9, query_name, class_start);
+      return 2;
+   }
+   return 0;
 }
-
-
 
 /* The 'result' variable is used in the matching code to store results of variable-value 
  * assignments function calls. The 'result_declared' flag ensures that this variable is

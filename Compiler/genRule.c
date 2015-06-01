@@ -309,39 +309,66 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism)\n{\n", left_node->index);
    PTFI("bool node_matched = false;\n", 3);
-   generateIteratorCode(left_node->label, 3);
-   PTFI("LabelClassTable *table = getNodeLabelTable(host, mark, label_class);\n", 9);
-   PTFI("if(table == NULL) continue;\n", 9);
-   PTFI("int items_index;\n", 9);
-   PTFI("for(items_index = 0; items_index < table->index; items_index++)\n", 9);
-   PTFI("{\n", 9);
-   PTFI("int host_index = table->items[items_index];\n", 12);
-   PTFI("Node *host_node = getNode(host, host_index);\n", 12);
-   PTFI("if(host_node == NULL) continue;\n\n", 12);
-   PTFI("node_matched = false;\n", 12);
-   PTFI("/* Set node_matched to true if the node has already been matched.*/\n", 12);
-   PTFI("int index;\n", 12);
-   PTFI("CHECK_MATCHED_NODE;\n\n", 12);
-   PTFI("/* Arguments: mark, indegree, outdegree, bidegree. */\n", 12);
+
+   #ifdef LABEL_CLASS_INDEXING
+      /* Generates code to iterate over marks and/or label classes and call the
+       * function to get the label class table. It returns the number of for loops
+       * generated (0 - 2). */
+      int loops = generateIteratorCode(left_node->label, true);
+      int indent = 3 * (loops + 2);
+
+      /* The table may not exist. If the generated code is not in a loop (i.e. if
+       * there is only one table being considered), return false, otherwise
+       * continue. */
+      if(loops == 0) PTFI("if(table == NULL) return false;\n", indent - 3);
+      else PTFI("if(table == NULL) continue;\n", indent - 3);
+      PTFI("for(items_index = 0; items_index < table->index; items_index++)\n", indent - 3);
+      PTFI("{\n", indent - 3);
+      PTFI("int host_index = table->items[items_index];\n", indent);
+   #else
+      PTFI("int host_index;\n", 3);
+      PTFI("for(host_index = 0; host_index < node_index; host_index++)\n", 3);
+      PTFI("{\n", 3);
+      int indent = 6;
+   #endif
+
+   /* Fixed code. The indentation is determined by generateIteratorCode, which 
+    * generates 0-2 for loops depending on the rule label. */
+   PTFI("Node *host_node = getNode(host, host_index);\n", indent);
+   PTFI("if(host_node == NULL) continue;\n\n", indent);
+   PTFI("node_matched = false;\n", indent);
+   PTFI("/* Set node_matched to true if the node has already been matched.*/\n", indent);
+   PTFI("int index;\n", indent);
+   PTFI("CHECK_MATCHED_NODE;\n\n", indent);
+   PTFI("/* Arguments: mark, indegree, outdegree, bidegree. */\n", indent);
    /* The node is deleted by the rule if it has no corresponding node in the interface. */
    if(left_node->interface == NULL)
-        PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d) continue;\n\n", 12,
+        PTFI("IF_INVALID_DANGLING_NODE(%d, %d, %d, %d) continue;\n\n", indent,
              left_node->label.mark, left_node->indegree, left_node->outdegree,
              left_node->bidegree);
-   else PTFI("IF_INVALID_NODE(%d, %d, %d, %d) continue;\n\n", 12,
+   else PTFI("IF_INVALID_NODE(%d, %d, %d, %d) continue;\n\n", indent,
              left_node->label.mark, left_node->indegree, left_node->outdegree,
              left_node->bidegree); 
 
-   PTFI("Label label = host_node->label;\n", 12);
-   PTFI("bool match = false;\n", 12);
+   PTFI("Label label = host_node->label;\n", indent);
+   PTFI("bool match = false;\n", indent);
    if(hasListVariable(left_node->label))
-      generateVariableListMatchingCode(rule, left_node->label, 12);
-   else generateFixedListMatchingCode(rule, left_node->label, 12);
+      generateVariableListMatchingCode(rule, left_node->label, indent);
+   else generateFixedListMatchingCode(rule, left_node->label, indent);
+   generateNodeMatchResultCode(rule, left_node, next_op, indent);
 
-   generateNodeMatchResultCode(rule, left_node, next_op, 12);
-   PTFI("}\n", 9);
-   PTFI("}\n", 6);
-   PTFI("}\n", 3);
+   /* Close the for loops iterating over the label class table and over the label
+    * class table array. */
+   #ifdef LABEL_CLASS_INDEXING
+      if(loops == 2) PTFI("}\n", 9);
+      if(loops >= 1)
+      {
+         PTFI("}\n", 6);
+         PTFI("}\n", 3);
+      }
+   #else
+      PTFI("}\n", 3);
+   #endif
    PTFI("return false;\n", 3);
    PTF("}\n\n");
 }
@@ -469,38 +496,64 @@ static void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *ne
 static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
-   generateIteratorCode(left_edge->label, 3);
    PTFI("bool edge_matched = false;\n", 3);
-   PTFI("LabelClassTable *table = getEdgeLabelTable(host, mark, label_class);\n", 9);
-   PTFI("if(table == NULL) continue;\n", 9);
-   PTFI("int items_index;\n", 9);
-   PTFI("for(items_index = 0; items_index < table->index; items_index++)\n", 9);
-   PTFI("{\n", 9);
-   PTFI("int host_index = table->items[items_index];\n", 12);
-   PTFI("Edge *host_edge = getEdge(host, host_index);\n", 12);
-   PTFI("if(host_edge == NULL) continue;\n\n", 12);
-   PTFI("edge_matched = false;\n", 12);
-   PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", 12);
-   PTFI("int index;\n", 12);
-   PTFI("CHECK_MATCHED_EDGE;\n\n", 12);
-   PTFI("if(edge_matched) continue;\n\n", 12);
 
+   #ifdef LABEL_CLASS_INDEXING
+      /* Generates code to iterate over marks and/or label classes and call the
+       * function to get the label class table. It returns the number of for loops
+       * generated (0 - 2). */
+      int loops = generateIteratorCode(left_edge->label, false);
+      int indent = 3 * (loops + 2);
+
+      /* The table may not exist. If the generated code is not in a loop (i.e. if
+       * there is only one table being considered), return false, otherwise
+       * continue. */
+      if(loops == 0) PTFI("if(table == NULL) return false;\n", indent - 3);
+      else PTFI("if(table == NULL) continue;\n", indent - 3);
+      PTFI("for(items_index = 0; items_index < table->index; items_index++)\n", indent - 3);
+      PTFI("{\n", indent - 3);
+      PTFI("int host_index = table->items[items_index];\n", indent);
+   #else
+      PTFI("int host_index;\n", 3);
+      PTFI("for(host_index = 0; host_index < node_index; host_index++)\n", 3);
+      PTFI("{\n", 3);
+      int indent = 6;
+   #endif
+
+   /* Fixed code. The indentation is determined by generateIteratorCode, which 
+    * generates 0-2 for loops depending on the rule label. */
+   PTFI("Edge *host_edge = getEdge(host, host_index);\n", indent);
+   PTFI("if(host_edge == NULL) continue;\n\n", indent);
+   PTFI("edge_matched = false;\n", indent);
+   PTFI("/* Set edge_matched to true if the edge has already been matched. */\n", indent);
+   PTFI("int index;\n", indent);
+   PTFI("CHECK_MATCHED_EDGE;\n\n", indent);
+   PTFI("if(edge_matched) continue;\n\n", indent);
    PTFI(" /* Arguments: mark. */\n", 6);
    if(left_edge->source == left_edge->target) 
-        PTFI("if(host_edge->source != host_edge->target) continue;\n\n", 12);
+        PTFI("if(host_edge->source != host_edge->target) continue;\n\n", indent);
    else PTFI("if(edge_matched || ((%d != 6) && (host_edge->label.mark != %d))) "
              "continue;\n\n", 6, left_edge->label.mark, left_edge->label.mark);
 
-   PTFI("Label label = host_edge->label;\n", 12);
-   PTFI("bool match = false;\n", 12);
+   PTFI("Label label = host_edge->label;\n", indent);
+   PTFI("bool match = false;\n", indent);
    if(hasListVariable(left_edge->label))
-      generateVariableListMatchingCode(rule, left_edge->label, 12);
-   else generateFixedListMatchingCode(rule, left_edge->label, 12);
+      generateVariableListMatchingCode(rule, left_edge->label, indent);
+   else generateFixedListMatchingCode(rule, left_edge->label, indent);
+   generateEdgeMatchResultCode(left_edge->index, next_op, indent);
 
-   generateEdgeMatchResultCode(left_edge->index, next_op, 12);
-   PTFI("}\n", 9);
-   PTFI("}\n", 6);
-   PTFI("}\n", 3);
+   /* Close the for loops iterating over the label class table and the label
+    * class table array. */
+   #ifdef LABEL_CLASS_INDEXING
+      if(loops == 2) PTFI("}\n", 9);
+      if(loops >= 1)
+      {
+         PTFI("}\n", 6);
+         PTFI("}\n", 3);
+      }
+   #else
+      PTFI("}\n", 3);
+   #endif
    PTFI("return false;\n", 3);
    PTF("}\n\n");
 }

@@ -24,13 +24,6 @@
 #include "pretty.h"
 #include "seman.h" 
 
-#define DEBUG_PROGRAM
-/* Warning: for very large host graphs (in the order of 100,000 nodes + edges),
- * printing the host graph's AST causes stack overflow. Only switch this on
- * for small host graphs! */
-#undef DEBUG_HOST
-#undef PARSER_TRACE 	
-
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
  * determined by the first token it receives. If Bison receives GP_PROGRAM
  * then it will parse using the grammar for GP2 programs. If Bison receives

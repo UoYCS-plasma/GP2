@@ -140,7 +140,12 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
    int node_file_count = 0, edge_file_count = 0;
    PTFI("Graph *host = newGraph(%d, %d);\n\n", 3, host_node_size, host_edge_size);
-   PTFI("host->classes = true;\n", 3);
+
+   #ifdef LABEL_CLASS_INDEXING 
+      PTFI("host->classes = true;\n", 3);
+   #else
+      PTFI("host->classes = false;\n", 3);
+   #endif
 
    List *nodes = ast_host_graph->nodes;
    if(nodes == NULL) 

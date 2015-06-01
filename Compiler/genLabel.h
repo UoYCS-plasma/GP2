@@ -20,8 +20,9 @@
 extern FILE *file;
 
 /* Generates the appropriate for loops that iterate over the host graph's label class 
- * array to get candidate matches for rule nodes and rule edges. */
-void generateIteratorCode(Label label, int indent);
+ * array to get candidate matches for rule nodes and rule edges. Returns the number
+ * of loops generated. */
+int generateIteratorCode(Label label, bool node);
 
 /* Generates code to match a rule list not containing a list variable to a host graph list. */
 void generateFixedListMatchingCode(Rule *rule, Label label, int indent);
