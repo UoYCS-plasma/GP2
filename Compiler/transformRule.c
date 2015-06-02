@@ -117,7 +117,7 @@ static Atom *transformList(List *ast_list, int length, IndexMap *node_map);
 static Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map);
 static Condition *transformCondition(Rule *rule, GPCondition *ast_condition, 
                                      bool negated, IndexMap *node_map);
-static void scanPredicateAtom(Rule *rule, Atom atom, bool negated, Predicate *predicate);
+static void scanPredicateAtom(Rule *rule, Atom atom, Predicate *predicate);
 
 IndexMap *node_map = NULL;
 IndexMap *edge_map = NULL;
@@ -277,7 +277,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
                RuleNode *right_node = getRuleNode(rule->rhs, node_index);
                left_node->interface = right_node;
                right_node->interface = left_node;
-               if(equalRuleLabels(left_node->label, right_node->label))
+               if(equalLabels(left_node->label, right_node->label))
                   right_node->relabelled = false;
                else right_node->relabelled = true;
                break;
@@ -341,7 +341,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
             RuleEdge *right_edge = getRuleEdge(rule->rhs, edge_index);
             left_edge->interface = right_edge;
             right_edge->interface = left_edge;
-            if(equalRuleLabels(left_edge->label, right_edge->label))
+            if(equalLabels(left_edge->label, right_edge->label))
                right_edge->relabelled = false;
             else right_edge->relabelled = true;
             /* Remove the map for the LHS-edge, otherwise a parallel RHS-edge
@@ -535,9 +535,7 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
            condition->predicate = predicate;
            Variable *variable = getVariable(rule, ast_condition->var);
            assert(variable != NULL);
-           variable->predicates =  addPredicate(variable->predicates, predicate,
-                                                rule->predicate_count);
-           variable->predicate_count++;
+           addVariablePredicate(variable, predicate, rule->predicate_count);
            break;
 
       case EDGE_PRED:
@@ -556,10 +554,8 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
            condition->predicate = predicate;
            RuleNode *source = getRuleNode(rule->lhs, source_index);
            RuleNode *target = getRuleNode(rule->lhs, target_index);
-           source->predicates = addPredicate(source->predicates, predicate, rule->predicate_count);
-           source->predicate_count++;
-           target->predicates = addPredicate(target->predicates, predicate, rule->predicate_count);
-           target->predicate_count++;
+           addNodePredicate(source, predicate, rule->predicate_count);
+           addNodePredicate(target, predicate, rule->predicate_count);
            break;
       }
 
@@ -582,9 +578,9 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
            condition->predicate = predicate;
            int index;
            for(index = 0; index < left_length; index++) 
-              scanPredicateAtom(rule, left_list[index], negated, predicate);
+              scanPredicateAtom(rule, left_list[index], predicate);
            for(index = 0; index < right_length; index++) 
-              scanPredicateAtom(rule, right_list[index], negated, predicate);
+              scanPredicateAtom(rule, right_list[index], predicate);
            break;
 
       case GREATER:
@@ -598,8 +594,8 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
            predicate = makeAtomComp(bool_count++, negated, ast_condition->type,
                                     left_atom, right_atom);
            condition->predicate = predicate;
-           scanPredicateAtom(rule, left_atom, negated, predicate);
-           scanPredicateAtom(rule, right_atom, negated, predicate);
+           scanPredicateAtom(rule, left_atom, predicate);
+           scanPredicateAtom(rule, right_atom, predicate);
            break;;
       }
       case BOOL_NOT:
@@ -635,7 +631,7 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
 /* Searches labels in predicates for variables and degree operators in order to
  * update RuleNode and Variable structures with pointers to predicates in which
  * they participate. */
-static void scanPredicateAtom(Rule *rule, Atom atom, bool negated, Predicate *predicate)
+static void scanPredicateAtom(Rule *rule, Atom atom, Predicate *predicate)
 {
    switch(atom.type)
    {
@@ -644,18 +640,14 @@ static void scanPredicateAtom(Rule *rule, Atom atom, bool negated, Predicate *pr
       {
            Variable *variable = getVariable(rule, atom.variable.name);
            assert(variable != NULL);
-           variable->predicates =  addPredicate(variable->predicates, predicate,
-                                                rule->predicate_count);
-           variable->predicate_count++;
+           addVariablePredicate(variable, predicate, rule->predicate_count);
            break;
       }
       case INDEGREE:
       case OUTDEGREE:
       {
            RuleNode *node = getRuleNode(rule->lhs, atom.node_id);
-           node->predicates = addPredicate(node->predicates, predicate, 
-                                           rule->predicate_count);
-           node->predicate_count++;
+           addNodePredicate(node, predicate, rule->predicate_count);
            break;
       }
       case ADD:
@@ -663,8 +655,8 @@ static void scanPredicateAtom(Rule *rule, Atom atom, bool negated, Predicate *pr
       case MULTIPLY:
       case DIVIDE:
       case CONCAT:
-           scanPredicateAtom(rule, *(atom.bin_op.left_exp), negated, predicate);
-           scanPredicateAtom(rule, *(atom.bin_op.right_exp), negated, predicate);
+           scanPredicateAtom(rule, *(atom.bin_op.left_exp), predicate);
+           scanPredicateAtom(rule, *(atom.bin_op.right_exp),  predicate);
            break;
 
       default:

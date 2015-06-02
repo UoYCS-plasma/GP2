@@ -4,7 +4,7 @@ static void generateMatchingCode(Rule *rule);
 static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op);
 static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op);
 static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchOp *next_op);
-static void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, int indent);
+static void generateNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int indent);
 static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op);
 static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op);
 static void emitEdgeFromSourceMatcher(Rule *rule, RuleEdge *left_edge, bool initialise,
@@ -98,6 +98,7 @@ void generateRuleCode(Rule *rule, bool predicate)
        * The second iteration writes the function to evaluate the condition.
        * The third iteration writes the functions to evaluate the predicates. */
       generateConditionVariables(rule->condition);
+      PTF("\n");
       generateConditionEvaluator(rule->condition, false);
       generatePredicateEvaluators(rule, rule->condition);
    }
@@ -301,7 +302,7 @@ static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_
       generateVariableListMatchingCode(rule, left_node->label, 6);
    else generateFixedListMatchingCode(rule, left_node->label, 6);
 
-   generateNodeMatchResultCode(rule, left_node, next_op, 6);
+   generateNodeMatchResultCode(left_node, next_op, 6);
    PTFI("nodes = nodes->next;\n", 6);
    PTFI("}\n", 3);
    PTFI("return false;\n", 3);
@@ -362,7 +363,7 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    if(hasListVariable(left_node->label))
       generateVariableListMatchingCode(rule, left_node->label, indent);
    else generateFixedListMatchingCode(rule, left_node->label, indent);
-   generateNodeMatchResultCode(rule, left_node, next_op, indent);
+   generateNodeMatchResultCode(left_node, next_op, indent);
 
    /* Close the for loops iterating over the label class table and over the label
     * class table array. */
@@ -429,7 +430,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, 
       generateVariableListMatchingCode(rule, left_node->label, 3);
    else generateFixedListMatchingCode(rule, left_node->label, 3);
 
-   generateNodeMatchResultCode(rule, left_node, next_op, 3);
+   generateNodeMatchResultCode(left_node, next_op, 3);
    PTFI("return false;\n", 3);
    PTF("}\n\n");
 }
@@ -440,42 +441,49 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, 
  * array are updated, and matching continues. If not, any runtime boolean variables
  * modified by predicate evaluation are reset, and any assignments made during label
  * matching are undone. */
-static void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *next_op, int indent)
+static void generateNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int indent)
 {
    PTFI("if(match)\n", indent);
    PTFI("{\n", indent);
-   if(node->predicates != NULL)
-   {
-      PTFI("do\n", indent + 3);
-      PTFI("{\n", indent + 3);
-      PTFI("/* Update global bools for the node's predicates. */\n", indent + 6);
-      int index;
-      for(index = 0; index < node->predicate_count; index++)
-         PTFI("if(!evalPredicate%d()) break;", indent + 6, 
-              node->predicates[index]->bool_id);
-      PTFI("if(!evalCondition_%s());\n", indent + 6, rule->name);
-      PTFI("{\n", indent + 6);
-      PTFI("/* Reset the boolean variables in the predicates of this node. */\n", indent + 9);
-      for(index = 0; index < node->predicate_count; index++)
-      { 
-         Predicate *predicate = node->predicates[index];
-         if(predicate->negated) PTFI("b%d = false;\n", indent + 9, predicate->bool_id);
-         else PTFI("b%d = true;\n", indent + 9, predicate->bool_id);
-      }
-      PTFI("match = false;\n", indent + 9);
-      PTFI("}\n", indent + 6);
-      PTFI("} while(false);\n", indent + 3);
-      PTFI("}\n", indent);
-      PTFI("if(match)\n", indent);
-      PTFI("{\n", indent);
-   }
    PTFI("addNodeMap(morphism, %d, host_node->index, new_assignments);\n",
         indent + 3, node->index);
    PTFI("matched_nodes[%d] = host_node->index;\n", indent + 3, node->index);
+   if(node->predicates != NULL)
+   {
+      PTFI("/* Update global booleans representing the node's predicates. */\n", indent + 3);
+      int index;
+      for(index = 0; index < node->predicate_count; index++)
+         PTFI("evaluatePredicate%d(morphism);\n", indent + 3, 
+              node->predicates[index]->bool_id);
+      PTFI("}\n", indent);
+      PTFI("if(evaluateCondition())\n", indent);
+      PTFI("{\n", indent);
+   }
    if(next_op == NULL)
    {
       PTFI("/* All items matched! */\n", indent + 3);
       PTFI("return true;\n", indent + 3);
+      PTFI("}\n", indent);
+      if(node->predicates != NULL)
+      {
+         PTFI("else\n", indent);
+         PTFI("{\n", indent);  
+         if(node->predicates != NULL)
+         {
+            PTFI("/* Reset the boolean variables in the predicates of this node. */\n", 
+               indent + 3);
+            int index;
+            for(index = 0; index < node->predicate_count; index++)
+            { 
+               Predicate *predicate = node->predicates[index];
+               if(predicate->negated) PTFI("b%d = false;\n", indent + 3, predicate->bool_id);
+               else PTFI("b%d = true;\n", indent + 3, predicate->bool_id);
+            }
+         }
+         PTFI("removeNodeMap(morphism);\n", indent + 3);
+         PTFI("matched_nodes[%d] = -1;\n", indent + 3, node->index);  
+         PTFI("}\n", indent);
+      }
    }
    else
    {
@@ -483,13 +491,24 @@ static void generateNodeMatchResultCode(Rule *rule, RuleNode *node, SearchOp *ne
       emitNextMatcherCall(next_op, indent + 3);
       PTFI("if(result) return true;\n", indent + 3);           
       PTFI("else\n", indent + 3);
-      PTFI("{\n", indent + 3);                              
+      PTFI("{\n", indent + 3);  
+      if(node->predicates != NULL)
+      {
+         PTFI("/* Reset the boolean variables in the predicates of this node. */\n", 
+              indent + 6);
+         int index;
+         for(index = 0; index < node->predicate_count; index++)
+         { 
+            Predicate *predicate = node->predicates[index];
+            if(predicate->negated) PTFI("b%d = false;\n", indent + 6, predicate->bool_id);
+            else PTFI("b%d = true;\n", indent + 6, predicate->bool_id);
+         }
+      }
       PTFI("removeNodeMap(morphism);\n", indent + 6);
       PTFI("matched_nodes[%d] = -1;\n", indent + 6, node->index);  
       PTFI("}\n", indent + 3);
+      PTFI("}\n", indent);
    } 
-   PTFI("}\n", indent);
-   PTFI("else removeAssignments(morphism, new_assignments);\n", indent);
 }
 
 /* The rule edge is matched "in isolation", in that it is not incident to a

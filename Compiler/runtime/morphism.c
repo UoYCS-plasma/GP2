@@ -187,12 +187,22 @@ Assignment *lookupVariable(Morphism *morphism, string variable)
 
 int addListAssignment(string name, Atom *list, int length, Morphism *morphism) 
 {
+   /* Assign the minimum type to the assignment. */
+   GPType type = LIST_VAR;
+   if(length == 1)
+   {
+      assert(list[0].type == INTEGER_CONSTANT || list[0].type == STRING_CONSTANT);
+      if(list[0].type == INTEGER_CONSTANT) type = INTEGER_VAR;
+      else type = STRING_VAR;
+   }
+   /* Search the morphism for an assignment for the passed variable. */
    Assignment *assignment = lookupVariable(morphism, name);
    if(assignment == NULL) 
    {
-      addAssignment(morphism, name, LIST_VAR, length, list);
+      addAssignment(morphism, name, type, length, list);
       return 1;
    }
+   /* Compare the list in the assignment to the list passed to the function. */
    else
    {
       if(assignment->length != length) return -1;

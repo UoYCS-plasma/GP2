@@ -63,16 +63,16 @@ List *makeGPList(YYLTYPE location, ListType type);
 int getASTListLength(List *list);
 List *addASTDecl(ListType type, YYLTYPE location, 
 	         struct GPDeclaration *declaration, struct List *next);
-List *addASTCommand (YYLTYPE location, struct GPCommand *command, 
-                     struct List *next);
-List *addASTRule (YYLTYPE location, string rule_name, struct List *next);
-List *addASTVariableDecl (ListType type, YYLTYPE location, 
-                          struct List *variables, struct List *next);
-List *addASTVariable (YYLTYPE location, string variable_name, struct List *next);
-List *addASTNodeID (YYLTYPE location, string node_id, struct List *next);
-List *addASTNode (YYLTYPE location, struct GPNode *node, struct List *next);
-List *addASTEdge (YYLTYPE location, struct GPEdge *edge, struct List *next);
-List *addASTAtom (YYLTYPE location, struct GPAtom *atom, struct List *next);
+List *addASTCommand(YYLTYPE location, struct GPCommand *command, 
+                    struct List *next);
+List *addASTRule(YYLTYPE location, string rule_name, struct List *next);
+List *addASTVariableDecl(ListType type, YYLTYPE location, 
+                         struct List *variables, struct List *next);
+List *addASTVariable(YYLTYPE location, string variable_name, struct List *next);
+List *addASTNodeID(YYLTYPE location, string node_id, struct List *next);
+List *addASTNode(YYLTYPE location, struct GPNode *node, struct List *next);
+List *addASTEdge(YYLTYPE location, struct GPEdge *edge, struct List *next);
+List *addASTAtom(YYLTYPE location, struct GPAtom *atom, struct List *next);
 
 /* Definition of AST nodes for declarations. */
 typedef enum {MAIN_DECLARATION = 0, PROCEDURE_DECLARATION, RULE_DECLARATION} DeclType;

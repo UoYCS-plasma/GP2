@@ -65,12 +65,10 @@ typedef enum {EMPTY_L = 0, INT_L, STRING_L, LIST2_L, LIST3_L, LIST4_L,
 Label makeEmptyLabel(MarkType mark);
 Label makeHostLabel(MarkType mark, int length, Atom *list);
 
-/* Compares a LHS label with a RHS label of the same rule for syntactic equality. 
- * Used in rule generation to determine if an item is relabelled. */
-bool equalRuleLabels(Label left_label, Label right_label);
-/* Called by equalRuleLabels. Since left_atom is an atom in a LHS label, it must 
- * be a constant, a variable, a negated variable or a concatenated string. */
-bool equalRuleAtoms(Atom *left_atom, Atom *right_atom);
+/* Used to compare LHS labels with RHS labels to check if a node or edge is
+ * relabelled by the rule. Also used at runtime to evaluate conditions. */
+bool equalLabels(Label left_label, Label right_label);
+bool equalAtoms(Atom *left_atom, Atom *right_atom);
 
 /* Returns the label class of a host graph label. */
 LabelClass getLabelClass(Label label);

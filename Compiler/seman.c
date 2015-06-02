@@ -1014,16 +1014,10 @@ void gpListScan(List **gp_list, List *interface, string scope, string rule_name,
       iterator = iterator->next; 
    } 
    if(list_var_count > 1) print_error("Error (%s): More than one list variable "
-                                      "in LHS label.\n", rule_name);
-
-   if(string_var_count > 1) print_error("Error (%s): More than one string variable "
-                                        "in LHS string expression.\n", rule_name);
-
+                                      "in LHS list.\n", rule_name);
    if(lhs_not_simple) print_error("Error (%s): Non-simple expression in LHS "
-                                      "label. \n", rule_name);
-
-   if(list_var_count > 1 || string_var_count > 1 || lhs_not_simple) 
-      abort_compilation = true;
+                                  "label. \n", rule_name);
+   if(list_var_count > 1 || lhs_not_simple) abort_compilation = true;
    /* Reset variables. */
    list_var_count = 0;
    string_var_count = 0;
@@ -1061,25 +1055,25 @@ void atomScan(GPAtom *atom, List *interface, string scope, string rule_name,
            variableScan(atom, scope, rule_name, location, int_exp, string_exp, false);
            break;
 
-       case LENGTH:
-            if(string_exp) 
-            {
-               print_error("Error (%s): Length operator appears in string "
-                           "expression.\n", rule_name);
-               abort_compilation = true;
-            }
-            if(location == 'l') lhs_not_simple = true;
-            variableScan(atom, scope, rule_name, location, int_exp, string_exp, true);
-            break;
+      case LENGTH:
+           if(string_exp) 
+           {
+              print_error("Error (%s): Length operator appears in string "
+                          "expression.\n", rule_name);
+              abort_compilation = true;
+           }
+           if(location == 'l') lhs_not_simple = true;
+           variableScan(atom, scope, rule_name, location, int_exp, string_exp, true);
+           break;
 
       case INDEGREE:
       case OUTDEGREE:
       {
            if(string_exp) 
            {
-	      print_error("Error (%s): Degree operator appears in string "
+              print_error("Error (%s): Degree operator appears in string "
                           "expression.\n", rule_name);
-	      abort_compilation = true;
+              abort_compilation = true;
            }
            if(location == 'l') lhs_not_simple = true;
            /* If the degree operator is in a condition or a RHS-label, its argument 
@@ -1105,58 +1099,56 @@ void atomScan(GPAtom *atom, List *interface, string scope, string rule_name,
               }
            }
            break;
-       }
-       case NEG:
-            if(string_exp) 
-            {
-               print_error("Error (%s): Arithmetic operator appears in string "
-                           "expression.\n", rule_name);
-               abort_compilation = true;
-            }
-            atomScan(atom->neg_exp, interface, scope, rule_name, location, true, false);
-            break;
+      }
+      case NEG:
+           if(string_exp) 
+           {
+              print_error("Error (%s): Arithmetic operator appears in string "
+                          "expression.\n", rule_name);
+              abort_compilation = true;
+           }
+           atomScan(atom->neg_exp, interface, scope, rule_name, location, true, false);
+           break;
 
-       case ADD:
-       case SUBTRACT:
-       case MULTIPLY:
-       case DIVIDE:
-            if(string_exp) 
-            {
-               print_error("Error (%s): Arithmetic operator appears in string "
-                           "expression.\n", rule_name);
-               abort_compilation = true;
-            }
-            if(location == 'l') lhs_not_simple = true;
-            atomScan(atom->bin_op.left_exp, interface, scope, rule_name, 
-                     location, true, false);
-            atomScan(atom->bin_op.right_exp, interface, scope, rule_name,
-                     location, true, false);       
-            break;
+      case ADD:
+      case SUBTRACT:
+      case MULTIPLY:
+      case DIVIDE:
+           if(string_exp) 
+           {
+              print_error("Error (%s): Arithmetic operator appears in string "
+                          "expression.\n", rule_name);
+              abort_compilation = true;
+           }
+           if(location == 'l') lhs_not_simple = true;
+           atomScan(atom->bin_op.left_exp, interface, scope, rule_name, 
+                    location, true, false);
+           atomScan(atom->bin_op.right_exp, interface, scope, rule_name,
+                    location, true, false);       
+           break;
 
-       case CONCAT:     
-            if(int_exp) 
-            {
-               print_error("Error (%s): String operator appears in integer "
-                           "expression.\n", rule_name);
-               abort_compilation = true;
-            }
-            atomScan(atom->bin_op.left_exp, interface, scope, rule_name,
-                     location, false, true);
-            atomScan(atom->bin_op.right_exp, interface, scope, rule_name, 
-                     location, false, true); 
-	    if(string_var_count > 1) 
-            {
-	       print_error("Error (%s): More than one string variable in LHS "
-		           "string expression.\n", rule_name);
-	       string_var_count = 0;
-            }
-            break;
+      case CONCAT:     
+           if(int_exp) 
+           {
+              print_error("Error (%s): String operator appears in integer "
+                          "expression.\n", rule_name);
+              abort_compilation = true;
+           }
+           atomScan(atom->bin_op.left_exp, interface, scope, rule_name,
+                    location, false, true);
+           atomScan(atom->bin_op.right_exp, interface, scope, rule_name, 
+                    location, false, true); 
+           if(string_var_count > 1) 
+              print_error("Error (%s): More than one string variable in LHS "
+                          "string expression.\n", rule_name);
+           string_var_count = 0;
+           break;
 
-       default:
-            print_to_log("Error: Unexpected atom type %d at AST node %d.\n",
-		         atom->type, atom->id);
-            abort_compilation = true;
-            break;                
+      default:
+           print_to_log("Error: Unexpected atom type %d at AST node %d.\n",
+                        atom->type, atom->id);
+           abort_compilation = true;
+           break;                
     }
 }               
 

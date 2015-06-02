@@ -72,9 +72,9 @@ bool syntax_error = false;
 %token ROOT BIDIRECTIONAL	
 %token GP_PROGRAM GP_GRAPH						
 
-%left AND 		/* Lowest precedence level */
+%left OR 		/* Lowest precedence level */
+%left AND
 %left NOT
-%left OR
 %left '+' '-' 
 %left '*' '/'
 %left UMINUS		/* UMINUS represents unary '-' */

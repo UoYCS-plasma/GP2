@@ -168,11 +168,13 @@ Predicate *makeListComp(int bool_id, bool negated, ConditionType type,
 Predicate *makeAtomComp(int bool_id, bool negated, ConditionType type,
                         Atom left_atom, Atom right_atom);
 
-/* Adds the passed predicate pointer to the passed predicate pointer array.
- * Passing NULL as the argument will create a Predicate pointer array with <size>
- * elements. The <predicate_count> field of the rule should be passed as the
- * third argument. */
-Predicate **addPredicate(Predicate **predicates, Predicate *predicate, int size);
+/* Adds the passed predicate pointer to the predicate pointer array of the node
+ * or variable. If the pointer array does not exist, an array of size <size> is
+ * allocated. These functions also increment the node/variable's predicate count
+ * if the passed predicate is not already in the array. The <predicate_count>
+ * field of the rule should be passed as the third argument. */
+void addNodePredicate(RuleNode *node, Predicate *predicate, int size);
+void addVariablePredicate(Variable *variable, Predicate *predicate, int size);
 
 /* Rule Operations and Queries *
  * =========================== */

@@ -694,7 +694,7 @@ void printGraph(Graph *graph, FILE *file)
    for(index = 0; index < graph->edge_index; index++)
    {
       Edge *edge = getEdge(graph, index);
-      if(edge->index == 0) continue; 
+      if(edge->index == -1) continue; 
 
       /* Three edges per line */
       if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");

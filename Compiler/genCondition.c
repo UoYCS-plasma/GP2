@@ -38,9 +38,12 @@ void generateConditionVariables(Condition *condition)
 void generateConditionEvaluator(Condition *condition, bool nested)
 {
    static int bool_count = 0;
-   PTF("static bool evaluateCondition(void)\n");
-   PTF("{\n");
-   PTFI("return (", 3);
+   if(!nested)
+   {
+      PTF("static bool evaluateCondition(void)\n");
+      PTF("{\n");
+      PTFI("return (", 3);
+   }
    switch(condition->type)
    {
       case 'e':
@@ -72,8 +75,40 @@ void generateConditionEvaluator(Condition *condition, bool nested)
                         "type '%c'.\n", condition->type);
            break;
    }
-   PTF(");\n");
-   PTF("}\n\n");
+   if(!nested)
+   {
+      PTF(");\n");
+      PTF("}\n\n");
+   }
+}
+
+static bool labelIsIntegerExpression(Label label)
+{
+   if(label.length != 1) return false;
+   switch(label.list[0].type)
+   {
+      case INTEGER_CONSTANT:
+      case LENGTH:
+      case INDEGREE:
+      case OUTDEGREE:
+      case NEG:
+      case ADD:
+      case SUBTRACT:
+      case MULTIPLY:
+      case DIVIDE:
+           return true;
+
+      case VARIABLE:
+           if(label.list[0].variable.type == INTEGER_VAR) return true;
+           else return false;
+
+      case STRING_CONSTANT:
+      case CONCAT:
+           return false;
+
+      default: return false;
+   }
+   return false;
 }
 
 /* Writes a function that evaluates a predicate. The generated function checks
@@ -82,7 +117,7 @@ void generateConditionEvaluator(Condition *condition, bool nested)
  * and returns true. Otherwise, it returns false. */
 static void generatePredicateCode(Rule *rule, Predicate *predicate)
 {
-   PTF("static bool evaluatePredicate%d(void)\n", predicate->bool_id);
+   PTF("static void evaluatePredicate%d(Morphism *morphism)\n", predicate->bool_id);
    PTF("{\n");
    int index;
    /* Generate code for any nodes that participate in this predicate. */
@@ -96,8 +131,8 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
          if(node->predicates[p] == predicate)
          {
             PTFI("int n%d = lookupNode(morphism, %d);\n", 3, index, index);
-            PTFI("/* If the node is not yet matched by the morphism, return false. */\n", 3);
-            PTFI("if(n%d == -1) return false;\n\n", 3, index);
+            PTFI("/* If the node is not yet matched by the morphism, return. */\n", 3);
+            PTFI("if(n%d == -1) return;\n\n", 3, index);
             break;
          }
       }
@@ -115,8 +150,8 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
             string name = variable.name;
             PTFI("Assignment *assignment_%s = lookupVariable(morphism, \"%s\");\n",
                  3, name, name);
-            PTFI("/* If the variable is not yet assigned, return false. */\n", 3);
-            PTFI("if(assignment_%s == NULL) return false;\n", 3, name);
+            PTFI("/* If the variable is not yet assigned, return. */\n", 3);
+            PTFI("if(assignment_%s == NULL) return;\n", 3, name);
             switch(variable.type)
             {
                case INTEGER_VAR:
@@ -140,6 +175,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
                     break;
                   
                case LIST_VAR:
+                    PTF("\n");
                     break;
                
                default:
@@ -155,7 +191,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
    switch(predicate->type)
    {
       case INT_CHECK:
-           PTFI("if(assignment_%s->type == INT_VAR) b%d = true;\n", 3,
+           PTFI("if(assignment_%s->type == INTEGER_VAR) b%d = true;\n", 3,
                 predicate->variable, predicate->bool_id);
            PTFI("else b%d = false;\n", 3, predicate->bool_id);
            break;
@@ -197,8 +233,8 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
               /* bool "node" argument taken from the caller. 
                * Also add some argument to mark that this is coming from a predicate. */
               generateLabelEvaluationCode(*(predicate->edge_pred.label), false, 
-                                          list_count++, 0, 9);
-              PTFI("if(equalRuleLabels(label, edge->label))\n", 9);
+                                          list_count++, 1, 9);
+              PTFI("if(equalLabels(label, edge->label))\n", 9);
               PTFI("{\n", 9);
               PTFI("b%d = true;\n", 12, predicate->bool_id);
               PTFI("edge_found = true;\n", 12);
@@ -214,21 +250,39 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
               PTFI("break;\n", 9);
               PTFI("}\n", 6);
            }
-           PTFI("if(!edge_found) b%d = false;\n", 6, predicate->bool_id);
            PTFI("}\n", 3);
+           PTFI("if(!edge_found) b%d = false;\n", 3, predicate->bool_id);
            break;
       }
       case EQUAL:
       case NOT_EQUAL:
-           PTFI("Label left_label, right_label;\n", 3);
-           generateLabelEvaluationCode(predicate->list_comp.left_label, false, 
-                                       list_count++, 1, 3);
-           generateLabelEvaluationCode(predicate->list_comp.right_label, false, 
-                                       list_count++, 1, 3);
-           if(predicate->type == EQUAL) PTFI("if(equalHostLabels(label0, label1));\n", 3);
-           if(predicate->type == NOT_EQUAL) PTFI("if(equalHostLabels(label0, label1));\n", 3);
-           PTFI("b%d = true;\n", 6, predicate->bool_id);
-           
+      {
+           Label left_label = predicate->list_comp.left_label;
+           Label right_label = predicate->list_comp.right_label;
+           /* If the lists are integer constants, generate integer expressions
+            * and compare them. Otherwise, generate full lists for comparison. */
+           if(labelIsIntegerExpression(left_label) && labelIsIntegerExpression(right_label))
+           {
+              PTFI("if(", 3);
+              generateIntExpression(left_label.list[0], 1, false);
+              if(predicate->type == EQUAL) PTF(" == ");
+              if(predicate->type == NOT_EQUAL) PTF(" != ");
+              generateIntExpression(right_label.list[0], 1, false);
+              PTF(") b%d = true;\n", predicate->bool_id);
+              PTFI("else b%d = false;\n", 3, predicate->bool_id);
+           }
+           else
+           {
+              PTFI("Label left_label, right_label;\n", 3);
+              generateLabelEvaluationCode(left_label, false, list_count++, 2, 3);
+              generateLabelEvaluationCode(right_label, false, list_count++, 3, 3);
+              PTFI("if(", 3);
+              if(predicate->type == NOT_EQUAL) PTF("!");
+              PTF("equalLabels(left_label, right_label)) b%d = true;\n", predicate->bool_id);
+              PTFI("else b%d = false;\n", 3, predicate->bool_id);
+           }
+           break;
+      }
       case GREATER:
       case GREATER_EQUAL:
       case LESS:
@@ -241,13 +295,13 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            if(predicate->type == LESS_EQUAL) PTF(" <= ");
            generateIntExpression(predicate->atom_comp.right_atom, 1, false);
            PTF(") b%d = true;\n", predicate->bool_id);
+           PTFI("else b%d = false;\n", 3, predicate->bool_id);
 
       default:
            print_to_log("Error (generatePredicateCode): Unexpected type %d.\n", 
                         predicate->type);
            break;
    }
-   PTFI("return true;\n", 3);
    PTF("}\n\n");
 }
 

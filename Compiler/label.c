@@ -14,7 +14,7 @@ Label makeHostLabel(MarkType mark, int length, Atom *list)
    return label;
 }
 
-bool equalRuleLabels(Label left_label, Label right_label)
+bool equalLabels(Label left_label, Label right_label)
 {
    if(left_label.mark != right_label.mark) return false;
    if(left_label.length != right_label.length) return false;
@@ -24,12 +24,12 @@ bool equalRuleLabels(Label left_label, Label right_label)
    {
       Atom *left_atom = &(left_label.list[index]);
       Atom *right_atom = &(right_label.list[index]);
-      if(!equalRuleAtoms(left_atom, right_atom)) return false;
+      if(!equalAtoms(left_atom, right_atom)) return false;
    }
    return true;
 }
 
-bool equalRuleAtoms(Atom *left_atom, Atom *right_atom)
+bool equalAtoms(Atom *left_atom, Atom *right_atom)
 {
    if(left_atom->type != right_atom->type) return false;
    /* LHS labels are simple expressions; there are only a few cases to consider. */
@@ -45,19 +45,16 @@ bool equalRuleAtoms(Atom *left_atom, Atom *right_atom)
            return !strcmp(left_atom->string, right_atom->string);
 
       case NEG:
-           return !equalRuleAtoms(left_atom->neg_exp, right_atom->neg_exp);
+           return !equalAtoms(left_atom->neg_exp, right_atom->neg_exp);
 
       case CONCAT:
-           if(!equalRuleAtoms(left_atom->bin_op.left_exp, 
-                              right_atom->bin_op.left_exp)) return false;
-           if(!equalRuleAtoms(left_atom->bin_op.right_exp, 
-                              right_atom->bin_op.right_exp)) return false;
+           if(!equalAtoms(left_atom->bin_op.left_exp, 
+                          right_atom->bin_op.left_exp)) return false;
+           if(!equalAtoms(left_atom->bin_op.right_exp, 
+                          right_atom->bin_op.right_exp)) return false;
            return true;
 
-      default:
-           print_to_log("Error (equalRuleAtoms): Unexpected LHS atom type %d.\n",
-                        left_atom->type);
-           break;
+      default: break;
    }
    return false;
 }
@@ -340,7 +337,7 @@ void freeList(Atom *atom, int length)
    /* freeAtom called with false because these atoms are not individually
     * freed. The complete array is freed after the for loop. */
    for(index = 0; index < length; index++) freeAtom(&(atom[index]), false);
-   if(atom) free(atom);
+   if(atom != NULL) free(atom);
 }
 
 void freeAtom(Atom *atom, bool free_atom)
@@ -349,14 +346,14 @@ void freeAtom(Atom *atom, bool free_atom)
    switch(atom->type) 
    {
      case VARIABLE:
-          if(atom->variable.name) free(atom->variable.name);
+          if(atom->variable.name != NULL) free(atom->variable.name);
           break;
 
      case INTEGER_CONSTANT:
           break;
 
      case STRING_CONSTANT:
-          if(atom->string) free(atom->string);
+          if(atom->string != NULL) free(atom->string);
           break;
 
      case INDEGREE:
@@ -364,11 +361,11 @@ void freeAtom(Atom *atom, bool free_atom)
           break;
 
      case LENGTH:
-          if(atom->variable.name) free(atom->variable.name);
+          if(atom->variable.name != NULL) free(atom->variable.name);
           break;
 
      case NEG:
-          if(atom->neg_exp) freeAtom(atom->neg_exp, true);
+          if(atom->neg_exp != NULL) freeAtom(atom->neg_exp, true);
           break;
 
      case ADD:
@@ -376,8 +373,8 @@ void freeAtom(Atom *atom, bool free_atom)
      case MULTIPLY:
      case DIVIDE:
      case CONCAT:
-          if(atom->bin_op.left_exp) freeAtom(atom->bin_op.left_exp, true);
-          if(atom->bin_op.right_exp) freeAtom(atom->bin_op.right_exp, true);
+          if(atom->bin_op.left_exp != NULL) freeAtom(atom->bin_op.left_exp, true);
+          if(atom->bin_op.right_exp != NULL) freeAtom(atom->bin_op.right_exp, true);
           break;
 
      default: printf("Error (freeAtom): Unexpected atom type: %d\n", 

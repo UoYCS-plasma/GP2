@@ -124,8 +124,8 @@ int main(int argc, char **argv)
       else  
       {
          if(validate)
-              print_to_console("Program %s is invalid.\n", program_file);   
-         else print_to_console("Program is invalid. Build aborted.\n");     
+              print_to_console("Program %s is invalid.\n\n", program_file);   
+         else print_to_console("Program is invalid. Build aborted.\n\n");     
          fclose(yyin);
          if(gp_program) freeAST(gp_program); 
          closeLogFile();
@@ -150,11 +150,11 @@ int main(int argc, char **argv)
          generateRuntimeMain(gp_program);
       }
       if(!valid_program && validate)
-         print_to_console("Program %s is invalid.\n", program_file);   
+         print_to_console("Program %s is invalid.\n\n", program_file);   
       if(!valid_program && !validate)
-         print_to_console("Program is invalid. Build aborted.\n");   
+         print_to_console("Program is invalid. Build aborted.\n\n");   
       if(valid_program && validate)
-         print_to_console("Program %s is valid.\n", program_file);
+         print_to_console("Program %s is valid.\n\n", program_file);
    }
 
    /* Host graph code is generated in modes 0 and 2. */
@@ -178,11 +178,11 @@ int main(int argc, char **argv)
          generateHostGraphCode(ast_host_graph);
       }
       if(!valid_graph && validate)
-         print_to_console("Host graph %s is invalid.\n", host_file);   
+         print_to_console("Host graph %s is invalid.\n\n", host_file);   
       if(!valid_graph && !validate)
-         print_to_console("Host graph is invalid.\n");
+         print_to_console("Host graph is invalid.\n\n");
       if(valid_graph && validate)
-         print_to_console("Host graph %s is valid.\n", host_file);
+         print_to_console("Host graph %s is valid.\n\n", host_file);
    }
    /* If a host graph is already generated (checked by the existence of the
     * directory runtime/host), do nothing, otherwise generate code for the

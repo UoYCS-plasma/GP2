@@ -17,7 +17,7 @@
 #include "../label.h"
 
 /* Association list to represent variable-value mappings. The type of an 
- * assignment is the type of its value. This is either INT_VAR, STRING_VAR
+ * assignment is the type of its value. This is either INTEGER_VAR, STRING_VAR
  * or LIST_VAR. */
 typedef struct Assignment {
    string variable;

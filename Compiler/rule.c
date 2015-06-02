@@ -143,7 +143,7 @@ Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string v
    predicate->bool_id = bool_id;
    predicate->negated = negated;
    predicate->type = type;
-   predicate->variable = variable;
+   predicate->variable = strdup(variable);
    return predicate;
 }
    
@@ -208,31 +208,64 @@ Predicate *makeAtomComp(int bool_id, bool negated, ConditionType type,
    return predicate;
 }
 
-Predicate **addPredicate(Predicate **predicates, Predicate *predicate, int size)
+void addNodePredicate(RuleNode *node, Predicate *predicate, int size)
 {
-   if(predicates == NULL)
+   if(node->predicates == NULL)
    {
-      Predicate **new_predicates = calloc(size, sizeof(Predicate *));
-      if(new_predicates == NULL)
+      node->predicates = calloc(size, sizeof(Predicate *));
+      if(node->predicates == NULL)
       {
          print_to_log("Error (addPredicate): malloc failure.\n");
          exit(1);
       }
-      predicates[0] = predicate;
    }
-   else
+   bool predicate_exists = false;
+   int index;
+   for(index = 0; index < size; index++)
    {
-      int index;
-      for(index = 0; index < size; index++)
+      /* The passed predicate may already be in the predicates array. */
+      if(node->predicates[index] == predicate) 
       {
-         if(predicates[index] == NULL) 
-         {
-            predicates[index++] = predicate;
-            break;
-         }
+         predicate_exists = true;
+         break;
+      }
+      if(node->predicates[index] == NULL) 
+      {
+         node->predicates[index++] = predicate;
+         break;
       }
    }
-   return predicates;
+   if(!predicate_exists) node->predicate_count++;
+}
+
+void addVariablePredicate(Variable *variable, Predicate *predicate, int size)
+{
+   if(variable->predicates == NULL)
+   {
+      variable->predicates = calloc(size, sizeof(Predicate *));
+      if(variable->predicates == NULL)
+      {
+         print_to_log("Error (addPredicate): malloc failure.\n");
+         exit(1);
+      }
+   }
+   bool predicate_exists = false;
+   int index;
+   for(index = 0; index < size; index++)
+   {
+      /* The passed predicate may already be in the predicates array. */
+      if(variable->predicates[index] == predicate) 
+      {
+         predicate_exists = true;
+         break;
+      }
+      if(variable->predicates[index] == NULL) 
+      {
+         variable->predicates[index++] = predicate;
+         break;
+      }
+   }
+   if(!predicate_exists) variable->predicate_count++;
 }
 
 bool isPredicate(Rule *rule)
@@ -482,14 +515,18 @@ static void freePredicate(Predicate *predicate)
            break;
 
       case EDGE_PRED:
-           freeLabel(*(predicate->edge_pred.label));
-           free(predicate->edge_pred.label);
+           if(predicate->edge_pred.label != NULL)
+           {
+              freeLabel(*(predicate->edge_pred.label));
+              free(predicate->edge_pred.label);
+           }
            break;
 
       case EQUAL:
       case NOT_EQUAL:
            freeLabel(predicate->list_comp.left_label);
            freeLabel(predicate->list_comp.right_label);
+           break;
 
       case GREATER:
       case GREATER_EQUAL:
