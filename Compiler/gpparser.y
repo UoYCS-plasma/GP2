@@ -239,6 +239,7 @@ ComSeq: Command 			{ $$ = addASTCommand(@1, $1, NULL); }
 					    "meant to use a semicolon?"); }
 
 Command: Block 				/* default $$ = $1 */ 
+       | Block OR Block 	        { $$ = newASTOrStmt(@$, $1, $3); }
        | IF Block THEN Block      	{ $$ = newASTCondBranch(IF_STATEMENT, @$,
                                                $2, $4, newASTSkip(@$)); }
        | IF Block THEN Block ELSE Block { $$ = newASTCondBranch(IF_STATEMENT, @$,
@@ -266,7 +267,6 @@ Block: '(' ComSeq ')' 	                { $$ = newASTCommandSequence(@$, $2); }
      | error ')'  			{ $$ = NULL; }
      | SimpleCommand 			/* default $$ = $1 */ 
      | SimpleCommand '!'		{ $$ = newASTAlap(@$, $1); }
-     | Block OR Block 			{ $$ = newASTOrStmt(@$, $1, $3); }
      | SKIP				{ $$ = newASTSkip(@$); }
      | FAIL				{ $$ = newASTEmptyStatement(@$, FAIL_STATEMENT); }
      | BREAK				{ $$ = newASTEmptyStatement(@$, BREAK_STATEMENT); }
@@ -527,7 +527,7 @@ HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
  * messages to stderr and log_file. */
 void yyerror(const char *error_message)
 {
-   fprintf(stderr, "Error at '%s': %s\n\n", error_message);
+   fprintf(stderr, "Error at '%c': %s\n\n", yychar, error_message);
    fprintf(log_file, "%d.%d-%d.%d: Error at '%s': %s\n\n", 
            yylloc.first_line, yylloc.first_column, yylloc.last_line, 
            yylloc.last_column, yytext, error_message);

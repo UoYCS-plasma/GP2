@@ -39,7 +39,7 @@ void freeGraphStack(void);
  * from the graph, the data needed for the inverse operation (addNode) are the
  * node's root flag and the node's label. */
 typedef enum { ADDED_NODE = 0, ADDED_EDGE, REMOVED_NODE, REMOVED_EDGE, 
-	       RELABELLED_NODE, RELABELLED_EDGE } GraphChangeType; 
+	       RELABELLED_NODE, RELABELLED_EDGE, CHANGED_ROOT_NODE} GraphChangeType; 
 typedef struct GraphChange 
 {
    GraphChangeType type;
@@ -62,25 +62,25 @@ typedef struct GraphChange
 
       struct {
          int index;
-         bool change_flag;
          Label old_label;
       } relabelled_node, relabelled_edge;   
-   } data;
+
+      int changed_root_node_index;
+   };
 } GraphChange; 
 
 extern GraphChange *graph_change_stack;
 extern int graph_change_index;
 
-bool validGraphChangeStack(void);
 void pushAddedNode(int index);
 void pushAddedEdge(int index);
 void pushRemovedNode(bool root, Label label);
 void pushRemovedEdge(bool bidirectional, Label label, int source, int target);
-void pushRelabelledNode(int index, bool change_flag, Label old_label);
+void pushRelabelledNode(int index, Label old_label);
 void pushRelabelledEdge(int index, Label old_label);
+void pushChangedRootNode(int index);
 void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);
-void freeGraphChange(GraphChange change); 
 void freeGraphChangeStack(void);
 
 #endif /* INC_GRAPH_STACKS_H */

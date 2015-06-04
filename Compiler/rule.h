@@ -65,9 +65,11 @@ typedef struct RuleNode {
    int index; 
    /* Root flag - true if the node is rooted.
     * Relabelled flag - true if the node is relabelled by the rule.
+    * Root changed flag - true if the node's root status may be changed by
+    *                     the rule.
     * Degree flags - true if the node's indegree or outdegree is required
     *                by the rule during rule application. */
-   bool root, relabelled, indegree_arg, outdegree_arg;
+   bool root, relabelled, root_changed, indegree_arg, outdegree_arg;
    /* If the node is in the interface of the rule, this points to the
     * corresponding node in the other rule graph. Otherwise, it is NULL. */
    struct RuleNode *interface; 

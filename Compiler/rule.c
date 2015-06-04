@@ -68,6 +68,7 @@ int addRuleNode(RuleGraph *graph, bool root, Label label)
    graph->nodes[index].index = index;
    graph->nodes[index].root = root;
    graph->nodes[index].relabelled = true;
+   graph->nodes[index].root_changed = true;
    graph->nodes[index].indegree_arg = false;
    graph->nodes[index].outdegree_arg = false;
    graph->nodes[index].interface = NULL;

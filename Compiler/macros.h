@@ -1,56 +1,27 @@
 #ifndef INC_GEN_MACROS_H
 #define INC_GEN_MACROS_H
 
-#define MAKE_MATCHED_NODES_ARRAY                \
-   int count;                                   \
-   for(count = 0; count < left_nodes; count++)  \
-       matched_nodes[count] = -1;                
-
-#define MAKE_MATCHED_EDGES_ARRAY                \
-   for(count = 0; count < left_edges; count++)  \
-       matched_edges[count] = -1;                
-
-#define CHECK_MATCHED_NODE                         \
-   for(index = 0; index < left_nodes; index++)     \
-   {                                               \
-      if(matched_nodes[index] == host_node->index) \
-         node_matched = true;                      \
-   }                                               \
-      
-#define CHECK_MATCHED_EDGE                         \
-   for(index = 0; index < left_edges; index++)     \
-   {                                               \
-      if(matched_edges[index] == host_edge->index) \
-         edge_matched = true;                      \
-   }                                               \
-
 /* The host node does not match the rule node if:
- * (1) The marks differ and the rule node's mark is not ANY
- *     (ANY is equivalent to 6 in the enumerated type MarkType).
- * (2) The host node's indegree is strictly less than the rule node's indegree.
- * (3) The host node's outdegree is strictly less than the rule node's outdegree.
- * (4) The number of edges incident to the host node is strictly less than the
+ * (1) The host node's indegree is strictly less than the rule node's indegree.
+ * (2) The host node's outdegree is strictly less than the rule node's outdegree.
+ * (3) The number of edges incident to the host node is strictly less than the
  *     number of edges incident to the rule node. */
-#define IF_INVALID_NODE(nmark, indeg, outdeg, bideg)           \
-   if(node_matched ||                                          \
-      (host_node->label.mark != (nmark) && (nmark) != 6) ||    \
-      host_node->indegree < (indeg) ||                         \
-      host_node->outdegree < (outdeg) ||                       \
-      ((host_node->outdegree + host_node->indegree             \
-        - (indeg) - (outdeg) - (bideg)) < 0))                  \
+#define IF_INVALID_NODE(indeg, outdeg, bideg)          \
+   if(host_node->indegree < (indeg) ||                 \
+      host_node->outdegree < (outdeg) ||               \
+      ((host_node->outdegree + host_node->indegree     \
+        - (indeg) - (outdeg) - (bideg)) < 0))          \
 
-/* As above, but with the fourth condition made stricter:
- * (4) The number of edges incident to the host node is not equal to the 
+/* As above, but with a stricter third condition:
+ * (3) The number of edges incident to the host node is not equal to the 
  *     number of edges incident to the rule node. Indeed, if it is less,
  *     then standard matching is violated (above). If it is greater,
  *     then the dangling condition is violated. */
-#define IF_INVALID_DANGLING_NODE(nmark, indeg, outdeg, bideg)  \
-   if(node_matched ||                                          \
-      (host_node->label.mark != (nmark) && (nmark) != 6) ||    \
-      host_node->indegree < (indeg) ||                         \
-      host_node->outdegree < (outdeg) ||                       \
-      ((host_node->outdegree + host_node->indegree             \
-        - (indeg) - (outdeg) - (bideg)) != 0))                 \
+#define IF_INVALID_DANGLING_NODE(indeg, outdeg, bideg)  \
+   if(host_node->indegree < (indeg) ||                  \
+      host_node->outdegree < (outdeg) ||                \
+      ((host_node->outdegree + host_node->indegree      \
+        - (indeg) - (outdeg) - (bideg)) != 0))          \
 
 #define PROCESS_EDGE_MORPHISMS                                               \
    do {                                                                      \

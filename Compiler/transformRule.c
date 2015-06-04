@@ -279,7 +279,8 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
                right_node->interface = left_node;
                if(equalLabels(left_node->label, right_node->label))
                   right_node->relabelled = false;
-               else right_node->relabelled = true;
+               if(left_node->root == right_node->root)
+                  right_node->root_changed = false;
                break;
             }
             /* If the end of the interface is reached and the loop has not 

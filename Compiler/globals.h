@@ -12,12 +12,14 @@
 #define INC_GLOBALS_H
 
 /* Toggle tracing of the Bison parser. The trace is printed to stderr. */
-#undef PARSER_TRACE 	
+#undef PARSER_TRACE 
+
 /* Toggle debugging of the compiler through AST printing before and after 
  * static analysis, and through printing of the symbol table. The output files
  * are placed in the same directory as the input program with filenames
  * <program>_ast_1.dot, <program>_ast_2.dot, and <program>.tab. */
-#define DEBUG_PROGRAM
+#undef DEBUG_PROGRAM
+
 /* Toggle debugging of the host graph parser through AST printing. The 
  * output file is placed in the same directory as the host graph with the
  * name <graph>.dot.

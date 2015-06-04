@@ -37,6 +37,8 @@ compile-debug:	$(OBJECTS)
 		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-compile $(prog) $(host)
 
 clean:
+		if [ -e "gp2.log" ]; then rm gp2.log; fi
+		if [ -e "gp2.trace" ]; then rm gp2.trace; fi
 		cd runtime && make clean
 
 clean-obj:

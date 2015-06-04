@@ -236,6 +236,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
                blank_label = false;
             }
             fprintf(node_file, "   addNode(host, %d, label);\n", root);
+            node_count++;
             nodes = nodes->next;   
          }
          fprintf(node_file, "}\n");
@@ -249,7 +250,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
    {
       /* label is only declared if host_nodes <= BUFFER_SIZE. */
       if(host_nodes > BUFFER_SIZE) PTF("   Label label;\n\n");
-      int edge_count = host_nodes <= BUFFER_SIZE ? host_nodes : 0; 
+      int edge_count = host_edges <= BUFFER_SIZE ? host_edges : 0; 
       while(edges != NULL)
       {
         /* The nodes, assumed to be named n0, n1, ... are added to the host 
@@ -325,7 +326,10 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
                generateLabelCode(label, edge_count++, edge_file);
                blank_label = false;
             }
-            PTFI("addEdge(host, false, label, %d, %d,);\n", 3, source_index, target_index);
+            fprintf(edge_file, "   addEdge(host, false, label, %d, %d);\n",
+                    source_index, target_index);
+            edge_count++;
+            edges = edges->next;
          }
          fprintf(edge_file, "}\n");
          fclose(edge_file);
