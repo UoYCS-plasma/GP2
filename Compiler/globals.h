@@ -18,7 +18,7 @@
  * static analysis, and through printing of the symbol table. The output files
  * are placed in the same directory as the input program with filenames
  * <program>_ast_1.dot, <program>_ast_2.dot, and <program>.tab. */
-#undef DEBUG_PROGRAM
+#define DEBUG_PROGRAM
 
 /* Toggle debugging of the host graph parser through AST printing. The 
  * output file is placed in the same directory as the host graph with the

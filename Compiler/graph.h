@@ -65,15 +65,13 @@ Graph *newGraph(int nodes, int edges);
  * return their index in the graph. */
 int addNode(Graph *graph, bool root, Label label);
 void addRootNode(Graph *graph, int index);
-int addEdge(Graph *graph, bool bidirectional, Label label, int source_index, 
-            int target_index);
+int addEdge(Graph *graph, Label label, int source_index, int target_index);
 void removeNode(Graph *graph, int index, bool free_label);
 void removeRootNode(Graph *graph, int index);
 void removeEdge(Graph *graph, int index, bool free_label);
 void relabelNode(Graph *graph, int index, Label new_label, bool free_label);
 void changeRoot(Graph *graph, int index);
 void relabelEdge(Graph *graph, int index, Label new_label, bool free_label);
-void changeBidirectional(Graph *graph, int index);
 
 /* =========================
  * Node and Edge Definitions
@@ -90,21 +88,7 @@ typedef struct Node {
    
    /* The size of the out_edges and in_edges arrays respectively. */
    int out_pool_size, in_pool_size;
-
-   /* Bidirectional edges, and hence bidegrees, exist only in rule graphs.
-    * A bidirectional edge is internally represented as either a single outedge
-    * or a single inedge, but it contributes only to the node's bidegree. In
-    * other words, adding a bidirectional edge increments the bidegree but does
-    * not change the indegree or the outdegree.
-    *
-    * For host graphs, and for rule graphs with bidegree 0, the out(in)degree
-    * is the number of non-negative indices in the node's out(in)edge arrays.
-    * For rule graphs with bidegree > 0, the invariant is less strict, since 
-    * a bidirectional edge may lie in either the outedge array or the inedge
-    * array. All that can be said for certain is that the sum of the three
-    * degrees is the number of non-negative indices in all of the node's edge
-    * arrays. */
-   int outdegree, indegree, bidegree;
+   int outdegree, indegree;
 
    /* The index of the node in its label class table. Used to quickly remove
     * the entry from the potentially large table. */
@@ -120,7 +104,6 @@ typedef struct RootNodes {
 
 typedef struct Edge {
    int index;
-   bool bidirectional;
    Label label;
    int source, target;
    /* The index of the edge in its label class table. Used to quickly remove

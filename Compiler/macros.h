@@ -34,7 +34,7 @@
          if(record_changes)                                                  \
          {                                                                   \
             Edge *edge = getEdge(host, host_index);                          \
-            pushRemovedEdge(false, edge->label, edge->source, edge->target); \
+            pushRemovedEdge(edge->label, edge->source, edge->target);        \
          }                                                                   \
          removeEdge(host, host_index);                                       \
          continue;                                                           \
@@ -45,7 +45,7 @@
          if(record_changes)                                                  \
          {                                                                   \
             Edge *edge = getEdge(host, host_index);                          \
-            pushRelabelledEdge(host_index, false, edge->label);              \
+            pushRelabelledEdge(host_index, edge->label);                     \
          }                                                                   \
          relabelEdge(host, host_index, new_label, false);                    \
       }                                                                      \

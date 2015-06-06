@@ -344,8 +344,8 @@ void generateVariableListMatchingCode(Rule *rule, Label label, int indent)
       generateAtomMatchingCode(rule, atom, indent + 3);
       PTFI("host_list_position++;\n", indent + 3);
    }   
-   PTFI("/* The current host index marks the start of the list .\n", indent + 3);
-   PTFI(" * that is assigned to the list variable. */\n", indent + 3);
+   PTFI("/* The current host index marks the start of the list that is assigned\n", indent + 3);
+   PTFI(" * to the list variable. */\n", indent + 3);
    PTFI("int start_index = host_list_position;\n", indent + 3);
    PTFI("host_list_position = label.length - 1;\n", indent + 3);
 
@@ -637,6 +637,7 @@ void generateVariableResultCode(Rule *rule, string name, bool list_variable, int
 {
    PTFI("if(result >= 0)\n", indent);
    PTFI("{\n", indent);
+   PTFI("new_assignments += result;\n", indent + 3);
    Variable *variable = getVariable(rule, name);
    assert(variable != NULL);
    if(variable->predicates != NULL)
@@ -646,30 +647,22 @@ void generateVariableResultCode(Rule *rule, string name, bool list_variable, int
       for(index = 0; index < variable->predicate_count; index++)
          PTFI("evaluatePredicate%d(morphism);\n", indent + 3, 
               variable->predicates[index]->bool_id);
-      PTFI("}\n", indent);
-      PTFI("if(evaluateCondition())\n", indent);
-      PTFI("{\n", indent);
-   }
-   PTFI("new_assignments += result;\n", indent + 3);
-   if(list_variable) PTFI("match = true;\n", indent + 3);
-   PTFI("}\n", indent);
-   if(variable->predicates != NULL)
-   {
-      PTFI("else\n", indent); 
-      PTFI("{\n", indent);
-      int index;
+      PTFI("if(!evaluateCondition())\n", indent + 3);
+      PTFI("{\n", indent + 3);
       PTFI("/* Reset the boolean variables in the predicates of this variable. */\n", 
-           indent + 3);
+           indent + 6);
       for(index = 0; index < variable->predicate_count; index++)
       { 
          Predicate *predicate = variable->predicates[index];
-         if(predicate->negated) PTFI("b%d = false;\n", indent + 3, predicate->bool_id);
-         else PTFI("b%d = true;\n", indent + 3, predicate->bool_id);
+         if(predicate->negated) PTFI("b%d = false;\n", indent + 6, predicate->bool_id);
+         else PTFI("b%d = true;\n", indent + 6, predicate->bool_id);
       }
-      if(!list_variable) PTFI("break;\n", indent + 3);
-      PTFI("}\n", indent);
+      if(!list_variable) PTFI("break;\n", indent + 6);
+      PTFI("}\n", indent + 3);
    }
-   else if(!list_variable) PTFI("else break;\n", indent); 
+   if(list_variable) PTFI("match = true;\n", indent + 3);
+   PTFI("}\n", indent);
+   if(!list_variable) PTFI("else break;\n", indent); 
 }
 
 /* For each variable in the rule, code is generated to assign that variable's value

@@ -43,13 +43,6 @@ typedef struct Searchplan {
    SearchOp *last;
 } Searchplan;
 
-Searchplan *makeSearchplan(void);
-/* Appends the search operation (type, index) to the plan. The is_node flag
- * is inferred from the type. */
-void addSearchOp(Searchplan *plan, char type, int index);
-void printSearchplan(Searchplan *searchplan);
-void freeSearchplan(Searchplan *searchplan);
-
 /* generateSearchplan traverses a graph in order to create a searchplan
  * using the following algorithm:
  * (1) Walk the graph in a depth-first manner starting at the root nodes. 
@@ -64,9 +57,10 @@ void freeSearchplan(Searchplan *searchplan);
  *
  * The depth-first search is performed by recursive calls to traverseNode and
  * traverseEdge. These two functions are responsible for checking if items
- * are tagged, tagging items, and adding new operations to the searchplan. */     
-Searchplan *generateSearchplan(RuleGraph *lhs);
-void traverseNode(Searchplan *searchplan, RuleGraph *lhs, RuleNode *node, char type, int offset);
-void traverseEdge(Searchplan *searchplan, RuleGraph *lhs, RuleEdge *edge, char type, int offset);
+ * are tagged, tagging items, and adding new operations to the searchplan. */ 
 
+Searchplan *generateSearchplan(RuleGraph *lhs);
+
+void printSearchplan(Searchplan *searchplan);
+void freeSearchplan(Searchplan *searchplan);
 #endif /* INC_SEARCHPLAN_H */

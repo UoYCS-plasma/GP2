@@ -181,12 +181,11 @@ void pushRemovedNode(bool root, Label label)
    graph_change_stack[gci].removed_node.label = label;
 }
 
-void pushRemovedEdge(bool bidirectional, Label label, int source, int target)
+void pushRemovedEdge(Label label, int source, int target)
 {
    if(!validGraphChangeStack()) return;
    int gci = graph_change_index++; 
    graph_change_stack[gci].type = REMOVED_EDGE;
-   graph_change_stack[gci].removed_edge.bidirectional = bidirectional;
    graph_change_stack[gci].removed_edge.label = label;
    graph_change_stack[gci].removed_edge.source = source;
    graph_change_stack[gci].removed_edge.target = target;
@@ -239,8 +238,7 @@ void undoChanges(Graph *graph, int restore_point)
               break;
 
          case REMOVED_EDGE:
-              addEdge(graph, change.removed_edge.bidirectional,
-                      change.removed_edge.label, change.removed_edge.source, 
+              addEdge(graph, change.removed_edge.label, change.removed_edge.source, 
                       change.removed_edge.target);
               break; 
 

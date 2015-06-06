@@ -225,7 +225,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            PTFI("for(counter = 0; counter < source->out_index; counter++)\n", 3);
            PTFI("{\n", 3);
            PTFI("Edge *edge = getEdge(host, getOutEdge(source, counter));\n", 6);
-           PTFI("if(edge != NULL && edge->target == %d)\n", 6, target);
+           PTFI("if(edge != NULL && edge->target == n%d)\n", 6, target);
            if(predicate->edge_pred.label != NULL)
            { 
               PTFI("{\n", 6);

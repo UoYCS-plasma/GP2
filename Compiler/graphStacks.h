@@ -54,7 +54,6 @@ typedef struct GraphChange
       } removed_node;
 
       struct {
-         bool bidirectional;
          Label label;
          int source;
          int target;
@@ -75,7 +74,7 @@ extern int graph_change_index;
 void pushAddedNode(int index);
 void pushAddedEdge(int index);
 void pushRemovedNode(bool root, Label label);
-void pushRemovedEdge(bool bidirectional, Label label, int source, int target);
+void pushRemovedEdge(Label label, int source, int target);
 void pushRelabelledNode(int index, Label old_label);
 void pushRelabelledEdge(int index, Label old_label);
 void pushChangedRootNode(int index);

@@ -275,7 +275,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
             generateLabelCode(label, edge_count++, file);
             blank_label = false;
          }
-         PTFI("addEdge(host, false, label, %d, %d);\n", 3, source_index, target_index);
+         PTFI("addEdge(host, label, %d, %d);\n", 3, source_index, target_index);
          edges = edges->next;   
       }
    }
@@ -326,7 +326,7 @@ void generateHostGraphCode(GPGraph *ast_host_graph)
                generateLabelCode(label, edge_count++, edge_file);
                blank_label = false;
             }
-            fprintf(edge_file, "   addEdge(host, false, label, %d, %d);\n",
+            fprintf(edge_file, "   addEdge(host, label, %d, %d);\n",
                     source_index, target_index);
             edge_count++;
             edges = edges->next;

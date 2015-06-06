@@ -1,7 +1,7 @@
 #include "graph.h"
 
-Node dummy_node = {-1, false, {NONE, 0, NULL}, NULL, 0, NULL, 0, 0, 0, 0, 0, 0, -1};
-Edge dummy_edge = {-1, false, {NONE, 0, NULL}, -1, -1, -1};
+Node dummy_node = {-1, false, {NONE, 0, NULL}, NULL, 0, NULL, 0, 0, 0, 0, 0, -1};
+Edge dummy_edge = {-1, {NONE, 0, NULL}, -1, -1, -1};
 
 /* ===============
  * Graph Functions
@@ -132,8 +132,7 @@ void addRootNode(Graph *graph, int index)
    graph->root_nodes = root_node;
 }
 
-int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
-            int target_index) 
+int addEdge(Graph *graph,Label label, int source_index, int target_index) 
 {
    /* Get the index of the new edge by examining the free edge slots array.
     * A non-negative array element is the index of a hole in the graph's edge
@@ -178,7 +177,6 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
    }
 
    graph->edges[index].index = index;
-   graph->edges[index].bidirectional = bidirectional;
    graph->edges[index].source = source_index;
    graph->edges[index].target = target_index;
 
@@ -214,7 +212,7 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
          source->out_edges[count] = -1;
    }
    source->out_edges[source->out_index++] = index;
-   if(bidirectional) source->bidegree++; else source->outdegree++;
+   source->outdegree++;
 
    Node *target = getNode(graph, target_index);
    if(target->in_index >= target->in_pool_size)
@@ -235,7 +233,7 @@ int addEdge(Graph *graph, bool bidirectional, Label label, int source_index,
          target->in_edges[count] = -1;
    }
    target->in_edges[target->in_index++] = index;
-   if(bidirectional) target->bidegree++; else target->indegree++;
+   target->indegree++;
 
    graph->number_of_edges++;
    return index;
@@ -406,12 +404,6 @@ void relabelEdge(Graph *graph, int index, Label new_label, bool free_label)
    }
    if(free_label) freeLabel(edge->label); 
    edge->label = new_label;
-}
-
-void changeBidirectional(Graph *graph, int index)
-{
-   Edge *edge = getEdge(graph, index);
-   edge->bidirectional = !edge->bidirectional;
 }
 
 /* ===========================
@@ -698,8 +690,7 @@ void printGraph(Graph *graph, FILE *file)
 
       /* Three edges per line */
       if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
-      if(edge->bidirectional) PTF("(e%d(B), ", edge_count++);
-      else PTF("(e%d, ", edge_count++);
+      PTF("(e%d, ", edge_count++);
       PTF("n%d, n%d, ", output_indices[edge->source], output_indices[edge->target]);
       printLabel(edge->label, file);
       PTF(") ");

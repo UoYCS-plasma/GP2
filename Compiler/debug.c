@@ -268,8 +268,7 @@ void printVerboseNode(Node *node, FILE *file)
     PTF("Label: ");
     printLabel(node->label, file);
     PTF("\n");
-    PTF("Indegree: %d. Outdegree: %d. Bidegree: %d\n\n",
-        node->indegree, node->outdegree, node->bidegree);
+    PTF("Indegree: %d. Outdegree: %d.", node->indegree, node->outdegree);
     int index;
     PTF("Inedges: ");
     for(index = 0; index < node->in_pool_size; index++)
@@ -306,7 +305,6 @@ void printVerboseNode(Node *node, FILE *file)
 void printVerboseEdge(Edge *edge, FILE *file) 
 {
     PTF("Index: %d", edge->index);
-    if(edge->bidirectional) PTF(" (Bidirectional)");
     PTF("\n");
     PTF("Label: ");
     printLabel(edge->label, file);

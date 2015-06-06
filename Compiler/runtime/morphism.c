@@ -89,6 +89,7 @@ void initialiseMorphism(Morphism *morphism)
 
 void addNodeMap(Morphism *morphism, int left_index, int host_index, int variables)
 {
+   assert(morphism->node_map_index < morphism->nodes);
    morphism->node_map[morphism->node_map_index].left_index = left_index;
    morphism->node_map[morphism->node_map_index].host_index = host_index;
    morphism->node_map[morphism->node_map_index].variables = variables;
@@ -97,6 +98,7 @@ void addNodeMap(Morphism *morphism, int left_index, int host_index, int variable
 
 void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variables)
 {
+   assert(morphism->edge_map_index < morphism->edges);
    morphism->edge_map[morphism->edge_map_index].left_index = left_index;
    morphism->edge_map[morphism->edge_map_index].host_index = host_index;
    morphism->edge_map[morphism->edge_map_index].variables = variables;
@@ -106,6 +108,7 @@ void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variable
 void addAssignment(Morphism *morphism, string variable, GPType type, int length, 
                    Atom *value)
 {
+   assert(morphism->assignment_index < morphism->variables);
    morphism->assignment[morphism->assignment_index].variable = strdup(variable);
    morphism->assignment[morphism->assignment_index].type = type;
    morphism->assignment[morphism->assignment_index].length = length;
@@ -116,21 +119,19 @@ void addAssignment(Morphism *morphism, string variable, GPType type, int length,
 void removeNodeMap(Morphism *morphism)
 {
    morphism->node_map_index--;
-   Map node_map = morphism->node_map[morphism->node_map_index];
-   node_map.left_index = -1;
-   node_map.host_index = -1;
-   removeAssignments(morphism, node_map.variables);
-   node_map.variables = 0;
+   morphism->node_map[morphism->node_map_index].left_index = -1;
+   morphism->node_map[morphism->node_map_index].host_index = -1;
+   removeAssignments(morphism, morphism->node_map[morphism->node_map_index].variables);
+   morphism->node_map[morphism->node_map_index].variables = 0;
 }
 
 void removeEdgeMap(Morphism *morphism)
 {
    morphism->edge_map_index--;
-   Map edge_map = morphism->edge_map[morphism->edge_map_index];
-   edge_map.left_index = -1;
-   edge_map.host_index = -1;
-   removeAssignments(morphism, edge_map.variables);
-   edge_map.variables = 0;
+   morphism->edge_map[morphism->edge_map_index].left_index = -1;
+   morphism->edge_map[morphism->edge_map_index].host_index = -1;
+   removeAssignments(morphism, morphism->edge_map[morphism->edge_map_index].variables);
+   morphism->edge_map[morphism->edge_map_index].variables = 0;
 }
 
 void removeAssignments(Morphism *morphism, int number)

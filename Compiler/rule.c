@@ -271,7 +271,9 @@ void addVariablePredicate(Variable *variable, Predicate *predicate, int size)
 
 bool isPredicate(Rule *rule)
 {
-   if(rule->lhs == NULL && rule->rhs == NULL) return true;
+   if(rule->lhs == NULL) return rule->rhs == NULL;
+   else if(rule->rhs == NULL) return false;
+
    int index;
    /* Return false if the rule relabels or adds any items. The rule adds an
     * item if there exists an RHS item that is not in the interface.
