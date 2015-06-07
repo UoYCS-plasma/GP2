@@ -46,7 +46,6 @@ extern int parse_target;
   * constants. */
 %x IN_COMMENT	
 %x IN_STRING    
-%x IN_CHAR 
 
 %%
 
@@ -182,11 +181,9 @@ list		    return LIST;
   * also set to prevent semantic checking from starting. */
 [0-9]+[a-zA-Z_-][a-zA-Z0-9_]*  { print_to_console("Error (%s): Identifiers must "
      			              	"start with a letter.\n", yytext); 
-		                print_to_log("%d.%d-%d.%d: Invalid identifier: "
-				             "%s.\n",
+		                print_to_log("%d.%d-%d.%d: Invalid identifier: %s.\n",
 			                yylloc.first_line, yylloc.first_column,
-			                yylloc.last_line, yylloc.last_column,
-					yytext);
+			                yylloc.last_line, yylloc.last_column, yytext);
 			        return 0; }
 
 [ \t\r]+              /* ignore white space */

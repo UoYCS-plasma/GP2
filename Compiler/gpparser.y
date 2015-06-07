@@ -23,7 +23,7 @@
 /* Declarations of global variables placed at the bottom of parser.h. */ 
  %code provides {
 extern List *gp_program; 
-extern GPGraph *ast_host_graph; 
+extern int host_nodes, host_edges;
 extern int yylineno;
 extern string yytext;
 extern FILE *yyin;
@@ -43,7 +43,7 @@ bool is_bidir = false;
 
 /* Pointers to data structures constructed by the parser. */
 struct List *gp_program = NULL; 
-struct GPGraph *ast_host_graph = NULL;
+int host_nodes = 0, host_edges = 0;
 
 bool syntax_error = false;
 %}
@@ -100,19 +100,17 @@ bool syntax_error = false;
 } 
 
 %type <list> Program LocalDecls ComSeq RuleSetCall IDList VarDecls
-             VarList Inter NodeIDList NodeList HostNodeList EdgeList 
-             HostEdgeList List HostList
+             VarList Inter NodeIDList NodeList EdgeList List
 %type <decl> Declaration
 %type <command> MainDecl Command Block SimpleCommand 
 %type <proc> ProcDecl
 %type <rule> RuleDecl
-%type <graph> Graph HostGraph
-%type <node> Node HostNode
-%type <edge> Edge HostEdge
-/* %type <pos> Position */
+%type <graph> Graph 
+%type <node> Node
+%type <edge> Edge
 %type <cond_exp> CondDecl Condition 
-%type <label> LabelArg Label HostLabel
-%type <atom_exp> AtomExp HostExp
+%type <label> LabelArg Label
+%type <atom_exp> AtomExp
 %type <list_type> Type  
 %type <check_type> Subtype
 %type <id> NodeID EdgeID ProcID RuleID Variable
@@ -193,7 +191,7 @@ bool syntax_error = false;
 
 
 Initialise: GP_PROGRAM Program		{ gp_program = $2; }
-          | GP_GRAPH HostGraph          { ast_host_graph = $2; }
+          | GP_GRAPH HostGraph          { }
 
  /* Grammar for GP2 Program Text. */
 
@@ -474,52 +472,46 @@ Variable: ID		  		/* default $$ = $1 */
  * are used.
  */
 
-HostGraph: '[' '|' ']'  		{ $$ = newASTGraph(@$, NULL, NULL); }
-         | '[' Position '|' '|' ']'  	{ $$ = newASTGraph(@$, NULL, NULL); }
-         | '[' HostNodeList '|' ']'  	{ $$ = newASTGraph(@$, $2, NULL); }
+HostGraph: '[' '|' ']'  		{ }
+         | '[' Position '|' '|' ']'  	{ }
+         | '[' HostNodeList '|' ']'  	{ }
          | '[' Position '|' HostNodeList '|' ']' 
-	 				{ $$ = newASTGraph(@$, $4, NULL); }
+	 				{ }
          | '[' HostNodeList '|' HostEdgeList ']' 
-	 				{ $$ = newASTGraph(@$, $2, $4); }
+	 				{ }
          | '[' Position '|' HostNodeList '|' HostEdgeList ']' 
-     					{ $$ = newASTGraph(@$, $4, $6); }
+     					{ }
 
-HostNodeList: HostNode			{ $$ = addASTNode(@1, $1, NULL); }
-            | HostNodeList HostNode	{ $$ = addASTNode(@2, $2, $1); }
+HostNodeList: HostNode			{ host_nodes++; }
+            | HostNodeList HostNode	{ host_nodes++; }
 
 HostNode: '(' NodeID RootNode ',' HostLabel ')'
-    					{ $$ = newASTNode(@2, is_root, $2, $5); 
- 					  is_root = false; 	
-					  if($2) free($2); } 
+    					{ if($2) free($2); } 
 HostNode: '(' NodeID RootNode ',' HostLabel Position ')'
-    					{ $$ = newASTNode(@2, is_root, $2, $5); 
- 					  is_root = false; 	
-					  if($2) free($2); } 
+    					{ if($2) free($2); } 
 
-HostEdgeList: HostEdge			{ $$ = addASTEdge(@1, $1, NULL); }
-            | HostEdgeList HostEdge	{ $$ = addASTEdge(@2, $2, $1); } 
+HostEdgeList: HostEdge			{ host_edges++; }
+            | HostEdgeList HostEdge	{ host_edges++; } 
 
 HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
-					{ $$ = newASTEdge(@2, false, $2, $4, $6, $8);
-					  if($2) free($2); 
+					{ if($2) free($2); 
 					  if($4) free($4); 
                      			  if($6) free($6); }
 
-HostLabel: HostList			{ $$ = newASTLabel(@$, NONE, $1); }
-         | _EMPTY			{ $$ = newASTLabel(@$, NONE, NULL); }
-         | HostList '#' MARK	  	{ $$ = newASTLabel(@$, $3, $1); }
-         | _EMPTY '#' MARK	  	{ $$ = newASTLabel(@$, $3, NULL); }
+HostLabel: HostList			{ }
+         | _EMPTY			{ }
+         | HostList '#' MARK	  	{ }
+         | _EMPTY '#' MARK	  	{ }
 
-HostList: HostExp 			{ $$ = addASTAtom(@1, $1, NULL); } 
-        | HostList ':' HostExp 		{ $$ = addASTAtom(@3, $3, $1); }
+HostList: HostExp 			{ } 
+        | HostList ':' HostExp 		{ }
         /* The empty keyword in the middle of a list is a syntax error. */
-        | HostList ':' _EMPTY	        { $$ = $1;
-					  report_warning("Error: empty symbol in the "
+        | HostList ':' _EMPTY	        { report_warning("Error: empty symbol in the "
      					                 "middle of a list.\n"); }
 
-HostExp: NUM 				{ $$ = newASTNumber(@$, $1); }
-       | '-' NUM %prec UMINUS 	        { $$ = newASTNumber(@$, -($2)); } 
-       | STR 				{ $$ = newASTString(@$, $1); if($1) free($1); }
+HostExp: NUM 				{ }
+       | '-' NUM %prec UMINUS 	        { } 
+       | STR 				{ if($1) free($1); }
 
 %%
 

@@ -2,6 +2,11 @@
 
 Label blank_label = {NONE, 0, NULL};
 
+Atom *prependAtom(Atom *list, Atom atom)
+{
+   return NULL;
+}
+
 Label makeEmptyLabel(MarkType mark)
 {
    Label label = { .mark = mark, .length = 0, .list = NULL };

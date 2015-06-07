@@ -147,7 +147,28 @@ int main(int argc, char **argv)
          #ifdef DEBUG_PROGRAM
             printDotAST(gp_program, program_file, "_2");
          #endif
-         generateRuntimeMain(gp_program);
+
+         /* Set up and run the host graph parser to obtain the number of nodes
+          * and edges for code generation. The parser counts the nodes and edges
+          * and saves them in the global variables host_nodes and host_edges. */
+         if(!(yyin = fopen(host_file, "r"))) {  
+            perror(host_file);
+            return 1;
+         }
+         parse_target = GP_GRAPH;
+         bool valid_graph = yyparse() == 0;
+         if(valid_graph && !validate)
+         {
+            print_to_console("Host graph parse succeeded.\n");
+         }
+         if(!valid_graph && validate)
+            print_to_console("Host graph %s is invalid.\n\n", host_file);   
+         if(!valid_graph && !validate)
+            print_to_console("Host graph is invalid.\n\n");
+         if(valid_graph && validate)
+            print_to_console("Host graph %s is valid.\n\n", host_file);
+
+         generateRuntimeMain(gp_program, host_file, host_nodes, host_edges);
       }
       if(!valid_program && validate)
          print_to_console("Program %s is invalid.\n\n", program_file);   
@@ -156,11 +177,11 @@ int main(int argc, char **argv)
       if(valid_program && validate)
          print_to_console("Program %s is valid.\n\n", program_file);
    }
-
-   /* Host graph code is generated in modes 0 and 2. */
+   
+   /* Host graph code is generated in modes 0 and 2. 
    if(mode == 0 || mode == 2)
    {
-      /* Set up and run the host graph parser. */
+      * Set up and run the host graph parser. 
       if(!(yyin = fopen(host_file, "r"))) {  
          perror(host_file);
          return 1;
@@ -184,27 +205,26 @@ int main(int argc, char **argv)
       if(valid_graph && validate)
          print_to_console("Host graph %s is valid.\n\n", host_file);
    }
-   /* If a host graph is already generated (checked by the existence of the
+   * If a host graph is already generated (checked by the existence of the
     * directory runtime/host), do nothing, otherwise generate code for the
-    * empty host graph. */
+    * empty host graph. 
    if(mode == 1)
    {
-      /* UNIX-dependent code. */
+      * UNIX-dependent code. 
       DIR *dir = opendir("runtime/host");
-      /* Opendir succeeded: directory exists. */
+      * Opendir succeeded: directory exists. 
       if(dir != NULL) closedir(dir);
-      /* Directory does not exist. */
+      * Directory does not exist. 
       else if(errno == ENOENT) generateHostGraphCode(NULL); 
-      /* Opendir failed for another reason. */
+      * Opendir failed for another reason. 
       else
       {
          print_to_log("Error (main): opendir failure.\n");
          exit(1);
       }
-   }
+   } */
    fclose(yyin);
    if(gp_program) freeAST(gp_program); 
-   if(ast_host_graph) freeASTGraph(ast_host_graph); 
    closeLogFile();
    return 0;
 }

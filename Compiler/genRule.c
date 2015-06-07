@@ -79,11 +79,11 @@ void generateRuleCode(Rule *rule, bool predicate)
       exit(1);
    }
 
-   PTH("#include \"../globals.h\"\n"
-       "#include \"../graph.h\"\n"
-       "#include \"../graphStacks.h\"\n"
-       "#include \"../macros.h\"\n"
-       "#include \"host/host.h\"\n"
+   PTH("#include \"globals.h\"\n"
+       "#include \"graph.h\"\n"
+       "#include \"graphStacks.h\"\n"
+       "#include \"macros.h\"\n"
+       "#include \"hostParser.h\"\n"
        "#include \"morphism.h\"\n\n");
    PTF("#include \"%s.h\"\n\n", rule->name);
 

@@ -31,7 +31,7 @@
 /* Toggle label class indexing for host graphs. This sets a flag in the host
  * graph data structure and influences parts of the rule matching code
  * generator.*/
-#define LABEL_CLASS_INDEXING
+#undef LABEL_CLASS_INDEXING
 
 /* Convenience macros for the code generating modules that write to C header
  * and C source files. The source file pointer in each module is named "file"

@@ -57,6 +57,11 @@ Graph *newGraph(int nodes, int edges)
    graph->edge_index = 0;
    graph->number_of_nodes = 0;
    graph->number_of_edges = 0;
+   #ifdef LABEL_CLASS_INDEXING 
+      graph->classes = true;
+   #else
+      graph->classes = false;
+   #endif
    graph->node_classes = NULL;
    graph->edge_classes = NULL;
    graph->root_nodes = NULL;

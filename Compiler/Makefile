@@ -24,7 +24,8 @@ host:
 
 # Builds the executable GP2-compile.
 build:		$(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 	
+		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
+
 
 # Builds everything and runs valgrind on the runtime executable.
 debug:		$(OBJECTS)	

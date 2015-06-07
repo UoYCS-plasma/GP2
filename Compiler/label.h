@@ -65,6 +65,8 @@ typedef enum {EMPTY_L = 0, INT_L, STRING_L, LIST2_L, LIST3_L, LIST4_L,
 Label makeEmptyLabel(MarkType mark);
 Label makeHostLabel(MarkType mark, int length, Atom *list);
 
+Atom *prependAtom(Atom *list, Atom atom);
+
 /* Used to compare LHS labels with RHS labels to check if a node or edge is
  * relabelled by the rule. Also used at runtime to evaluate conditions. */
 bool equalLabels(Label left_label, Label right_label);

@@ -46,6 +46,28 @@ typedef enum {MAIN_BODY, IF_BODY, TRY_BODY, LOOP_BODY} ContextType;
    int indent;
 } CommandData;
 
+/* If the host graph contains fewer than MIN_HOST_NODE_SIZE nodes, the host
+ * graph is allocated memory for that number of nodes. Similarly for edges. */
+#define MIN_HOST_NODE_SIZE 128
+#define MIN_HOST_EDGE_SIZE 128
+
+/* Generates an appropriate initial node/edge array size for a graph. 
+ * Returns the maximum of minimum_size and the smallest power of 2 greater 
+ * than the number_of_items in the passed graph. number_of_items is obtained
+ * from a call to countNodes or countEdges. */
+static int getArraySize(int number_of_items, int minimum_size)
+{
+   if(number_of_items < minimum_size) return minimum_size;
+   if(number_of_items == 0) return 0;
+   /* Return the smallest power of 2 greater than number_of_items. */
+   number_of_items--;
+   number_of_items |= number_of_items >> 1;
+   number_of_items |= number_of_items >> 2;
+   number_of_items |= number_of_items >> 4;
+   number_of_items |= number_of_items >> 8;
+   number_of_items |= number_of_items >> 16;
+   return number_of_items + 1;
+}
 
 static void generateMorphismCode(List *declarations, char type);
 static void generateProgramCode(GPCommand *command, CommandData data);
@@ -55,7 +77,8 @@ static void generateBranchStatement(GPCommand *command, CommandData data);
 static void generateLoopStatement(GPCommand *command, CommandData data);
 static void generateFailureCode(string rule_name, CommandData data);
 
-void generateRuntimeMain(List *declarations)
+void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
+                         int host_edges)
 {
    file = fopen("runtime/main.c", "w");
    if(file == NULL) { 
@@ -64,22 +87,65 @@ void generateRuntimeMain(List *declarations)
    }
 
    PTF("#include <time.h>\n");
-   PTF("#include \"../error.h\"\n");
-   PTF("#include \"../debug.h\"\n");
-   PTF("#include \"../graph.h\"\n");
-   PTF("#include \"../graphStacks.h\"\n");
-   PTF("#include \"buildHost.h\"\n");
-   PTF("#include \"host/host.h\"\n");
+   PTF("#include \"error.h\"\n");
+   PTF("#include \"debug.h\"\n");
+   PTF("#include \"graph.h\"\n");
+   PTF("#include \"graphStacks.h\"\n");
+   PTF("#include \"hostParser.h\"\n");
    PTF("#include \"morphism.h\"\n\n");
 
    /* Declare the global morphism variables for each rule. */
    generateMorphismCode(declarations, 'd');
 
    /* Declare the runtime global variables and functions. */
+   generateMorphismCode(declarations, 'f');
+
+   PTF("static void garbageCollect(void)\n");
+   PTF("{\n");
+   PTF("   freeGraph(host);\n");
+   PTF("   freeMorphisms();\n");
+   PTF("   freeGraphStack();\n");
+   PTF("   freeGraphChangeStack();\n");
+   #if defined GRAPH_TRACE || defined RULE_TRACE || defined BACKTRACK_TRACE
+      PTF("   closeTraceFile();\n");
+   #endif
+   PTF("}\n\n");
+
    PTF("Graph *host = NULL;\n");
+   PTF("int *node_map = NULL;\n\n");
+
+   PTF("static Graph *buildHostGraph(void)\n");
+   PTF("{\n");
+   PTFI("yyin = fopen(\"../%s\", \"r\");\n", 3, host_file);
+   PTFI("if(yyin == NULL)\n", 3);
+   PTFI("{\n", 3);
+   PTFI("perror(\"../%s\");\n", 6, host_file);
+   PTFI("return NULL;\n", 6);
+   PTFI("}\n\n", 3);
+
+   int host_node_size = getArraySize(host_nodes, MIN_HOST_NODE_SIZE);
+   int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
+   PTFI("host = newGraph(%d, %d);\n", 3, host_node_size, host_edge_size);
+   PTFI("node_map = calloc(%d, sizeof(int));\n", 3, host_node_size);
+   PTFI("if(node_map == NULL)\n", 3);
+   PTFI("{\n", 3);
+   PTFI("freeGraph(host);\n", 6);
+   PTFI("return NULL;\n", 6);
+   PTFI("}\n", 3);
+   PTFI("/* The parser populates the host graph using node_map to add edges with\n", 3);
+   PTFI(" * the correct source and target indices. */\n", 3);
+   PTFI("int result = yyparse();\n", 3);
+   PTFI("free(node_map);\n", 3);
+   PTFI("fclose(yyin);\n", 3);
+   PTFI("if(result == 0) return host;\n", 3);
+   PTFI("else\n", 3);
+   PTFI("{\n", 3);
+   PTFI("freeGraph(host);\n", 6);
+   PTFI("return NULL;\n", 6);
+   PTFI("}\n", 3);
+   PTF("}\n\n");
+   
    PTF("bool success = true;\n\n");
-   PTF("static void garbageCollect(void);\n");
-   PTF("static void freeMorphisms(void);\n\n");
 
    /* Open the runtime's main function and set up the execution environment. */
    PTF("int main(void)\n{\n");
@@ -89,7 +155,12 @@ void generateRuntimeMain(List *declarations)
       PTFI("openTraceFile(\"../gp2.trace\");\n", 3);
    #endif
 
-   PTFI("host = buildHostGraph();\n\n", 3);
+   PTFI("host = buildHostGraph();\n", 3);
+   PTFI("if(host == NULL)\n", 3);
+   PTFI("{\n", 3);
+   PTFI("fprintf(stderr, \"Error parsing host graph file. Execution aborted.\\n\");\n", 6);
+   PTFI("return 0;\n", 6);
+   PTFI("}\n", 3);
 
    #ifdef GRAPH_TRACE
       PTFI("print_trace(\"Start Graph: \\n\");\n", 3);
@@ -111,26 +182,12 @@ void generateRuntimeMain(List *declarations)
       }
       iterator = iterator->next;
    }
-
-   /* Print the clean-up phase, including the garbage collection functions. */
    PTF("   /* Output Graph. */\n");
+   /* TODO: Print output graph to an output file. */
    PTF("   printGraph(host, stdout);\n");
    PTF("   garbageCollect();\n");
    PTF("   return 0;\n");
    PTF("}\n\n");
-
-   PTF("void garbageCollect(void)\n");
-   PTF("{\n");
-   PTF("   freeGraph(host);\n");
-   PTF("   freeMorphisms();\n");
-   PTF("   freeGraphStack();\n");
-   PTF("   freeGraphChangeStack();\n");
-   #if defined GRAPH_TRACE || defined RULE_TRACE || defined BACKTRACK_TRACE
-      PTF("   closeTraceFile();\n");
-   #endif
-   PTF("}\n\n");
-
-   generateMorphismCode(declarations, 'f');
    fclose(file);
 }
 
@@ -153,7 +210,7 @@ void generateRuntimeMain(List *declarations)
 static void generateMorphismCode(List *declarations, char type)
 {
    assert(type == 'm' || type == 'f' || type == 'd');
-   if(type == 'f') PTF("void freeMorphisms(void)\n{\n");
+   if(type == 'f') PTF("static void freeMorphisms(void)\n{\n");
    while(declarations != NULL)
    {
       GPDeclaration *decl = declarations->declaration;
@@ -191,7 +248,7 @@ static void generateMorphismCode(List *declarations, char type)
       declarations = declarations->next;
    }
    if(type == 'd' || type == 'm') PTF("\n");
-   else PTF("}\n");
+   else PTF("}\n\n");
 }
 
 
