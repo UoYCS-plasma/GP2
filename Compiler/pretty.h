@@ -251,11 +251,9 @@
 void printSymbolTable(GHashTable *table, string program_name);
 void printSymbolList(gpointer key, gpointer , gpointer user_data);
 
-/* Creates the file <file_name><suffix>.dot to which is printed a DOT
- * representation of the passed AST for visualisation. printDotAST is initially
- * called to print the program AST, while printASTGraph is called to print the 
- * host graph AST. */
-void printDotAST(List *const gp_ast, string file_name, string suffix);
+/* Creates the file <file_name>.dot to which is printed a DOT representation 
+ * of the passed AST for visualisation. */
+void printDotAST(List *const gp_ast, string file_name);
 
 /* AST nodes for rules and procedures can have more than one parent node.
  * To avoid these nodes being printed twice, their printing functions only
@@ -269,7 +267,6 @@ void printDotAST(List *const gp_ast, string file_name, string suffix);
  * nodes have ID 0 which results in the correct printing of the AST. */
 void resetRuleAndProcedureIds(List *list);
 
-void printDotHostGraph(GPGraph *const host_graph_ast, string file_name);
 void printASTList(List * const list, FILE *dot_file);
 void printASTDeclaration(GPDeclaration * const decl, FILE *dot_file);
 void printASTCommand(GPCommand * const stmt, FILE *dot_file);

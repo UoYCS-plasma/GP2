@@ -5,15 +5,21 @@ LOBJECTS = ../debug.o ../error.o ../label.o ../graph.o ../graphStacks.o ../rule.
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
 CC = gcc 
-CFLAGS = -I .. -g -pg -O0 -Wall -Wextra  
+CFLAGS = -I .. -g -O0 -Wall -Wextra  
 #CFLAGS = -I .. -O2 -fomit-frame-pointer -Wall -Wextra 
-LFLAGS = -pg -lglib-2.0
+LFLAGS = -lglib-2.0
 
 default:	$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-run 		
 
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<
+
+hostParser.c:	../hostparser.y
+		bison ../hostparser.y
+
+hostLexer.c:	../hostlexer.lex
+		flex -o runtime/hostLexer.c hostlexer.lex
 
 # Delete all files except Makefile, morphism*, and the parsing files. 
 clean:		

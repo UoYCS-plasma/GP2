@@ -58,7 +58,6 @@ typedef enum {MAIN_BODY, IF_BODY, TRY_BODY, LOOP_BODY} ContextType;
 static int getArraySize(int number_of_items, int minimum_size)
 {
    if(number_of_items < minimum_size) return minimum_size;
-   if(number_of_items == 0) return 0;
    /* Return the smallest power of 2 greater than number_of_items. */
    number_of_items--;
    number_of_items |= number_of_items >> 1;
@@ -116,13 +115,18 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
 
    PTF("static Graph *buildHostGraph(void)\n");
    PTF("{\n");
+   if(host_file == NULL)
+   {
+      PTFI("return newGraph(%d, %d);\n", 3, MIN_HOST_NODE_SIZE, MIN_HOST_EDGE_SIZE);
+      PTF("}\n\n");
+      return;
+   }
    PTFI("yyin = fopen(\"../%s\", \"r\");\n", 3, host_file);
    PTFI("if(yyin == NULL)\n", 3);
    PTFI("{\n", 3);
    PTFI("perror(\"../%s\");\n", 6, host_file);
    PTFI("return NULL;\n", 6);
    PTFI("}\n\n", 3);
-
    int host_node_size = getArraySize(host_nodes, MIN_HOST_NODE_SIZE);
    int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
    PTFI("host = newGraph(%d, %d);\n", 3, host_node_size, host_edge_size);

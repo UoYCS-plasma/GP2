@@ -22,11 +22,11 @@ This creates the executable GP2-compile which is called in one of three ways:
 
 > ./GP2-compile /path/to/program-file /path/to/host-graph-file
 
-> ./GP2-compile -p /path/to/program-file
+> ./GP2-compile -vp /path/to/program-file
 
-> ./GP2-compile -h /path/to/host-graph-file
+> ./GP2-compile -vh /path/to/host-graph-file
 
-The latter two options allow the user to compile a new program while retaining a previously-built host graph, or to compile a new host graph without destroying an existing program.
+The latter two options allow the user to run only the parser and semantic checker on the program or host graph file without calling the code generator. 
 
 Running
 

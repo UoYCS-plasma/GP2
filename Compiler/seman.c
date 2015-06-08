@@ -2,7 +2,7 @@
 
 GHashTable *symbol_table = NULL; 
 
-bool analyseProgram(List *gp_program, bool debug, string program_name)
+bool analyseProgram(List *gp_program, bool debug, string program_file)
 {
   /* Create a new GHashTable with strings as keys.
    * g_str_hash is glib's default string hashing function.
@@ -17,15 +17,11 @@ bool analyseProgram(List *gp_program, bool debug, string program_name)
    bool abort = declarationScan(gp_program, "Main");
    if(abort) return false;
    abort = semanticCheck(gp_program, "Main");
-   if(debug) 
+   if(debug) printSymbolTable(symbol_table, program_file);
+   if(symbol_table != NULL) 
    {
-      printDotAST(gp_program, program_name, "_1");
-      printSymbolTable(symbol_table, program_name);
-   }
-   if(symbol_table) 
-   {
-     g_hash_table_foreach(symbol_table, freeSymbolList, NULL);
-     g_hash_table_destroy(symbol_table); 
+      g_hash_table_foreach(symbol_table, freeSymbolList, NULL);
+      g_hash_table_destroy(symbol_table); 
    }
    return abort;
 }

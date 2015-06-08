@@ -193,8 +193,7 @@ bool syntax_error = false;
 Initialise: GP_PROGRAM Program		{ gp_program = $2; }
           | GP_GRAPH HostGraph          { }
 
- /* Grammar for GP2 Program Text. */
-
+ /* Grammar for GP 2 program text. */
 Program: Declaration	      		{ $$ = addASTDecl(GLOBAL_DECLARATIONS, 
                                                @1, $1, NULL); }  
        | Program Declaration            { $$ = addASTDecl(GLOBAL_DECLARATIONS, 
@@ -295,8 +294,7 @@ IDList: RuleID				{ $$ = addASTRule(@1, $1, NULL);
 					  if($3) free($3); }
 
 
- /* Grammar for GP2 Rule Definitions. */
-
+ /* Grammar for rules. */
 RuleDecl: RuleID '(' VarDecls ')' Graph ARROW Graph Inter CondDecl  
 					{ $$ = newASTRule(@1, $1, $3, $5, $7, $8, $9); 
 					  if($1) free($1); }
@@ -355,8 +353,7 @@ Type: INT				{ $$ = INT_DECLARATIONS; }
     | LIST				{ $$ = LIST_DECLARATIONS; }
 
 
- /* Grammar for GP2 Graph Definitions. */
-
+ /* Grammar for rule graphs. */
 Graph: '[' '|' ']'			 { $$ = newASTGraph(@$, NULL, NULL); }
      | '[' Position '|' '|' ']'	         { $$ = newASTGraph(@$, NULL, NULL); }
      | '[' NodeList '|' ']'		 { $$ = newASTGraph(@$, $2, NULL); }
@@ -393,8 +390,7 @@ Bidirection: /* empty */
 	   | BIDIRECTIONAL		{ is_bidir = true; }
 
 
- /* Grammar for GP2 Conditions. */
-
+ /* Grammar for conditions. */
 CondDecl: /* empty */                   { $$ = NULL; }
         | WHERE Condition		{ $$ = $2; }
 
@@ -422,8 +418,7 @@ Subtype: INT				{ $$ = INT_CHECK; }
 LabelArg: /* empty */ 			{ $$ = NULL; }
  	| ',' Label 			{ $$ = $2; }
 
- /* Grammar for GP2 Labels */
-
+ /* Grammar for labels */
 Label: List				{ $$ = newASTLabel(@$, NONE, $1); }
      | _EMPTY				{ $$ = newASTLabel(@$, NONE, NULL); }
      | List '#' MARK	  		{ $$ = newASTLabel(@$, $3, $1); }
@@ -439,7 +434,6 @@ List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); }
     | List ':' _EMPTY			{ $$ = $1;
     					  report_warning("Empty symbol in the "
      					                 "middle of a list.\n"); }
-
 
 AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
        | NUM 				{ $$ = newASTNumber(@$, $1); }
@@ -457,21 +451,16 @@ AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
        | AtomExp '/' AtomExp 		{ $$ = newASTBinaryOp(DIVIDE, @$, $1, $3); }
        | AtomExp '.' AtomExp 		{ $$ = newASTConcat(@$, $1, $3); }
 
- /* GP2 Identifiers */
-
+ /* GP 2 identifiers */
 ProcID: PROCID 				/* default $$ = $1 */ 
 RuleID: ID		         	/* default $$ = $1 */ 
 NodeID: ID				/* default $$ = $1 */ 
 EdgeID: ID				/* default $$ = $1 */ 
 Variable: ID		  		/* default $$ = $1 */ 
 
-/* Grammar for host graphs. This is identical in structure to the grammar for
- * graphs in the main syntax, but host graphs come with a name and their labels
- * must only contain constant values. The 'C' before various nonterminal 
- * symbols stands for 'Constant'. The Position and RootNode rules from above
- * are used.
- */
 
+/* Grammar for host graphs. It is used to syntax check the host graph file 
+ * and to count the number of nodes and edges in the host graph. */
 HostGraph: '[' '|' ']'  		{ }
          | '[' Position '|' '|' ']'  	{ }
          | '[' HostNodeList '|' ']'  	{ }

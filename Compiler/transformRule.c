@@ -113,7 +113,7 @@ static void initialiseVariableList(Rule *rule, List *declarations);
  * degree of a node is needed by label updating in rule application. */
 static void scanRHSAtom(Rule *rule, bool relabelled, Atom atom);
 static Label transformLabel(GPLabel *ast_label, IndexMap *node_map);
-static Atom *transformList(List *ast_list, int length, IndexMap *node_map);
+static GPList *transformList(List *ast_list, IndexMap *node_map);
 static Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map);
 static Condition *transformCondition(Rule *rule, GPCondition *ast_condition, 
                                      bool negated, IndexMap *node_map);
@@ -356,18 +356,26 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
    }
    /* Iterate over the labels in this graph to get information about variables
     * used in the rule and nodes whose degrees are queried in the RHS. */
-   int index, list_index;
+   int index;
    for(index = 0; index < rule->rhs->node_index; index++)
    { 
       RuleNode *node = getRuleNode(rule->rhs, index);
-      for(list_index = 0; list_index < node->label.length; list_index++) 
-          scanRHSAtom(rule, node->relabelled, node->label.list[list_index]);
+      GPList *list = node->label.first;
+      while(list != NULL)
+      {
+         scanRHSAtom(rule, node->relabelled, list->atom);
+         list = list->next;
+      }
    }
    for(index = 0; index < rule->rhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->rhs, index);
-      for(list_index = 0; list_index < edge->label.length; list_index++) 
-          scanRHSAtom(rule, edge->relabelled, edge->label.list[list_index]);
+      GPList *list = edge->label.first;
+      while(list != NULL)
+      {
+         scanRHSAtom(rule, edge->relabelled, list->atom);
+         list = list->next;
+      }
    }
 }
 
@@ -424,23 +432,20 @@ static Label transformLabel(GPLabel *ast_label, IndexMap *node_map)
    Label label;
    label.mark = ast_label->mark;
    label.length = getASTListLength(ast_label->gp_list);
-   if(label.length == 0)
-   {
-      if(label.mark == NONE) return blank_label;
-      else label.list = NULL;
-   }
-   else label.list = transformList(ast_label->gp_list, label.length, node_map);
+   GPList *list = transformList(ast_label->gp_list, node_map);
+   label.first = list;
+   label.last = getLastElement(list);
    return label;
 }
 
-static Atom *transformList(List *ast_list, int length, IndexMap *node_map)
+static GPList *transformList(List *ast_list, IndexMap *node_map)
 {
-   Atom *list = makeList(length);
-   int position = 0;
+   if(ast_list == NULL) return NULL;
+   GPList *list = NULL;
    while(ast_list != NULL)
    {
       Atom atom = transformAtom(ast_list->atom, node_map);
-      list[position++] = atom;
+      list = appendAtom(list, atom);
       ast_list = ast_list->next;
    }
    return list;
@@ -568,20 +573,27 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
             * makeRelationalCheck. */
            int left_length = getASTListLength(ast_condition->list_cmp.left_list);
            int right_length = getASTListLength(ast_condition->list_cmp.right_list);
-           Atom *left_list = transformList(ast_condition->list_cmp.left_list,
-                                           left_length, node_map);
-           Atom *right_list = transformList(ast_condition->list_cmp.right_list, 
-                                            right_length, node_map);
-           Label left_label = { .mark = NONE, .length = left_length, .list = left_list };
-           Label right_label = { .mark = NONE, .length = right_length, .list = right_list };
+           GPList *left_list = transformList(ast_condition->list_cmp.left_list, node_map);
+           GPList *right_list = transformList(ast_condition->list_cmp.right_list, node_map);
+
+           Label left_label = { .mark = NONE, .length = left_length, .first = left_list,
+                                .last = getLastElement(left_list) };
+           Label right_label = { .mark = NONE, .length = right_length, .first = right_list,
+                                 .last = getLastElement(right_list) };
            predicate = makeListComp(bool_count++, negated, ast_condition->type,
                                     left_label, right_label);
            condition->predicate = predicate;
-           int index;
-           for(index = 0; index < left_length; index++) 
-              scanPredicateAtom(rule, left_list[index], predicate);
-           for(index = 0; index < right_length; index++) 
-              scanPredicateAtom(rule, right_list[index], predicate);
+
+           while(left_list != NULL)
+           {
+              scanPredicateAtom(rule, left_list->atom, predicate);
+              left_list = left_list->next;
+           }
+           while(right_list != NULL)
+           {
+              scanPredicateAtom(rule, right_list->atom, predicate);
+              right_list = right_list->next;
+           }
            break;
 
       case GREATER:

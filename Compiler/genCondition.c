@@ -85,7 +85,7 @@ void generateConditionEvaluator(Condition *condition, bool nested)
 static bool labelIsIntegerExpression(Label label)
 {
    if(label.length != 1) return false;
-   switch(label.list[0].type)
+   switch(label.first->atom.type)
    {
       case INTEGER_CONSTANT:
       case LENGTH:
@@ -99,7 +99,7 @@ static bool labelIsIntegerExpression(Label label)
            return true;
 
       case VARIABLE:
-           if(label.list[0].variable.type == INTEGER_VAR) return true;
+           if(label.first->atom.variable.type == INTEGER_VAR) return true;
            else return false;
 
       case STRING_CONSTANT:
@@ -238,8 +238,10 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
               PTFI("{\n", 9);
               PTFI("b%d = true;\n", 12, predicate->bool_id);
               PTFI("edge_found = true;\n", 12);
+              PTFI("freeLabel(label);\n", 12);
               PTFI("break;\n", 12);
               PTFI("}\n", 9);
+              PTFI("freeLabel(label);\n", 9);
               PTFI("}\n", 6);
            }
            else
@@ -264,10 +266,10 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            if(labelIsIntegerExpression(left_label) && labelIsIntegerExpression(right_label))
            {
               PTFI("if(", 3);
-              generateIntExpression(left_label.list[0], 1, false);
+              generateIntExpression(left_label.first->atom, 1, false);
               if(predicate->type == EQUAL) PTF(" == ");
               if(predicate->type == NOT_EQUAL) PTF(" != ");
-              generateIntExpression(right_label.list[0], 1, false);
+              generateIntExpression(right_label.first->atom, 1, false);
               PTF(") b%d = true;\n", predicate->bool_id);
               PTFI("else b%d = false;\n", 3, predicate->bool_id);
            }
@@ -280,6 +282,8 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
               if(predicate->type == NOT_EQUAL) PTF("!");
               PTF("equalLabels(left_label, right_label)) b%d = true;\n", predicate->bool_id);
               PTFI("else b%d = false;\n", 3, predicate->bool_id);
+              PTFI("freeLabel(left_label);\n", 3);
+              PTFI("freeLabel(right_label);\n", 3);
            }
            break;
       }

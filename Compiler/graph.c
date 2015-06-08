@@ -1,7 +1,7 @@
 #include "graph.h"
 
-Node dummy_node = {-1, false, {NONE, 0, NULL}, NULL, 0, NULL, 0, 0, 0, 0, 0, -1};
-Edge dummy_edge = {-1, {NONE, 0, NULL}, -1, -1, -1};
+Node dummy_node = {-1, false, {NONE, 0, NULL, NULL}, NULL, 0, NULL, 0, 0, 0, 0, 0, -1};
+Edge dummy_edge = {-1, {NONE, 0, NULL, NULL}, -1, -1, -1};
 
 /* ===============
  * Graph Functions
@@ -116,7 +116,8 @@ int addNode(Graph *graph, bool root, Label label)
    graph->nodes[index].root = root;
    graph->nodes[index].label.mark = label.mark;
    graph->nodes[index].label.length = label.length;
-   graph->nodes[index].label.list = label.list;
+   graph->nodes[index].label.first = label.first;
+   graph->nodes[index].label.last = label.last;
    if(graph->classes) addLabelClassIndex(graph, true, label, index);
     
    if(root) addRootNode(graph, index);
@@ -187,7 +188,8 @@ int addEdge(Graph *graph,Label label, int source_index, int target_index)
 
    graph->edges[index].label.mark = label.mark;
    graph->edges[index].label.length = label.length;
-   graph->edges[index].label.list = label.list;
+   graph->edges[index].label.first = label.first;
+   graph->edges[index].label.last = label.last;
    if(graph->classes) addLabelClassIndex(graph, false, label, index);
 
    /* For the source's outedge store and the target's inedge store, do the
@@ -710,19 +712,18 @@ void freeGraph(Graph *graph)
    for(index = 0; index < graph->node_index; index++)
    {
       Node *node = getNode(graph, index);
-      if(node->index >= 0)
-      {
-         freeLabel(node->label);
-         if(node->out_edges != NULL) free(node->out_edges);
-         if(node->in_edges != NULL) free(node->in_edges);
-      }  
+      if(node == NULL) continue;
+      freeLabel(node->label);
+      if(node->out_edges != NULL) free(node->out_edges);
+      if(node->in_edges != NULL) free(node->in_edges);
    }
    if(graph->nodes != NULL) free(graph->nodes);
 
    for(index = 0; index < graph->edge_index; index++)
    {
       Edge *edge = getEdge(graph, index);
-      if(edge->index >= 0) freeLabel(edge->label);
+      if(edge == NULL) continue;
+      freeLabel(edge->label);
    }
    if(graph->edges != NULL) free(graph->edges);
 

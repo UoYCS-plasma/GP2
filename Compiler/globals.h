@@ -20,18 +20,10 @@
  * <program>_ast_1.dot, <program>_ast_2.dot, and <program>.tab. */
 #define DEBUG_PROGRAM
 
-/* Toggle debugging of the host graph parser through AST printing. The 
- * output file is placed in the same directory as the host graph with the
- * name <graph>.dot.
- * Warning: for very large host graphs (in the order of 100,000 nodes + edges),
- * printing the host graph's AST causes stack overflow. Only switch this on
- * for small host graphs! */
-#undef DEBUG_HOST
-
 /* Toggle label class indexing for host graphs. This sets a flag in the host
  * graph data structure and influences parts of the rule matching code
  * generator.*/
-#undef LABEL_CLASS_INDEXING
+#define LABEL_CLASS_INDEXING
 
 /* Convenience macros for the code generating modules that write to C header
  * and C source files. The source file pointer in each module is named "file"

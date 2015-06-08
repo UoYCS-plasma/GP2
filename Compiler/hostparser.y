@@ -34,8 +34,9 @@ extern FILE *yyin;
 
 void yyerror(const char *error_message);
 
-/* Flags used in the Graph construction. */
+/* Variables used in the Graph construction. */
 bool is_root = false;
+int length = 0;
 
 %}
 
@@ -57,7 +58,7 @@ bool is_root = false;
 
 %union {  
    struct Label label;
-   struct Atom *list; 
+   struct GPList *list; 
    struct Atom atom; 
 } 
 
@@ -99,13 +100,13 @@ HostEdgeList: HostEdge			{ }
 HostEdge: '(' EDGE_ID ',' NODE_ID ',' NODE_ID ',' HostLabel ')'
 					{ addEdge(host, $8, node_map[$4], node_map[$6]); }
 
-HostLabel: HostList			{ $$ = makeHostLabel(NONE, 0, $1); }
+HostLabel: HostList			{ $$ = makeHostLabel(NONE, length, $1); length = 0;}
          | _EMPTY			{ $$ = makeEmptyLabel(NONE); }
-         | HostList '#' MARK	  	{ $$ = makeHostLabel($3, 0, $1); }
+         | HostList '#' MARK	  	{ $$ = makeHostLabel($3, length, $1); length = 0;}
          | _EMPTY '#' MARK	  	{ $$ = makeEmptyLabel($3);  }
 
-HostList: HostExp 			{ $$ = prependAtom(NULL, $1); } 
-        | HostList ':' HostExp 		{ $$ = prependAtom($1, $3); }
+HostList: HostExp 			{ $$ = appendAtom(NULL, $1); length++; } 
+        | HostList ':' HostExp 		{ $$ = appendAtom($1, $3); length++; } 
 
 
 HostExp: NUM 				{ $$.type = INTEGER_CONSTANT; 
@@ -113,7 +114,7 @@ HostExp: NUM 				{ $$.type = INTEGER_CONSTANT;
        | '-' NUM 	 	        { $$.type = INTEGER_CONSTANT; 
 					  $$.number = -($2);}
        | STR 				{ $$.type = STRING_CONSTANT; 
-					  $$.string = $1;
+					  $$.string = strdup($1);
 					  if($1) free($1); }
 %%
 

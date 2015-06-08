@@ -1,22 +1,92 @@
 #include "label.h"
 
-Label blank_label = {NONE, 0, NULL};
-
-Atom *prependAtom(Atom *list, Atom atom)
-{
-   return NULL;
-}
+Label blank_label = {NONE, 0, NULL, NULL};
 
 Label makeEmptyLabel(MarkType mark)
 {
-   Label label = { .mark = mark, .length = 0, .list = NULL };
+   Label label = { .mark = mark, .length = 0, .first = NULL, .last = NULL };
    return label;
 }
 
-Label makeHostLabel(MarkType mark, int length, Atom *list)
+Label makeHostLabel(MarkType mark, int length, GPList *list)
 {
-   Label label = { .mark = mark, .length = length, .list = list };
+   Label label = { .mark = mark, .length = length, .first = list, 
+                   .last = getLastElement(list) };
    return label;
+}
+
+GPList *appendList(GPList *list, GPList *list_to_append)
+{
+   while(list_to_append != NULL)
+   {
+      assert(list_to_append->atom.type == INTEGER_CONSTANT ||
+             list_to_append->atom.type == STRING_CONSTANT);
+      if(list_to_append->atom.type == INTEGER_CONSTANT)
+         list = appendIntegerAtom(list, list_to_append->atom.number);
+      else list = appendStringAtom(list, list_to_append->atom.string);
+      list_to_append = list_to_append->next;
+   }
+   return list;
+}
+
+GPList *appendAtom(GPList *list, Atom atom)
+{
+   GPList *new_list = malloc(sizeof(GPList));
+   if(new_list == NULL)
+   {
+      print_to_log("Error (appendAtom): malloc failure.\n");
+      exit(1);
+   }
+   new_list->atom = atom;
+   new_list->next = NULL;
+
+   if(list == NULL)
+   {
+      new_list->prev = NULL;
+      return new_list;
+   }
+   else
+   {
+      GPList *last = getLastElement(list);
+      last->next = new_list;
+      new_list->prev = last;
+      return list;
+   }
+}
+
+GPList *appendIntegerAtom(GPList *list, int value)
+{
+   Atom atom;
+   atom.type = INTEGER_CONSTANT;
+   atom.number = value;
+   return appendAtom(list, atom);
+}
+
+GPList *appendStringAtom(GPList *list, string value)
+{
+   Atom atom;
+   atom.type = STRING_CONSTANT;
+   atom.string = strdup(value);
+   return appendAtom(list, atom);
+}
+
+GPList *getLastElement(GPList *list)
+{
+   if(list == NULL) return NULL;
+   while(list->next != NULL) list = list->next;
+   return list;
+}
+
+int getListLength(GPList *list)
+{
+   if(list == NULL) return 0;
+   int length = 0;
+   while(list != NULL) 
+   {
+      length++;
+      list = list->next;
+   }
+   return length;
 }
 
 bool equalLabels(Label left_label, Label right_label)
@@ -24,12 +94,16 @@ bool equalLabels(Label left_label, Label right_label)
    if(left_label.mark != right_label.mark) return false;
    if(left_label.length != right_label.length) return false;
 
-   int index;
-   for(index = 0; index < left_label.length; index++)
+   GPList *left_list = left_label.first;
+   GPList *right_list = right_label.first;
+   if(left_list == NULL && right_list == NULL) return true;
+  
+   while(left_list != NULL)
    {
-      Atom *left_atom = &(left_label.list[index]);
-      Atom *right_atom = &(right_label.list[index]);
-      if(!equalAtoms(left_atom, right_atom)) return false;
+      if(right_list == NULL) return false;
+      if(!equalAtoms(&(left_list->atom), &(right_list->atom))) return false;
+      left_list = left_list->next;
+      right_list = right_list->next;
    }
    return true;
 }
@@ -69,7 +143,7 @@ LabelClass getLabelClass(Label label)
    if(label.length == 0) return EMPTY_L;
    if(label.length == 1)
    {
-      switch(label.list[0].type)
+      switch(label.first->atom.type)
       {
          case INTEGER_CONSTANT:
               return INT_L;
@@ -79,7 +153,7 @@ LabelClass getLabelClass(Label label)
 
          default:
               print_to_log("Error (getLabelClass): First atom of passed host "
-                           "label has unexpected type %d.\n", label.list[0].type);
+                           "label has unexpected type %d.\n", label.first->atom.type);
               break;
       }
    }
@@ -98,106 +172,95 @@ LabelClass getLabelClass(Label label)
 
 bool hasListVariable(Label label)
 {
-   int index;
-   for(index = 0; index < label.length; index++)
+   if(label.first == NULL) return false;
+   GPList *list = label.first;
+   while(list != NULL)
    {
-      if(label.list[index].type == VARIABLE && 
-         label.list[index].variable.type == LIST_VAR) return true;
+      if(list->atom.type == VARIABLE && 
+         list->atom.variable.type == LIST_VAR) return true;
+      list = list->next;
    }
    return false;
-}
-
-Atom *makeList(int length)
-{
-   if(length == 0) return NULL;
-   Atom *list = malloc(length * sizeof(Atom));
-   if(list == NULL)
-   {
-      print_to_log("Error (makeLabel): malloc failure.\n");
-      exit(1);
-   }
-   return list;
 }
 
 void copyLabel(Label *source, Label *target)
 {
    target->mark = source->mark;
    target->length = source->length;
-   target->list = copyList(source->list, source->length);      
+   GPList *list = copyList(source->first, NULL);
+   target->first = list;
+   target->last = getLastElement(list);
 }
 
-Atom *copyList(Atom *list, int length)
+GPList *copyList(GPList *head, GPList *tail)
 {
-   Atom *list_copy = makeList(length);
-   int index;
-   for(index = 0; index < length; index++)
+   if(head == NULL) return NULL;
+
+   /* Stores the head of the copied list to return. */
+   GPList *head_of_copy = NULL;
+   /* A placeholder to facilitate the list copying. */
+   GPList *previous_node = NULL;
+      
+   while(head != tail)
    {
-      /* Populate the copied array with the appropriate . Any strings
-       * are duplicated in memory. Nested Atoms are memory-copied by the auxiliary
-       * function copyAtom. */
-      Atom atom = list[index];
-      list_copy[index].type = atom.type;
-      switch(atom.type) 
+      GPList *list_copy = malloc(sizeof(GPList));
+      if(list_copy == NULL)
       {
-         case VARIABLE:
-         case LENGTH:
-              list_copy[index].variable.name = strdup(atom.variable.name);
-              list_copy[index].variable.type = atom.variable.type;
-              break;
-
-         case INTEGER_CONSTANT:
-              list_copy[index].number = atom.number;
-              break;
-
-         case STRING_CONSTANT:
-              list_copy[index].string = strdup(atom.string);
-              break;
-
-         case INDEGREE:
-         case OUTDEGREE:
-              list_copy[index].node_id = atom.node_id;              
-              break;
-
-         case NEG:
-              list_copy[index].neg_exp = copyAtom(atom.neg_exp);
-              break;
-
-         case ADD:
-         case SUBTRACT:
-         case MULTIPLY:
-         case DIVIDE:
-         case CONCAT:
-              list_copy[index].bin_op.left_exp = copyAtom(atom.bin_op.left_exp);
-              list_copy[index].bin_op.right_exp = copyAtom(atom.bin_op.right_exp);
-              break;
-
-         default: printf("Error (copyAtom): Unexpected atom type: %d\n", 
-                        (int)atom.type); 
-                  break;
+         print_to_log("Error (copyLabel): malloc failure.\n");
+         exit(1);
       }
+
+      list_copy->atom = head->atom;
+      /* Duplicate pointers to allocated memory in the atom. */
+      AtomType type = head->atom.type;
+      if(type == STRING_CONSTANT)
+         list_copy->atom.string = strdup(head->atom.string);
+      else if(type == VARIABLE || type == LENGTH)
+         list_copy->atom.variable.name = strdup(head->atom.variable.name);
+      else if(type == NEG)
+         list_copy->atom.neg_exp = copyAtom(head->atom.neg_exp);
+      else if(type == ADD || type == SUBTRACT || type == MULTIPLY ||
+              type == DIVIDE || type == CONCAT)
+      {
+         list_copy->atom.bin_op.left_exp = copyAtom(head->atom.bin_op.left_exp);
+         list_copy->atom.bin_op.right_exp = copyAtom(head->atom.bin_op.right_exp);
+      }
+
+      list_copy->next = NULL;
+      list_copy->prev = previous_node;
+      /* previous_node is NULL only on the first loop iteration. */
+      if(previous_node == NULL) head_of_copy = list_copy;
+      else previous_node->next = list_copy;
+      previous_node = list_copy;
+      head = head->next;
    }
-   return list_copy;
+   return head_of_copy;
 }
 
 Atom *copyAtom(Atom *atom)
 {
-   Atom *copy = makeList(1);
+   Atom *copy = malloc(sizeof(Atom));
+   if(copy == NULL)
+   {
+      print_to_log("Error (copyAtom): malloc failure.\n");
+      exit(1);
+   }
    copy->type = atom->type;
    switch(atom->type) 
    {
-      case VARIABLE:
-      case LENGTH:
-           copy->variable.name = strdup(atom->variable.name);
-           copy->variable.type = atom->variable.type;
-           break;
-
       case INTEGER_CONSTANT:
            copy->number = atom->number;
            break;
 
       case STRING_CONSTANT:
            copy->string = strdup(atom->string);
-            break;
+           break;
+      
+      case VARIABLE:
+      case LENGTH:
+           copy->variable.name = strdup(atom->variable.name);
+           copy->variable.type = atom->variable.type;
+           break;
 
       case INDEGREE:
       case OUTDEGREE:
@@ -224,24 +287,20 @@ Atom *copyAtom(Atom *atom)
    return copy;
 }
 
-
 void printLabel(Label label, FILE *file) 
 {
-   printList(label.list, label.length, file);
+   if(label.length == 0) fprintf(file, "empty");
+   else printList(label.first, file);
    printMark(label.mark, file);
 }
 
-void printList(Atom *atom, int length, FILE *file)
+void printList(GPList *list, FILE *file)
 {
-   if(length == 0) fprintf(file, "empty");
-   else
+   while(list != NULL)
    {
-      int index;
-      for(index = 0; index < length; index++)
-      {
-         printAtom(&(atom[index]), false, file);
-         if(index != length - 1) fprintf(file, " : ");
-      }
+      printAtom(&(list->atom), false, file);
+      if(list->next != NULL) fprintf(file, " : ");
+      list = list->next;
    }
 }
 
@@ -333,16 +392,15 @@ void printMark(MarkType mark, FILE *file)
 
 void freeLabel(Label label)
 {
-   if(label.list != NULL) freeList(label.list, label.length);
+   freeList(label.first);
 }
 
-void freeList(Atom *atom, int length)
+void freeList(GPList *list)
 {
-   int index;
-   /* freeAtom called with false because these atoms are not individually
-    * freed. The complete array is freed after the for loop. */
-   for(index = 0; index < length; index++) freeAtom(&(atom[index]), false);
-   if(atom != NULL) free(atom);
+   if(list == NULL) return;
+   freeAtom(&(list->atom), false);
+   freeList(list->next);
+   free(list);
 }
 
 void freeAtom(Atom *atom, bool free_atom)

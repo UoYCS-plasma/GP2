@@ -395,12 +395,10 @@ static void printCondition(Condition *condition, bool nested, FILE *file)
 
          case EQUAL:
          case NOT_EQUAL:
-              printList(predicate->list_comp.left_label.list, 
-                        predicate->list_comp.left_label.length, file);
+              printLabel(predicate->list_comp.left_label, file);
               if(predicate->type == EQUAL) PTF(" = ");
               if(predicate->type == NOT_EQUAL) PTF(" != ");
-              printList(predicate->list_comp.right_label.list, 
-                        predicate->list_comp.right_label.length, file);
+              printLabel(predicate->list_comp.right_label, file);
 
          case GREATER:
          case GREATER_EQUAL:

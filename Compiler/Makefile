@@ -1,4 +1,4 @@
-OBJECTS = parser.o lex.yy.o debug.o error.o ast.o pretty.o seman.o symbol.o \
+OBJECTS = parser.o lexer.o debug.o error.o ast.o pretty.o seman.o symbol.o \
           transformRule.o label.o graph.o graphStacks.o rule.o searchplan.o \
           analysis.o genCondition.o genHost.o genLabel.o genRule.o genProgram.o main.o
 CC = gcc
@@ -52,15 +52,15 @@ clean-all:
 parser.c parser.h: gpparser.y ast.h error.h
 		bison gpparser.y
 
-lex.yy.c:	gplexer.lex parser.h ast.h error.h
-		flex gplexer.lex
+lexer.c:	gplexer.lex parser.h ast.h error.h
+		flex -o lexer.c gplexer.lex
 
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<
 
 # Dependencies
 main.o:		analysis.h error.h globals.h genHost.h genProgram.h genRule.h parser.h pretty.h seman.h
-parser.o:	parser.h lex.yy.c
+parser.o:	parser.h lexer.c
 debug.o:	error.h globals.h 
 ast.o: 		ast.h error.h globals.h
 pretty.o:       pretty.h ast.h error.h globals.h seman.h
