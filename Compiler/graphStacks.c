@@ -60,9 +60,6 @@ void copyGraph(Graph *graph)
    
    graph_copy->number_of_nodes = graph->number_of_nodes;
    graph_copy->number_of_edges = graph->number_of_edges;
-
-   graph_copy->node_classes = copyLabelClassTable(graph->node_classes); 
-   graph_copy->edge_classes = copyLabelClassTable(graph->edge_classes); 
    graph_copy->root_nodes = NULL;
  
    int index;

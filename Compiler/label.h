@@ -54,19 +54,6 @@ typedef struct GPList {
    struct GPList *prev;
 } GPList;
    
-/* A partition of the set of all GP 2 host labels for guided querying of host 
- * items during label matching. 
- *
- * The label classes are as follows: 
- * - The empty list (EMPTY_L)
- * - Integer constant (INT_L)
- * - String constant (STRING_L)
- * - List of length 2, 3, and 4 (LIST2_L, LIST3_L, LIST4_L).
- * - List of length > 4 (LONG_LIST_L). */
-
-typedef enum {EMPTY_L = 0, INT_L, STRING_L, LIST2_L, LIST3_L, LIST4_L, 
-              LONG_LIST_L} LabelClass;
-
 /* Called at runtime to build labels. */
 Label makeEmptyLabel(MarkType mark);
 Label makeHostLabel(MarkType mark, int length, GPList *list);
@@ -82,9 +69,6 @@ int getListLength(GPList *list);
  * relabelled by the rule. Also used at runtime to evaluate conditions. */
 bool equalLabels(Label left_label, Label right_label);
 bool equalAtoms(Atom *left_atom, Atom *right_atom);
-
-/* Returns the label class of a host graph label. */
-LabelClass getLabelClass(Label label);
 bool hasListVariable(Label label);
 
 /* Creates a copy of source and assigns it to target. The assumption is that 

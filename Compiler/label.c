@@ -138,38 +138,6 @@ bool equalAtoms(Atom *left_atom, Atom *right_atom)
    return false;
 }
 
-LabelClass getLabelClass(Label label)
-{
-   if(label.length == 0) return EMPTY_L;
-   if(label.length == 1)
-   {
-      switch(label.first->atom.type)
-      {
-         case INTEGER_CONSTANT:
-              return INT_L;
-
-         case STRING_CONSTANT:
-              return STRING_L;
-
-         default:
-              print_to_log("Error (getLabelClass): First atom of passed host "
-                           "label has unexpected type %d.\n", label.first->atom.type);
-              break;
-      }
-   }
-   else
-   {
-      switch(label.length)
-      {
-         case 2: return LIST2_L;
-         case 3: return LIST3_L;
-         case 4: return LIST4_L;
-         default: return LONG_LIST_L;
-      }
-   }
-   return EMPTY_L;
-}   
-
 bool hasListVariable(Label label)
 {
    if(label.first == NULL) return false;

@@ -5,19 +5,13 @@
  *     then i is in the holes array.
  * (2) The number of non-dummy nodes in the node array is equal to 
  *     graph->number_of_nodes.
- * (3) The index of a node with mark M and label class L is in the appropriate
- *     table of the node_classes list. Moreover, the node's index in that
- *     table's items array is node->label_table_index.
- * (4) The number of edge indices >= 0 stored by a node is equal to its outdegree.
- * (5) The number of edge indices >= 0 stored by a node is equal to its indegree.
- * (6) For 0 <= i <= graph->edges.size, if graph->edges.items[i].index is -1,
+ * (3) The number of edge indices >= 0 stored by a node is equal to its outdegree.
+ * (4) The number of edge indices >= 0 stored by a node is equal to its indegree.
+ * (5) For 0 <= i <= graph->edges.size, if graph->edges.items[i].index is -1,
  *     then i is in the holes array.
- * (7) The number of non-dummy edges in the edge array is equal to 
+ * (6) The number of non-dummy edges in the edge array is equal to 
  *     graph->number_of_edges.
- * (8) The index of an edge with mark M and label class L is in the appropriate
- *     table of the edge_classes list. Moreover, the edge's index in that
- *     table's items array is edge->label_table_index.
- * (9) Source and target consistency: For all edges E, if S is E's source and
+ * (7) Source and target consistency: For all edges E, if S is E's source and
  *     T is E's target, then E is in S's outedge list and E is in T's inedge list. 
  */
 
@@ -52,7 +46,7 @@ bool validGraph(Graph *graph)
          if(!slot_found)
          {
             print_to_console("(1) Dummy node at array index %d but the index "
-                             "is not in the free node slot list.\n", node_index);
+                             "is not in the holes array.\n", node_index);
             valid_graph = false;
          }
          slot_found = false;
@@ -68,10 +62,10 @@ bool validGraph(Graph *graph)
             /* Keep a count of the number of outedges in the array. */
             if(node_edge != NULL) edge_count++;           
          }
-         /* Invariant (4) */
+         /* Invariant (3) */
          if(node->outdegree != edge_count)
          {
-            print_to_console("(4) Node %d's outdegree (%d) is not equal to the "
+            print_to_console("(3) Node %d's outdegree (%d) is not equal to the "
                              "number of edges in its outedges array (%d).\n",
                              node->index, node->outdegree, edge_count);
             valid_graph = false;
@@ -84,38 +78,15 @@ bool validGraph(Graph *graph)
             /* Keep a count of the number of inedges in the array. */
             if(node_edge != NULL) edge_count++;
          }
-         /* Invariant (5) */
+         /* Invariant (4) */
          if(node->indegree != edge_count)
          {
-            print_to_console("(5) Node %d's indegree (%d) is not equal to the "
+            print_to_console("(4) Node %d's indegree (%d) is not equal to the "
                              "number of edges in its inedges array (%d).\n",
                              node->index, node->indegree, edge_count);
             valid_graph = false;
          } 
          edge_count = 0;
-
-         /* Invariant (3) */
-         if(node->label_table_index > -1)
-         {
-            LabelClass label_class = getLabelClass(node->label);
-            LabelClassTable *table = getNodeLabelTable(graph, node->label.mark, label_class);
-            if(table == NULL)
-            {
-               print_to_console("(3) Node %d's label class table (Mark %d, LC %d) "
-                                "does not exist.\n", node->index, node->label.mark, label_class);   
-               valid_graph = false;
-            }
-            else
-            {
-               if(table->items[node->label_table_index] != node->index)
-               {
-                  print_to_console("(3) Node %d's label table index is inconsistent "
-                                   "with its label class table (Mark %d, LC %d).\n",
-                                   node->index, node->label.mark, label_class);   
-                  valid_graph = false;
-               }
-            } 
-         }
       }
    }
    /* Invariant (2) */
@@ -132,7 +103,7 @@ bool validGraph(Graph *graph)
    {
       Edge *edge = getEdge(graph, edge_index);
       slot_found = false;
-      /* Invariant (7) */
+      /* Invariant (5) */
       if(edge->index == -1) 
       { 
          int count;
@@ -146,8 +117,8 @@ bool validGraph(Graph *graph)
          }
          if(!slot_found)
          {
-            print_to_console("(6) Dummy edge at array index %d but the index "
-                             "is not in free edge slot list.\n", edge_index);
+            print_to_console("(5) Dummy edge at array index %d but the index "
+                             "is not in the holes array.\n", edge_index);
             valid_graph = false;
          }
       }    
@@ -173,10 +144,10 @@ bool validGraph(Graph *graph)
                }
             }
          }
-         /* Invariant (9) */
+         /* Invariant (7) */
          if(!source_found)
          {
-            print_to_console("(9) Edge %d does not occur in node %d's outedge "
+            print_to_console("(7) Edge %d does not occur in node %d's outedge "
                              "array.\n", edge_index, source->index);   
             valid_graph = false;
          }   
@@ -198,39 +169,18 @@ bool validGraph(Graph *graph)
          }
          if(!target_found)
          {
-            print_to_console("(9) Edge %d does not occur in node %d's inedge "
+            print_to_console("(7) Edge %d does not occur in node %d's inedge "
                              "array.\n", edge_index, target->index);   
             valid_graph = false;
          }   
 
-         /* Invariant (8) */
-         if(edge->label_table_index > -1)
-         {
-            LabelClass label_class = getLabelClass(edge->label);
-            LabelClassTable *table = getEdgeLabelTable(graph, edge->label.mark, label_class);
-            if(table == NULL)
-            {
-               print_to_console("(3) Edge %d's label class table (Mark %d, LC %d) "
-                                "does not exist.\n", edge->index, edge->label.mark, label_class);   
-               valid_graph = false;
-            }
-            else
-            {
-               if(table->items[edge->label_table_index] != edge->index)
-               {
-                  print_to_console("(3) Edge %d's label table index is inconsistent "
-                                   "with its label class table (Mark %d, LC %d).\n",
-                                   edge->index, edge->label.mark, label_class);   
-                  valid_graph = false;
-               }
-            } 
-         }
+
       }
    }
-   /* Invariant (7) */
+   /* Invariant (6) */
    if(edge_count != graph->number_of_edges)
    {
-      print_to_console("(7) graph->number_of_edges (%d) is not equal to the "
+      print_to_console("(6) graph->number_of_edges (%d) is not equal to the "
                        "number of edges in the edge array (%d).\n", 
                        graph->number_of_edges, edge_count);
       valid_graph = false;
