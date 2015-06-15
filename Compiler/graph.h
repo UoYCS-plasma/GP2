@@ -20,32 +20,43 @@
 #define NUMBER_OF_MARKS 6 
 #define NUMBER_OF_CLASSES 7
 
+typedef struct IntArray {
+   int capacity;
+   int size;
+   int *items;
+} IntArray;
+
+typedef struct NodeArray {
+   int capacity;
+   int size;
+   struct Node *items;
+   struct IntArray holes;
+} NodeArray;
+
+typedef struct EdgeArray {
+   int capacity;
+   int size;
+   struct Edge *items;
+   struct IntArray holes;
+} EdgeArray;
+
 /* ================================
  * Graph Data Structure + Functions
  * ================================ */
 typedef struct Graph 
 {
-   struct Node *nodes;
-   int node_pool_size, node_index;
-
-   struct Edge *edges;
-   int edge_pool_size, edge_index;
-
-   /* Integer arrays to record the holes in the node and edge arrays caused by
-    * node and edge deletion. The first free_node_index elements of the 
-    * free node slots array are indices of holes in the graph's node array.
-    * When a node is added to the graph, the free node slots array is consulted
-    * first, since filling a hole is better than inserting a node at the end
-    * of the array in which gaps exist. */
-   int *free_node_slots, *free_edge_slots;
-   int free_node_index, free_edge_index;
+   NodeArray nodes;
+   EdgeArray edges;
 
    /* The number of non-dummy items in the graph's nodes/edges array.
-    * Do NOT use these as a bound for an iterator over the arrays. Instead use
-    * node_index and edge_index. 
+    * Do NOT use these as an iteration index over the arrays because the items
+    * may not be stored contiguously in the array. Instead use nodes.size and
+    * edges.size. 
     * The equations below are invariant properties of this data structure.
-    * number_of_nodes + free_node_index = node_index. 
-    * number_of_edges + free_edge_index = edge_index. */
+    * number_of_nodes + node_holes.size = nodes.size. 
+    * number_of_edges + edge_holes.size = edges.size.
+    * In words, each of the first nodes.size items of the node array is either
+    * a dummy node (a hole created by the removal of a node), or a valid node. */
    int number_of_nodes, number_of_edges;
    
    /* Root nodes referenced in a linked list for fast access. */
@@ -81,13 +92,12 @@ typedef struct Node {
    bool root;
    Label label;
 
-   /* Dynamic integer arrays for the node's outgoing and incoming edges.
-    * To iterate over these arrays, use out_index and in_index as the
-    * upper bound. */
-   int *out_edges, out_index, *in_edges, in_index;
-   
-   /* The size of the out_edges and in_edges arrays respectively. */
-   int out_pool_size, in_pool_size;
+   int first_out_edge, second_out_edge;
+   int first_in_edge, second_in_edge;
+
+   /* Dynamic integer arrays for the node's outgoing and incoming edges. */
+   IntArray out_edges, in_edges;
+
    int outdegree, indegree;
 
    /* The index of the node in its label class table. Used to quickly remove
@@ -149,12 +159,19 @@ void freeLabelClassTable(LabelClassTable *table);
 Node *getNode(Graph *graph, int index);
 Edge *getEdge(Graph *graph, int index);
 RootNodes *getRootNodeList(Graph *graph);
-/* The following four functions return indices. To get pointers to the items,
- * pass the return value to getNode or getEdge with the appropriate graph. */
-int getInEdge(Node *node, int index);
-int getOutEdge(Node *node, int index);
-int getSource(Edge *edge);
-int getTarget(Edge *edge);
+
+/* Called with a positive integer n. The node structures store two outedge indices
+ * and two inedge indices. More incident edges are placed in a dynamic array.
+ * Pass n = 0 to get the node's first incident edge.
+ * Pass n = 1 to get the node's second incident edge.
+ * Pass n >= 2 to get the (n-2)th incident edge in the appropriate array. 
+ * Designed for iteration e.g. 
+ * for(i = 0; i < n->out_edges.size + 2; i++) getNthOutEdge(g, n, i); 
+ * I'm sure there's a nicer way to do this... */
+Edge *getNthOutEdge(Graph *graph, Node *node, int n);
+Edge *getNthInEdge(Graph *graph, Node *node, int n);
+Node *getSource(Graph *graph, Edge *edge); 
+Node *getTarget(Graph *graph, Edge *edge);
 Label getNodeLabel(Graph *graph, int index);
 Label getEdgeLabel(Graph *graph, int index); 
 int getIndegree(Graph *graph, int index);

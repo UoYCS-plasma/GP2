@@ -2,7 +2,7 @@ module PrintGraph (printHostGraph,printGraph,printHostAtom) where
 
 import Graph
 import GPSyntax
-import Data.Char(toLower)
+import Data.Char(toLower, isDigit)
 import Data.List(intersperse)
 
 printHostGraph :: HostGraph -> String
@@ -32,7 +32,7 @@ printHostLabel (HostLabel atoms colour) =
        ++ printColour colour
 
 printHostAtom :: HostAtom -> String
-printHostAtom (Int i)  =  show i
+printHostAtom (Int i)  =  filter isDigit $ show i
 printHostAtom (Chr c)  =  show c
 printHostAtom (Str s)  =  show s
 

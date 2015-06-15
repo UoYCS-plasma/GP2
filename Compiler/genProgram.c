@@ -1,8 +1,8 @@
 #include "genProgram.h"
 
-#define RULE_TRACE
-#define GRAPH_TRACE
-#define BACKTRACK_TRACE
+#undef RULE_TRACE
+#undef GRAPH_TRACE
+#undef BACKTRACK_TRACE
 
 static FILE *file = NULL;
 

@@ -353,7 +353,7 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
       PTFI("int host_index = table->items[items_index];\n", indent);
    #else
       PTFI("int host_index;\n", 3);
-      PTFI("for(host_index = 0; host_index < host->node_index; host_index++)\n", 3);
+      PTFI("for(host_index = 0; host_index < host->nodes.size; host_index++)\n", 3);
       PTFI("{\n", 3);
       int indent = 6;
    #endif
@@ -395,8 +395,8 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, 
 {
    PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge)\n{\n", left_node->index);
    if(type == 'i' || type == 'b') 
-        PTFI("Node *host_node = getNode(host, getTarget(host_edge));\n\n", 3);
-   else PTFI("Node *host_node = getNode(host, getSource(host_edge));\n\n", 3);
+        PTFI("Node *host_node = getTarget(host, host_edge);\n\n", 3);
+   else PTFI("Node *host_node = getSource(host, host_edge);\n\n", 3);
    PTFI("bool candidate_node = true;\n", 3);
    /* Set the candidate_node flag. */
    emitNodeFilteringCode(left_node, 3);
@@ -408,8 +408,8 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, 
       PTFI("{\n", 3); 
       PTFI("/* Matching from bidirectional edge: check the second incident node. */\n", 6);
       if(type == 'i' || type == 'b') 
-           PTFI("host_node = getNode(host, getSource(host_edge));\n\n", 6);
-      else PTFI("host_node = getNode(host, getTarget(host_edge));\n\n", 6);
+           PTFI("host_node = getSource(host, host_edge);\n\n", 6);
+      else PTFI("host_node = getTarget(host, host_edge);\n\n", 6);
       PTFI("candidate_node = true;\n", 6);
       emitNodeFilteringCode(left_node, 6);
       PTFI("if(!candidate_node) return false;\n", 6);
@@ -529,7 +529,7 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
       PTFI("int host_index = table->items[items_index];\n", indent);
    #else
       PTFI("int host_index;\n", 3);
-      PTFI("for(host_index = 0; host_index < host->edge_index; host_index++)\n", 3);
+      PTFI("for(host_index = 0; host_index < host->edges.size; host_index++)\n", 3);
       PTFI("{\n", 3);
       int indent = 6;
    #endif
@@ -577,9 +577,9 @@ static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_
    PTFI("Node *host_node = getNode(host, node_index);\n\n", 3);
 
    PTFI("int counter;\n", 3);
-   PTFI("for(counter = host_node->out_index - 1; counter >= 0; counter--)\n", 3);
+   PTFI("for(counter = 0; counter < host_node->out_edges.size + 2; counter++)\n", 3);
    PTFI("{\n", 3);
-   PTFI("Edge *host_edge = getEdge(host, getOutEdge(host_node, counter));\n", 6);
+   PTFI("Edge *host_edge = getNthOutEdge(host, host_node, counter);\n", 6);
    PTFI("if(host_edge == NULL) continue;\n", 6);
    PTFI("if(host_edge->source != host_edge->target) continue;\n\n", 6);
    if(left_edge->label.mark != ANY)
@@ -647,15 +647,15 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
    }
    if(source)
    {
-      PTFI("for(counter = host_node->out_index - 1; counter >= 0; counter--)\n", 3);
+      PTFI("for(counter = 0; counter < host_node->out_edges.size + 2; counter++)\n", 3);
       PTFI("{\n", 3);
-      PTFI("Edge *host_edge = getEdge(host, getOutEdge(host_node, counter));\n", 6);
+      PTFI("Edge *host_edge = getNthOutEdge(host, host_node, counter);\n", 6);
    }
    else
    {
-      PTFI("for(counter = host_node->in_index - 1; counter >= 0; counter--)\n", 3);
+      PTFI("for(counter = 0; counter < host_node->in_edges.size + 2; counter++)\n", 3);
       PTFI("{\n", 3);
-      PTFI("Edge *host_edge = getEdge(host, getInEdge(host_node, counter));\n", 6);
+      PTFI("Edge *host_edge = getNthInEdge(host, host_node, counter);\n", 6);
    }
 
    PTFI("if(host_edge == NULL) continue;\n\n", 6);

@@ -72,11 +72,7 @@ void initialiseMorphism(Morphism *morphism)
    for(count = 0; count < morphism->variables; count++)
    {
       Assignment *assignment = &(morphism->assignment[count]);
-      if(assignment->variable != NULL)
-      {  
-         free(assignment->variable); 
-         assignment->variable = NULL;
-      }
+      if(assignment->variable != NULL) assignment->variable = NULL;
       assignment->type = LIST_VAR;
       if(assignment->value != NULL)
       {  
@@ -107,7 +103,7 @@ void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variable
 void addAssignment(Morphism *morphism, string variable, GPType type, GPList *value)
 {
    assert(morphism->assignment_index < morphism->variables);
-   morphism->assignment[morphism->assignment_index].variable = strdup(variable);
+   morphism->assignment[morphism->assignment_index].variable = variable;
    morphism->assignment[morphism->assignment_index].type = type;
    morphism->assignment[morphism->assignment_index].value = value;
    morphism->assignment_index++;
@@ -138,10 +134,7 @@ void removeAssignments(Morphism *morphism, int number)
    {
       morphism->assignment_index--;
       Assignment *assignment = &(morphism->assignment[morphism->assignment_index]);
-
-      if(assignment->variable != NULL) free(assignment->variable);
       if(assignment->value != NULL) freeList(assignment->value);
-
       assignment->variable = NULL;
       assignment->value = NULL;
    }
@@ -381,7 +374,6 @@ void freeMorphism(Morphism *morphism)
       for(index = 0; index < morphism->variables; index++)
       {
          Assignment assignment = morphism->assignment[index];
-         if(assignment.variable != NULL) free(assignment.variable);
          if(assignment.value != NULL) freeList(assignment.value);
       }
       free(morphism->assignment);

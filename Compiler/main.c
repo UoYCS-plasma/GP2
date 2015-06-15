@@ -52,11 +52,7 @@ static bool validateProgram(string program_file)
     * resulting in a valid AST. Hence, if syntax errors are encountered, semantic
     * analysis can still be performed. */
    bool valid_program = (yyparse() == 0);
-   if(!valid_program) 
-   {
-      print_to_console("Program %s is invalid.\n\n", program_file);   
-      return false;
-   }
+   if(!valid_program) return false;
    gp_program = reverse(gp_program);
    #ifdef DEBUG_PROGRAM
       /* analyseProgram prints the symbol table before exiting. */
@@ -118,12 +114,14 @@ int main(int argc, char **argv)
       if(program_file != NULL) 
       {
          bool result = validateProgram(program_file);
-         if(!result) print_to_console("Program %s is invalid.\n\n", program_file);   
+         if(result) print_to_console("Program %s is valid.\n\n", program_file);   
+         else print_to_console("Program %s is invalid.\n\n", program_file);   
       }
       if(host_file != NULL)
       {
          bool result = validateHostGraph(host_file);
-         if(!result) print_to_console("Host graph %s is invalid.\n\n", host_file);   
+         if(result) print_to_console("Host graph %s is valid.\n\n", host_file);   
+         else print_to_console("Host graph %s is invalid.\n\n", host_file);   
       }
       if(yyin != NULL) fclose(yyin);
       if(gp_program) freeAST(gp_program); 

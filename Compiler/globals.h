@@ -18,12 +18,12 @@
  * static analysis, and through printing of the symbol table. The output files
  * are placed in the same directory as the input program with filenames
  * <program>_ast_1.dot, <program>_ast_2.dot, and <program>.tab. */
-#define DEBUG_PROGRAM
+#undef DEBUG_PROGRAM
 
 /* Toggle label class indexing for host graphs. This sets a flag in the host
  * graph data structure and influences parts of the rule matching code
  * generator.*/
-#define LABEL_CLASS_INDEXING
+#undef LABEL_CLASS_INDEXING
 
 /* Convenience macros for the code generating modules that write to C header
  * and C source files. The source file pointer in each module is named "file"

@@ -222,9 +222,9 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            PTFI("Node *source = getNode(host, n%d);\n", 3, source);
            PTFI("bool edge_found = false;\n", 3);
            PTFI("int counter;\n", 3);
-           PTFI("for(counter = 0; counter < source->out_index; counter++)\n", 3);
+           PTFI("for(counter = 0; counter < source->out_edges.size + 2; counter++)\n", 3);
            PTFI("{\n", 3);
-           PTFI("Edge *edge = getEdge(host, getOutEdge(source, counter));\n", 6);
+           PTFI("Edge *edge = getNthOutEdge(host, source, counter);\n", 6);
            PTFI("if(edge != NULL && edge->target == n%d)\n", 6, target);
            if(predicate->edge_pred.label != NULL)
            { 

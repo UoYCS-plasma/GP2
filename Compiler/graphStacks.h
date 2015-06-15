@@ -16,7 +16,7 @@
 #define INC_GRAPH_STACKS_H
 
 #define GRAPH_STACK_SIZE 4
-#define GRAPH_CHANGE_STACK_SIZE 32
+#define GRAPH_CHANGE_STACK_SIZE 16 
 
 #include "error.h"
 #include "globals.h"
@@ -24,11 +24,11 @@
 
 extern Graph **graph_stack;
 extern int graph_stack_index;
-/* Creates a memory copy of the passed graph and pushes it to the graph stack. 
- * If replace is true, then the graph stack is popped before pushing the graph
- * copy. */
+
+/* Creates a memory copy of the passed graph and pushes it to the graph stack. */
 void copyGraph(Graph *graph);
-/* popGraphs pops and frees the graph change stack until the restore point.
+
+/* popGraphs pops and frees the graph change stack until the restore point
  * is reached. It returns the graph at that stack entry. */
 Graph *popGraphs(Graph *current_graph, int restore_point);
 void discardGraphs(int depth);
