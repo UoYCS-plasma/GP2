@@ -287,7 +287,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
              * exited from the break statement above, then the node is not in
              * the interface. */
             if(iterator->next == NULL) rule->adds_nodes = true;
-            else iterator = iterator->next;
+            iterator = iterator->next;
          }
          /* Update the map's right index. */
          map->right_index = node_index;

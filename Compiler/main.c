@@ -17,7 +17,6 @@
 #include "analysis.h"
 #include "error.h"
 #include "globals.h"
-#include "genHost.h"
 #include "genProgram.h"
 #include "genRule.h"
 #include "parser.h"

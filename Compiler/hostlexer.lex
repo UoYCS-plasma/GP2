@@ -44,7 +44,7 @@ int yycolumn = 1;
 				   return 0; }
 
  /* The empty string is valid GP2 syntax. */
-"\"\""				 { yylval.str = NULL; return STR; } 
+"\"\""				 { yylval.str = strdup(""); return STR; } 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
 <IN_STRING>[a-zA-Z0-9_ ]{0,63} 	 { yylval.str = strdup(yytext); return STR; }

@@ -77,12 +77,12 @@ extern int parse_target;
 				   return 0; }
 
  /* The empty string is valid GP2 syntax. */
-"\"\""				 { yylval.str = NULL; return STR; } 
+"\"\""				 { yylval.str = strdup(""); return STR; } 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
 <IN_STRING>[a-zA-Z0-9_ ]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
 <IN_STRING>(\n)                  { print_to_log("%d.%d-%d.%d: String "
-          				         "continues on new line.\n", 
+          				        "continues on new line.\n", 
                                         yylloc.first_line, yylloc.first_column, 
                                         yylloc.last_line, yylloc.last_column); 	
                                    return 0; }
