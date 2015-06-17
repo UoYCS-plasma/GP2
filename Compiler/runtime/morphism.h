@@ -63,12 +63,9 @@ void addNodeMap(Morphism *morphism, int left_index, int host_index, int variable
 void removeNodeMap(Morphism *morphism);
 void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variables);
 void removeEdgeMap(Morphism *morphism);
-/* addAssignment calls copyList on value. */
 void addAssignment(Morphism *morphism, string variable, GPType type, GPList *value);
 void removeAssignments(Morphism *morphism, int number);
 
-/* Given the index of a node/edge in the LHS, return the index of its image
- * in the host graph according to the passed morphism. */
 int lookupNode(Morphism *morphism, int left_index);
 int lookupEdge(Morphism *morphism, int left_index);
 Assignment *lookupVariable(Morphism *morphism, string variable);
@@ -89,14 +86,14 @@ Assignment *lookupVariable(Morphism *morphism, string variable);
  * created by the caller. If the assignment is added to the morphism, the values
  * are copied to heap. Otherwise, they are no longer required and will be 
  * discarded when the calling function exits. */
-int addListAssignment(string name, GPList *list, Morphism *morphism);
-int addIntegerAssignment(string name, int value, Morphism *morphism);
-int addStringAssignment(string name, string value, Morphism *morphism);
+int addListAssignment(Morphism *morphism, string name, GPList *list);
+int addIntegerAssignment(Morphism *morphism, string name, int value);
+int addStringAssignment(Morphism *morphism, string name, string value);
 
 /* These functions expect to be passed a variable of the appropriate type. */
-int getIntegerValue(string name, Morphism *morphism);
-string getStringValue(string name, Morphism *morphism);
-GPList *getListValue(string name, Morphism *morphism);
+int getIntegerValue(Morphism *morphism, string name);
+string getStringValue(Morphism *morphism, string name);
+GPList *getListValue(Morphism *morphism, string name);
 
 /* Used to test string constants in the rule against a host string. If 
  * rule_string is a prefix of the host_string, then the index of the host 

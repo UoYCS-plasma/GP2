@@ -169,7 +169,7 @@ void generateVariableListMatchingCode(Rule *rule, Label label, int indent)
          result_declared = true;
       }
       PTFI("GPList *list = copyList(label.first, NULL);\n", indent);
-      PTFI("result = addListAssignment(\"%s\", list, morphism);\n",
+      PTFI("result = addListAssignment(morphism, \"%s\", list);\n",
            indent, list_variable_name);
       generateVariableResultCode(rule, list_variable_name, true, indent);
       /* Reset the flag before function exit. */
@@ -210,7 +210,7 @@ void generateVariableListMatchingCode(Rule *rule, Label label, int indent)
     * list element is the list variable, which can be assigned the empty list. */
    list = label.last;
    if(list->atom.type == VARIABLE && list->atom.variable.type == LIST_VAR)
-      PTFI("result = addListAssignment(\"%s\", NULL, morphism);\n", 
+      PTFI("result = addListAssignment(morphism, \"%s\", NULL);\n", 
            indent + 3, list_variable_name);
    else
    {
@@ -242,7 +242,7 @@ void generateVariableListMatchingCode(Rule *rule, Label label, int indent)
       PTF("\n");
       PTFI("/* Matching list variable \"%s\". */\n", indent + 3, list_variable_name);
       PTFI("if(list == start->prev)\n", indent + 3);
-      PTFI("result = addListAssignment(\"%s\", NULL, morphism);\n", 
+      PTFI("result = addListAssignment(morphism, \"%s\", NULL);\n", 
          indent + 6, list_variable_name);
       PTFI("else\n", indent + 3);
       PTFI("{\n", indent + 3);
@@ -250,7 +250,7 @@ void generateVariableListMatchingCode(Rule *rule, Label label, int indent)
          indent + 6, list_variable_name);
       PTFI("GPList *sublist = NULL;\n", indent + 6);
       PTFI("sublist = copyList(start, list->next);\n", indent + 6);
-      PTFI("result = addListAssignment(\"%s\", sublist, morphism);\n", indent + 6,
+      PTFI("result = addListAssignment(morphism, \"%s\", sublist);\n", indent + 6,
            list_variable_name);
       PTFI("}\n", indent + 3);
       generateVariableResultCode(rule, list_variable_name, true, indent + 3);
@@ -306,7 +306,7 @@ static void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
       case INTEGER_VAR:
            PTFI("/* Matching integer variable \"%s\". */\n", indent, atom.variable.name);
            PTFI("if(list->atom.type != INTEGER_CONSTANT) break;\n", indent);
-           PTFI("result = addIntegerAssignment(\"%s\", list->atom.number, morphism);\n",
+           PTFI("result = addIntegerAssignment(morphism, \"%s\", list->atom.number);\n",
                 indent, atom.variable.name);
            generateVariableResultCode(rule, atom.variable.name, false, indent);
            break;
@@ -315,7 +315,7 @@ static void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
            PTFI("/* Matching character variable \"%s\". */\n", indent, atom.variable.name);
            PTFI("if(list->atom.type != STRING_CONSTANT) break;\n", indent);
            PTFI("if(strlen(list->atom.string) != 1) break;\n", indent);
-           PTFI("result = addStringAssignment(\"%s\", list->atom.string, morphism);\n", 
+           PTFI("result = addStringAssignment(morphism, \"%s\", list->atom.string);\n", 
                 indent, atom.variable.name);
            generateVariableResultCode(rule, atom.variable.name, false, indent);
            break;
@@ -323,7 +323,7 @@ static void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
       case STRING_VAR:
            PTFI("/* Matching string variable \"%s\". */\n", indent, atom.variable.name);
            PTFI("if(list->atom.type != STRING_CONSTANT) break;\n", indent);
-           PTFI("result = addStringAssignment(\"%s\", list->atom.string, morphism);\n",
+           PTFI("result = addStringAssignment(morphism, \"%s\", list->atom.string);\n",
                 indent, atom.variable.name);
            generateVariableResultCode(rule, atom.variable.name, false, indent);
            break;
@@ -331,10 +331,10 @@ static void generateVariableMatchingCode(Rule *rule, Atom atom, int indent)
       case ATOM_VAR:
            PTFI("/* Matching atom variable \"%s\". */\n", indent, atom.variable.name);
            PTFI("if(list->atom.type == INTEGER_CONSTANT)\n", indent);
-           PTFI("result = addIntegerAssignment(\"%s\", list->atom.number, morphism);\n",
+           PTFI("result = addIntegerAssignment(morphism, \"%s\", list->atom.number);\n",
                 indent, atom.variable.name);
            PTFI("else if(list->atom.type == STRING_CONSTANT)\n", indent);
-           PTFI("result = addStringAssignment(\"%s\", list->atom.string, morphism);\n",
+           PTFI("result = addStringAssignment(morphism, \"%s\", list->atom.string);\n",
                 indent, atom.variable.name);
            generateVariableResultCode(rule, atom.variable.name, false, indent);
            break;
@@ -421,13 +421,13 @@ static void generateConcatMatchingCode(Rule *rule, Atom atom, int indent)
    PTF("\n");
    PTFI("/* Matching string variable \"%s\". */\n", indent, iterator->value);
    PTFI("if(end == start - 1) ", indent);
-   PTF("result = addStringAssignment(\"%s\", \"\", morphism);\n", iterator->value);
+   PTF("result = addStringAssignment(morphism, \"%s\", \"\");\n", iterator->value);
    PTFI("else\n", indent);
    PTFI("{\n", indent);
    PTFI("char substring[end - start + 1];\n", indent + 3);
    PTFI("strncpy(substring, host_string + start, end - start + 1);\n", indent + 3);
    PTFI("substring[end - start + 1] = '\\0';\n", indent + 3);
-   PTFI("result = addStringAssignment(\"%s\", substring, morphism);\n", 
+   PTFI("result = addStringAssignment(morphism, \"%s\", substring);\n", 
         indent + 3, iterator->value);
    generateVariableResultCode(rule, iterator->value, false, indent);
    PTFI("}\n", indent);
@@ -489,7 +489,7 @@ static void generateStringMatchingCode(Rule *rule, StringList *string_exp,
          if(prefix) PTF("host_string[start++];\n");
          else PTF("host_string[end--];\n");
       }
-      PTFI("result = addStringAssignment(\"%s\", host_character, morphism);\n",
+      PTFI("result = addStringAssignment(morphism, \"%s\", host_character);\n",
            indent, string_exp->value);
       generateVariableResultCode(rule, string_exp->value, false, indent);
    }
@@ -538,12 +538,12 @@ void generateVariableCode(string name, GPType type)
    switch(type)
    {
       case INTEGER_VAR:
-           PTFI("int %s_var = getIntegerValue(\"%s\", morphism);\n", 3, name, name);
+           PTFI("int %s_var = getIntegerValue(morphism, \"%s\");\n", 3, name, name);
            break;
 
       case CHARACTER_VAR:
       case STRING_VAR:
-           PTFI("string %s_var = getStringValue(\"%s\", morphism);\n", 3, name, name);
+           PTFI("string %s_var = getStringValue(morphism, \"%s\");\n", 3, name, name);
            break;
 
       case ATOM_VAR:
@@ -552,12 +552,12 @@ void generateVariableCode(string name, GPType type)
                 3, name, name);
            PTFI("union { int num; string str; } %s_var;\n", 3, name);
            PTFI("if(assignment_%s->type == INTEGER_VAR) "
-                "%s_var.num = getIntegerValue(\"%s\", morphism);\n", 3, name, name, name);
-           PTFI("else %s_var.str = getStringValue(\"%s\", morphism);\n\n", 3, name, name);
+                "%s_var.num = getIntegerValue(morphism, \"%s\");\n", 3, name, name, name);
+           PTFI("else %s_var.str = getStringValue(morphism, \"%s\");\n\n", 3, name, name);
            break;
          
       case LIST_VAR:
-           PTFI("GPList *%s_var = getListValue(\"%s\", morphism);\n", 3, name, name);
+           PTFI("GPList *%s_var = getListValue(morphism, \"%s\");\n", 3, name, name);
            break;
       
       default:

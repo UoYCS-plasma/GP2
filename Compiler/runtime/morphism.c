@@ -175,7 +175,7 @@ Assignment *lookupVariable(Morphism *morphism, string variable)
    return NULL;
 }
 
-int addListAssignment(string name, GPList *list, Morphism *morphism) 
+int addListAssignment(Morphism *morphism, string name, GPList *list) 
 {
    /* Assign the minimum type to the assignment. For lists of length 1, this is
     * either INTEGER_CONSTANT or STRING_CONSTANT. Otherwise it is LIST_VAR. */
@@ -229,7 +229,7 @@ int addListAssignment(string name, GPList *list, Morphism *morphism)
    return 0;
 }
 
-int addIntegerAssignment(string name, int value, Morphism *morphism)
+int addIntegerAssignment(Morphism *morphism, string name, int value)
 {
    Assignment *assignment = lookupVariable(morphism, name);
    if(assignment == NULL) 
@@ -246,7 +246,7 @@ int addIntegerAssignment(string name, int value, Morphism *morphism)
    return -1;
 }
 
-int addStringAssignment(string name, string value, Morphism *morphism)
+int addStringAssignment(Morphism *morphism, string name, string value)
 {
    Assignment *assignment = lookupVariable(morphism, name);
    if(assignment == NULL) 
@@ -263,7 +263,7 @@ int addStringAssignment(string name, string value, Morphism *morphism)
    return -1;
 }
 
-int getIntegerValue(string name, Morphism *morphism)
+int getIntegerValue(Morphism *morphism, string name)
 {
    Assignment *assignment = lookupVariable(morphism, name);
    if(assignment == NULL) 
@@ -275,7 +275,7 @@ int getIntegerValue(string name, Morphism *morphism)
    return assignment->value->atom.number;
 }
 
-string getStringValue(string name, Morphism *morphism)
+string getStringValue(Morphism *morphism, string name)
 {
    Assignment *assignment = lookupVariable(morphism, name);
    if(assignment == NULL) 
@@ -287,7 +287,7 @@ string getStringValue(string name, Morphism *morphism)
    return assignment->value->atom.string;
 }
 
-GPList *getListValue(string name, Morphism *morphism)
+GPList *getListValue(Morphism *morphism, string name)
 {
    Assignment *assignment = lookupVariable(morphism, name);
    if(assignment == NULL) 

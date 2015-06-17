@@ -155,22 +155,22 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
             switch(variable.type)
             {
                case INTEGER_VAR:
-                    PTFI("int %s_var = getIntegerValue(\"%s\", morphism);\n\n", 3, 
+                    PTFI("int %s_var = getIntegerValue(morphism, \"%s\");\n\n", 3, 
                          name, name);
                     break;
 
                case CHARACTER_VAR:
                case STRING_VAR:
-                    PTFI("string %s_var = getStringValue(\"%s\", morphism);\n\n", 3, 
+                    PTFI("string %s_var = getStringValue(morphism, \"%s\");\n\n", 3, 
                          name, name);
                     break;
 
                case ATOM_VAR:
                     PTFI("union { int num; string str; } %s_var;\n", 3, name);
                     PTFI("if(assignment_%s->type == INTEGER_VAR) "
-                         "%s_var.num = getIntegerValue(\"%s\", morphism);\n", 3, 
+                         "%s_var.num = getIntegerValue(morphism, \"%s\");\n", 3, 
                          name, name, name);
-                    PTFI("else %s_var.str = getStringValue(\"%s\", morphism);\n\n", 3,
+                    PTFI("else %s_var.str = getStringValue(morphism, \"%s\");\n\n", 3,
                          name, name);
                     break;
                   
