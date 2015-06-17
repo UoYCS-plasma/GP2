@@ -186,10 +186,19 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
       }
       iterator = iterator->next;
    }
-   PTF("   /* Output Graph. */\n");
-   /* TODO: Print output graph to an output file. */
-   PTF("   printGraph(host, stdout);\n");
+   string output_file_name = "../output_graph.gpg";
+   PTFI("/* Output Graph. */\n", 3);
+   PTFI("FILE *output_file = fopen(\"%s\", \"w\");\n", 3, output_file_name);
+   PTFI("if(output_file == NULL)\n", 3);
+   PTFI("{\n", 3);
+   PTFI("perror(\"%s\");\n", 6, output_file_name);
+   PTFI("exit(1);\n", 6);
+   PTFI("}\n", 3);
+   PTF("   printGraph(host, output_file);\n");
+   PTF("   print_to_console(\"Output graph saved to file %s.\\n\");\n", output_file_name);
    PTF("   garbageCollect();\n");
+   PTF("   print_to_console(\"Graph changes made: %%d\\n\", graph_change_count);\n");
+   PTF("   fclose(output_file);\n");
    PTF("   return 0;\n");
    PTF("}\n\n");
    fclose(file);
@@ -496,8 +505,8 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
          PTFI("print_trace(\"(%d) Recording graph changes.\\n\\n\");\n",
               data.indent, condition_data.undo_point);
       #endif
-      PTFI("int undo_point%d = graph_change_index;\n", data.indent, 
-           condition_data.undo_point);
+      PTFI("int undo_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
+           data.indent, condition_data.undo_point);
    }
    PTFI("do\n", data.indent);
    PTFI("{\n", data.indent);
@@ -608,8 +617,8 @@ void generateLoopStatement(GPCommand *command, CommandData data)
          PTFI("print_trace(\"(%d) Recording graph changes.\\n\\n\");\n",
               data.indent, loop_data.undo_point);
       #endif
-      PTFI("int undo_point%d = graph_change_index;\n", 
-          data.indent, loop_data.undo_point);
+      PTFI("int undo_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
+           data.indent, loop_data.undo_point);
    }
    PTFI("while(success)\n", data.indent);
    PTFI("{\n", data.indent);

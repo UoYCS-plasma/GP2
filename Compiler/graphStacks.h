@@ -16,7 +16,6 @@
 #define INC_GRAPH_STACKS_H
 
 #define GRAPH_STACK_SIZE 4
-#define GRAPH_CHANGE_STACK_SIZE 16 
 
 #include "error.h"
 #include "globals.h"
@@ -68,9 +67,11 @@ typedef struct GraphChange
    };
 } GraphChange; 
 
-extern GraphChange *graph_change_stack;
-extern int graph_change_index;
+struct GraphChangeStack;
+extern struct GraphChangeStack *graph_change_stack;
+extern int graph_change_count;
 
+int topOfGraphChangeStack(void);
 void pushAddedNode(int index);
 void pushAddedEdge(int index);
 void pushRemovedNode(bool root, Label label);

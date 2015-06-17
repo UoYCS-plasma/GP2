@@ -5,8 +5,8 @@ LOBJECTS = ../debug.o ../error.o ../label.o ../graph.o ../graphStacks.o ../rule.
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
 CC = gcc 
-#CFLAGS = -I .. -g -O0 -Wall -Wextra  
-CFLAGS = -I .. -O2 -fomit-frame-pointer -Wall -Wextra 
+CFLAGS = -I .. -g -O0 -Wall -Wextra  
+#CFLAGS = -I .. -O2 -fomit-frame-pointer -Wall -Wextra 
 LFLAGS = -lglib-2.0
 
 default:	$(OBJECTS)
