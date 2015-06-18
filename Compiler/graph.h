@@ -26,6 +26,10 @@ typedef struct IntArray {
    int *items;
 } IntArray;
 
+IntArray makeIntArray(int initial_capacity);
+void addToIntArray(IntArray *array, int item);
+void removeFromIntArray(IntArray *array, int index);
+
 typedef struct NodeArray {
    int capacity;
    int size;

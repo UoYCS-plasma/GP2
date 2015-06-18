@@ -71,7 +71,8 @@ void copyGraph(Graph *graph)
       if(node->index >= 0)
       {
          Node *original_node = getNode(graph, index);
-         copyLabel(&(original_node->label), &(node->label));
+         if(&(original_node->label) != &(blank_label))
+            copyLabel(&(original_node->label), &(node->label));
  
          /* If necessary, copy the edges arrays of the original node. */
          if(original_node->out_edges.items != NULL)
@@ -111,7 +112,8 @@ void copyGraph(Graph *graph)
       if(edge->index >= 0)
       {
          Edge *original_edge = getEdge(graph, index);
-         copyLabel(&(original_edge->label), &(edge->label));
+         if(&(original_edge->label) != &blank_label)
+            copyLabel(&(original_edge->label), &(edge->label));
       }
    }  
    graph_stack[graph_stack_index++] = graph_copy;
@@ -208,38 +210,44 @@ int topOfGraphChangeStack(void)
    return graph_change_stack->size;
 }
 
-void pushAddedNode(int index)
+void pushAddedNode(int index, bool hole_filled)
 {
    GraphChange change;
    change.type = ADDED_NODE;
-   change.added_node_index = index;
+   change.added_node.index = index;
+   change.added_node.hole_filled = hole_filled;
    pushGraphChange(change);
 }
    
-void pushAddedEdge(int index)
+void pushAddedEdge(int index, bool hole_filled)
 {
    GraphChange change;
    change.type = ADDED_EDGE;
-   change.added_edge_index = index;
+   change.added_edge.index = index;
+   change.added_edge.hole_filled = hole_filled;
    pushGraphChange(change);
 }
 
-void pushRemovedNode(bool root, Label label)
+void pushRemovedNode(bool root, Label label, int index, bool hole_created)
 {
    GraphChange change;
    change.type = REMOVED_NODE;
    change.removed_node.root = root;
    change.removed_node.label = label;
+   change.removed_node.index = index;
+   change.removed_node.hole_created = hole_created;
    pushGraphChange(change);
 }
 
-void pushRemovedEdge(Label label, int source, int target)
+void pushRemovedEdge(Label label, int source, int target, int index, bool hole_created)
 {
    GraphChange change;
    change.type = REMOVED_EDGE;
    change.removed_edge.label = label;
    change.removed_edge.source = source;
    change.removed_edge.target = target;
+   change.removed_edge.index = index;
+   change.removed_edge.hole_created = hole_created;
    pushGraphChange(change);
 }
 
@@ -265,10 +273,15 @@ void pushChangedRootNode(int index)
 {
    GraphChange change;
    change.type = CHANGED_ROOT_NODE; 
-   change.changed_root_node_index = index;
+   change.changed_root_index = index;
    pushGraphChange(change);
 }
-   
+  
+/* The reversal of addition and removal of graph items is done manually as opposed
+ * to calling the appropriate graph modification functions. This is because, due to
+ * the management of holes in the graph's arrays, calling the normal functions is
+ * not guaranteed to preserve the exact graph data structure as it was before the
+ * modifications were made. */
 void undoChanges(Graph *graph, int restore_point)
 {
    if(graph_change_stack == NULL) return;
@@ -279,22 +292,113 @@ void undoChanges(Graph *graph, int restore_point)
       switch(change.type)
       {
          case ADDED_NODE:
-              removeNode(graph, change.added_node_index, true);
+         {
+              int index = change.added_node.index;
+              Node *node = getNode(graph, index);  
+
+              freeLabel(node->label);
+              if(node->out_edges.items != NULL) free(node->out_edges.items);
+              if(node->in_edges.items != NULL) free(node->in_edges.items); 
+              if(node->root) removeRootNode(graph, index);
+
+              if(change.added_node.hole_filled) 
+                 graph->nodes.holes.items[graph->nodes.holes.size++] = index;
+              else graph->nodes.size--;
+
+              graph->nodes.items[index] = dummy_node;
+              graph->number_of_nodes--;
               break;
+         }
 
          case ADDED_EDGE:
-              removeEdge(graph, change.added_edge_index, true);
-              break;
+         {
+              int index = change.added_edge.index;
+              Edge *edge = getEdge(graph, index);
+              freeLabel(edge->label);
 
+              Node *source = getNode(graph, edge->source);
+              if(source->first_out_edge == index) source->first_out_edge = -1;
+              else if(source->second_out_edge == index) source->second_out_edge = -1;
+              else removeFromIntArray(&(source->out_edges), index);
+              source->outdegree--;
+
+              Node *target = getNode(graph, edge->target);
+              if(target->first_in_edge == index) target->first_in_edge = -1;
+              else if(target->second_in_edge == index) target->second_in_edge = -1;
+              else removeFromIntArray(&(target->in_edges), index);
+              target->indegree--;
+
+              if(change.added_edge.hole_filled)
+                 graph->edges.holes.items[graph->edges.holes.size++] = index;
+              else graph->edges.size--;
+
+              graph->edges.items[index] = dummy_edge;
+              graph->number_of_edges--;
+              break;
+         }
          case REMOVED_NODE:
-              addNode(graph, change.removed_node.root, change.removed_node.label);
+         {
+              Node node;
+              node.index = change.removed_node.index;
+              node.root = change.removed_node.root;
+              node.label = change.removed_node.label;
+              node.first_out_edge = -1;
+              node.second_out_edge = -1;
+              node.first_in_edge = -1;
+              node.second_in_edge = -1;
+              node.out_edges = makeIntArray(0);
+              node.in_edges = makeIntArray(0);
+              node.outdegree = 0;
+              node.indegree = 0;
+
+              graph->nodes.items[change.removed_node.index] = node;
+              /* If the removal of the node created a hole, manually remove it from
+               * the holes array. */
+              if(change.removed_node.hole_created)
+              {
+                 graph->nodes.holes.size--;
+                 graph->nodes.holes.items[graph->nodes.holes.size] = -1;
+              }
+              else graph->nodes.size++;
+              if(node.root) addRootNode(graph, change.removed_node.index);
+              graph->number_of_nodes++;
               break;
-
+         }
          case REMOVED_EDGE:
-              addEdge(graph, change.removed_edge.label, change.removed_edge.source, 
-                      change.removed_edge.target);
-              break; 
+         {
+              Edge edge;
+              edge.index = change.removed_edge.index;
+              edge.label = change.removed_edge.label;
+              edge.source = change.removed_edge.source;
+              edge.target = change.removed_edge.target;
+ 
+              int index = change.removed_edge.index;
+              graph->edges.items[index] = edge;
 
+              Node *source = getNode(graph, change.removed_edge.source);
+              assert(source != NULL);
+              if(source->first_out_edge == -1) source->first_out_edge = index;
+              else if(source->second_out_edge == -1) source->second_out_edge = index;
+              else addToIntArray(&(source->out_edges), index);
+              source->outdegree++;
+
+              Node *target = getNode(graph, change.removed_edge.target);
+              assert(target != NULL);
+              if(target->first_in_edge == -1) target->first_in_edge = index;
+              else if(target->second_in_edge == -1) target->second_in_edge = index;
+              else addToIntArray(&(target->in_edges), index);
+              target->indegree++;
+              /* If the removal of the edge created a hole, manually remove it from
+               * the holes array. */
+              if(change.removed_edge.hole_created)
+              {
+                 graph->edges.holes.size--;
+                 graph->edges.holes.items[graph->edges.holes.size] = -1;
+              }
+              else graph->edges.size++;
+              graph->number_of_edges++;
+              break;
+         }
          case RELABELLED_NODE:
               relabelNode(graph, change.relabelled_node.index, 
                           change.relabelled_node.old_label, true);
@@ -306,7 +410,7 @@ void undoChanges(Graph *graph, int restore_point)
               break;
 
          case CHANGED_ROOT_NODE:
-              changeRoot(graph, change.changed_root_node_index);
+              changeRoot(graph, change.changed_root_index);
               break;
               
          default: 

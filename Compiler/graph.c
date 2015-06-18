@@ -4,7 +4,7 @@ Node dummy_node = {-1, false, {NONE, 0, NULL, NULL}, 0, 0, -1, -1, -1, -1,
                    {0, 0, NULL}, {0, 0, NULL}};
 Edge dummy_edge = {-1, {NONE, 0, NULL, NULL}, -1, -1};
 
-static IntArray makeIntArray(int initial_capacity)
+IntArray makeIntArray(int initial_capacity)
 {
    IntArray array;
    array.capacity = initial_capacity;
@@ -41,13 +41,13 @@ static void growIntArray(IntArray *array)
    for(i = old_capacity; i < array->capacity; i++) array->items[i] = -1;
 }
 
-static void addToIntArray(IntArray *array, int item)
+void addToIntArray(IntArray *array, int item)
 {
    if(array->size >= array->capacity) growIntArray(array);
    array->items[array->size++] = item;
 }
 
-static void removeFromIntArray(IntArray *array, int index)
+void removeFromIntArray(IntArray *array, int index)
 {
    int i;
    for(i = 0; i < array->size; i++)
@@ -281,7 +281,6 @@ void removeNode(Graph *graph, int index, bool free_label)
                    "incident edges.\n", node->index);
       return;
    }
-   /* Deallocate memory in the node structure. */
    if(free_label) freeLabel(node->label);
    if(node->out_edges.items != NULL) free(node->out_edges.items);
    if(node->in_edges.items != NULL) free(node->in_edges.items); 

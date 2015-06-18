@@ -724,8 +724,10 @@ void generateRemoveLHSCode(string rule_name)
    PTFI("{\n", 3);                        
    PTFI("if(record_changes)\n", 6);
    PTFI("{\n", 6);
-   PTFI("Edge *edge = getEdge(host, morphism->edge_map[count].host_index);\n", 9); 
-   PTFI("pushRemovedEdge(edge->label, edge->source, edge->target);\n", 9);  
+   PTFI("Edge *edge = getEdge(host, morphism->edge_map[count].host_index);\n", 9);
+   PTFI("/* A hole is created if the edge is not at the right-most index of the array. */\n", 9);
+   PTFI("pushRemovedEdge(edge->label, edge->source, edge->target, edge->index,\n", 9);
+   PTFI("                edge->index < host->edges.size - 1);\n", 9);  
    PTFI("}\n", 6);
    PTFI("removeEdge(host, morphism->edge_map[count].host_index, !record_changes);\n", 6);
    PTFI("}\n", 3);
@@ -735,10 +737,12 @@ void generateRemoveLHSCode(string rule_name)
    PTFI("if(record_changes)\n", 6);
    PTFI("{\n", 6);
    PTFI("Node *node = getNode(host, morphism->node_map[count].host_index);\n", 9); 
-   PTFI("pushRemovedNode(node->root, node->label);\n", 9);  
+   PTFI("/* A hole is created if the node is not at the right-most index of the array. */\n", 9);
+   PTFI("pushRemovedNode(node->root, node->label, node->index,\n", 9);
+   PTFI("                node->index < host->nodes.size - 1);\n", 9);  
    PTFI("}\n", 6);
    PTFI("removeNode(host, morphism->node_map[count].host_index, !record_changes);\n", 6);
-   PTFI("}\n", 6);
+   PTFI("}\n", 3);
    PTFI("initialiseMorphism(morphism);\n}\n\n", 3);
 }
 
@@ -781,9 +785,13 @@ void generateAddRHSCode(Rule *rule)
          }
       }
       else generateLabelEvaluationCode(node->label, true, index, 0, 3);
+      PTFI("int node_array_size%d = host->nodes.size;\n", 3, index);
       PTFI("index = addNode(host, %d, label);\n", 3, node->root);
       if(rule->adds_edges) PTFI("map[%d] = index;\n", 3, node->index);
-      PTFI("if(record_changes) pushAddedNode(index);\n", 3);
+      PTFI("/* If the node array size has not increased after the node addition, then\n", 3);
+      PTFI("   the node was added to a hole in the array. */\n", 3);
+      PTFI("if(record_changes)\n", 3);
+      PTFI("pushAddedNode(index, node_array_size%d == host->nodes.size);\n", 6, index);
    }
    PTF("\n");
    for(index = 0; index < rule->rhs->edge_index; index++)
@@ -800,9 +808,13 @@ void generateAddRHSCode(Rule *rule)
       else generateLabelEvaluationCode(edge->label, false, index, 0, 3);
       /* The host-source and host-target of added edges are taken from the 
        * map populated in the previous loop. */
+      PTFI("int edge_array_size%d = host->edges.size;\n", 3, index);
       PTFI("index = addEdge(host, label, map[%d], map[%d]);\n",
            3, edge->source->index, edge->target->index);
-      PTFI("if(record_changes) pushAddedEdge(index);\n", 3);
+      PTFI("/* If the edge array size has not increased after the edge addition, then\n", 3);
+      PTFI("   the edge was added to a hole in the array. */\n", 3);
+      PTFI("if(record_changes)\n", 3);
+      PTFI("pushAddedEdge(index, edge_array_size%d == host->edges.size);\n", 6, index);
    }     
    PTF("}\n");
    return;
@@ -868,9 +880,13 @@ void generateApplicationCode(Rule *rule)
          }
          /* Generate code to remove the edge. */
          PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
-         PTFI("if(record_changes)\n   {\n", 3);
+         PTFI("if(record_changes)\n", 3);
+         PTFI("{\n", 3);
          PTFI("Edge *edge = getEdge(host, host_edge_index);\n", 6);
-         PTFI("pushRemovedEdge(edge->label, edge->source, edge->target);\n   }\n", 6);
+         PTFI("/* A hole is created if the edge is not at the right-most index of the array. */\n", 6);
+         PTFI("pushRemovedEdge(edge->label, edge->source, edge->target, edge->index,\n", 6);
+         PTFI("                edge->index < host->edges.size - 1);\n", 6);
+         PTFI("}\n", 3);
          PTFI("removeEdge(host, host_edge_index, !record_changes);\n\n", 3);   
       }
       else
@@ -922,7 +938,9 @@ void generateApplicationCode(Rule *rule)
          PTFI("if(record_changes)\n", 3);
          PTFI("{\n", 3);
          PTFI("Node *node = getNode(host, host_node_index);\n", 6);
-         PTFI("pushRemovedNode(node->root, node->label);\n", 6);
+         PTFI("/* A hole is created if the node is not at the right-most index of the array. */\n", 6);
+         PTFI("pushRemovedNode(node->root, node->label, node->index,\n", 6);
+         PTFI("                node->index < host->nodes.size - 1);\n", 6);  
          PTFI("}\n", 3);
          PTFI("removeNode(host, host_node_index, !record_changes);\n\n", 3);   
       }
@@ -1007,6 +1025,7 @@ void generateApplicationCode(Rule *rule)
          PTFI("int host_node_index;\n", 3);
          host_node_index_declared = true;
       }
+      PTFI("int node_array_size%d = host->nodes.size;\n", 3, index);
       if(node->label.length == 0 && node->label.mark == NONE)
          PTFI("host_node_index = addNode(host, %d, blank_label);\n", 3, node->root);
       else
@@ -1020,7 +1039,10 @@ void generateApplicationCode(Rule *rule)
          PTFI("host_node_index = addNode(host, %d, label);\n", 3, node->root);
       }
       if(rule->adds_edges) PTFI("rhs_node_map[%d] = host_node_index;\n", 3, node->index);
-      PTFI("if(record_changes) pushAddedNode(host_node_index);\n\n", 3);
+      PTFI("/* If the node array size has not increased after the node addition, then\n", 3);
+      PTFI("   the node was added to a hole in the array. */\n", 3);
+      PTFI("if(record_changes)\n", 3);
+      PTFI("pushAddedNode(host_node_index, node_array_size%d == host->nodes.size);\n", 6, index);
    }   
    /* (4) Add edges. */
    bool source_target_declared = false;
@@ -1038,6 +1060,7 @@ void generateApplicationCode(Rule *rule)
          PTFI("int source, target;\n", 3);
          source_target_declared = true;
       }
+      PTFI("int edge_array_size%d = host->edges.size;\n", 3, index);
       /* The source and target edges are either nodes preserved by the rule or 
        * nodes added by the rule. 
        * The host node indices of preserved nodes are obtained from the morphism.
@@ -1062,7 +1085,10 @@ void generateApplicationCode(Rule *rule)
          generateLabelEvaluationCode(edge->label, false, list_count++, 0, 3);
          PTFI("host_edge_index = addEdge(host, label, source, target);\n", 3);
       }
-      PTFI("if(record_changes) pushAddedEdge(host_edge_index);\n\n", 3);
+      PTFI("/* If the edge array size has not increased after the edge addition, then\n", 3);
+      PTFI("   the edge was added to a hole in the array. */\n", 3);
+      PTFI("if(record_changes)\n", 3);
+      PTFI("pushAddedEdge(host_edge_index, edge_array_size%d == host->edges.size);\n", 6, index);
    }
    PTFI("/* Reset the morphism. */\n", 3);
    PTFI("initialiseMorphism(morphism);\n}\n\n", 3);

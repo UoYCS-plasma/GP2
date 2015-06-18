@@ -78,8 +78,9 @@ static void annotate(GPCommand *command, int restore_point)
            if(type == RECORD_CHANGES) command->cond_branch.roll_back = true;
            if(type == COPY)
            {
-              command->cond_branch.restore_point = restore_point;
-              new_restore_point++;
+              command->cond_branch.roll_back = true;
+              //command->cond_branch.restore_point = restore_point;
+              //new_restore_point++;
            }
            annotate(condition, new_restore_point);
            annotate(then_command, restore_point);

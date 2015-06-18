@@ -430,15 +430,15 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
       if(!predicate)
       {
          /* Optimisation: Don't have to apply the last rule in an if condition.
-          * However, finding such rules is non-trivial. The condition below
-          * suffices for contexts where applying the rule is incorrect, namely
-          * where there is no restore point and hence the graph is not copied
-          * in the GP2 if condition. */
-         if(data.context != IF_BODY || data.restore_point >= 0)
+          * However, finding such rules is non-trivial.
+          * The condition below suffices for contexts where applying the rule is incorrect,
+          * namely when we are in an if body with no graph backtracking (precisely when
+          * there is only one rule call that changes the graph). Even this isn't correct... */
+         if(data.context != IF_BODY || data.restore_point >= 0 || data.undo_point >= 0)
          { 
             if(data.undo_point >= 0 && !data.stop_recording) 
                  PTFI("apply%s(M_%s, true);\n", data.indent + 3, rule_name, rule_name);
-            else PTFI("apply%s(M_%s, false);\n", data.indent + 3, rule_name, rule_name);
+            else PTFI("apply%s(M_%s, true);\n", data.indent + 3, rule_name, rule_name);
             #ifdef GRAPH_TRACE
                PTFI("print_trace(\"Graph after applying rule %s:\\n\");\n",
                     data.indent + 3, rule_name);
