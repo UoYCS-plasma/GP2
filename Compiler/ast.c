@@ -215,7 +215,6 @@ GPCommand *newASTCondBranch(CommandType type, YYLTYPE location,
    command->cond_branch.condition = condition;
    command->cond_branch.then_command = then_command;
    command->cond_branch.else_command = else_command;
-   command->cond_branch.restore_point = -1;
    command->cond_branch.roll_back = false;
    return command;
 }
@@ -224,7 +223,6 @@ GPCommand *newASTAlap(YYLTYPE location, GPCommand *loop_body)
 {
    GPCommand *command = makeGPCommand(location, ALAP_STATEMENT);
    command->loop_stmt.loop_body = loop_body;
-   command->loop_stmt.restore_point = -1;
    command->loop_stmt.roll_back = false;
    command->loop_stmt.stop_recording = false;
    return command;

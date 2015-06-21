@@ -1,155 +1,5 @@
 #include "graphStacks.h"
 
-Graph **graph_stack = NULL;
-int graph_stack_index = 0;
-
-void copyGraph(Graph *graph)
-{ 
-   if(graph_stack_index == GRAPH_STACK_SIZE)
-   {
-      print_to_log("Error: copyGraph called with a full graph stack.\n");
-      return;
-   }
-   if(graph_stack == NULL) graph_stack = calloc(GRAPH_STACK_SIZE, sizeof(Graph*));
-   if(graph_stack == NULL)
-   {
-      print_to_log("Error (copyGraph): malloc failure.\n");
-      exit(1);
-   }
-   Graph *graph_copy = newGraph(graph->nodes.capacity, graph->edges.capacity); 
-
-   graph_copy->nodes.size = graph->nodes.size;
-   graph_copy->nodes.capacity = graph->nodes.capacity;
-   memcpy(graph_copy->nodes.items, graph->nodes.items, graph->nodes.capacity * sizeof(Node));
-
-   graph_copy->edges.size = graph->edges.size;
-   graph_copy->edges.capacity = graph->edges.capacity;
-   memcpy(graph_copy->edges.items, graph->edges.items, graph->edges.capacity * sizeof(Edge));
-
-   /* newGraph allocates an initial holes array of size 16. This may be smaller
-    * then the holes array in the original graph. */
-   if(graph_copy->nodes.holes.capacity < graph->nodes.holes.capacity)
-   {
-      free(graph_copy->nodes.holes.items);
-      graph_copy->nodes.holes.items = calloc(graph->nodes.holes.capacity, sizeof(int));
-      if(graph_copy->nodes.holes.items == NULL)
-      {
-         print_to_log("Error (copyGraph): malloc failure.\n");
-         exit(1);
-      }
-   }
-   graph_copy->nodes.holes.size = graph->nodes.holes.size;
-   graph_copy->nodes.holes.capacity = graph->nodes.holes.capacity;
-   memcpy(graph_copy->nodes.holes.items, graph->nodes.holes.items,
-          graph->nodes.holes.capacity * sizeof(int));
-
-   if(graph_copy->edges.holes.capacity < graph->edges.holes.capacity)
-   {
-      free(graph_copy->edges.holes.items);
-      graph_copy->edges.holes.items = calloc(graph->edges.holes.capacity, sizeof(int));
-      if(graph_copy->edges.holes.items == NULL)
-      {
-         print_to_log("Error (copyGraph): malloc failure.\n");
-         exit(1);
-      }
-   }
-   graph_copy->edges.holes.size = graph->edges.holes.size;
-   graph_copy->edges.holes.capacity = graph->edges.holes.capacity;
-   memcpy(graph_copy->edges.holes.items, graph->edges.holes.items,
-          graph->edges.holes.capacity * sizeof(int));
-   
-   graph_copy->number_of_nodes = graph->number_of_nodes;
-   graph_copy->number_of_edges = graph->number_of_edges;
-   graph_copy->root_nodes = NULL;
- 
-   int index;
-   for(index = 0; index < graph_copy->nodes.size; index++)
-   {
-      Node *node = getNode(graph_copy, index);
-      /* The entry in the node array may be a dummy node, in which case nothing
-       * needs to be done. This is tested by checking the node's index. */
-      if(node->index >= 0)
-      {
-         Node *original_node = getNode(graph, index);
-         if(&(original_node->label) != &(blank_label))
-            copyLabel(&(original_node->label), &(node->label));
- 
-         /* If necessary, copy the edges arrays of the original node. */
-         if(original_node->out_edges.items != NULL)
-         {
-            node->out_edges.items = calloc(node->out_edges.size, sizeof(int));
-            if(node->out_edges.items == NULL)
-            {
-               print_to_log("Error: (copyGraph): malloc failure.\n");
-               exit(1);
-            }
-            memcpy(node->out_edges.items, original_node->out_edges.items,
-                   node->out_edges.size * sizeof(int));
-         }
-         if(original_node->in_edges.items != NULL)
-         {
-            node->in_edges.items = calloc(node->in_edges.size, sizeof(int));
-            if(node->in_edges.items == NULL)
-            {
-               print_to_log("Error: (copyGraph): malloc failure.\n");
-               exit(1);
-            }
-            memcpy(node->in_edges.items, original_node->in_edges.items,
-                   node->in_edges.size * sizeof(int));
-         }
-         /* Populate the root nodes list. */
-         if(node->root) addRootNode(graph_copy, node->index);
-      }
-   }
-
-   /* Update the labels of each edge by copying the label from the 
-    * corresponding edge in the original graph. */
-   for(index = 0; index < graph_copy->edges.size; index++)
-   {
-      Edge *edge = getEdge(graph_copy, index);
-      /* The entry in the edge array may be a edge node, in which case nothing
-       * needs to be done. This is tested by checking the edge's index. */
-      if(edge->index >= 0)
-      {
-         Edge *original_edge = getEdge(graph, index);
-         if(&(original_edge->label) != &blank_label)
-            copyLabel(&(original_edge->label), &(edge->label));
-      }
-   }  
-   graph_stack[graph_stack_index++] = graph_copy;
-}
-
-Graph *popGraphs(Graph *current_graph, int restore_point)
-{
-   if(graph_stack == NULL) return NULL;
-   assert(graph_stack_index >= restore_point);
-
-   if(graph_stack_index == restore_point) return current_graph;
-
-   freeGraph(current_graph);
-   Graph *graph = NULL;
-   while(graph_stack_index > restore_point)
-   { 
-      graph = graph_stack[--graph_stack_index];
-      /* Free graphs between the passed restore point and the top stack entry. */
-      if(graph_stack_index > restore_point) freeGraph(graph);
-   }
-   return graph;
-}
-
-void discardGraphs(int depth)
-{
-   if(graph_stack == NULL) return;
-   while(graph_stack_index > depth) freeGraph(graph_stack[--graph_stack_index]);
-}
-
-void freeGraphStack(void)
-{
-   if(graph_stack == NULL) return;
-   discardGraphs(0);
-   free(graph_stack);
-}
-
 typedef struct GraphChangeStack {
    int size;
    int capacity;
@@ -192,7 +42,7 @@ static void growGraphChangeStack(void)
 
 static void pushGraphChange(GraphChange change)
 {
-   if(graph_change_stack == NULL) makeGraphChangeStack(16);
+   if(graph_change_stack == NULL) makeGraphChangeStack(128);
    else if(graph_change_stack->size >= graph_change_stack->capacity) growGraphChangeStack();
    graph_change_stack->stack[graph_change_stack->size++] = change;
    graph_change_count++;
@@ -470,4 +320,159 @@ void freeGraphChangeStack(void)
    free(graph_change_stack->stack);
    free(graph_change_stack);
 }
+
+
+Graph **graph_stack = NULL;
+int graph_stack_index = 0;
+int graph_copy_count = 0;
+
+void copyGraph(Graph *graph)
+{ 
+   if(graph_stack_index == GRAPH_STACK_SIZE)
+   {
+      print_to_log("Error: copyGraph called with a full graph stack.\n");
+      return;
+   }
+   if(graph_stack == NULL) graph_stack = calloc(GRAPH_STACK_SIZE, sizeof(Graph*));
+   if(graph_stack == NULL)
+   {
+      print_to_log("Error (copyGraph): malloc failure.\n");
+      exit(1);
+   }
+   Graph *graph_copy = newGraph(graph->nodes.capacity, graph->edges.capacity); 
+
+   graph_copy->nodes.size = graph->nodes.size;
+   graph_copy->nodes.capacity = graph->nodes.capacity;
+   memcpy(graph_copy->nodes.items, graph->nodes.items, graph->nodes.capacity * sizeof(Node));
+
+   graph_copy->edges.size = graph->edges.size;
+   graph_copy->edges.capacity = graph->edges.capacity;
+   memcpy(graph_copy->edges.items, graph->edges.items, graph->edges.capacity * sizeof(Edge));
+
+   /* newGraph allocates an initial holes array of size 16. This may be smaller
+    * then the holes array in the original graph. */
+   if(graph_copy->nodes.holes.capacity < graph->nodes.holes.capacity)
+   {
+      free(graph_copy->nodes.holes.items);
+      graph_copy->nodes.holes.items = calloc(graph->nodes.holes.capacity, sizeof(int));
+      if(graph_copy->nodes.holes.items == NULL)
+      {
+         print_to_log("Error (copyGraph): malloc failure.\n");
+         exit(1);
+      }
+   }
+   graph_copy->nodes.holes.size = graph->nodes.holes.size;
+   graph_copy->nodes.holes.capacity = graph->nodes.holes.capacity;
+   memcpy(graph_copy->nodes.holes.items, graph->nodes.holes.items,
+          graph->nodes.holes.capacity * sizeof(int));
+
+   if(graph_copy->edges.holes.capacity < graph->edges.holes.capacity)
+   {
+      free(graph_copy->edges.holes.items);
+      graph_copy->edges.holes.items = calloc(graph->edges.holes.capacity, sizeof(int));
+      if(graph_copy->edges.holes.items == NULL)
+      {
+         print_to_log("Error (copyGraph): malloc failure.\n");
+         exit(1);
+      }
+   }
+   graph_copy->edges.holes.size = graph->edges.holes.size;
+   graph_copy->edges.holes.capacity = graph->edges.holes.capacity;
+   memcpy(graph_copy->edges.holes.items, graph->edges.holes.items,
+          graph->edges.holes.capacity * sizeof(int));
+   
+   graph_copy->number_of_nodes = graph->number_of_nodes;
+   graph_copy->number_of_edges = graph->number_of_edges;
+   graph_copy->root_nodes = NULL;
+ 
+   int index;
+   for(index = 0; index < graph_copy->nodes.size; index++)
+   {
+      Node *node = getNode(graph_copy, index);
+      /* The entry in the node array may be a dummy node, in which case nothing
+       * needs to be done. This is tested by checking the node's index. */
+      if(node->index >= 0)
+      {
+         Node *original_node = getNode(graph, index);
+         if(&(original_node->label) != &(blank_label))
+            copyLabel(&(original_node->label), &(node->label));
+ 
+         /* If necessary, copy the edges arrays of the original node. */
+         if(original_node->out_edges.items != NULL)
+         {
+            node->out_edges.items = calloc(node->out_edges.size, sizeof(int));
+            if(node->out_edges.items == NULL)
+            {
+               print_to_log("Error: (copyGraph): malloc failure.\n");
+               exit(1);
+            }
+            memcpy(node->out_edges.items, original_node->out_edges.items,
+                   node->out_edges.size * sizeof(int));
+         }
+         if(original_node->in_edges.items != NULL)
+         {
+            node->in_edges.items = calloc(node->in_edges.size, sizeof(int));
+            if(node->in_edges.items == NULL)
+            {
+               print_to_log("Error: (copyGraph): malloc failure.\n");
+               exit(1);
+            }
+            memcpy(node->in_edges.items, original_node->in_edges.items,
+                   node->in_edges.size * sizeof(int));
+         }
+         /* Populate the root nodes list. */
+         if(node->root) addRootNode(graph_copy, node->index);
+      }
+   }
+
+   /* Update the labels of each edge by copying the label from the 
+    * corresponding edge in the original graph. */
+   for(index = 0; index < graph_copy->edges.size; index++)
+   {
+      Edge *edge = getEdge(graph_copy, index);
+      /* The entry in the edge array may be a edge node, in which case nothing
+       * needs to be done. This is tested by checking the edge's index. */
+      if(edge->index >= 0)
+      {
+         Edge *original_edge = getEdge(graph, index);
+         if(&(original_edge->label) != &blank_label)
+            copyLabel(&(original_edge->label), &(edge->label));
+      }
+   }  
+   graph_stack[graph_stack_index++] = graph_copy;
+   graph_copy_count++;
+}
+
+Graph *popGraphs(Graph *current_graph, int restore_point)
+{
+   if(graph_stack == NULL) return NULL;
+   assert(graph_stack_index >= restore_point);
+
+   if(graph_stack_index == restore_point) return current_graph;
+
+   freeGraph(current_graph);
+   Graph *graph = NULL;
+   while(graph_stack_index > restore_point)
+   { 
+      graph = graph_stack[--graph_stack_index];
+      /* Free graphs between the passed restore point and the top stack entry. */
+      if(graph_stack_index > restore_point) freeGraph(graph);
+   }
+   return graph;
+}
+
+void discardGraphs(int depth)
+{
+   if(graph_stack == NULL) return;
+   while(graph_stack_index > depth) freeGraph(graph_stack[--graph_stack_index]);
+}
+
+void freeGraphStack(void)
+{
+   if(graph_stack == NULL) return;
+   discardGraphs(0);
+   free(graph_stack);
+}
+
+
 

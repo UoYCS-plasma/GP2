@@ -121,10 +121,9 @@
   do                                                                      \
   {                                                                       \
      print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"               \
-                       #NODE_LABEL "\\n Restore Point = %d\\n"            \
-                       "Roll Back = %d\"]\n", command->id, command->id,   \
+                       #NODE_LABEL "\\n Roll Back = %d\"]\n",             \
+                       command->id, command->id,                          \
                        LOCATION_ARGS(command->location),                  \
-                       command->cond_branch.restore_point,                \
                        command->cond_branch.roll_back);                   \
                                                                           \
      print_to_dot_file("node%d->node%d[label=\"condition\"]\n",           \

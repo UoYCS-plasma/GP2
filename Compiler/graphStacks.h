@@ -23,6 +23,7 @@
 
 extern Graph **graph_stack;
 extern int graph_stack_index;
+extern int graph_copy_count;
 
 /* Creates a memory copy of the passed graph and pushes it to the graph stack. */
 void copyGraph(Graph *graph);

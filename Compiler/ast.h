@@ -118,12 +118,10 @@ typedef struct GPCommand {
       struct GPCommand *condition;
       struct GPCommand *then_command; 
       struct GPCommand *else_command; 
-      int restore_point;
       bool roll_back;
     } cond_branch; 			/* IF_STATEMENT, TRY_STATEMENT */
     struct {
        struct GPCommand *loop_body;
-       int restore_point;
        bool roll_back;
        bool stop_recording;
     } loop_stmt;                        /* ALAP_STATEMENT */
