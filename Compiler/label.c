@@ -1,417 +1,267 @@
 #include "label.h"
 
-Label blank_label = {NONE, 0, NULL, NULL};
+HostLabel blank_label = {NONE, 0, NULL};
+Bucket **list_store = NULL;
 
-Label makeEmptyLabel(MarkType mark)
+/* The list hash table has 400 buckets and is structured as follows:
+ * Lists of length 1 occupy buckets 0 - 99.
+ * Lists of length 2 occupy buckets 100 - 199.
+ * Lists of length 3 occupy buckets 200 - 299.
+ * Lists of length > 3 occupy buckets 300 - 399.
+ * The first unit in the first atom (an integer or the first character of a string)
+ * gives the index to add to the 'base' (the appropriate multiple of 100) as defined
+ * in the function. */
+static int hashHostList(HostAtom *list, int length)
 {
-   Label label = { .mark = mark, .length = 0, .first = NULL, .last = NULL };
-   return label;
-}
-
-Label makeHostLabel(MarkType mark, int length, GPList *list)
-{
-   Label label = { .mark = mark, .length = length, .first = list, 
-                   .last = getLastElement(list) };
-   return label;
-}
-
-GPList *appendList(GPList *list, GPList *list_to_append)
-{
-   while(list_to_append != NULL)
+   int base = length > 3 ? 300 : 100 * (length - 1);
+   int offset = 0;
+   HostAtom atom = list[0];
+   /* Integers occupy indices 0-34. */
+   if(atom.type == 'i') offset = abs(atom.num) % 35;
+   else 
    {
-      assert(list_to_append->atom.type == INTEGER_CONSTANT ||
-             list_to_append->atom.type == STRING_CONSTANT);
-      if(list_to_append->atom.type == INTEGER_CONSTANT)
-         list = appendIntegerAtom(list, list_to_append->atom.number);
-      else list = appendStringAtom(list, list_to_append->atom.string);
-      list_to_append = list_to_append->next;
+      char first_char = atom.str[0];
+      /* Digits occupy indices 35-44. 0's ASCII value is 48. */
+      if(first_char >= '0' && first_char <= '9') offset = first_char - 13;
+      /* Upper case letters occupy indices 45-70. A's ASCII value is 65. */
+      else if(first_char >= 'A' && first_char <= 'Z') offset = first_char - 20;
+      /* Lower case letters occupy indices 71-96. a's ASCII value is 97. */
+      else if(first_char >= 'a' && first_char <= 'z') offset = first_char - 26;
+      /* _ occupies index 97, ' ' occupies index 98, and the empty string occupies index 99. */
+      else if(first_char == '_') offset = 97;
+      else if(first_char == ' ') offset = 98;
+      else if(first_char == '\0') offset = 99;
+      else
+      {
+         print_to_log("Error (hashHostList): Invalid character '%c'.\n", first_char);
+         exit(1);
+      }
    }
-   return list;
+   return base + offset;
 }
 
-GPList *appendAtom(GPList *list, Atom atom)
+static HostList *appendHostAtom(HostList *list, HostAtom atom, bool free_strings)
 {
-   GPList *new_list = malloc(sizeof(GPList));
-   if(new_list == NULL)
+   HostListItem *new_item = malloc(sizeof(HostListItem));
+   if(new_item == NULL)
    {
       print_to_log("Error (appendAtom): malloc failure.\n");
       exit(1);
    }
-   new_list->atom = atom;
-   new_list->next = NULL;
+   new_item->atom = atom;
+   if(atom.type == 's') 
+   {
+      if(free_strings) new_item->atom.str = atom.str;
+      else new_item->atom.str = strdup(atom.str);
+   }
+   new_item->next = NULL;
 
    if(list == NULL)
    {
-      new_list->prev = NULL;
+      new_item->prev = NULL;
+      HostList *new_list = malloc(sizeof(HostList));
+      if(new_list == NULL)
+      {
+         print_to_log("Error (appendAtom): malloc failure.\n");
+         exit(1);
+      }
+      new_list->first = new_item;
+      new_list->last = new_item;
       return new_list;
    }
    else
    {
-      GPList *last = getLastElement(list);
-      last->next = new_list;
-      new_list->prev = last;
+      list->last->next = new_item;
+      new_item->prev = list->last;
+      list->last = new_item;
       return list;
    }
 }
-
-GPList *appendIntegerAtom(GPList *list, int value)
+/* Create a new bucket, allocate a list defined by the function arguments, and
+ * point the bucket to that list. */
+static Bucket *makeBucket(HostAtom *array, int length, bool free_strings)
 {
-   Atom atom;
-   atom.type = INTEGER_CONSTANT;
-   atom.number = value;
-   return appendAtom(list, atom);
+   Bucket *bucket = malloc(sizeof(Bucket));
+   if(bucket == NULL)
+   {
+      print_to_log("Error (makeBucket): malloc failure.\n");
+      exit(1);
+   }
+   HostList *list = NULL;
+   int index;
+   for(index = 0; index < length; index++) 
+      list = appendHostAtom(list, array[index], free_strings);
+   bucket->list = list;
+   bucket->next = NULL;
+   return bucket;
 }
 
-GPList *appendStringAtom(GPList *list, string value)
+/* Adds a host list, represented by the passed array and its length, to the hash
+ * table. The array and the length is passed to the hashing function. 
+ *
+ * The free_strings flag is true if the strings in the passed array have already
+ * been allocated by the caller. It controls the freeing of such strings in the
+ * case that the passed list already exists in the hash table. 
+ * This is a necessary inconvenience: addHostList is called by the Bison/Flex generated
+ * host graph parser which requires the strings it parses to be strdup'd (otherwise 
+ * things go wrong). Calls to addHostList in other contexts pass arrays with 
+ * automatic strings which should not be freed. */
+HostList *addHostList(HostAtom *array, int length, bool free_strings)
 {
-   Atom atom;
-   atom.type = STRING_CONSTANT;
-   atom.string = strdup(value);
-   return appendAtom(list, atom);
+   if(list_store == NULL)
+   {
+      list_store = calloc(LIST_TABLE_SIZE, sizeof(Bucket*));
+      if(list_store == NULL)
+      {
+         print_to_log("Error(addHostList): malloc failure.\n");
+         exit(1);
+      }
+   }
+   int hash = hashHostList(array, length);
+   if(list_store[hash] == NULL)
+   {
+      Bucket *bucket = makeBucket(array, length, free_strings);
+      list_store[hash] = bucket;
+      return bucket->list;
+   }
+   /* Check each list in the bucket for equality with the list represented
+    * by the passed array. */
+   else
+   {
+      Bucket *bucket = list_store[hash];
+      int index;
+      bool make_bucket = true;
+      while(bucket != NULL)
+      {
+         HostListItem *item = bucket->list->first;
+         for(index = 0; index < length; index++) 
+         {
+            if(item == NULL) break;
+            HostAtom atom = array[index];
+            if(item->atom.type != atom.type) break;
+            if(item->atom.type == 'i') 
+            {
+               if(item->atom.num != atom.num) break;
+            }
+            else
+            {
+               if(strcmp(item->atom.str, atom.str) != 0) break;
+            }
+            item = item->next;
+         }
+         /* The lists are equal if and only if the ends of both lists are reached.
+          * If an atom comparison failed, the for loop breaks before the end of
+          * either list is reached. If the array is shorter, then the for loop
+          * exits before item reaches its terminating NULL pointer. If the list
+          * is shorter, the first line in the for loop body will cause the loop
+          * to break before index == length. */
+         if(index == length && item == NULL)
+         {
+            make_bucket = false; 
+            break;
+         }
+         /* Exit the loop while maintaining the pointer to the last item in the
+          * bucket list, because a list is going to be appended! */
+         if(bucket->next == NULL) break;
+         bucket = bucket->next;
+      }
+      /* If control reaches this point, then no list in the bucket is equal to
+       * the passed list. Make a new list! */
+      if(make_bucket)
+      {
+         Bucket *new_bucket = makeBucket(array, length, free_strings);
+         bucket->next = new_bucket;
+         return new_bucket->list;
+      }
+      else 
+      {
+         if(free_strings)
+         {
+            for(index = 0; index < length; index++) 
+               if(array[index].type == 's') free(array[index].str);
+         }
+         return bucket->list;
+      }
+   }
 }
 
-GPList *getLastElement(GPList *list)
+static void freeHostList(HostListItem *item)
 {
-   if(list == NULL) return NULL;
-   while(list->next != NULL) list = list->next;
-   return list;
+   if(item == NULL) return;
+   if(item->atom.type == 's') free(item->atom.str);
+   freeHostList(item->next);
+   free(item);
 }
 
-int getListLength(GPList *list)
+static void freeBucket(Bucket *bucket)
+{
+   if(bucket == NULL) return; 
+   freeHostList(bucket->list->first);
+   free(bucket->list);
+   freeBucket(bucket->next);
+   free(bucket);
+}
+
+void freeHostListStore(void)
+{
+   if(list_store == NULL) return;
+   int index;
+   for(index = 0; index < LIST_TABLE_SIZE; index++) freeBucket(list_store[index]);
+   free(list_store);
+}
+
+HostLabel makeEmptyLabel(MarkType mark)
+{
+   HostLabel label = { .mark = mark, .length = 0, .list = NULL };
+   return label;
+}
+
+HostLabel makeHostLabel(MarkType mark, int length, HostList *list)
+{
+   HostLabel label = { .mark = mark, .length = length, .list = list };
+   return label;
+}
+
+int getListLength(HostList *list)
 {
    if(list == NULL) return 0;
+   HostListItem *item = list->first;
    int length = 0;
-   while(list != NULL) 
+   while(item != NULL) 
    {
       length++;
-      list = list->next;
+      item = item->next;
    }
    return length;
 }
 
-bool equalLabels(Label left_label, Label right_label)
+bool equalHostLabels(HostLabel label1, HostLabel label2)
 {
-   if(left_label.mark != right_label.mark) return false;
-   if(left_label.length != right_label.length) return false;
-
-   GPList *left_list = left_label.first;
-   GPList *right_list = right_label.first;
-   if(left_list == NULL && right_list == NULL) return true;
-  
-   while(left_list != NULL)
-   {
-      if(right_list == NULL) return false;
-      if(!equalAtoms(&(left_list->atom), &(right_list->atom))) return false;
-      left_list = left_list->next;
-      right_list = right_list->next;
-   }
+   if(label1.mark != label2.mark) return false;
+   if(label1.length != label2.length) return false;
+   if(label1.list != label2.list) return false;
    return true;
 }
 
-bool equalAtoms(Atom *left_atom, Atom *right_atom)
-{
-   if(left_atom->type != right_atom->type) return false;
-   /* LHS labels are simple expressions; there are only a few cases to consider. */
-   switch(left_atom->type)
-   {
-      case VARIABLE:
-           return !strcmp(left_atom->variable.name, right_atom->variable.name);
-
-      case INTEGER_CONSTANT:
-           return left_atom->number == right_atom->number;
-
-      case STRING_CONSTANT:
-           return !strcmp(left_atom->string, right_atom->string);
-
-      case NEG:
-           return !equalAtoms(left_atom->neg_exp, right_atom->neg_exp);
-
-      case CONCAT:
-           if(!equalAtoms(left_atom->bin_op.left_exp, 
-                          right_atom->bin_op.left_exp)) return false;
-           if(!equalAtoms(left_atom->bin_op.right_exp, 
-                          right_atom->bin_op.right_exp)) return false;
-           return true;
-
-      default: break;
-   }
-   return false;
-}
-
-bool hasListVariable(Label label)
-{
-   if(label.first == NULL) return false;
-   GPList *list = label.first;
-   while(list != NULL)
-   {
-      if(list->atom.type == VARIABLE && 
-         list->atom.variable.type == LIST_VAR) return true;
-      list = list->next;
-   }
-   return false;
-}
-
-void copyLabel(Label *source, Label *target)
-{
-   target->mark = source->mark;
-   target->length = source->length;
-   GPList *list = copyList(source->first, NULL);
-   target->first = list;
-   target->last = getLastElement(list);
-}
-
-GPList *copyList(GPList *head, GPList *tail)
-{
-   if(head == NULL) return NULL;
-
-   /* Stores the head of the copied list to return. */
-   GPList *head_of_copy = NULL;
-   /* A placeholder to facilitate the list copying. */
-   GPList *previous_node = NULL;
-      
-   while(head != tail)
-   {
-      GPList *list_copy = malloc(sizeof(GPList));
-      if(list_copy == NULL)
-      {
-         print_to_log("Error (copyLabel): malloc failure.\n");
-         exit(1);
-      }
-
-      list_copy->atom = head->atom;
-      /* Duplicate pointers to allocated memory in the atom. */
-      AtomType type = head->atom.type;
-      if(type == STRING_CONSTANT)
-         list_copy->atom.string = strdup(head->atom.string);
-      else if(type == VARIABLE || type == LENGTH)
-         list_copy->atom.variable.name = strdup(head->atom.variable.name);
-      else if(type == NEG)
-         list_copy->atom.neg_exp = copyAtom(head->atom.neg_exp);
-      else if(type == ADD || type == SUBTRACT || type == MULTIPLY ||
-              type == DIVIDE || type == CONCAT)
-      {
-         list_copy->atom.bin_op.left_exp = copyAtom(head->atom.bin_op.left_exp);
-         list_copy->atom.bin_op.right_exp = copyAtom(head->atom.bin_op.right_exp);
-      }
-
-      list_copy->next = NULL;
-      list_copy->prev = previous_node;
-      /* previous_node is NULL only on the first loop iteration. */
-      if(previous_node == NULL) head_of_copy = list_copy;
-      else previous_node->next = list_copy;
-      previous_node = list_copy;
-      head = head->next;
-   }
-   return head_of_copy;
-}
-
-Atom *copyAtom(Atom *atom)
-{
-   Atom *copy = malloc(sizeof(Atom));
-   if(copy == NULL)
-   {
-      print_to_log("Error (copyAtom): malloc failure.\n");
-      exit(1);
-   }
-   copy->type = atom->type;
-   switch(atom->type) 
-   {
-      case INTEGER_CONSTANT:
-           copy->number = atom->number;
-           break;
-
-      case STRING_CONSTANT:
-           copy->string = strdup(atom->string);
-           break;
-      
-      case VARIABLE:
-      case LENGTH:
-           copy->variable.name = strdup(atom->variable.name);
-           copy->variable.type = atom->variable.type;
-           break;
-
-      case INDEGREE:
-      case OUTDEGREE:
-           copy->node_id = atom->node_id;              
-           break;
-
-      case NEG:
-           copy->neg_exp = copyAtom(atom->neg_exp);
-           break;
-
-      case ADD:
-      case SUBTRACT:
-      case MULTIPLY:
-      case DIVIDE:
-      case CONCAT:
-           copy->bin_op.left_exp = copyAtom(atom->bin_op.left_exp);
-           copy->bin_op.right_exp = copyAtom(atom->bin_op.right_exp);
-           break;
-
-      default: printf("Error (copyAtom): Unexpected atom type: %d\n", 
-                     (int)atom->type); 
-               break;
-   }
-   return copy;
-}
-
-void printLabel(Label label, FILE *file) 
+void printHostLabel(HostLabel label, FILE *file) 
 {
    if(label.length == 0) fprintf(file, "empty");
-   else printList(label.first, file);
-   printMark(label.mark, file);
+   else printHostList(label.list->first, file);
+   if(label.mark == RED) fprintf(file, " # red"); 
+   if(label.mark == GREEN) fprintf(file, " # green");
+   if(label.mark == BLUE) fprintf(file, " # blue");
+   if(label.mark == GREY) fprintf(file, " # grey");
+   if(label.mark == DASHED) fprintf(file, " # dashed");
 }
 
-void printList(GPList *list, FILE *file)
+void printHostList(HostListItem *item, FILE *file)
 {
-   while(list != NULL)
+   while(item != NULL)
    {
-      printAtom(&(list->atom), false, file);
-      if(list->next != NULL) fprintf(file, " : ");
-      list = list->next;
+      if(item->atom.type == 'i') fprintf(file, "%d", item->atom.num);
+      else fprintf(file, "\"%s\"", item->atom.str);
+      if(item->next != NULL) fprintf(file, " : ");
+      item = item->next;
    }
-}
-
-void printAtom(Atom *atom, bool nested, FILE *file)
-{
-    switch(atom->type) 
-    {
-        case INTEGER_CONSTANT: 
-             fprintf(file, "%d", atom->number);
-             break;
-              
-        case STRING_CONSTANT:
-             fprintf(file, "\"%s\"", atom->string);
-	     break;
-
-	case VARIABLE: 
-	     fprintf(file, "%s", atom->variable.name);
-	     break;
-
-	case INDEGREE:
-	     fprintf(file, "indeg(%d)", atom->node_id);
-	     break;
- 
-	case OUTDEGREE:
-	     fprintf(file, "outdeg(%d)", atom->node_id);
-	     break;
-
-	case LENGTH:
-	     fprintf(file, "length(%s)", atom->variable.name);
-	     break;
-
-	case NEG:
-	     fprintf(file, "- ");
-	     printAtom(atom->neg_exp, true, file);
-	     break;
-
-	case ADD:
-	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp, 
-                            "+", nested, file);
-	     break;
-
-	case SUBTRACT:
-	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp,
-                            "-", nested, file);
-	     break;
-
-	case MULTIPLY:
-	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp, 
-                            "*", nested, file);
-	     break;
-
-	case DIVIDE:
-	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp, 
-                            "/", nested, file);
-	     break;
-
-	case CONCAT:
-	     printOperation(atom->bin_op.left_exp, atom->bin_op.right_exp, 
-                            ".", nested, file);
-	     break;
-
-	default: fprintf(file, "Error (printAtom): Unexpected atom type: %d\n",
-		        (int)atom->type); 
-		 break;
-    }
-}
-
-void printOperation(Atom *left_exp, Atom *right_exp, string const operation,
-                    bool nested, FILE *file)
-{
-   if(nested) fprintf(file, "(");
-   printAtom(left_exp, true, file);
-   fprintf(file, " %s ", operation);
-   printAtom(right_exp, true, file);
-   if(nested) fprintf(file, ")");
-}
-
-void printMark(MarkType mark, FILE *file)
-{
-   if(mark == NONE) return;
-   if(mark == RED) { fprintf(file, " # red"); return; }
-   if(mark == GREEN) { fprintf(file, " # green"); return; }
-   if(mark == BLUE) { fprintf(file, " # blue"); return; }
-   if(mark == GREY) { fprintf(file, " # grey"); return; }
-   if(mark == DASHED) { fprintf(file, " # dashed"); return; }
-   if(mark == ANY) { fprintf(file, " # any"); return; }
-   print_to_log("Error (printMark): Unexpected mark type %d\n", mark);
-}
-
-void freeLabel(Label label)
-{
-   freeList(label.first);
-}
-
-void freeList(GPList *list)
-{
-   if(list == NULL) return;
-   freeAtom(&(list->atom), false);
-   freeList(list->next);
-   free(list);
-}
-
-void freeAtom(Atom *atom, bool free_atom)
-{
-   if(atom == NULL) return;
-   switch(atom->type) 
-   {
-     case VARIABLE:
-          if(atom->variable.name != NULL) free(atom->variable.name);
-          break;
-
-     case INTEGER_CONSTANT:
-          break;
-
-     case STRING_CONSTANT:
-          if(atom->string != NULL) free(atom->string);
-          break;
-
-     case INDEGREE:
-     case OUTDEGREE:
-          break;
-
-     case LENGTH:
-          if(atom->variable.name != NULL) free(atom->variable.name);
-          break;
-
-     case NEG:
-          if(atom->neg_exp != NULL) freeAtom(atom->neg_exp, true);
-          break;
-
-     case ADD:
-     case SUBTRACT:
-     case MULTIPLY:
-     case DIVIDE:
-     case CONCAT:
-          if(atom->bin_op.left_exp != NULL) freeAtom(atom->bin_op.left_exp, true);
-          if(atom->bin_op.right_exp != NULL) freeAtom(atom->bin_op.right_exp, true);
-          break;
-
-     default: printf("Error (freeAtom): Unexpected atom type: %d\n", 
-                     (int)atom->type); 
-              break;
-   }
-   if(free_atom) free(atom);
 }
 

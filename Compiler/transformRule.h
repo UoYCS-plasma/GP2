@@ -14,8 +14,6 @@
 #include "ast.h"
 #include "error.h"
 #include "globals.h"
-#include "graph.h"
-#include "label.h"
 #include "rule.h"
 
 Rule *transformRule(GPRule *ast_rule);

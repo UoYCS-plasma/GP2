@@ -1,8 +1,8 @@
 #include "graph.h"
 
-Node dummy_node = {-1, false, {NONE, 0, NULL, NULL}, 0, 0, -1, -1, -1, -1, 
-                   {0, 0, NULL}, {0, 0, NULL}};
-Edge dummy_edge = {-1, {NONE, 0, NULL, NULL}, -1, -1};
+Node dummy_node = {-1, false, {NONE, 0, NULL}, 0, 0, -1, -1, -1, -1, 
+                   {0, 0, NULL}, {0, 0, NULL}, false};
+Edge dummy_edge = {-1, {NONE, 0, NULL}, -1, -1, false};
 
 IntArray makeIntArray(int initial_capacity)
 {
@@ -210,7 +210,7 @@ Graph *newGraph(int nodes, int edges)
    return graph;
 }
 
-int addNode(Graph *graph, bool root, Label label) 
+int addNode(Graph *graph, bool root, HostLabel label) 
 {
    Node node;
    node.root = root;
@@ -223,6 +223,7 @@ int addNode(Graph *graph, bool root, Label label)
    node.in_edges = makeIntArray(0);
    node.outdegree = 0;
    node.indegree = 0;
+   node.matched = false;
 
    int index = addToNodeArray(&(graph->nodes), node);
    if(root) addRootNode(graph, index);
@@ -243,12 +244,13 @@ void addRootNode(Graph *graph, int index)
    graph->root_nodes = root_node;
 }
 
-int addEdge(Graph *graph, Label label, int source_index, int target_index) 
+int addEdge(Graph *graph, HostLabel label, int source_index, int target_index) 
 {
    Edge edge;
    edge.label = label;
    edge.source = source_index;
    edge.target = target_index;
+   edge.matched = false;
 
    int index = addToEdgeArray(&(graph->edges), edge);
 
@@ -270,7 +272,7 @@ int addEdge(Graph *graph, Label label, int source_index, int target_index)
    return index; 
 }
 
-void removeNode(Graph *graph, int index, bool free_label)
+void removeNode(Graph *graph, int index)
 {   
    Node *node = getNode(graph, index);  
    if(node->indegree > 0 || node->outdegree > 0)
@@ -281,7 +283,6 @@ void removeNode(Graph *graph, int index, bool free_label)
                    "incident edges.\n", node->index);
       return;
    }
-   if(free_label) freeLabel(node->label);
    if(node->out_edges.items != NULL) free(node->out_edges.items);
    if(node->in_edges.items != NULL) free(node->in_edges.items); 
    if(node->root) removeRootNode(graph, index);
@@ -307,10 +308,9 @@ void removeRootNode(Graph *graph, int index)
    }
 }
 
-void removeEdge(Graph *graph, int index, bool free_label) 
+void removeEdge(Graph *graph, int index) 
 {
    Edge *edge = getEdge(graph, index);
-   if(free_label) freeLabel(edge->label);
 
    Node *source = getNode(graph, edge->source);
    if(source->first_out_edge == index) source->first_out_edge = -1;
@@ -328,10 +328,9 @@ void removeEdge(Graph *graph, int index, bool free_label)
    graph->number_of_edges--;
 }
 
-void relabelNode(Graph *graph, int index, Label new_label, bool free_label) 
+void relabelNode(Graph *graph, int index, HostLabel new_label) 
 {
    Node *node = getNode(graph, index);
-   if(free_label) freeLabel(node->label); 
    node->label = new_label;
 }
 
@@ -343,11 +342,24 @@ void changeRoot(Graph *graph, int index)
    node->root = !node->root;
 }
 
-void relabelEdge(Graph *graph, int index, Label new_label, bool free_label)
+void resetMatchedNodeFlag(Graph *graph, int index)
+{
+   Node *node = getNode(graph, index);
+   assert(node->matched);
+   node->matched = false;
+}
+
+void relabelEdge(Graph *graph, int index, HostLabel new_label)
 {	
    Edge *edge = getEdge(graph, index);
-   if(free_label) freeLabel(edge->label); 
    edge->label = new_label;
+}
+
+void resetMatchedEdgeFlag(Graph *graph, int index)
+{
+   Edge *edge = getEdge(graph, index);
+   assert(edge->matched);
+   edge->matched = false;
 }
 
 /* ========================
@@ -406,13 +418,13 @@ Node *getTarget(Graph *graph, Edge *edge)
    return getNode(graph, edge->target);
 }
 
-Label getNodeLabel(Graph *graph, int index) 
+HostLabel getNodeLabel(Graph *graph, int index) 
 {
    Node *node = getNode(graph, index);
    return node->label;
 }
 
-Label getEdgeLabel(Graph *graph, int index) 
+HostLabel getEdgeLabel(Graph *graph, int index) 
 {
    Edge *edge = getEdge(graph, index);
    return edge->label;
@@ -458,7 +470,7 @@ void printGraph(Graph *graph, FILE *file)
       output_indices[index] = node_count;
       if(node->root) PTF("(n%d(R), ", node_count++);
       else PTF("(n%d, ", node_count++);
-      printLabel(node->label, file);
+      printHostLabel(node->label, file);
       PTF(") ");
    }
    if(graph->number_of_edges == 0)
@@ -476,7 +488,7 @@ void printGraph(Graph *graph, FILE *file)
       if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
       PTF("(e%d, ", edge_count++);
       PTF("n%d, n%d, ", output_indices[edge->source], output_indices[edge->target]);
-      printLabel(edge->label, file);
+      printHostLabel(edge->label, file);
       PTF(") ");
    }
    PTF("]\n\n");
@@ -490,7 +502,6 @@ void freeGraph(Graph *graph)
    {
       Node *node = getNode(graph, index);
       if(node == NULL) continue;
-      freeLabel(node->label);
       if(node->out_edges.items != NULL) free(node->out_edges.items);
       if(node->in_edges.items != NULL) free(node->in_edges.items);
    }
@@ -501,7 +512,6 @@ void freeGraph(Graph *graph)
    {
       Edge *edge = getEdge(graph, index);
       if(edge == NULL) continue;
-      freeLabel(edge->label);
    }
    if(graph->edges.holes.items) free(graph->edges.holes.items);
    if(graph->edges.items) free(graph->edges.items);

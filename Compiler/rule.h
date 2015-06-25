@@ -14,7 +14,6 @@
 
 #include "error.h"
 #include "globals.h"
-#include "graph.h"
 
 /* The pointer <variables> points to a static array of struct Variable. 
  * variable_index is the first unused array index: once the array is populated, 
@@ -51,6 +50,45 @@ typedef struct Variable {
    bool used_by_rule;
 } Variable;
 
+
+typedef struct RuleLabel {
+   MarkType mark;
+   int length;
+   struct RuleList *list;
+} RuleLabel;
+
+typedef struct RuleList {
+   struct RuleListItem *first;
+   struct RuleListItem *last;
+} RuleList;
+
+/* AtomType defined in globals.h. I place the enumerated type here for reference.
+ * {INTEGER_CONSTANT = 0, STRING_CONSTANT, VARIABLE, LENGTH, INDEGREE,
+ *  OUTDEGREE, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType; */
+typedef struct RuleAtom { 
+   AtomType type;
+   union {
+      int number;
+      string string;
+      struct {
+         string name;
+         GPType type;
+      } variable;
+      int node_id;  /* The index of the node in the RHS of the rule. */
+      struct RuleAtom *neg_exp;
+      struct {
+         struct RuleAtom *left_exp;
+         struct RuleAtom *right_exp;
+      } bin_op;
+   };
+} RuleAtom;
+
+typedef struct RuleListItem {
+   struct RuleAtom *atom;
+   struct RuleListItem *next;
+   struct RuleListItem *prev;
+} RuleListItem;
+
 /* A rule graph contains a static array for its nodes and one for its edges. */
 typedef struct RuleGraph {
    struct RuleNode *nodes;
@@ -75,7 +113,7 @@ typedef struct RuleNode {
    struct RuleNode *interface; 
    /* Linked lists of edge pointers. */
    struct RuleEdges *outedges, *inedges;
-   Label label;
+   struct RuleLabel label;
    struct Predicate **predicates;
    int predicate_count;
    int indegree, outdegree, bidegree;
@@ -97,7 +135,7 @@ typedef struct RuleEdge {
     * edge in the other rule graph. Otherwise, it is NULL. */
    struct RuleEdge *interface;
    struct RuleNode *source, *target; 
-   Label label;
+   struct RuleLabel label;
 } RuleEdge;
 
 /* The condition is stored as a binary tree of predicates. */
@@ -127,15 +165,15 @@ typedef struct Predicate {
       struct {
          int source;
          int target;
-         Label *label;
+         struct RuleLabel label;
       } edge_pred; /* Edge predicate. */
       struct {
-         Label left_label;
-         Label right_label;
+         struct RuleLabel left_label;
+         struct RuleLabel right_label;
       } list_comp; /* Relational operators over lists. */
       struct {
-         Atom left_atom;
-         Atom right_atom;
+         struct RuleAtom *left_atom;
+         struct RuleAtom *right_atom;
       } atom_comp; /* Relational operators over atoms. */
    };
 } Predicate;
@@ -154,9 +192,9 @@ void addVariable(Rule *rule, string name, GPType type);
 
 /* Initialises the array entry of the appropriate graph array and returns the
  * index of the added item. */
-int addRuleNode(RuleGraph *graph, bool root, Label label);
+int addRuleNode(RuleGraph *graph, bool root, RuleLabel label);
 int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
-                RuleNode *target, Label label);
+                RuleNode *target, RuleLabel label);
 
 /* Allocates memory for a Condition. */
 Condition *makeCondition(void);
@@ -164,11 +202,11 @@ Condition *makeCondition(void);
 /* Allocates memory for a Predicate and populates its fields according to the
  * type of the predicate and the arguments passed to the function. */
 Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string variable);
-Predicate *makeEdgePred(int bool_id, bool negated, int source, int target, Label *label);
+Predicate *makeEdgePred(int bool_id, bool negated, int source, int target, RuleLabel label);
 Predicate *makeListComp(int bool_id, bool negated, ConditionType type,
-                        Label left_label, Label right_label);
+                        RuleLabel left_label, RuleLabel right_label);
 Predicate *makeAtomComp(int bool_id, bool negated, ConditionType type,
-                        Atom left_atom, Atom right_atom);
+                        RuleAtom *left_atom, RuleAtom *right_atom);
 
 /* Adds the passed predicate pointer to the predicate pointer array of the node
  * or variable. If the pointer array does not exist, an array of size <size> is
@@ -180,7 +218,6 @@ void addVariablePredicate(Variable *variable, Predicate *predicate, int size);
 
 /* Rule Operations and Queries *
  * =========================== */
-
 /* Checks if a rule does not modify the host graph: the rule neither adds nor
  * deletes nor relabels any items. */
 bool isPredicate(Rule *rule);
@@ -188,6 +225,15 @@ bool isPredicate(Rule *rule);
 Variable *getVariable(Rule *rule, string name);
 RuleNode *getRuleNode(RuleGraph *graph, int index);
 RuleEdge *getRuleEdge(RuleGraph *graph, int index);
+
+/* Used to build the rule labels when creating the rule data structure via AST
+ * transformation. */
+RuleList *appendRuleAtom(RuleList *list, RuleAtom *atom);
+/* Used to compare LHS labels with RHS labels to check if a node or edge is
+ * relabelled by the rule. */
+bool equalRuleLabels(RuleLabel left_label, RuleLabel right_label);
+/* Used to determine the appropriate function call to generate label matching code. */
+bool hasListVariable(RuleLabel label);
 
 void printRule(Rule *rule, FILE *file);
 void freeRule(Rule *rule);

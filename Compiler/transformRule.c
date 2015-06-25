@@ -111,13 +111,13 @@ static void initialiseVariableList(Rule *rule, List *declarations);
 /* Sets the used_by_rule flag of variables and the indegree_arg/outdegree_arg
  * flags of nodes. These flags are set if the value of a variable or the
  * degree of a node is needed by label updating in rule application. */
-static void scanRHSAtom(Rule *rule, bool relabelled, Atom atom);
-static Label transformLabel(GPLabel *ast_label, IndexMap *node_map);
-static GPList *transformList(List *ast_list, IndexMap *node_map);
-static Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map);
+static void scanRHSAtom(Rule *rule, bool relabelled, RuleAtom *atom);
+static RuleLabel transformLabel(GPLabel *ast_label, IndexMap *node_map);
+static RuleList *transformList(List *ast_list, IndexMap *node_map);
+static RuleAtom *transformAtom(GPAtom *ast_atom, IndexMap *node_map);
 static Condition *transformCondition(Rule *rule, GPCondition *ast_condition, 
                                      bool negated, IndexMap *node_map);
-static void scanPredicateAtom(Rule *rule, Atom atom, Predicate *predicate);
+static void scanPredicateAtom(Rule *rule, RuleAtom *atom, Predicate *predicate);
 
 IndexMap *node_map = NULL;
 IndexMap *edge_map = NULL;
@@ -195,7 +195,7 @@ void scanLHS(Rule *rule, GPGraph *ast_lhs)
    {
       GPNode *ast_node = nodes->node;
       if(ast_node->root) rule->is_rooted = true;
-      Label label = transformLabel(ast_node->label, NULL);
+      RuleLabel label = transformLabel(ast_node->label, NULL);
       int node_index = addRuleNode(rule->lhs, ast_node->root, label);
       /* The right index argument is -1. This changes if the node is an interface
        * node, in which case the right index will become the index of the corresponding
@@ -225,7 +225,7 @@ void scanLHS(Rule *rule, GPGraph *ast_lhs)
                       "map. \n", ast_edge->target);
          exit(0);
       }
-      Label label = transformLabel(ast_edge->label, NULL);
+      RuleLabel label = transformLabel(ast_edge->label, NULL);
       int edge_index = 0;
       RuleNode *source = getRuleNode(rule->lhs, source_index);
       RuleNode *target = getRuleNode(rule->lhs, target_index);
@@ -246,7 +246,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
    while(ast_nodes != NULL)
    {
       GPNode *ast_node = ast_nodes->node;
-      Label label = transformLabel(ast_node->label, node_map);
+      RuleLabel label = transformLabel(ast_node->label, node_map);
       int node_index = addRuleNode(rule->rhs, ast_node->root, label);
       
       IndexMap *map = findMapFromId(node_map, ast_node->name);
@@ -277,7 +277,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
                RuleNode *right_node = getRuleNode(rule->rhs, node_index);
                left_node->interface = right_node;
                right_node->interface = left_node;
-               if(equalLabels(left_node->label, right_node->label))
+               if(equalRuleLabels(left_node->label, right_node->label))
                   right_node->relabelled = false;
                if(left_node->root == right_node->root)
                   right_node->root_changed = false;
@@ -321,7 +321,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
       }
       RuleNode *target = getRuleNode(rule->rhs, target_map->right_index);
 
-      Label label = transformLabel(ast_edge->label, node_map);
+      RuleLabel label = transformLabel(ast_edge->label, node_map);
       int edge_index = addRuleEdge(rule->rhs, ast_edge->bidirectional, 
                                    source, target, label);
       RuleEdge *edge = getRuleEdge(rule->rhs, edge_index);
@@ -342,7 +342,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
             RuleEdge *right_edge = getRuleEdge(rule->rhs, edge_index);
             left_edge->interface = right_edge;
             right_edge->interface = left_edge;
-            if(equalLabels(left_edge->label, right_edge->label))
+            if(equalRuleLabels(left_edge->label, right_edge->label))
                right_edge->relabelled = false;
             else right_edge->relabelled = true;
             /* Remove the map for the LHS-edge, otherwise a parallel RHS-edge
@@ -360,28 +360,30 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
    for(index = 0; index < rule->rhs->node_index; index++)
    { 
       RuleNode *node = getRuleNode(rule->rhs, index);
-      GPList *list = node->label.first;
-      while(list != NULL)
+      if(node->label.list == NULL) continue;
+      RuleListItem *item = node->label.list->first;
+      while(item != NULL)
       {
-         scanRHSAtom(rule, node->relabelled, list->atom);
-         list = list->next;
+         scanRHSAtom(rule, node->relabelled, item->atom);
+         item = item->next;
       }
    }
    for(index = 0; index < rule->rhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->rhs, index);
-      GPList *list = edge->label.first;
-      while(list != NULL)
+      if(edge->label.list == NULL) continue;
+      RuleListItem *item = edge->label.list->first;
+      while(item != NULL)
       {
-         scanRHSAtom(rule, edge->relabelled, list->atom);
-         list = list->next;
+         scanRHSAtom(rule, edge->relabelled, item->atom);
+         item = item->next;
       }
    }
 }
 
-static void scanRHSAtom(Rule *rule, bool relabelled, Atom atom)
+static void scanRHSAtom(Rule *rule, bool relabelled, RuleAtom *atom)
 {
-   switch(atom.type)
+   switch(atom->type)
    {
       case VARIABLE:
       case LENGTH:
@@ -389,14 +391,14 @@ static void scanRHSAtom(Rule *rule, bool relabelled, Atom atom)
            /* The value of variable is not required for a RHS-item that is not
             * relabelled. */
            if(!relabelled) break;
-           Variable *variable = getVariable(rule, atom.variable.name);
+           Variable *variable = getVariable(rule, atom->variable.name);
            if(variable == NULL) break;
            else variable->used_by_rule = true;
            break;
       }
       case INDEGREE:
       {
-           RuleNode *node = getRuleNode(rule->lhs, atom.node_id);
+           RuleNode *node = getRuleNode(rule->lhs, atom->node_id);
            /* This should be caught by semantic analysis. */
            assert(node->interface != NULL);
            node->indegree_arg = true;
@@ -404,14 +406,14 @@ static void scanRHSAtom(Rule *rule, bool relabelled, Atom atom)
       }
       case OUTDEGREE:
       {
-           RuleNode *node = getRuleNode(rule->lhs, atom.node_id);
+           RuleNode *node = getRuleNode(rule->lhs, atom->node_id);
            /* This should be caught by semantic analysis. */
            assert(node->interface != NULL);
            node->outdegree_arg = true;
            break;
       }
       case NEG:
-           scanRHSAtom(rule, relabelled, *(atom.neg_exp));
+           scanRHSAtom(rule, relabelled, atom->neg_exp);
            break;
 
       case ADD:
@@ -419,33 +421,31 @@ static void scanRHSAtom(Rule *rule, bool relabelled, Atom atom)
       case MULTIPLY:
       case DIVIDE:
       case CONCAT:
-           scanRHSAtom(rule, relabelled, *(atom.bin_op.left_exp));
-           scanRHSAtom(rule, relabelled, *(atom.bin_op.right_exp));
+           scanRHSAtom(rule, relabelled, atom->bin_op.left_exp);
+           scanRHSAtom(rule, relabelled, atom->bin_op.right_exp);
            break;
 
       default: break;
    }
 }
 
-static Label transformLabel(GPLabel *ast_label, IndexMap *node_map)
+static RuleLabel transformLabel(GPLabel *ast_label, IndexMap *node_map)
 {
-   Label label;
+   RuleLabel label;
    label.mark = ast_label->mark;
    label.length = getASTListLength(ast_label->gp_list);
-   GPList *list = transformList(ast_label->gp_list, node_map);
-   label.first = list;
-   label.last = getLastElement(list);
+   label.list = transformList(ast_label->gp_list, node_map);
    return label;
 }
 
-static GPList *transformList(List *ast_list, IndexMap *node_map)
+static RuleList *transformList(List *ast_list, IndexMap *node_map)
 {
    if(ast_list == NULL) return NULL;
-   GPList *list = NULL;
+   RuleList *list = NULL;
    while(ast_list != NULL)
    {
-      Atom atom = transformAtom(ast_list->atom, node_map);
-      list = appendAtom(list, atom);
+      RuleAtom *atom = transformAtom(ast_list->atom, node_map);
+      list = appendRuleAtom(list, atom);
       ast_list = ast_list->next;
    }
    return list;
@@ -458,39 +458,44 @@ static GPList *transformList(List *ast_list, IndexMap *node_map)
  * in contrast to the string in the AST. The node map is passed to the two
  * transformation functions to get the appropriate index from the string
  * node identifier. */
-static Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map)
+static RuleAtom *transformAtom(GPAtom *ast_atom, IndexMap *node_map)
 {
-   Atom atom;
-   atom.type = ast_atom->type;
+   RuleAtom *atom = malloc(sizeof(RuleAtom));
+   if(atom == NULL)
+   {
+      print_to_log("Error (transformAtom): malloc failure.\n");
+      exit(1);
+   }
+   atom->type = ast_atom->type;
    switch(ast_atom->type) 
    {
       case INTEGER_CONSTANT:
-           atom.number = ast_atom->number;
+           atom->number = ast_atom->number;
            break;
 
       case STRING_CONSTANT:
-           atom.string = strdup(ast_atom->string);
+           atom->string = strdup(ast_atom->string);
            break;
        
       case VARIABLE:
       case LENGTH:
-           atom.variable.name = strdup(ast_atom->variable.name);
-           atom.variable.type = ast_atom->variable.type;
+           atom->variable.name = strdup(ast_atom->variable.name);
+           atom->variable.type = ast_atom->variable.type;
            break;
 
       case INDEGREE:
       case OUTDEGREE:
-           atom.node_id = findLeftIndexFromId(node_map, ast_atom->node_id);
+           atom->node_id = findLeftIndexFromId(node_map, ast_atom->node_id);
            break;
 
       case NEG:
-           atom.neg_exp = malloc(sizeof(Atom));
-           if(atom.neg_exp == NULL)
+           atom->neg_exp = malloc(sizeof(RuleAtom));
+           if(atom->neg_exp == NULL)
            {
               print_to_log("Error (transformAtom): malloc failure.\n");
               exit(1);
            }
-           *(atom.neg_exp) = transformAtom(ast_atom->neg_exp, node_map);
+           atom->neg_exp = transformAtom(ast_atom->neg_exp, node_map);
            break;
 
       case ADD:
@@ -498,20 +503,20 @@ static Atom transformAtom(GPAtom *ast_atom, IndexMap *node_map)
       case MULTIPLY:
       case DIVIDE:
       case CONCAT:
-           atom.bin_op.left_exp = malloc(sizeof(Atom));
-           if(atom.bin_op.left_exp == NULL)
+           atom->bin_op.left_exp = malloc(sizeof(RuleAtom));
+           if(atom->bin_op.left_exp == NULL)
            {
               print_to_log("Error (transformAtom): malloc failure.\n");
               exit(1);
            }
-           atom.bin_op.right_exp = malloc(sizeof(Atom));
-           if(atom.bin_op.right_exp == NULL)
+           atom->bin_op.right_exp = malloc(sizeof(RuleAtom));
+           if(atom->bin_op.right_exp == NULL)
            {
               print_to_log("Error (transformAtom): malloc failure.\n");
               exit(1);
            }
-           *(atom.bin_op.left_exp) = transformAtom(ast_atom->bin_op.left_exp, node_map);
-           *(atom.bin_op.right_exp) = transformAtom(ast_atom->bin_op.right_exp, node_map);
+           atom->bin_op.left_exp = transformAtom(ast_atom->bin_op.left_exp, node_map);
+           atom->bin_op.right_exp = transformAtom(ast_atom->bin_op.right_exp, node_map);
            break;
 
       default:
@@ -551,11 +556,14 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
            int target_index = findLeftIndexFromId(node_map, ast_condition->edge_pred.target);
 
            if(ast_condition->edge_pred.label == NULL)
-              predicate = makeEdgePred(bool_count++, negated, source_index, target_index, NULL);
+           {
+              RuleLabel label = { .mark = NONE, .length = -1, .list = NULL };
+              predicate = makeEdgePred(bool_count++, negated, source_index, target_index, label);
+           }
            else 
            {
-              Label label = transformLabel(ast_condition->edge_pred.label, node_map);
-              predicate = makeEdgePred(bool_count++, negated, source_index, target_index, &label);
+              RuleLabel label = transformLabel(ast_condition->edge_pred.label, node_map);
+              predicate = makeEdgePred(bool_count++, negated, source_index, target_index, label);
            }
            condition->predicate = predicate;
            RuleNode *source = getRuleNode(rule->lhs, source_index);
@@ -573,26 +581,25 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
             * makeRelationalCheck. */
            int left_length = getASTListLength(ast_condition->list_cmp.left_list);
            int right_length = getASTListLength(ast_condition->list_cmp.right_list);
-           GPList *left_list = transformList(ast_condition->list_cmp.left_list, node_map);
-           GPList *right_list = transformList(ast_condition->list_cmp.right_list, node_map);
-
-           Label left_label = { .mark = NONE, .length = left_length, .first = left_list,
-                                .last = getLastElement(left_list) };
-           Label right_label = { .mark = NONE, .length = right_length, .first = right_list,
-                                 .last = getLastElement(right_list) };
+           RuleList *left_list = transformList(ast_condition->list_cmp.left_list, node_map);
+           RuleList *right_list = transformList(ast_condition->list_cmp.right_list, node_map);
+           RuleLabel left_label = { .mark = NONE, .length = left_length, .list = left_list };
+           RuleLabel right_label = { .mark = NONE, .length = right_length, .list = right_list };
            predicate = makeListComp(bool_count++, negated, ast_condition->type,
                                     left_label, right_label);
            condition->predicate = predicate;
 
-           while(left_list != NULL)
+           RuleListItem *left_item = left_list->first;
+           while(left_item != NULL)
            {
-              scanPredicateAtom(rule, left_list->atom, predicate);
-              left_list = left_list->next;
+              scanPredicateAtom(rule, left_item->atom, predicate);
+              left_item = left_item->next;
            }
-           while(right_list != NULL)
+           RuleListItem *right_item = right_list->first;
+           while(right_item != NULL)
            {
-              scanPredicateAtom(rule, right_list->atom, predicate);
-              right_list = right_list->next;
+              scanPredicateAtom(rule, right_item->atom, predicate);
+              right_item = right_item->next;
            }
            break;
 
@@ -602,8 +609,8 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
       case LESS_EQUAL:
       {
            condition->type = 'e';
-           Atom left_atom = transformAtom(ast_condition->atom_cmp.left_exp, node_map);
-           Atom right_atom = transformAtom(ast_condition->atom_cmp.right_exp, node_map);
+           RuleAtom *left_atom = transformAtom(ast_condition->atom_cmp.left_exp, node_map);
+           RuleAtom *right_atom = transformAtom(ast_condition->atom_cmp.right_exp, node_map);
            predicate = makeAtomComp(bool_count++, negated, ast_condition->type,
                                     left_atom, right_atom);
            condition->predicate = predicate;
@@ -644,14 +651,14 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
 /* Searches labels in predicates for variables and degree operators in order to
  * update RuleNode and Variable structures with pointers to predicates in which
  * they participate. */
-static void scanPredicateAtom(Rule *rule, Atom atom, Predicate *predicate)
+static void scanPredicateAtom(Rule *rule, RuleAtom *atom, Predicate *predicate)
 {
-   switch(atom.type)
+   switch(atom->type)
    {
       case VARIABLE:
       case LENGTH:
       {
-           Variable *variable = getVariable(rule, atom.variable.name);
+           Variable *variable = getVariable(rule, atom->variable.name);
            assert(variable != NULL);
            addVariablePredicate(variable, predicate, rule->predicate_count);
            break;
@@ -659,7 +666,7 @@ static void scanPredicateAtom(Rule *rule, Atom atom, Predicate *predicate)
       case INDEGREE:
       case OUTDEGREE:
       {
-           RuleNode *node = getRuleNode(rule->lhs, atom.node_id);
+           RuleNode *node = getRuleNode(rule->lhs, atom->node_id);
            addNodePredicate(node, predicate, rule->predicate_count);
            break;
       }
@@ -668,13 +675,13 @@ static void scanPredicateAtom(Rule *rule, Atom atom, Predicate *predicate)
       case MULTIPLY:
       case DIVIDE:
       case CONCAT:
-           scanPredicateAtom(rule, *(atom.bin_op.left_exp), predicate);
-           scanPredicateAtom(rule, *(atom.bin_op.right_exp),  predicate);
+           scanPredicateAtom(rule, atom->bin_op.left_exp, predicate);
+           scanPredicateAtom(rule, atom->bin_op.right_exp,  predicate);
            break;
 
       default:
            print_to_log("Error (scanPredicateAtom): Unexpected type %d.\n", 
-                        atom.type);
+                        atom->type);
            break;
    }
 }

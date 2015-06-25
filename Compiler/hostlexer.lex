@@ -53,14 +53,14 @@ int yycolumn = 1;
                                         yylloc.first_line, yylloc.first_column, 
                                         yylloc.last_line, yylloc.last_column); 	
                                    return 0; }
-<IN_STRING>[^\"a-zA-Z0-9_]       { print_to_console("Warning: Invalid character "
+<IN_STRING>[^\"a-zA-Z0-9_ ]       { print_to_console("Warning: Invalid character "
                                                 "in string: '%c'.\n", yytext[0]); 
 			           print_to_log("%d.%d-%d.%d: Invalid character: "
           				        "'%c'.\n", 
                                            yylloc.first_line, yylloc.first_column, 
                                            yylloc.last_line, yylloc.last_column,
                                            yytext[0]);	
-				   yylval.str = strdup(yytext); return STR; }
+				   return 0; }
 <IN_STRING><<EOF>>   		 { print_to_log("Line %d: Unterminated "
           				        "string.\n", yylineno);                   
                                    return 0; }  
@@ -83,16 +83,16 @@ dashed		    { yylval.mark = DASHED; return MARK; }
 "," |               
 ":" |     
 "-" |
-"#"		 return yytext[0];
+"#"		    return yytext[0];
 
-"(R)"	 	 return ROOT;
+"(R)"	 	    return ROOT;
 
-n[0-9]+  	      { yylval.id = (int)strtol(yytext+1, NULL, 10); return NODE_ID; }
-e[0-9]+  	      { yylval.id = (int)strtol(yytext+1, NULL, 10); return EDGE_ID; }
-[ \t\r\n]+            /* Ignore white space. */
-<<EOF>>		      { return 0; }
-.                     { printf("Error: Invalid symbol '%c'\n", yytext[0]);
-			return 0; }
+n[0-9]+  	   { yylval.id = (int)strtol(yytext+1, NULL, 10); return NODE_ID; }
+e[0-9]+  	   { yylval.id = (int)strtol(yytext+1, NULL, 10); return EDGE_ID; }
+[ \t\r\n]+         /* Ignore white space. */
+<<EOF>>		   { return 0; }
+.                  { printf("Error: Invalid symbol '%c'\n", yytext[0]);
+		     return 0; }
 
 %%
 

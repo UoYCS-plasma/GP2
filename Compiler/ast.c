@@ -108,18 +108,18 @@ List *addASTNodeID(YYLTYPE location, string node_id, List *next)
 
 List *addASTNode(YYLTYPE location, GPNode *node, List *next)
 {
-     List *new_node = makeGPList(location, NODE_LIST);
-     new_node->node = node;
-     new_node->next = next;
-     return new_node;
+    List *new_node = makeGPList(location, NODE_LIST);
+    new_node->node = node;
+    new_node->next = next;
+    return new_node;
 }
       
 List *addASTEdge(YYLTYPE location, GPEdge *edge, List *next)
 {
-     List *new_edge = makeGPList(location, EDGE_LIST);
-     new_edge->edge = edge;
-     new_edge->next = next;
-     return new_edge;
+    List *new_edge = makeGPList(location, EDGE_LIST);
+    new_edge->edge = edge;
+    new_edge->next = next;
+    return new_edge;
 }
 
 List *addASTAtom(YYLTYPE location, GPAtom *atom, List *next)
@@ -215,7 +215,7 @@ GPCommand *newASTCondBranch(CommandType type, YYLTYPE location,
    command->cond_branch.condition = condition;
    command->cond_branch.then_command = then_command;
    command->cond_branch.else_command = else_command;
-   command->cond_branch.roll_back = false;
+   command->cond_branch.record_changes = false;
    return command;
 }
 
@@ -223,7 +223,7 @@ GPCommand *newASTAlap(YYLTYPE location, GPCommand *loop_body)
 {
    GPCommand *command = makeGPCommand(location, ALAP_STATEMENT);
    command->loop_stmt.loop_body = loop_body;
-   command->loop_stmt.roll_back = false;
+   command->loop_stmt.record_changes = false;
    command->loop_stmt.stop_recording = false;
    return command;
 }

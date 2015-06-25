@@ -78,7 +78,7 @@ void pushAddedEdge(int index, bool hole_filled)
    pushGraphChange(change);
 }
 
-void pushRemovedNode(bool root, Label label, int index, bool hole_created)
+void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created)
 {
    GraphChange change;
    change.type = REMOVED_NODE;
@@ -89,7 +89,7 @@ void pushRemovedNode(bool root, Label label, int index, bool hole_created)
    pushGraphChange(change);
 }
 
-void pushRemovedEdge(Label label, int source, int target, int index, bool hole_created)
+void pushRemovedEdge(HostLabel label, int source, int target, int index, bool hole_created)
 {
    GraphChange change;
    change.type = REMOVED_EDGE;
@@ -101,7 +101,7 @@ void pushRemovedEdge(Label label, int source, int target, int index, bool hole_c
    pushGraphChange(change);
 }
 
-void pushRelabelledNode(int index, Label old_label)
+void pushRelabelledNode(int index, HostLabel old_label)
 {
    GraphChange change;
    change.type = RELABELLED_NODE;
@@ -110,7 +110,7 @@ void pushRelabelledNode(int index, Label old_label)
    pushGraphChange(change);
 }
 
-void pushRelabelledEdge(int index, Label old_label)
+void pushRelabelledEdge(int index, HostLabel old_label)
 {
    GraphChange change;
    change.type = RELABELLED_EDGE;
@@ -146,7 +146,6 @@ void undoChanges(Graph *graph, int restore_point)
               int index = change.added_node.index;
               Node *node = getNode(graph, index);  
 
-              freeLabel(node->label);
               if(node->out_edges.items != NULL) free(node->out_edges.items);
               if(node->in_edges.items != NULL) free(node->in_edges.items); 
               if(node->root) removeRootNode(graph, index);
@@ -164,7 +163,6 @@ void undoChanges(Graph *graph, int restore_point)
          {
               int index = change.added_edge.index;
               Edge *edge = getEdge(graph, index);
-              freeLabel(edge->label);
 
               Node *source = getNode(graph, edge->source);
               if(source->first_out_edge == index) source->first_out_edge = -1;
@@ -250,13 +248,11 @@ void undoChanges(Graph *graph, int restore_point)
               break;
          }
          case RELABELLED_NODE:
-              relabelNode(graph, change.relabelled_node.index, 
-                          change.relabelled_node.old_label, true);
+              relabelNode(graph, change.relabelled_node.index, change.relabelled_node.old_label);
               break;
 
          case RELABELLED_EDGE:
-              relabelEdge(graph, change.relabelled_edge.index,
-                          change.relabelled_edge.old_label, true);
+              relabelEdge(graph, change.relabelled_edge.index, change.relabelled_edge.old_label);
               break;
 
          case CHANGED_ROOT_NODE:
@@ -271,7 +267,7 @@ void undoChanges(Graph *graph, int restore_point)
    } 
 } 
 
-static void freeGraphChange(GraphChange change)
+/* static void freeGraphChange(GraphChange change)
 {
    switch(change.type)
    {
@@ -301,22 +297,17 @@ static void freeGraphChange(GraphChange change)
                         "type %d.\n",change.type); 
            break;      
    }  
-} 
+} */
 
 void discardChanges(int restore_point)
 {
    if(graph_change_stack == NULL) return;
-   while(graph_change_stack->size > restore_point)
-   {
-      GraphChange change = pullGraphChange();
-      freeGraphChange(change);
-   }
+   while(graph_change_stack->size > restore_point) pullGraphChange();
 } 
 
 void freeGraphChangeStack(void)
 {
    if(graph_change_stack == NULL) return;
-   discardChanges(0);
    free(graph_change_stack->stack);
    free(graph_change_stack);
 }
@@ -394,9 +385,6 @@ void copyGraph(Graph *graph)
       if(node->index >= 0)
       {
          Node *original_node = getNode(graph, index);
-         if(&(original_node->label) != &(blank_label))
-            copyLabel(&(original_node->label), &(node->label));
- 
          /* If necessary, copy the edges arrays of the original node. */
          if(original_node->out_edges.items != NULL)
          {
@@ -424,21 +412,6 @@ void copyGraph(Graph *graph)
          if(node->root) addRootNode(graph_copy, node->index);
       }
    }
-
-   /* Update the labels of each edge by copying the label from the 
-    * corresponding edge in the original graph. */
-   for(index = 0; index < graph_copy->edges.size; index++)
-   {
-      Edge *edge = getEdge(graph_copy, index);
-      /* The entry in the edge array may be a edge node, in which case nothing
-       * needs to be done. This is tested by checking the edge's index. */
-      if(edge->index >= 0)
-      {
-         Edge *original_edge = getEdge(graph, index);
-         if(&(original_edge->label) != &blank_label)
-            copyLabel(&(original_edge->label), &(edge->label));
-      }
-   }  
    graph_stack[graph_stack_index++] = graph_copy;
    graph_copy_count++;
 }

@@ -38,6 +38,9 @@ void yyerror(const char *error_message);
 bool is_root = false;
 int length = 0;
 
+/* Temporary automatic storage for host lists before they are added to the list hashtable. */
+HostAtom array[64];
+HostList *host_list = NULL;
 %}
 
 %locations /* Generates code to process locations of symbols in the source file. */
@@ -57,14 +60,12 @@ int length = 0;
 %token ROOT _EMPTY						
 
 %union {  
-   struct Label label;
-   struct GPList *list; 
-   struct Atom atom; 
+   struct HostLabel label;
+   struct HostAtom atom; 
 } 
 
 %type <label> HostLabel
-%type <list> HostList
-%type <atom> HostExp
+%type <atom> HostAtom
 
 %error-verbose
 
@@ -100,22 +101,28 @@ HostEdgeList: HostEdge			{ }
 HostEdge: '(' EDGE_ID ',' NODE_ID ',' NODE_ID ',' HostLabel ')'
 					{ addEdge(host, $8, node_map[$4], node_map[$6]); }
 
-HostLabel: HostList			{ $$ = makeHostLabel(NONE, length, $1); length = 0;}
-         | _EMPTY			{ $$ = makeEmptyLabel(NONE); }
-         | HostList '#' MARK	  	{ $$ = makeHostLabel($3, length, $1); length = 0;}
+HostLabel: HostList			{ host_list = addHostList(array, length, true);
+					  $$ = makeHostLabel(NONE, length, host_list); 
+					  length = 0;
+					  host_list = NULL; }
+         | _EMPTY			{ $$ = blank_label; }
+         | HostList '#' MARK	  	{ host_list = addHostList(array, length, true); 
+                                          $$ = makeHostLabel($3, length, host_list); 
+					  length = 0;
+					  host_list = NULL; }
          | _EMPTY '#' MARK	  	{ $$ = makeEmptyLabel($3);  }
 
-HostList: HostExp 			{ $$ = appendAtom(NULL, $1); length++; } 
-        | HostList ':' HostExp 		{ $$ = appendAtom($1, $3); length++; } 
+HostList: HostAtom 			{ assert(length == 0);
+					  array[length++] = $1; } 
+        | HostList ':' HostAtom		{ array[length++] = $3; } 
 
 
-HostExp: NUM 				{ $$.type = INTEGER_CONSTANT; 
-					  $$.number = $1;}
-       | '-' NUM 	 	        { $$.type = INTEGER_CONSTANT; 
-					  $$.number = -($2);}
-       | STR 				{ $$.type = STRING_CONSTANT; 
-					  $$.string = strdup($1);
-					  if($1) free($1); }
+HostAtom: NUM 				{ $$.type = 'i'; 
+					  $$.num = $1;}
+        | '-' NUM 	 	        { $$.type  = 'i'; 
+					  $$.num = -($2);}
+        | STR 				{ $$.type = 's'; 
+					  $$.str = $1; }
 %%
 
 /* Bison calls yyerror whenever it encounters an error. It prints error

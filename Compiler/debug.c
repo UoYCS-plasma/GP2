@@ -224,7 +224,7 @@ void printVerboseNode(Node *node, FILE *file)
     if(node->root) PTF(" (Root)");
     PTF("\n");
     PTF("Label: ");
-    printLabel(node->label, file);
+    printHostLabel(node->label, file);
     PTF("\n");
     PTF("Outdegree: %d. Indegree: %d\n", node->outdegree, node->indegree);
 
@@ -254,7 +254,7 @@ void printVerboseEdge(Edge *edge, FILE *file)
     PTF("Index: %d", edge->index);
     PTF("\n");
     PTF("Label: ");
-    printLabel(edge->label, file);
+    printHostLabel(edge->label, file);
     PTF("\n");
     PTF("Source: %d. Target: %d\n\n", edge->source, edge->target);
 }

@@ -22,7 +22,7 @@
 typedef struct Assignment {
    string variable;
    GPType type;
-   GPList *value;
+   HostList *value;
 } Assignment;
 
 typedef struct Map {
@@ -63,7 +63,7 @@ void addNodeMap(Morphism *morphism, int left_index, int host_index, int variable
 void removeNodeMap(Morphism *morphism);
 void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variables);
 void removeEdgeMap(Morphism *morphism);
-void addAssignment(Morphism *morphism, string variable, GPType type, GPList *value);
+void addAssignment(Morphism *morphism, string variable, GPType type, HostList *value);
 void removeAssignments(Morphism *morphism, int number);
 
 int lookupNode(Morphism *morphism, int left_index);
@@ -78,22 +78,15 @@ Assignment *lookupVariable(Morphism *morphism, string variable);
  * in the assignment.
  * Returns 0 if the variable has a value in the assignment that is equal to
  * the passed value.
- * Returns 1 if the variable did not previously exist in the assignment. 
- *
- * addListAssignment is passed a list allocated on the heap. It is the
- * responsibility of the caller to allocate this memory. Conversely,
- * addIntegerAssignment and addStringAssignment are passed stack variables
- * created by the caller. If the assignment is added to the morphism, the values
- * are copied to heap. Otherwise, they are no longer required and will be 
- * discarded when the calling function exits. */
-int addListAssignment(Morphism *morphism, string name, GPList *list);
+ * Returns 1 if the variable did not previously exist in the assignment. */
+int addListAssignment(Morphism *morphism, string name, HostList *list);
 int addIntegerAssignment(Morphism *morphism, string name, int value);
 int addStringAssignment(Morphism *morphism, string name, string value);
 
 /* These functions expect to be passed a variable of the appropriate type. */
 int getIntegerValue(Morphism *morphism, string name);
 string getStringValue(Morphism *morphism, string name);
-GPList *getListValue(Morphism *morphism, string name);
+HostList *getListValue(Morphism *morphism, string name);
 
 /* Used to test string constants in the rule against a host string. If 
  * rule_string is a prefix of the host_string, then the index of the host 

@@ -21,19 +21,6 @@
 #include "globals.h"
 #include "graph.h"
 
-extern Graph **graph_stack;
-extern int graph_stack_index;
-extern int graph_copy_count;
-
-/* Creates a memory copy of the passed graph and pushes it to the graph stack. */
-void copyGraph(Graph *graph);
-
-/* popGraphs pops and frees the graph change stack until the restore point
- * is reached. It returns the graph at that stack entry. */
-Graph *popGraphs(Graph *current_graph, int restore_point);
-void discardGraphs(int depth);
-void freeGraphStack(void);
-
 /* A GraphChange stores the data sufficient to undo a particular graph modification.
  * Specifically, an undo operation must restore the graph to its exact state,
  * which includes the indices of nodes and edges in their arrays and the graph's
@@ -56,7 +43,7 @@ typedef struct GraphChange
        * node created a hole in the node array. */
       struct {
          bool root;
-         Label label;
+         HostLabel label;
          int index;
          bool hole_created;
       } removed_node;
@@ -64,7 +51,7 @@ typedef struct GraphChange
        * index in the edge array and a flag set to true if the removal of this
        * edge created a hole in the edge array. */
       struct {
-         Label label;
+         HostLabel label;
          int source;
          int target;
          int index;
@@ -73,7 +60,7 @@ typedef struct GraphChange
       /* Records the index of the relabelled item and the item's previous label. */
       struct {
          int index;
-         Label old_label;
+         HostLabel old_label;
       } relabelled_node, relabelled_edge;   
       /* Records the index of the node whose root status was changed. */
       int changed_root_index;
@@ -87,13 +74,28 @@ extern int graph_change_count;
 int topOfGraphChangeStack(void);
 void pushAddedNode(int index, bool hole_filled);
 void pushAddedEdge(int index, bool hole_filled);
-void pushRemovedNode(bool root, Label label, int index, bool hole_created);
-void pushRemovedEdge(Label label, int source, int target, int index, bool hole_created);
-void pushRelabelledNode(int index, Label old_label);
-void pushRelabelledEdge(int index, Label old_label);
+void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created);
+void pushRemovedEdge(HostLabel label, int source, int target, int index, bool hole_created);
+void pushRelabelledNode(int index, HostLabel old_label);
+void pushRelabelledEdge(int index, HostLabel old_label);
 void pushChangedRootNode(int index);
 void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);
 void freeGraphChangeStack(void);
+
+
+extern Graph **graph_stack;
+extern int graph_stack_index;
+extern int graph_copy_count;
+
+/* Creates a memory copy of the passed graph and pushes it to the graph stack. */
+void copyGraph(Graph *graph);
+
+/* popGraphs pops and frees the graph change stack until the restore point
+ * is reached. It returns the graph at that stack entry. */
+Graph *popGraphs(Graph *current_graph, int restore_point);
+void discardGraphs(int depth);
+void freeGraphStack(void);
+
 
 #endif /* INC_GRAPH_STACKS_H */

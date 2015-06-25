@@ -392,11 +392,11 @@ void printASTCommand(GPCommand *const command, FILE *dot_file)
            command->id = next_id++;
 
            print_to_dot_file("node%d[label=\"%d\\n%d.%d-%d.%d\\n"
-                             "ALAP Statement\\n Roll Back = %d\\n "
+                             "ALAP Statement\\n Record Changes = %d\\n "
                              "Stop Recording = %d\"]\n", 
                              command->id, command->id, 
                              LOCATION_ARGS(command->location),
-                             command->loop_stmt.roll_back,
+                             command->loop_stmt.record_changes,
                              command->loop_stmt.stop_recording);
 
            print_to_dot_file("node%d->node%d[label=\"loop \\n body\"]\n",  

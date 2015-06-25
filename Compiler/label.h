@@ -4,97 +4,73 @@
   Label Module
   ============
 
-  Data structures and functions for GP2's labels.
+  Defines data types and operations host labels. Host lists are implemented 
+  as doubly-linked lists, and are stored in a hash table to avoid duplication
+  of lists that occur multiple times in a graph over the course of a program
+  execution.
 
 /////////////////////////////////////////////////////////////////////////// */
 
 #ifndef INC_LABEL_H
 #define INC_LABEL_H
 
+#define LIST_TABLE_SIZE 400
+
 #include "error.h"
 #include "globals.h"
 
-/* AtomType defined in globals.h. I place the enumerated type here for reference.
- * {INTEGER_CONSTANT = 0, STRING_CONSTANT, VARIABLE, LENGTH, INDEGREE,
- *  OUTDEGREE, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType; */
-typedef struct Atom { 
-   AtomType type;
-   union {
-      int number;
-      string string;
-      struct {
-         string name;
-         GPType type;
-      } variable;
-      /* The index of the node in the RHS of the rule. */
-      int node_id;   
-      struct Atom *neg_exp;
-      struct {
-         struct Atom *left_exp;
-         struct Atom *right_exp;
-      } bin_op;
-   };
-} Atom;
 
-/* The length of the list in a label is fixed at compile time in the
- * transformation phase. If length > 0, then an array of length atoms is 
- * allocated to heap. The array is populated with the appropriate atoms. */
-typedef struct Label {
+typedef struct HostLabel {
    MarkType mark;
    int length;
-   struct GPList *first;
-   struct GPList *last;
-} Label;
+   struct HostList *list;
+} HostLabel;
 
-extern struct Label blank_label;
+extern struct HostLabel blank_label;
 
-typedef struct GPList {
-   Atom atom;
-   struct GPList *next;
-   struct GPList *prev;
-} GPList;
-   
+typedef struct HostList {
+   struct HostListItem *first;
+   struct HostListItem *last;
+} HostList;
+
+typedef struct HostAtom {
+   char type; /* (i)nteger or (s)tring */
+   union {
+      int num;
+      string str;
+   };
+} HostAtom;
+
+typedef struct HostListItem {
+   struct HostAtom atom;
+   struct HostListItem *next;
+   struct HostListItem *prev;
+} HostListItem;
+
+typedef struct Bucket {
+   HostList *list;
+   struct Bucket *next;
+} Bucket;
+
+/* Hash table to store lists at runtime. Collisions are handled by separate chaining
+ * implemented by singly-linked lists ("buckets" as defined above). Lists are added
+ * to the host table by making an array of HostAtoms representing the list and 
+ * passing it to addHostList. In this way, each specific list is allocated to heap
+ * exactly once and has a single point of reference. */
+extern Bucket **list_store;
+
+/* Returns a pointer to the HostList represented by <array> from the hash table (list_store). */
+HostList *addHostList(HostAtom *array, int length, bool duplicate_strings);
+void freeHostListStore(void);
+
 /* Called at runtime to build labels. */
-Label makeEmptyLabel(MarkType mark);
-Label makeHostLabel(MarkType mark, int length, GPList *list);
-GPList *appendList(GPList *list, GPList *list_to_append);
-GPList *appendAtom(GPList *list, Atom atom);
-GPList *appendIntegerAtom(GPList *list, int value);
-/* Duplicates value. */
-GPList *appendStringAtom(GPList *list, string value);
-GPList *getLastElement(GPList *list);
-int getListLength(GPList *list);
+HostLabel makeEmptyLabel(MarkType mark);
+HostLabel makeHostLabel(MarkType mark, int length, HostList *list);
 
-/* Used to compare LHS labels with RHS labels to check if a node or edge is
- * relabelled by the rule. Also used at runtime to evaluate conditions. */
-bool equalLabels(Label left_label, Label right_label);
-bool equalAtoms(Atom *left_atom, Atom *right_atom);
-bool hasListVariable(Label label);
-
-/* Creates a copy of source and assigns it to target. The assumption is that 
- * target points to a Label-sized portion of heap. Heap memory is allocated
- * in this function only if the source label contains pointers to heap, namely 
- * strings and nested Atoms. */
-void copyLabel(Label *source, Label *target);
-/* Pass tail == NULL to copy the whole list from head. */
-GPList *copyList(GPList *head, GPList *tail);
-//Atom *copyList(Atom *list, int length);
-Atom *copyAtom(Atom *atom);
-
-void printLabel(Label label, FILE *file);
-void printList(GPList *list, FILE *file);
-void printAtom(Atom *atom, bool nested, FILE *file);
-void printOperation(Atom *left_exp, Atom *right_exp, string const operation,
-                    bool nested, FILE *file);
-void printMark(MarkType mark, FILE *file);
-
-void freeLabel(Label label);
-void freeList(GPList *list);
-/* freeAtom is called on both the atoms in the label's list (array) and on any
- * nested atoms. The array is a contiguous block of memory containing some
- * number of atoms: atoms in this array shoud not be freed individually. Nested
- * atoms are allocated on demand, so it is safe to free them individually. This
- * is the reason for the free_atom boolean argument. */
-void freeAtom(Atom *atom, bool free_atom);
+bool equalHostLabels(HostLabel label1, HostLabel label2);
+/* Used in rule application to get the length of the list matched by a list variable. */
+int getListLength(HostList *list);
+void printHostLabel(HostLabel label, FILE *file);
+void printHostList(HostListItem *item, FILE *file);
 
 #endif /* INC_LABEL_H */

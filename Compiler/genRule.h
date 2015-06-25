@@ -19,7 +19,6 @@
 #include "genCondition.h"
 #include "genLabel.h"
 #include "globals.h"
-#include "label.h"
 #include "rule.h"
 #include "searchplan.h"
 #include "transformRule.h"

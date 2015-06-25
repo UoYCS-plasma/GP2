@@ -20,7 +20,7 @@ static FILE *file = NULL;
  *     at runtime. The global variable defined below is incremented when one of
  *     these variables is generated to ensure that the runtime system has a
  *     unique variable identifier for each undo point. */
-int undo_point_count = 0;
+int restore_point_count = 0;
 
 /* The contexts of a GP2 program determine the code that is generated. In
  * particular, the code generated when a rule match fails is determined by
@@ -29,18 +29,19 @@ typedef enum {MAIN_BODY, IF_BODY, TRY_BODY, LOOP_BODY} ContextType;
 
 /* Structure containing data to pass between code generation functions.
  * context - The context of the current command.
- * undo_point - A non-negative integer if the command is part of a command
- *              sequence that is recording host graph changes and -1 otherwise.
- *              Its value is assigned the value of the global undo_point_count
- *              if a command's roll_back flag is set. The count is incremented
- *              when assigned to ensure unique undo point names at runtime.
- * stop_recording - True if a recorded command sequence has passed a loop
- *                  with its stop_recording flag set.
+ * record_changes - Set to true if the command is a branch statement whose
+ *                  condition requires graph recording, or if the command is
+ *                  a loop whose body requires graph recording.
+ * restore_point - A non-negative integer if the command is part of a command
+ *                 sequence that is recording host graph changes and -1 otherwise.
+ *                 Its value is assigned the value of the global restore_point_count
+ *                 if a command's rrecord_changes flag is set. The count is incremented
+ *                 when assigned to ensure unique restore point names at runtime.
  * indent - For formatting the printed C code. */
  typedef struct CommandData {
    ContextType context;
-   int undo_point;
-   bool stop_recording;
+   bool record_changes;
+   int restore_point;
    int indent;
 } CommandData;
 
@@ -100,6 +101,7 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
    PTF("static void garbageCollect(void)\n");
    PTF("{\n");
    PTF("   freeGraph(host);\n");
+   PTF("   freeHostListStore();\n");
    PTF("   freeMorphisms();\n");
    PTF("   freeGraphStack();\n");
    PTF("   freeGraphChangeStack();\n");
@@ -179,7 +181,7 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
       GPDeclaration *decl = iterator->declaration;
       if(decl->type == MAIN_DECLARATION)
       {
-         CommandData initialData = {MAIN_BODY, -1, false, 3}; 
+         CommandData initialData = {MAIN_BODY, false, -1, 3}; 
          generateProgramCode(decl->main_program, initialData);
       }
       iterator = iterator->next;
@@ -196,7 +198,6 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
    PTF("   print_to_console(\"Output graph saved to file %s.\\n\");\n", output_file_name);
    PTF("   garbageCollect();\n");
    PTF("   print_to_console(\"Graph changes made: %%d\\n\", graph_change_count);\n");
-   PTF("   print_to_console(\"Graph copies made: %%d\\n\", graph_copy_count);\n");
    PTF("   fclose(output_file);\n");
    PTF("   return 0;\n");
    PTF("}\n\n");
@@ -272,14 +273,19 @@ static void generateProgramCode(GPCommand *command, CommandData data)
       {
            List *commands = command->commands;
            CommandData new_data = data;
+           bool stop_recording = false;
            while(commands != NULL)
            {
               GPCommand *command = commands->command;
               if(command->type == ALAP_STATEMENT && command->loop_stmt.stop_recording)
-                 new_data.stop_recording = true;
+                 stop_recording = true;
+              /* If stop_recording is set to true above, every future iteration of this
+               * loop will unset the record_changes flag in the data it passes to
+               * generateProgramCode. */
+              if(stop_recording) new_data.record_changes = false;
               generateProgramCode(command, new_data);
               if(data.context == LOOP_BODY && commands->next != NULL)
-                 PTFI("if(!success) break;\n", data.indent);             
+                 PTFI("if(!success) break;\n\n", data.indent);             
               commands = commands->next;
            }           
            break;
@@ -355,16 +361,16 @@ static void generateProgramCode(GPCommand *command, CommandData data)
 
       case BREAK_STATEMENT:
            PTFI("/* Break Statement */\n", data.indent);
-           if(data.undo_point >= 0)
+           if(data.restore_point >= 0)
            {
               PTFI("/* Graph changes from loop body not required.\n", data.indent);
               PTFI("   Discard them so that future graph roll backs are uncorrupted. */\n",
                    data.indent);
               #ifdef BACKTRACK_TRACE
                  PTFI("print_trace(\"(%d) Discarding graph changes.\\n\\n\");\n",
-                      data.indent + 3, data.undo_point);
+                      data.indent + 3, data.restore_point);
               #endif
-              PTFI("discardChanges(undo_point%d);\n", data.indent, data.undo_point);
+              PTFI("discardChanges(restore_point%d);\n", data.indent, data.restore_point);
            }
            PTFI("break;\n", data.indent);
            break;
@@ -396,7 +402,7 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
               data.indent, rule_name);
       #endif
       if(predicate) return;
-      if(data.undo_point >= 0 && !data.stop_recording) 
+      if(data.record_changes) 
          PTFI("apply%s(true);\n", data.indent, rule_name);
       else PTFI("apply%s(false);\n", data.indent, rule_name);
       #ifdef GRAPH_TRACE
@@ -422,10 +428,10 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
           * even if the match has succeeded. This situation occurs only when the context 
           * is IF_BODY and there is no graph recording. 
           * Hence, only generate rule application if the context is not IF_BODY or
-          * graph recording is on (signified by an undo_point >= 0). */
-         if(data.context != IF_BODY || data.undo_point >= 0)
+          * graph recording is on (signified by a restore_point >= 0). */
+         if(data.context != IF_BODY || data.restore_point >= 0)
          { 
-            if(data.undo_point >= 0 && !data.stop_recording) 
+            if(data.record_changes) 
                  PTFI("apply%s(M_%s, true);\n", data.indent + 3, rule_name, rule_name);
             else PTFI("apply%s(M_%s, false);\n", data.indent + 3, rule_name, rule_name);
             #ifdef GRAPH_TRACE
@@ -474,21 +480,25 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
 {
    CommandData condition_data = data;
    condition_data.context = command->type == IF_STATEMENT ? IF_BODY : TRY_BODY;
-   if(command->cond_branch.roll_back) condition_data.undo_point = undo_point_count++;
-   else condition_data.undo_point = -1;
    condition_data.indent = data.indent + 3;
+   if(command->cond_branch.record_changes)
+   {
+      condition_data.record_changes = true;
+      condition_data.restore_point = restore_point_count++;
+   }
+   else condition_data.restore_point = -1;
 
    if(condition_data.context == IF_BODY) PTFI("/* If Statement */\n", data.indent);
    else PTFI("/* Try Statement */\n", data.indent);
    PTFI("/* Condition */\n", data.indent);
-   if(condition_data.undo_point >= 0)
+   if(condition_data.restore_point >= 0)
    {
       #ifdef BACKTRACK_TRACE
          PTFI("print_trace(\"(%d) Recording graph changes.\\n\\n\");\n",
-              data.indent, condition_data.undo_point);
+              data.indent, condition_data.restore_point);
       #endif
-      PTFI("int undo_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
-           data.indent, condition_data.undo_point);
+      PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
+           data.indent, condition_data.restore_point);
    }
    PTFI("do\n", data.indent);
    PTFI("{\n", data.indent);
@@ -497,13 +507,13 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
 
    if(condition_data.context == IF_BODY)
    {
-      if(condition_data.undo_point >= 0)
+      if(condition_data.restore_point >= 0)
       {
-         PTFI("undoChanges(host, undo_point%d);\n", data.indent, 
-              condition_data.undo_point);
+         PTFI("undoChanges(host, restore_point%d);\n", data.indent, 
+              condition_data.restore_point);
          #ifdef BACKTRACK_TRACE
             PTFI("print_trace(\"(%d) Undoing graph changes.\\n\\n\");\n",
-                 data.indent, condition_data.undo_point);
+                 data.indent, condition_data.restore_point);
          #endif
          #ifdef GRAPH_TRACE
             PTFI("print_trace(\"Restored graph:\\n\");\n", data.indent);
@@ -523,17 +533,17 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
    PTFI("{\n", data.indent);
    if(condition_data.context == TRY_BODY)
    {
-      if(condition_data.undo_point >= 0)
+      if(condition_data.restore_point >= 0)
       {
-         PTFI("undoChanges(host, undo_point%d);\n", data.indent, 
-              condition_data.undo_point);
+         PTFI("undoChanges(host, restore_point%d);\n", new_data.indent,  
+              condition_data.restore_point);
          #ifdef BACKTRACK_TRACE
             PTFI("print_trace(\"(%d) Undoing graph changes.\\n\\n\");\n",
-                 data.indent, condition_data.undo_point);
+                 new_data.indent, condition_data.restore_point);
          #endif
          #ifdef GRAPH_TRACE
-            PTFI("print_trace(\"Restored graph:\\n\");\n", data.indent);
-            PTFI("printGraph(host, trace_file);\n", data.indent);
+            PTFI("print_trace(\"Restored graph:\\n\");\n", new_data.indent);
+            PTFI("printGraph(host, trace_file);\n", new_data.indent);
          #endif
       }
    }
@@ -547,35 +557,38 @@ void generateLoopStatement(GPCommand *command, CommandData data)
 {
    CommandData loop_data = data;
    loop_data.context = LOOP_BODY;
-   if(command->loop_stmt.roll_back) loop_data.undo_point = undo_point_count++;
-   else if(command->loop_stmt.stop_recording) loop_data.undo_point = -1;
    loop_data.indent = data.indent + 3;
+   if(command->loop_stmt.record_changes)
+   {
+      loop_data.record_changes = true;
+      loop_data.restore_point = restore_point_count++;
+   }
+   else loop_data.restore_point = -1;
 
    PTFI("/* Loop Statement */\n", data.indent);
-   PTFI("success = true;\n", data.indent);
-   if(loop_data.undo_point >= 0)
+   if(loop_data.restore_point >= 0)
    {
       #ifdef BACKTRACK_TRACE
          PTFI("print_trace(\"(%d) Recording graph changes.\\n\\n\");\n",
-              data.indent, loop_data.undo_point);
+              data.indent, loop_data.restore_point);
       #endif
-      PTFI("int undo_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
-           data.indent, loop_data.undo_point);
+      PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
+           data.indent, loop_data.restore_point);
    }
    PTFI("while(success)\n", data.indent);
    PTFI("{\n", data.indent);
    generateProgramCode(command->loop_stmt.loop_body, loop_data);
-   if(loop_data.undo_point >= 0)
+   if(loop_data.restore_point >= 0)
    {
       PTFI("/* Graph changes from loop body may not have been used.\n", data.indent + 3);
       PTFI("   Discard them so that future graph roll backs are uncorrupted. */\n",
            data.indent + 3);
       #ifdef BACKTRACK_TRACE
          PTFI("print_trace(\"(%d) Discarding graph changes.\\n\\n\");\n",
-              data.indent + 3, loop_data.undo_point);
+              data.indent + 3, loop_data.restore_point);
       #endif
-      PTFI("if(success) discardChanges(undo_point%d);\n", 
-           data.indent + 3, loop_data.undo_point);
+      PTFI("if(success) discardChanges(restore_point%d);\n", 
+           data.indent + 3, loop_data.restore_point);
    }
    PTFI("}\n", data.indent);
    PTFI("success = true;\n", data.indent);
@@ -611,12 +624,12 @@ static void generateFailureCode(string rule_name, CommandData data)
    if(data.context == IF_BODY || data.context == TRY_BODY) PTFI("break;\n", data.indent);
    if(data.context == LOOP_BODY) 
    {
-      if(data.undo_point >= 0) 
+      if(data.restore_point >= 0) 
       {
-         PTFI("undoChanges(host, undo_point%d);\n", data.indent, data.undo_point);
+         PTFI("undoChanges(host, restore_point%d);\n", data.indent, data.restore_point);
          #ifdef BACKTRACK_TRACE
             PTFI("print_trace(\"(%d) Undoing graph changes.\\n\\n\");\n",
-                 data.indent, data.undo_point);
+                 data.indent, data.restore_point);
          #endif
          #ifdef GRAPH_TRACE
             PTFI("print_trace(\"Restored graph:\\n\");\n", data.indent);

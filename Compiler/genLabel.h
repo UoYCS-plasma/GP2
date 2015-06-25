@@ -20,10 +20,10 @@
 extern FILE *file;
 
 /* Generates code to match a rule list not containing a list variable to a host graph list. */
-void generateFixedListMatchingCode(Rule *rule, Label label, int indent);
+void generateFixedListMatchingCode(Rule *rule, RuleLabel label, int indent);
 
 /* Generates code to match a rule list containing a list variable to a host graph list. */
-void generateVariableListMatchingCode(Rule *rule, Label label, int indent);
+void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent);
 
 /* Generates code to evaluate predicates containing the given variable. */
 void generateVariableResultCode(Rule *rule, string name, bool list_variable, int indent);
@@ -36,9 +36,9 @@ void generateVariableCode(string name, GPType type);
  * This includes code to evaluate arithmetic expressions, code to create C strings
  * from concatenated expressions and code to substitute variables for values
  * according to the assignment in the morphism. */
-void generateLabelEvaluationCode(Label label, bool node, int count, int predicate, int indent);
+void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int predicate, int indent);
 
 /* Emits C code for the integer expression represented by the passed atom. */
-void generateIntExpression(Atom atom, int context, bool nested);
+void generateIntExpression(RuleAtom *atom, int context, bool nested);
 
 #endif /* INC_GEN_LABEL_H */

@@ -75,7 +75,7 @@ static void annotate(GPCommand *command)
            bool graph_recording;
            if(command->type == IF_STATEMENT) graph_recording = getIfCommandType(condition); 
            else graph_recording = getTryLoopCommandType(condition, true, true); 
-           if(graph_recording) command->cond_branch.roll_back = true;
+           if(graph_recording) command->cond_branch.record_changes = true;
 
            annotate(condition);
            annotate(then_command);
@@ -90,7 +90,7 @@ static void annotate(GPCommand *command)
            if(!neverFails(loop_body))
            {
               bool graph_recording = getTryLoopCommandType(loop_body, true, true);
-              if(graph_recording) command->loop_stmt.roll_back = true;
+              if(graph_recording) command->loop_stmt.record_changes = true;
            }
            annotate(loop_body);
            break;

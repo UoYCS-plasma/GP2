@@ -69,12 +69,12 @@ symbol.o:	error.h globals.h symbol.h
 label.o:	error.h globals.h label.h
 graph.o:	error.h globals.h label.h graph.h 
 graphStacks.o:  error.h globals.h graph.h graphStacks.h
-rule.o:		error.h globals.h graph.h rule.h
-transformRule.o:	ast.h error.h globals.h graph.h label.h rule.h transformRule.h 
+rule.o:		error.h globals.h rule.h
+transformRule.o:	ast.h error.h globals.h rule.h transformRule.h 
 searchplan.o:	globals.h rule.h searchplan.h
 analysis.o:	ast.h globals.h pretty.h analysis.h
 genCondition.o: error.h genLabel.h globals.h rule.h genCondition.h
 genLabel.o:     error.h globals.h label.h rule.h genLabel.h
-genRule.o:	error.h genCondition.h genLabel.h globals.h label.h rule.h searchplan.h transformRule.h genRule.h
+genRule.o:	error.h genCondition.h genLabel.h globals.h rule.h searchplan.h transformRule.h genRule.h
 genProgram.o:	ast.h error.h globals.h genProgram.h
 

@@ -73,15 +73,17 @@ Graph *newGraph(int nodes, int edges);
 /* Nodes and edges are created and added to the graph with the addNode and addEdge
  * functions. They take the necessary construction data as their arguments and 
  * return their index in the graph. */
-int addNode(Graph *graph, bool root, Label label);
+int addNode(Graph *graph, bool root, HostLabel label);
 void addRootNode(Graph *graph, int index);
-int addEdge(Graph *graph, Label label, int source_index, int target_index);
-void removeNode(Graph *graph, int index, bool free_label);
+int addEdge(Graph *graph, HostLabel label, int source_index, int target_index);
+void removeNode(Graph *graph, int index);
 void removeRootNode(Graph *graph, int index);
-void removeEdge(Graph *graph, int index, bool free_label);
-void relabelNode(Graph *graph, int index, Label new_label, bool free_label);
+void removeEdge(Graph *graph, int index);
+void relabelNode(Graph *graph, int index, HostLabel new_label);
+void resetMatchedNodeFlag(Graph *graph, int index);
 void changeRoot(Graph *graph, int index);
-void relabelEdge(Graph *graph, int index, Label new_label, bool free_label);
+void relabelEdge(Graph *graph, int index, HostLabel new_label);
+void resetMatchedEdgeFlag(Graph *graph, int index);
 
 /* =========================
  * Node and Edge Definitions
@@ -89,12 +91,13 @@ void relabelEdge(Graph *graph, int index, Label new_label, bool free_label);
 typedef struct Node {
    int index;
    bool root;
-   Label label;
+   HostLabel label;
    int outdegree, indegree;
    int first_out_edge, second_out_edge;
    int first_in_edge, second_in_edge;
    /* Dynamic integer arrays for the node's outgoing and incoming edges. */
    IntArray out_edges, in_edges;
+   bool matched;
 } Node;
 
 extern struct Node dummy_node;
@@ -106,8 +109,9 @@ typedef struct RootNodes {
 
 typedef struct Edge {
    int index;
-   Label label;
+   HostLabel label;
    int source, target;
+   bool matched;
 } Edge;
 
 extern struct Edge dummy_edge;
@@ -131,8 +135,8 @@ Edge *getNthOutEdge(Graph *graph, Node *node, int n);
 Edge *getNthInEdge(Graph *graph, Node *node, int n);
 Node *getSource(Graph *graph, Edge *edge); 
 Node *getTarget(Graph *graph, Edge *edge);
-Label getNodeLabel(Graph *graph, int index);
-Label getEdgeLabel(Graph *graph, int index); 
+HostLabel getNodeLabel(Graph *graph, int index);
+HostLabel getEdgeLabel(Graph *graph, int index); 
 int getIndegree(Graph *graph, int index);
 int getOutdegree(Graph *graph, int index);
 

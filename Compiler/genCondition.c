@@ -82,10 +82,10 @@ void generateConditionEvaluator(Condition *condition, bool nested)
    }
 }
 
-static bool labelIsIntegerExpression(Label label)
+static bool labelIsIntegerExpression(RuleLabel label)
 {
    if(label.length != 1) return false;
-   switch(label.first->atom.type)
+   switch(label.list->first->atom->type)
    {
       case INTEGER_CONSTANT:
       case LENGTH:
@@ -99,7 +99,7 @@ static bool labelIsIntegerExpression(Label label)
            return true;
 
       case VARIABLE:
-           if(label.first->atom.variable.type == INTEGER_VAR) return true;
+           if(label.list->first->atom->variable.type == INTEGER_VAR) return true;
            else return false;
 
       case STRING_CONSTANT:
@@ -226,15 +226,12 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            PTFI("{\n", 3);
            PTFI("Edge *edge = getNthOutEdge(host, source, counter);\n", 6);
            PTFI("if(edge != NULL && edge->target == n%d)\n", 6, target);
-           if(predicate->edge_pred.label != NULL)
+           if(predicate->edge_pred.label.length >= 0)
            { 
               PTFI("{\n", 6);
-              PTFI("Label label;\n", 9);
-              /* bool "node" argument taken from the caller. 
-               * Also add some argument to mark that this is coming from a predicate. */
-              generateLabelEvaluationCode(*(predicate->edge_pred.label), false, 
-                                          list_count++, 1, 9);
-              PTFI("if(equalLabels(label, edge->label))\n", 9);
+              PTFI("HostLabel label;\n", 9);
+              generateLabelEvaluationCode(predicate->edge_pred.label, false, list_count++, 1, 9);
+              PTFI("if(equalHostLabels(label, edge->label))\n", 9);
               PTFI("{\n", 9);
               PTFI("b%d = true;\n", 12, predicate->bool_id);
               PTFI("edge_found = true;\n", 12);
@@ -259,31 +256,29 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
       case EQUAL:
       case NOT_EQUAL:
       {
-           Label left_label = predicate->list_comp.left_label;
-           Label right_label = predicate->list_comp.right_label;
+           RuleLabel left_label = predicate->list_comp.left_label;
+           RuleLabel right_label = predicate->list_comp.right_label;
            /* If the lists are integer constants, generate integer expressions
             * and compare them. Otherwise, generate full lists for comparison. */
            if(labelIsIntegerExpression(left_label) && labelIsIntegerExpression(right_label))
            {
               PTFI("if(", 3);
-              generateIntExpression(left_label.first->atom, 1, false);
+              generateIntExpression(left_label.list->first->atom, 1, false);
               if(predicate->type == EQUAL) PTF(" == ");
               if(predicate->type == NOT_EQUAL) PTF(" != ");
-              generateIntExpression(right_label.first->atom, 1, false);
+              generateIntExpression(right_label.list->first->atom, 1, false);
               PTF(") b%d = true;\n", predicate->bool_id);
               PTFI("else b%d = false;\n", 3, predicate->bool_id);
            }
            else
            {
-              PTFI("Label left_label, right_label;\n", 3);
+              PTFI("HostLabel left_label, right_label;\n", 3);
               generateLabelEvaluationCode(left_label, false, list_count++, 2, 3);
               generateLabelEvaluationCode(right_label, false, list_count++, 3, 3);
               PTFI("if(", 3);
               if(predicate->type == NOT_EQUAL) PTF("!");
-              PTF("equalLabels(left_label, right_label)) b%d = true;\n", predicate->bool_id);
+              PTF("equalHostLabels(left_label, right_label)) b%d = true;\n", predicate->bool_id);
               PTFI("else b%d = false;\n", 3, predicate->bool_id);
-              PTFI("freeLabel(left_label);\n", 3);
-              PTFI("freeLabel(right_label);\n", 3);
            }
            break;
       }
