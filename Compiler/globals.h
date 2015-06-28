@@ -20,6 +20,10 @@
  * <program>_ast_1.dot, <program>_ast_2.dot, and <program>.tab. */
 #undef DEBUG_PROGRAM
 
+/* If defined, lists are stored in a hash table at runtime as a single point of
+ * reference. Otherwise, nodes and edges point to their own copies of their list. */
+#define LIST_HASHING
+
 /* Convenience macros for the code generating modules that write to C header
  * and C source files. The source file pointer in each module is named "file"
  * to avoid any potential confusion with sources in graphs. */

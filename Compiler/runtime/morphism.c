@@ -72,6 +72,9 @@ void initialiseMorphism(Morphism *morphism)
    {
       morphism->assignment[index].variable = NULL;
       morphism->assignment[index].type = LIST_VAR;
+      #ifndef LIST_HASHING
+         freeHostList(morphism->assignment[index].value);
+      #endif
       morphism->assignment[index].value = NULL;
    }
 }
@@ -129,6 +132,9 @@ void removeAssignments(Morphism *morphism, int number)
       morphism->assignment_index--;
       morphism->assignment[morphism->assignment_index].variable = NULL;
       morphism->assignment[morphism->assignment_index].type = LIST_VAR;
+      #ifndef LIST_HASHING
+         freeHostList(morphism->assignment[morphism->assignment_index].value);
+      #endif
       morphism->assignment[morphism->assignment_index].value = NULL;
    }
 }
@@ -183,7 +189,12 @@ int addListAssignment(Morphism *morphism, string name, HostList *list)
          if(atom.type == 'i') type = INTEGER_VAR;
          else type = STRING_VAR;
       }
-      addAssignment(morphism, name, type, list);
+      #ifdef LIST_HASHING
+         addAssignment(morphism, name, type, list);
+      #else
+         HostList *list_copy = copyHostList(list);
+         addAssignment(morphism, name, type, list_copy);
+      #endif
       return 1;
    }
    /* Compare the list in the assignment to the list passed to the function. */
@@ -204,7 +215,7 @@ int addIntegerAssignment(Morphism *morphism, string name, int value)
    }
    else
    {
-      if(assignment->value == NULL) return 0;
+      if(assignment->value == NULL) return -1;
       HostAtom atom = assignment->value->first->atom;
       if(atom.type == 'i' && atom.num == value) return 0;
    }
@@ -225,7 +236,7 @@ int addStringAssignment(Morphism *morphism, string name, string value)
    }
    else
    {
-      if(assignment->value == NULL) return 0;
+      if(assignment->value == NULL) return -1;
       HostAtom atom = assignment->value->first->atom;
       if(atom.type == 's' && !strcmp(atom.str, value)) return 0;
    }
@@ -336,9 +347,22 @@ void printMorphism(Morphism *morphism)
 void freeMorphism(Morphism *morphism)
 {
    if(morphism == NULL) return;
-   if(morphism->node_map) free(morphism->node_map);
-   if(morphism->edge_map) free(morphism->edge_map);
-   if(morphism->assignment) free(morphism->assignment);
+   if(morphism->node_map != NULL) free(morphism->node_map);
+   if(morphism->edge_map != NULL) free(morphism->edge_map);
+   #ifdef LIST_HASHING
+      if(morphism->assignment != NULL) free(morphism->assignment);
+   #else
+      if(morphism->assignment != NULL)
+      {
+         int index;
+         for(index = 0; index < morphism->assignment_index; index++)
+         {
+            Assignment assignment = morphism->assignment[index];
+            if(assignment.value != NULL) freeHostList(assignment.value);
+         }
+         free(morphism->assignment);
+      }
+   #endif
    free(morphism);
 }
 

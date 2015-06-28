@@ -588,30 +588,28 @@ int host_label_count = 0, length_count = 0;
  * The 'count' argument is used to generate unique variable names. */
 void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int context, int indent)
 {
-   /* The name of the runtime variable to store the label depends on its context.
-    * In particular, labels in relational expressions are directly compared, so they
-    * require different names. */
+   /* Contexts 0 and 1 require code to populate an array of atoms and create a 
+    * host label from them. Contexts 2 and 3 require only the list component and
+    * its length, not the full label structure. */
    assert(context >= 0 && context < 4);
-   string label_name;
-   if(context == 0 || context == 1) label_name = "label";
-   else if(context == 2) label_name = "left_label";
-   else if(context == 3) label_name = "right_label";
-
    if(label.length == 0)
    { 
-      /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
-       * host item's label. */
-      if(label.mark == ANY)
+      if(context < 2)
       {
-         if(node) PTFI("HostLabel host_label%d = getNodeLabel(host, host_node_index);\n", 
-                       indent, host_label_count);
-         else PTFI("HostLabel host_label%d = getEdgeLabel(host, host_edge_index);\n", 
-                   indent, host_label_count);
-         PTFI("%s = makeEmptyLabel(host_label%d.mark);\n\n", indent, label_name,
-              host_label_count);
+         /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
+         * host item's label. */
+         if(label.mark == ANY)
+         {
+            if(node) PTFI("HostLabel host_label%d = getNodeLabel(host, host_node_index);\n", 
+                        indent, host_label_count);
+            else PTFI("HostLabel host_label%d = getEdgeLabel(host, host_edge_index);\n", 
+                     indent, host_label_count);
+            PTFI("label = makeEmptyLabel(host_label%d.mark);\n\n", indent, host_label_count);
+         }
+         else PTFI("label = makeEmptyLabel(%d);\n\n", indent, label.mark);
+         host_label_count++;
       }
-      else PTFI("%s = makeEmptyLabel(%d);\n\n", indent, label_name, label.mark);
-      host_label_count++;
+      else PTFI("int length%d = 0;\n\n", indent, count);
       return;
    }
 
@@ -630,8 +628,8 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
       else number_of_atoms++;
       item = item->next;
    }
-
-   PTFI("HostAtom array%d[list_var_length%d + %d];\n", indent, count, count, number_of_atoms);
+   PTFI("int list_length%d = list_var_length%d + %d;\n", indent, count, count, number_of_atoms);
+   PTFI("HostAtom array%d[list_length%d];\n", indent, count, count);
    PTFI("int index%d = 0;\n\n", indent, count);
    /* Generate code to build the list. */
    item = label.list->first;
@@ -750,23 +748,27 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
               break;
       }
       item = item->next;
-   }      
-   PTFI("HostList *list%d = addHostList(array%d, list_var_length%d + %d, false);\n",
-        indent, count, count, count, number_of_atoms);
-   if(label.mark == ANY)
-   /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
-    * host item's label. */
-   {
-      if(node) PTFI("HostLabel host_label%d = getNodeLabel(host, host_node_index);\n",
-                    indent, host_label_count);
-      else PTFI("HostLabel host_label%d = getEdgeLabel(host, host_edge_index);\n",
-                indent, host_label_count);
-      PTFI("%s = makeHostLabel(host_label%d.mark, %d + list_var_length%d, list%d);\n\n", 
-           indent, label_name, host_label_count, number_of_atoms, count, count);
-      host_label_count++;
    }
-   else PTFI("%s = makeHostLabel(%d, %d + list_var_length%d, list%d);\n\n", 
-             indent, label_name, label.mark, number_of_atoms, count, count);
+   if(context < 2)
+   {
+      PTFI("HostList *list%d = addHostList(array%d, list_length%d, false);\n",
+           indent, count, count, count);
+      if(label.mark == ANY)
+      /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
+       * host item's label. */
+      {
+         if(node) PTFI("HostLabel host_label%d = getNodeLabel(host, host_node_index);\n",
+                       indent, host_label_count);
+         else PTFI("HostLabel host_label%d = getEdgeLabel(host, host_edge_index);\n",
+                   indent, host_label_count);
+         PTFI("label = makeHostLabel(host_label%d.mark, list_length%d, list%d);\n\n", 
+              indent, host_label_count, count, count);
+         host_label_count++;
+      }
+      else PTFI("label = makeHostLabel(%d, list_length%d, list%d);\n\n", 
+                indent, label.mark, count, count);
+   }
+   else PTF("\n");
 }
 
 /* Navigates an integer expression tree and writes the arithmetic expression it 

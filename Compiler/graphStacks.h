@@ -20,6 +20,7 @@
 #include "error.h"
 #include "globals.h"
 #include "graph.h"
+#include "label.h"
 
 /* A GraphChange stores the data sufficient to undo a particular graph modification.
  * Specifically, an undo operation must restore the graph to its exact state,

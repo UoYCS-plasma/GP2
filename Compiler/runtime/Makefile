@@ -15,11 +15,11 @@ default:	$(OBJECTS)
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<
 
-hostParser.c:	../hostparser.y
-		bison ../hostparser.y
+hostParser.c:	../hostParser.y
+		bison ../hostParser.y
 
-hostLexer.c:	../hostlexer.lex
-		flex -o runtime/hostLexer.c hostlexer.lex
+hostLexer.c:	../hostLexer.lex
+		flex -o runtime/hostLexer.c hostLexer.lex
 
 # Delete all files except Makefile, morphism*, and the parsing files. 
 clean:		

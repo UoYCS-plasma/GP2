@@ -49,11 +49,11 @@ clean-all:
 		make clean-obj
 		make clean
 
-parser.c parser.h: gpparser.y ast.h error.h
-		bison gpparser.y
+parser.c parser.h: gpParser.y ast.h error.h
+		bison gpParser.y
 
-lexer.c:	gplexer.lex parser.h ast.h error.h
-		flex -o lexer.c gplexer.lex
+lexer.c:	gpLexer.lex parser.h ast.h error.h
+		flex -o lexer.c gpLexer.lex
 
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<
@@ -68,7 +68,7 @@ seman.o:	seman.h ast.h error.h globals.h symbol.h
 symbol.o:	error.h globals.h symbol.h
 label.o:	error.h globals.h label.h
 graph.o:	error.h globals.h label.h graph.h 
-graphStacks.o:  error.h globals.h graph.h graphStacks.h
+graphStacks.o:  error.h globals.h graph.h label.h graphStacks.h
 rule.o:		error.h globals.h rule.h
 transformRule.o:	ast.h error.h globals.h rule.h transformRule.h 
 searchplan.o:	globals.h rule.h searchplan.h

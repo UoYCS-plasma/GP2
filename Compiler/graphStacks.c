@@ -84,6 +84,9 @@ void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created)
    change.type = REMOVED_NODE;
    change.removed_node.root = root;
    change.removed_node.label = label;
+   #ifndef LIST_HASHING
+      change.removed_node.label.list = copyHostList(label.list);
+   #endif
    change.removed_node.index = index;
    change.removed_node.hole_created = hole_created;
    pushGraphChange(change);
@@ -94,6 +97,9 @@ void pushRemovedEdge(HostLabel label, int source, int target, int index, bool ho
    GraphChange change;
    change.type = REMOVED_EDGE;
    change.removed_edge.label = label;
+   #ifndef LIST_HASHING
+      change.removed_edge.label.list = copyHostList(label.list);
+   #endif
    change.removed_edge.source = source;
    change.removed_edge.target = target;
    change.removed_edge.index = index;
@@ -107,6 +113,9 @@ void pushRelabelledNode(int index, HostLabel old_label)
    change.type = RELABELLED_NODE;
    change.relabelled_node.index = index;
    change.relabelled_node.old_label = old_label;
+   #ifndef LIST_HASHING
+      change.relabelled_node.old_label.list = copyHostList(old_label.list);
+   #endif
    pushGraphChange(change);
 }
 
@@ -116,6 +125,9 @@ void pushRelabelledEdge(int index, HostLabel old_label)
    change.type = RELABELLED_EDGE;
    change.relabelled_edge.index = index;
    change.relabelled_edge.old_label = old_label;
+   #ifndef LIST_HASHING
+      change.relabelled_edge.old_label.list = copyHostList(old_label.list);
+   #endif
    pushGraphChange(change);
 }
 
@@ -149,6 +161,9 @@ void undoChanges(Graph *graph, int restore_point)
               if(node->out_edges.items != NULL) free(node->out_edges.items);
               if(node->in_edges.items != NULL) free(node->in_edges.items); 
               if(node->root) removeRootNode(graph, index);
+              #ifndef LIST_HASHING
+                 freeHostList(node->label.list);
+              #endif
 
               if(change.added_node.hole_filled) 
                  graph->nodes.holes.items[graph->nodes.holes.size++] = index;
@@ -175,6 +190,10 @@ void undoChanges(Graph *graph, int restore_point)
               else if(target->second_in_edge == index) target->second_in_edge = -1;
               else removeFromIntArray(&(target->in_edges), index);
               target->indegree--;
+
+              #ifndef LIST_HASHING
+                 freeHostList(edge->label.list);
+              #endif
 
               if(change.added_edge.hole_filled)
                  graph->edges.holes.items[graph->edges.holes.size++] = index;
@@ -267,7 +286,8 @@ void undoChanges(Graph *graph, int restore_point)
    } 
 } 
 
-/* static void freeGraphChange(GraphChange change)
+#ifndef LIST_HASHING
+static void freeGraphChange(GraphChange change)
 {
    switch(change.type)
    {
@@ -277,19 +297,19 @@ void undoChanges(Graph *graph, int restore_point)
            break;
 
       case REMOVED_NODE:
-           freeLabel(change.removed_node.label);
+           freeHostList(change.removed_node.label.list);
            break;
 
       case REMOVED_EDGE:
-           freeLabel(change.removed_edge.label);
+           freeHostList(change.removed_edge.label.list);
            break;
 
       case RELABELLED_NODE: 
-           freeLabel(change.relabelled_node.old_label);
+           freeHostList(change.relabelled_node.old_label.list);
            break;
 
       case RELABELLED_EDGE: 
-           freeLabel(change.relabelled_edge.old_label);
+           freeHostList(change.relabelled_edge.old_label.list);
            break;
 
       default: 
@@ -297,17 +317,29 @@ void undoChanges(Graph *graph, int restore_point)
                         "type %d.\n",change.type); 
            break;      
    }  
-} */
+} 
+#endif
 
 void discardChanges(int restore_point)
 {
    if(graph_change_stack == NULL) return;
-   while(graph_change_stack->size > restore_point) pullGraphChange();
+   #ifdef LIST_HASHING
+      while(graph_change_stack->size > restore_point) pullGraphChange();
+   #else
+      while(graph_change_stack->size > restore_point) 
+      {
+         GraphChange change = pullGraphChange();
+         freeGraphChange(change);
+      }
+   #endif
 } 
 
 void freeGraphChangeStack(void)
 {
    if(graph_change_stack == NULL) return;
+   #ifndef LIST_HASHING
+      discardChanges(0);
+   #endif
    free(graph_change_stack->stack);
    free(graph_change_stack);
 }
@@ -379,39 +411,55 @@ void copyGraph(Graph *graph)
    int index;
    for(index = 0; index < graph_copy->nodes.size; index++)
    {
-      Node *node = getNode(graph_copy, index);
+      Node *node_copy = getNode(graph_copy, index);
       /* The entry in the node array may be a dummy node, in which case nothing
        * needs to be done. This is tested by checking the node's index. */
-      if(node->index >= 0)
+      if(node_copy->index >= 0)
       {
-         Node *original_node = getNode(graph, index);
+         Node *node = getNode(graph, index);
          /* If necessary, copy the edges arrays of the original node. */
-         if(original_node->out_edges.items != NULL)
+         if(node->out_edges.items != NULL)
          {
-            node->out_edges.items = calloc(node->out_edges.size, sizeof(int));
-            if(node->out_edges.items == NULL)
+            node_copy->out_edges.items = calloc(node_copy->out_edges.size, sizeof(int));
+            if(node_copy->out_edges.items == NULL)
             {
                print_to_log("Error: (copyGraph): malloc failure.\n");
                exit(1);
             }
-            memcpy(node->out_edges.items, original_node->out_edges.items,
-                   node->out_edges.size * sizeof(int));
+            memcpy(node_copy->out_edges.items, node->out_edges.items,
+                   node_copy->out_edges.size * sizeof(int));
          }
-         if(original_node->in_edges.items != NULL)
+         if(node->in_edges.items != NULL)
          {
-            node->in_edges.items = calloc(node->in_edges.size, sizeof(int));
-            if(node->in_edges.items == NULL)
+            node_copy->in_edges.items = calloc(node_copy->in_edges.size, sizeof(int));
+            if(node_copy->in_edges.items == NULL)
             {
                print_to_log("Error: (copyGraph): malloc failure.\n");
                exit(1);
             }
-            memcpy(node->in_edges.items, original_node->in_edges.items,
-                   node->in_edges.size * sizeof(int));
+            memcpy(node_copy->in_edges.items, node->in_edges.items,
+                   node_copy->in_edges.size * sizeof(int));
          }
          /* Populate the root nodes list. */
-         if(node->root) addRootNode(graph_copy, node->index);
+         if(node_copy->root) addRootNode(graph_copy, node_copy->index);
+         #ifndef LIST_HASHING
+            node_copy->label.list = copyHostList(node->label.list);
+         #endif
       }
    }
+
+   #ifndef LIST_HASHING
+      for(index = 0; index < graph_copy->edges.size; index++)
+      {
+         Edge *edge_copy = getEdge(graph_copy, index);
+         if(edge_copy->index >= 0)
+         {
+            Edge *edge = getEdge(graph, index);
+            edge_copy->label.list = copyHostList(edge->label.list);
+         }
+      }
+   #endif
+
    graph_stack[graph_stack_index++] = graph_copy;
    graph_copy_count++;
 }
@@ -446,6 +494,4 @@ void freeGraphStack(void)
    discardGraphs(0);
    free(graph_stack);
 }
-
-
 

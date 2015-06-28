@@ -272,12 +272,13 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            }
            else
            {
-              PTFI("HostLabel left_label, right_label;\n", 3);
               generateLabelEvaluationCode(left_label, false, list_count++, 2, 3);
               generateLabelEvaluationCode(right_label, false, list_count++, 3, 3);
               PTFI("if(", 3);
               if(predicate->type == NOT_EQUAL) PTF("!");
-              PTF("equalHostLabels(left_label, right_label)) b%d = true;\n", predicate->bool_id);
+              PTF("equalHostLists(array%d, array%d, list_length%d, list_length%d)) "
+                  "b%d = true;\n", list_count - 2, list_count - 1, list_count - 2,
+                  list_count - 1, predicate->bool_id);
               PTFI("else b%d = false;\n", 3, predicate->bool_id);
            }
            break;

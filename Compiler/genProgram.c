@@ -101,7 +101,9 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
    PTF("static void garbageCollect(void)\n");
    PTF("{\n");
    PTF("   freeGraph(host);\n");
-   PTF("   freeHostListStore();\n");
+   #ifdef LIST_HASHING
+      PTF("   freeHostListStore();\n");
+   #endif
    PTF("   freeMorphisms();\n");
    PTF("   freeGraphStack();\n");
    PTF("   freeGraphChangeStack();\n");
