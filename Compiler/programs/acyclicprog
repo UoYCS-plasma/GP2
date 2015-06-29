@@ -1,0 +1,45 @@
+// Input: a connected host graph G.
+// If G is acyclic, the program returns G with an extra isolated node labelled "yes".
+// If G contains a cycle, the program returns G with an extra isolated node labelled "no".
+
+// The delete loop removes all edges going from nodes with no incoming edges.
+// Such an edge deletion preserves acyclicity and cannot remove edges participating
+// in a cycle, including loops. Thus, once the loop terminates, if there exists
+// an edge in the graph, the graph contains a cycle.
+Main = if (delete!; {test_edge, test_loop}) then no else yes
+
+// An alternate program that performs a destructive test on the host graph.
+// The output is a single node labelled "yes" or "no". 
+//Main = delete! if {test_edge, test_loop} then no else yes
+
+delete (a,x,y: list) 
+[ (n0, x) (n1, y) | (e0, n0, n1, a) ] 
+=> 
+[ (n0, x) (n1, y) | ]
+interface = {n0, n1}
+where indeg(n0) = 0
+
+test_edge(a,x,y: list) 
+[ (n0, x) (n1, y) | (e0, n0, n1, a) ]
+=>
+[ (n0, x) (n1, y) | (e0, n0, n1, a) ]
+interface = {n0, n1}
+
+test_loop(a,x: list)
+[ (n0, x) | (e0, n0, n0, a) ]
+=>
+[ (n0, x) | (e0, n0, n0, a) ]
+interface = {n0}
+
+yes () 
+[ | ] 
+=> 
+[ (n0(R), "yes") | ]
+interface = {}
+
+no () 
+[ | ] 
+=> 
+[ (n0(R), "no") | ]
+interface = {}
+

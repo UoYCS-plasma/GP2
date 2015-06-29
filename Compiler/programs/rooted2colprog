@@ -1,0 +1,86 @@
+// Input: a connected host graph G.
+// If G is 2-colourable, the program returns a valid 2-colouring of G.
+// If G is not 2-colourable, the programs returns G.
+
+// The program first chooses a node, makes it a root and colours it red.
+// Then the root node is used to control a depth-first colouring of G.
+// After a node is coloured a check is made to see if the root node is
+// adjacent to any nodes of the same colour. If so, G is not 2-colourable
+// and the top-level try condition will fail. Otherwise, the colouring
+// continues. If all nodes are coloured and the 2-colouring condition is
+// not violated at any point during the colouring, then G is 2-colourable.
+
+// The rules in Invalid colour the root node grey on success, which 
+// allows the main loop to break and influences the outcome of the top-level
+// try condition.
+Main = try (init; Colour!; if grey_root then fail) 
+Colour = (ColourNode; try Invalid then break)!; try Backtrack else break
+ColourNode = {colour_blue, colour_red}
+Invalid = {joined_reds, joined_blues}
+Backtrack = {back_red, back_blue}
+
+init()
+[ (n0, empty) | ]
+=>
+[ (n0(R), empty # red) | ]
+interface = {n0}
+
+grey_root()
+[ (n0(R), empty # grey) | ]
+=>
+[ (n0(R), empty # grey) | ]
+interface = {n0}
+
+// The two rules below assign the opposite colour to the uncoloured node
+// and dash the edge. The edge dashing acts as a trail of breadcrumbs
+// for backtracking purposes.
+colour_blue()
+[ (n0(R), empty # red) (n1, empty) | 
+  (e0(B), n0, n1, empty) ]
+=>
+[ (n0, empty # red) (n1(R), empty # blue) |
+  (e0(B), n0, n1, empty # dashed) ]
+interface = {n0, n1}
+
+colour_red()
+[ (n0(R), empty # blue) (n1, empty) |
+  (e0(B), n1, n0, empty)]
+=>
+[ (n0, empty # blue) ( n1(R), empty # red) |
+  (e0(B), n1, n0, empty # dashed) ]
+interface = {n0, n1}
+
+joined_reds()
+[ (n0(R), empty # red) (n1, empty # red) |
+  (e0(B), n0, n1, empty) ]
+=>
+[ (n0(R), empty # grey) (n1, empty # red) |
+  (e0(B), n0, n1, empty) ]
+interface = {n0, n1}
+
+joined_blues()
+[ (n0(R), empty # blue) (n1, empty # blue) |
+  (e0(B), n0, n1, empty) ]
+=>
+[ (n0(R), empty # grey) (n1, empty # blue) |
+  (e0(B), n0, n1, empty) ]
+interface = {n0, n1}
+
+// Moves the root back along a dashed edge, removing the trail of 
+// breadcrumbs along the way.
+back_red()
+[ (n0(R), empty # red) (n1, empty # blue) |
+  (e0(B), n0, n1, empty # dashed) ]
+=>
+[ (n0, empty # red) (n1(R), empty # blue) |
+  (e0(B), n0, n1, empty) ]
+interface = {n0, n1}
+
+back_blue()
+[ (n0(R), empty # blue) (n1, empty # red) |
+  (e0(B), n0, n1, empty # dashed) ]
+=>
+[ (n0, empty # blue) (n1(R), empty # red) |
+  (e0(B), n0, n1, empty) ]
+interface = {n0, n1}
+

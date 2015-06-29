@@ -1,0 +1,97 @@
+// Input*: a connected acyclic host graph G. 
+// Output*: A topological sorting of the graph G. That is, an integer-labelling
+//         of G's nodes such that a node with label i does not have an outgoing
+//         edge to a node with a label j < i, and all integer labels are distinct.
+//
+// * Intended behaviour. Currently the program accepts any input graph and 
+// performs a cycle check at the end.
+
+// The program maintains a red root node to act as the global counter for the
+// numbering of the topological order. The first step is to label each node
+// with its indegree and assign the first numbers of the ordering to all those
+// nodes with indegree 0. Grey shading is used to discriminate between nodes
+// who are labelled with their degree and those who are labelled with their
+// topological ordering. Once all indegree 0 nodes are assigned, edges are
+// "hidden" from the graph by dashing them. Targets of newly-dashed edges have
+// their label (indegree) decremented. When a new indegree 1 node emerges,
+// it is assigned the next number from the global counter. Once all nodes
+// are labelled, a cleanup phase at the end gets rid of all the junk.
+//
+// To maximise use of the root node/rooted rules, once a node is assigned a 
+// number in the ordering, it is connected to the root with an artificial 
+// edges (marked red). 
+
+Main = try (Start; Sort!; Test_cycle) then Cleanup
+Start = make_root; add_indeg!; num_source!
+Sort = {number, hide_edge}
+Test_cycle = if shaded then fail
+Cleanup = undo1!; undo2!; undo3
+
+make_root()
+[ | ]
+=>
+[ (n0(R), 1 # red) | ]
+interface = { }
+
+add_indeg(x:list)
+[ (n0, x) | ]
+=>
+[ (n0, x:indeg(n0) # grey) | ]
+interface = {n0}
+
+// Labels an indegree 0 node with the number from the root node.
+// Connects the nodes with a red edge.
+num_source(x:list; i:int)
+[ (n0(R), i # red) (n1, x:0 # grey) | ]
+=>
+[ (n0(R), i+1 # red) (n1, x:i) | 
+  (e0, n0, n1, empty # red) ]
+interface = {n0, n1}
+
+shaded(l:list)
+[ (n0, l # grey) | ]
+=>
+[ (n0, l # grey) | ]
+interface = {n0}
+
+// Assigns the next number in the ordering to an node labelled 1.
+// I don't remember why a label 1 node is matched. 
+number(a,x:list; i:int; l:list)
+[ (n0(R), i # red) (n1, l) (n2, x:1 # grey) |
+  (e0, n0, n1, empty # red) (e1, n1, n2, a) ]
+=>
+[ (n0(R), i+1 # red) (n1, l) (n2, x:i) |
+  (e0, n0, n1, empty # red) (e1, n1, n2, a) (e2, n0, n2, empty # red) ]
+interface = {n0, n1, n2}
+
+// Dashes an edge and decrements the label (degree) of its target.
+hide_edge(a,x:list; d,i:int; l:list)
+[ (n0(R), i # red) (n1, l) (n2, x:d # grey) |
+  (e0, n0, n1, empty # red) (e1, n1, n2, a) ]
+=>
+[ (n0(R), i # red) (n1, l) (n2, x:d-1) |
+  (e0, n0, n1, empty # red) (e1, n1, n2, a # dashed) ]
+interface = {n0, n1, n2}
+
+undo1(a:list; i:int; l,k:list)
+[ (n0(R), i # red) (n1, l) (n2, k) |
+  (e0, n0, n1, empty # red) (e1, n1, n2, a # dashed) ]
+=>
+[ (n0(R), i+1 # red) (n1, l) (n2, k) |
+  (e0, n0, n1, empty # red) (e1, n1, n2, a) ]
+interface = {n0, n1, n2}
+
+undo2(i:int; l:list)
+[ (n0(R), i # red) (n1, l) |
+  (e0, n0, n1, empty # red) ]
+=>
+[ (n0(R), i # red) (n1, l) | ]
+interface = {n0, n1}
+
+undo3(i:int)
+[ (n0(R), i # red) | ]
+=>
+[ | ]
+interface = { }
+
+

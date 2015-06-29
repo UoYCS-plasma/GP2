@@ -1,0 +1,16 @@
+[
+    (n0, empty # grey)
+    (n1, empty)
+    (n2, empty)
+    (n3, empty)
+    (n4, empty)
+    (n5, empty)
+|
+    (e0, n0, n1, 5)
+    (e1, n1, n2, 4)
+    (e2, n3, n4, 3)
+    (e3, n4, n5, 1)
+    (e4, n0, n3, 6)
+    (e5, n1, n4, 0)
+    (e6, n2, n5, 4)
+]

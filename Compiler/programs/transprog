@@ -1,0 +1,10 @@
+Main = link!
+
+link (a,b,x,y,z: list)
+[ (n0, x) (n1, y) (n2, z) |
+  (e0, n0, n1, a) (e1, n1, n2, b) ]
+ => 
+[ (n0, x) (n1, y) (n2, z) | 
+  (e0, n0, n1, a) (e1, n1, n2, b) (e2, n0, n2, empty) ]
+interface = {n0, n1, n2}
+where not edge(n0, n2)

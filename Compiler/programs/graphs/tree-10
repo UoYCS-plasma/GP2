@@ -1,0 +1,6 @@
+[ (n0, empty) (n1, empty) (n2, empty) (n3, empty) (n4, empty) 
+  (n5, empty) (n6, empty) (n7, empty) (n8, empty) (n9, empty) |
+  (e0, n0, n1, empty) (e1, n1, n2, empty) (e2, n1, n3, empty) 
+  (e3, n1, n4, empty) (e4, n1, n5, empty) (e5, n5, n6, empty) 
+  (e6, n6, n7, empty) (e7, n6, n8, empty) (e8, n6, n9, empty) ]
+

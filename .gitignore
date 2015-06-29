@@ -14,11 +14,9 @@ core*
 tmp/
 *.a
 *.txt
-CaseStudies
 GP2-*
 GRIT
 Graphite*
-init_*
 parser*
 lexer*
 root
@@ -26,9 +24,9 @@ Definition
 YAM
 *.supp
 Main*
-runtime.c
-runtime.h
 Haskell
 tokenise
 Results
-labelClass*
+testData
+test
+old
