@@ -9,6 +9,7 @@ Build Instructions
 To build the GP 2 compiler, run
 
 > cd src
+
 > make build
 
 This builds the library object files and creates the binary `GP2-compile` which is called from the *src* directory in one of three ways:
