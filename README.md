@@ -1,6 +1,6 @@
 ===================================================
-Authors: Chris Bak and Glyn Faulkner (May 14th 2015)
 GP 2: Graph Programming
+Authors: Chris Bak and Glyn Faulkner (May 14th 2015)
 ===================================================
 
 GP 2 is a graph programming language. Graph programs consist of two text files. The first is a specification of the graph program, namely a set of graph transformation rules and a procedural-style command sequence to organise rule application. The second describes an initial _host graph_ to which the graph program is applied. These text files can be written in a text editor. In the future, a graphical editor can be used to generate the text files internally. Graph programs are executed by either passing them to an interpreter, or by compiling to native code.

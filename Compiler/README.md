@@ -1,6 +1,6 @@
 ==================================
-GP 2 Compiler
 Author: Chris Bak (June 29th 2015)
+GP 2 Compiler
 ==================================
 
 Build Instructions
