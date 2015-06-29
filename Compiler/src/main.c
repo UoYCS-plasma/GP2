@@ -77,10 +77,10 @@ static bool validateHostGraph(string host_file)
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "GP2-compile <program_file> <host_file>\n"
+                        "GP2-compile [-o <output_file>] <program_file> <host_file>\n"
                         "GP2-compile -vp <program_file>\n"
                         "GP2-compile -vh <host_file>\n";
-   if(argc != 3) 
+   if(argc != 3 && argc != 5) 
    {
       print_to_console("%s", usage);
       return 0;
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate;
-   string program_file = NULL, host_file = NULL;
+   string program_file = NULL, host_file = NULL, output_file = NULL;
 
    if(strcmp(argv[1], "-vp") == 0)
    {
@@ -101,7 +101,19 @@ int main(int argc, char **argv)
       validate = true;
       host_file = argv[2];
    }
-   else 
+   else if(strcmp(argv[1], "-o") == 0) 
+   {
+      if(argc != 5)
+      {
+         print_to_console("%s", usage);
+         return 0;
+      }
+      validate = false;
+      output_file = argv[2];
+      program_file = argv[3];
+      host_file = argv[4];
+   }
+   else
    {
       validate = false;
       program_file = argv[1];
@@ -150,7 +162,7 @@ int main(int argc, char **argv)
          #ifdef DEBUG_PROGRAM
             printDotAST(gp_program, program_file);
          #endif
-         generateRuntimeMain(gp_program, host_file, host_nodes, host_edges);
+         generateRuntimeMain(gp_program, host_nodes, host_edges, host_file, output_file);
       }
    }
    if(yyin != NULL) fclose(yyin);

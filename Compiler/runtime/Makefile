@@ -1,8 +1,8 @@
 # Runtime objects.
 ROBJECTS := $(patsubst %.c, %.o, $(wildcard *.c)) $(patsubst %.c, %.o, $(wildcard host/*.c)) 
 # Library objects.
-LOBJECTS = ../lib/debug.o ../lib/graph.o ../lib/graphStacks.o ../lib/hostLexer.o \
-           ../lib/hostParser.o ../lib/label.o ../lib/morphism.o
+LOBJECTS = ../lib/debug.o ../lib/graph.o ../lib/graphStacks.o ../lib/label.o ../lib/morphism.o \
+           ../lib/hostParser.o ../lib/hostLexer.o
            
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
@@ -19,3 +19,5 @@ default:	$(OBJECTS)
 # Delete all files except Makefile (this file). 
 clean:		
 		ls | grep -v 'Makefile' | xargs rm
+		if [ -e "../gp2.log" ]; then rm ../gp2.log; fi
+		if [ -e "../gp2.trace" ]; then rm ../gp2.trace; fi

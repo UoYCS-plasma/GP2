@@ -75,8 +75,8 @@ static void generateBranchStatement(GPCommand *command, CommandData data);
 static void generateLoopStatement(GPCommand *command, CommandData data);
 static void generateFailureCode(string rule_name, CommandData data);
 
-void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
-                         int host_edges)
+void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
+                         string host_file, string output_file)
 {
    file = fopen("../runtime/main.c", "w");
    if(file == NULL) { 
@@ -115,6 +115,7 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
    PTF("Graph *host = NULL;\n");
    PTF("int *node_map = NULL;\n\n");
 
+   /* Print the function that builds the host graph through the host graph parser. */
    PTF("static Graph *buildHostGraph(void)\n");
    PTF("{\n");
    if(host_file == NULL)
@@ -154,11 +155,12 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
    PTF("bool success = true;\n\n");
 
    /* Open the runtime's main function and set up the execution environment. */
-   PTF("int main(void)\n{\n");
+   PTF("int main(void)\n");
+   PTF("{\n");
    PTFI("srand(time(NULL));\n", 3);
-   PTFI("openLogFile(\"gp2.log\");\n", 3);
+   PTFI("openLogFile(\"../gp2.log\");\n", 3);
    #if defined GRAPH_TRACING || defined RULE_TRACING || defined BACKTRACK_TRACING
-      PTFI("openTraceFile(\"gp2.trace\");\n", 3);
+      PTFI("openTraceFile(\"../gp2.trace\");\n", 3);
    #endif
 
    PTFI("host = buildHostGraph();\n", 3);
@@ -166,6 +168,17 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
    PTFI("{\n", 3);
    PTFI("fprintf(stderr, \"Error parsing host graph file. Execution aborted.\\n\");\n", 6);
    PTFI("return 0;\n", 6);
+   PTFI("}\n", 3);
+
+   PTFI("/* Output File. */\n", 3);
+   if(output_file == NULL)
+        PTFI("FILE *output_file = fopen(\"../gp2.output\", \"w\");\n", 3);
+   else PTFI("FILE *output_file = fopen(\"../%s\", \"w\");\n", 3, output_file); 
+   PTFI("if(output_file == NULL)\n", 3);
+   PTFI("{\n", 3);
+   if(output_file == NULL) PTFI("perror(\"../gp2.output\");\n", 6);
+   else PTFI("perror(\"../%s\");\n", 6, output_file);
+   PTFI("exit(1);\n", 6);
    PTFI("}\n", 3);
 
    #ifdef GRAPH_TRACING
@@ -188,16 +201,10 @@ void generateRuntimeMain(List *declarations, string host_file, int host_nodes,
       }
       iterator = iterator->next;
    }
-   string output_file_name = "../output_graph.gpg";
-   PTFI("/* Output Graph. */\n", 3);
-   PTFI("FILE *output_file = fopen(\"%s\", \"w\");\n", 3, output_file_name);
-   PTFI("if(output_file == NULL)\n", 3);
-   PTFI("{\n", 3);
-   PTFI("perror(\"%s\");\n", 6, output_file_name);
-   PTFI("exit(1);\n", 6);
-   PTFI("}\n", 3);
    PTF("   printGraph(host, output_file);\n");
-   PTF("   printf(\"Output graph saved to file %s.\\n\");\n", output_file_name);
+   if(output_file == NULL) 
+        PTF("   printf(\"Output graph saved to file ../gp2.output.\\n\");\n");
+   else PTF("   printf(\"Output graph saved to file ../%s.\\n\");\n", output_file);
    PTF("   garbageCollect();\n");
    PTF("   printf(\"Graph changes made: %%d\\n\", graph_change_count);\n");
    PTF("   fclose(output_file);\n");
@@ -613,10 +620,10 @@ static void generateFailureCode(string rule_name, CommandData data)
          PTFI("printGraph(host, trace_file);\n", data.indent);
       #endif
       if(rule_name != NULL)
-         PTFI("printf(\"No output graph: rule %s not "
-              "applicable.\\n\");\n", data.indent, rule_name);
-      else PTFI("printf(\"No output graph: Fail statement "
-                "invoked.\\n\");\n", data.indent);
+         PTFI("fprintf(output_file, \"No output graph: rule %s not applicable.\\n\");\n",
+              data.indent, rule_name);
+      else PTFI("fprintf(output_file, \"No output graph: Fail statement invoked\\n\");\n",
+                data.indent);
       PTFI("garbageCollect();\n", data.indent);
       PTFI("return 0;\n", data.indent);
    }

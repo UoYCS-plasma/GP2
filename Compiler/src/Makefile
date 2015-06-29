@@ -17,12 +17,14 @@ default:	$(OBJECTS)
 
 # Builds everything and runs valgrind on the runtime executable.
 debug:		$(OBJECTS)	
+		make build
 		./GP2-compile $(prog) $(host) 
 		cd ../runtime && make && $(VALGRIND) ./GP2-run 
 
 # Builds the executable GP2-compile.
 build:		$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
+		cd ../lib && make
 
 # Builds the executable GP2-compile and runs it with valgrind.
 compile-debug:	$(OBJECTS)
