@@ -1,0 +1,73 @@
+OBJECTS = analysis.o ast.o error.o genCondition.o genLabel.o genProgram.o \
+	  genRule.o lexer.o main.o parser.o pretty.o rule.o searchplan.o \
+	  seman.o symbol.o transform.o 
+
+CC = gcc
+CFLAGS = -g -I ../inc -Wall -Wextra `pkg-config --cflags --libs glib-2.0`
+LFLAGS = -lglib-2.0 
+VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
+           --leak-check=full --leak-resolution=high --track-origins=yes \
+
+# Builds the compiler, generates code, and builds the runtime system.
+# Usage: make prog=<path_to_program_file> host=<path_to_host_graph_file>
+default:	$(OBJECTS)
+		make build
+		./GP2-compile $(prog) $(host)
+		cd ../runtime && make
+
+# Builds everything and runs valgrind on the runtime executable.
+debug:		$(OBJECTS)	
+		./GP2-compile $(prog) $(host) 
+		cd ../runtime && make && $(VALGRIND) ./GP2-run 
+
+# Builds the executable GP2-compile.
+build:		$(OBJECTS)
+		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
+
+# Builds the executable GP2-compile and runs it with valgrind.
+compile-debug:	$(OBJECTS)
+		make build
+		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-compile $(prog) $(host)
+
+
+parser.c parser.h: ast.h gpParser.y
+		bison gpParser.y
+
+lexer.c:	parser.h gpLexer.lex 
+		flex gpLexer.lex
+
+%.o:		%.c
+		$(CC) -c $(CFLAGS) -o $@ $<
+
+# Dependencies
+analysis.o:	../inc/globals.h ast.h analysis.h
+ast.o: 		../inc/globals.h ast.h error.h
+error.o:	../inc/globals.h
+genCondition.o:	../inc/globals.h genLabel.h rule.h genCondition.h
+genLabel.o:	../inc/globals.h rule.h genLabel.h
+genProgram.o:	../inc/globals.h ast.h genProgram.h
+genRule.o:	../inc/globals.h genCondition.h genLabel.h rule.h searchplan.h transform.h genRule.h
+lexer.o:	../inc/globals.h parser.h
+main.o:		../inc/globals.h analysis.h error.h genProgram.h genRule.h parser.h pretty.h seman.h
+parser.o:	../inc/globals.h lexer.c parser.h 
+pretty.o:       ../inc/globals.h ast.h symbol.h pretty.h 
+rule.o:		../inc/globals.h rule.h
+searchplan.o:	../inc/globals.h rule.h searchplan.h
+seman.o:	../inc/globals.h ast.h symbol.h seman.h 
+symbol.o:	../inc/globals.h symbol.h
+transform.o:	../inc/globals.h ast.h rule.h transform.h 
+
+#Cleanup
+clean:
+		if [ -e "gp2.log" ]; then rm gp2.log; fi
+		if [ -e "gp2.trace" ]; then rm gp2.trace; fi
+		cd ../runtime && make clean
+
+clean-obj:
+		rm *.o 
+
+clean-all:
+		rm parser.c parser.h lexer.c
+		make clean-obj
+		make clean
+

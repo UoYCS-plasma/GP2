@@ -1,30 +1,21 @@
 # Runtime objects.
 ROBJECTS := $(patsubst %.c, %.o, $(wildcard *.c)) $(patsubst %.c, %.o, $(wildcard host/*.c)) 
 # Library objects.
-LOBJECTS = ../debug.o ../error.o ../label.o ../graph.o ../graphStacks.o ../rule.o 
+LOBJECTS = ../lib/debug.o ../lib/graph.o ../lib/graphStacks.o ../lib/hostLexer.o \
+           ../lib/hostParser.o ../lib/label.o ../lib/morphism.o
+           
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
 CC = gcc 
-CFLAGS = -I .. -g -O0 -Wall -Wextra  
-#CFLAGS = -I .. -O2 -fomit-frame-pointer -Wall -Wextra 
-LFLAGS = -lglib-2.0
+#CFLAGS = -I../lib -I../inc -g -O0 -Wall -Wextra  
+CFLAGS = -I../lib -I../inc -O2 -fomit-frame-pointer -Wall -Wextra 
 
 default:	$(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-run 		
+		$(CC) $(OBJECTS) -o GP2-run 		
 
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<
 
-hostParser.c:	../hostParser.y
-		bison ../hostParser.y
-
-hostLexer.c:	../hostLexer.lex
-		flex -o runtime/hostLexer.c hostLexer.lex
-
-# Delete all files except Makefile, morphism*, and the parsing files. 
+# Delete all files except Makefile (this file). 
 clean:		
-		ls | grep -v 'host\|Makefile\|morphism' | xargs rm
-		if [ -d "host" ]; then rm host/*; rmdir host; fi
-		if [ -e "morphism.o" ]; then rm morphism.o; fi
-		if [ -e "hostParser.o" ]; then rm hostParser.o; fi
-		if [ -e "hostLexer.o" ]; then rm hostLexer.o; fi
+		ls | grep -v 'Makefile' | xargs rm
