@@ -61,13 +61,13 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
  *
  * Notes: 
  * - The functions to apply a rule take a boolean argument to signal whether
- *   graph changes should be recorded. These are omitted. 
+ *   graph changes should be recorded. These are omitted here. 
  * - M_R is the name of the morphism structure associated with rule R.
  * - For empty-LHS rules, the generated rule application function takes no
  *   morphism argument.
- * - initialiseMorphism resets the values of the morphism to their default,
- *   values, so that matches of a rule are not influenced by values from a
- *   previous match. 
+ * - initialiseMorphism resets the values of the morphism to their default
+ *   valuess, so that matches of a rule are not influenced by values from a
+ *   previous match attempt. 
  *
  * Failure Code
  * ============
@@ -75,15 +75,15 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
  * the rule call.
  *
  * Failure code for rules at the 'top level' is:
- * print_to_console("No output graph: rule <rule_name> not applicable.\n");
+ * fprintf(output_file, "No output graph: rule <rule_name> not applicable.\n");
  * OR
- * print_to_console("No output graph: Fail statement invoked.\n");
+ * fprintf(outout_file, "No output graph: Fail statement invoked.\n");
  * garbageCollect();
  * return 0;
  *
  * Failure code for rules within a loop body is:
  * success = false;
- * <code to revert the host graph to the start of the loop if necessary>
+ * <host graph restoration code>
  *
  * Failure code for rules within a branch condition is:
  * success = false;
@@ -114,16 +114,18 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
  *
  * Conditional Branch if/try C then P else Q
  * ===========================================
- * If statements and try statements the same C code module restoring the host
+ * If statements and try statements generate the same code to restore the host
  * graph to its state before the condition was entered. The condition program 
- * is generated within a do-while-false loop so the code exits that subprogram
- * as soon as possible on failure detection.
+ * is generated within a do-while-false loop so the subprogram can be exited,
+ * using a C 'break' statement, as soon as possible after failure detection.
  *
  * do
  * {
  *    <program code for C>
  * } while(false);
+ *
  * <host graph restoration code for if statements>
+ *
  * if(success)
  * {
  *    <program code for P>
@@ -137,7 +139,7 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
  *
  * Loop Statement P!
  * =================
- * Nothing special here, just a trivial translation to a C loop:
+ * Nothing special here, just a direct translation to a C loop:
  * while(success)
  * {
  *    <program code for P>

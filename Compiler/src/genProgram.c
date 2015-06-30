@@ -6,20 +6,18 @@
 
 static FILE *file = NULL;
 
-/* At compile time, the AST is annotated with restore points and roll back flags
- * signalling that the current host graph needs to be retained while executing
- * a particular program fragment.
+/* At compile time, the AST is annotated with 'roll back' flags to signal that
+ * changes to the host graph are to be recorded while executing a particular
+ * program fragment. See the analysis module for the implementation of this
+ * annotation.
  *
- * There are two ways in which the host graph is retained. 
- * (1) The host graph is copied and pushed onto the graph stack. This copy is
- *     performed once per restore point, so it is known at compile time the
- *     stack depth from which the host graph is retrieved if necessary. 
- * (2) The changes made to the host graph are recorded during execution of the
- *     program fragment. The amount of changes that need to be rolled back cannot be
- *     determined at compile time, so variables to store undo points are defined
- *     at runtime. The global variable defined below is incremented when one of
- *     these variables is generated to ensure that the runtime system has a
- *     unique variable identifier for each undo point. */
+ * The changes made to the host graph are recorded during execution of the
+ * program fragment. The amount of changes that need to be rolled back cannot be
+ * determined at compile time, so variables to store restore points (the number of
+ * a frame on the graph change stack) are defined at runtime.
+ * The global variable defined below is incremented when one of these variables
+ * is generated to ensure that the runtime system has a unique variable identifier
+ * for each restore point. */
 int restore_point_count = 0;
 
 /* The contexts of a GP2 program determine the code that is generated. In
