@@ -9,7 +9,6 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
       exit(1);
    }
    morphism->nodes = nodes;
-   morphism->node_map_index = 0;
    if(nodes > 0) 
    {
       morphism->node_map = calloc(nodes, sizeof(Map));
@@ -22,7 +21,6 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
    else morphism->node_map = NULL;
 
    morphism->edges = edges;
-   morphism->edge_map_index = 0;
    if(edges > 0) 
    {
       morphism->edge_map = calloc(edges, sizeof(Map));
@@ -52,18 +50,14 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
 
 void initialiseMorphism(Morphism *morphism)
 { 
-   morphism->node_map_index = 0;
    int index;
    for(index = 0; index < morphism->nodes; index++)
    {
-      morphism->node_map[index].left_index = -1;
       morphism->node_map[index].host_index = -1;
       morphism->node_map[index].variables = 0;
    }
-   morphism->edge_map_index = 0;
    for(index = 0; index < morphism->edges; index++)
    {
-      morphism->edge_map[index].left_index = -1;
       morphism->edge_map[index].host_index = -1;
       morphism->edge_map[index].variables = 0;
    }
@@ -81,20 +75,16 @@ void initialiseMorphism(Morphism *morphism)
 
 void addNodeMap(Morphism *morphism, int left_index, int host_index, int variables)
 {
-   assert(morphism->node_map_index < morphism->nodes);
-   morphism->node_map[morphism->node_map_index].left_index = left_index;
-   morphism->node_map[morphism->node_map_index].host_index = host_index;
-   morphism->node_map[morphism->node_map_index].variables = variables;
-   morphism->node_map_index++;
+   assert(left_index < morphism->nodes);
+   morphism->node_map[left_index].host_index = host_index;
+   morphism->node_map[left_index].variables = variables;
 }
 
 void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variables)
 {
-   assert(morphism->edge_map_index < morphism->edges);
-   morphism->edge_map[morphism->edge_map_index].left_index = left_index;
-   morphism->edge_map[morphism->edge_map_index].host_index = host_index;
-   morphism->edge_map[morphism->edge_map_index].variables = variables;
-   morphism->edge_map_index++;
+   assert(left_index < morphism->edges);
+   morphism->edge_map[left_index].host_index = host_index;
+   morphism->edge_map[left_index].variables = variables;
 }
 
 void addAssignment(Morphism *morphism, string variable, GPType type, HostList *value)
@@ -106,22 +96,18 @@ void addAssignment(Morphism *morphism, string variable, GPType type, HostList *v
    morphism->assignment_index++;
 }
 
-void removeNodeMap(Morphism *morphism)
+void removeNodeMap(Morphism *morphism, int left_index)
 {
-   morphism->node_map_index--;
-   morphism->node_map[morphism->node_map_index].left_index = -1;
-   morphism->node_map[morphism->node_map_index].host_index = -1;
-   removeAssignments(morphism, morphism->node_map[morphism->node_map_index].variables);
-   morphism->node_map[morphism->node_map_index].variables = 0;
+   morphism->node_map[left_index].host_index = -1;
+   removeAssignments(morphism, morphism->node_map[left_index].variables);
+   morphism->node_map[left_index].variables = 0;
 }
 
-void removeEdgeMap(Morphism *morphism)
+void removeEdgeMap(Morphism *morphism, int left_index)
 {
-   morphism->edge_map_index--;
-   morphism->edge_map[morphism->edge_map_index].left_index = -1;
-   morphism->edge_map[morphism->edge_map_index].host_index = -1;
-   removeAssignments(morphism, morphism->edge_map[morphism->edge_map_index].variables);
-   morphism->edge_map[morphism->edge_map_index].variables = 0;
+   morphism->edge_map[left_index].host_index = -1;
+   removeAssignments(morphism, morphism->edge_map[left_index].variables);
+   morphism->edge_map[left_index].variables = 0;
 }
 
 void removeAssignments(Morphism *morphism, int number)
@@ -141,24 +127,12 @@ void removeAssignments(Morphism *morphism, int number)
 
 int lookupNode(Morphism *morphism, int left_index)
 {
-   int count;
-   for(count = 0; count < morphism->nodes; count++)
-   {
-      if(morphism->node_map[count].left_index == left_index) 
-         return morphism->node_map[count].host_index;
-   }
-   return -1;
+   return morphism->node_map[left_index].host_index;
 }
 
 int lookupEdge(Morphism *morphism, int left_index)
 {
-   int count;
-   for(count = 0; count < morphism->edges; count++)
-   {
-      if(morphism->edge_map[count].left_index == left_index) 
-         return morphism->edge_map[count].host_index;
-   }
-   return -1;
+   return morphism->edge_map[left_index].host_index;
 }
 
 Assignment *lookupVariable(Morphism *morphism, string variable)
@@ -311,28 +285,26 @@ void printMorphism(Morphism *morphism)
       printf("No morphism exists.\n\n");
       return;
    }
-   int count;
+   int index;
    if(morphism->node_map != NULL)
    {
       printf("\nNode Mappings\n=============\n");
-      for(count = 0; count < morphism->nodes; count++)
-          printf("%d --> %d\n", morphism->node_map[count].left_index, 
-                 morphism->node_map[count].host_index);
+      for(index = 0; index < morphism->nodes; index++)
+         printf("%d --> %d\n", index, morphism->node_map[index].host_index);
       printf("\n");
    }
    if(morphism->edge_map != NULL)
    {
       printf("Edge Mappings\n=============\n");
-      for(count = 0; count < morphism->edges; count++)
-          printf("%d --> %d\n", morphism->edge_map[count].left_index, 
-                 morphism->edge_map[count].host_index);
+      for(index = 0; index < morphism->edges; index++)
+         printf("%d --> %d\n", index, morphism->edge_map[index].host_index);
       printf("\n");
    }
    if(morphism->assignment != NULL)
    {
-      for(count = 0; count < morphism->variables; count++)
+      for(index = 0; index < morphism->variables; index++)
       {
-         Assignment assignment = morphism->assignment[count];
+         Assignment assignment = morphism->assignment[index];
          if(assignment.variable != NULL)
          {
             printf("Variable %s -> ", assignment.variable);

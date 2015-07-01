@@ -72,4 +72,5 @@ clean-all:
 		rm parser.c parser.h lexer.c
 		make clean-obj
 		make clean
+		cd ../lib && make clean-all
 

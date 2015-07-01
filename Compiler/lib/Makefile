@@ -1,7 +1,14 @@
 OBJECTS = debug.o graph.o graphStacks.o hostLexer.o hostParser.o label.o morphism.o
 
 CC = gcc
-CFLAGS = -g -I ../inc -Wall -Wextra 
+# CFLAGS for debugging with gdb.
+# CFLAGS = -g -I../inc -Wall -Wextra 
+
+# CFLAGS for profiling with gprof.
+# CFLAGS = -pg -I../inc -O2 -Wall -Wextra 
+
+# CLFAGS for optimised code.
+CFLAGS = -I../inc -O2 -fomit-frame-pointer -Wall -Wextra 
 
 # Builds the library object files. 
 default:	$(OBJECTS)
@@ -24,7 +31,7 @@ hostParser.o:	../inc/globals.h graph.h label.h hostParser.h
 label.o:	../inc/globals.h label.h
 morphism.o:	../inc/globals.h label.h morphism.h
 
-#Cleanup
+# Cleanup
 clean:
 		rm *.o
 

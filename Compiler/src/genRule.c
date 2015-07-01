@@ -459,7 +459,7 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
          if(predicate->negated) PTFI("b%d = false;\n", indent + 6, predicate->bool_id);
          else PTFI("b%d = true;\n", indent + 6, predicate->bool_id);
       }
-      PTFI("removeNodeMap(morphism);\n", indent + 6);
+      PTFI("removeNodeMap(morphism, %d);\n", indent + 6, node->index);
       PTFI("host_node->matched = false;\n", indent + 6);  
       PTFI("}\n", indent + 3);
    }
@@ -477,13 +477,13 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
          PTF(") return true;\n");            
          PTFI("else\n", indent + 3);
          PTFI("{\n", indent + 3);  
-         PTFI("removeNodeMap(morphism);\n", indent + 6);
+         PTFI("removeNodeMap(morphism, %d);\n", indent + 6, node->index);
          PTFI("host_node->matched = false;\n", indent + 6);  
          PTFI("}\n", indent + 3);
       }
    }
    PTFI("}\n", indent);
-   /* Print the else branch of the "if(match)" printed at the top of this function. */
+   /* The else branch of the "if(match)" printed at the top of this function. */
    PTFI("else removeAssignments(morphism, new_assignments);\n", indent);
 }
 
@@ -492,7 +492,8 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
  * are obtained from the appropriate label class tables. */
 static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
-   PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
+   PTF("static bool match_e%d(Morphism *morphism)\n", left_edge->index);
+   PTF("{\n");
    PTFI("int host_index;\n", 3);
    PTFI("for(host_index = 0; host_index < host->edges.size; host_index++)\n", 3);
    PTFI("{\n", 3);
@@ -514,7 +515,8 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 
 static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
-   PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
+   PTF("static bool match_e%d(Morphism *morphism)\n", left_edge->index);
+   PTF("{\n");
    PTFI("/* Matching a loop. */\n", 3);
    PTFI("int node_index = lookupNode(morphism, %d);\n", 3, left_edge->source->index);
    PTFI("if(node_index < 0) return false;\n", 3);
@@ -570,7 +572,8 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
 
    if(initialise)
    {
-      PTF("static bool match_e%d(Morphism *morphism)\n{\n", left_edge->index);
+      PTF("static bool match_e%d(Morphism *morphism)\n", left_edge->index);
+      PTF("{\n");
       PTFI("/* Start node is the already-matched node from which the candidate\n", 3);
       PTFI("   edges are drawn. End node may or may not have been matched already. */\n", 3);
       PTFI("int start_index = lookupNode(morphism, %d);\n", 3, start_index);
@@ -643,7 +646,7 @@ static void emitEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
       PTF(") return true;\n");           
       PTFI("else\n", indent + 3);
       PTFI("{\n", indent + 3);                              
-      PTFI("removeEdgeMap(morphism);\n", indent + 6);
+      PTFI("removeEdgeMap(morphism, %d);\n", indent + 6, index);
       PTFI("host_edge->matched = false;\n", indent + 6); 
       PTFI("}\n", indent + 3);
    } 

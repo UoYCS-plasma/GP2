@@ -27,7 +27,6 @@ typedef struct Assignment {
 } Assignment;
 
 typedef struct Map {
-   int left_index;
    int host_index;
    /* The number of variable-value assignments added by this node map.
     * Needed when matching backtracks in order to remove the appropriate
@@ -41,11 +40,9 @@ typedef struct Map {
  * the number of nodes, edges and variables in the rule. */
 typedef struct Morphism {
    int nodes;
-   int node_map_index;
    Map *node_map;
 
    int edges;
-   int edge_map_index;
    Map *edge_map;
 
    int variables;
@@ -61,9 +58,9 @@ Morphism *makeMorphism(int nodes, int edges, int variables);
  * are reset to their default values. */
 void initialiseMorphism(Morphism *morphism);
 void addNodeMap(Morphism *morphism, int left_index, int host_index, int variables);
-void removeNodeMap(Morphism *morphism);
+void removeNodeMap(Morphism *morphism, int left_index);
 void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variables);
-void removeEdgeMap(Morphism *morphism);
+void removeEdgeMap(Morphism *morphism, int left_index);
 void addAssignment(Morphism *morphism, string variable, GPType type, HostList *value);
 void removeAssignments(Morphism *morphism, int number);
 

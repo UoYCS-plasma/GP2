@@ -7,11 +7,17 @@ LOBJECTS = ../lib/debug.o ../lib/graph.o ../lib/graphStacks.o ../lib/label.o ../
 OBJECTS = $(ROBJECTS) $(LOBJECTS)
 
 CC = gcc 
-#CFLAGS = -I../lib -I../inc -g -O0 -Wall -Wextra  
-CFLAGS = -I../lib -I../inc -O2 -fomit-frame-pointer -Wall -Wextra 
+# CFLAGS for debugging with gdb.
+# CFLAGS = -g -I../lib -I../inc -Wall -Wextra 
+
+# CFLAGS for profiling with gprof.
+# CFLAGS = -pg -I../lib -I../inc -O2 -Wall -Wextra 
+
+# CLFAGS for optimised code.
+CFLAGS = -I../lib -I../inc -O2 -Wall -Wextra 
 
 default:	$(OBJECTS)
-		$(CC) $(OBJECTS) -o GP2-run 		
+		$(CC) $(OBJECTS) $(CFLAGS) -o GP2-run 		
 
 %.o:		%.c
 		$(CC) -c $(CFLAGS) -o $@ $<
