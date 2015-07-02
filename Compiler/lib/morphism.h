@@ -17,12 +17,13 @@
 #include "globals.h"
 #include "label.h"
 
+typedef enum {NO_ASSIGNMENT = 0, INTEGER_ASSIGNMENT, STRING_ASSIGNMENT,
+              LIST_ASSIGNMENT} AssignmentType;
 /* Association list to represent variable-value mappings. The type of an 
  * assignment is the type of its value. This is either INTEGER_VAR, STRING_VAR
  * or LIST_VAR. */
 typedef struct Assignment {
-   string variable;
-   GPType type;
+   AssignmentType type;
    HostList *value;
 } Assignment;
 
@@ -31,7 +32,7 @@ typedef struct Map {
    /* The number of variable-value assignments added by this node map.
     * Needed when matching backtracks in order to remove the appropriate
     * number of assignments from the morphism. */
-   int variables;
+   int assignments;
 } Map;
 
 /* A graph morphism is a set of node-to-node mappings, a set of edge-to-edge
@@ -46,9 +47,13 @@ typedef struct Morphism {
    Map *edge_map;
 
    int variables;
-   int assignment_index;
    Assignment *assignment;
+
+   /* Stack to record the order of variable assignments during rule matching. */
+   int *assigned_variables;
+   int variable_index;
 } Morphism;
+
 
 /* Allocates memory for the morphism, and calls initialiseMorphism. */
 Morphism *makeMorphism(int nodes, int edges, int variables);
@@ -57,16 +62,18 @@ Morphism *makeMorphism(int nodes, int edges, int variables);
  * reset the morphism after each rule application. The data in the morphism
  * are reset to their default values. */
 void initialiseMorphism(Morphism *morphism);
-void addNodeMap(Morphism *morphism, int left_index, int host_index, int variables);
+void addNodeMap(Morphism *morphism, int left_index, int host_index, int assignments);
 void removeNodeMap(Morphism *morphism, int left_index);
-void addEdgeMap(Morphism *morphism, int left_index, int host_index, int variables);
+void addEdgeMap(Morphism *morphism, int left_index, int host_index, int assignments);
 void removeEdgeMap(Morphism *morphism, int left_index);
-void addAssignment(Morphism *morphism, string variable, GPType type, HostList *value);
+void addAssignment(Morphism *morphism, int id, AssignmentType type, HostList *value);
 void removeAssignments(Morphism *morphism, int number);
+void pushVariableId(Morphism *morphism, int id);
+int popVariableId(Morphism *morphism);
 
 int lookupNode(Morphism *morphism, int left_index);
 int lookupEdge(Morphism *morphism, int left_index);
-Assignment *lookupVariable(Morphism *morphism, string variable);
+Assignment lookupAssignment(Morphism *morphism, int id);
 
 /* Tests a potential variable-value assignment against the assignments in the
  * morphism. If the variable is not in the assignment, its name and value are 
@@ -77,14 +84,14 @@ Assignment *lookupVariable(Morphism *morphism, string variable);
  * Returns 0 if the variable has a value in the assignment that is equal to
  * the passed value.
  * Returns 1 if the variable did not previously exist in the assignment. */
-int addListAssignment(Morphism *morphism, string name, HostList *list);
-int addIntegerAssignment(Morphism *morphism, string name, int value);
-int addStringAssignment(Morphism *morphism, string name, string value);
+int addListAssignment(Morphism *morphism, int id, HostList *list);
+int addIntegerAssignment(Morphism *morphism, int id, int value);
+int addStringAssignment(Morphism *morphism, int id, string value);
 
 /* These functions expect to be passed a variable of the appropriate type. */
-int getIntegerValue(Morphism *morphism, string name);
-string getStringValue(Morphism *morphism, string name);
-HostList *getListValue(Morphism *morphism, string name);
+int getIntegerValue(Morphism *morphism, int id);
+string getStringValue(Morphism *morphism, int id);
+HostList *getListValue(Morphism *morphism, int id);
 
 /* Used to test string constants in the rule against a host string. If 
  * rule_string is a prefix of the host_string, then the index of the host 

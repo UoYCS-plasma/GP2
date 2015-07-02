@@ -15,7 +15,7 @@
 #include "globals.h"
 
 /* The pointer <variables> points to a static array of struct Variable. 
- * variable_index is the first unused array index: once the array is populated, 
+ * variables is the first unused array index: once the array is populated, 
  * it stores the size of the array.
  *
  * The pointers <lhs> and <rhs> point to a single struct RuleGraph, defined below.
@@ -26,8 +26,8 @@
 typedef struct Rule {
    string name; 
    bool is_rooted, adds_nodes, adds_edges;
-   struct Variable *variables; 
-   int variable_index;
+   struct Variable *variable_list; 
+   int variables;
    struct RuleGraph *lhs; 
    struct RuleGraph *rhs;
    struct Condition *condition;
@@ -70,7 +70,7 @@ typedef struct RuleAtom {
       int number;
       string string;
       struct {
-         string name;
+         int id;
          GPType type;
       } variable;
       int node_id;  /* The index of the node in the RHS of the rule. */
@@ -160,7 +160,7 @@ typedef struct Predicate {
    bool negated;
    ConditionType type;
    union {
-      string variable; /* Subtype predicates. */
+      int variable_id; /* Subtype predicates. */
       struct {
          int source;
          int target;
@@ -187,7 +187,7 @@ Rule *makeRule(int variables, int left_nodes, int left_edges, int right_nodes,
 
 /* Populates the <rule->variable_index>th element of the rule's variable array
  * and increments the variable index. */
-void addVariable(Rule *rule, string name, GPType type);
+void addVariable(Rule *rule, int index, string name, GPType type);
 
 /* Initialises the array entry of the appropriate graph array and returns the
  * index of the added item. */
@@ -200,7 +200,7 @@ Condition *makeCondition(void);
 
 /* Allocates memory for a Predicate and populates its fields according to the
  * type of the predicate and the arguments passed to the function. */
-Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string variable);
+Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, int variable_id);
 Predicate *makeEdgePred(int bool_id, bool negated, int source, int target, RuleLabel label);
 Predicate *makeListComp(int bool_id, bool negated, ConditionType type,
                         RuleLabel left_label, RuleLabel right_label);
@@ -222,6 +222,7 @@ void addVariablePredicate(Variable *variable, Predicate *predicate, int size);
 bool isPredicate(Rule *rule);
 
 Variable *getVariable(Rule *rule, string name);
+int getVariableId(Rule *rule, string name);
 RuleNode *getRuleNode(RuleGraph *graph, int index);
 RuleEdge *getRuleEdge(RuleGraph *graph, int index);
 

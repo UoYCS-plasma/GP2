@@ -138,40 +138,39 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
       }
    }
    /* Generate code for any variables that participate in this predicate. */
-   for(index = 0; index < rule->variable_index; index++)
+   for(index = 0; index < rule->variables; index++)
    {
-      Variable variable = rule->variables[index];
+      Variable variable = rule->variable_list[index];
       if(variable.predicates == NULL) continue;
       int p;
       for(p = 0; p < variable.predicate_count; p++)
       {
          if(variable.predicates[p] == predicate)
          {
-            string name = variable.name;
-            PTFI("Assignment *assignment_%s = lookupVariable(morphism, \"%s\");\n",
-                 3, name, name);
+            PTFI("Assignment assignment_%d = lookupAssignment(morphism, %d);\n",
+                 3, index, index);
             PTFI("/* If the variable is not yet assigned, return. */\n", 3);
-            PTFI("if(assignment_%s == NULL) return;\n", 3, name);
+            PTFI("if(assignment_%d.type == NO_ASSIGNMENT) return;\n", 3, index);
             switch(variable.type)
             {
                case INTEGER_VAR:
-                    PTFI("int %s_var = getIntegerValue(morphism, \"%s\");\n\n", 3, 
-                         name, name);
+                    PTFI("int var_%d = getIntegerValue(morphism, %d);\n\n", 3, 
+                         index, index);
                     break;
 
                case CHARACTER_VAR:
                case STRING_VAR:
-                    PTFI("string %s_var = getStringValue(morphism, \"%s\");\n\n", 3, 
-                         name, name);
+                    PTFI("string var_%d = getStringValue(morphism, %d);\n\n", 3, 
+                         index, index);
                     break;
 
                case ATOM_VAR:
-                    PTFI("union { int num; string str; } %s_var;\n", 3, name);
-                    PTFI("if(assignment_%s->type == INTEGER_VAR) "
-                         "%s_var.num = getIntegerValue(morphism, \"%s\");\n", 3, 
-                         name, name, name);
-                    PTFI("else %s_var.str = getStringValue(morphism, \"%s\");\n\n", 3,
-                         name, name);
+                    PTFI("union { int num; string str; } var_%d;\n", 3, index);
+                    PTFI("if(assignment_%d.type == INTEGER_ASSIGNMENT) "
+                         "var_%d.num = getIntegerValue(morphism, %d);\n", 3, 
+                         index, index, index);
+                    PTFI("else var_%d.str = getStringValue(morphism, %d);\n\n", 3,
+                         index, index);
                     break;
                   
                case LIST_VAR:
@@ -191,27 +190,27 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
    switch(predicate->type)
    {
       case INT_CHECK:
-           PTFI("if(assignment_%s->type == INTEGER_VAR) b%d = true;\n", 3,
-                predicate->variable, predicate->bool_id);
+           PTFI("if(assignment_%d->type == INTEGER_VAR) b%d = true;\n", 3,
+                predicate->variable_id, predicate->bool_id);
            PTFI("else b%d = false;\n", 3, predicate->bool_id);
            break;
 
       case CHAR_CHECK:
-           PTFI("if(assignment_%s->type == STRING_VAR &&\n", 3, predicate->variable);
-           PTFI("strlen(assignment_%s->value[0].string) == 1)\n", 6, predicate->variable);
+           PTFI("if(assignment_%d->type == STRING_VAR &&\n", 3, predicate->variable_id);
+           PTFI("strlen(assignment_%d->value[0].string) == 1)\n", 6, predicate->variable_id);
            PTFI("b%d = true;\n", 6, predicate->bool_id);
            PTFI("else b%d = false;\n", 3, predicate->bool_id);
            break;
 
       case STRING_CHECK:
-           PTFI("if(assignment_%s->type == STRING_VAR) b%d = true;\n",
-                3, predicate->variable, predicate->bool_id);
+           PTFI("if(assignment_%d->type == STRING_VAR) b%d = true;\n",
+                3, predicate->variable_id, predicate->bool_id);
            PTFI("else b%d = false;\n", 3, predicate->bool_id);
            break;
 
       case ATOM_CHECK:
-           PTFI("if(assignment_%s->type != LIST_VAR) b%d = true;\n",
-                3, predicate->variable, predicate->bool_id);
+           PTFI("if(assignment_%d->type != LIST_VAR) b%d = true;\n",
+                3, predicate->variable_id, predicate->bool_id);
            PTFI("else b%d = false;\n", 3, predicate->bool_id);
            break;
 

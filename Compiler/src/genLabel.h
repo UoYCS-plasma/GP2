@@ -24,11 +24,11 @@ void generateFixedListMatchingCode(Rule *rule, RuleLabel label, int indent);
 void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent);
 
 /* Generates code to evaluate predicates containing the given variable. */
-void generateVariableResultCode(Rule *rule, string name, bool list_variable, int indent);
+void generateVariableResultCode(Rule *rule, int id, bool list_variable, int indent);
 
 /* Generate runtime C variables to store the values of the GP 2 values used
  * in rule application. */
-void generateVariableCode(string name, GPType type);
+void generateVariableCode(int id, GPType type);
 
 /* Takes a RHS label and generates code to build the corresponding host label.
  * This includes code to evaluate arithmetic expressions, code to create C strings

@@ -307,22 +307,20 @@ void removeRootNode(Graph *graph, int index)
 
 void removeEdge(Graph *graph, int index) 
 {
-   Edge *edge = getEdge(graph, index);
-
-   Node *source = getNode(graph, edge->source);
+   Node *source = getNode(graph, graph->edges.items[index].source);
    if(source->first_out_edge == index) source->first_out_edge = -1;
    else if(source->second_out_edge == index) source->second_out_edge = -1;
    else removeFromIntArray(&(source->out_edges), index);
    source->outdegree--;
 
-   Node *target = getNode(graph, edge->target);
+   Node *target = getNode(graph, graph->edges.items[index].target);
    if(target->first_in_edge == index) target->first_in_edge = -1;
    else if(target->second_in_edge == index) target->second_in_edge = -1;
    else removeFromIntArray(&(target->in_edges), index);
    target->indegree--;
 
    #ifndef LIST_HASHING
-     freeHostList(edge->label.list);
+     freeHostList(graph->edges.items[index].label.list);
    #endif
 
    removeFromEdgeArray(&(graph->edges), index);
@@ -340,33 +338,28 @@ void relabelNode(Graph *graph, int index, HostLabel new_label)
 
 void changeRoot(Graph *graph, int index)
 {
-   Node *node = getNode(graph, index);
-   if(node->root) removeRootNode(graph, node->index);
-   else addRootNode(graph, node->index);
-   node->root = !node->root;
+   bool is_root = graph->nodes.items[index].root;
+   if(is_root) removeRootNode(graph, index);
+   else addRootNode(graph, index);
+   graph->nodes.items[index].root = !is_root;
 }
 
 void resetMatchedNodeFlag(Graph *graph, int index)
 {
-   Node *node = getNode(graph, index);
-   assert(node->matched);
-   node->matched = false;
+   graph->nodes.items[index].matched = false;
 }
 
 void relabelEdge(Graph *graph, int index, HostLabel new_label)
 {	
-   Edge *edge = getEdge(graph, index);
    #ifndef LIST_HASHING
-     freeHostList(edge->label.list);
+     freeHostList(graph->edges.items[index].label.list);
    #endif
-   edge->label = new_label;
+   graph->edges.items[index].label = new_label;
 }
 
 void resetMatchedEdgeFlag(Graph *graph, int index)
 {
-   Edge *edge = getEdge(graph, index);
-   assert(edge->matched);
-   edge->matched = false;
+   graph->edges.items[index].matched = false; 
 }
 
 /* ========================

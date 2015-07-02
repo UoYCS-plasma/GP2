@@ -728,10 +728,10 @@ void generateAddRHSCode(Rule *rule)
     * matching phase. */
    PTFI("/* Get the values of variables used in rule application. */\n", 3);
    int index;
-   for(index = 0; index < rule->variable_index; index++)
+   for(index = 0; index < rule->variables; index++)
    {
-      Variable variable = rule->variables[index];
-      if(variable.used_by_rule) generateVariableCode(variable.name, variable.type);
+      Variable variable = rule->variable_list[index];
+      if(variable.used_by_rule) generateVariableCode(index, variable.type);
    }
    PTF("\n");
    /* Flag to prevent repeated writing of "label = blank_label" when
@@ -800,10 +800,10 @@ void generateApplicationCode(Rule *rule)
    /* Generate code to retrieve the values assigned to the variables in the
     * matching phase. */
    int index;
-   for(index = 0; index < rule->variable_index; index++)
+   for(index = 0; index < rule->variables; index++)
    {
-      Variable variable = rule->variables[index];
-      if(variable.used_by_rule) generateVariableCode(variable.name, variable.type);
+      Variable variable = rule->variable_list[index];
+      if(variable.used_by_rule) generateVariableCode(index, variable.type);
    }
    bool node_index_declared = false;
    for(index = 0; index < rule->lhs->node_index; index++)

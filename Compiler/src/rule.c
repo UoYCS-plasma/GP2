@@ -37,13 +37,13 @@ Rule *makeRule(int variables, int left_nodes, int left_edges,
    rule->is_rooted = false;
    rule->adds_nodes = false;
    rule->adds_edges = false;
-   rule->variables = calloc(variables, sizeof(Variable));
-   if(rule->variables == NULL)
+   rule->variable_list = calloc(variables, sizeof(Variable));
+   if(rule->variable_list == NULL)
    {
       print_to_log("Error (makeRule): malloc failure.\n");
       exit(1);
    }
-   rule->variable_index = 0;
+   rule->variables = variables;
    if(left_nodes > 0) rule->lhs = makeRuleGraph(left_nodes, left_edges);
    else rule->lhs = NULL;
    if(right_nodes > 0) rule->rhs = makeRuleGraph(right_nodes, right_edges);
@@ -52,14 +52,13 @@ Rule *makeRule(int variables, int left_nodes, int left_edges,
    return rule;
 }
 
-void addVariable(Rule *rule, string name, GPType type) 
+void addVariable(Rule *rule, int index, string name, GPType type) 
 {
-   rule->variables[rule->variable_index].name = strdup(name);
-   rule->variables[rule->variable_index].type = type;  
-   rule->variables[rule->variable_index].predicates = NULL;
-   rule->variables[rule->variable_index].predicate_count = 0;
-   rule->variables[rule->variable_index].used_by_rule = false;   
-   rule->variable_index++;
+   rule->variable_list[index].name = strdup(name);
+   rule->variable_list[index].type = type;  
+   rule->variable_list[index].predicates = NULL;
+   rule->variable_list[index].predicate_count = 0;
+   rule->variable_list[index].used_by_rule = false;   
 }
          
 int addRuleNode(RuleGraph *graph, bool root, RuleLabel label)
@@ -133,7 +132,7 @@ Condition *makeCondition(void)
    return condition;
 }
 
-Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string variable)
+Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, int variable_id)
 {
    Predicate *predicate = malloc(sizeof(Predicate));
    if(predicate == NULL)
@@ -144,7 +143,7 @@ Predicate *makeTypeCheck(int bool_id, bool negated, ConditionType type, string v
    predicate->bool_id = bool_id;
    predicate->negated = negated;
    predicate->type = type;
-   predicate->variable = strdup(variable);
+   predicate->variable_id = variable_id;
    return predicate;
 }
    
@@ -296,12 +295,22 @@ bool isPredicate(Rule *rule)
 Variable *getVariable(Rule *rule, string name)
 {
    int index;
-   for(index = 0; index < rule->variable_index; index++)
+   for(index = 0; index < rule->variables; index++)
    {
-      if(strcmp(name, rule->variables[index].name) == 0)
-         return &(rule->variables[index]);
+      if(strcmp(name, rule->variable_list[index].name) == 0)
+         return &(rule->variable_list[index]);
    }
    return NULL;
+}
+
+int getVariableId(Rule *rule, string name)
+{
+   int index;
+   for(index = 0; index < rule->variables; index++)
+   {
+      if(strcmp(name, rule->variable_list[index].name) == 0) return index;
+   }
+   return -1;
 }
 
 RuleNode *getRuleNode(RuleGraph *graph, int index)
@@ -356,7 +365,7 @@ static bool equalAtoms(RuleAtom *left_atom, RuleAtom *right_atom)
    switch(left_atom->type)
    {
       case VARIABLE:
-           return !strcmp(left_atom->variable.name, right_atom->variable.name);
+           return left_atom->variable.id == right_atom->variable.id;
 
       case INTEGER_CONSTANT:
            return left_atom->number == right_atom->number;
@@ -430,7 +439,7 @@ static void printRuleAtom(RuleAtom *atom, bool nested, FILE *file)
 	     break;
 
 	case VARIABLE: 
-	     fprintf(file, "%s", atom->variable.name);
+	     fprintf(file, "%d", atom->variable.id);
 	     break;
 
 	case INDEGREE:
@@ -442,7 +451,7 @@ static void printRuleAtom(RuleAtom *atom, bool nested, FILE *file)
 	     break;
 
 	case LENGTH:
-	     fprintf(file, "length(%s)", atom->variable.name);
+	     fprintf(file, "length(%d)", atom->variable.id);
 	     break;
 
 	case NEG:
@@ -562,23 +571,23 @@ static void printCondition(Condition *condition, bool nested, FILE *file)
       switch(predicate->type)
       {
          case INT_CHECK:
-              PTF("int(%s)", predicate->variable);
+              PTF("int(%d)", predicate->variable_id);
               break;
 
          case CHAR_CHECK:
-              PTF("char(%s)", predicate->variable);
+              PTF("char(%d)", predicate->variable_id);
               break;
 
          case STRING_CHECK:
-              PTF("string(%s)", predicate->variable);
+              PTF("string(%d)", predicate->variable_id);
               break;
 
          case ATOM_CHECK:
-              PTF("atom(%s)", predicate->variable);
+              PTF("atom(%d)", predicate->variable_id);
               break;
 
          case EDGE_PRED:
-              PTF("edge(%s)", predicate->variable);
+              PTF("edge(%d)", predicate->variable_id);
               break;
 
          case EQUAL:
@@ -639,15 +648,15 @@ void printRule(Rule *rule, FILE *file)
    printRuleGraph(rule->rhs, file);
    PTF("\n");
 
-   if(rule->variables == NULL) PTF("No variables.\n\n");
+   if(rule->variable_list == NULL) PTF("No variables.\n\n");
    else 
    {
       PTF("Variables:\n");
       int index;
-      for(index = 0; index < rule->variable_index; index++)   
+      for(index = 0; index < rule->variables; index++)   
       {
-         Variable variable = rule->variables[index];
-         PTF("%s, type %d.", variable.name, variable.type);
+         Variable variable = rule->variable_list[index];
+         PTF("%d: %s, type %d.", index, variable.name, variable.type);
          if(variable.predicates != NULL) PTF(" In predicates ");
          int i;
          for(i = 0; i < rule->predicate_count; i++)
@@ -670,9 +679,6 @@ static void freeRuleAtom(RuleAtom *atom)
    switch(atom->type) 
    {
      case VARIABLE:
-          if(atom->variable.name != NULL) free(atom->variable.name);
-          break;
-
      case INTEGER_CONSTANT:
           break;
 
@@ -685,7 +691,6 @@ static void freeRuleAtom(RuleAtom *atom)
           break;
 
      case LENGTH:
-          if(atom->variable.name != NULL) free(atom->variable.name);
           break;
 
      case NEG:
@@ -758,7 +763,6 @@ static void freePredicate(Predicate *predicate)
       case CHAR_CHECK:
       case STRING_CHECK:
       case ATOM_CHECK:
-           free(predicate->variable);
            break;
 
       case EDGE_PRED:
@@ -800,16 +804,15 @@ void freeRule(Rule *rule)
 {
    if(rule == NULL) return;
    if(rule->name != NULL) free(rule->name);
-   if(rule->variables != NULL) 
+   if(rule->variable_list != NULL) 
    {
       int index;
-      for(index = 0; index < rule->variable_index; index++)   
+      for(index = 0; index < rule->variables; index++)   
       {
-         Variable variable = rule->variables[index];
-         if(variable.name != NULL) free(variable.name);
+         Variable variable = rule->variable_list[index];
          if(variable.predicates != NULL) free(variable.predicates);
       }
-      free(rule->variables);
+      free(rule->variable_list);
    }
    if(rule->lhs != NULL) freeRuleGraph(rule->lhs);
    if(rule->rhs != NULL) freeRuleGraph(rule->rhs);

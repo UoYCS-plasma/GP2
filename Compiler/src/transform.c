@@ -112,9 +112,9 @@ static void initialiseVariableList(Rule *rule, List *declarations);
  * flags of nodes. These flags are set if the value of a variable or the
  * degree of a node is needed by label updating in rule application. */
 static void scanRHSAtom(Rule *rule, bool relabelled, RuleAtom *atom);
-static RuleLabel transformLabel(GPLabel *ast_label, IndexMap *node_map);
-static RuleList *transformList(List *ast_list, IndexMap *node_map);
-static RuleAtom *transformAtom(GPAtom *ast_atom, IndexMap *node_map);
+static RuleLabel transformLabel(Rule *rule, GPLabel *ast_label, IndexMap *node_map);
+static RuleList *transformList(Rule *rule, List *ast_list, IndexMap *node_map);
+static RuleAtom *transformAtom(Rule *rule, GPAtom *ast_atom, IndexMap *node_map);
 static Condition *transformCondition(Rule *rule, GPCondition *ast_condition, 
                                      bool negated, IndexMap *node_map);
 static void scanPredicateAtom(Rule *rule, RuleAtom *atom, Predicate *predicate);
@@ -146,6 +146,7 @@ Rule *transformRule(GPRule *ast_rule)
 
 static void initialiseVariableList(Rule *rule, List *declarations)
 {
+   int id = 0;
    while(declarations != NULL)
    {
       GPType type = LIST_VAR;
@@ -181,11 +182,12 @@ static void initialiseVariableList(Rule *rule, List *declarations)
       List *variables = declarations->variables;
       while(variables != NULL)
       {
-         addVariable(rule, variables->variable_name, type);
+         addVariable(rule, id++, variables->variable_name, type);
          variables = variables->next;
       }
       declarations = declarations->next;
    }
+   assert(rule->variables == id);
 }
 
 void scanLHS(Rule *rule, GPGraph *ast_lhs)
@@ -195,7 +197,7 @@ void scanLHS(Rule *rule, GPGraph *ast_lhs)
    {
       GPNode *ast_node = nodes->node;
       if(ast_node->root) rule->is_rooted = true;
-      RuleLabel label = transformLabel(ast_node->label, NULL);
+      RuleLabel label = transformLabel(rule, ast_node->label, NULL);
       int node_index = addRuleNode(rule->lhs, ast_node->root, label);
       /* The right index argument is -1. This changes if the node is an interface
        * node, in which case the right index will become the index of the corresponding
@@ -225,7 +227,7 @@ void scanLHS(Rule *rule, GPGraph *ast_lhs)
                       "map. \n", ast_edge->target);
          exit(0);
       }
-      RuleLabel label = transformLabel(ast_edge->label, NULL);
+      RuleLabel label = transformLabel(rule, ast_edge->label, NULL);
       int edge_index = 0;
       RuleNode *source = getRuleNode(rule->lhs, source_index);
       RuleNode *target = getRuleNode(rule->lhs, target_index);
@@ -246,7 +248,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
    while(ast_nodes != NULL)
    {
       GPNode *ast_node = ast_nodes->node;
-      RuleLabel label = transformLabel(ast_node->label, node_map);
+      RuleLabel label = transformLabel(rule, ast_node->label, node_map);
       int node_index = addRuleNode(rule->rhs, ast_node->root, label);
       
       IndexMap *map = findMapFromId(node_map, ast_node->name);
@@ -321,7 +323,7 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
       }
       RuleNode *target = getRuleNode(rule->rhs, target_map->right_index);
 
-      RuleLabel label = transformLabel(ast_edge->label, node_map);
+      RuleLabel label = transformLabel(rule, ast_edge->label, node_map);
       int edge_index = addRuleEdge(rule->rhs, ast_edge->bidirectional, 
                                    source, target, label);
       RuleEdge *edge = getRuleEdge(rule->rhs, edge_index);
@@ -391,9 +393,7 @@ static void scanRHSAtom(Rule *rule, bool relabelled, RuleAtom *atom)
            /* The value of variable is not required for a RHS-item that is not
             * relabelled. */
            if(!relabelled) break;
-           Variable *variable = getVariable(rule, atom->variable.name);
-           if(variable == NULL) break;
-           else variable->used_by_rule = true;
+           rule->variable_list[atom->variable.id].used_by_rule = true;
            break;
       }
       case INDEGREE:
@@ -429,22 +429,22 @@ static void scanRHSAtom(Rule *rule, bool relabelled, RuleAtom *atom)
    }
 }
 
-static RuleLabel transformLabel(GPLabel *ast_label, IndexMap *node_map)
+static RuleLabel transformLabel(Rule *rule, GPLabel *ast_label, IndexMap *node_map)
 {
    RuleLabel label;
    label.mark = ast_label->mark;
    label.length = getASTListLength(ast_label->gp_list);
-   label.list = transformList(ast_label->gp_list, node_map);
+   label.list = transformList(rule, ast_label->gp_list, node_map);
    return label;
 }
 
-static RuleList *transformList(List *ast_list, IndexMap *node_map)
+static RuleList *transformList(Rule *rule, List *ast_list, IndexMap *node_map)
 {
    if(ast_list == NULL) return NULL;
    RuleList *list = NULL;
    while(ast_list != NULL)
    {
-      RuleAtom *atom = transformAtom(ast_list->atom, node_map);
+      RuleAtom *atom = transformAtom(rule, ast_list->atom, node_map);
       list = appendRuleAtom(list, atom);
       ast_list = ast_list->next;
    }
@@ -458,7 +458,7 @@ static RuleList *transformList(List *ast_list, IndexMap *node_map)
  * in contrast to the string in the AST. The node map is passed to the two
  * transformation functions to get the appropriate index from the string
  * node identifier. */
-static RuleAtom *transformAtom(GPAtom *ast_atom, IndexMap *node_map)
+static RuleAtom *transformAtom(Rule *rule, GPAtom *ast_atom, IndexMap *node_map)
 {
    RuleAtom *atom = malloc(sizeof(RuleAtom));
    if(atom == NULL)
@@ -479,7 +479,7 @@ static RuleAtom *transformAtom(GPAtom *ast_atom, IndexMap *node_map)
        
       case VARIABLE:
       case LENGTH:
-           atom->variable.name = strdup(ast_atom->variable.name);
+           atom->variable.id = getVariableId(rule, ast_atom->variable.name);
            atom->variable.type = ast_atom->variable.type;
            break;
 
@@ -495,7 +495,7 @@ static RuleAtom *transformAtom(GPAtom *ast_atom, IndexMap *node_map)
               print_to_log("Error (transformAtom): malloc failure.\n");
               exit(1);
            }
-           atom->neg_exp = transformAtom(ast_atom->neg_exp, node_map);
+           atom->neg_exp = transformAtom(rule, ast_atom->neg_exp, node_map);
            break;
 
       case ADD:
@@ -515,8 +515,8 @@ static RuleAtom *transformAtom(GPAtom *ast_atom, IndexMap *node_map)
               print_to_log("Error (transformAtom): malloc failure.\n");
               exit(1);
            }
-           atom->bin_op.left_exp = transformAtom(ast_atom->bin_op.left_exp, node_map);
-           atom->bin_op.right_exp = transformAtom(ast_atom->bin_op.right_exp, node_map);
+           atom->bin_op.left_exp = transformAtom(rule, ast_atom->bin_op.left_exp, node_map);
+           atom->bin_op.right_exp = transformAtom(rule, ast_atom->bin_op.right_exp, node_map);
            break;
 
       default:
@@ -541,7 +541,7 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
       case STRING_CHECK:
       case ATOM_CHECK:
            predicate = makeTypeCheck(bool_count++, negated, ast_condition->type, 
-                                     ast_condition->var);
+                                     getVariableId(rule, ast_condition->var));
            condition->type = 'e';
            condition->predicate = predicate;
            Variable *variable = getVariable(rule, ast_condition->var);
@@ -562,7 +562,7 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
            }
            else 
            {
-              RuleLabel label = transformLabel(ast_condition->edge_pred.label, node_map);
+              RuleLabel label = transformLabel(rule, ast_condition->edge_pred.label, node_map);
               predicate = makeEdgePred(bool_count++, negated, source_index, target_index, label);
            }
            condition->predicate = predicate;
@@ -581,8 +581,8 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
             * makeRelationalCheck. */
            int left_length = getASTListLength(ast_condition->list_cmp.left_list);
            int right_length = getASTListLength(ast_condition->list_cmp.right_list);
-           RuleList *left_list = transformList(ast_condition->list_cmp.left_list, node_map);
-           RuleList *right_list = transformList(ast_condition->list_cmp.right_list, node_map);
+           RuleList *left_list = transformList(rule, ast_condition->list_cmp.left_list, node_map);
+           RuleList *right_list = transformList(rule, ast_condition->list_cmp.right_list, node_map);
            RuleLabel left_label = { .mark = NONE, .length = left_length, .list = left_list };
            RuleLabel right_label = { .mark = NONE, .length = right_length, .list = right_list };
            predicate = makeListComp(bool_count++, negated, ast_condition->type,
@@ -609,8 +609,8 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
       case LESS_EQUAL:
       {
            condition->type = 'e';
-           RuleAtom *left_atom = transformAtom(ast_condition->atom_cmp.left_exp, node_map);
-           RuleAtom *right_atom = transformAtom(ast_condition->atom_cmp.right_exp, node_map);
+           RuleAtom *left_atom = transformAtom(rule, ast_condition->atom_cmp.left_exp, node_map);
+           RuleAtom *right_atom = transformAtom(rule, ast_condition->atom_cmp.right_exp, node_map);
            predicate = makeAtomComp(bool_count++, negated, ast_condition->type,
                                     left_atom, right_atom);
            condition->predicate = predicate;
@@ -658,8 +658,7 @@ static void scanPredicateAtom(Rule *rule, RuleAtom *atom, Predicate *predicate)
       case VARIABLE:
       case LENGTH:
       {
-           Variable *variable = getVariable(rule, atom->variable.name);
-           assert(variable != NULL);
+           Variable *variable = &(rule->variable_list[atom->variable.id]);
            addVariablePredicate(variable, predicate, rule->predicate_count);
            break;
       }
