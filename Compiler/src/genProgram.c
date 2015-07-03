@@ -102,7 +102,6 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
       PTF("   freeHostListStore();\n");
    #endif
    PTF("   freeMorphisms();\n");
-   PTF("   freeGraphStack();\n");
    PTF("   freeGraphChangeStack();\n");
    PTF("   closeLogFile();\n");
    #if defined GRAPH_TRACING || defined RULE_TRACING || defined BACKTRACK_TRACING

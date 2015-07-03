@@ -7,7 +7,6 @@
 // rules will produce a single edge. After a single application of deleteBase,
 // a series-parallel graph will have reduced to the empty graph. Any other graph
 // will have reduced to a non-empty graph.
-
 Main = if ({par, seq}!; deleteBase; nonempty) then no else yes
 
 // An alternate program that performs a destructive test on the host graph.

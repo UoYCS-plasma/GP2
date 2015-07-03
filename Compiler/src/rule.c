@@ -66,6 +66,7 @@ int addRuleNode(RuleGraph *graph, bool root, RuleLabel label)
    int index = graph->node_index++;
    graph->nodes[index].index = index;
    graph->nodes[index].root = root;
+   graph->nodes[index].remarked = true;
    graph->nodes[index].relabelled = true;
    graph->nodes[index].root_changed = true;
    graph->nodes[index].indegree_arg = false;
@@ -101,6 +102,7 @@ int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
    int index = graph->edge_index++;
    graph->edges[index].index = index;
    graph->edges[index].bidirectional = bidirectional;
+   graph->edges[index].remarked = true;
    graph->edges[index].relabelled = true;
    graph->edges[index].interface = NULL;
    graph->edges[index].source = source;
@@ -264,18 +266,18 @@ bool isPredicate(Rule *rule)
    else if(rule->rhs == NULL) return false;
 
    int index;
-   /* Return false if the rule relabels or adds any items. The rule adds an
-    * item if there exists an RHS item that is not in the interface.
+   /* Return false if the rule relabels, remarks, or adds any items. 
+    * The rule adds an item if there exists an RHS item that is not in the interface.
     * Relabelling is checked by examining the item's relabelled flag. */
    for(index = 0; index < rule->rhs->node_index; index++)
    {
       RuleNode *node = getRuleNode(rule->rhs, index);
-      if(node->relabelled || node->interface == NULL) return false;
+      if(node->relabelled || node->remarked || node->interface == NULL) return false;
    }
    for(index = 0; index < rule->rhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->rhs, index);
-      if(edge->relabelled || edge->interface == NULL) return false;
+      if(edge->relabelled || edge->remarked || edge->interface == NULL) return false;
    }
    /* Return false if the rule deletes any items. The rule deletes an item
     * if there exists a LHS item that is not in the interface. */
@@ -388,9 +390,8 @@ static bool equalAtoms(RuleAtom *left_atom, RuleAtom *right_atom)
    return false;
 }
 
-bool equalRuleLabels(RuleLabel left_label, RuleLabel right_label)
+bool equalRuleLists(RuleLabel left_label, RuleLabel right_label)
 {
-   if(left_label.mark != right_label.mark) return false;
    if(left_label.length != right_label.length) return false;
    if(left_label.list == NULL && right_label.list == NULL) return true;
    /* If the function gets this far, then the lengths are equal and at least

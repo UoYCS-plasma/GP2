@@ -329,11 +329,15 @@ void removeEdge(Graph *graph, int index)
 
 void relabelNode(Graph *graph, int index, HostLabel new_label) 
 {
-   Node *node = getNode(graph, index);
    #ifndef LIST_HASHING
-     freeHostList(node->label.list);
+     freeHostList(graph->nodes.items[index].label.list);
    #endif
-   node->label = new_label;
+   graph->nodes.items[index].label = new_label;
+}
+
+void changeNodeMark(Graph *graph, int index, MarkType new_mark)
+{
+   graph->nodes.items[index].label.mark = new_mark;
 }
 
 void changeRoot(Graph *graph, int index)
@@ -355,6 +359,11 @@ void relabelEdge(Graph *graph, int index, HostLabel new_label)
      freeHostList(graph->edges.items[index].label.list);
    #endif
    graph->edges.items[index].label = new_label;
+}
+
+void changeEdgeMark(Graph *graph, int index, MarkType new_mark)
+{
+   graph->edges.items[index].label.mark = new_mark;
 }
 
 void resetMatchedEdgeFlag(Graph *graph, int index)

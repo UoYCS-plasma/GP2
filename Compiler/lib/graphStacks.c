@@ -131,6 +131,24 @@ void pushRelabelledEdge(int index, HostLabel old_label)
    pushGraphChange(change);
 }
 
+void pushRemarkedNode(int index, MarkType old_mark)
+{
+   GraphChange change;
+   change.type = REMARKED_NODE;
+   change.remarked_node.index = index;
+   change.remarked_node.old_mark = old_mark;
+   pushGraphChange(change);
+}
+
+void pushRemarkedEdge(int index, MarkType old_mark)
+{
+   GraphChange change;
+   change.type = REMARKED_EDGE;
+   change.remarked_edge.index = index;
+   change.remarked_edge.old_mark = old_mark;
+   pushGraphChange(change);
+}
+
 void pushChangedRootNode(int index)
 {
    GraphChange change;
@@ -274,6 +292,14 @@ void undoChanges(Graph *graph, int restore_point)
               relabelEdge(graph, change.relabelled_edge.index, change.relabelled_edge.old_label);
               break;
 
+         case REMARKED_NODE:
+              changeNodeMark(graph, change.remarked_node.index, change.remarked_node.old_mark);
+              break;
+
+         case REMARKED_EDGE:
+              changeEdgeMark(graph, change.remarked_edge.index, change.remarked_edge.old_mark);
+              break;
+
          case CHANGED_ROOT_NODE:
               changeRoot(graph, change.changed_root_index);
               break;
@@ -351,6 +377,7 @@ int graph_copy_count = 0;
 
 void copyGraph(Graph *graph)
 { 
+   printf("Copying host graph.\n");
    if(graph_stack_index == GRAPH_STACK_SIZE)
    {
       print_to_log("Error: copyGraph called with a full graph stack.\n");
@@ -466,6 +493,7 @@ void copyGraph(Graph *graph)
 
 Graph *popGraphs(Graph *current_graph, int restore_point)
 {
+   printf("Popping copy of host graph.\n");
    if(graph_stack == NULL) return NULL;
    assert(graph_stack_index >= restore_point);
 

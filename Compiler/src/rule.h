@@ -100,13 +100,14 @@ typedef struct RuleGraph {
  * in which it participates (as in struct Variable), and degree information. */
 typedef struct RuleNode {
    int index; 
-   /* Root flag - true if the node is rooted.
-    * Relabelled flag - true if the node is relabelled by the rule.
-    * Root changed flag - true if the node's root status may be changed by
-    *                     the rule.
+   /* Root - true if the node is rooted.
+    * Remarked - true if the node's mark is changed by the rule.
+    * Relabelled - true if the node's list is changed by the rule.
+    * Root changed - true if the node's root status may be changed by the rule
+    *                (in some cases, this can only be determined at runtime).
     * Degree flags - true if the node's indegree or outdegree is required
     *                by the rule during rule application. */
-   bool root, relabelled, root_changed, indegree_arg, outdegree_arg;
+   bool root, remarked, relabelled, root_changed, indegree_arg, outdegree_arg;
    /* If the node is in the interface of the rule, this points to the
     * corresponding node in the other rule graph. Otherwise, it is NULL. */
    struct RuleNode *interface; 
@@ -127,9 +128,10 @@ typedef struct RuleEdges {
  * pointers to related graph components, and a label. */
 typedef struct RuleEdge {
    int index;
-   /* Root flag - true if the node is rooted.
-    * Relabelled flag - true if the node is relabelled by the rule. */
-   bool bidirectional, relabelled;
+   /* Root - true if the node is rooted.
+    * Remarked - true if the edge's mark is changed by the rule.
+    * Relabelled - true if the edge's list is changed by the rule. */
+   bool bidirectional, remarked, relabelled;
    /* If the edge is preserved by the rule, this points to the corresponding
     * edge in the other rule graph. Otherwise, it is NULL. */
    struct RuleEdge *interface;
@@ -231,7 +233,7 @@ RuleEdge *getRuleEdge(RuleGraph *graph, int index);
 RuleList *appendRuleAtom(RuleList *list, RuleAtom *atom);
 /* Used to compare LHS labels with RHS labels to check if a node or edge is
  * relabelled by the rule. */
-bool equalRuleLabels(RuleLabel left_label, RuleLabel right_label);
+bool equalRuleLists(RuleLabel left_label, RuleLabel right_label);
 /* Used to determine the appropriate function call to generate label matching code. */
 bool hasListVariable(RuleLabel label);
 

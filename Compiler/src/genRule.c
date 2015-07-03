@@ -869,25 +869,39 @@ void generateApplicationCode(Rule *rule)
          }
          PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
          PTFI("resetMatchedEdgeFlag(host, host_edge_index);\n\n", 3);
-         if(edge->interface->relabelled)
+         if(edge->interface->relabelled || edge->interface->remarked)
          {
-            /* Generate code to evaluate the RHS label. */
-            if(!label_declared) 
-            {
-               PTFI("HostLabel label;\n", 3);
-               label_declared = true;
-            }
             RuleLabel label = edge->interface->label;
-            if(label.length == 0 && label.mark == NONE) PTFI("label = blank_label;\n", 3);
-            else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
             PTFI("HostLabel label_e%d = getEdgeLabel(host, host_edge_index);\n", 3, index);
-            /* If the two labels are equal, no relabelling needs to be done. */
-            PTFI("bool relabel_edge%d = !equalHostLabels(label_e%d, label);\n", 3, index, index);
-            PTFI("if(relabel_edge%d)\n", 3, index);
-            PTFI("{\n", 3);
-            PTFI("if(record_changes) pushRelabelledEdge(host_edge_index, label_e%d);\n", 6, index);
-            PTFI("relabelEdge(host, host_edge_index, label);\n", 6);
-            PTFI("}\n", 3);
+            if(edge->interface->relabelled)
+            {
+               /* Generate code to evaluate the RHS label. Note that the code generated
+                * here is suitable for an edge relabelling independently of whether it
+                * is remarked or not. */
+               if(!label_declared) 
+               {
+                  PTFI("HostLabel label;\n", 3);
+                  label_declared = true;
+               }
+               if(label.length == 0 && label.mark == NONE) PTFI("label = blank_label;\n", 3);
+               else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
+               PTFI("/* Relabel the edge if its label is not equal to the RHS label. */\n", 3);
+               PTFI("if(!equalHostLabels(label_e%d, label))\n", 3, index);
+               PTFI("{\n", 3);
+               PTFI("if(record_changes) pushRelabelledEdge(host_edge_index, label_e%d);\n",
+                    6, index);
+               PTFI("relabelEdge(host, host_edge_index, label);\n", 6);
+               PTFI("}\n", 3);
+            }
+            /* The else branch is entered when only the mark needs to change (not the list
+             * component of the label). */
+            else if(edge->interface->remarked)
+            {
+               /* Generate code to re-mark the edge. */
+               PTFI("if(record_changes) pushRemarkedEdge(host_edge_index, %d);\n",
+                    3, label.mark);
+               PTFI("changeEdgeMark(host, host_edge_index, label_e%d.mark);\n\n", 3, index);
+            }
          }
       }
    }
@@ -923,26 +937,42 @@ void generateApplicationCode(Rule *rule)
          PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
          PTFI("resetMatchedNodeFlag(host, host_node_index);\n\n", 3);
          RuleNode *rhs_node = node->interface;
-         if(rhs_node->relabelled)
+         if(rhs_node->relabelled || rhs_node->remarked)
          {
-            /* Generate code to evaluate the RHS label. */
-            if(!label_declared) 
-            {
-               PTFI("HostLabel label;\n", 3);
-               label_declared = true;
-            }
             RuleLabel label = rhs_node->label;
-            if(label.length == 0 && label.mark == NONE) PTFI("label = blank_label;\n", 3);
-            else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
             PTFI("HostLabel label_n%d = getNodeLabel(host, host_node_index);\n", 3, index);
-            
-            /* If the two labels are equal, no relabelling needs to be done. */
-            PTFI("bool relabel_node%d = !equalHostLabels(label_n%d, label);\n", 3, index, index);
-            PTFI("if(relabel_node%d)\n", 3, index);
-            PTFI("{\n", 3);
-            PTFI("if(record_changes) pushRelabelledNode(host_node_index, label_n%d);\n", 6, index);
-            PTFI("relabelNode(host, host_node_index, label);\n", 6);
-            PTFI("}\n", 3);
+            if(rhs_node->relabelled)
+            {
+               /* Generate code to evaluate the RHS label. Note that the code generated
+                * here is suitable for an edge relabelling independently of whether it
+                * is remarked or not. */
+               if(!label_declared) 
+               {
+                  PTFI("HostLabel label;\n", 3);
+                  label_declared = true;
+               }
+               if(label.length == 0 && label.mark == NONE) PTFI("label = blank_label;\n", 3);
+               else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
+               
+               /* If the two labels are equal, no relabelling needs to be done. */
+               PTFI("bool relabel_node%d = !equalHostLabels(label_n%d, label);\n", 3, 
+                    index, index);
+               PTFI("if(relabel_node%d)\n", 3, index);
+               PTFI("{\n", 3);
+               PTFI("if(record_changes) pushRelabelledNode(host_node_index, label_n%d);\n",
+                    6, index);
+               PTFI("relabelNode(host, host_node_index, label);\n", 6);
+               PTFI("}\n", 3);
+            }
+            /* The else branch is entered when only the mark needs to change (not the list
+             * component of the label). */
+            else if(rhs_node->remarked)
+            {
+               /* Generate code to re-mark the edge. */
+               PTFI("if(record_changes) pushRemarkedNode(host_node_index, %d);\n",
+                    3, label.mark);
+               PTFI("changeNodeMark(host, host_node_index, label_n%d.mark);\n\n", 3, index);
+            }
          }
          if(rhs_node->root_changed)
          {

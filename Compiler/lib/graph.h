@@ -79,9 +79,11 @@ void removeNode(Graph *graph, int index);
 void removeRootNode(Graph *graph, int index);
 void removeEdge(Graph *graph, int index);
 void relabelNode(Graph *graph, int index, HostLabel new_label);
-void resetMatchedNodeFlag(Graph *graph, int index);
+void changeNodeMark(Graph *graph, int index, MarkType new_mark);
 void changeRoot(Graph *graph, int index);
+void resetMatchedNodeFlag(Graph *graph, int index);
 void relabelEdge(Graph *graph, int index, HostLabel new_label);
+void changeEdgeMark(Graph *graph, int index, MarkType new_mark);
 void resetMatchedEdgeFlag(Graph *graph, int index);
 
 /* =========================

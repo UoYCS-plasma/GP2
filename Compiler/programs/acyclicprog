@@ -9,8 +9,9 @@
 Main = if (delete!; {test_edge, test_loop}) then no else yes
 
 // An alternate program that performs a destructive test on the host graph.
-// The output is a single node labelled "yes" or "no". 
-//Main = delete! if {test_edge, test_loop} then no else yes
+// The output is the host graph with its edges deleted, and an extra node
+// labelled "yes" or "no". 
+//Main = delete!; if {test_edge, test_loop} then no else yes
 
 delete (a,x,y: list) 
 [ (n0, x) (n1, y) | (e0, n0, n1, a) ] 

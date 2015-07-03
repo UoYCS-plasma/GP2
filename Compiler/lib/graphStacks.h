@@ -26,7 +26,9 @@
  * which includes the indices of nodes and edges in their arrays and the graph's
  * holes arrays. */
 typedef enum { ADDED_NODE = 0, ADDED_EDGE, REMOVED_NODE, REMOVED_EDGE, 
-	       RELABELLED_NODE, RELABELLED_EDGE, CHANGED_ROOT_NODE} GraphChangeType; 
+	       RELABELLED_NODE, RELABELLED_EDGE, REMARKED_NODE, REMARKED_EDGE,
+               CHANGED_ROOT_NODE} GraphChangeType; 
+
 typedef struct GraphChange 
 {
    GraphChangeType type;
@@ -62,6 +64,11 @@ typedef struct GraphChange
          int index;
          HostLabel old_label;
       } relabelled_node, relabelled_edge;   
+      /* Records the index of the remarked item and the item's previous mark. */
+      struct {
+         int index;
+         MarkType old_mark;
+      } remarked_node, remarked_edge;   
       /* Records the index of the node whose root status was changed. */
       int changed_root_index;
    };
@@ -78,6 +85,8 @@ void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created);
 void pushRemovedEdge(HostLabel label, int source, int target, int index, bool hole_created);
 void pushRelabelledNode(int index, HostLabel old_label);
 void pushRelabelledEdge(int index, HostLabel old_label);
+void pushRemarkedNode(int index, MarkType old_mark);
+void pushRemarkedEdge(int index, MarkType old_mark);
 void pushChangedRootNode(int index);
 void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);

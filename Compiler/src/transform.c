@@ -279,7 +279,9 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
                RuleNode *right_node = getRuleNode(rule->rhs, node_index);
                left_node->interface = right_node;
                right_node->interface = left_node;
-               if(equalRuleLabels(left_node->label, right_node->label))
+               if(left_node->label.mark == right_node->label.mark) 
+                  right_node->remarked = false;
+               if(equalRuleLists(left_node->label, right_node->label))
                   right_node->relabelled = false;
                if(left_node->root == right_node->root)
                   right_node->root_changed = false;
@@ -344,7 +346,9 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
             RuleEdge *right_edge = getRuleEdge(rule->rhs, edge_index);
             left_edge->interface = right_edge;
             right_edge->interface = left_edge;
-            if(equalRuleLabels(left_edge->label, right_edge->label))
+            if(left_edge->label.mark == right_edge->label.mark)
+               right_edge->remarked = false;
+            if(equalRuleLists(left_edge->label, right_edge->label))
                right_edge->relabelled = false;
             else right_edge->relabelled = true;
             /* Remove the map for the LHS-edge, otherwise a parallel RHS-edge
