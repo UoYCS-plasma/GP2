@@ -1,0 +1,39 @@
+// Input: A node with an integer label k.
+// Output: A graph representing a generation-k sierpinski triangle. 
+//         Plus the input node, which has the label k:k. I think.
+
+// The root node is used to control termination of the program once
+// generation k is reached. A second integer is added to the root's
+// label, which is incremented before every expansion step. 
+// The outer loop terminates when inc fails, precisely when k 
+// expansion steps have been executed.
+Main = init; (inc; expand!)!
+
+init(m: int) 
+[ (n0(R), m) | ]
+=> 
+[ (n0(R), m:0) (n1, 1) (n2, 0) (n3, 0) | 
+  (e0, n1, n2, 0) (e1, n1, n3, 1) (e2, n2, n3, 2) ]
+interface = {n0}
+
+inc(m,n: int)
+[ (n0(R), m:n) | ] 
+=> 
+[ (n0(R), m:n + 1) | ]
+interface = {n0}
+where m > n
+
+// The node labels, edge labels, and edge directions are used
+// to control the matching of the expansion triangles. I'm not
+// going to try and explain the mechanics in words. It's easier
+// to understand if you examine a graphical version of the program.
+expand(m,n,p,q: int)
+[ (n0(R), m:n) (n1, n) (n2, p) (n3, q) | 
+  (e0, n1, n2, 0) (e1, n1, n3, 1) (e2, n2, n3, 2) ] 
+=> 
+[ (n0(R), m:n) (n1, n + 1) (n2, p) (n3, q) (n4, n + 1) 
+  (n5, n + 1) (n6, 0) |
+  (e0, n1, n4, 0) (e1, n1, n5, 1) (e2, n4, n5, 2) 
+  (e3, n4, n2, 0) (e4, n4, n6, 1) (e5, n2, n6, 2) 
+  (e6, n5, n6, 0) (e7, n5, n3, 1) (e8, n6, n3, 2) ]
+interface = {n0, n1, n2, n3}

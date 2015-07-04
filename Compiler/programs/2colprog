@@ -1,0 +1,53 @@
+// Input: a connected host graph G.
+// If G is 2-colourable, the program returns a valid 2-colouring of G.
+// If G is not 2-colourable, the programs returns G.
+
+// The program chooses a node, colours it red, and nondeterministically 
+// colours the whole graph via edges from coloured nodes to uncoloured
+// nodes. Once all the nodes are coloured, if there exists an edge connecting
+// two nodes of the same colour, then the graph is not 2-colourable.
+
+Main = try (choose; Colour!; if Invalid then fail)
+Colour = {colour_blue, colour_red}
+Invalid = {joined_reds, joined_blues}
+
+choose() 
+[ (n0, empty) | ] 
+=> 
+[ (n0, empty # red) | ]
+interface = {n0}
+
+colour_red() 
+[ (n0, empty # blue) (n1, empty) | 
+  (e0(B), n0, n1, empty) ]
+ => 
+[ (n0, empty # blue) (n1, empty # red) | 
+  (e0(B), n0, n1, empty) ]
+interface = {n0, n1}
+
+colour_blue() 
+[ (n0, empty # red) (n1, empty) | 
+  (e0(B), n0, n1, empty) ]
+ => 
+[ (n0, empty # red) (n1, empty # blue) | 
+  (e0(B), n0, n1, empty) ]
+interface = {n0, n1}
+
+joined_reds() 
+[ (n0, empty # red) (n1, empty # red) | 
+  (e0, n0, n1, empty) ] 
+=> 
+[ (n0, empty # red) (n1, empty # red) | 
+  (e0, n0, n1, empty) ]
+interface = {n0, n1}
+
+joined_blues() 
+[ (n0, empty # blue) (n1, empty # blue) | 
+  (e0, n0, n1, empty) ] 
+=> 
+[ (n0, empty # blue) (n1, empty # blue) | 
+  (e0, n0, n1, empty) ]
+interface = {n0, n1}
+
+
+

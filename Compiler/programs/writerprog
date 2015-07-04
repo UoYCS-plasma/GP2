@@ -1,0 +1,57 @@
+// Input: a host graph that spells out a sentence. 
+// Each node of the graph contains a single character of that sentence, preceded
+// by its numerical position in that sentence. Separate words by a node containing
+// the empty string.
+//
+// Example input: (1:"H") (2:"e") (3:"l") (4:"l") (5:"o") (6:"")
+//                (7:"w") (8:"o") (9:"r") (10:"l") (11:"d")
+//
+// This program exists to test matching and concatenation of strings and lists.
+// This is *not* an attempt to promote GP 2 as a magnificent string processing 
+// language (although it might still surpass C in that respect)!
+
+Main = firstLetter; {addLetter, addSpace}!; combineWords!; removeRoot
+
+// The grey node marks the current word. The root node contains the number
+// of the next character to match.
+firstLetter(c:char)
+[ (n0, 1:c) | ] 
+=> 
+[ (n0, c # grey) (n1(R), 2) | ]
+interface = {n0}
+
+// Matches any character except the empty string, which is handled
+// differently (see addSpace)
+addLetter(c:char; i:int; s:string)
+[ (n0(R), i) (n1, s # grey) (n2, i:c) | ] 
+=> 
+[ (n0(R), i+1) (n1, s.c # grey) | ]
+interface = {n0, n1}
+where c != ""
+
+// Creates a space, graphically represented as an edge pointing to the
+// next word in the sentence. The new node is shaded grey so that 
+// addLetter matches if there are more characters to read.
+addSpace(i:int; s:string)
+[ (n0(R), i) (n1, s # grey) (n2, i:"") | ] 
+=> 
+[ (n0(R), i+1) (n1, s) (n2, "" # grey) |
+  (e0, n1, n2, empty) ]
+interface = {n0, n1}
+
+// Collapses two words (nodes) and a space (edge) into a single node
+// with a concatenated list. The any mark is present because the last 
+// node in the sequence is shaded grey from the word-constructing step.
+combineWords(l1,l2:list)
+[ (n0, l1) (n1, l2 # any) | (e0, n0, n1, empty) ] 
+=> 
+[ (n1, l1:l2) | ]
+interface = {n1}
+
+removeRoot(i:int)
+[ (n0(R), i) | ] 
+=> 
+[ | ]
+interface = {}
+
+

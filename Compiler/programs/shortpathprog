@@ -1,0 +1,25 @@
+// Input: a connected acyclic host graph G with integer edge labels.
+// Output: The graph G with integers appended to the original node labels.
+//         The node labels specify the shortest distance from the node tagged
+//         with '0'. All nodes in the output graph are grey.
+ 
+Main = init; add!; reduce!
+
+init(x:list)
+[ (n0, x # grey ) | ] 
+=> 
+[ (n0, x:0 # grey ) | ]
+interface = {n0}
+
+add (x,y:list; m,n:int) 
+[ (n0, x:m # grey) (n1, y) | (e1, n0, n1, n) ] 
+=> 
+[ (n0, x:m # grey) (n1, y:m+n # grey) | (e1, n0, n1, n) ]
+interface = {n0, n1}
+
+reduce(x,y:list; m,n,p:int) 
+[ (n0, x:m # grey) (n1, y:p # grey) | (e1, n0, n1, n) ] 
+=> 
+[ (n0, x:m # grey) (n1, y:m+n # grey) | (e1, n0, n1, n) ]
+interface = {n0, n1}
+where m + n < p

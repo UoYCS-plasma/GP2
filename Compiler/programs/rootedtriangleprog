@@ -1,0 +1,33 @@
+// Input: A node with an integer label k.
+// Output: A graph representing a generation-k sierpinski triangle. 
+//         Plus the input node, which has the label k:k. I think.
+
+// The same program as "triangleprog", but with extra root nodes added
+// in an effort to improve performance. Initial experiments show that
+// root nodes, in fact, decrease performance! Very surprising!
+Main = init; (inc; expand!)!
+
+init(m: int) 
+[ (n0(R), m) | ]
+=> 
+[ (n0(R), m:0) (n1(R), 1) (n2, 0) (n3, 0) | 
+  (e0, n1, n2, 0) (e1, n1, n3, 1) (e2, n2, n3, 2) ]
+interface = {n0}
+
+inc(m,n: int)
+[ (n0(R), m:n) | ] 
+=> 
+[ (n0(R), m:n+1) | ]
+interface = {n0}
+where m > n
+
+expand(m,n,p,q: int)
+[ (n0(R), m:n) (n1(R), n) (n2, p) (n3, q) | 
+  (e0, n1, n2, 0) (e1, n1, n3, 1) (e2, n2, n3, 2) ] 
+=> 
+[ (n0(R), m:n) (n1(R), n + 1) (n2, p) (n3, q) (n4(R), n + 1) 
+  (n5(R), n + 1) (n6, 0) |
+  (e0, n1, n4, 0) (e1, n1, n5, 1) (e2, n4, n5, 2) 
+  (e3, n4, n2, 0) (e4, n4, n6, 1) (e5, n2, n6, 2) 
+  (e6, n5, n6, 0) (e7, n5, n3, 1) (e8, n6, n3, 2) ]
+interface = {n0, n1, n2, n3}

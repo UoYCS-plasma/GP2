@@ -1,0 +1,21 @@
+// Input: a connected, unmarked host graph G.
+// Output: a valid colouring of G, where colours are represented by positive
+//         integers. All nodes are shaded grey.
+//
+// This program is highly non-deterministic. The colouring you get is not
+// guaranteed to be minimal!
+Main = init!; inc!
+
+init(x: list) 
+[ (n0, x) | ] 
+=> 
+[ (n0, x:1 # grey) | ]
+interface = {n0}
+
+inc(a,x,y:list; i:int) 
+[ (n0, x:i # grey) (n1, y:i # grey) | (e0, n0, n1, a) ] 
+=> 
+[ (n0, x:i # grey) (n1, y:i+1 #grey) | (e0, n0, n1, a) ]
+interface = {n0, n1}
+
+
