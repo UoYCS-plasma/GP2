@@ -27,6 +27,7 @@ typedef struct HostLabel {
 extern struct HostLabel blank_label;
 
 typedef struct HostList {
+   int hash;
    struct HostListItem *first;
    struct HostListItem *last;
 } HostList;
@@ -47,7 +48,9 @@ typedef struct HostListItem {
 
 typedef struct Bucket {
    HostList *list;
+   int reference_count;
    struct Bucket *next;
+   struct Bucket *prev;
 } Bucket;
 
 /* Hash table to store lists at runtime. Collisions are handled by separate chaining
@@ -61,6 +64,7 @@ extern Bucket **list_store;
  * by the passed array from the hash table (list_store). If it is not defined, the
  * function returns a pointer to a newly-allocated HostList. */
 HostList *addHostList(HostAtom *array, int length, bool free_strings);
+void removeHostList(HostList *list);
 
 /* Called at runtime to build labels. */
 HostLabel makeEmptyLabel(MarkType mark);

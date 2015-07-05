@@ -75,9 +75,7 @@ void initialiseMorphism(Morphism *morphism)
    for(index = 0; index < morphism->variables; index++)
    {
       morphism->assignment[index].type = NO_ASSIGNMENT;
-      #ifndef LIST_HASHING
-         freeHostList(morphism->assignment[index].value);
-      #endif
+      removeHostList(morphism->assignment[index].value);
       morphism->assignment[index].value = NULL;
       morphism->assigned_variables[index] = -1;
    }
@@ -126,9 +124,7 @@ void removeAssignments(Morphism *morphism, int number)
    {
       int id = popVariableId(morphism);
       morphism->assignment[id].type = NO_ASSIGNMENT;
-      #ifndef LIST_HASHING
-         freeHostList(morphism->assignment[id].value);
-      #endif
+      removeHostList(morphism->assignment[id].value);
       morphism->assignment[id].value = NULL;
    }
 }
@@ -180,6 +176,11 @@ int addListAssignment(Morphism *morphism, int id, HostList *list)
          else type = STRING_ASSIGNMENT;
       }
       #ifdef LIST_HASHING
+         if(list != NULL)
+         {
+            assert(list_store[list->hash] != NULL);
+            list_store[list->hash]->reference_count++;
+         }
          addAssignment(morphism, id, type, list);
       #else
          HostList *list_copy = copyHostList(list);
@@ -324,7 +325,7 @@ void freeMorphism(Morphism *morphism)
       {
          int index;
          for(index = 0; index < morphism->variables; index++)
-            freeHostList(morphism->assignment[index].value);
+            removeHostList(morphism->assignment[index].value);
          free(morphism->assignment);
       }
    #endif

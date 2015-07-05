@@ -280,9 +280,7 @@ void removeNode(Graph *graph, int index)
    if(node->in_edges.items != NULL) free(node->in_edges.items); 
    if(node->root) removeRootNode(graph, index);
 
-   #ifndef LIST_HASHING
-      freeHostList(node->label.list);
-   #endif
+   removeHostList(node->label.list);
    
    removeFromNodeArray(&(graph->nodes), index);
    graph->number_of_nodes--;
@@ -319,9 +317,7 @@ void removeEdge(Graph *graph, int index)
    else removeFromIntArray(&(target->in_edges), index);
    target->indegree--;
 
-   #ifndef LIST_HASHING
-     freeHostList(graph->edges.items[index].label.list);
-   #endif
+   removeHostList(graph->edges.items[index].label.list);
 
    removeFromEdgeArray(&(graph->edges), index);
    graph->number_of_edges--;
@@ -329,9 +325,7 @@ void removeEdge(Graph *graph, int index)
 
 void relabelNode(Graph *graph, int index, HostLabel new_label) 
 {
-   #ifndef LIST_HASHING
-     freeHostList(graph->nodes.items[index].label.list);
-   #endif
+   removeHostList(graph->nodes.items[index].label.list);
    graph->nodes.items[index].label = new_label;
 }
 
@@ -355,9 +349,7 @@ void resetMatchedNodeFlag(Graph *graph, int index)
 
 void relabelEdge(Graph *graph, int index, HostLabel new_label)
 {	
-   #ifndef LIST_HASHING
-     freeHostList(graph->edges.items[index].label.list);
-   #endif
+   removeHostList(graph->edges.items[index].label.list);
    graph->edges.items[index].label = new_label;
 }
 
@@ -513,9 +505,7 @@ void freeGraph(Graph *graph)
       if(node == NULL) continue;
       if(node->out_edges.items != NULL) free(node->out_edges.items);
       if(node->in_edges.items != NULL) free(node->in_edges.items);
-      #ifndef LIST_HASHING
-         freeHostList(node->label.list);
-      #endif
+      removeHostList(node->label.list);
    }
    if(graph->nodes.holes.items) free(graph->nodes.holes.items);
    if(graph->nodes.items) free(graph->nodes.items);
@@ -524,9 +514,7 @@ void freeGraph(Graph *graph)
    {
       Edge *edge = getEdge(graph, index);
       if(edge == NULL) continue;
-      #ifndef LIST_HASHING
-         freeHostList(edge->label.list);
-      #endif
+      removeHostList(edge->label.list);
    }
    if(graph->edges.holes.items) free(graph->edges.holes.items);
    if(graph->edges.items) free(graph->edges.items);
