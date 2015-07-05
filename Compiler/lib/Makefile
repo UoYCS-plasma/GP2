@@ -8,7 +8,7 @@ CC = gcc
 # CFLAGS = -pg -I../inc -O2 -Wall -Wextra 
 
 # CLFAGS for optimised code.
-CFLAGS = -I../inc -O2 -fomit-frame-pointer -Wall -Wextra 
+CFLAGS = -I../inc -O2 -Wall -Wextra 
 
 # Builds the library object files. 
 default:	$(OBJECTS)
