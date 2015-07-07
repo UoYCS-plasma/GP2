@@ -486,15 +486,12 @@ void copyGraph(Graph *graph)
    graph_copy_count++;
 }
 
-Graph *popGraphs(Graph *current_graph, int restore_point)
+Graph *popGraphs(int restore_point)
 {
    printf("Popping copy of host graph.\n");
    if(graph_stack == NULL) return NULL;
    assert(graph_stack_index >= restore_point);
 
-   if(graph_stack_index == restore_point) return current_graph;
-
-   freeGraph(current_graph);
    Graph *graph = NULL;
    while(graph_stack_index > restore_point)
    { 

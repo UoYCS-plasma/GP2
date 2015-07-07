@@ -74,50 +74,81 @@ static bool validateHostGraph(string host_file)
    return (yyparse() == 0);
 }
 
+bool graph_copying = false;
+
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "GP2-compile [-o <output_file>] <program_file> <host_file>\n"
-                        "GP2-compile -vp <program_file>\n"
-                        "GP2-compile -vh <host_file>\n";
-   if(argc != 3 && argc != 5) 
-   {
-      print_to_console("%s", usage);
-      return 0;
-   }
+                        "GP2-compile [flags] <program_file> <host_file>\n"
+                        "GP2-compile -p <program_file>\n"
+                        "GP2-compile -h <host_file>\n\n"
+                        "Flags:\n"
+                        "-c - Enable graph copying.\n"
+                        "-o <output_file> - Specify the file to store the GP 2 program output.\n\n";
    openLogFile("gp2.log");
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
-   bool validate;
+   bool validate = false;
    string program_file = NULL, host_file = NULL, output_file = NULL;
 
-   if(strcmp(argv[1], "-vp") == 0)
+   if(strcmp(argv[1], "-p") == 0)
    {
+      if(argc != 3)
+      {
+         print_to_console("%s", usage);
+         return 0; 
+      }
       validate = true;
       program_file = argv[2];
    }
-   else if(strcmp(argv[1], "-vh") == 0)
+   else if(strcmp(argv[1], "-h") == 0)
    {
+      if(argc != 3)
+      {
+         print_to_console("%s", usage);
+         return 0; 
+      }
       validate = true;
       host_file = argv[2];
    }
-   else if(strcmp(argv[1], "-o") == 0) 
-   {
-      if(argc != 5)
-      {
-         print_to_console("%s", usage);
-         return 0;
-      }
-      validate = false;
-      output_file = argv[2];
-      program_file = argv[3];
-      host_file = argv[4];
-   }
    else
    {
-      validate = false;
-      program_file = argv[1];
-      host_file = argv[2];
+      /* The following code assumes all options are listed separately before the 
+       * program file and the host file. */
+      int argv_index;
+      for(argv_index = 1; argv_index < argc; argv_index++)
+      {
+         string parameter = argv[argv_index];
+         if(parameter[0] != '-') break;
+         switch(parameter[1])
+         {
+            case 'c':
+                 graph_copying = true;
+                 break;
+
+            case 'o':
+                 argv_index++;
+                 if(argv_index == argc)
+                 {
+                    print_to_console("%s", usage);
+                    return 0; 
+                 }
+                 output_file = argv[argv_index];
+                 break;
+
+            default:
+                 print_to_console("Error: invalid option \"%s\".\n", parameter);
+                 return 0;
+         }
+      }
+      /* The remaining parameters are the program file and the host graph file. */
+      if(argc - argv_index != 2)
+      {
+         print_to_console("%s", usage);
+         return 0; 
+      }
+      program_file = argv[argv_index++];
+      host_file = argv[argv_index];
    }
 
    if(validate)

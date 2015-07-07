@@ -60,9 +60,9 @@ typedef struct Bucket {
  * exactly once and has a single point of reference. */
 extern Bucket **list_store;
 
-/* If LIST_HASHING is defined, addHostList returns a pointer to the HostList represented 
- * by the passed array from the hash table (list_store). If it is not defined, the
- * function returns a pointer to a newly-allocated HostList. */
+/* If list hashing is enabled, addHostList returns a pointer to the HostList represented 
+ * by the passed array from the hash table (list_store). If not, the function returns a
+ * pointer to a newly-allocated HostList. */
 HostList *addHostList(HostAtom *array, int length, bool free_strings);
 void removeHostList(HostList *list);
 
