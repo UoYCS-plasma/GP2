@@ -8,22 +8,11 @@ LFLAGS = -lglib-2.0
 VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
            --leak-check=full --leak-resolution=high --track-origins=yes \
 
-# Builds the executable GP2-compile.
-build:		$(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
-		cd ../lib && make
-
 # Builds the compiler, generates code, and builds the runtime system.
 # Usage: make prog=<path_to_program_file> host=<path_to_host_graph_file>
 default:	$(OBJECTS)
 		make build
 		./GP2-compile $(prog) $(host)
-		cd ../runtime && make
-
-# As above, but the -c flag is passed to GP2-compile.
-copy:		$(OBJECTS)
-		make build
-		./GP2-compile -c $(prog) $(host)
 		cd ../runtime && make
 
 # Builds everything and runs valgrind on the runtime executable.
@@ -32,10 +21,22 @@ debug:		$(OBJECTS)
 		./GP2-compile $(prog) $(host) 
 		cd ../runtime && make && $(VALGRIND) ./GP2-run 
 
+# As above, but the -c flag is passed to GP2-compile.
+copy:		$(OBJECTS)
+		make build
+		./GP2-compile -c $(prog) $(host)
+		cd ../runtime && make
+
 copy-debug:	$(OBJECTS)	
 		make build
 		./GP2-compile -c $(prog) $(host) 
 		cd ../runtime && make && $(VALGRIND) ./GP2-run 
+
+# Builds the executable GP2-compile.
+build:		$(OBJECTS)
+		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
+		cd ../lib && make
+
 
 # Builds the executable GP2-compile and runs it with valgrind.
 compile-debug:	$(OBJECTS)
