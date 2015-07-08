@@ -202,7 +202,7 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTF("   printGraph(host, output_file);\n");
    if(output_file == NULL) 
         PTF("   printf(\"Output graph saved to file ../gp2.output.\\n\");\n");
-   else PTF("   printf(\"Output graph saved to file ../%s.\\n\");\n", output_file);
+   else PTF("   printf(\"Output graph saved to file %s.\\n\");\n", output_file);
    PTF("   garbageCollect();\n");
    PTF("   printf(\"Graph changes made: %%d\\n\", graph_change_count);\n");
    PTF("   fclose(output_file);\n");
