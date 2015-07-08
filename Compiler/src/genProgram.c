@@ -171,11 +171,11 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTFI("/* Output File. */\n", 3);
    if(output_file == NULL)
         PTFI("FILE *output_file = fopen(\"../gp2.output\", \"w\");\n", 3);
-   else PTFI("FILE *output_file = fopen(\"../%s\", \"w\");\n", 3, output_file); 
+   else PTFI("FILE *output_file = fopen(\"%s\", \"w\");\n", 3, output_file); 
    PTFI("if(output_file == NULL)\n", 3);
    PTFI("{\n", 3);
    if(output_file == NULL) PTFI("perror(\"../gp2.output\");\n", 6);
-   else PTFI("perror(\"../%s\");\n", 6, output_file);
+   else PTFI("perror(\"%s\");\n", 6, output_file);
    PTFI("exit(1);\n", 6);
    PTFI("}\n", 3);
 
