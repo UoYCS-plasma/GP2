@@ -55,6 +55,7 @@ bool syntax_error = false;
 
 %union {  
   int num;   /* value of NUM token. */
+  double dnum; /* value of DNUM token. */
   char *str; /* value of STRING and CHAR tokens. */
   char *id;  /* value of PROCID and ID tokens. */
   int mark;  /* enum MarkTypes, value of MARK token. */
@@ -70,6 +71,7 @@ bool syntax_error = false;
 %token ARROW					                
 %token NEQ GTEQ LTEQ			                       
 %token <num> NUM 
+%token <dnum> DNUM
 %token <str> STR 
 %token <id> PROCID ID           				
 %token ROOT BIDIRECTIONAL	
@@ -384,7 +386,10 @@ Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
 					  if($5) free($5); if($7) free($7); }
 
  /* Layout information for the editor. This is ignored by the parser. */
-Position: '(' NUM ',' NUM ')'           { } 
+Position: '(' DNUM ',' DNUM ')'         { } 
+        | '(' NUM ',' NUM ')'           { } 
+        | '(' DNUM ',' NUM ')'          { } 
+        | '(' NUM ',' DNUM ')'          { }
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
