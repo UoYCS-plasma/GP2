@@ -47,6 +47,7 @@ HostList *host_list = NULL;
 
 %union {  
   int num;   /* value of NUM token. */
+  int dnum;   /* value of DNUM token. */
   char *str; /* value of STRING and CHAR tokens. */
   int id;  /* value of NodeID and EdgeID tokens. */
   int mark;  /* enum MarkTypes, value of MARK token. */
@@ -55,6 +56,7 @@ HostList *host_list = NULL;
 /* Single character tokens do not need to be explicitly declared. */
 %token <mark> MARK
 %token <num> NUM 
+%token <dnum> DNUM
 %token <str> STR      
 %token <id> NODE_ID EDGE_ID
 %token ROOT _EMPTY						
@@ -93,7 +95,10 @@ RootNode: /* empty */
 	| ROOT 				{ is_root = true; }
 
  /* Layout information for the editor. This is ignored by the parser. */
-Position: '(' NUM ',' NUM ')'           { } 
+Position: '(' DNUM ',' DNUM ')'         { } 
+        | '(' NUM ',' NUM ')'           { } 
+        | '(' DNUM ',' NUM ')'          { } 
+        | '(' NUM ',' DNUM ')'          { }
 
 HostEdgeList: HostEdge			{ }
             | HostEdgeList HostEdge	{ } 

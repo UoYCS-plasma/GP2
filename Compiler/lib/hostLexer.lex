@@ -61,6 +61,7 @@ int yycolumn = 1;
           				        "string.\n", yylineno);                   
                                    return 0; }  
 
+[0-9]+\.[0-9]+      { yylval.dnum = atof(yytext); return DNUM; } 
 [0-9]+              { yylval.num = (int)strtol(yytext, NULL, 10); return NUM; } 
 
  /* Host graph keywords. */ 
