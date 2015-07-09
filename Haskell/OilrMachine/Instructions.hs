@@ -2,35 +2,28 @@ module OilrMachine.Instructions where
 
 type Prog = [Instr]
 
-type Addr = Int
-type Deg  = Int
-type Sig  = Int
-type Bits = Int
-type SpId = Int
-type TrId = Int
-type PrId = Int
+type Spc = Int
+type Sig = Int
+type Tid = Int
+type Off = Int
+
+type Rid = String
 
 data Instr = 
-      OILR Bits Bits Bits Bits
     
     ----------------------------------
     --  Node and edge finding prims
     ----------------------------------
 
-    -- Add an element to a search plan
-    | PLANS | ENDP
-    | SPC Sig
+    | LKU Spc      -- Lookup a node in the indices in Spc
+    | XTO Tid Sig  -- Extend match along out-edge from node in Tid to node with Sig
+    | XFR Tid Sig  -- Extend match along in-edge from node with Sig to node in Tid
+    | NEC Tid Tid  -- Negative Edge Condition between nodes in Tids
+    | NNC Spc      -- Negative node condition: Spc must be empty
+    | NOX Tid Sig  -- Negative extension cond: no outgoing edge to node with Sig
+    | NIX Tid Sig  -- Negative extension cond: no incoming edge from node with Sig
 
-    -- Add a traverser
-    | TRAVS | ENDT
-    | TRAV SpId SpId PrId
-
-    -- Start and end a match
-    | MTCH | ENDM
-
-    | NODE TrId | EDTO TrId TrId | EDFR TrId TrId | EDNO TrId TrId
-
-    | RESET TrId
+    | RST Tid      -- Reset Tid
 
     ----------------------------------
     -- Graph manipulation
@@ -55,22 +48,12 @@ data Instr =
     -- Program control prims
     ----------------------------------
 
-    | PROC String
+    | ALP Rid   -- Repeat rule or proc As Long as Possible
+    | CAL Rid   -- Call rule or proc Rid
+    | RET       -- Unconditional return from rule or proc
+    | ZRT       -- Return on failure
+    | ZBR Off   -- Branch relative on failure
 
-    -- Call a rule or procedure
-    | CALL String
-
-    -- Looped-call a rule or procedure
-    | ALAP String
-
-    -- return from a procedure
-    | RET
-
-    -- if success flag is unset exit current proc
-    | ORFAIL TrId
-    -- if success flag is unset reset specified Trav 
-    -- and go back to the previous trav
-    | ORBACK TrId
 
     ----------------------------------
     -- Miscellaneous prims

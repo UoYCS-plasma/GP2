@@ -72,7 +72,7 @@ let rec riffle ?(acc=[]) r1 r2 = match (r1, r2) with
 ;;
 
 let rec cols ?(acc=[]) = function
-    | row1 :: (row2 :: _ as rs) -> cols ~acc:(acc @ riffle row1 row2) rs
+    | row1 :: (row2 :: _ as rs) -> cols ~acc:(List.rev_append (List.rev acc) (riffle row1 row2)) rs
     | _ -> acc
 ;;
 
@@ -84,7 +84,7 @@ let grid x y =
     in
     let (nss, ess) = List.split ( rows y ) in
     let ves = cols nss in
-    (List.flatten nss, List.flatten ess @ ves)
+    (List.flatten nss, List.rev_append (List. rev (List.flatten ess)) ves)
 ;;
 
 let parallel (ns, es) = match es with
@@ -132,9 +132,9 @@ let rec seriesParallel g = function
 
 let printGraph (ns, es) =
     let lines = List.flatten [["["]
-        ; List.map strOfGraph ns
+        ; List.rev @@ List.rev_map strOfGraph ns
         ; ["|"]
-        ; List.map strOfGraph es
+        ; List.rev @@ List.rev_map strOfGraph es
         ; ["]"]
     ] in
     List.iter print_endline lines
@@ -168,7 +168,7 @@ let rec parseArgs = function
 let applyFilters (ns, es) =
     let nf = if settings.random_node_labels then randomLabel 10 else (fun x -> x) in
     let ef = if settings.random_edge_labels then randomLabel 10 else (fun x -> x) in
-    (List.map nf ns, List.map ef es)
+    (List.rev @@ List.rev_map nf ns, List.rev @@ List.rev_map ef es)
 ;;
 
 let main () =
