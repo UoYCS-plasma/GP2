@@ -336,6 +336,10 @@ void commandScan(GPCommand *command, string scope, List *declarations, bool in_l
    }
 }             
 
+/* The string "name" passed to this procedure is either the rule name as defined
+ * in the GP 2 program file or, in the case that the rule is called more than
+ * once, the rule name with its scope prepended. Both names need to be checked
+ * by this function. */
 GPRule *findRuleDeclaration(List *global_declarations, string name,
                             GPProcedure *procedure)
 {
@@ -351,12 +355,10 @@ GPRule *findRuleDeclaration(List *global_declarations, string name,
          GPDeclaration *declaration = local_declarations->declaration;
          if(declaration->type == RULE_DECLARATION)
          {
-           /* The rule name in the declaration is of the form 
-            * "<proc_name>_<rule_name>". Disregard "<proc_name>_" for the 
-            * comparison. */
-            int length = strlen(declaration->rule->name) -
-                         strlen(procedure->name) + 1;
-            if(!strcmp(declaration->rule->name + length, name))
+            int length = strlen(declaration->rule->name) - strlen(procedure->name) + 1;
+            /* TODO: There is a problem with this (see below), but it will do for now. */
+            if(strcmp(declaration->rule->name, name) == 0 ||
+               strcmp(declaration->rule->name + length, name) == 0)
                return declaration->rule;
          }
          if(declaration->type == PROCEDURE_DECLARATION)
@@ -375,10 +377,10 @@ GPRule *findRuleDeclaration(List *global_declarations, string name,
       GPDeclaration *declaration = global_declarations->declaration;
       if(declaration->type == RULE_DECLARATION)
       {
-          /* The rule name in the declaration node is of the form
-           * "Main_<rule_name>". Disregard "Main_" for the comparison. */
-          if(!strcmp(declaration->rule->name + 5, name))
-             return declaration->rule;
+          /* TODO: There is a problem with this (what if "sillyrule" and "rule" are called,
+           * but only "rule" is declared?), but it will do for now. */
+          if(strcmp(declaration->rule->name, name) == 0 ||
+             strcmp(declaration->rule->name + 5, name) == 0) return declaration->rule;
       }
       global_declarations = global_declarations->next;
    }

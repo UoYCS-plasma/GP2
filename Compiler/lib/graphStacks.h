@@ -100,11 +100,10 @@ extern int graph_copy_count;
 /* Creates a memory copy of the passed graph and pushes it to the graph stack. */
 void copyGraph(Graph *graph);
 
-/* popGraphs pops and frees the graph change stack until the restore point
- * is reached. It returns the graph at that stack entry. */
-Graph *popGraphs(Graph *current_graph, int restore_point);
+/* Returns the graph at the stack entry <restore_point> entries from the
+ * bottom of the stack. */
+Graph *popGraphs(int restore_point);
 void discardGraphs(int depth);
 void freeGraphStack(void);
-
 
 #endif /* INC_GRAPH_STACKS_H */

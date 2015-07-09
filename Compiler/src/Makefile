@@ -21,10 +21,22 @@ debug:		$(OBJECTS)
 		./GP2-compile $(prog) $(host) 
 		cd ../runtime && make && $(VALGRIND) ./GP2-run 
 
+# As above, but the -c flag is passed to GP2-compile.
+copy:		$(OBJECTS)
+		make build
+		./GP2-compile -c $(prog) $(host)
+		cd ../runtime && make
+
+copy-debug:	$(OBJECTS)	
+		make build
+		./GP2-compile -c $(prog) $(host) 
+		cd ../runtime && make && $(VALGRIND) ./GP2-run 
+
 # Builds the executable GP2-compile.
 build:		$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
 		cd ../lib && make
+
 
 # Builds the executable GP2-compile and runs it with valgrind.
 compile-debug:	$(OBJECTS)

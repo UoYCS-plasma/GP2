@@ -179,9 +179,7 @@ void undoChanges(Graph *graph, int restore_point)
               if(node->out_edges.items != NULL) free(node->out_edges.items);
               if(node->in_edges.items != NULL) free(node->in_edges.items); 
               if(node->root) removeRootNode(graph, index);
-              #ifndef LIST_HASHING
-                 freeHostList(node->label.list);
-              #endif
+              removeHostList(node->label.list);
 
               if(change.added_node.hole_filled) 
                  graph->nodes.holes.items[graph->nodes.holes.size++] = index;
@@ -208,10 +206,7 @@ void undoChanges(Graph *graph, int restore_point)
               else if(target->second_in_edge == index) target->second_in_edge = -1;
               else removeFromIntArray(&(target->in_edges), index);
               target->indegree--;
-
-              #ifndef LIST_HASHING
-                 freeHostList(edge->label.list);
-              #endif
+              removeHostList(edge->label.list);
 
               if(change.added_edge.hole_filled)
                  graph->edges.holes.items[graph->edges.holes.size++] = index;
@@ -323,19 +318,19 @@ static void freeGraphChange(GraphChange change)
            break;
 
       case REMOVED_NODE:
-           freeHostList(change.removed_node.label.list);
+           removeHostList(change.removed_node.label.list);
            break;
 
       case REMOVED_EDGE:
-           freeHostList(change.removed_edge.label.list);
+           removeHostList(change.removed_edge.label.list);
            break;
 
       case RELABELLED_NODE: 
-           freeHostList(change.relabelled_node.old_label.list);
+           removeHostList(change.relabelled_node.old_label.list);
            break;
 
       case RELABELLED_EDGE: 
-           freeHostList(change.relabelled_edge.old_label.list);
+           removeHostList(change.relabelled_edge.old_label.list);
            break;
 
       default: 
@@ -491,15 +486,12 @@ void copyGraph(Graph *graph)
    graph_copy_count++;
 }
 
-Graph *popGraphs(Graph *current_graph, int restore_point)
+Graph *popGraphs(int restore_point)
 {
    printf("Popping copy of host graph.\n");
    if(graph_stack == NULL) return NULL;
    assert(graph_stack_index >= restore_point);
 
-   if(graph_stack_index == restore_point) return current_graph;
-
-   freeGraph(current_graph);
    Graph *graph = NULL;
    while(graph_stack_index > restore_point)
    { 

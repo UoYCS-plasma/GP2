@@ -898,9 +898,9 @@ void generateApplicationCode(Rule *rule)
             else if(edge->interface->remarked)
             {
                /* Generate code to re-mark the edge. */
-               PTFI("if(record_changes) pushRemarkedEdge(host_edge_index, %d);\n",
-                    3, label.mark);
-               PTFI("changeEdgeMark(host, host_edge_index, label_e%d.mark);\n\n", 3, index);
+               PTFI("if(record_changes) pushRemarkedEdge(host_edge_index, label_e%d.mark);\n",
+                    3, index);
+               PTFI("changeEdgeMark(host, host_edge_index, %d);\n\n", 3, label.mark);
             }
          }
       }
@@ -969,9 +969,9 @@ void generateApplicationCode(Rule *rule)
             else if(rhs_node->remarked)
             {
                /* Generate code to re-mark the edge. */
-               PTFI("if(record_changes) pushRemarkedNode(host_node_index, %d);\n",
-                    3, label.mark);
-               PTFI("changeNodeMark(host, host_node_index, label_n%d.mark);\n\n", 3, index);
+               PTFI("if(record_changes) pushRemarkedNode(host_node_index, label_n%d.mark);\n",
+                    3, index);
+               PTFI("changeNodeMark(host, host_node_index, %d);\n\n", 3, label.mark);
             }
          }
          if(rhs_node->root_changed)

@@ -68,6 +68,7 @@ static HostList *appendHostAtom(HostList *list, HostAtom atom, bool free_strings
          print_to_log("Error (appendAtom): malloc failure.\n");
          exit(1);
       }
+      new_list->hash = -1;
       new_list->first = new_item;
       new_list->last = new_item;
       return new_list;
@@ -97,7 +98,9 @@ static Bucket *makeBucket(HostAtom *array, int length, bool free_strings)
    for(index = 0; index < length; index++) 
       list = appendHostAtom(list, array[index], free_strings);
    bucket->list = list;
+   bucket->reference_count = 1;
    bucket->next = NULL;
+   bucket->prev = NULL;
    return bucket;
 }
 #endif
@@ -129,6 +132,7 @@ HostList *addHostList(HostAtom *array, int length, bool free_strings)
       {
          Bucket *bucket = makeBucket(array, length, free_strings);
          list_store[hash] = bucket;
+         bucket->list->hash = hash;
          return bucket->list;
       }
       /* Check each list in the bucket for equality with the list represented
@@ -178,10 +182,13 @@ HostList *addHostList(HostAtom *array, int length, bool free_strings)
          {
             Bucket *new_bucket = makeBucket(array, length, free_strings);
             bucket->next = new_bucket;
+            new_bucket->prev = bucket;
+            new_bucket->list->hash = hash;
             return new_bucket->list;
          }
          else 
          {
+            bucket->reference_count++;
             if(free_strings)
             {
                for(index = 0; index < length; index++) 
@@ -199,6 +206,26 @@ HostList *addHostList(HostAtom *array, int length, bool free_strings)
    #endif
 } 
 
+void removeHostList(HostList *list)
+{
+   if(list == NULL) return;
+   Bucket *bucket = list_store[list->hash];
+   assert(bucket != NULL);
+   #ifdef LIST_HASHING
+      bucket->reference_count--;
+      if(bucket->reference_count == 0)
+      {
+         /* Delete the bucket. */
+         if(bucket->prev == NULL) list_store[list->hash] = bucket->next;
+         else bucket->prev->next = bucket->next;
+         if(bucket->next != NULL) bucket->next->prev = bucket->prev;
+         freeHostList(list);
+         free(bucket);
+      }
+   #else
+      freeHostList(list);
+   #endif
+}
 
 HostLabel makeEmptyLabel(MarkType mark)
 {
@@ -304,11 +331,11 @@ void freeHostList(HostList *list)
 }
 
 #ifdef LIST_HASHING
-static void freeBucket(Bucket *bucket)
+static void freeBuckets(Bucket *bucket)
 {
    if(bucket == NULL) return; 
    freeHostList(bucket->list);
-   freeBucket(bucket->next);
+   freeBuckets(bucket->next);
    free(bucket);
 }
 
@@ -316,7 +343,7 @@ void freeHostListStore(void)
 {
    if(list_store == NULL) return;
    int index;
-   for(index = 0; index < LIST_TABLE_SIZE; index++) freeBucket(list_store[index]);
+   for(index = 0; index < LIST_TABLE_SIZE; index++) freeBuckets(list_store[index]);
    free(list_store);
 }
 #endif
