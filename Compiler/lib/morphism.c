@@ -164,7 +164,7 @@ int addListAssignment(Morphism *morphism, int id, HostList *list)
    Assignment assignment = lookupAssignment(morphism, id);
    if(assignment.type == NO_ASSIGNMENT) 
    {
-      AssignmentType type = LIST_VAR;
+      AssignmentType type = LIST_ASSIGNMENT;
       /* Assign the minimum type to the assignment. For lists of length 1, this is
        * either INTEGER_ASSIGNMENT or STRING_ASSIGNMENT. Otherwise it is
        * LIST_ASSIGNMENT. */

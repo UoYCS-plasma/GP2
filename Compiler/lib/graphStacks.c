@@ -84,7 +84,11 @@ void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created)
    change.type = REMOVED_NODE;
    change.removed_node.root = root;
    change.removed_node.label = label;
-   #ifndef LIST_HASHING
+   /* Keep a record of the list as the removal of the node could free this list
+    * or remove its bucket from the hash table. */
+   #ifdef LIST_HASHING
+      if(label.list != NULL) list_store[label.list->hash]->reference_count++;
+   #else
       change.removed_node.label.list = copyHostList(label.list);
    #endif
    change.removed_node.index = index;
@@ -97,7 +101,11 @@ void pushRemovedEdge(HostLabel label, int source, int target, int index, bool ho
    GraphChange change;
    change.type = REMOVED_EDGE;
    change.removed_edge.label = label;
-   #ifndef LIST_HASHING
+   /* Keep a record of the list as the removal of the node could free this list
+    * or remove its bucket from the hash table. */
+   #ifdef LIST_HASHING
+      if(label.list != NULL) list_store[label.list->hash]->reference_count++;
+   #else
       change.removed_edge.label.list = copyHostList(label.list);
    #endif
    change.removed_edge.source = source;
@@ -113,7 +121,11 @@ void pushRelabelledNode(int index, HostLabel old_label)
    change.type = RELABELLED_NODE;
    change.relabelled_node.index = index;
    change.relabelled_node.old_label = old_label;
-   #ifndef LIST_HASHING
+   /* Keep a record of the list as the relabelling of the node could free this
+    * list or remove its bucket from the hash table. */
+   #ifdef LIST_HASHING
+      if(old_label.list != NULL) list_store[old_label.list->hash]->reference_count++;
+   #else
       change.relabelled_node.old_label.list = copyHostList(old_label.list);
    #endif
    pushGraphChange(change);
@@ -125,7 +137,11 @@ void pushRelabelledEdge(int index, HostLabel old_label)
    change.type = RELABELLED_EDGE;
    change.relabelled_edge.index = index;
    change.relabelled_edge.old_label = old_label;
-   #ifndef LIST_HASHING
+   /* Keep a record of the list as the relabelling of the edge could free this
+    * list or remove its bucket from the hash table. */
+   #ifdef LIST_HASHING
+      if(old_label.list != NULL) list_store[old_label.list->hash]->reference_count++;
+   #else
       change.relabelled_edge.old_label.list = copyHostList(old_label.list);
    #endif
    pushGraphChange(change);
@@ -307,7 +323,6 @@ void undoChanges(Graph *graph, int restore_point)
    } 
 } 
 
-#ifndef LIST_HASHING
 static void freeGraphChange(GraphChange change)
 {
    switch(change.type)
@@ -339,20 +354,15 @@ static void freeGraphChange(GraphChange change)
            break;      
    }  
 } 
-#endif
 
 void discardChanges(int restore_point)
 {
    if(graph_change_stack == NULL) return;
-   #ifdef LIST_HASHING
-      while(graph_change_stack->size > restore_point) pullGraphChange();
-   #else
-      while(graph_change_stack->size > restore_point) 
-      {
-         GraphChange change = pullGraphChange();
-         freeGraphChange(change);
-      }
-   #endif
+   while(graph_change_stack->size > restore_point) 
+   {
+      GraphChange change = pullGraphChange();
+      freeGraphChange(change);
+   }
 } 
 
 void freeGraphChangeStack(void)

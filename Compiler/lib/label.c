@@ -5,7 +5,7 @@ HostLabel blank_label = {NONE, 0, NULL};
 #ifdef LIST_HASHING
 Bucket **list_store = NULL;
 
-/* The list hash table has 400 buckets and is structured as follows:
+/* The list hash table has 400 buckets. It is structured as follows:
  * Lists of length 1 occupy buckets 0 - 99.
  * Lists of length 2 occupy buckets 100 - 199.
  * Lists of length 3 occupy buckets 200 - 299.
