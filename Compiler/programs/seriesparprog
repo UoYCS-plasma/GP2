@@ -13,25 +13,25 @@ Main = if ({par, seq}!; deleteBase; nonempty) then no else yes
 // The output is a single node labelled "yes" or "no". 
 //Main = {par, seq}!; deleteBase; if nonempty then no else yes
 
-par(a,b,x,y: list)
+par(a,b,x,y: int)
 [ (n0, x) (n1, y) | (e0, n0, n1, a) (e0, n0, n1, b) ] 
 => 
-[ (n0, x) (n1, y) | (e0, n0, n1, empty) ]
+[ (n0, x) (n1, y) | (e0, n0, n1, a) ]
 interface = {n0, n1}
 
-seq (a,b,x,y,z: list) 
+seq (a,b,x,y,z: int) 
 [ (n0, x) (n1, y) (n2, z) | (e0, n0, n1, a) (e1, n1, n2, b)] 
 => 
-[ (n0, x) (n2, z) | (e0, n0, n2, empty) ]
+[ (n0, x) (n2, z) | (e0, n0, n2, a) ]
 interface = {n0, n2}
 
-deleteBase (a, x, y: list) 
+deleteBase (a, x, y: int) 
 [ (n0, x) (n1, y) | (e0, n0, n1, a) ] 
 =>
 [  |  ]
 interface = {}
 
-nonempty (x: list) 
+nonempty (x: int) 
 [ (n0, x) | ] 
 => 
 [ (n0, x) | ]

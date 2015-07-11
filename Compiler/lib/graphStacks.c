@@ -87,9 +87,12 @@ void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created)
    /* Keep a record of the list as the removal of the node could free this list
     * or remove its bucket from the hash table. */
    #ifdef LIST_HASHING
-      if(label.list != NULL) list_store[label.list->hash]->reference_count++;
+      if(label.list.type == 'l' && label.list.list != NULL) 
+         list_store[label.list.list->hash]->reference_count++;
+      if(label.list.type == 's') 
+         change.removed_node.label.list.str = strdup(label.list.str);
    #else
-      change.removed_node.label.list = copyHostList(label.list);
+      change.removed_node.label.list.list = copyHostList(label..listlist);
    #endif
    change.removed_node.index = index;
    change.removed_node.hole_created = hole_created;
@@ -104,9 +107,12 @@ void pushRemovedEdge(HostLabel label, int source, int target, int index, bool ho
    /* Keep a record of the list as the removal of the node could free this list
     * or remove its bucket from the hash table. */
    #ifdef LIST_HASHING
-      if(label.list != NULL) list_store[label.list->hash]->reference_count++;
+      if(label.list.type == 'l' && label.list.list != NULL) 
+         list_store[label.list.list->hash]->reference_count++;
+      if(label.list.type == 's') 
+         change.removed_edge.label.list.str = strdup(label.list.str);
    #else
-      change.removed_edge.label.list = copyHostList(label.list);
+      change.removed_edge.label.list.list = copyHostList(label.list.list);
    #endif
    change.removed_edge.source = source;
    change.removed_edge.target = target;
@@ -124,9 +130,12 @@ void pushRelabelledNode(int index, HostLabel old_label)
    /* Keep a record of the list as the relabelling of the node could free this
     * list or remove its bucket from the hash table. */
    #ifdef LIST_HASHING
-      if(old_label.list != NULL) list_store[old_label.list->hash]->reference_count++;
+      if(old_label.list.type == 'l' && old_label.list.list != NULL) 
+         list_store[old_label.list.list->hash]->reference_count++;
+      if(old_label.list.type == 's') 
+         change.relabelled_node.old_label.list.str = strdup(old_label.list.str);
    #else
-      change.relabelled_node.old_label.list = copyHostList(old_label.list);
+      change.relabelled_node.old_label.list.list = copyHostList(old_label.list.list);
    #endif
    pushGraphChange(change);
 }
@@ -140,9 +149,12 @@ void pushRelabelledEdge(int index, HostLabel old_label)
    /* Keep a record of the list as the relabelling of the edge could free this
     * list or remove its bucket from the hash table. */
    #ifdef LIST_HASHING
-      if(old_label.list != NULL) list_store[old_label.list->hash]->reference_count++;
+      if(old_label.list.type == 'l' && old_label.list.list != NULL) 
+         list_store[old_label.list.list->hash]->reference_count++;
+      if(old_label.list.type == 's') 
+         change.relabelled_edge.old_label.list.str = strdup(old_label.list.str);
    #else
-      change.relabelled_edge.old_label.list = copyHostList(old_label.list);
+      change.relabelled_edge.old_label.list.list = copyHostList(old_label.list.list);
    #endif
    pushGraphChange(change);
 }
@@ -195,7 +207,7 @@ void undoChanges(Graph *graph, int restore_point)
               if(node->out_edges.items != NULL) free(node->out_edges.items);
               if(node->in_edges.items != NULL) free(node->in_edges.items); 
               if(node->root) removeRootNode(graph, index);
-              removeHostList(node->label.list);
+              removeHostLabel(node->label);
 
               if(change.added_node.hole_filled) 
                  graph->nodes.holes.items[graph->nodes.holes.size++] = index;
@@ -222,7 +234,7 @@ void undoChanges(Graph *graph, int restore_point)
               else if(target->second_in_edge == index) target->second_in_edge = -1;
               else removeFromIntArray(&(target->in_edges), index);
               target->indegree--;
-              removeHostList(edge->label.list);
+              removeHostLabel(edge->label);
 
               if(change.added_edge.hole_filled)
                  graph->edges.holes.items[graph->edges.holes.size++] = index;
@@ -333,19 +345,19 @@ static void freeGraphChange(GraphChange change)
            break;
 
       case REMOVED_NODE:
-           removeHostList(change.removed_node.label.list);
+           removeHostLabel(change.removed_node.label);
            break;
 
       case REMOVED_EDGE:
-           removeHostList(change.removed_edge.label.list);
+           removeHostLabel(change.removed_edge.label);
            break;
 
       case RELABELLED_NODE: 
-           removeHostList(change.relabelled_node.old_label.list);
+           removeHostLabel(change.relabelled_node.old_label);
            break;
 
       case RELABELLED_EDGE: 
-           removeHostList(change.relabelled_edge.old_label.list);
+           removeHostLabel(change.relabelled_edge.old_label);
            break;
 
       default: 

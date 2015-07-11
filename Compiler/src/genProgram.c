@@ -642,6 +642,7 @@ static void generateFailureCode(string rule_name, CommandData data)
       else PTFI("fprintf(output_file, \"No output graph: Fail statement invoked\\n\");\n",
                 data.indent);
       PTFI("garbageCollect();\n", data.indent);
+      PTFI("fclose(output_file);\n", data.indent);
       PTFI("return 0;\n", data.indent);
    }
    /* In other contexts, set the runtime success flag to false. */

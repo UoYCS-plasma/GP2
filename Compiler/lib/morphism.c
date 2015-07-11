@@ -36,7 +36,7 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
    morphism->variable_index = 0;
    if(variables > 0) 
    {
-      morphism->assignment = calloc(variables, sizeof(Assignment));
+      morphism->assignment = calloc(variables, sizeof(GP2List));
       if(morphism->assignment == NULL)
       {
          print_to_log("Error (makeMorphism): malloc failure.\n");
@@ -74,9 +74,17 @@ void initialiseMorphism(Morphism *morphism)
    morphism->variable_index = 0;
    for(index = 0; index < morphism->variables; index++)
    {
-      morphism->assignment[index].type = NO_ASSIGNMENT;
-      removeHostList(morphism->assignment[index].value);
-      morphism->assignment[index].value = NULL;
+      if(morphism->assignment[index].type == 's')
+      {
+         free(morphism->assignment[index].str);
+         morphism->assignment[index].str = NULL;
+      }
+      if(morphism->assignment[index].type == 'l')
+      {
+         removeHostList(morphism->assignment[index].list);
+         morphism->assignment[index].list = NULL;
+      }
+      morphism->assignment[index].type = 'n';
       morphism->assigned_variables[index] = -1;
    }
 }
@@ -95,12 +103,66 @@ void addEdgeMap(Morphism *morphism, int left_index, int host_index, int assignme
    morphism->edge_map[left_index].assignments = assignments;
 }
 
-void addAssignment(Morphism *morphism, int id, AssignmentType type, HostList *value)
+int addListAssignment(Morphism *morphism, int id, HostList *list) 
+{
+   /* Search the morphism for an existing assignment to the passed variable. */
+   assert(id < morphism->variables);
+   if(morphism->assignment[id].type == 'n') 
+   {
+      #ifdef LIST_HASHING
+         if(list != NULL)
+         {
+            assert(list_store[list->hash] != NULL);
+            list_store[list->hash]->reference_count++;
+         }
+      #else
+         HostList *list_copy = copyHostList(list);
+      #endif
+         morphism->assignment[id].type = 'l';
+         morphism->assignment[id].list = list;
+         pushVariableId(morphism, id);
+      return 1;
+   }
+   /* Compare the list in the assignment to the list passed to the function. */
+   else 
+   {
+      if(morphism->assignment[id].list == list) return 0;
+      else return -1;
+   }
+}
+
+int addIntegerAssignment(Morphism *morphism, int id, int num)
 {
    assert(id < morphism->variables);
-   morphism->assignment[id].type = type;
-   morphism->assignment[id].value = value;
-   pushVariableId(morphism, id);
+   if(morphism->assignment[id].type == 'n') 
+   {
+      morphism->assignment[id].type = 'i';
+      morphism->assignment[id].num = num;
+      pushVariableId(morphism, id);
+      return 1;
+   }
+   else
+   {
+      if(morphism->assignment[id].num == num) return 0;
+      else return -1;
+   }
+}
+
+int addStringAssignment(Morphism *morphism, int id, string str)
+{
+   assert(id < morphism->variables);
+   if(morphism->assignment[id].type == 'n') 
+   {
+      morphism->assignment[id].type = 's';
+      morphism->assignment[id].str = strdup(str);
+      pushVariableId(morphism, id);
+      return 1;
+   }
+   else
+   {
+      if(strcmp(morphism->assignment[id].str, str) == 0) return 0;
+      else return -1;
+   }
 }
 
 void removeNodeMap(Morphism *morphism, int left_index)
@@ -123,9 +185,17 @@ void removeAssignments(Morphism *morphism, int number)
    for(count = 0; count < number; count++)
    {
       int id = popVariableId(morphism);
-      morphism->assignment[id].type = NO_ASSIGNMENT;
-      removeHostList(morphism->assignment[id].value);
-      morphism->assignment[id].value = NULL;
+      if(morphism->assignment[id].type == 's')
+      {
+         free(morphism->assignment[id].str);
+         morphism->assignment[id].str = NULL;
+      }
+      if(morphism->assignment[id].type == 'l')
+      {
+         removeHostList(morphism->assignment[id].list);
+         morphism->assignment[id].list = NULL;
+      }
+      morphism->assignment[id].type = 'n';
    }
 }
 
@@ -152,104 +222,22 @@ int lookupEdge(Morphism *morphism, int left_index)
    return morphism->edge_map[left_index].host_index;
 }
 
-Assignment lookupAssignment(Morphism *morphism, int id)
-{
-   assert(id < morphism->variables);
-   return morphism->assignment[id];
-}
-
-int addListAssignment(Morphism *morphism, int id, HostList *list) 
-{
-   /* Search the morphism for an existing assignment to the passed variable. */
-   Assignment assignment = lookupAssignment(morphism, id);
-   if(assignment.type == NO_ASSIGNMENT) 
-   {
-      AssignmentType type = LIST_ASSIGNMENT;
-      /* Assign the minimum type to the assignment. For lists of length 1, this is
-       * either INTEGER_ASSIGNMENT or STRING_ASSIGNMENT. Otherwise it is
-       * LIST_ASSIGNMENT. */
-      if(list != NULL && list->first->next == NULL)
-      {
-         HostAtom atom = list->first->atom;
-         assert(atom.type == 'i' || atom.type == 's');
-         if(atom.type == 'i') type = INTEGER_ASSIGNMENT;
-         else type = STRING_ASSIGNMENT;
-      }
-      #ifdef LIST_HASHING
-         if(list != NULL)
-         {
-            assert(list_store[list->hash] != NULL);
-            list_store[list->hash]->reference_count++;
-         }
-         addAssignment(morphism, id, type, list);
-      #else
-         HostList *list_copy = copyHostList(list);
-         addAssignment(morphism, id, type, list_copy);
-      #endif
-      return 1;
-   }
-   /* Compare the list in the assignment to the list passed to the function. */
-   else if(list == assignment.value) return 0; else return -1;
-}
-
-int addIntegerAssignment(Morphism *morphism, int id, int value)
-{
-   Assignment assignment = lookupAssignment(morphism, id);
-   if(assignment.type == NO_ASSIGNMENT) 
-   {
-      HostAtom array[1];
-      array[0].type = 'i';
-      array[0].num = value;
-      HostList *list = addHostList(array, 1, false);
-      addAssignment(morphism, id, INTEGER_ASSIGNMENT, list);
-      return 1;
-   }
-   else
-   {
-      if(assignment.value == NULL) return -1;
-      HostAtom atom = assignment.value->first->atom;
-      if(atom.type == 'i' && atom.num == value) return 0;
-   }
-   return -1;
-}
-
-int addStringAssignment(Morphism *morphism, int id, string value)
-{
-   Assignment assignment = lookupAssignment(morphism, id);
-   if(assignment.type == NO_ASSIGNMENT) 
-   {
-      HostAtom array[1];
-      array[0].type = 's';
-      array[0].str = value;
-      HostList *list = addHostList(array, 1, false);
-      addAssignment(morphism, id, STRING_ASSIGNMENT, list);
-      return 1;
-   }
-   else
-   {
-      if(assignment.value == NULL) return -1;
-      HostAtom atom = assignment.value->first->atom;
-      if(atom.type == 's' && !strcmp(atom.str, value)) return 0;
-   }
-   return -1;
-}
-
 int getIntegerValue(Morphism *morphism, int id)
 {
    assert(id < morphism->variables);
-   return morphism->assignment[id].value->first->atom.num;
+   return morphism->assignment[id].num;
 }
 
 string getStringValue(Morphism *morphism, int id)
 {
    assert(id < morphism->variables);
-   return morphism->assignment[id].value->first->atom.str;
+   return morphism->assignment[id].str;
 }
 
-HostList *getListValue(Morphism *morphism, int id)
+GP2List getListValue(Morphism *morphism, int id)
 {
    assert(id < morphism->variables);
-   return morphism->assignment[id].value;
+   return morphism->assignment[id];
 }
 
 /* If rule_string is a prefix of host_string, return the position in host_string
@@ -305,9 +293,16 @@ void printMorphism(Morphism *morphism)
       for(index = 0; index < morphism->variables; index++)
       {
          printf("Variable %d -> ", index);
-         HostList *list = morphism->assignment[index].value;
-         if(list == NULL) printf("empty");
-         else printHostList(list->first, stdout);
+         if(morphism->assignment[index].type == 'n') printf("Unassigned");
+         if(morphism->assignment[index].type == 'i') 
+           printf("%d", morphism->assignment[index].num);
+         if(morphism->assignment[index].type == 's')
+           printf("\"%s\"", morphism->assignment[index].str);
+         if(morphism->assignment[index].type == 'l')
+         {
+            if(morphism->assignment[index].list == NULL) printf("empty");
+            else printHostList(morphism->assignment[index].list->first, stdout);
+         }
          printf("\n\n");
       }
    }
@@ -318,17 +313,20 @@ void freeMorphism(Morphism *morphism)
    if(morphism == NULL) return;
    if(morphism->node_map != NULL) free(morphism->node_map);
    if(morphism->edge_map != NULL) free(morphism->edge_map);
-   #ifdef LIST_HASHING
-      if(morphism->assignment != NULL) free(morphism->assignment);
-   #else
-      if(morphism->assignment != NULL)
+   if(morphism->assignment != NULL)
+   {
+      int index;
+      for(index = 0; index < morphism->variables; index++)
       {
-         int index;
-         for(index = 0; index < morphism->variables; index++)
-            removeHostList(morphism->assignment[index].value);
-         free(morphism->assignment);
+         if(morphism->assignment[index].type == 's') 
+            free(morphism->assignment[index].str);
+         #ifdef LIST_HASHING
+            if(morphism->assignment[index].type == 'l')
+               removeHostList(morphism->assignment[index].list);
+         #endif
       }
-   #endif
+      free(morphism->assignment);
+   }
    if(morphism->assigned_variables != NULL) free(morphism->assigned_variables);
    free(morphism);
 }

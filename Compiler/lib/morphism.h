@@ -17,16 +17,6 @@
 #include "globals.h"
 #include "label.h"
 
-typedef enum {NO_ASSIGNMENT = 0, INTEGER_ASSIGNMENT, STRING_ASSIGNMENT,
-              LIST_ASSIGNMENT} AssignmentType;
-/* Association list to represent variable-value mappings. The type of an 
- * assignment is the type of its value. This is either INTEGER_VAR, STRING_VAR
- * or LIST_VAR. */
-typedef struct Assignment {
-   AssignmentType type;
-   HostList *value;
-} Assignment;
-
 typedef struct Map {
    int host_index;
    /* The number of variable-value assignments added by this node map.
@@ -47,7 +37,7 @@ typedef struct Morphism {
    Map *edge_map;
 
    int variables;
-   Assignment *assignment;
+   GP2List *assignment;
 
    /* Stack to record the order of variable assignments during rule matching. */
    int *assigned_variables;
@@ -66,14 +56,6 @@ void addNodeMap(Morphism *morphism, int left_index, int host_index, int assignme
 void removeNodeMap(Morphism *morphism, int left_index);
 void addEdgeMap(Morphism *morphism, int left_index, int host_index, int assignments);
 void removeEdgeMap(Morphism *morphism, int left_index);
-void addAssignment(Morphism *morphism, int id, AssignmentType type, HostList *value);
-void removeAssignments(Morphism *morphism, int number);
-void pushVariableId(Morphism *morphism, int id);
-int popVariableId(Morphism *morphism);
-
-int lookupNode(Morphism *morphism, int left_index);
-int lookupEdge(Morphism *morphism, int left_index);
-Assignment lookupAssignment(Morphism *morphism, int id);
 
 /* Tests a potential variable-value assignment against the assignments in the
  * morphism. If the variable is not in the assignment, its name and value are 
@@ -85,13 +67,20 @@ Assignment lookupAssignment(Morphism *morphism, int id);
  * the passed value.
  * Returns 1 if the variable did not previously exist in the assignment. */
 int addListAssignment(Morphism *morphism, int id, HostList *list);
-int addIntegerAssignment(Morphism *morphism, int id, int value);
+int addIntegerAssignment(Morphism *morphism, int id, int num);
 int addStringAssignment(Morphism *morphism, int id, string value);
 
-/* These functions expect to be passed a variable of the appropriate type. */
+void removeAssignments(Morphism *morphism, int number);
+void pushVariableId(Morphism *morphism, int id);
+int popVariableId(Morphism *morphism);
+
+int lookupNode(Morphism *morphism, int left_index);
+int lookupEdge(Morphism *morphism, int left_index);
+
+/* These functions expect to be passed the id of a variable of the appropriate type. */
 int getIntegerValue(Morphism *morphism, int id);
 string getStringValue(Morphism *morphism, int id);
-HostList *getListValue(Morphism *morphism, int id);
+GP2List getListValue(Morphism *morphism, int id);
 
 /* Used to test string constants in the rule against a host string. If 
  * rule_string is a prefix of the host_string, then the index of the host 
