@@ -15,6 +15,11 @@ default:	$(OBJECTS)
 		./GP2-compile $(prog) $(host)
 		cd ../runtime && make
 
+output-file:	$(OBJECTS)
+		make build
+		./GP2-compile -o $(output) $(prog) $(host)
+		cd ../runtime && make
+
 # Builds everything and runs valgrind on the runtime executable.
 debug:		$(OBJECTS)	
 		make build

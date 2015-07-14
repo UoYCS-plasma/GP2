@@ -115,7 +115,7 @@ static Bucket *makeBucket(HostAtom *array, int length, bool free_strings)
  * host graph parser which requires the strings it parses to be strdup'd (otherwise 
  * things go wrong). Calls to addListToStore in other contexts pass arrays with 
  * automatic strings which should not be freed. */
-HostList *addHostList(HostAtom *array, int length, bool free_strings)
+HostList *makeHostList(HostAtom *array, int length, bool free_strings)
 {
    /* Length 1 lists should not be passed to this function. */
    assert(length != 1);
@@ -206,14 +206,39 @@ HostList *addHostList(HostAtom *array, int length, bool free_strings)
          list = appendHostAtom(list, array[index], free_strings);
       return list;
    #endif
-} 
+}
+
+#ifdef LIST_HASHING
+/* Returns the bucket containing the passed list. */
+static Bucket *getBucket(HostList *list)
+{
+   Bucket *bucket = list_store[list->hash];
+   assert(bucket != NULL);
+   while(bucket != NULL)
+   {
+      if(bucket->list == list) return bucket;
+      bucket = bucket->next;
+   } 
+   return NULL;
+}
+
+void addHostList(HostList *list)
+{
+   if(list == NULL) return;
+   Bucket *bucket = getBucket(list); 
+   /* The passed list is expected to exist in the host table. */
+   assert(bucket != NULL);
+   bucket->reference_count++;
+}
+#endif
 
 void removeHostList(HostList *list)
 {
    if(list == NULL) return;
-   Bucket *bucket = list_store[list->hash];
-   assert(bucket != NULL);
    #ifdef LIST_HASHING
+      Bucket *bucket = getBucket(list); 
+      /* The passed list is expected to exist in the host table. */
+      assert(bucket != NULL);
       bucket->reference_count--;
       if(bucket->reference_count == 0)
       {

@@ -69,14 +69,20 @@ typedef struct Bucket {
 /* Hash table to store lists at runtime. Collisions are handled by separate chaining
  * implemented by singly-linked lists ("buckets" as defined above). Lists are added
  * to the host table by making an array of HostAtoms representing the list and 
- * passing it to addHostList. In this way, each specific list is allocated to heap
+ * passing it to makeHostList. In this way, each specific list is allocated to heap
  * exactly once and has a single point of reference. */
 extern Bucket **list_store;
 
 /* If list hashing is enabled, addHostList returns a pointer to the HostList represented 
  * by the passed array from the hash table (list_store). If not, the function returns a
  * pointer to a newly-allocated HostList. */
-HostList *addHostList(HostAtom *array, int length, bool free_strings);
+HostList *makeHostList(HostAtom *array, int length, bool free_strings);
+/* Expects the passed pointer to exist in the list hash table. Increments the reference
+ * count of the list's bucket. */
+void addHostList(HostList *list);
+/* Expects the passed pointer to exist in the list hash table. Decrements the reference
+ * count of the list's bucket. Deletes/frees the list and its containing bucket if
+ * the new reference count is 0. */
 void removeHostList(HostList *list);
 void removeHostLabel(HostLabel label);
 

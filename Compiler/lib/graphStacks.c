@@ -86,14 +86,13 @@ void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created)
    change.removed_node.label = label;
    /* Keep a record of the list as the removal of the node could free this list
     * or remove its bucket from the hash table. */
+   if(label.list.type == 'l') 
    #ifdef LIST_HASHING
-      if(label.list.type == 'l' && label.list.list != NULL) 
-         list_store[label.list.list->hash]->reference_count++;
-      if(label.list.type == 's') 
-         change.removed_node.label.list.str = strdup(label.list.str);
+      addHostList(label.list.list);
    #else
-      change.removed_node.label.list.list = copyHostList(label..listlist);
+      change.removed_node.label.list.list = copyHostList(label.list.list);
    #endif
+   if(label.list.type == 's') change.removed_node.label.list.str = strdup(label.list.str);
    change.removed_node.index = index;
    change.removed_node.hole_created = hole_created;
    pushGraphChange(change);
@@ -106,14 +105,13 @@ void pushRemovedEdge(HostLabel label, int source, int target, int index, bool ho
    change.removed_edge.label = label;
    /* Keep a record of the list as the removal of the node could free this list
     * or remove its bucket from the hash table. */
+   if(label.list.type == 'l') 
    #ifdef LIST_HASHING
-      if(label.list.type == 'l' && label.list.list != NULL) 
-         list_store[label.list.list->hash]->reference_count++;
-      if(label.list.type == 's') 
-         change.removed_edge.label.list.str = strdup(label.list.str);
+      addHostList(label.list.list);
    #else
       change.removed_edge.label.list.list = copyHostList(label.list.list);
    #endif
+   if(label.list.type == 's') change.removed_edge.label.list.str = strdup(label.list.str);
    change.removed_edge.source = source;
    change.removed_edge.target = target;
    change.removed_edge.index = index;
@@ -129,14 +127,14 @@ void pushRelabelledNode(int index, HostLabel old_label)
    change.relabelled_node.old_label = old_label;
    /* Keep a record of the list as the relabelling of the node could free this
     * list or remove its bucket from the hash table. */
+   if(old_label.list.type == 'l') 
    #ifdef LIST_HASHING
-      if(old_label.list.type == 'l' && old_label.list.list != NULL) 
-         list_store[old_label.list.list->hash]->reference_count++;
-      if(old_label.list.type == 's') 
-         change.relabelled_node.old_label.list.str = strdup(old_label.list.str);
+      addHostList(old_label.list.list);
    #else
       change.relabelled_node.old_label.list.list = copyHostList(old_label.list.list);
    #endif
+   if(old_label.list.type == 's')
+      change.relabelled_node.old_label.list.str = strdup(old_label.list.str);
    pushGraphChange(change);
 }
 
@@ -148,14 +146,14 @@ void pushRelabelledEdge(int index, HostLabel old_label)
    change.relabelled_edge.old_label = old_label;
    /* Keep a record of the list as the relabelling of the edge could free this
     * list or remove its bucket from the hash table. */
+   if(old_label.list.type == 'l') 
    #ifdef LIST_HASHING
-      if(old_label.list.type == 'l' && old_label.list.list != NULL) 
-         list_store[old_label.list.list->hash]->reference_count++;
-      if(old_label.list.type == 's') 
-         change.relabelled_edge.old_label.list.str = strdup(old_label.list.str);
+      addHostList(old_label.list.list);
    #else
       change.relabelled_edge.old_label.list.list = copyHostList(old_label.list.list);
    #endif
+   if(old_label.list.type == 's')
+      change.relabelled_edge.old_label.list.str = strdup(old_label.list.str);
    pushGraphChange(change);
 }
 
@@ -486,33 +484,43 @@ void copyGraph(Graph *graph)
          }
          /* Populate the root nodes list. */
          if(node_copy->root) addRootNode(graph_copy, node_copy->index);
-         #ifndef LIST_HASHING
-            node_copy->label.list = copyHostList(node->label.list);
+         if(node->label.list.type == 'l') 
+         #ifdef LIST_HASHING
+            addHostList(node->label.list.list);
+         #else
+            node_copy->label.list.list = copyHostList(node->label.list.list);
          #endif
+         if(node->label.list.type == 's') 
+            node_copy->label.list.str = strdup(node->label.list.str);
       }
    }
-
-   #ifndef LIST_HASHING
-      for(index = 0; index < graph_copy->edges.size; index++)
+   for(index = 0; index < graph_copy->edges.size; index++)
+   {
+      Edge *edge_copy = getEdge(graph_copy, index);
+      if(edge_copy->index >= 0)
       {
-         Edge *edge_copy = getEdge(graph_copy, index);
-         if(edge_copy->index >= 0)
-         {
-            Edge *edge = getEdge(graph, index);
-            edge_copy->label.list = copyHostList(edge->label.list);
-         }
+         Edge *edge = getEdge(graph, index);
+         if(edge->label.list.type == 'l') 
+         #ifdef LIST_HASHING
+            addHostList(edge->label.list.list);
+         #else
+            edge_copy->label.list.list = copyHostList(edge->label.list.list);
+         #endif
+         if(edge->label.list.type == 's') 
+            edge_copy->label.list.str = strdup(edge->label.list.str);
       }
-   #endif
-
+   }
    graph_stack[graph_stack_index++] = graph_copy;
    graph_copy_count++;
 }
 
-Graph *popGraphs(int restore_point)
+Graph *revertGraph(Graph *current_graph, int restore_point)
 {
    printf("Popping copy of host graph.\n");
    if(graph_stack == NULL) return NULL;
    assert(graph_stack_index >= restore_point);
+   if(graph_stack_index == restore_point) return current_graph;
+   else freeGraph(current_graph);
 
    Graph *graph = NULL;
    while(graph_stack_index > restore_point)

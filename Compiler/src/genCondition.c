@@ -165,11 +165,8 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
                     break;
 
                case ATOM_VAR:
-                    PTFI("GP2List var_%d = assignment_%d;\n", 3, index, index);
-                    break;
-                  
                case LIST_VAR:
-                    PTF("\n");
+                    PTFI("GP2List var_%d = assignment_%d;\n", 3, index, index);
                     break;
                
                default:

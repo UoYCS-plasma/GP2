@@ -109,18 +109,15 @@ int addListAssignment(Morphism *morphism, int id, HostList *list)
    assert(id < morphism->variables);
    if(morphism->assignment[id].type == 'n') 
    {
+      morphism->assignment[id].type = 'l';
       #ifdef LIST_HASHING
-         if(list != NULL)
-         {
-            assert(list_store[list->hash] != NULL);
-            list_store[list->hash]->reference_count++;
-         }
+         addHostList(list);
+         morphism->assignment[id].list = list;
       #else
          HostList *list_copy = copyHostList(list);
+         morphism->assignment[id].list = list_copy;
       #endif
-         morphism->assignment[id].type = 'l';
-         morphism->assignment[id].list = list;
-         pushVariableId(morphism, id);
+      pushVariableId(morphism, id);
       return 1;
    }
    /* Compare the list in the assignment to the list passed to the function. */

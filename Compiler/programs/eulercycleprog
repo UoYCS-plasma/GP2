@@ -1,0 +1,52 @@
+// Input: A graph G containing an eulerian cycle. That is, a cycle of distinct
+// edges containing all nodes and edges in G.
+// Output: The graph G with an eulerian cycle identified via edge numbering.
+
+// The program chooses a node, colours it red, and nondeterministically 
+// colours the whole graph via edges from coloured nodes to uncoloured
+// nodes. Once all the nodes are coloured, if there exists an edge connecting
+// two nodes of the same colour, then the graph is not 2-colourable.
+
+Main = try (init; loop!) then (Cycle; (Next; Cycle)!; clean_up!)
+Cycle = (grow; loop!)!; unmark
+Next = first; loop!
+
+init(a:atom) 
+[ (n0, a) | ] 
+=> 
+[ (n0, a:0 # grey) | ]
+interface = {n0}
+
+loop(a,b:atom; x:list; i:int) 
+[ (n0, a:x:i # grey) | (e0, n0, n0, b) ]
+ => 
+[ (n0, a:x:i+1 # grey) | (e0, n0, n0, b:x:i+1) ]
+interface = {n0}
+
+grow(a,b,c:atom; x,y:list; i:int) 
+[ (n0, a:x:i # grey) (n1, b:y) | (e0, n0, n1, c) ]
+ => 
+[ (n0, a:x:i) (n1, b:x:i+1 # grey) | (e0, n0, n1, c:x:i+1) ]
+interface = {n0, n1}
+
+unmark(x:list) 
+[ (n0, x # grey) | ] 
+=> 
+[ (n0, x) | ]
+interface = {n0}
+
+first(a,b,c:atom; x,y:list) 
+[ (n0, a:x) (n1, b:y) | (e0, n0, n1, c) ]
+ => 
+[ (n0, a:x) (n1, b:x:1 # grey) | (e0, n0, n1, c:x:1) ]
+interface = {n0, n1}
+where length(x) != 0
+
+clean_up(a:atom; x:list) 
+[ (n0, a:x) | ] 
+=> 
+[ (n0, a) | ]
+interface = {n0}
+where length(x) != 0
+
+

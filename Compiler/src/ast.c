@@ -181,6 +181,7 @@ GPCommand *newASTCommandSequence(YYLTYPE location, List *commands)
 {
    GPCommand *command = makeGPCommand(location, COMMAND_SEQUENCE);
    command->commands = commands;
+   command->reversed = false;
    return command;
 }
 

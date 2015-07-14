@@ -182,14 +182,14 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
          PTFI("int result;\n", indent);
          result_declared = true;
       }
-      PTFI("if(label.length == 1)\n", indent + 3);
-      PTFI("{\n", indent + 3);
+      PTFI("if(label.length == 1)\n", indent );
+      PTFI("{\n", indent);
       PTFI("if(label.list.type == 'i') result = "
            "addIntegerAssignment(morphism, %d, label.list.num);\n", 
-           indent + 6, list_variable_id);
+           indent + 3, list_variable_id);
       PTFI("else result = addStringAssignment(morphism, %d, label.list.str);\n",
-           indent + 6, list_variable_id);
-      PTFI("}\n", indent + 3);
+           indent + 3, list_variable_id);
+      PTFI("}\n", indent);
       PTFI("else result = addListAssignment(morphism, %d, label.list.list);\n",
            indent, list_variable_id);
       generateVariableResultCode(rule, list_variable_id, true, indent);
@@ -245,7 +245,11 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
       atom_count++;
       item = item->next;
    }
-
+   if(!result_declared)
+   {
+      PTFI("int result;\n", indent + 3);
+      result_declared = true;
+   }
    item = label.list->last;
    PTFI("HostListItem *start = item;\n", indent + 3);
    int host_atoms_matched = atom_count -1;
@@ -277,12 +281,6 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
       }
    }
    /* Assign the list variable to the rest of the host list. */
-   if(!result_declared)
-   {
-      PTFI("int result;\n", indent + 3);
-      result_declared = true;
-   }
-   PTF("\n");
    PTFI("/* Matching list variable %d. */\n", indent + 3, list_variable_id);
 
    /* All host atoms are matched: assign the empty list to the list variable. */
@@ -312,7 +310,7 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
    PTFI("sublist[list_index++] = iterator->atom;\n", indent + 9);
    PTFI("item = item->next;\n", indent + 9);
    PTFI("}\n", indent + 6);
-   PTFI("HostList *list = addHostList(sublist, label.length - %d, false);\n", indent + 6,  
+   PTFI("HostList *list = makeHostList(sublist, label.length - %d, false);\n", indent + 6,  
       host_atoms_matched);
    PTFI("result = addListAssignment(morphism, %d, list);\n", indent + 6,
          list_variable_id);
@@ -395,10 +393,10 @@ static void generateVariableMatchingCode(Rule *rule, RuleAtom *atom,
            PTFI("/* Matching atom variable %d. */\n", indent, atom->variable.id);
            PTFI("if(%s.type == 'i')\n", indent, host_item);
            PTFI("result = addIntegerAssignment(morphism, %d, %s.num);\n",
-                indent, atom->variable.id, host_item);
-           PTFI("else if(%s.type == 's')\n", indent, host_item);
+                indent + 3, atom->variable.id, host_item);
+           PTFI("else /* %s.type == 's' */\n", indent, host_item);
            PTFI("result = addStringAssignment(morphism, %d, %s.str);\n",
-                indent, atom->variable.id, host_item);
+                indent + 3, atom->variable.id, host_item);
            generateVariableResultCode(rule, atom->variable.id, false, indent);
            break;
 
@@ -582,7 +580,7 @@ void generateVariableResultCode(Rule *rule, int id, bool list_variable, int inde
          if(predicate->negated) PTFI("b%d = false;\n", indent + 6, predicate->bool_id);
          else PTFI("b%d = true;\n", indent + 6, predicate->bool_id);
       }
-      if(!list_variable) PTFI("break;\n", indent + 6);
+      PTFI("break;\n", indent + 6);
       PTFI("}\n", indent + 3);
    }
    if(list_variable) PTFI("match = true;\n", indent + 3);
@@ -732,7 +730,7 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
                  PTFI("else /* var_%d.type == 's' */\n", indent, id);
                  PTFI("{\n", indent);
                  PTFI("array%d[index%d].type = 's';\n", indent + 3, count, count);
-                 PTFI("array%d[index%d++].string = var_%d.str;\n",
+                 PTFI("array%d[index%d++].str = var_%d.str;\n",
                       indent + 3, count, count, id);
                  PTFI("}\n", indent);
               }  
@@ -843,7 +841,7 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
       PTFI("}\n", indent);
       PTFI("else\n", indent);
       PTFI("{\n", indent);
-      PTFI("HostList *list%d = addHostList(array%d, list_length%d, false);\n",
+      PTFI("HostList *list%d = makeHostList(array%d, list_length%d, false);\n",
            indent + 3, count, count, count);
       if(label.mark == ANY)
           PTFI("label = makeListLabel(host_label%d.mark, list_length%d, list%d);\n\n", 

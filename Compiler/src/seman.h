@@ -65,7 +65,9 @@ extern BiEdgeList *bidirectional_edges;
 bool analyseProgram(List *gp_program, bool debug, string program_name);
 
 /* declarationScan traverses the global declaration list and any local 
- * declaration lists. It adds all rule declarations to the symbol table. 
+ * declaration lists. It adds all rule declarations to the symbol table.
+ * It reverses the command sequence lists of procedure declarations (including
+ * Main).
  * Returns true if a name conflict is found, such as two procedures with the
  * same name, or if there is not exactly one Main declaration. 
  *

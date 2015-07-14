@@ -115,7 +115,7 @@ HostLabel: HostList			{ if(length == 1)
 				          }
 					  else
 					  {
-					     host_list = addHostList(array, length, true);
+					     host_list = makeHostList(array, length, true);
 					     $$ = makeListLabel(NONE, length, host_list); 
 					     host_list = NULL;
 					  } 
@@ -130,7 +130,7 @@ HostLabel: HostList			{ if(length == 1)
 				          }
 					  else
 					  {
-					     host_list = addHostList(array, length, true);
+					     host_list = makeHostList(array, length, true);
 					     $$ = makeListLabel($3, length, host_list); 
 					     host_list = NULL;
 					  } 
