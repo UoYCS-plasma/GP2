@@ -217,7 +217,11 @@ void commandScan(GPCommand *command, string scope, List *declarations, bool in_l
    {
       case COMMAND_SEQUENCE: 
       {
-           command->commands = reverse(command->commands);
+           if(!command->reversed)
+           {
+              command->commands = reverse(command->commands);
+              command->reversed = true;
+           }
            List *command_list = command->commands;
 
            while(command_list) 

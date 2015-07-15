@@ -47,6 +47,7 @@ HostList *host_list = NULL;
 
 %union {  
   int num;   /* value of NUM token. */
+  int dnum;   /* value of DNUM token. */
   char *str; /* value of STRING and CHAR tokens. */
   int id;  /* value of NodeID and EdgeID tokens. */
   int mark;  /* enum MarkTypes, value of MARK token. */
@@ -55,6 +56,7 @@ HostList *host_list = NULL;
 /* Single character tokens do not need to be explicitly declared. */
 %token <mark> MARK
 %token <num> NUM 
+%token <dnum> DNUM
 %token <str> STR      
 %token <id> NODE_ID EDGE_ID
 %token ROOT _EMPTY						
@@ -93,7 +95,10 @@ RootNode: /* empty */
 	| ROOT 				{ is_root = true; }
 
  /* Layout information for the editor. This is ignored by the parser. */
-Position: '(' NUM ',' NUM ')'           { } 
+Position: '(' DNUM ',' DNUM ')'         { } 
+        | '(' NUM ',' NUM ')'           { } 
+        | '(' DNUM ',' NUM ')'          { } 
+        | '(' NUM ',' DNUM ')'          { }
 
 HostEdgeList: HostEdge			{ }
             | HostEdgeList HostEdge	{ } 
@@ -101,16 +106,36 @@ HostEdgeList: HostEdge			{ }
 HostEdge: '(' EDGE_ID ',' NODE_ID ',' NODE_ID ',' HostLabel ')'
 					{ addEdge(host, $8, node_map[$4], node_map[$6]); }
 
-HostLabel: HostList			{ host_list = addHostList(array, length, true);
-					  $$ = makeHostLabel(NONE, length, host_list); 
-					  length = 0;
-					  host_list = NULL; }
+HostLabel: HostList			{ if(length == 1)
+					  {
+					     if(array[0].type == 'i')
+					        $$ = makeIntegerLabel(NONE, array[0].num);
+					     if(array[0].type == 's')
+					        $$ = makeStringLabel(NONE, array[0].str);
+				          }
+					  else
+					  {
+					     host_list = makeHostList(array, length, true);
+					     $$ = makeListLabel(NONE, length, host_list); 
+					     host_list = NULL;
+					  } 
+					  length = 0; }
          | _EMPTY			{ $$ = blank_label; }
-         | HostList '#' MARK	  	{ host_list = addHostList(array, length, true); 
-                                          $$ = makeHostLabel($3, length, host_list); 
-					  length = 0;
-					  host_list = NULL; }
-         | _EMPTY '#' MARK	  	{ $$ = makeEmptyLabel($3);  }
+         | HostList '#' MARK	  	{ if(length == 1) 
+					  {
+					     if(array[0].type == 'i')
+					        $$ = makeIntegerLabel($3, array[0].num);
+					     if(array[0].type == 's')
+					        $$ = makeStringLabel($3, array[0].str);
+				          }
+					  else
+					  {
+					     host_list = makeHostList(array, length, true);
+					     $$ = makeListLabel($3, length, host_list); 
+					     host_list = NULL;
+					  } 
+					  length = 0; }
+         | _EMPTY '#' MARK	  	{ $$ = makeEmptyLabel($3); }
 
 HostList: HostAtom 			{ assert(length == 0);
 					  array[length++] = $1; } 
@@ -118,9 +143,9 @@ HostList: HostAtom 			{ assert(length == 0);
 
 
 HostAtom: NUM 				{ $$.type = 'i'; 
-					  $$.num = $1;}
+					  $$.num = $1; }
         | '-' NUM 	 	        { $$.type  = 'i'; 
-					  $$.num = -($2);}
+					  $$.num = -($2); }
         | STR 				{ $$.type = 's'; 
 					  $$.str = $1; }
 %%

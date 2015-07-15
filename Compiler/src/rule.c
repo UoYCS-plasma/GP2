@@ -272,7 +272,8 @@ bool isPredicate(Rule *rule)
    for(index = 0; index < rule->rhs->node_index; index++)
    {
       RuleNode *node = getRuleNode(rule->rhs, index);
-      if(node->relabelled || node->remarked || node->interface == NULL) return false;
+      if(node->relabelled || node->remarked || node->root_changed ||
+         node->interface == NULL) return false;
    }
    for(index = 0; index < rule->rhs->edge_index; index++)
    {

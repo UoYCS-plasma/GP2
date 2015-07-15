@@ -892,6 +892,7 @@ void generateApplicationCode(Rule *rule)
                     6, index);
                PTFI("relabelEdge(host, host_edge_index, label);\n", 6);
                PTFI("}\n", 3);
+               PTFI("else removeHostLabel(label);\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
              * component of the label). */
@@ -955,14 +956,13 @@ void generateApplicationCode(Rule *rule)
                else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
                
                /* If the two labels are equal, no relabelling needs to be done. */
-               PTFI("bool relabel_node%d = !equalHostLabels(label_n%d, label);\n", 3, 
-                    index, index);
-               PTFI("if(relabel_node%d)\n", 3, index);
+               PTFI("if(!equalHostLabels(label_n%d, label))\n", 3, index);
                PTFI("{\n", 3);
                PTFI("if(record_changes) pushRelabelledNode(host_node_index, label_n%d);\n",
                     6, index);
                PTFI("relabelNode(host, host_node_index, label);\n", 6);
                PTFI("}\n", 3);
+               PTFI("else removeHostLabel(label);\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
              * component of the label). */

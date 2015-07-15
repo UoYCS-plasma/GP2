@@ -104,7 +104,10 @@ typedef struct GPCommand {
   CommandType type;
   YYLTYPE location;
   union {    
-    struct List *commands; 		/* COMMAND_SEQUENCE */
+    struct {
+       List *commands; 	        	/* COMMAND_SEQUENCE */
+       bool reversed;
+    };
     struct {
        string rule_name; 
        struct GPRule *rule;   

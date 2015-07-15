@@ -204,7 +204,7 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
         PTF("   printf(\"Output graph saved to file ../gp2.output.\\n\");\n");
    else PTF("   printf(\"Output graph saved to file %s.\\n\");\n", output_file);
    PTF("   garbageCollect();\n");
-   PTF("   printf(\"Graph changes made: %%d\\n\", graph_change_count);\n");
+   PTF("   printf(\"Graph changes recorded: %%d\\n\", graph_change_count);\n");
    PTF("   fclose(output_file);\n");
    PTF("   return 0;\n");
    PTF("}\n\n");
@@ -642,6 +642,7 @@ static void generateFailureCode(string rule_name, CommandData data)
       else PTFI("fprintf(output_file, \"No output graph: Fail statement invoked\\n\");\n",
                 data.indent);
       PTFI("garbageCollect();\n", data.indent);
+      PTFI("fclose(output_file);\n", data.indent);
       PTFI("return 0;\n", data.indent);
    }
    /* In other contexts, set the runtime success flag to false. */

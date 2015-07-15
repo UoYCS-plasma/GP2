@@ -1,8 +1,8 @@
 #include "graph.h"
 
-Node dummy_node = {-1, false, {NONE, 0, NULL}, 0, 0, -1, -1, -1, -1, 
+Node dummy_node = {-1, false, {NONE, 0, {'n', {0}}}, 0, 0, -1, -1, -1, -1, 
                    {0, 0, NULL}, {0, 0, NULL}, false};
-Edge dummy_edge = {-1, {NONE, 0, NULL}, -1, -1, false};
+Edge dummy_edge = {-1, {NONE, 0, {'n', {0}}}, -1, -1, false};
 
 IntArray makeIntArray(int initial_capacity)
 {
@@ -280,7 +280,7 @@ void removeNode(Graph *graph, int index)
    if(node->in_edges.items != NULL) free(node->in_edges.items); 
    if(node->root) removeRootNode(graph, index);
 
-   removeHostList(node->label.list);
+   removeHostLabel(node->label);
    
    removeFromNodeArray(&(graph->nodes), index);
    graph->number_of_nodes--;
@@ -317,7 +317,7 @@ void removeEdge(Graph *graph, int index)
    else removeFromIntArray(&(target->in_edges), index);
    target->indegree--;
 
-   removeHostList(graph->edges.items[index].label.list);
+   removeHostLabel(graph->edges.items[index].label);
 
    removeFromEdgeArray(&(graph->edges), index);
    graph->number_of_edges--;
@@ -325,7 +325,7 @@ void removeEdge(Graph *graph, int index)
 
 void relabelNode(Graph *graph, int index, HostLabel new_label) 
 {
-   removeHostList(graph->nodes.items[index].label.list);
+   removeHostLabel(graph->nodes.items[index].label);
    graph->nodes.items[index].label = new_label;
 }
 
@@ -349,7 +349,7 @@ void resetMatchedNodeFlag(Graph *graph, int index)
 
 void relabelEdge(Graph *graph, int index, HostLabel new_label)
 {	
-   removeHostList(graph->edges.items[index].label.list);
+   removeHostLabel(graph->edges.items[index].label);
    graph->edges.items[index].label = new_label;
 }
 
@@ -505,7 +505,7 @@ void freeGraph(Graph *graph)
       if(node == NULL) continue;
       if(node->out_edges.items != NULL) free(node->out_edges.items);
       if(node->in_edges.items != NULL) free(node->in_edges.items);
-      removeHostList(node->label.list);
+      removeHostLabel(node->label);
    }
    if(graph->nodes.holes.items) free(graph->nodes.holes.items);
    if(graph->nodes.items) free(graph->nodes.items);
@@ -514,7 +514,7 @@ void freeGraph(Graph *graph)
    {
       Edge *edge = getEdge(graph, index);
       if(edge == NULL) continue;
-      removeHostList(edge->label.list);
+      removeHostLabel(edge->label);
    }
    if(graph->edges.holes.items) free(graph->edges.holes.items);
    if(graph->edges.items) free(graph->edges.items);
