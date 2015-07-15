@@ -32,8 +32,8 @@ typedef struct Node {
 	long loops;
 	long matchedLoops;
 	DList index;
-	DList outedges;
-	DList inedges;
+	DList outEdges;
+	DList inEdges;
 } Node;
 
 typedef struct Edge {
@@ -117,7 +117,14 @@ void removeElem(DList *elem) {
 #define outChain(e) (&(e)->outList)
 #define inChain(e)  (&(e)->inList)
 
-#define chain(n) (&(n)->index)
+#define chain(n)    (&(n)->index)
+#define out(n)      (&(n)->outEdges)
+#define in(n)       (&(n)->inEdges)
+
+#define indeg(n)    (in(n)->data.count)
+#define outdeg(n)   (out(n)->data.count)
+#define loopdeg(n)  ((n)->loops)
+
 
 #define index(sig) &(g.idx[sig])
 
