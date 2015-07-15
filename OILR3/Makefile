@@ -1,4 +1,4 @@
-CC=gcc -g -Wall -Werror
+CC=gcc -g -O2 -Wall -Werror
 
 TARGETS=oilrrt.a
 OBJS=graph.o
@@ -18,6 +18,9 @@ testGraph : testGraph.o $(OBJS)
 
 %.o : %.c $(HEADERS)
 	$(CC) -c $<
+
+count :
+	egrep -v '^[ \t]*(//.*)?$$' oilrrt.c | wc -l
 
 clean :
 	rm -f *.o $(TARGETS) a.out
