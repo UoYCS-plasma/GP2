@@ -4,6 +4,13 @@
 #define OILR_INDEX_SIZE (1<<3)
 #define DEFAULT_POOL_SIZE (1024)
 
+/////////////////////////////////////////////////////////
+// graph structure
+
+#define signature(n) 0
+
+/////////////////////////////////////////////////////////
+// graph structure
 
 struct Node;
 struct Edge;
@@ -14,16 +21,14 @@ typedef union ListPayload {
 		long count;
 } ListPayload ;
 
-
 typedef struct DList {
-	// Doubly-linked list
 	union ListPayload data;
+	struct DList *head;
 	struct DList *next;
 	struct DList *prev;
 } DList;
 
 typedef struct Node {
-	long sig;
 	long loops;
 	long matchedLoops;
 	DList index;
@@ -45,11 +50,20 @@ typedef union Nodge {
 	union Nodge *free;
 } Nodge;
 
-
 typedef struct Graph {
+	long freeId;
 	Nodge *pool;
+	Nodge *freeList;
 	DList idx[OILR_INDEX_SIZE];
 } Graph;
+
+typedef struct Trav {
+	Node *nMatch;
+	Edge *eMatch;
+	long *spc;
+} Trav;
+
+Graph g;
 
 
 /////////////////////////////////////////////////////////
@@ -58,35 +72,109 @@ typedef struct Graph {
 #define nextElem(dl) ((dl)->next)
 #define prevElem(dl) ((dl)->prev)
 
-void headInsertElem(DList *dl, DList *elem) {
+void prependElem(DList *dl, DList *elem) {
+	elem->head = dl;
 	elem->prev = NULL ;
 	elem->next = dl->next;
 	dl->next->prev = elem;
 	dl->next = elem;
+	dl->data.count++;
+}
+void appendElem(DList *dl, DList *elem) {
+	elem->head = dl;
+	elem->prev = dl->prev;
+	elem->next = NULL;
+	dl->prev->next = elem;
+	dl->prev = elem;
+	dl->data.count++;
 }
 
 void removeElem(DList *elem) {
+	DList *dl = elem->head;
 	DList *nx = elem->next;
 	DList *pv = elem->prev;
-	if (nx) nx->prev = pv;
-	if (pv) pv->next = nx;
+	
+	if (nx)
+		nx->prev = pv;
+	else
+		dl->prev = pv;
+
+	if (pv)
+		pv->next = nx;
+	else
+		dl->next = nx;
+
 	elem->next = NULL;
 	elem->prev = NULL;
+	dl->data.count--;
 }
 
+/////////////////////////////////////////////////////////
+// graph traversal
+
+#define source(e) ((e)->src)
+#define target(e) ((e)->tgt)
+#define outChain(e) (&(e)->outList)
+#define inChain(e)  (&(e)->inList)
+
+#define chain(n) (&(n)->index)
+
+#define index(sig) &(g.idx[sig])
+
+/////////////////////////////////////////////////////////
+// graph manipulation
+
+void freeNodge(Nodge *ne) {
+	ne->free = g.freeList;
+	g.freeList = ne;
+}
+#define freeEdge(e) do { freeNodge( (Nodge *) (e) ); } while (0);
+#define freeNode(n) do { freeNodge( (Nodge *) (n) ); } while (0);
 
 
+void indexNode(Node *n) {
+	long sig = signature(n);
+	prependElem(index(sig), chain(n));
+}
+void unindexNode(Node *n) {
+	removeElem(chain(n));
+}
 
+Nodge *allocNodge() {
+	Nodge *ne = g.freeList;
+	if (ne == NULL) {
+		ne = &(g.pool[g.freeId++]);
+	} else {
+		g.freeList = ne->free;
+	}
+	return ne;
+}
 
+void addNode() {
+	Node *n = &(allocNodge())->n;
+}
 
+void addEdge(Node *src, Node *tgt) {
+}
 
+void deleteNode(Node *n) {
+}
+void deleteEdge(Edge *e) {
+	Node *src = source(e);
+	Node *tgt = target(e);
+	unindexNode(src);
+	unindexNode(tgt);
+	removeElem(outChain(e));
+	removeElem(inChain(e));
+	freeEdge(e);
+	indexNode(src);
+	indexNode(tgt);
+}
 
 
 
 /////////////////////////////////////////////////////////
 // main
-
-Graph g;
 
 int main(int argc, char **argv) {
 	g.pool = malloc(sizeof(Nodge) * DEFAULT_POOL_SIZE);
