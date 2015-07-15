@@ -168,14 +168,12 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTFI("return 0;\n", 6);
    PTFI("}\n", 3);
 
-   PTFI("/* Output File. */\n", 3);
-   if(output_file == NULL)
-        PTFI("FILE *output_file = fopen(\"../gp2.output\", \"w\");\n", 3);
-   else PTFI("FILE *output_file = fopen(\"%s\", \"w\");\n", 3, output_file); 
+   if(output_file == NULL) PTFI("string output = \"../gp2.output\";\n", 3);
+   else PTFI("string output = \"%s\";\n", 3, output_file);
+   PTFI("FILE *output_file = fopen(output, \"w\");\n", 3);
    PTFI("if(output_file == NULL)\n", 3);
    PTFI("{\n", 3);
-   if(output_file == NULL) PTFI("perror(\"../gp2.output\");\n", 6);
-   else PTFI("perror(\"%s\");\n", 6, output_file);
+   PTFI("perror(output);\n", 6);
    PTFI("exit(1);\n", 6);
    PTFI("}\n", 3);
 
@@ -200,9 +198,7 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
       iterator = iterator->next;
    }
    PTF("   printGraph(host, output_file);\n");
-   if(output_file == NULL) 
-        PTF("   printf(\"Output graph saved to file ../gp2.output.\\n\");\n");
-   else PTF("   printf(\"Output graph saved to file %s.\\n\");\n", output_file);
+   PTF("   printf(\"Output graph saved to file %%s\\n\", output);\n");
    PTF("   garbageCollect();\n");
    PTF("   printf(\"Graph changes recorded: %%d\\n\", graph_change_count);\n");
    PTF("   fclose(output_file);\n");
@@ -641,7 +637,9 @@ static void generateFailureCode(string rule_name, CommandData data)
               data.indent, rule_name);
       else PTFI("fprintf(output_file, \"No output graph: Fail statement invoked\\n\");\n",
                 data.indent);
+      PTFI("printf(\"Output information saved to file %%s\\n\", output);\n", data.indent);
       PTFI("garbageCollect();\n", data.indent);
+      PTFI("printf(\"Graph changes recorded: %%d\\n\", graph_change_count);\n", data.indent);
       PTFI("fclose(output_file);\n", data.indent);
       PTFI("return 0;\n", data.indent);
    }
