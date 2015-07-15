@@ -65,6 +65,25 @@ typedef struct Trav {
 
 Graph g;
 
+/////////////////////////////////////////////////////////
+// stack-machine
+
+#define DS_SIZE 16
+long ds[DS_SIZE];
+long *dsp = ds;
+long boolFlag = 0;
+
+#define POP    (*(dsp--))
+#define TOS    (*(dsp))
+#define LIT(n) do { *(++dsp) = (n); } while (0);
+#define ADD    do { long sum = POP + TOS ; TOS = sum; } while (0);
+#define SUB    do { long val = POP ; TOS = TOS - val; } while (0);
+#define SHL    do { long bits = POP ; TOS = TOS << bits } while (0);
+#define SHR    do { long bits = POP ; TOS = TOS >> bits } while (0);
+#define LT     do { boolFlag = ( POP >= POP ); } while (0);
+#define GT     do { boolFlag = ( POP <= POP ); } while (0);
+#define EMIT   do { printf("%ld\n", POP); } while (0);
+
 
 /////////////////////////////////////////////////////////
 // doubly-linked list support
@@ -80,14 +99,14 @@ void prependElem(DList *dl, DList *elem) {
 	dl->next = elem;
 	dl->data.count++;
 }
-void appendElem(DList *dl, DList *elem) {
-	elem->head = dl;
-	elem->prev = dl->prev;
-	elem->next = NULL;
-	dl->prev->next = elem;
-	dl->prev = elem;
-	dl->data.count++;
-}
+// void appendElem(DList *dl, DList *elem) {
+// 	elem->head = dl;
+// 	elem->prev = dl->prev;
+// 	elem->next = NULL;
+// 	dl->prev->next = elem;
+// 	dl->prev = elem;
+// 	dl->data.count++;
+// }
 
 void removeElem(DList *elem) {
 	DList *dl = elem->head;
@@ -112,8 +131,8 @@ void removeElem(DList *elem) {
 /////////////////////////////////////////////////////////
 // graph traversal
 
-#define source(e) ((e)->src)
-#define target(e) ((e)->tgt)
+#define source(e)   ((e)->src)
+#define target(e)   ((e)->tgt)
 #define outChain(e) (&(e)->outList)
 #define inChain(e)  (&(e)->inList)
 
@@ -124,7 +143,6 @@ void removeElem(DList *elem) {
 #define indeg(n)    (in(n)->data.count)
 #define outdeg(n)   (out(n)->data.count)
 #define loopdeg(n)  ((n)->loops)
-
 
 #define index(sig) &(g.idx[sig])
 
@@ -156,15 +174,31 @@ Nodge *allocNodge() {
 	}
 	return ne;
 }
+#define allocNode() &( allocNodge()->n ) 
+#define allocEdge() &( allocNodge()->e )
 
 void addNode() {
-	Node *n = &(allocNodge())->n;
+	Node *n = allocNode();
+	indexNode(n);
 }
 
 void addEdge(Node *src, Node *tgt) {
+	Edge *e = allocEdge();
+	unindexNode(src);
+	unindexNode(tgt);
+	prependElem( out(src), outChain(e) );
+	prependElem( in(tgt), inChain(e) );
+	indexNode(src);
+	indexNode(tgt);
 }
 
 void deleteNode(Node *n) {
+	if (indeg(n) + outdeg(n) + loopdeg(n)) {
+		printf("Dangling condition violated\n");
+		exit(1);
+	}
+	unindexNode(n);
+	freeNode(n);
 }
 void deleteEdge(Edge *e) {
 	Node *src = source(e);
@@ -187,6 +221,11 @@ int main(int argc, char **argv) {
 	g.pool = malloc(sizeof(Nodge) * DEFAULT_POOL_SIZE);
 	if (!g.pool)
 		exit(1);
+
+	// LIT(1) LIT(2) LIT(3) ADD ADD LIT(3) SUB EMIT
+	LIT(3) LIT(2) LT
+	printf("boolFlag: %ld\n", boolFlag);
+	
 	printf("Node: %ld, Edge: %ld, Nodge: %ld\n", sizeof(Node), sizeof(Edge), sizeof(Nodge));
 	free(g.pool);
 	return 0;
