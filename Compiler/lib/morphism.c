@@ -62,7 +62,7 @@ void initialiseMorphism(Morphism *morphism)
 { 
    int index;
    for(index = 0; index < morphism->nodes; index++)
-   {
+   { 
       morphism->node_map[index].host_index = -1;
       morphism->node_map[index].assignments = 0;
    }

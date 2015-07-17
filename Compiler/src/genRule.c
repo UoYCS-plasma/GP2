@@ -1,6 +1,6 @@
 #include "genRule.h"
 
-static void generateMatchingCode(Rule *rule);
+static void generateMatchingCode(Rule *rule, bool predicate);
 static void emitDegreeCheck(RuleNode *left_node, int indent);
 static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op);
 static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op);
@@ -101,7 +101,7 @@ void generateRuleCode(Rule *rule, bool predicate)
    }
    if(rule->lhs != NULL) 
    {
-      generateMatchingCode(rule);
+      generateMatchingCode(rule, predicate);
       if(!predicate)
       {
          if(rule->rhs == NULL) generateRemoveLHSCode(rule->name);
@@ -117,7 +117,7 @@ void generateRuleCode(Rule *rule, bool predicate)
    return;
 }
 
-static void generateMatchingCode(Rule *rule)
+static void generateMatchingCode(Rule *rule, bool predicate)
 {
    searchplan = generateSearchplan(rule->lhs); 
    if(searchplan->first == NULL)
@@ -167,7 +167,27 @@ static void generateMatchingCode(Rule *rule)
    PTFI("if(%d > host->number_of_nodes || %d > host->number_of_edges) return false;\n",
         3, rule->lhs->node_index, rule->lhs->edge_index);
    char item = searchplan->first->is_node ? 'n' : 'e';
-   PTFI("if(match_%c%d(morphism)) return true;\n", 3, item, searchplan->first->index);
+   PTFI("bool match = match_%c%d(morphism);\n", 3, item, searchplan->first->index);
+   if(predicate)
+   {
+      /* Reset the matched flags in the host graph. This is normally done during
+       * rule application, but predicate rules are not applied! */
+      PTFI("int index;\n", 3);
+      PTFI("for(index = 0; index < %d; index++)\n", 3, rule->lhs->node_index);
+      PTFI("{\n", 3);
+      PTFI("int host_node_index = lookupNode(morphism, index);\n", 6);
+      PTFI("if(host_node_index >= 0) resetMatchedNodeFlag(host, host_node_index);\n", 6);
+      PTFI("}\n", 3);
+      if(rule->lhs->edge_index > 0)
+      {
+         PTFI("for(index = 0; index < %d; index++)\n", 3, rule->lhs->edge_index);
+         PTFI("{\n", 3);
+         PTFI("int host_edge_index = lookupEdge(morphism, index);\n", 6);
+         PTFI("if(host_edge_index >= 0) resetMatchedEdgeFlag(host, host_edge_index);\n", 6);
+         PTFI("}\n", 3);
+      }
+   }
+   PTFI("if(match) return true;\n", 3);
    PTFI("else\n", 3);
    PTFI("{\n", 3);
    PTFI("initialiseMorphism(morphism);\n", 6);

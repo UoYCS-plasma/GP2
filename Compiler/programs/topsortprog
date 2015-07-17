@@ -13,12 +13,12 @@
 //     each assignment.
 // (4) Systematically "hide" edges (by dashing them) from grey nodes to unmarked 
 //     nodes. When a grey node has exactly 1 incoming unmarked edge (known from its
-//     label), assign it the  next number in the ordering. This prevents a grey node
+//     label), assign it the next number in the ordering. This prevents a grey node
 //     from being assigned a number before another grey node that "points to it" via 
 //     an edge.
 // (5) When all nodes have been assigned, clean up the junk.
 //
-// You might be wondering why we label the nodes with their indegree when the "indeg"
+// You might be wondering the nodes are labelled with their indegree when the "indeg"
 // operator exists. The indegree we consider here is the indegree of non-dashed edges.
 // This cannot be captured by an operator, so we use the node label instead. Node 
 // labels are initialised with their indegrees, using the "indeg" operator. Once an
@@ -40,18 +40,17 @@ interface = { }
 add_indeg(x:list)
 [ (n0, x) | ]
 =>
-[ (n0, x:indeg(n0) # grey) | ]
+[ (n0, indeg(n0):x # grey) | ]
 interface = {n0}
 
-// Labels an indegree 0 node with the number from the root node.
-// Connects the nodes with a red edge.
+// Labels an indegree 0 node with the number from the root node and connects the nodes.
 num_source(x:list; i:int)
 [ (n0(R), i # red) (n1, 0:x # grey) | ]
 =>
-[ (n0(R), i+1 # red) (n1, i:x) | ]
+[ (n0(R), + i+1 # red) (n1, i:x) | ]
 interface = {n0, n1}
 
-// Assigns the next number in the ordering to an node labelled 1.
+// Assigns the next number in the ordering to a node labelled 1.
 number(a,x,y:list; i:int)
 [ (n0(R), i # red) (n1, x) (n2, 1:y # grey) |
   (e1, n1, n2, a) ]
@@ -65,17 +64,18 @@ hide_edge(a,x,y:list; d,i:int)
 [ (n0(R), i # red) (n1, x) (n2, d:y # grey) |
   (e1, n1, n2, a) ]
 =>
-[ (n0(R), i # red) (n1, x) (n2, d-1:y) |
+[ (n0(R), i # red) (n1, x) (n2, d-1:y # grey) |
   (e1, n1, n2, a # dashed) ]
 interface = {n0, n1, n2}
+where d > 1
 
 undo1(a,x,y:list; i:int)
-[ (n0(R), i # red) (n1, x) (n2, y) |
-  (e1, n1, n2, a # dashed) ]
+[ (n0, x) (n1, y) |
+  (e0, n0, n1, a # dashed) ]
 =>
-[ (n0(R), i # red) (n1, x) (n2, y) |
-  (e1, n1, n2, a) ]
-interface = {n0, n1, n2}
+[ (n0, x) (n1, y) |
+  (e0, n0, n1, a) ]
+interface = {n0, n1}
 
 undo2(i:int)
 [ (n0(R), i # red) | ]
