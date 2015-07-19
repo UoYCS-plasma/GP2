@@ -92,10 +92,12 @@ long boolFlag = 0;
 #define prevElem(dl) ((dl)->prev)
 
 void prependElem(DList *dl, DList *elem) {
+	DList *nx = dl->next;
 	elem->head = dl;
 	elem->prev = NULL ;
-	elem->next = dl->next;
-	dl->next->prev = elem;
+	elem->next = nx;
+	if (nx)
+		dl->next->prev = elem;
 	dl->next = elem;
 	dl->data.count++;
 }
@@ -136,12 +138,12 @@ void removeElem(DList *elem) {
 #define outChain(e) (&(e)->outList)
 #define inChain(e)  (&(e)->inList)
 
-#define chain(n)    (&(n)->index)
-#define out(n)      (&(n)->outEdges)
-#define in(n)       (&(n)->inEdges)
+#define chainFor(n)        (&(n)->index)
+#define outListFor(n)      (&(n)->outEdges)
+#define inListFor(n)       (&(n)->inEdges)
 
-#define indeg(n)    (in(n)->data.count)
-#define outdeg(n)   (out(n)->data.count)
+#define indeg(n)    (inListFor(n)->data.count)
+#define outdeg(n)   (outListFor(n)->data.count)
 #define loopdeg(n)  ((n)->loops)
 
 #define index(sig) &(g.idx[sig])
@@ -159,10 +161,10 @@ void freeNodge(Nodge *ne) {
 
 void indexNode(Node *n) {
 	long sig = signature(n);
-	prependElem(index(sig), chain(n));
+	prependElem(index(sig), chainFor(n));
 }
 void unindexNode(Node *n) {
-	removeElem(chain(n));
+	removeElem(chainFor(n));
 }
 
 Nodge *allocNodge() {
@@ -186,8 +188,8 @@ void addEdge(Node *src, Node *tgt) {
 	Edge *e = allocEdge();
 	unindexNode(src);
 	unindexNode(tgt);
-	prependElem( out(src), outChain(e) );
-	prependElem( in(tgt), inChain(e) );
+	prependElem( outListFor(src), outChain(e) );
+	prependElem( inListFor(tgt), inChain(e) );
 	indexNode(src);
 	indexNode(tgt);
 }
@@ -213,6 +215,38 @@ void deleteEdge(Edge *e) {
 }
 
 
+/////////////////////////////////////////////////////////
+// utilities
+
+void dumpGraph() {
+	long i, edgeCount=0, nodeCount=0;
+	DList *index;
+	Node *n;
+	printf("[\n");
+	// Dump nodes
+	for (i=0; i<OILR_INDEX_SIZE; i++) {
+		index = &(g.idx[i]);
+		while (index = nextElem(index)) {
+			n = index->data.node;
+			printf("\t( n%ld, empty)\n", nodeCount++);
+		}
+	}
+	printf("|\n");
+	// Dump edges
+	nodeCount=0;
+	for (i=0; i<OILR_INDEX_SIZE; i++) {
+		index = &(g.idx[i]);
+		while (index = nextElem(index)) {
+			n = index->data.node;
+			out = outListFor(n);
+			while (out = nextElem(out)) {
+				printf("\t( n%ld, empty)\n", nodeCount++);
+			}
+		}
+	}
+	printf("]\n");
+}
+
 
 /////////////////////////////////////////////////////////
 // main
@@ -227,6 +261,8 @@ int main(int argc, char **argv) {
 	printf("boolFlag: %ld\n", boolFlag);
 	
 	printf("Node: %ld, Edge: %ld, Nodge: %ld\n", sizeof(Node), sizeof(Edge), sizeof(Nodge));
+	addNode();
+	dumpGraph();
 	free(g.pool);
 	return 0;
 }
