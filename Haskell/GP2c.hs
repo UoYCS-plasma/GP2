@@ -7,12 +7,14 @@ import System.Console.GetOpt
 import ParseProgram
 import ParseGraph
 import Text.Parsec
-import OilrMachine.Instructions
+
+import OILR3.Instructions
+{- import OilrMachine.Instructions
 import OilrMachine.Compile
 -- import OilrMachine.Analysis
 -- import OilrMachine.HostCompile
 import OilrMachine.NullBackend
-import OilrMachine.CBackend
+import OilrMachine.CBackend -}
 
 import GPSyntax -- debug code
 
