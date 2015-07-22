@@ -36,7 +36,7 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
    morphism->variable_index = 0;
    if(variables > 0) 
    {
-      morphism->assignment = calloc(variables, sizeof(GP2List));
+      morphism->assignment = calloc(variables, sizeof(Assignment));
       if(morphism->assignment == NULL)
       {
          print_to_log("Error (makeMorphism): malloc failure.\n");
@@ -231,10 +231,24 @@ string getStringValue(Morphism *morphism, int id)
    return morphism->assignment[id].str;
 }
 
-GP2List getListValue(Morphism *morphism, int id)
+Assignment getAssignment(Morphism *morphism, int id)
 {
    assert(id < morphism->variables);
    return morphism->assignment[id];
+}
+
+int getAssignmentLength(Assignment assignment)
+{
+   if(assignment.type != 'l') return 1;
+   if(assignment.list == NULL) return 0;
+   HostListItem *item = assignment.list->first;
+   int length = 0;
+   while(item != NULL) 
+   {
+      length++;
+      item = item->next;
+   }
+   return length;
 }
 
 /* If rule_string is a prefix of host_string, return the position in host_string

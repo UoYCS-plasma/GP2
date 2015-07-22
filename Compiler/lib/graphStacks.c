@@ -86,13 +86,11 @@ void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created)
    change.removed_node.label = label;
    /* Keep a record of the list as the removal of the node could free this list
     * or remove its bucket from the hash table. */
-   if(label.list.type == 'l') 
    #ifdef LIST_HASHING
-      addHostList(label.list.list);
+      addHostList(label.list);
    #else
-      change.removed_node.label.list.list = copyHostList(label.list.list);
+      change.removed_node.label.list = copyHostList(label.list);
    #endif
-   if(label.list.type == 's') change.removed_node.label.list.str = strdup(label.list.str);
    change.removed_node.index = index;
    change.removed_node.hole_created = hole_created;
    pushGraphChange(change);
@@ -105,13 +103,11 @@ void pushRemovedEdge(HostLabel label, int source, int target, int index, bool ho
    change.removed_edge.label = label;
    /* Keep a record of the list as the removal of the node could free this list
     * or remove its bucket from the hash table. */
-   if(label.list.type == 'l') 
    #ifdef LIST_HASHING
-      addHostList(label.list.list);
+      addHostList(label.list);
    #else
-      change.removed_edge.label.list.list = copyHostList(label.list.list);
+      change.removed_edge.label.list = copyHostList(label.list);
    #endif
-   if(label.list.type == 's') change.removed_edge.label.list.str = strdup(label.list.str);
    change.removed_edge.source = source;
    change.removed_edge.target = target;
    change.removed_edge.index = index;
@@ -127,14 +123,11 @@ void pushRelabelledNode(int index, HostLabel old_label)
    change.relabelled_node.old_label = old_label;
    /* Keep a record of the list as the relabelling of the node could free this
     * list or remove its bucket from the hash table. */
-   if(old_label.list.type == 'l') 
    #ifdef LIST_HASHING
-      addHostList(old_label.list.list);
+      addHostList(old_label.list);
    #else
-      change.relabelled_node.old_label.list.list = copyHostList(old_label.list.list);
+      change.relabelled_node.old_label.list = copyHostList(old_label.list);
    #endif
-   if(old_label.list.type == 's')
-      change.relabelled_node.old_label.list.str = strdup(old_label.list.str);
    pushGraphChange(change);
 }
 
@@ -146,14 +139,11 @@ void pushRelabelledEdge(int index, HostLabel old_label)
    change.relabelled_edge.old_label = old_label;
    /* Keep a record of the list as the relabelling of the edge could free this
     * list or remove its bucket from the hash table. */
-   if(old_label.list.type == 'l') 
    #ifdef LIST_HASHING
-      addHostList(old_label.list.list);
+      addHostList(old_label.list);
    #else
-      change.relabelled_edge.old_label.list.list = copyHostList(old_label.list.list);
+      change.relabelled_edge.old_label.list = copyHostList(old_label.list);
    #endif
-   if(old_label.list.type == 's')
-      change.relabelled_edge.old_label.list.str = strdup(old_label.list.str);
    pushGraphChange(change);
 }
 
@@ -205,7 +195,7 @@ void undoChanges(Graph *graph, int restore_point)
               if(node->out_edges.items != NULL) free(node->out_edges.items);
               if(node->in_edges.items != NULL) free(node->in_edges.items); 
               if(node->root) removeRootNode(graph, index);
-              removeHostLabel(node->label);
+              removeHostList(node->label.list);
 
               if(change.added_node.hole_filled) 
                  graph->nodes.holes.items[graph->nodes.holes.size++] = index;
@@ -232,7 +222,7 @@ void undoChanges(Graph *graph, int restore_point)
               else if(target->second_in_edge == index) target->second_in_edge = -1;
               else removeFromIntArray(&(target->in_edges), index);
               target->indegree--;
-              removeHostLabel(edge->label);
+              removeHostList(edge->label.list);
 
               if(change.added_edge.hole_filled)
                  graph->edges.holes.items[graph->edges.holes.size++] = index;
@@ -343,19 +333,19 @@ static void freeGraphChange(GraphChange change)
            break;
 
       case REMOVED_NODE:
-           removeHostLabel(change.removed_node.label);
+           removeHostList(change.removed_node.label.list);
            break;
 
       case REMOVED_EDGE:
-           removeHostLabel(change.removed_edge.label);
+           removeHostList(change.removed_edge.label.list);
            break;
 
       case RELABELLED_NODE: 
-           removeHostLabel(change.relabelled_node.old_label);
+           removeHostList(change.relabelled_node.old_label.list);
            break;
 
       case RELABELLED_EDGE: 
-           removeHostLabel(change.relabelled_edge.old_label);
+           removeHostList(change.relabelled_edge.old_label.list);
            break;
 
       default: 
@@ -484,14 +474,11 @@ void copyGraph(Graph *graph)
          }
          /* Populate the root nodes list. */
          if(node_copy->root) addRootNode(graph_copy, node_copy->index);
-         if(node->label.list.type == 'l') 
          #ifdef LIST_HASHING
-            addHostList(node->label.list.list);
+            addHostList(node->label.list);
          #else
-            node_copy->label.list.list = copyHostList(node->label.list.list);
+            node_copy->label.list = copyHostList(node->label.list);
          #endif
-         if(node->label.list.type == 's') 
-            node_copy->label.list.str = strdup(node->label.list.str);
       }
    }
    for(index = 0; index < graph_copy->edges.size; index++)
@@ -499,15 +486,12 @@ void copyGraph(Graph *graph)
       Edge *edge_copy = getEdge(graph_copy, index);
       if(edge_copy->index >= 0)
       {
-         Edge *edge = getEdge(graph, index);
-         if(edge->label.list.type == 'l') 
+         HostLabel label = getEdgeLabel(graph, index);
          #ifdef LIST_HASHING
-            addHostList(edge->label.list.list);
+            addHostList(label.list);
          #else
-            edge_copy->label.list.list = copyHostList(edge->label.list.list);
+            edge_copy->label.list = copyHostList(label.list);
          #endif
-         if(edge->label.list.type == 's') 
-            edge_copy->label.list.str = strdup(edge->label.list.str);
       }
    }
    graph_stack[graph_stack_index++] = graph_copy;

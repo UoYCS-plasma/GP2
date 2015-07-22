@@ -106,36 +106,16 @@ HostEdgeList: HostEdge			{ }
 HostEdge: '(' EDGE_ID ',' NODE_ID ',' NODE_ID ',' HostLabel ')'
 					{ addEdge(host, $8, node_map[$4], node_map[$6]); }
 
-HostLabel: HostList			{ if(length == 1)
-					  {
-					     if(array[0].type == 'i')
-					        $$ = makeIntegerLabel(NONE, array[0].num);
-					     if(array[0].type == 's')
-					        $$ = makeStringLabel(NONE, array[0].str);
-				          }
-					  else
-					  {
-					     host_list = makeHostList(array, length, true);
-					     $$ = makeListLabel(NONE, length, host_list); 
-					     host_list = NULL;
-					  } 
-					  length = 0; }
+HostLabel: HostList			{ host_list = makeHostList(array, length, true);
+					  $$ = makeHostLabel(NONE, length, host_list); 
+					  length = 0;
+					  host_list = NULL; }
          | _EMPTY			{ $$ = blank_label; }
-         | HostList '#' MARK	  	{ if(length == 1) 
-					  {
-					     if(array[0].type == 'i')
-					        $$ = makeIntegerLabel($3, array[0].num);
-					     if(array[0].type == 's')
-					        $$ = makeStringLabel($3, array[0].str);
-				          }
-					  else
-					  {
-					     host_list = makeHostList(array, length, true);
-					     $$ = makeListLabel($3, length, host_list); 
-					     host_list = NULL;
-					  } 
-					  length = 0; }
-         | _EMPTY '#' MARK	  	{ $$ = makeEmptyLabel($3); }
+         | HostList '#' MARK	  	{ host_list = makeHostList(array, length, true); 
+                                          $$ = makeHostLabel($3, length, host_list); 
+					  length = 0;
+					  host_list = NULL; }
+         | _EMPTY '#' MARK	  	{ $$ = makeEmptyLabel($3);  }
 
 HostList: HostAtom 			{ assert(length == 0);
 					  array[length++] = $1; } 

@@ -147,7 +147,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
       {
          if(variable.predicates[p] == predicate)
          {
-            PTFI("GP2List assignment_%d = getListValue(morphism, %d);\n",
+            PTFI("Assignment assignment_%d = getAssignment(morphism, %d);\n",
                  3, index, index);
             PTFI("/* If the variable is not yet assigned, return. */\n", 3);
             PTFI("if(assignment_%d.type == 'n') return;\n", 3, index);
@@ -166,7 +166,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
 
                case ATOM_VAR:
                case LIST_VAR:
-                    PTFI("GP2List var_%d = assignment_%d;\n", 3, index, index);
+                    PTFI("Assignment var_%d = assignment_%d;\n", 3, index, index);
                     break;
                
                default:

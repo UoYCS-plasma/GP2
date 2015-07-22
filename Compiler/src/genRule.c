@@ -912,7 +912,7 @@ void generateApplicationCode(Rule *rule)
                     6, index);
                PTFI("relabelEdge(host, host_edge_index, label);\n", 6);
                PTFI("}\n", 3);
-               PTFI("else removeHostLabel(label);\n", 3);
+               PTFI("else removeHostList(label.list);\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
              * component of the label). */
@@ -982,7 +982,7 @@ void generateApplicationCode(Rule *rule)
                     6, index);
                PTFI("relabelNode(host, host_node_index, label);\n", 6);
                PTFI("}\n", 3);
-               PTFI("else removeHostLabel(label);\n", 3);
+               PTFI("else removeHostList(label.list);\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
              * component of the label). */

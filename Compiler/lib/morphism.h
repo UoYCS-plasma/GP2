@@ -17,6 +17,15 @@
 #include "globals.h"
 #include "label.h"
 
+typedef struct Assignment {
+   char type; /* (n)ot assigned, (i)nteger, (s)tring, (l)ist */
+   union {
+      int num;
+      string str;
+      struct HostList *list;
+   };
+} Assignment;
+
 typedef struct Map {
    int host_index;
    /* The number of variable-value assignments added by this node map.
@@ -37,13 +46,12 @@ typedef struct Morphism {
    Map *edge_map;
 
    int variables;
-   GP2List *assignment;
+   Assignment *assignment;
 
    /* Stack to record the order of variable assignments during rule matching. */
    int *assigned_variables;
    int variable_index;
 } Morphism;
-
 
 /* Allocates memory for the morphism, and calls initialiseMorphism. */
 Morphism *makeMorphism(int nodes, int edges, int variables);
@@ -80,7 +88,9 @@ int lookupEdge(Morphism *morphism, int left_index);
 /* These functions expect to be passed the id of a variable of the appropriate type. */
 int getIntegerValue(Morphism *morphism, int id);
 string getStringValue(Morphism *morphism, int id);
-GP2List getListValue(Morphism *morphism, int id);
+Assignment getAssignment(Morphism *morphism, int id);
+/* Used in rule application to get the length of the value matched by a list variable. */
+int getAssignmentLength(Assignment assignment);
 
 /* Used to test string constants in the rule against a host string. If 
  * rule_string is a prefix of the host_string, then the index of the host 

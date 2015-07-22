@@ -18,23 +18,10 @@
 
 #include "globals.h"
 
-/* The data structure for GP2 lists allows singleton lists, namely a single
- * integer or a single string, to be stored directly as the C value. The
- * empty list and lists of length greater than 1 are stored in a doubly-linked
- * list structure. */
-typedef struct GP2List {
-   char type; /* (n)ot assigned, (i)nteger, (s)tring, (l)ist */
-   union {
-      int num;
-      string str;
-      struct HostList *list;
-   };
-} GP2List;
-
 typedef struct HostLabel {
    MarkType mark;
    int length;
-   struct GP2List list;
+   struct HostList *list;
 } HostLabel;
 
 extern struct HostLabel blank_label;
@@ -73,7 +60,7 @@ typedef struct Bucket {
  * exactly once and has a single point of reference. */
 extern Bucket **list_store;
 
-/* If list hashing is enabled, addHostList returns a pointer to the HostList represented 
+/* If list hashing is enabled, makeHostList returns a pointer to the HostList represented 
  * by the passed array from the hash table (list_store). If not, the function returns a
  * pointer to a newly-allocated HostList. */
 HostList *makeHostList(HostAtom *array, int length, bool free_strings);
@@ -84,13 +71,10 @@ void addHostList(HostList *list);
  * count of the list's bucket. Deletes/frees the list and its containing bucket if
  * the new reference count is 0. */
 void removeHostList(HostList *list);
-void removeHostLabel(HostLabel label);
 
 /* Called at runtime to build labels. */
 HostLabel makeEmptyLabel(MarkType mark);
-HostLabel makeListLabel(MarkType mark, int length, HostList *list);
-HostLabel makeIntegerLabel(MarkType mark, int num);
-HostLabel makeStringLabel(MarkType mark, string str);
+HostLabel makeHostLabel(MarkType mark, int length, HostList *list);
 
 /* Used to determine whether a node or edge needs relabelling, and to evaluate
  * the edge predicate if a label argument is provided. */
@@ -98,8 +82,6 @@ bool equalHostLabels(HostLabel label1, HostLabel label2);
 /* Used to evaluate list comparison predicates. */
 bool equalHostLists(HostAtom *left_list, HostAtom *right_list,
                     int left_length, int right_length);
-/* Used in rule application to get the length of the value matched by a list variable. */
-int getListVariableLength(GP2List list);
 /* Used when adding list assignments to the morphism and when copying the host graph. */
 HostList *copyHostList(HostList *list);
 

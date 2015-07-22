@@ -1,21 +1,21 @@
 #include "label.h"
 
-HostLabel blank_label = {NONE, 0, {'l', {0}}};
+HostLabel blank_label = {NONE, 0, NULL};
 
 #ifdef LIST_HASHING
 Bucket **list_store = NULL;
 
 /* The list hash table has 400 buckets. It is structured as follows:
- * Lists of length 2 occupy buckets 0 - 99.
- * Lists of length 3 occupy buckets 100 - 199.
- * Lists of length 4 occupy buckets 200 - 299.
- * Lists of length > 4 occupy buckets 300 - 399.
+ * Lists of length 1 occupy buckets 0 - 99.
+ * Lists of length 2 occupy buckets 100 - 199.
+ * Lists of length 3 occupy buckets 200 - 299.
+ * Lists of length > 3 occupy buckets 300 - 399.
  * The first unit in the first atom (an integer or the first character of a string)
  * gives the index to add to the 'base' (the appropriate multiple of 100) as defined
  * in the function. */
 static int hashHostList(HostAtom *list, int length)
 {
-   int base = length > 4 ? 300 : 100 * (length - 2);
+   int base = length > 3 ? 300 : 100 * (length - 1);
    int offset = 0;
    HostAtom atom = list[0];
    /* Integers occupy indices 0-34. */
@@ -117,8 +117,6 @@ static Bucket *makeBucket(HostAtom *array, int length, bool free_strings)
  * automatic strings which should not be freed. */
 HostList *makeHostList(HostAtom *array, int length, bool free_strings)
 {
-   /* Length 1 lists should not be passed to this function. */
-   assert(length != 1);
    #ifdef LIST_HASHING
       if(list_store == NULL)
       {
@@ -254,33 +252,15 @@ void removeHostList(HostList *list)
    #endif
 }
 
-void removeHostLabel(HostLabel label)
-{
-   if(label.list.type == 's') free(label.list.str);
-   if(label.list.type == 'l') removeHostList(label.list.list);
-}
-
 HostLabel makeEmptyLabel(MarkType mark)
 {
-   HostLabel label = { .mark = mark, .length = 0, .list = {'n', {.list = NULL}} };
+   HostLabel label = { .mark = mark, .length = 0, .list = NULL };
    return label;
 }
 
-HostLabel makeListLabel(MarkType mark, int length, HostList *list)
+HostLabel makeHostLabel(MarkType mark, int length, HostList *list)
 {
-   HostLabel label = { .mark = mark, .length = length, .list = {'l', {.list = list}} };
-   return label;
-}
-
-HostLabel makeIntegerLabel(MarkType mark, int num)
-{
-   HostLabel label = { .mark = mark, .length = 1, .list = {'i', {.num = num}} };
-   return label;
-}
-
-HostLabel makeStringLabel(MarkType mark, string str)
-{
-   HostLabel label = { .mark = mark, .length = 1, .list = {'s', {.str = strdup(str)}} };
+   HostLabel label = { .mark = mark, .length = length, .list = list };
    return label;
 }
 
@@ -288,14 +268,8 @@ bool equalHostLabels(HostLabel label1, HostLabel label2)
 {
    if(label1.mark != label2.mark) return false;
    if(label1.length != label2.length) return false;
-   if(label1.list.type != label2.list.type) return false;
-   else
-   {
-      if(label1.list.type == 'i') return label1.list.num == label2.list.num;
-      if(label1.list.type == 's') return strcmp(label1.list.str, label2.list.str) == 0;
-      else return label1.list.list == label2.list.list;
-   }
-   return false;
+   if(label1.list != label2.list) return false;
+   return true;
 }
 
 bool equalHostLists(HostAtom *left_list, HostAtom *right_list,
@@ -318,20 +292,6 @@ bool equalHostLists(HostAtom *left_list, HostAtom *right_list,
    return true;
 }
 
-int getListVariableLength(GP2List list)
-{
-   if(list.type != 'l') return 1;
-   if(list.list == NULL) return 0;
-   HostListItem *item = list.list->first;
-   int length = 0;
-   while(item != NULL) 
-   {
-      length++;
-      item = item->next;
-   }
-   return length;
-}
-
 HostList *copyHostList(HostList *list)
 {
    if(list == NULL) return NULL;
@@ -347,14 +307,8 @@ HostList *copyHostList(HostList *list)
    
 void printHostLabel(HostLabel label, FILE *file) 
 {
-   if(label.list.type == 'l')
-   {
-      if(label.length == 0) fprintf(file, "empty");
-      else printHostList(label.list.list->first, file);
-   }
-   else if(label.list.type == 'i') fprintf(file, "%d", label.list.num);
-   else fprintf(file, "\"%s\"", label.list.str);
-
+   if(label.length == 0) fprintf(file, "empty");
+   else printHostList(label.list->first, file);
    if(label.mark == RED) fprintf(file, " # red"); 
    if(label.mark == GREEN) fprintf(file, " # green");
    if(label.mark == BLUE) fprintf(file, " # blue");

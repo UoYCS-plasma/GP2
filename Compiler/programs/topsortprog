@@ -47,7 +47,7 @@ interface = {n0}
 num_source(x:list; i:int)
 [ (n0(R), i # red) (n1, 0:x # grey) | ]
 =>
-[ (n0(R), + i+1 # red) (n1, i:x) | ]
+[ (n0(R), i+1 # red) (n1, i:x) | ]
 interface = {n0, n1}
 
 // Assigns the next number in the ordering to a node labelled 1.
