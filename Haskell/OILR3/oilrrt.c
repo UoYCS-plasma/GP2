@@ -4,6 +4,9 @@
 #define OILR_INDEX_SIZE (1<<3)
 #define DEFAULT_POOL_SIZE (1024)
 
+void _HOST();
+
+
 /////////////////////////////////////////////////////////
 // graph structure
 
@@ -155,6 +158,8 @@ void removeElem(DList *elem) {
 
 #define index(sig) &(g.idx[sig])
 
+#define getNodeById(id) &(g.pool[(id)].n)
+
 /////////////////////////////////////////////////////////
 // graph manipulation
 
@@ -207,6 +212,9 @@ void addEdge(Node *src, Node *tgt) {
 	inChain(e)->data.edge = e;
 	indexNode(src);
 	indexNode(tgt);
+}
+void addEdgeById(long sid, long tid) {
+	addEdge(getNodeById(sid), getNodeById(tid));
 }
 
 void deleteNode(Node *n) {
@@ -275,7 +283,6 @@ void dumpGraph() {
 // main
 
 int main(int argc, char **argv) {
-	int i;
 	g.pool = malloc(sizeof(Nodge) * DEFAULT_POOL_SIZE);
 	if (!g.pool)
 		exit(1);
@@ -285,15 +292,13 @@ int main(int argc, char **argv) {
 	printf("boolFlag: %ld\n", boolFlag);
 	
 	printf("Node: %ld, Edge: %ld, Nodge: %ld\n", sizeof(Node), sizeof(Edge), sizeof(Nodge));
-	for (i=0; i<100; i++) {
-		addNode();
-	}
-	for (i=0; i<99; i++) {
-		addEdge(&g.pool[i].n, &g.pool[i+1].n);
-	}
-	addEdge(&g.pool[99].n, &g.pool[0].n);
-	// deleteNode(&g.pool[2].n);
+	_HOST();
 	dumpGraph();
 	free(g.pool);
 	return 0;
 }
+
+/////////////////////////////////////////////////////////
+// generated code goes here....
+
+

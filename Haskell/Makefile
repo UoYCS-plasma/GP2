@@ -9,7 +9,8 @@ gp2c : GP2c.hs OILR3/CRuntime.hs
 	$(GHC) -o $@ $<
 
 OILR3/CRuntime.hs : OILR3/oilrrt.c
-	touch OILR3/CRuntime.hs
+	rm -f OILR3/CRuntime.hi
+	rm -f OILR3/CRuntime.o
 
 gp2 : Main.hs
 	$(GHC_PROF) -o $@ $<
@@ -21,6 +22,6 @@ tags :
 	echo ":ctags" | ghc -v0 Main.hs
 
 clean :
-	rm -f *.o OilrMachine/*.o $(TARGETS)
+	rm -f *.o OILR3/*.o $(TARGETS)
 
 .PHONY : gp2 gp2c

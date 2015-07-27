@@ -59,9 +59,10 @@ main = do
             -- p <- readFile progFile
             prog <- parseProgram progFile
             host <- parseHostGraph hostFile
-            putStrLn $ show $ hostToC $ astToInstructions host
-            -- writeFile targ cRuntime
-            -- callCCompiler compiler exe targ
+            let hostC = hostToC $ astToInstructions host
+            putStrLn cRuntime
+            writeFile targ $ cRuntime ++ hostC
+            callCCompiler compiler exe targ
         _ -> do
             error "Nope"
 
