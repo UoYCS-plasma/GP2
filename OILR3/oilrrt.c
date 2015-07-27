@@ -73,16 +73,23 @@ long ds[DS_SIZE];
 long *dsp = ds;
 long boolFlag = 0;
 
-#define POP    (*(dsp--))
-#define TOS    (*(dsp))
-#define LIT(n) do { *(++dsp) = (n); } while (0);
-#define ADD    do { long sum = POP + TOS ; TOS = sum; } while (0);
-#define SUB    do { long val = POP ; TOS = TOS - val; } while (0);
-#define SHL    do { long bits = POP ; TOS = TOS << bits } while (0);
-#define SHR    do { long bits = POP ; TOS = TOS >> bits } while (0);
-#define LT     do { boolFlag = ( POP >= POP ); } while (0);
-#define GT     do { boolFlag = ( POP <= POP ); } while (0);
-#define EMIT   do { printf("%ld\n", POP); } while (0);
+#define DEF(id) void (id)() {
+#define END     }
+#define POP     (*(dsp--))
+#define TOS     (*(dsp))
+#define LIT(n)  do { *(++dsp) = (n); } while (0);
+#define ADD     do { long sum = POP + TOS ; TOS = sum; } while (0);
+#define SUB     do { long val = POP ; TOS = TOS - val; } while (0);
+#define SHL     do { long bits = POP ; TOS = TOS << bits } while (0);
+#define SHR     do { long bits = POP ; TOS = TOS >> bits } while (0);
+#define LT      do { long n = POP; boolFlag = ( n >= POP ); } while (0);
+#define GT      do { long n = POP; boolFlag = ( n <= POP ); } while (0);
+#define EMIT    do { printf("%ld\n", POP); } while (0);
+
+
+#define TS_SIZE 16
+Trav ts[TS_SIZE];
+Trav *tsp = ts;
 
 
 /////////////////////////////////////////////////////////
@@ -181,15 +188,23 @@ Nodge *allocNodge() {
 
 void addNode() {
 	Node *n = allocNode();
+	chainFor(n)->data.node = n;
 	indexNode(n);
 }
 
+void addLoop(Node *n) {
+	n->loops++;
+}
 void addEdge(Node *src, Node *tgt) {
 	Edge *e = allocEdge();
 	unindexNode(src);
 	unindexNode(tgt);
 	prependElem( outListFor(src), outChain(e) );
 	prependElem( inListFor(tgt), inChain(e) );
+	e->src = src;
+	e->tgt = tgt;
+	outChain(e)->data.edge = e;
+	inChain(e)->data.edge = e;
 	indexNode(src);
 	indexNode(tgt);
 }
@@ -201,6 +216,9 @@ void deleteNode(Node *n) {
 	}
 	unindexNode(n);
 	freeNode(n);
+}
+void deleteLoop(Node *n) {
+	n->loops--;
 }
 void deleteEdge(Edge *e) {
 	Node *src = source(e);
@@ -218,29 +236,34 @@ void deleteEdge(Edge *e) {
 /////////////////////////////////////////////////////////
 // utilities
 
+#define getId(ne) (((Nodge *) (ne)) - g.pool)
 void dumpGraph() {
-	long i, edgeCount=0, nodeCount=0;
-	DList *index;
-	Node *n;
+	long i;
+	DList *index, *out;
+	Node *n, *src, *tgt;
+	Edge *e;
 	printf("[\n");
 	// Dump nodes
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		index = &(g.idx[i]);
-		while (index = nextElem(index)) {
+		while ( (index = nextElem(index)) ) {
 			n = index->data.node;
-			printf("\t( n%ld, empty)\n", nodeCount++);
+			//printf("%lx %lx\n", (long) n, (long) g.pool);
+			printf("\t( n%ld, empty)\n", getId(n) );
 		}
 	}
 	printf("|\n");
 	// Dump edges
-	nodeCount=0;
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		index = &(g.idx[i]);
-		while (index = nextElem(index)) {
+		while ( (index = nextElem(index)) ) {
 			n = index->data.node;
 			out = outListFor(n);
-			while (out = nextElem(out)) {
-				printf("\t( n%ld, empty)\n", nodeCount++);
+			while ( (out = nextElem(out)) ) {
+				e = out->data.edge;
+				src = source(e);
+				tgt = target(e);
+				printf("\t( e%ld, n%ld, n%ld, empty)\n", getId(e), getId(src), getId(tgt) );
 			}
 		}
 	}
@@ -252,6 +275,7 @@ void dumpGraph() {
 // main
 
 int main(int argc, char **argv) {
+	int i;
 	g.pool = malloc(sizeof(Nodge) * DEFAULT_POOL_SIZE);
 	if (!g.pool)
 		exit(1);
@@ -261,7 +285,14 @@ int main(int argc, char **argv) {
 	printf("boolFlag: %ld\n", boolFlag);
 	
 	printf("Node: %ld, Edge: %ld, Nodge: %ld\n", sizeof(Node), sizeof(Edge), sizeof(Nodge));
-	addNode();
+	for (i=0; i<100; i++) {
+		addNode();
+	}
+	for (i=0; i<99; i++) {
+		addEdge(&g.pool[i].n, &g.pool[i+1].n);
+	}
+	addEdge(&g.pool[99].n, &g.pool[0].n);
+	// deleteNode(&g.pool[2].n);
 	dumpGraph();
 	free(g.pool);
 	return 0;
