@@ -6,10 +6,17 @@ import System.Console.GetOpt
 import System.Process (system)
 import System.Exit
 
+import Text.Parsec
+
 import OILR3.Instructions
+import OILR3.HostCompile
+import OILR3.CBackend
 import OILR3.CRuntime
--- import OILR3.CCompile
-import GPSyntax -- debug code
+
+-- import GPSyntax -- debug code
+import ParseGraph
+import ParseProgram
+import ProcessAst (makeHostGraph, makeGPProgram)
 
 compiler = "gcc -g -O2 -Wall -Werror -o"
 
@@ -20,24 +27,41 @@ options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, i
 getStem :: String -> String
 getStem = takeWhile (/= '.')
 
+parseHostGraph graphFile = do
+    g <- readFile graphFile
+    case parse hostGraph graphFile g of
+        Left e     -> error "Compilation of host graph failed" -- print e
+        Right host -> return $ makeHostGraph host
 
+parseProgram progFile = do
+    p <- readFile progFile
+    case parse program progFile p of
+        Left e     -> error "Compilation of program failed"
+        Right prog -> return $ makeGPProgram prog
 
 callCCompiler cc obj cFile = do
+    -- TODO: use of system is ugly and potentially dangerous!
     exStatus <- system (cc ++ " " ++ obj ++ " " ++ cFile)
     case exStatus of
         ExitSuccess -> return ()
         (ExitFailure _) -> error "Compilation failed."
 
+
+
 main = do
     hSetBuffering stdout NoBuffering
     args <- getArgs
     case getOpt Permute [] args of
-        (flags, [progFile], []) -> do
+        (flags, [progFile, hostFile], []) -> do
             let stem = getStem progFile
             let targ = stem ++ ".c"
             let exe  = stem
-            writeFile targ cRuntime
-            callCCompiler compiler exe targ
+            -- p <- readFile progFile
+            prog <- parseProgram progFile
+            host <- parseHostGraph hostFile
+            putStrLn $ show $ hostToC $ astToInstructions host
+            -- writeFile targ cRuntime
+            -- callCCompiler compiler exe targ
         _ -> do
             error "Nope"
 
