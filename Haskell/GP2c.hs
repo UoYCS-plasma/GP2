@@ -3,22 +3,15 @@ module Main where
 import System.IO
 import System.Environment
 import System.Console.GetOpt
-
-import ParseProgram
-import ParseGraph
-import Text.Parsec
+import System.Process (system)
+import System.Exit
 
 import OILR3.Instructions
-{- import OilrMachine.Instructions
-import OilrMachine.Compile
--- import OilrMachine.Analysis
--- import OilrMachine.HostCompile
-import OilrMachine.NullBackend
-import OilrMachine.CBackend -}
-
+import OILR3.CRuntime
+-- import OILR3.CCompile
 import GPSyntax -- debug code
 
-compiler = "cc"
+compiler = "gcc -g -O2 -Wall -Werror -o"
 
 {- options :: [ OptDescr Flag ]
 options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, instead of all possible graphs",
@@ -27,10 +20,28 @@ options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, i
 getStem :: String -> String
 getStem = takeWhile (/= '.')
 
-extractDecls :: GPProgram -> [AstRule]
-extractDecls (Program decls) = map (\(AstRuleDecl r) -> r) $ filter (\d -> case d of { (AstRuleDecl _) -> True ; _ -> False} ) decls
+
+
+callCCompiler cc obj cFile = do
+    exStatus <- system (cc ++ " " ++ obj ++ " " ++ cFile)
+    case exStatus of
+        ExitSuccess -> return ()
+        (ExitFailure _) -> error "Compilation failed."
 
 main = do
+    hSetBuffering stdout NoBuffering
+    args <- getArgs
+    case getOpt Permute [] args of
+        (flags, [progFile], []) -> do
+            let stem = getStem progFile
+            let targ = stem ++ ".c"
+            let exe  = stem
+            writeFile targ cRuntime
+            callCCompiler compiler exe targ
+        _ -> do
+            error "Nope"
+
+{-
     hSetBuffering stdout NoBuffering
     args <- getArgs
     case getOpt Permute [] args of
@@ -67,4 +78,4 @@ main = do
                         putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
                         let code = cCompile $ compileHostGraph host ++ compileGPProg prog
                         writeFile targ code
-
+-}

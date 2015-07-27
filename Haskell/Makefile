@@ -1,14 +1,15 @@
-GHC=ghc -O2 -prof -fprof-auto -rtsopts
+GHC=ghc -O2
+GHC_PROF=$(GHC) -prof -fprof-auto -rtsopts
 
 TARGETS=gp2 gp2c ViewGraph IsoChecker
 
 all : tags $(TARGETS)
 
-gp2c : GP2c.hs
+gp2c : GP2c.hs OILR3/oilrrt.c
 	$(GHC) -o $@ $<
 
 gp2 : Main.hs
-	$(GHC) -o $@ $<
+	$(GHC_PROF) -o $@ $<
 
 % : %.hs
 	$(GHC) $<
