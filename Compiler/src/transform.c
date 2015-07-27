@@ -659,6 +659,10 @@ static void scanPredicateAtom(Rule *rule, RuleAtom *atom, Predicate *predicate)
 {
    switch(atom->type)
    {
+      case INTEGER_CONSTANT:
+      case STRING_CONSTANT:
+           break;
+
       case VARIABLE:
       case LENGTH:
       {
@@ -673,6 +677,10 @@ static void scanPredicateAtom(Rule *rule, RuleAtom *atom, Predicate *predicate)
            addNodePredicate(node, predicate, rule->predicate_count);
            break;
       }
+      case NEG:
+           scanPredicateAtom(rule, atom->neg_exp, predicate);
+           break;
+           
       case ADD:
       case SUBTRACT:
       case MULTIPLY:
