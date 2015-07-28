@@ -23,8 +23,6 @@ root
 Definition
 YAM
 *.supp
-Main*
-Haskell
 tokenise
 Results
 testData
