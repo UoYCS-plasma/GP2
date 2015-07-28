@@ -37,7 +37,7 @@ parseProgram progFile = do
     p <- readFile progFile
     case parse program progFile p of
         Left e     -> error "Compilation of program failed"
-        Right prog -> return $ makeGPProgram prog
+        Right prog -> return $ fst $ makeGPProgram prog
 
 callCCompiler cc obj cFile = do
     -- TODO: use of system is ugly and potentially dangerous!
@@ -59,9 +59,9 @@ main = do
             -- p <- readFile progFile
             prog <- parseProgram progFile
             host <- parseHostGraph hostFile
-            let hostC = hostToC $ astToInstructions host
-            putStrLn cRuntime
-            writeFile targ $ cRuntime ++ hostC
+            let progC = progToC $ compileProgram prog
+            let hostC = hostToC $ compileHostGraph host
+            writeFile targ $ progC ++ hostC
             callCCompiler compiler exe targ
         _ -> do
             error "Nope"

@@ -9,8 +9,7 @@ gp2c : GP2c.hs OILR3/CRuntime.hs
 	$(GHC) -o $@ $<
 
 OILR3/CRuntime.hs : OILR3/oilrrt.c
-	rm -f OILR3/CRuntime.hi
-	rm -f OILR3/CRuntime.o
+	touch OILR3/CRuntime.hs
 
 gp2 : Main.hs
 	$(GHC_PROF) -o $@ $<

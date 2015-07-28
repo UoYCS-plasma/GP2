@@ -5,7 +5,7 @@
 #define DEFAULT_POOL_SIZE (1024)
 
 void _HOST();
-
+void _GPMAIN();
 
 /////////////////////////////////////////////////////////
 // graph structure
@@ -287,12 +287,8 @@ int main(int argc, char **argv) {
 	if (!g.pool)
 		exit(1);
 
-	// LIT(1) LIT(2) LIT(3) ADD ADD LIT(3) SUB EMIT
-	LIT(3) LIT(2) LT
-	printf("boolFlag: %ld\n", boolFlag);
-	
-	printf("Node: %ld, Edge: %ld, Nodge: %ld\n", sizeof(Node), sizeof(Edge), sizeof(Nodge));
 	_HOST();
+	_GPMAIN();
 	dumpGraph();
 	free(g.pool);
 	return 0;
