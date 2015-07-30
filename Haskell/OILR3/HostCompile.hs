@@ -122,9 +122,8 @@ oilrCompileSimple (LoopedProcedureCall p) = [ ALP p ]
 oilrCompileSimple Skip   = [ TRU , RET ]
 oilrCompileSimple Fail   = [ FLS , RET ]
 
-oilrCompileRule (Rule name _ (lhs, rhs) nif eif NoCondition) = notImplemented 9
+oilrCompileRule (Rule name _ (lhs, rhs) nif eif NoCondition) = oilrCompileLhs lhs
 oilrCompileRule _ = notImplemented 13
-
 
 
 oilrCompileLhs = notImplemented 10
