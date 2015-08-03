@@ -5,6 +5,7 @@ import OILR3.Instructions
 import GPSyntax
 import Graph
 
+import Debug.Trace
 
 type OilrProg = [Instr]
 
@@ -38,7 +39,7 @@ edges g = map edge $ allEdges g
 -- program OILR instruction generation
 -- -------------------------------------------------------------------
 
-{-
+{-   A handy AST reference...
 
 data GPProgram = Program [Declaration] deriving Show
 
@@ -100,7 +101,7 @@ oilrCompileDeclaration (MainDecl m) = oilrCompileMain m
 oilrCompileDeclaration (ProcDecl p) = oilrCompileProc p
 oilrCompileDeclaration (RuleDecl r) = oilrCompileRule r
 
-oilrCompileMain (Main cs) = concatMap oilrCompileCommand cs
+oilrCompileMain (Main cs) = (DEF "Main" : concatMap oilrCompileCommand cs) ++ [END]
 
 oilrCompileProc (Procedure name ds cs) = notImplemented 1
 
@@ -122,8 +123,48 @@ oilrCompileSimple (LoopedProcedureCall p) = [ ALP p ]
 oilrCompileSimple Skip   = [ TRU , RET ]
 oilrCompileSimple Fail   = [ FLS , RET ]
 
-oilrCompileRule (Rule name _ (lhs, rhs) nif eif NoCondition) = oilrCompileLhs lhs
-oilrCompileRule _ = notImplemented 13
+
+
+-- -------------------------------------------------------------------
+-- rule compilation is complex...
+-- -------------------------------------------------------------------
+
+data OilrRuleProp = NodesAdded | NodesDeleted | EdgesAdded | EdgesDeleted deriving Show
+
+
+-- Return the lists of (deleted, created) node ids
+
+analyseNodeInterface :: Rule -> ([NodeKey], [NodeKey])
+analyseNodeInterface (Rule _ _ (lhs, rhs) nif _ _) = 
+    ( [ lnk | lnk <- allNodeKeys lhs , not $ lnk `elem` lhsInterfaceNodes ]
+    , [ rnk | rnk <- allNodeKeys rhs , not $ rnk `elem` rhsInterfaceNodes ] )
+    where
+        lhsInterfaceNodes = map fst nif
+        rhsInterfaceNodes = map snd nif
+
+analyseEdgeInterface :: Rule -> ([EdgeKey], [EdgeKey])
+analyseEdgeInterface (Rule _ _ (lhs, rhs) _ eif _) =
+    ( [ lek | lek <- allEdgeKeys lhs, not $ lek `elem` lhsInterfaceEdges ]
+    , [ rek | rek <- allEdgeKeys rhs, not $ rek `elem` rhsInterfaceEdges ] )
+    where
+        lhsInterfaceEdges = map fst eif
+        rhsInterfaceEdges = map snd eif
+    
+analyseRule :: Rule -> ([NodeKey], [EdgeKey], [NodeKey], [EdgeKey])
+analyseRule r = (delNodes, delEdges, newNodes, newEdges)
+    where
+        (delNodes, newNodes) = analyseNodeInterface r
+        (delEdges, newEdges) = analyseEdgeInterface r
+
+
+oilrCompileRule r@(Rule name _ _ _ _ _) = [DEF name] ++ body ++ [END]
+    where
+        body = case analyseRule r of
+            ([], [], [], []) -> oilrCompilePredicate r
+            _ -> notImplemented 16
+
+-- This alias may change -- there could be optimisations applicable to predicates that aren't to arbitrary left-hand-sides.
+oilrCompilePredicate = oilrCompileLhs
 
 
 oilrCompileLhs = notImplemented 10

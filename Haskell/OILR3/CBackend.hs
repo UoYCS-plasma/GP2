@@ -26,19 +26,28 @@ compileInstr (CAL "Main")  = makeCFunctionCall "_GPMAIN" []
 compileInstr (CAL s)       = makeCFunctionCall s []
 compileInstr (ALP s)       = asLongAsPossible s []
 
-
+compileInstr (DEF s)       = startCFunction s
+compileInstr END           = endCFunction 
 
 makeCFunction :: String -> [String] -> String
-makeCFunction name lines = concat ["\nvoid ", name, "() {\n\t", body, "\n}\n"]
+makeCFunction name lines = concat [startCFunction name,  body, "\n}\n"]
     where
         body = intercalate "\n\t" lines
+
+startCFunction :: String -> String
+startCFunction name = concat [ "\nvoid ", name, "() {\n\t" ]
+
+endCFunction :: String
+endCFunction = "}\n"
 
 asLongAsPossible :: String -> [Int] -> String
 asLongAsPossible fname args = concat [ "do {\n", makeCFunctionCall fname args, "} while (success);\n" ]
 
 
 makeCFunctionCall :: String -> [Int] -> String
-makeCFunctionCall fname args = concat [ fname , "(", argStr, ");" ]
+makeCFunctionCall fname args = concat [ fname , "(", argStr, ");\n" ]
     where
         argStr = intercalate ", " $ map show args
+
+
 

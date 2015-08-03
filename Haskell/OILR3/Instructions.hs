@@ -21,6 +21,9 @@ data Instr =
     | ADD                   -- add top two values on ds
     | SUB                   -- subtract top of stack from next on stack
     | SHL                   -- shift NoS left by ToS bits
+    -- Definition
+    | DEF String
+    | END
     -- Graph search
     -- flow control
     | CAL String | ALP String -- call rule or proc once or as-long-as-possible
