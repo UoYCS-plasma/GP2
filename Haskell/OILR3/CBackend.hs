@@ -10,7 +10,14 @@ hostToC is = makeCFunction "_HOST" $ map compileInstr is
 
 
 progToC :: [Instr] -> String
-progToC is = cRuntime ++ concatMap compileInstr is
+progToC is = cRuntime ++ predeclarations is ++ concatMap compileInstr is
+
+predeclarations :: [Instr] -> String
+predeclarations is = concatMap declare is
+    where
+        declare (DEF "Main") = ""
+        declare (DEF s) = "\nvoid " ++ s ++ "();"
+        declare _ = ""
 
 
 
@@ -22,12 +29,14 @@ compileInstr (ADE src tgt) = makeCFunctionCall "addEdgeById" [src-1, tgt-1]
 compileInstr (RTN n)       = makeCFunctionCall "setRoot" [n-1]
 
 compileInstr RET           = "return;"
-compileInstr (CAL "Main")  = makeCFunctionCall "_GPMAIN" []
 compileInstr (CAL s)       = makeCFunctionCall s []
 compileInstr (ALP s)       = asLongAsPossible s []
 
+compileInstr (DEF "Main")  = startCFunction "_GPMAIN"
 compileInstr (DEF s)       = startCFunction s
 compileInstr END           = endCFunction 
+
+compileInstr (LUN sig)     = makeCFunctionCall "findNode" []
 
 makeCFunction :: String -> [String] -> String
 makeCFunction name lines = concat [startCFunction name,  body, "\n}\n"]

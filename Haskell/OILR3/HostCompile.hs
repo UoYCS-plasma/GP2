@@ -97,9 +97,9 @@ data Condition = NoCondition
 
 
 oilrCompileDeclaration :: Declaration -> OilrProg
-oilrCompileDeclaration (MainDecl m) = oilrCompileMain m
-oilrCompileDeclaration (ProcDecl p) = oilrCompileProc p
-oilrCompileDeclaration (RuleDecl r) = oilrCompileRule r
+oilrCompileDeclaration (MainDecl m) = trace ("Main") $ oilrCompileMain m
+oilrCompileDeclaration (ProcDecl p) = trace ("Proc " ++ show p) $ oilrCompileProc p
+oilrCompileDeclaration (RuleDecl r) = trace ("Rule " ++ show r) $ oilrCompileRule r
 
 oilrCompileMain (Main cs) = (DEF "Main" : concatMap oilrCompileCommand cs) ++ [END]
 
@@ -163,11 +163,21 @@ oilrCompileRule r@(Rule name _ _ _ _ _) = [DEF name] ++ body ++ [END]
             ([], [], [], []) -> oilrCompilePredicate r
             _ -> notImplemented 16
 
--- This alias may change -- there could be optimisations applicable to predicates that aren't to arbitrary left-hand-sides.
-oilrCompilePredicate = oilrCompileLhs
+oilrCompilePredicate (Rule _ _ (lhs, rhs) nif eif _) = oilrCompileLhs lhs nif eif
 
 
-oilrCompileLhs = notImplemented 10
+oilrCompileLhs lhs nif eif = map compileNode (allNodeKeys lhs) ++ map compileEdge (allEdgeKeys lhs)
+    where
+        compileNode nk = cn
+             where
+                cn = if nk `elem` map fst nif
+                        then LUN (GtE o, GtE i, GtE l, r)
+                        else LUN (Equ o, Equ i, Equ l, r)
+                o = outdegree lhs nk - l
+                i = indegree lhs nk - l
+                l = length $ joiningEdges lhs nk nk
+                r = GtE 0 -- TODO!
+        compileEdge ek = notImplemented 17
 
 
 oilrCompileRhs = notImplemented 11

@@ -2,6 +2,11 @@ module OILR3.Instructions where
 
 type Tid = Int -- Trav id
 
+
+data Dim = Equ Int | GtE Int deriving (Show, Eq)
+type Pred = (Dim, Dim, Dim, Dim)
+
+
 data Instr = 
     -- Trav stack management
       DROT                  -- Drop Trav
@@ -25,6 +30,8 @@ data Instr =
     | DEF String
     | END
     -- Graph search
+    | LUN Pred
+    | LUE Pred
     -- flow control
     | CAL String | ALP String -- call rule or proc once or as-long-as-possible
     | RET                   -- unconditinoal return from current rule or proc

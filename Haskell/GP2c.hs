@@ -59,6 +59,7 @@ main = do
             -- p <- readFile progFile
             prog <- parseProgram progFile
             host <- parseHostGraph hostFile
+            -- putStrLn $ show prog
             let progC = progToC $ compileProgram prog
             let hostC = hostToC $ compileHostGraph host
             writeFile targ $ progC ++ hostC
