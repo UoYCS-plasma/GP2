@@ -4,35 +4,58 @@ import OILR3.Instructions
 
 import GPSyntax
 import Graph
+import Mapping (dom, rng)
 
 import Debug.Trace
+import Unsafe.Coerce
 
-type OilrProg = [Instr]
 
+type SemiOilrCode = [Instr NodeKey EdgeKey]
+type OilrCode = [Instr Int Int]
 
 notImplemented n = error $ "Not implemented: " ++ show n
 
 
-compileHostGraph :: HostGraph -> OilrProg
-compileHostGraph g = nodes g ++ edges g
+compileHostGraph :: HostGraph -> OilrCode
+compileHostGraph g = postprocess $ nodes g ++ edges g
 
-compileProgram :: GPProgram -> OilrProg
-compileProgram (Program ds) = concatMap oilrCompileDeclaration ds
+compileProgram :: GPProgram -> [OilrCode]
+compileProgram (Program ds) = map postprocess $ map oilrCompileDeclaration ds
+
+
+postprocess :: SemiOilrCode -> OilrCode
+postprocess sois = map postprocessInstr sois
+    where
+        postprocessInstr (ADN n)     = ADN $ nodeNumber n
+        postprocessInstr (ADE e s t) = ADE (edgeNumber e) (nodeNumber s) (nodeNumber t)
+        postprocessInstr (DEN n)     = DEN $ nodeNumber n
+        postprocessInstr (DEE e)     = DEE $ edgeNumber e
+        postprocessInstr (RTN n)     = RTN $ nodeNumber n
+        postprocessInstr (LUN n p)   = LUN (nodeNumber n) p
+        postprocessInstr (LUE e s t) = LUE (edgeNumber e) (nodeNumber s) (nodeNumber t)
+        -- WARNING: HERE BE DRAGONS. Haskell's type system won't do implicit 
+        -- conversion between the non-parameterised elements of the parameterised
+        -- type Isntr a b. unsafeCoerce allows this conversion by sidestepping 
+        -- the type system entirely! If any new parameterised elements are introduced
+        -- in Instr a b they _must_ be handled above. If they aren't, good luck
+        -- debugging the results! Don't say you weren't warned.
+        postprocessInstr soi         = unsafeCoerce soi
+
 
 -- -------------------------------------------------------------------
 -- host graph OILR instruction generation
 -- -------------------------------------------------------------------
 
-nodes :: HostGraph -> OilrProg
+nodes :: HostGraph -> SemiOilrCode
 nodes g = concatMap node $ allNodes g
     where
-        node (n, HostNode _ root (HostLabel [] Uncoloured)) = ADN : (if root then RTN (nodeNumber n) : [] else [])
+        node (n, HostNode _ root (HostLabel [] Uncoloured)) = ADN n : (if root then RTN n : [] else [])
 
 
-edges :: HostGraph -> OilrProg
+edges :: HostGraph -> SemiOilrCode
 edges g = map edge $ allEdges g
     where
-        edge (e, _) = ADE (nodeNumber $ source e) (nodeNumber $ target e)
+        edge (e, _) = ADE e (source e) (target e)
 
 
 -- -------------------------------------------------------------------
@@ -96,24 +119,29 @@ data Condition = NoCondition
 -}
 
 
-oilrCompileDeclaration :: Declaration -> OilrProg
-oilrCompileDeclaration (MainDecl m) = trace ("Main") $ oilrCompileMain m
-oilrCompileDeclaration (ProcDecl p) = trace ("Proc " ++ show p) $ oilrCompileProc p
-oilrCompileDeclaration (RuleDecl r) = trace ("Rule " ++ show r) $ oilrCompileRule r
+oilrCompileDeclaration :: Declaration -> SemiOilrCode
+oilrCompileDeclaration (MainDecl m) = oilrCompileMain m
+oilrCompileDeclaration (ProcDecl p) = oilrCompileProc p
+oilrCompileDeclaration (RuleDecl r) = oilrCompileRule r
 
+oilrCompileMain :: Main -> SemiOilrCode
 oilrCompileMain (Main cs) = (DEF "Main" : concatMap oilrCompileCommand cs) ++ [END]
 
+oilrCompileProc :: Procedure -> SemiOilrCode
 oilrCompileProc (Procedure name ds cs) = notImplemented 1
 
+oilrCompileCommand :: Command -> SemiOilrCode
 oilrCompileCommand (Block b) = oilrCompileBlock b
 oilrCompileCommand (IfStatement  cn th el) = notImplemented 2
 oilrCompileCommand (TryStatement cn th el) = notImplemented 3
 
+oilrCompileBlock :: Block -> SemiOilrCode
 oilrCompileBlock (ComSeq cs)       = notImplemented 4
 oilrCompileBlock (LoopedComSeq cs) = notImplemented 5
 oilrCompileBlock (SimpleCommand s) = oilrCompileSimple s
 oilrCompileBlock (ProgramOr a b)   = notImplemented 6
 
+oilrCompileSimple :: SimpleCommand -> SemiOilrCode
 oilrCompileSimple (RuleCall      [r]) = [ CAL r ]
 oilrCompileSimple (LoopedRuleCall [r]) = [ ALP r ]
 oilrCompileSimple (RuleCall       rs) = notImplemented 7 -- non-deterministic choice(?)
@@ -136,51 +164,49 @@ data OilrRuleProp = NodesAdded | NodesDeleted | EdgesAdded | EdgesDeleted derivi
 
 analyseNodeInterface :: Rule -> ([NodeKey], [NodeKey])
 analyseNodeInterface (Rule _ _ (lhs, rhs) nif _ _) = 
-    ( [ lnk | lnk <- allNodeKeys lhs , not $ lnk `elem` lhsInterfaceNodes ]
-    , [ rnk | rnk <- allNodeKeys rhs , not $ rnk `elem` rhsInterfaceNodes ] )
+    ( [ lnk | lnk <- allNodeKeys lhs , not $ lnk `elem` dom nif ]
+    , [ rnk | rnk <- allNodeKeys rhs , not $ rnk `elem` rng nif ] )
     where
-        lhsInterfaceNodes = map fst nif
-        rhsInterfaceNodes = map snd nif
+        lhsInterfaceNodes = dom nif
+        rhsInterfaceNodes = rng nif
 
-analyseEdgeInterface :: Rule -> ([EdgeKey], [EdgeKey])
-analyseEdgeInterface (Rule _ _ (lhs, rhs) _ eif _) =
-    ( [ lek | lek <- allEdgeKeys lhs, not $ lek `elem` lhsInterfaceEdges ]
-    , [ rek | rek <- allEdgeKeys rhs, not $ rek `elem` rhsInterfaceEdges ] )
+-- WARNING: EdgeInterface doesn't do what it says on the tin! It is only used
+-- to track bidi rule edges, not as an actual interface. We'll have to remove
+-- unneeded edge deletion and creation rules
+analyseRule :: Rule -> ([NodeKey], [NodeKey])
+analyseRule r = analyseNodeInterface r
+
+
+-- TODO: special handling for bidi edges!
+oilrCompileRule :: Rule -> SemiOilrCode
+oilrCompileRule r@(Rule name _ (lhs, rhs) nif eif _) = ( [DEF name] ++ body ++ [END] )
     where
-        lhsInterfaceEdges = map fst eif
-        rhsInterfaceEdges = map snd eif
-    
-analyseRule :: Rule -> ([NodeKey], [EdgeKey], [NodeKey], [EdgeKey])
-analyseRule r = (delNodes, delEdges, newNodes, newEdges)
-    where
-        (delNodes, newNodes) = analyseNodeInterface r
-        (delEdges, newEdges) = analyseEdgeInterface r
+        body = oilrCompileLhs lhs nif ++ oilrCompileRhs lhs rhs nif
 
-
-oilrCompileRule r@(Rule name _ _ _ _ _) = [DEF name] ++ body ++ [END]
-    where
-        body = case analyseRule r of
-            ([], [], [], []) -> oilrCompilePredicate r
-            _ -> notImplemented 16
-
-oilrCompilePredicate (Rule _ _ (lhs, rhs) nif eif _) = oilrCompileLhs lhs nif eif
-
-
-oilrCompileLhs lhs nif eif = map compileNode (allNodeKeys lhs) ++ map compileEdge (allEdgeKeys lhs)
+oilrCompileLhs :: RuleGraph -> NodeInterface -> SemiOilrCode
+oilrCompileLhs lhs nif = map compileNode (allNodeKeys lhs) ++ map compileEdge (allEdgeKeys lhs)
     where
         compileNode nk = cn
              where
-                cn = if nk `elem` map fst nif
-                        then LUN (GtE o, GtE i, GtE l, r)
-                        else LUN (Equ o, Equ i, Equ l, r)
+                cn = if nk `elem` dom nif
+                        then LUN nk (GtE o, GtE i, GtE l, r)
+                        else LUN nk (Equ o, Equ i, Equ l, r)
                 o = outdegree lhs nk - l
                 i = indegree lhs nk - l
                 l = length $ joiningEdges lhs nk nk
                 r = GtE 0 -- TODO!
-        compileEdge ek = notImplemented 17
+        compileEdge ek = LUE ek (source ek) (target ek)
 
-
-oilrCompileRhs = notImplemented 11
+oilrCompileRhs :: RuleGraph -> RuleGraph -> NodeInterface -> SemiOilrCode
+oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++ edgeInsertions
+    where
+        edgeDeletions  = [ DEE ek | ek <- allEdgeKeys lhs ]
+        nodeDeletions  = [ DEN nk | nk <- allNodeKeys lhs , not (nk `elem` dom nif) ]
+        nodeInsertions = [ ADN nk | nk <- allNodeKeys rhs , not (nk `elem` rng nif) ]
+        edgeInsertions = [ ADE ek src tgt
+                            | ek <- allEdgeKeys rhs
+                            , let src = source ek
+                            , let tgt = target ek ]
 
 
 oilrCompileCondition NoCondition = []

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define OILR_INDEX_SIZE (1<<3)
+//#define OILR_INDEX_SIZE (1<<3)
 #define DEFAULT_POOL_SIZE (1024)
 
 void _HOST();
@@ -246,6 +246,8 @@ void deleteEdge(Edge *e) {
 void findNode() {
 }
 
+void findEdge() {
+}
 
 /////////////////////////////////////////////////////////
 // utilities

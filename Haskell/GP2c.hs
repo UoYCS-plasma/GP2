@@ -57,11 +57,13 @@ main = do
             let targ = stem ++ ".c"
             let exe  = stem
             -- p <- readFile progFile
-            prog <- parseProgram progFile
-            host <- parseHostGraph hostFile
-            -- putStrLn $ show prog
-            let progC = progToC $ compileProgram prog
-            let hostC = hostToC $ compileHostGraph host
+            pAST <- parseProgram progFile
+            hAST <- parseHostGraph hostFile
+            let prog = compileProgram pAST
+            let host = compileHostGraph hAST
+            putStrLn $ show prog
+            let progC = progToC prog
+            let hostC = hostToC host
             writeFile targ $ progC ++ hostC
             callCCompiler compiler exe targ
         _ -> do
