@@ -13,33 +13,17 @@ Bucket **list_store = NULL;
  * The first unit in the first atom (an integer or the first character of a string)
  * gives the index to add to the 'base' (the appropriate multiple of 100) as defined
  * in the function. */
-static int hashHostList(HostAtom *list, int length)
+static unsigned hashHostList(HostAtom *list, int length)
 {
-   int base = length > 3 ? 300 : 100 * (length - 1);
-   int offset = 0;
-   HostAtom atom = list[0];
-   /* Integers occupy indices 0-34. */
-   if(atom.type == 'i') offset = abs(atom.num) % 35;
-   else 
+   unsigned hash = 0;
+   int index;
+   for(index = 0; index < length; index++)
    {
-      char first_char = atom.str[0];
-      /* Digits occupy indices 35-44. 0's ASCII value is 48. */
-      if(first_char >= '0' && first_char <= '9') offset = first_char - 13;
-      /* Upper case letters occupy indices 45-70. A's ASCII value is 65. */
-      else if(first_char >= 'A' && first_char <= 'Z') offset = first_char - 20;
-      /* Lower case letters occupy indices 71-96. a's ASCII value is 97. */
-      else if(first_char >= 'a' && first_char <= 'z') offset = first_char - 26;
-      /* _ occupies index 97, ' ' occupies index 98, and the empty string occupies index 99. */
-      else if(first_char == '_') offset = 97;
-      else if(first_char == ' ') offset = 98;
-      else if(first_char == '\0') offset = 99;
-      else
-      {
-         print_to_log("Error (hashHostList): Invalid character '%c'.\n", first_char);
-         exit(1);
-      }
+      HostAtom atom = list[index];
+      int value = atom.type == 'i' ? atom.num : atom.str[0];
+      hash = 33 * hash + value;
    }
-   return base + offset;
+   return hash % LIST_TABLE_SIZE ;
 }
 #endif
 

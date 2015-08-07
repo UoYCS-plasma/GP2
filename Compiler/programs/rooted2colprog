@@ -14,10 +14,10 @@
 // allows the main loop to break and influences the outcome of the top-level
 // try condition.
 Main = try (init; Colour!; if grey_root then fail) 
-Colour = (ColourNode; try Invalid then break)!; try Backtrack else break
+Colour = (ColourNode; try Invalid then break)!; Backtrack
 ColourNode = {colour_blue, colour_red}
 Invalid = {joined_reds, joined_blues}
-Backtrack = {back_red, back_blue}
+Backtrack = try {back_red, back_blue} else break;
 
 init()
 [ (n0, empty) | ]

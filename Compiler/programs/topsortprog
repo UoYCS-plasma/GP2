@@ -26,10 +26,9 @@
 // of deleting them is because we want to preserve the original graph up to node
 // relabelling.
 
-Main = Start; Sort!; Cleanup
-Start = make_root; add_indeg!; num_source!
+Main = Start; Sort!; unmark_edge!; remove_root
+Start = make_root; add_indeg!; number_source!
 Sort = {number, hide_edge}
-Cleanup = undo1!; undo2
 
 make_root()
 [ | ]
@@ -44,7 +43,7 @@ add_indeg(x:list)
 interface = {n0}
 
 // Labels an indegree 0 node with the number from the root node and connects the nodes.
-num_source(x:list; i:int)
+number_source(x:list; i:int)
 [ (n0(R), i # red) (n1, 0:x # grey) | ]
 =>
 [ (n0(R), i+1 # red) (n1, i:x) | ]
@@ -60,16 +59,16 @@ number(a,x,y:list; i:int)
 interface = {n0, n1, n2}
 
 // Dashes an edge and decrements the label of its target.
-hide_edge(a,x,y:list; d,i:int)
-[ (n0(R), i # red) (n1, x) (n2, d:y # grey) |
-  (e1, n1, n2, a) ]
+hide_edge(a,x,y:list; d:int)
+[ (n0, x) (n1, d:y # grey) |
+  (e1, n0, n1, a) ]
 =>
-[ (n0(R), i # red) (n1, x) (n2, d-1:y # grey) |
-  (e1, n1, n2, a # dashed) ]
-interface = {n0, n1, n2}
+[ (n0, x) (n1, d-1:y # grey) |
+  (e1, n0, n1, a # dashed) ]
+interface = {n0, n1}
 where d > 1
 
-undo1(a,x,y:list; i:int)
+unmark_edge(a,x,y:list)
 [ (n0, x) (n1, y) |
   (e0, n0, n1, a # dashed) ]
 =>
@@ -77,7 +76,7 @@ undo1(a,x,y:list; i:int)
   (e0, n0, n1, a) ]
 interface = {n0, n1}
 
-undo2(i:int)
+remove_root(i:int)
 [ (n0(R), i # red) | ]
 =>
 [ | ]
