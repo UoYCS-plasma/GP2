@@ -4,6 +4,7 @@
 //#define OILR_INDEX_SIZE (1<<3)
 #define DEFAULT_POOL_SIZE (1024)
 #define TRAV_COUNT (100)
+#define SPACES_SIZE (100)
 
 void _HOST();
 void _GPMAIN();
@@ -211,7 +212,7 @@ Edge *addEdge(Node *src, Node *tgt) {
 	e->tgt = tgt;
 	outChain(e)->data.edge = e;
 	inChain(e)->data.edge = e;
-	indexNode(src);
+	indexNode(src);sta
 	indexNode(tgt);
 	return e;
 }
@@ -246,6 +247,7 @@ void deleteEdge(Edge *e) {
 // graph search
 
 Trav travs[TRAV_COUNT];
+long spaces[SPACES_SIZE];
 
 #define getTrav(id) (&travs[(id)])
 #define boundEdge(tid) ((getTrav(tid))->eMatch)
@@ -260,12 +262,28 @@ void bindEdge(long tid, Edge *e) {
 	e->bound = 1;
 }
 void unbindNode(long tid) {
-	boundNode(tid)->bound = 0;
+	Node *n = boundNode(tid);
+	if (n)
+		n->bound = 0;
 	getTrav(tid)->nMatch = NULL;
 }
 void unbindEdge(long tid) {
-	boundEdge(tid)->bound = 0;
+	Edge *e = boundEdge(tid);
+	if (e)
+		e->bound = 0;
 	getTrav(tid)->eMatch = NULL;
+}
+
+
+void resetTrav(long tid, long firstSpace) {
+	Trav *t = getTrav(tid);
+	t->spc = &spaces[firstSpace];
+	unbindNode(tid);
+	unbindEdge(tid);
+}
+void nextSpace(long tid) {
+	Trav *t = getTrav(tid);
+	++t->spc;
 }
 
 void findNode(long tid) {
