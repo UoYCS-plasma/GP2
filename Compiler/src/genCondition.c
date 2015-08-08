@@ -287,6 +287,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            generateIntExpression(predicate->atom_comp.right_atom, 1, false);
            PTF(") b%d = true;\n", predicate->bool_id);
            PTFI("else b%d = false;\n", 3, predicate->bool_id);
+           break;
 
       default:
            print_to_log("Error (generatePredicateCode): Unexpected type %d.\n", 

@@ -14,7 +14,7 @@
 #ifndef INC_LABEL_H
 #define INC_LABEL_H
 
-#define LIST_TABLE_SIZE 400
+#define LIST_TABLE_SIZE 100003
 
 #include "globals.h"
 
