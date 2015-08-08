@@ -3,6 +3,7 @@
 
 //#define OILR_INDEX_SIZE (1<<3)
 #define DEFAULT_POOL_SIZE (1024)
+#define TRAV_COUNT (100)
 
 void _HOST();
 void _GPMAIN();
@@ -32,15 +33,19 @@ typedef struct DList {
 } DList;
 
 typedef struct Node {
-	long loops;
-	long matchedLoops;
 	DList index;
 	DList outEdges;
 	DList inEdges;
+	union {
+		long bound:1;
+		long root:1;
+		long loops:15;
+		long matchedLoops:15;
+	};
 } Node;
 
 typedef struct Edge {
-	long matched;
+	long bound;
 	Node *src;
 	Node *tgt;
 	DList outList;
@@ -89,10 +94,6 @@ long boolFlag = 0;
 #define GT      do { long n = POP; boolFlag = ( n <= POP ); } while (0);
 #define EMIT    do { printf("%ld\n", POP); } while (0);
 
-
-#define TS_SIZE 16
-Trav ts[TS_SIZE];
-Trav *tsp = ts;
 
 
 /////////////////////////////////////////////////////////
@@ -191,16 +192,16 @@ Nodge *allocNodge() {
 #define allocNode() &( allocNodge()->n ) 
 #define allocEdge() &( allocNodge()->e )
 
-void addNode() {
+Node *addNode() {
 	Node *n = allocNode();
 	chainFor(n)->data.node = n;
 	indexNode(n);
+	return n;
 }
-
 void addLoop(Node *n) {
 	n->loops++;
 }
-void addEdge(Node *src, Node *tgt) {
+Edge *addEdge(Node *src, Node *tgt) {
 	Edge *e = allocEdge();
 	unindexNode(src);
 	unindexNode(tgt);
@@ -212,6 +213,7 @@ void addEdge(Node *src, Node *tgt) {
 	inChain(e)->data.edge = e;
 	indexNode(src);
 	indexNode(tgt);
+	return e;
 }
 void addEdgeById(long sid, long tid) {
 	addEdge(getNodeById(sid), getNodeById(tid));
@@ -243,11 +245,67 @@ void deleteEdge(Edge *e) {
 /////////////////////////////////////////////////////////
 // graph search
 
-void findNode() {
+Trav travs[TRAV_COUNT];
+
+#define getTrav(id) (&travs[(id)])
+#define boundEdge(tid) ((getTrav(tid))->eMatch)
+#define boundNode(tid) ((getTrav(tid))->nMatch)
+
+void bindNode(long tid, Node *n) {
+	boundNode(tid) = n;
+	n->bound = 1;
+}
+void bindEdge(long tid, Edge *e) {
+	boundEdge(tid) = e;
+	e->bound = 1;
+}
+void unbindNode(long tid) {
+	boundNode(tid)->bound = 0;
+	getTrav(tid)->nMatch = NULL;
+}
+void unbindEdge(long tid) {
+	boundEdge(tid)->bound = 0;
+	getTrav(tid)->eMatch = NULL;
 }
 
-void findEdge() {
+void findNode(long tid) {
+	Trav *t = getTrav(tid);
+	if (! t->nMatch) {
+		
+	} 
 }
+
+void followOutEdge(long src, long tgt) {
+	Node *s = boundNode(src);
+	DList *es = outListFor(s);
+}
+
+
+/////////////////////////////////////////////////////////
+// Graph manipulation via travs
+
+void deleteEdgeByTrav(long tid) {
+	Edge *e = boundEdge(tid);
+	unbindEdge(tid);
+	deleteEdge(e);
+}
+void deleteNodeByTrav(long tid) {
+	Node *n = boundNode(tid);
+	unbindNode(tid);
+	deleteNode(n);
+}
+
+void addNodeByTrav(long tid) {
+	Node *n = addNode();
+	bindNode(tid, n);
+}
+void addEdgeByTrav(long tid, long src, long tgt) {
+	Node *s = boundNode(src), *t = boundNode(tgt);
+	Edge *e = addEdge(s,t);
+	bindEdge(tid, e);
+}
+
+
 
 /////////////////////////////////////////////////////////
 // utilities

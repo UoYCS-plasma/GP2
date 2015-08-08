@@ -22,6 +22,7 @@ data Instr a b =
     | DEN a                 -- Delete Node with id
     | DEE b                 -- Delete Edge with id
     | RTN a                 -- Set root flag on node
+    | URN a                 -- unset root flag on node
 
     -- ☠☠☠ DANGER: see warning above
     | ANT                   -- Add Node and push Trav

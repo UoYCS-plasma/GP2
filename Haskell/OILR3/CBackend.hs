@@ -9,8 +9,13 @@ import Debug.Trace
 type OilrProg = [Instr Int Int]
 
 hostToC :: OilrProg -> String
-hostToC is = makeCFunction "_HOST" $ map compileInstr is
+hostToC is = makeCFunction "_HOST" $ map hostCompileInstruction is
 
+hostCompileInstruction :: Instr Int Int -> String
+hostCompileInstruction (ADN n)   = makeCFunctionCall "addNode" []
+hostCompileInstruction (ADE e src tgt) = makeCFunctionCall "addEdgeById" [src-1,tgt-1]
+hostCompileInstruction (RTN n)   = makeCFunctionCall "setRootById" [n-1]
+hostCompileInstruction i         = error $ "Instruction " ++ show i ++ " not implemented for host graphs"
 
 progToC :: [OilrProg] -> String
 progToC iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
@@ -50,11 +55,12 @@ compileDefn is = concatMap compileInstr is
 
 
 compileInstr :: Instr Int Int -> String
-compileInstr (ADN n)         = makeCFunctionCall "addNode" [n]
-compileInstr (ADE e src tgt) = makeCFunctionCall "addEdgeById" [src, tgt]
-compileInstr (RTN n)         = makeCFunctionCall "setRoot" [n]
-compileInstr (DEN n)         = makeCFunctionCall "deleteNode" [n]
-compileInstr (DEE e)         = makeCFunctionCall "deleteEdge" [e]
+compileInstr (ADN n)         = makeCFunctionCall "addNodeByTrav" [n]
+compileInstr (ADE e src tgt) = makeCFunctionCall "addEdgeByTrav" [e, src, tgt]
+compileInstr (RTN n)         = makeCFunctionCall "setRootByTrav" [n]
+compileInstr (URN n)         = makeCFunctionCall "unsetRootByTrav" [n]
+compileInstr (DEN n)         = makeCFunctionCall "deleteNodeByTrav" [n]
+compileInstr (DEE e)         = makeCFunctionCall "deleteEdgeByTrav" [e]
 
 compileInstr RET           = "return;"
 compileInstr (CAL s)       = makeCFunctionCall s []
