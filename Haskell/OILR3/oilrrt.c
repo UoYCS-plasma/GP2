@@ -19,10 +19,10 @@ void _GPMAIN();
 
 struct Node;
 struct Edge;
+struct Element;
 
 typedef union ListPayload {
-		struct Node *node;
-		struct Edge *edge;
+		struct Element *e;
 		long count;
 } ListPayload ;
 
@@ -47,32 +47,37 @@ typedef struct Node {
 
 typedef struct Edge {
 	long bound;
-	Node *src;
-	Node *tgt;
+	struct Element *src;
+	struct Element *tgt;
 	DList outList;
 	DList inList;
 } Edge;
 
-typedef union Nodge {
-	Node n;
-	Edge e;
-	union Nodge *free;
-} Nodge;
+typedef struct Element {
+	union {
+		Node n;
+		Edge e;
+		struct Element *free;
+	};
+	long bound;
+} Element;
 
 typedef struct Graph {
 	long freeId;
-	Nodge *pool;
-	Nodge *freeList;
+	Element *pool;
+	Element *freeList;
 	DList idx[OILR_INDEX_SIZE];
 } Graph;
 
 typedef struct Trav {
-	Node *nMatch;
-	Edge *eMatch;
+	Element *match;
 	long *spc;
 } Trav;
 
 Graph g;
+
+#define asNode(el) (&(el)->n)
+#define asEdge(el) (&(el)->e)
 
 /////////////////////////////////////////////////////////
 // stack-machine
@@ -102,6 +107,7 @@ long boolFlag = 0;
 
 #define nextElem(dl) ((dl)->next)
 #define prevElem(dl) ((dl)->prev)
+#define elementOfListItem(dl) ((dl)->data.e)
 
 void prependElem(DList *dl, DList *elem) {
 	DList *nx = dl->next;
@@ -145,8 +151,8 @@ void removeElem(DList *elem) {
 /////////////////////////////////////////////////////////
 // graph traversal
 
-#define source(e)   ((e)->src)
-#define target(e)   ((e)->tgt)
+#define source(e)   (asNode((e)->src))
+#define target(e)   (asNode((e)->tgt))
 #define outChain(e) (&(e)->outList)
 #define inChain(e)  (&(e)->inList)
 
@@ -160,17 +166,15 @@ void removeElem(DList *elem) {
 
 #define index(sig) &(g.idx[sig])
 
-#define getNodeById(id) &(g.pool[(id)].n)
+#define getElementById(id) &(g.pool[(id)])
 
 /////////////////////////////////////////////////////////
 // graph manipulation
 
-void freeNodge(Nodge *ne) {
+void freeElement(Element *ne) {
 	ne->free = g.freeList;
 	g.freeList = ne;
 }
-#define freeEdge(e) do { freeNodge( (Nodge *) (e) ); } while (0);
-#define freeNode(n) do { freeNodge( (Nodge *) (n) ); } while (0);
 
 
 void indexNode(Node *n) {
@@ -181,8 +185,8 @@ void unindexNode(Node *n) {
 	removeElem(chainFor(n));
 }
 
-Nodge *allocNodge() {
-	Nodge *ne = g.freeList;
+Element *allocElement() {
+	Element *ne = g.freeList;
 	if (ne == NULL) {
 		ne = &(g.pool[g.freeId++]);
 	} else {
@@ -190,55 +194,58 @@ Nodge *allocNodge() {
 	}
 	return ne;
 }
-#define allocNode() &( allocNodge()->n ) 
-#define allocEdge() &( allocNodge()->e )
 
-Node *addNode() {
-	Node *n = allocNode();
-	chainFor(n)->data.node = n;
+Element *addNode() {
+	Element *el = allocElement();
+	Node *n = asNode(el);
+	chainFor(n)->data.e = el;
 	indexNode(n);
-	return n;
+	return el;
 }
 void addLoop(Node *n) {
 	n->loops++;
 }
-Edge *addEdge(Node *src, Node *tgt) {
-	Edge *e = allocEdge();
-	unindexNode(src);
-	unindexNode(tgt);
-	prependElem( outListFor(src), outChain(e) );
-	prependElem( inListFor(tgt), inChain(e) );
+Element *addEdge(Element *src, Element *tgt) {
+	Element *el = allocElement();
+	Edge *e = asEdge(el);
+	Node *s = asNode(src), *t = asNode(tgt);
+	unindexNode(s);
+	unindexNode(t);
+	prependElem( outListFor(s), outChain(e) );
+	prependElem( inListFor(t), inChain(e) );
 	e->src = src;
 	e->tgt = tgt;
-	outChain(e)->data.edge = e;
-	inChain(e)->data.edge = e;
-	indexNode(src);sta
-	indexNode(tgt);
-	return e;
+	outChain(e)->data.e = el;
+	inChain(e)->data.e = el;
+	indexNode(s);
+	indexNode(t);
+	return el;
 }
 void addEdgeById(long sid, long tid) {
-	addEdge(getNodeById(sid), getNodeById(tid));
+	addEdge(getElementById(sid), getElementById(tid));
 }
 
-void deleteNode(Node *n) {
+void deleteNode(Element *el) {
+	Node *n = asNode(el);
 	if (indeg(n) + outdeg(n) + loopdeg(n)) {
 		printf("Dangling condition violated\n");
 		exit(1);
 	}
 	unindexNode(n);
-	freeNode(n);
+	freeElement(el);
 }
-void deleteLoop(Node *n) {
-	n->loops--;
+void deleteLoop(Element *n) {
+	asNode(n)->loops--;
 }
-void deleteEdge(Edge *e) {
+void deleteEdge(Element *el) {
+	Edge *e = asEdge(el);
 	Node *src = source(e);
 	Node *tgt = target(e);
 	unindexNode(src);
 	unindexNode(tgt);
 	removeElem(outChain(e));
 	removeElem(inChain(e));
-	freeEdge(e);
+	freeElement(el);
 	indexNode(src);
 	indexNode(tgt);
 }
@@ -250,36 +257,24 @@ Trav travs[TRAV_COUNT];
 long spaces[SPACES_SIZE];
 
 #define getTrav(id) (&travs[(id)])
-#define boundEdge(tid) ((getTrav(tid))->eMatch)
-#define boundNode(tid) ((getTrav(tid))->nMatch)
+#define boundElement(tid) ((getTrav(tid))->match)
 
-void bindNode(long tid, Node *n) {
-	boundNode(tid) = n;
-	n->bound = 1;
+void bindElement(long tid, Element *el) {
+	boundElement(tid) = el;
+	el->bound = 1;
 }
-void bindEdge(long tid, Edge *e) {
-	boundEdge(tid) = e;
-	e->bound = 1;
-}
-void unbindNode(long tid) {
-	Node *n = boundNode(tid);
-	if (n)
-		n->bound = 0;
-	getTrav(tid)->nMatch = NULL;
-}
-void unbindEdge(long tid) {
-	Edge *e = boundEdge(tid);
-	if (e)
-		e->bound = 0;
-	getTrav(tid)->eMatch = NULL;
+void unbindElement(long tid) {
+	Element *el = boundElement(tid);
+	if (el)
+		el->bound = 0;
+	getTrav(tid)->match = NULL;
 }
 
 
 void resetTrav(long tid, long firstSpace) {
 	Trav *t = getTrav(tid);
 	t->spc = &spaces[firstSpace];
-	unbindNode(tid);
-	unbindEdge(tid);
+	unbindElement(tid);
 }
 void nextSpace(long tid) {
 	Trav *t = getTrav(tid);
@@ -288,39 +283,46 @@ void nextSpace(long tid) {
 
 void findNode(long tid) {
 	Trav *t = getTrav(tid);
-	if (! t->nMatch) {
+	if (! t->match) {
 		
 	} 
 }
 
-void followOutEdge(long src, long tgt) {
-	Node *s = boundNode(src);
-	DList *es = outListFor(s);
+void followOutEdge(long tid, long src) {
+	Node *s = asNode( boundElement(src) );
+	DList *outEdges = outListFor(s);
+	bindElement(tid, elementOfListItem( nextElem(outEdges) ) );
+	boolFlag = boundElement(tid) == NULL ? 0 : 1;
 }
-
+void followInEdge(long tid, long tgt) {
+	Node *t = asNode( boundElement(tgt) );
+	DList *inEdges = outListFor(t);
+	bindElement(tid, elementOfListItem( nextElem(inEdges) ) );
+	boolFlag = boundElement(tid) == NULL ? 0 : 1;
+}
 
 /////////////////////////////////////////////////////////
 // Graph manipulation via travs
 
 void deleteEdgeByTrav(long tid) {
-	Edge *e = boundEdge(tid);
-	unbindEdge(tid);
-	deleteEdge(e);
+	Element *el = boundElement(tid);
+	unbindElement(tid);
+	deleteEdge(el);
 }
 void deleteNodeByTrav(long tid) {
-	Node *n = boundNode(tid);
-	unbindNode(tid);
-	deleteNode(n);
+	Element *el = boundElement(tid);
+	unbindElement(tid);
+	deleteNode(el);
 }
 
 void addNodeByTrav(long tid) {
-	Node *n = addNode();
-	bindNode(tid, n);
+	Element *el = addNode();
+	bindElement(tid, el);
 }
 void addEdgeByTrav(long tid, long src, long tgt) {
-	Node *s = boundNode(src), *t = boundNode(tgt);
-	Edge *e = addEdge(s,t);
-	bindEdge(tid, e);
+	Element *s = boundElement(src), *t = boundElement(tgt);
+	Element *e = addEdge(s,t);
+	bindElement(tid, e);
 }
 
 
@@ -328,7 +330,7 @@ void addEdgeByTrav(long tid, long src, long tgt) {
 /////////////////////////////////////////////////////////
 // utilities
 
-#define getId(ne) (((Nodge *) (ne)) - g.pool)
+#define getId(ne) (((Element *) (ne)) - g.pool)
 void dumpGraph() {
 	long i;
 	DList *index, *out;
@@ -339,7 +341,7 @@ void dumpGraph() {
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		index = &(g.idx[i]);
 		while ( (index = nextElem(index)) ) {
-			n = index->data.node;
+			n = asNode(index->data.e);
 			//printf("%lx %lx\n", (long) n, (long) g.pool);
 			printf("\t( n%ld, empty)\n", getId(n) );
 		}
@@ -349,10 +351,10 @@ void dumpGraph() {
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		index = &(g.idx[i]);
 		while ( (index = nextElem(index)) ) {
-			n = index->data.node;
+			n = asNode(index->data.e);
 			out = outListFor(n);
 			while ( (out = nextElem(out)) ) {
-				e = out->data.edge;
+				e = asEdge(out->data.e);
 				src = source(e);
 				tgt = target(e);
 				printf("\t( e%ld, n%ld, n%ld, empty)\n", getId(e), getId(src), getId(tgt) );
@@ -367,7 +369,7 @@ void dumpGraph() {
 // main
 
 int main(int argc, char **argv) {
-	g.pool = malloc(sizeof(Nodge) * DEFAULT_POOL_SIZE);
+	g.pool = malloc(sizeof(Element) * DEFAULT_POOL_SIZE);
 	if (!g.pool)
 		exit(1);
 

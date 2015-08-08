@@ -4,7 +4,18 @@ type Tid = Int -- Trav id
 
 
 data Dim = Equ Int | GtE Int deriving (Show, Eq)
+
+-- TODO: this may not be adequate due to sort order of n-tuples, but it will do
+-- for a first cut
+instance Ord Dim where
+    compare (Equ _) (GtE _) = GT
+    compare (Equ x) (Equ y) = compare x y
+    compare (GtE x) (GtE y) = compare x y
+
 type Pred = (Dim, Dim, Dim, Dim)
+
+
+
 
 -- ☠☠☠ DANGER WARNING DANGER WARNING DANGER WARNING DANGER ☠☠☠
 -- before adding new instructions search for unsafeCoerce in 
@@ -44,10 +55,16 @@ data Instr a b =
     -- ☠☠☠ DANGER: see warning above
     | LUN a Pred
     | LUE b a a
+    | XIE b a
+    | XOE b a
+    | XSN a b
+    | XTN a b
     -- flow control
     -- ☠☠☠ DANGER: see warning above
     | CAL String | ALP String -- call rule or proc once or as-long-as-possible
     | RET                   -- unconditinoal return from current rule or proc
+    | ORB a                 -- back to a if success flag is unset
+    | ORF                   -- exit procedure if success flag is unset
     -- logical operators
     -- ☠☠☠ DANGER: see warning above
     | TRU  | FLS            -- set status register to true or false respectively

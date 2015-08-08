@@ -8,6 +8,7 @@ import Mapping (dom, rng)
 
 import Debug.Trace
 import Unsafe.Coerce
+import Data.List
 
 
 type SemiOilrCode = [Instr NodeKey EdgeKey]
@@ -33,6 +34,14 @@ postprocess sois = map postprocessInstr sois
         postprocessInstr (RTN n)     = RTN $ nodeNumber n
         postprocessInstr (LUN n p)   = LUN (nodeNumber n) p
         postprocessInstr (LUE e s t) = LUE (edgeNumber e) (nodeNumber s) (nodeNumber t)
+        -- these below shouldn't be in the instruction stream at this stage -- they're 
+        -- only created by optimisations, however they're handled here for type-safety's
+        -- sake
+        postprocessInstr (XOE e s)   = XOE (edgeNumber e) (nodeNumber s)
+        postprocessInstr (XIE e t)   = XOE (edgeNumber e) (nodeNumber t)
+        postprocessInstr (XSN n e)   = XOE (nodeNumber n) (edgeNumber e)
+        postprocessInstr (XTN n e)   = XOE (nodeNumber n) (edgeNumber e)
+        postprocessInstr (ORB n)     = ORB $ nodeNumber n
         -- WARNING: HERE BE DRAGONS. Haskell's type system won't do implicit 
         -- conversion between the non-parameterised elements of the parameterised
         -- type Isntr a b. unsafeCoerce allows this conversion by sidestepping 
@@ -183,8 +192,20 @@ oilrCompileRule r@(Rule name _ (lhs, rhs) nif eif _) = ( [DEF name] ++ body ++ [
     where
         body = oilrCompileLhs lhs nif ++ oilrCompileRhs lhs rhs nif
 
+oilrSortNodeLookups :: SemiOilrCode -> SemiOilrCode
+oilrSortNodeLookups is = reverse $ sortBy mostConstrained is
+    where
+        mostConstrained (LUN _ p1) (LUN _ p2) = compare p1 p2
+
+oilrInterleaveEdges :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode -> SemiOilrCode
+oilrInterleaveEdges acc es [] = reverse acc ++ es
+oilrInterleaveEdges acc es (n@(LUN id _):ns) = oilrInterleaveEdges (nes ++ n:acc) es' ns
+    where
+        (nes, es') = partition (edgeFor id) es
+        edgeFor id (LUE _ a b) = a == id || b == id
+
 oilrCompileLhs :: RuleGraph -> NodeInterface -> SemiOilrCode
-oilrCompileLhs lhs nif = map compileNode (allNodeKeys lhs) ++ map compileEdge (allEdgeKeys lhs)
+oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (allEdgeKeys lhs)) $ oilrSortNodeLookups ( map compileNode (allNodeKeys lhs) )
     where
         compileNode nk = cn
              where
