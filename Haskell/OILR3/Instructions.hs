@@ -53,6 +53,7 @@ data Instr a b =
     | END
     -- Graph search
     -- ☠☠☠ DANGER: see warning above
+    | CRS a Pred            -- conditional reset of trav
     | LUN a Pred
     | LUE b a a
     | XIE b a

@@ -42,6 +42,7 @@ postprocess sois = map postprocessInstr sois
         postprocessInstr (XSN n e)   = XOE (nodeNumber n) (edgeNumber e)
         postprocessInstr (XTN n e)   = XOE (nodeNumber n) (edgeNumber e)
         postprocessInstr (ORB n)     = ORB $ nodeNumber n
+        postprocessInstr (CRS n p)   = CRS (nodeNumber n) p
         -- WARNING: HERE BE DRAGONS. Haskell's type system won't do implicit 
         -- conversion between the non-parameterised elements of the parameterised
         -- type Isntr a b. unsafeCoerce allows this conversion by sidestepping 
@@ -192,6 +193,7 @@ oilrCompileRule r@(Rule name _ (lhs, rhs) nif eif _) = ( [DEF name] ++ body ++ [
     where
         body = oilrCompileLhs lhs nif ++ oilrCompileRhs lhs rhs nif
 
+-- Make sure the most constrained nodes are looked for first
 oilrSortNodeLookups :: SemiOilrCode -> SemiOilrCode
 oilrSortNodeLookups is = reverse $ sortBy mostConstrained is
     where
@@ -203,6 +205,7 @@ oilrInterleaveEdges acc es (n@(LUN id _):ns) = oilrInterleaveEdges (nes ++ n:acc
     where
         (nes, es') = partition (edgeFor id) es
         edgeFor id (LUE _ a b) = a == id || b == id
+        insertEdgeBeforeNode = notImplemented 20
 
 oilrCompileLhs :: RuleGraph -> NodeInterface -> SemiOilrCode
 oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (allEdgeKeys lhs)) $ oilrSortNodeLookups ( map compileNode (allNodeKeys lhs) )
