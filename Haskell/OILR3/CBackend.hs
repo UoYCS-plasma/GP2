@@ -29,13 +29,14 @@ makeLoops acc prev (i:is) = case (i, prev) of
     _                       -> makeLoops (i:acc) prev is
         
 
-progToC :: [OilrProg] -> String
-progToC iss = consts ++ cRuntime ++ searchSpaces ++ predeclarations iss ++ concat defns
+progToC :: Int -> [OilrProg] -> String
+progToC travCount iss = consts ++ cRuntime ++ searchSpaces ++ predeclarations iss ++ concat defns
     where
         searchSpaces = compileSearchSpaces [ (i, is)
                                            | (i, is) <- zip [1..] $ map snd $ makeSearchSpacesForDecl oilr (concat iss) ]
         defns = map (compileDefn . (makeLoops [] Nothing) ) iss
         consts = "#define OILR_INDEX_SIZE (1<<" ++ (show $ oilrIndexTotalBits oilr) ++ ")\n"
+              ++ "#define TRAV_COUNT (" ++ show travCount ++ ")\n"
         oilr = oilrBits iss
 
 -- Generate C declarations so that the ordering of definitions
@@ -87,9 +88,10 @@ makeSearchSpacesForDecl bits is = map (sigsForPred bits) preds
 
 
 compileSearchSpaces :: [ (Int, [Int]) ] -> String
-compileSearchSpaces ss = "long search_spaces[][] = {\n" ++ concatMap makeSpace ss ++ "};\n\n"
+compileSearchSpaces ss = concatMap makeSpace ss ++ "long *search_spaces[] = { " ++ concatMap makeSpaces ss ++ "};\n\n"
     where
-        makeSpace (p, is) = '{' : ( concat $ intersperse ", " $  map show is ) ++ "},\n"
+        makeSpace (p, is) = "long search_space_" ++ show p ++ "[] = {" ++ ( concat $ intersperse ", " $  map show is ) ++ "};\n"
+        makeSpaces (p, is) = "search_space_" ++ show p ++ ", "
 
 
 compileDefn :: OilrProg -> String

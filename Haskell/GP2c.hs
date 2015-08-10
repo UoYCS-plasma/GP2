@@ -18,7 +18,7 @@ import ParseGraph
 import ParseProgram
 import ProcessAst (makeHostGraph, makeGPProgram)
 
-compiler = "gcc -g -O2 -Wall -Werror -o"
+compiler = "gcc -g -O2 -Wall -Wno-error=unused-label -Werror -o"
 
 {- options :: [ OptDescr Flag ]
 options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, instead of all possible graphs",
@@ -59,10 +59,10 @@ main = do
             -- p <- readFile progFile
             pAST <- parseProgram progFile
             hAST <- parseHostGraph hostFile
-            let prog = compileProgram pAST
+            let (prog, travCount) = compileProgram pAST
             let host = compileHostGraph hAST
             putStrLn $ show prog
-            let progC = progToC prog
+            let progC = progToC travCount prog
             let hostC = hostToC host
             writeFile targ $ progC ++ hostC
             callCCompiler compiler exe targ

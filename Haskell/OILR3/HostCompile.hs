@@ -25,14 +25,16 @@ notImplemented n = error $ "Not implemented: " ++ show n
 compileHostGraph :: HostGraph -> OilrCode
 compileHostGraph g = nodes g ++ edges g
 
-compileProgram :: GPProgram -> [OilrCode]
-compileProgram (Program ds) = map postprocess $ map oilrCompileDeclaration ds
-
-postprocess :: SemiOilrCode -> OilrCode
-postprocess sois = map postprocessInstr sois
+compileProgram :: GPProgram -> ([OilrCode], Int)
+compileProgram (Program ds) = (map (postprocess mapping) prog , length mapping)
     where
-        mapping = elemIdMapping sois
+        prog = map oilrCompileDeclaration ds
+        mapping = elemIdMapping $ concat prog
 
+
+postprocess :: Mapping GraphElemId Int -> SemiOilrCode -> OilrCode
+postprocess mapping sois = map postprocessInstr sois
+    where
         translate :: GraphElemId -> Int
         translate id = definiteLookup id mapping
 
@@ -64,7 +66,7 @@ postprocess sois = map postprocessInstr sois
 elemIdMapping :: SemiOilrCode -> Mapping GraphElemId Int
 elemIdMapping sois = zip (nub [ id | id <- concatMap extractId sois ]) [0,1..]
 
-extractId :: Instr GraphElemId GraphElemId -> [GraphElemId]
+extractId :: Instr a a -> [a]
 extractId (ADN n)      = [n]
 extractId (DEN n)      = [n]
 extractId (RTN n)      = [n]

@@ -3,8 +3,6 @@
 
 //#define OILR_INDEX_SIZE (1<<3)
 #define DEFAULT_POOL_SIZE (1024)
-#define TRAV_COUNT (100)
-#define SPACES_SIZE (100)
 
 void _HOST();
 void _GPMAIN();
@@ -38,15 +36,14 @@ typedef struct Node {
 	DList outEdges;
 	DList inEdges;
 	union {
-		long bound:1;
 		long root:1;
 		long loops:15;
 		long matchedLoops:15;
 	};
+	long sig;
 } Node;
 
 typedef struct Edge {
-	long bound;
 	struct Element *src;
 	struct Element *tgt;
 	DList outList;
@@ -71,6 +68,7 @@ typedef struct Graph {
 
 typedef struct Trav {
 	Element *match;
+	long *curSpc;
 	long *spc;
 } Trav;
 
@@ -85,7 +83,7 @@ Graph g;
 #define DS_SIZE 16
 long ds[DS_SIZE];
 long *dsp = ds;
-long boolFlag = 0;
+long boolFlag = 1;
 
 #define DEF(id) void (id)() {
 #define END     }
@@ -254,7 +252,6 @@ void deleteEdge(Element *el) {
 // graph search
 
 Trav travs[TRAV_COUNT];
-long spaces[SPACES_SIZE];
 
 #define getTrav(id) (&travs[(id)])
 #define boundElement(tid) ((getTrav(tid))->match)
@@ -271,9 +268,9 @@ void unbindElement(long tid) {
 }
 
 
-void resetTrav(long tid, long firstSpace) {
+void resetTrav(long tid) {
 	Trav *t = getTrav(tid);
-	t->spc = &spaces[firstSpace];
+	t->curSpc = t->spc;
 	unbindElement(tid);
 }
 void nextSpace(long tid) {
@@ -281,11 +278,24 @@ void nextSpace(long tid) {
 	++t->spc;
 }
 
-void findNode(long tid) {
+// TODO: Move spc and sz initialisation to compile time!
+void findNode(long tid, long *spc, long sz) {
 	Trav *t = getTrav(tid);
+	if (!t->spc)
+		t->spc = spc;
+	unbindElement(tid);
+	while (! t->match)  {
+		if (t->spc - spc > sz) {
+			boolFlag = 0;
+		} 
+	}
+
 	if (! t->match) {
 		
 	} 
+}
+void findEdge(long a, long b, long c) {
+
 }
 
 void followOutEdge(long tid, long src) {
@@ -370,6 +380,7 @@ void dumpGraph() {
 
 int main(int argc, char **argv) {
 	g.pool = malloc(sizeof(Element) * DEFAULT_POOL_SIZE);
+	g.freeId = 1;  // pool[0] is not used so zero can function as a NULL value
 	if (!g.pool)
 		exit(1);
 
