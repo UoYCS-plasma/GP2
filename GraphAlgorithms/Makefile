@@ -42,4 +42,4 @@ main.o:		graph.h hostParser.h
 
 # Cleanup
 clean:
-		rm *.o
+		rm *.o 2col topsort hostParser.c hostParser.h hostLexer.c
