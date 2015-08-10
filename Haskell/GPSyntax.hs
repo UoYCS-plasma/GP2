@@ -100,7 +100,7 @@ data AstRuleEdge = AstRuleEdge EdgeName Bool NodeName NodeName RuleLabel derivin
 -- Rule graph labels are lists of expressions.
 type RuleGraph = Graph RuleNode RuleEdge
 data RuleNode = RuleNode NodeName Bool RuleLabel deriving (Show, Eq)
-data RuleEdge = RuleEdge EdgeName Bool RuleLabel deriving Show
+data RuleEdge = RuleEdge EdgeName Bool RuleLabel deriving (Show, Eq)
 
 type GPList = [RuleAtom]
 data RuleLabel = RuleLabel GPList Colour deriving (Show, Eq)

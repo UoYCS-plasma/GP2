@@ -4,45 +4,55 @@ import OILR3.Instructions
 
 import GPSyntax
 import Graph
-import Mapping (dom, rng)
+import Mapping
 
 import Debug.Trace
 import Unsafe.Coerce
 import Data.List
 
 
-type SemiOilrCode = [Instr NodeKey EdgeKey]
+data GraphElem = N NodeKey | E EdgeKey deriving (Eq, Ord, Show)
+type GraphElemId = (RuleGraph, GraphElem)
+type SemiOilrCode = [Instr GraphElemId GraphElemId]
 type OilrCode = [Instr Int Int]
+
+
+
 
 notImplemented n = error $ "Not implemented: " ++ show n
 
 
 compileHostGraph :: HostGraph -> OilrCode
-compileHostGraph g = postprocess $ nodes g ++ edges g
+compileHostGraph g = nodes g ++ edges g
 
 compileProgram :: GPProgram -> [OilrCode]
 compileProgram (Program ds) = map postprocess $ map oilrCompileDeclaration ds
 
-
 postprocess :: SemiOilrCode -> OilrCode
 postprocess sois = map postprocessInstr sois
     where
-        postprocessInstr (ADN n)     = ADN $ nodeNumber n
-        postprocessInstr (ADE e s t) = ADE (edgeNumber e) (nodeNumber s) (nodeNumber t)
-        postprocessInstr (DEN n)     = DEN $ nodeNumber n
-        postprocessInstr (DEE e)     = DEE $ edgeNumber e
-        postprocessInstr (RTN n)     = RTN $ nodeNumber n
-        postprocessInstr (LUN n p)   = LUN (nodeNumber n) p
-        postprocessInstr (LUE e s t) = LUE (edgeNumber e) (nodeNumber s) (nodeNumber t)
+        mapping = elemIdMapping sois
+
+        translate :: GraphElemId -> Int
+        translate id = definiteLookup id mapping
+
+        postprocessInstr :: Instr GraphElemId GraphElemId -> Instr Int Int
+        postprocessInstr (ADN n)     = ADN $ translate n
+        postprocessInstr (ADE e s t) = ADE (translate e) (translate s) (translate t)
+        postprocessInstr (DEN n)     = DEN $ translate n
+        postprocessInstr (DEE e)     = DEE $ translate e
+        postprocessInstr (RTN n)     = RTN $ translate n
+        postprocessInstr (LUN n p)   = LUN (translate n) p
+        postprocessInstr (LUE e s t) = LUE (translate e) (translate s) (translate t)
         -- these below shouldn't be in the instruction stream at this stage -- they're 
         -- only created by optimisations, however they're handled here for type-safety's
         -- sake
-        postprocessInstr (XOE e s)   = XOE (edgeNumber e) (nodeNumber s)
-        postprocessInstr (XIE e t)   = XOE (edgeNumber e) (nodeNumber t)
-        postprocessInstr (XSN n e)   = XOE (nodeNumber n) (edgeNumber e)
-        postprocessInstr (XTN n e)   = XOE (nodeNumber n) (edgeNumber e)
-        postprocessInstr (ORB n)     = ORB $ nodeNumber n
-        postprocessInstr (CRS n p)   = CRS (nodeNumber n) p
+        postprocessInstr (XOE e s)   = XOE (translate e) (translate s)
+        postprocessInstr (XIE e t)   = XOE (translate e) (translate t)
+        postprocessInstr (XSN n e)   = XOE (translate n) (translate e)
+        postprocessInstr (XTN n e)   = XOE (translate n) (translate e)
+        postprocessInstr (ORB n)     = ORB $ translate n
+        postprocessInstr (CRS n p)   = CRS (translate n) p
         -- WARNING: HERE BE DRAGONS. Haskell's type system won't do implicit 
         -- conversion between the non-parameterised elements of the parameterised
         -- type Isntr a b. unsafeCoerce allows this conversion by sidestepping 
@@ -51,21 +61,36 @@ postprocess sois = map postprocessInstr sois
         -- debugging the results! Don't say you weren't warned.
         postprocessInstr soi         = unsafeCoerce soi
 
+elemIdMapping :: SemiOilrCode -> Mapping GraphElemId Int
+elemIdMapping sois = zip (nub [ id | id <- concatMap extractId sois ]) [0,1..]
+
+extractId :: Instr GraphElemId GraphElemId -> [GraphElemId]
+extractId (ADN n)      = [n]
+extractId (DEN n)      = [n]
+extractId (RTN n)      = [n]
+extractId (LUN n _)    = [n]
+extractId (ADE e _ _)  = [e]
+extractId (DEE e)      = [e]
+extractId (LUE e _ _)  = [e]
+extractId _            = []
+
+
+
 
 -- -------------------------------------------------------------------
 -- host graph OILR instruction generation
 -- -------------------------------------------------------------------
 
-nodes :: HostGraph -> SemiOilrCode
+nodes :: HostGraph -> OilrCode
 nodes g = concatMap node $ allNodes g
     where
-        node (n, HostNode _ root (HostLabel [] Uncoloured)) = ADN n : (if root then RTN n : [] else [])
+        node (n, HostNode _ root (HostLabel [] Uncoloured)) = ADN (nodeNumber n) : (if root then RTN (nodeNumber n) : [] else [])
 
 
-edges :: HostGraph -> SemiOilrCode
+edges :: HostGraph -> OilrCode
 edges g = map edge $ allEdges g
     where
-        edge (e, _) = ADE e (source e) (target e)
+        edge (e, _) = ADE (edgeNumber e) (nodeNumber $ source e) (nodeNumber $ target e)
 
 
 -- -------------------------------------------------------------------
@@ -167,25 +192,11 @@ oilrCompileSimple Fail   = [ FLS , RET ]
 -- rule compilation is complex...
 -- -------------------------------------------------------------------
 
-data OilrRuleProp = NodesAdded | NodesDeleted | EdgesAdded | EdgesDeleted deriving Show
+oilrNodeId :: RuleGraph -> NodeKey -> GraphElemId
+oilrNodeId g nk = (g, N nk)
 
-
--- Return the lists of (deleted, created) node ids
-
-analyseNodeInterface :: Rule -> ([NodeKey], [NodeKey])
-analyseNodeInterface (Rule _ _ (lhs, rhs) nif _ _) = 
-    ( [ lnk | lnk <- allNodeKeys lhs , not $ lnk `elem` dom nif ]
-    , [ rnk | rnk <- allNodeKeys rhs , not $ rnk `elem` rng nif ] )
-    where
-        lhsInterfaceNodes = dom nif
-        rhsInterfaceNodes = rng nif
-
--- WARNING: EdgeInterface doesn't do what it says on the tin! It is only used
--- to track bidi rule edges, not as an actual interface. We'll have to remove
--- unneeded edge deletion and creation rules
-analyseRule :: Rule -> ([NodeKey], [NodeKey])
-analyseRule r = analyseNodeInterface r
-
+oilrEdgeId :: RuleGraph -> EdgeKey -> GraphElemId
+oilrEdgeId g ek = (g, E ek)
 
 -- TODO: special handling for bidi edges!
 oilrCompileRule :: Rule -> SemiOilrCode
@@ -199,6 +210,7 @@ oilrSortNodeLookups is = reverse $ sortBy mostConstrained is
     where
         mostConstrained (LUN _ p1) (LUN _ p2) = compare p1 p2
 
+-- TODO: needs work. Currently issues "n2 e12 e23 n1 n3" but ideally should be "n2 e12 n1 e23 n3"
 oilrInterleaveEdges :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode -> SemiOilrCode
 oilrInterleaveEdges acc es [] = reverse acc ++ es
 oilrInterleaveEdges acc es (n@(LUN id _):ns) = oilrInterleaveEdges (nes ++ n:acc) es' ns
@@ -213,24 +225,24 @@ oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (allEdgeKeys lh
         compileNode nk = cn
              where
                 cn = if nk `elem` dom nif
-                        then LUN nk (GtE o, GtE i, GtE l, r)
-                        else LUN nk (Equ o, Equ i, Equ l, r)
+                        then LUN (oilrNodeId lhs nk) (GtE o, GtE i, GtE l, r)
+                        else LUN (oilrNodeId lhs nk) (Equ o, Equ i, Equ l, r)
                 o = outdegree lhs nk - l
                 i = indegree lhs nk - l
                 l = length $ joiningEdges lhs nk nk
                 r = GtE 0 -- TODO!
-        compileEdge ek = LUE ek (source ek) (target ek)
+        compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
 oilrCompileRhs :: RuleGraph -> RuleGraph -> NodeInterface -> SemiOilrCode
 oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++ edgeInsertions
     where
-        edgeDeletions  = [ DEE ek | ek <- allEdgeKeys lhs ]
-        nodeDeletions  = [ DEN nk | nk <- allNodeKeys lhs , not (nk `elem` dom nif) ]
-        nodeInsertions = [ ADN nk | nk <- allNodeKeys rhs , not (nk `elem` rng nif) ]
-        edgeInsertions = [ ADE ek src tgt
+        edgeDeletions  = [ DEE (oilrEdgeId lhs ek) | ek <- allEdgeKeys lhs ]
+        nodeDeletions  = [ DEN (oilrNodeId lhs nk) | nk <- allNodeKeys lhs , not (nk `elem` dom nif) ]
+        nodeInsertions = [ ADN (oilrNodeId rhs nk) | nk <- allNodeKeys rhs , not (nk `elem` rng nif) ]
+        edgeInsertions = [ ADE (oilrEdgeId rhs ek) src tgt
                             | ek <- allEdgeKeys rhs
-                            , let src = source ek
-                            , let tgt = target ek ]
+                            , let src = oilrNodeId rhs (source ek)
+                            , let tgt = oilrNodeId rhs (target ek) ]
 
 
 oilrCompileCondition NoCondition = []

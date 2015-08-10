@@ -23,7 +23,7 @@ instance Eq EdgeKey where (E _ _ i) == (E _ _ j)  =  i == j
 
 -- The Int values here are next nodeNumber and next edgeNumber.
 data Graph a b = Graph (Map.Map NodeKey a) Int (Map.Map EdgeKey b) Int
-                 deriving Show
+                 deriving (Show,Eq)
 
 emptyGraph :: Graph a b
 emptyGraph = Graph Map.empty 1 Map.empty 1

@@ -48,7 +48,6 @@ predeclarations iss = concatMap declare iss
         declare _ = error "Found an ill-formed definition"
 
 
-
 oilrIndexTotalBits :: OilrIndexBits -> Int
 oilrIndexTotalBits (o,i,l,r) = o+i+l+r
 
@@ -59,13 +58,13 @@ extractPredicates is = concatMap harvestPred is
 
 
 oilrBits :: [OilrProg] -> OilrIndexBits
-oilrBits iss = (f os, f is, f ls, f rs)
+oilrBits iss = (f o, f i, f l, f r)
     where
         f = (bits . maximum . map extract) 
-        (os, is, ls, rs) = unzip4 $ extractPredicates $ concat iss
+        (o, i, l, r) = unzip4 $ extractPredicates $ concat iss
         extract (Equ n) = n
         extract (GtE n) = n
-        bits n = head $ dropWhile (\x -> 2^x < n) [0,1..]
+        bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
 
 sigsForPred :: OilrIndexBits -> Pred -> (Pred, [Int])
 sigsForPred (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
@@ -91,7 +90,6 @@ compileSearchSpaces :: [ (Int, [Int]) ] -> String
 compileSearchSpaces ss = "long search_spaces[][] = {\n" ++ concatMap makeSpace ss ++ "};\n\n"
     where
         makeSpace (p, is) = '{' : ( concat $ intersperse ", " $  map show is ) ++ "},\n"
-
 
 
 compileDefn :: OilrProg -> String
