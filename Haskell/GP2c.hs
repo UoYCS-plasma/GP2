@@ -16,7 +16,7 @@ import OILR3.CRuntime
 -- import GPSyntax -- debug code
 import ParseGraph
 import ParseProgram
-import ProcessAst (makeHostGraph, makeGPProgram)
+-- import ProcessAst (makeHostGraph)
 
 compiler = "gcc -g -O2 -Wall -Wno-error=unused-label -Werror -o"
 
@@ -31,13 +31,13 @@ parseHostGraph graphFile = do
     g <- readFile graphFile
     case parse hostGraph graphFile g of
         Left e     -> error "Compilation of host graph failed" -- print e
-        Right host -> return $ makeHostGraph host
+        Right host -> return host
 
 parseProgram progFile = do
     p <- readFile progFile
     case parse program progFile p of
         Left e     -> error "Compilation of program failed"
-        Right prog -> return $ fst $ makeGPProgram prog
+        Right prog -> return prog
 
 callCCompiler cc obj cFile = do
     -- TODO: use of system is ugly and potentially dangerous!
@@ -61,7 +61,7 @@ main = do
             hAST <- parseHostGraph hostFile
             let (prog, travCount) = compileProgram pAST
             let host = compileHostGraph hAST
-            putStrLn $ show prog
+            -- putStrLn $ show prog
             let progC = progToC travCount prog
             let hostC = hostToC host
             writeFile targ $ progC ++ hostC
@@ -69,41 +69,3 @@ main = do
         _ -> do
             error "Nope"
 
-{-
-    hSetBuffering stdout NoBuffering
-    args <- getArgs
-    case getOpt Permute [] args of
-        (flags, [progFile], []) ->
-            do
-                p <- readFile progFile
-                let stem = getStem progFile
-                let targ = stem ++ ".c"
-                putStrLn $ "Parsing " ++ progFile
-                case parse program progFile p of
-                  Left  err  -> print err
-                  Right prog -> do
-                    putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
-                    -- putStrLn $ show prog
-                    -- _ <- mapM putStrLn $ map show $ map characteriseRule $ extractDecls prog
-                    putStrLn ""
-                    -- let code = cCompile $ compileGPProg prog
-                    -- writeFile targ code
-        (flags, [progFile, hostFile], []) ->
-            do
-                putStrLn $ " ** Warning: host-graph burned into executable!"
-                p <- readFile progFile
-                h <- readFile hostFile
-                let stem = getStem progFile
-                let targ = stem ++ ".c"
-                putStrLn $ "Parsing " ++ progFile
-                case parse program progFile p of
-                  Left  err  -> print err
-                  Right prog -> do
-                    putStrLn $ "Parsing " ++ hostFile
-                    case parse hostGraph hostFile h of
-                      Left  err  -> print err
-                      Right host -> do
-                        putStrLn $ "Compiling " ++ progFile ++ " to " ++ targ
-                        let code = cCompile $ compileHostGraph host ++ compileGPProg prog
-                        writeFile targ code
--}

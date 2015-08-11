@@ -166,6 +166,8 @@ void removeElem(DList *elem) {
 
 #define getElementById(id) &(g.pool[(id)])
 
+#define space(id) (index( searchSpaces[*(id)] ))
+
 /////////////////////////////////////////////////////////
 // graph manipulation
 
@@ -273,26 +275,35 @@ void resetTrav(long tid) {
 	t->curSpc = t->spc;
 	unbindElement(tid);
 }
-void nextSpace(long tid) {
-	Trav *t = getTrav(tid);
-	++t->spc;
-}
+
 
 // TODO: Move spc and sz initialisation to compile time!
+//
 void findNode(long tid, long *spc, long sz) {
 	Trav *t = getTrav(tid);
 	if (!t->spc)
 		t->spc = spc;
-	unbindElement(tid);
-	while (! t->match)  {
-		if (t->spc - spc > sz) {
-			boolFlag = 0;
-		} 
-	}
 
-	if (! t->match) {
+	do {
+		Element *cur = boundElement(tid);
+		DList *ch;
+		if (cur) {
+			// we're already searching an index
+			ch = chainFor(asNode(cur));
+			unbindElement(tid);
+			ch = nextElem(ch);
+			if (ch) {
+				bindElement(tid, elementOfListItem(ch));
+				return;
+			}
+		} else {
+			// start searching t->spc
+			ch = space(t->spc);
+		}
 		
-	} 
+		t->spc++;
+	} while (! t->match && t->spc - spc > sz);
+	boolFlag = 0;
 }
 void findEdge(long a, long b, long c) {
 

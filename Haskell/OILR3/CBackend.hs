@@ -5,7 +5,7 @@ import OILR3.CRuntime
 
 import Data.List
 import Data.Bits
-import Debug.Trace
+-- import Debug.Trace
 
 type OilrProg = [Instr Int Int]
 type OilrIndexBits = (Int, Int, Int, Int)
@@ -30,7 +30,7 @@ makeLoops acc prev (i:is) = case (i, prev) of
         
 
 progToC :: Int -> [OilrProg] -> String
-progToC travCount iss = consts ++ cRuntime ++ searchSpaces ++ predeclarations iss ++ concat defns
+progToC travCount iss = consts ++ searchSpaces ++ cRuntime ++ predeclarations iss ++ concat defns
     where
         searchSpaces = compileSearchSpaces [ (i, is)
                                            | (i, is) <- zip [1..] $ map snd $ makeSearchSpacesForDecl oilr (concat iss) ]
@@ -88,7 +88,7 @@ makeSearchSpacesForDecl bits is = map (sigsForPred bits) preds
 
 
 compileSearchSpaces :: [ (Int, [Int]) ] -> String
-compileSearchSpaces ss = concatMap makeSpace ss ++ "long *search_spaces[] = { " ++ concatMap makeSpaces ss ++ "};\n\n"
+compileSearchSpaces ss = concatMap makeSpace ss ++ "long *searchSpaces[] = { " ++ concatMap makeSpaces ss ++ "};\n\n"
     where
         makeSpace (p, is) = "long search_space_" ++ show p ++ "[] = {" ++ ( concat $ intersperse ", " $  map show is ) ++ "};\n"
         makeSpaces (p, is) = "search_space_" ++ show p ++ ", "

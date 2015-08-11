@@ -3,33 +3,42 @@ module OILR3.HostCompile (compileHostGraph, compileProgram) where
 import OILR3.Instructions
 
 import GPSyntax
-import Graph
+-- import Graph (allNodes, allEdges, nodeNumber, edgeNumber)
 import Mapping
 
-import Debug.Trace
+-- import Debug.Trace
 import Unsafe.Coerce
 import Data.List
 
 
-data GraphElem = N NodeKey | E EdgeKey deriving (Eq, Ord, Show)
-type GraphElemId = (RuleGraph, GraphElem)
+data GraphElem = String
+type GraphElemId = (AstRuleGraph, GraphElem)
 type SemiOilrCode = [Instr GraphElemId GraphElemId]
 type OilrCode = [Instr Int Int]
 
 
+type NodeKey = String
+type EdgeKey = (String, String, String)
 
+
+
+type Interface = [String]
 
 notImplemented n = error $ "Not implemented: " ++ show n
 
 
-compileHostGraph :: HostGraph -> OilrCode
-compileHostGraph g = nodes g ++ edges g
+compileHostGraph :: AstHostGraph -> OilrCode
+compileHostGraph g = map (postprocess mapping) host
+    where
+        mapping = elemIdMapping $ concat host
+        host = nodes g ++ edges g
 
 compileProgram :: GPProgram -> ([OilrCode], Int)
 compileProgram (Program ds) = (map (postprocess mapping) prog , length mapping)
     where
         prog = map oilrCompileDeclaration ds
         mapping = elemIdMapping $ concat prog
+
 
 
 postprocess :: Mapping GraphElemId Int -> SemiOilrCode -> OilrCode
@@ -83,16 +92,16 @@ extractId _            = []
 -- host graph OILR instruction generation
 -- -------------------------------------------------------------------
 
-nodes :: HostGraph -> OilrCode
-nodes g = concatMap node $ allNodes g
+nodes :: AstHostGraph -> OilrCode
+nodes (AstHostGraph ns _ ) = concatMap node ns
     where
-        node (n, HostNode _ root (HostLabel [] Uncoloured)) = ADN (nodeNumber n) : (if root then RTN (nodeNumber n) : [] else [])
+        node (HostNode n root (HostLabel [] Uncoloured)) = ADN n : (if root then RTN n : [] else [])
 
 
-edges :: HostGraph -> OilrCode
-edges g = map edge $ allEdges g
+edges :: AstHostGraph -> OilrCode
+edges (AstHostGraph _ es) = map edge es
     where
-        edge (e, _) = ADE (edgeNumber e) (nodeNumber $ source e) (nodeNumber $ target e)
+        edge (HostEdge s t _) = ADE "e0" s t
 
 
 -- -------------------------------------------------------------------
@@ -101,6 +110,8 @@ edges g = map edge $ allEdges g
 
 {-   A handy AST reference...
 
+data HostEdge = HostEdge NodeName NodeName HostLabel deriving Show
+data AstHostGraph = AstHostGraph [HostNode] [HostEdge] deriving Show
 data GPProgram = Program [Declaration] deriving Show
 
 data Declaration = MainDecl Main
@@ -132,9 +143,15 @@ data SimpleCommand = RuleCall [RuleName]
                    | Fail
     deriving Show
 
-data Rule = Rule RuleName [Variable] (RuleGraph, RuleGraph) NodeInterface 
+data Rule = Rule RuleName [Variable] (AstRuleGraph, AstRuleGraph) NodeInterface 
             EdgeInterface Condition deriving Show
 
+data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph) 
+               Condition  deriving Show
+data AstRuleGraph = AstRuleGraph [RuleNode] [AstRuleEdge] deriving (Show,Eq)
+data AstRuleEdge = AstRuleEdge EdgeName Bool NodeName NodeName RuleLabel deriving (Show, Eq)
+
+data RuleNode = RuleNode NodeName Bool RuleLabel deriving (Show, Eq)
 data Condition = NoCondition
                | TestInt VarName
                | TestChr VarName
@@ -159,13 +176,13 @@ data Condition = NoCondition
 oilrCompileDeclaration :: Declaration -> SemiOilrCode
 oilrCompileDeclaration (MainDecl m) = oilrCompileMain m
 oilrCompileDeclaration (ProcDecl p) = oilrCompileProc p
-oilrCompileDeclaration (RuleDecl r) = oilrCompileRule r
-
-oilrCompileMain :: Main -> SemiOilrCode
-oilrCompileMain (Main cs) = (DEF "Main" : concatMap oilrCompileCommand cs) ++ [END]
+oilrCompileDeclaration (AstRuleDecl r) = oilrCompileRule r
 
 oilrCompileProc :: Procedure -> SemiOilrCode
-oilrCompileProc (Procedure name ds cs) = notImplemented 1
+oilrCompileProc (Procedure name ds cs) = (DEF name : concatMap oilrCompileCommand cs) ++ [END]
+
+oilrCompileMain :: Main -> SemiOilrCode
+oilrCompileMain (Main cs) = oilrCompileProc (Procedure "Main" [] cs)
 
 oilrCompileCommand :: Command -> SemiOilrCode
 oilrCompileCommand (Block b) = oilrCompileBlock b
@@ -194,16 +211,33 @@ oilrCompileSimple Fail   = [ FLS , RET ]
 -- rule compilation is complex...
 -- -------------------------------------------------------------------
 
-oilrNodeId :: RuleGraph -> NodeKey -> GraphElemId
-oilrNodeId g nk = (g, N nk)
 
-oilrEdgeId :: RuleGraph -> EdgeKey -> GraphElemId
-oilrEdgeId g ek = (g, E ek)
+nodeIds :: AstRuleGraph -> Interface
+nodeIds (AstRuleGraph ns _) = map (\(RuleNode id _ _) -> id) ns
+
+edgeIds :: AstRuleGraph -> [EdgeKey]
+edgeIds (AstRuleGraph _ es) = map (\(AstRuleEdge is src tgt) -> (id, src, tgt)) es
+
+source :: EdgeKey -> NodeKey
+source (_, nk, _) = nk
+
+target :: EdgeKey -> NodeKey
+target (_, _, nk) = nk
+
+indegree :: AstRuleGraph -> NodeKey -> Int
+indegree g nk = length [ ek | ek <- edgeIds g , target ek == nk ]
+
+outdegree :: AstRuleGraph -> NodeKey -> Int
+outdegree g nk = length [ ek | ek <- edgeIds g , source ek == nk ]
+
+loopCount :: AstRuleGraph -> NodeKey -> Int
+loopCount g nk = length [ ek | ek <- edgeIds g , source ek == nk && target ek == nk ]
 
 -- TODO: special handling for bidi edges!
-oilrCompileRule :: Rule -> SemiOilrCode
-oilrCompileRule r@(Rule name _ (lhs, rhs) nif eif _) = ( [DEF name] ++ body ++ [END] )
+oilrCompileRule :: AstRule -> SemiOilrCode
+oilrCompileRule r@(AstRule name _ (lhs, rhs) _) = ( [DEF name] ++ body ++ [END] )
     where
+        nif  = nodeIds lhs `intersect` nodeIds rhs
         body = oilrCompileLhs lhs nif ++ oilrCompileRhs lhs rhs nif
 
 -- Make sure the most constrained nodes are looked for first
@@ -221,8 +255,8 @@ oilrInterleaveEdges acc es (n@(LUN id _):ns) = oilrInterleaveEdges (nes ++ n:acc
         edgeFor id (LUE _ a b) = a == id || b == id
         insertEdgeBeforeNode = notImplemented 20
 
-oilrCompileLhs :: RuleGraph -> NodeInterface -> SemiOilrCode
-oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (allEdgeKeys lhs)) $ oilrSortNodeLookups ( map compileNode (allNodeKeys lhs) )
+oilrCompileLhs :: AstRuleGraph -> Interface -> SemiOilrCode
+oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (edgeIds lhs)) $ oilrSortNodeLookups ( map compileNode (nodeIds lhs) )
     where
         compileNode nk = cn
              where
@@ -231,22 +265,31 @@ oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (allEdgeKeys lh
                         else LUN (oilrNodeId lhs nk) (Equ o, Equ i, Equ l, r)
                 o = outdegree lhs nk - l
                 i = indegree lhs nk - l
-                l = length $ joiningEdges lhs nk nk
+                l = loopCount lhs nk
                 r = GtE 0 -- TODO!
         compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
-oilrCompileRhs :: RuleGraph -> RuleGraph -> NodeInterface -> SemiOilrCode
+oilrCompileRhs :: AstRuleGraph -> AstRuleGraph -> Interface -> SemiOilrCode
 oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++ edgeInsertions
     where
-        edgeDeletions  = [ DEE (oilrEdgeId lhs ek) | ek <- allEdgeKeys lhs ]
-        nodeDeletions  = [ DEN (oilrNodeId lhs nk) | nk <- allNodeKeys lhs , not (nk `elem` dom nif) ]
-        nodeInsertions = [ ADN (oilrNodeId rhs nk) | nk <- allNodeKeys rhs , not (nk `elem` rng nif) ]
+        edgeDeletions  = [ DEE (oilrEdgeId lhs ek) | ek <- edgeIds lhs ]
+        nodeDeletions  = [ DEN (oilrNodeId lhs nk) | nk <- nodeIds lhs , not (nk `elem` dom nif) ]
+        nodeInsertions = [ ADN (oilrNodeId rhs nk) | nk <- nodeIds rhs , not (nk `elem` rng nif) ]
         edgeInsertions = [ ADE (oilrEdgeId rhs ek) src tgt
-                            | ek <- allEdgeKeys rhs
+                            | ek <- edgeIds rhs
                             , let src = oilrNodeId rhs (source ek)
                             , let tgt = oilrNodeId rhs (target ek) ]
 
 
 oilrCompileCondition NoCondition = []
 oilrCompileCondition _ = notImplemented 12
+
+
+
+
+oilrNodeId :: AstRuleGraph -> NodeKey -> GraphElemId
+oilrNodeId g nk = (g, nk)
+
+oilrEdgeId :: AstRuleGraph -> EdgeKey -> GraphElemId
+oilrEdgeId g ek = (g, ek)
 
