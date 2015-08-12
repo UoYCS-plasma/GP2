@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
 #define DEFAULT_POOL_SIZE (1024)
@@ -167,11 +168,13 @@ long min(long x, long y) {
 }
 
 long signature(Node *n) {
-	long o = min( (1<<OILR_O_BITS) , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
-		 i = min( (1<<OILR_I_BITS) , indeg(n)  ) << (OILR_L_BITS+OILR_R_BITS),
-		 l = min( (1<<OILR_L_BITS) , loopdeg(n)) << OILR_R_BITS,
-		 r = min( (1<<OILR_R_BITS) , isroot(n) );
-	return (o+i+l+r);	
+	long o = min( (1<<OILR_O_BITS)-1 , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
+		 i = min( (1<<OILR_I_BITS)-1 , indeg(n)  ) << (OILR_L_BITS+OILR_R_BITS),
+		 l = min( (1<<OILR_L_BITS)-1 , loopdeg(n)) << OILR_R_BITS,
+		 r = min( (1<<OILR_R_BITS)-1 , isroot(n) );
+	long sig = (o+i+l+r);
+	assert(sig >= 0 && sig < OILR_INDEX_SIZE);
+	return sig;
 }
 
 void freeElement(Element *ne) {
@@ -260,7 +263,7 @@ void deleteEdge(Element *el) {
 
 #define bind(el)   do { (el)->bound = 1; } while(0)
 #define unbind(el) do { (el)->bound = 0; } while(0)
-
+#define unbound(el) ( !(el)->bound )
 
 #define makeSimpleTrav(travName, destination, list)  \
 void travName(Element **travs) { \
@@ -289,26 +292,26 @@ void travName(Element **travs) { \
 	const long dest = (destination); \
 	static DList *searchSpace[] = { __VA_ARGS__ , NULL}; \
 	static long pos = 0; \
-	static DList *cur = NULL; \
+	static DList *dl = NULL; \
 	Element *e = NULL; \
  \
-	if (!cur) \
-		cur = searchSpace[0]; \
+	if (!dl) \
+		dl = searchSpace[0]; \
  \
-	while (cur) { \
+	while (dl) { \
 		if ((e = travs[dest])) \
 			unbind(e); \
-		while (cur) { \
-			cur = nextElem(cur); \
-			if (cur) { \
-				e = elementOfListItem(cur); \
+		while (dl) { \
+			dl = nextElem(dl); \
+			if ( dl && unbound(dl) ) { \
+				e = elementOfListItem(dl); \
 				bind(e); \
 				travs[dest] = e; \
 				boolFlag = 1; \
 				return ; \
 			} \
 		} \
-		cur = searchSpace[++pos]; \
+		dl = searchSpace[++pos]; \
 	} \
 	boolFlag = 0; \
 }
@@ -316,10 +319,15 @@ void travName(Element **travs) { \
 #define makeExtendOutTrav(travName, fromTrav, edgeDestination, nodeDestination, predCode) \
 void travName(Element **travs) { \
 	const long eDest = (edgeDestination), nDest = (nodeDestination); \
- \
 	Element *src = travs[fromTrav]; \
 	Element *edge = travs[edgeDestination], *tgt = travs[nodeDestination]; \
-	DList *dl = outListFor(asNode(src)); \
+	static DList *dl; \
+ 	assert(edgeDestination != nodeDestination \
+			&& fromTrav != edgeDestination    \
+			&& fromTrav != nodeDestination);  \
+	assert(src); \
+	if (!dl) \
+		dl = outListFor(asNode(src)); \
 	 \
 	if (edge) \
 		unbind(edge); \
@@ -331,19 +339,44 @@ void travName(Element **travs) { \
 		if (dl) { \
 			edge = elementOfListItem(dl); \
 			tgt = target(asEdge(edge)); \
-			if ( (predCode) ) { \
+			assert(edge && tgt) ; \
+			assert(unbound(tgt)); \
+			if ( unbound(edge) && unbound(tgt) && (predCode) ) { \
 				bind(edge); \
 				bind(tgt); \
 				travs[eDest] = edge; \
 				travs[nDest] = tgt; \
 				boolFlag = 1; \
+				assert(!unbound(edge) && !unbound(tgt)); \
+				return; \
 			} \
 		} \
 	} \
 	boolFlag = 0; \
 }
 
-makeExtendOutTrav(wiffle, 0, 1, 2, 1)
+// no edge predicates can simply use this and then negate boolFlag
+#define makeEdgeTrav(travName, destTrav, srcTrav, tgtTrav) \
+void travName(Element **travs) { \
+	const long dest = (destTrav); \
+	Element *src = travs[srcTrav]; \
+	Element *tgt = travs[tgtTrav]; \
+	DList *dl = outListFor(asNode(src)); \
+ \
+	while (dl) { \
+		dl = nextElem(dl); \
+		if (dl) { \
+			Element *edge = elementOfListItem(dl); \
+			if ( unbound(edge) && target(asEdge(edge)) == tgt ) { \
+				bind(edge); \
+				travs[dest] = edge; \
+				boolFlag = 1; \
+				return; \
+			} \
+		} \
+	} \
+	boolFlag = 0; \
+}
 
 
 

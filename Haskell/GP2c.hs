@@ -19,7 +19,7 @@ import ParseGraph
 import ParseProgram
 import ProcessAst (makeHostGraph)
 
-compiler = "gcc -g -O2 -Wall -Wno-error=unused-label -Werror -o"
+compiler = "gcc -g -O2 -Wall -Wno-error=unused-label -Wno-unused-label -Werror -o"
 
 {- options :: [ OptDescr Flag ]
 options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, instead of all possible graphs",

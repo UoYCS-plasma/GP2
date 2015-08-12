@@ -134,7 +134,7 @@ endCFunction :: String
 endCFunction = "}\n"
 
 asLongAsPossible :: String -> [Int] -> String
-asLongAsPossible fname args = concat [ "do {\n", makeCFunctionCall fname args, "} while (success);\n" ]
+asLongAsPossible fname args = concat [ "do {\n", makeCFunctionCall fname args, "} while (boolFlag);\n" ]
 
 
 makeCFunctionCall :: String -> [Int] -> String
