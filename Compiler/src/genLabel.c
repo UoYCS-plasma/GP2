@@ -115,32 +115,35 @@ void generateFixedListMatchingCode(Rule *rule, RuleLabel label, int indent)
       PTFI("match = label.length == 0 ? true : false;\n", indent);
       return;
    }
-   /* A do-while loop is generated so that the label matching code can be exited
-    * at any time with a break statement immediately after an atom match fails. */
-   PTFI("do\n", indent);
-   PTFI("{\n", indent);
-   PTFI("/* The rule list does not contain a list variable, so there is no\n", indent + 3);
-   PTFI(" * match if the host list has a different length. */\n", indent + 3);
-   PTFI("if(label.length == 0 || label.length != %d) break;\n", indent + 3, label.length); 
-
-   /* Lists without list variables admit relatively simple code generation as each
-    * rule atom maps directly to the host atom in the same position. */
-   RuleListItem *item = label.list->first;
-   PTFI("HostListItem *item = label.list->first;\n", indent + 3);
-   int atom_count = 1;
-   while(item != NULL)
+   else
    {
-      PTFI("/* Check if the end of the host list has been reached. */\n", indent + 3);
-      PTFI("if(item == NULL) break;\n", indent + 3);
-      PTFI("/* Matching rule atom %d. */\n", indent + 3, atom_count);
-      generateAtomMatchingCode(rule, item->atom, indent + 3);
-      PTFI("item = item->next;\n\n", indent + 3);
-      atom_count++;
-      item = item->next;
+      /* A do-while loop is generated so that the label matching code can be exited
+      * at any time with a break statement immediately after an atom match fails. */
+      PTFI("do\n", indent);
+      PTFI("{\n", indent);
+      PTFI("/* The rule list does not contain a list variable, so there is no\n", indent + 3);
+      PTFI(" * match if the host list has a different length. */\n", indent + 3);
+      PTFI("if(label.length != %d) break;\n", indent + 3, label.length); 
+
+      /* Lists without list variables admit relatively simple code generation as each
+      * rule atom maps directly to the host atom in the same position. */
+      RuleListItem *item = label.list->first;
+      PTFI("HostListItem *item = label.list->first;\n", indent + 3);
+      int atom_count = 1;
+      while(item != NULL)
+      {
+         PTFI("/* Check if the end of the host list has been reached. */\n", indent + 3);
+         PTFI("if(item == NULL) break;\n", indent + 3);
+         PTFI("/* Matching rule atom %d. */\n", indent + 3, atom_count);
+         generateAtomMatchingCode(rule, item->atom, indent + 3);
+         PTFI("item = item->next;\n\n", indent + 3);
+         atom_count++;
+         item = item->next;
+      }
+      PTFI("/* If there are no more host atoms to match, success! */\n", indent + 3);
+      PTFI("if(item == NULL) match = true;\n", indent + 3);
+      PTFI("} while(false);\n\n", indent);
    }
-   PTFI("/* If there are no more host atoms to match, success! */\n", indent + 3);
-   PTFI("if(item == NULL) match = true;\n", indent + 3);
-   PTFI("} while(false);\n\n", indent);
    /* Reset the flag before function exit. */
    result_declared = false;
 }
