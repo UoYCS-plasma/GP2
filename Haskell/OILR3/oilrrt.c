@@ -1,16 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//#define OILR_INDEX_SIZE (1<<3)
+#define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
 #define DEFAULT_POOL_SIZE (1024)
 
 void _HOST();
 void _GPMAIN();
 
-/////////////////////////////////////////////////////////
-// graph structure
-
-#define signature(n) 0
 
 /////////////////////////////////////////////////////////
 // graph structure
@@ -149,8 +145,8 @@ void removeElem(DList *elem) {
 /////////////////////////////////////////////////////////
 // graph traversal
 
-#define source(e)   (asNode((e)->src))
-#define target(e)   (asNode((e)->tgt))
+#define source(e)   (((e)->src))
+#define target(e)   (((e)->tgt))
 #define outChain(e) (&(e)->outList)
 #define inChain(e)  (&(e)->inList)
 
@@ -161,6 +157,7 @@ void removeElem(DList *elem) {
 #define indeg(n)    (inListFor(n)->data.count)
 #define outdeg(n)   (outListFor(n)->data.count)
 #define loopdeg(n)  ((n)->loops)
+#define isroot(n)   ((n)->root)
 
 #define index(sig) &(g.idx[sig])
 
@@ -171,6 +168,18 @@ void removeElem(DList *elem) {
 /////////////////////////////////////////////////////////
 // graph manipulation
 
+long min(long x, long y) {
+	return (x<=y ? x : y);
+}
+
+long signature(Node *n) {
+	long o = min( (1<<OILR_O_BITS) , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
+		 i = min( (1<<OILR_I_BITS) , indeg(n)  ) << (OILR_L_BITS+OILR_R_BITS),
+		 l = min( (1<<OILR_L_BITS) , loopdeg(n)) << OILR_R_BITS,
+		 r = min( (1<<OILR_R_BITS) , isroot(n) );
+	return (o+i+l+r);	
+}
+
 void freeElement(Element *ne) {
 	ne->free = g.freeList;
 	g.freeList = ne;
@@ -179,10 +188,12 @@ void freeElement(Element *ne) {
 
 void indexNode(Node *n) {
 	long sig = signature(n);
+	n->sig = sig;
 	prependElem(index(sig), chainFor(n));
 }
 void unindexNode(Node *n) {
 	removeElem(chainFor(n));
+	n->sig = -1;
 }
 
 Element *allocElement() {
@@ -239,8 +250,8 @@ void deleteLoop(Element *n) {
 }
 void deleteEdge(Element *el) {
 	Edge *e = asEdge(el);
-	Node *src = source(e);
-	Node *tgt = target(e);
+	Node *src = asNode(source(e));
+	Node *tgt = asNode(target(e));
 	unindexNode(src);
 	unindexNode(tgt);
 	removeElem(outChain(e));
@@ -255,96 +266,92 @@ void deleteEdge(Element *el) {
 
 Trav travs[TRAV_COUNT];
 
-#define getTrav(id) (&travs[(id)])
-#define boundElement(tid) ((getTrav(tid))->match)
-
-void bindElement(long tid, Element *el) {
-	boundElement(tid) = el;
-	el->bound = 1;
-}
-void unbindElement(long tid) {
-	Element *el = boundElement(tid);
-	if (el)
-		el->bound = 0;
-	getTrav(tid)->match = NULL;
-}
+#define bind(el)   do { (el)->bound = 1; } while(0)
+#define unbind(el) do { (el)->bound = 0; } while(0)
 
 
-void resetTrav(long tid) {
-	Trav *t = getTrav(tid);
-	t->curSpc = t->spc;
-	unbindElement(tid);
+#define makeSimpleTrav(travName, destination, list)  \
+void travName(Element **travs) { \
+	const long dest = (destination); \
+	static DList *dl = (list); \
+	Element *e; \
+ \
+	if ( (e = travs[dest]) ) \
+		unbind(e); \
+ \
+	while (dl) { \
+		dl = nextElem(dl); \
+		if (dl) { \
+			e = elementOfListItem(dl); \
+			bind(e); \
+			travs[dest] = e; \
+			boolFlag = 1; \
+			return ; \
+		} \
+	} \
+	boolFlag = 0; \
 }
 
-
-// TODO: Move spc and sz initialisation to compile time!
-//
-void findNode(long tid, long *spc, long sz) {
-	Trav *t = getTrav(tid);
-	if (!t->spc)
-		t->spc = spc;
-
-	do {
-		Element *cur = boundElement(tid);
-		DList *ch;
-		if (cur) {
-			// we're already searching an index
-			ch = chainFor(asNode(cur));
-			unbindElement(tid);
-			ch = nextElem(ch);
-			if (ch) {
-				bindElement(tid, elementOfListItem(ch));
-				return;
-			}
-		} else {
-			// start searching t->spc
-			ch = space(t->spc);
-		}
-		
-		t->spc++;
-	} while (! t->match && t->spc - spc > sz);
-	boolFlag = 0;
-}
-void findEdge(long a, long b, long c) {
-
+#define makeTrav(travName, destination, ...) \
+void travName(Element **travs) { \
+	const long dest = (destination); \
+	static DList *searchSpace[] = { __VA_ARGS__ , NULL}; \
+	static long pos = 0; \
+	static DList *cur = NULL; \
+	Element *e = NULL; \
+ \
+	if (!cur) \
+		cur = searchSpace[0]; \
+ \
+	while (cur) { \
+		if ((e = travs[dest])) \
+			unbind(e); \
+		while (cur) { \
+			cur = nextElem(cur); \
+			if (cur) { \
+				e = elementOfListItem(cur); \
+				bind(e); \
+				travs[dest] = e; \
+				boolFlag = 1; \
+				return ; \
+			} \
+		} \
+		cur = searchSpace[++pos]; \
+	} \
+	boolFlag = 0; \
 }
 
-void followOutEdge(long tid, long src) {
-	Node *s = asNode( boundElement(src) );
-	DList *outEdges = outListFor(s);
-	bindElement(tid, elementOfListItem( nextElem(outEdges) ) );
-	boolFlag = boundElement(tid) == NULL ? 0 : 1;
-}
-void followInEdge(long tid, long tgt) {
-	Node *t = asNode( boundElement(tgt) );
-	DList *inEdges = outListFor(t);
-	bindElement(tid, elementOfListItem( nextElem(inEdges) ) );
-	boolFlag = boundElement(tid) == NULL ? 0 : 1;
+#define makeExtendOutTrav(travName, fromTrav, edgeDestination, nodeDestination, predCode) \
+void travName(Element **travs) { \
+	const long eDest = (edgeDestination), nDest = (nodeDestination); \
+ \
+	Element *src = travs[fromTrav]; \
+	Element *edge = travs[edgeDestination], *tgt = travs[nodeDestination]; \
+	DList *dl = outListFor(asNode(src)); \
+	 \
+	if (edge) \
+		unbind(edge); \
+	if (tgt) \
+		unbind(tgt); \
+ \
+	while (dl) { \
+		dl = nextElem(dl); \
+		if (dl) { \
+			edge = elementOfListItem(dl); \
+			tgt = target(asEdge(edge)); \
+			if ( (predCode) ) { \
+				bind(edge); \
+				bind(tgt); \
+				travs[eDest] = edge; \
+				travs[nDest] = tgt; \
+				boolFlag = 1; \
+			} \
+		} \
+	} \
+	boolFlag = 0; \
 }
 
-/////////////////////////////////////////////////////////
-// Graph manipulation via travs
-
-void deleteEdgeByTrav(long tid) {
-	Element *el = boundElement(tid);
-	unbindElement(tid);
-	deleteEdge(el);
-}
-void deleteNodeByTrav(long tid) {
-	Element *el = boundElement(tid);
-	unbindElement(tid);
-	deleteNode(el);
-}
-
-void addNodeByTrav(long tid) {
-	Element *el = addNode();
-	bindElement(tid, el);
-}
-void addEdgeByTrav(long tid, long src, long tgt) {
-	Element *s = boundElement(src), *t = boundElement(tgt);
-	Element *e = addEdge(s,t);
-	bindElement(tid, e);
-}
+makeExtendOutTrav(wiffle, 0, 1, 2, 1)
 
 
 
@@ -376,14 +383,15 @@ void dumpGraph() {
 			out = outListFor(n);
 			while ( (out = nextElem(out)) ) {
 				e = asEdge(out->data.e);
-				src = source(e);
-				tgt = target(e);
+				src = asNode(source(e));
+				tgt = asNode(target(e));
 				printf("\t( e%ld, n%ld, n%ld, empty)\n", getId(e), getId(src), getId(tgt) );
 			}
 		}
 	}
 	printf("]\n");
 }
+
 
 
 /////////////////////////////////////////////////////////
