@@ -10,13 +10,14 @@ import Text.Parsec
 
 import OILR3.Instructions
 import OILR3.HostCompile
+import OILR3.ProgCompile
 import OILR3.CBackend
 import OILR3.CRuntime
 
 -- import GPSyntax -- debug code
 import ParseGraph
 import ParseProgram
--- import ProcessAst (makeHostGraph)
+import ProcessAst (makeHostGraph)
 
 compiler = "gcc -g -O2 -Wall -Wno-error=unused-label -Werror -o"
 
@@ -31,7 +32,7 @@ parseHostGraph graphFile = do
     g <- readFile graphFile
     case parse hostGraph graphFile g of
         Left e     -> error "Compilation of host graph failed" -- print e
-        Right host -> return host
+        Right host -> return $ makeHostGraph host
 
 parseProgram progFile = do
     p <- readFile progFile

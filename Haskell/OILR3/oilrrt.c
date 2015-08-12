@@ -62,12 +62,6 @@ typedef struct Graph {
 	DList idx[OILR_INDEX_SIZE];
 } Graph;
 
-typedef struct Trav {
-	Element *match;
-	long *curSpc;
-	long *spc;
-} Trav;
-
 Graph g;
 
 #define asNode(el) (&(el)->n)
@@ -263,8 +257,6 @@ void deleteEdge(Element *el) {
 
 /////////////////////////////////////////////////////////
 // graph search
-
-Trav travs[TRAV_COUNT];
 
 #define bind(el)   do { (el)->bound = 1; } while(0)
 #define unbind(el) do { (el)->bound = 0; } while(0)

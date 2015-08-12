@@ -5,7 +5,7 @@ import OILR3.CRuntime
 
 import Data.List
 import Data.Bits
--- import Debug.Trace
+import Debug.Trace
 
 type OilrProg = [Instr Int Int]
 type OilrIndexBits = (Int, Int, Int, Int)
@@ -22,8 +22,8 @@ hostCompileInstruction i         = error $ "Instruction " ++ show i ++ " not imp
 makeLoops :: OilrProg -> Maybe Int -> OilrProg -> OilrProg
 makeLoops acc prev [] = reverse acc
 makeLoops acc prev (i:is) = case (i, prev) of
-    ( LUN n pr  , Nothing ) -> makeLoops (CRS n pr:ORF:i:acc) (Just n) is
-    ( LUN n pr  , Just p  ) -> makeLoops (CRS n pr:ORB p:i:acc) (Just n) is
+    ( LUN n pr  , Nothing ) -> makeLoops (ORF:i:acc) (Just n) is
+    ( LUN n pr  , Just p  ) -> makeLoops (ORB p:i:acc) (Just n) is
     ( LUE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is -- don't update the jump point!
     ( LUE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
     _                       -> makeLoops (i:acc) prev is
@@ -35,9 +35,12 @@ progToC travCount iss = consts ++ searchSpaces ++ cRuntime ++ predeclarations is
         searchSpaces = compileSearchSpaces [ (i, is)
                                            | (i, is) <- zip [1..] $ map snd $ makeSearchSpacesForDecl oilr (concat iss) ]
         defns = map (compileDefn . (makeLoops [] Nothing) ) iss
-        consts = "#define OILR_INDEX_SIZE (1<<" ++ (show $ oilrIndexTotalBits oilr) ++ ")\n"
+        consts = "#define OILR_O_BITS (" ++ (show oBits) ++ ")\n"
+              ++ "#define OILR_I_BITS (" ++ (show iBits) ++ ")\n"
+              ++ "#define OILR_L_BITS (" ++ (show lBits) ++ ")\n"
+              ++ "#define OILR_R_BITS (" ++ (show rBits) ++ ")\n"
               ++ "#define TRAV_COUNT (" ++ show travCount ++ ")\n"
-        oilr = oilrBits iss
+        oilr@(oBits,iBits,lBits,rBits) = oilrBits iss
 
 -- Generate C declarations so that the ordering of definitions
 -- doesn't matter
@@ -57,15 +60,14 @@ extractPredicates is = concatMap harvestPred is
     where harvestPred (LUN _ p) = [p]
           harvestPred _         = []
 
-
 oilrBits :: [OilrProg] -> OilrIndexBits
-oilrBits iss = (f o, f i, f l, f r)
+oilrBits iss = trace (show (f o, f i, f l, f r)) (f o, f i, f l, f r)
     where
         f = (bits . maximum . map extract) 
         (o, i, l, r) = unzip4 $ extractPredicates $ concat iss
         extract (Equ n) = n
         extract (GtE n) = n
-        bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
+        bits n = head $ dropWhile (\x -> 2^x < n) [0,1..]
 
 sigsForPred :: OilrIndexBits -> Pred -> (Pred, [Int])
 sigsForPred (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
@@ -82,7 +84,7 @@ sigsForPred (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
 
 
 makeSearchSpacesForDecl :: OilrIndexBits -> OilrProg -> [ (Pred, [Int]) ]
-makeSearchSpacesForDecl bits is = map (sigsForPred bits) preds
+makeSearchSpacesForDecl bits is = map (sigsForPred bits) $ trace (show preds) preds
     where
         preds = ( nub . extractPredicates ) is
 

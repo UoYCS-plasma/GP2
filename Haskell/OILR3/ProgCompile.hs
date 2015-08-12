@@ -6,9 +6,9 @@ import GPSyntax
 import Mapping
 
 import Data.List
+import Unsafe.Coerce
 
-
-data GraphElem = String
+data GraphElem = N NodeKey | E EdgeKey deriving (Show, Eq)
 type GraphElemId = (AstRuleGraph, GraphElem)
 type SemiOilrCode = [Instr GraphElemId GraphElemId]
 type OilrCode = [Instr Int Int]
@@ -190,7 +190,7 @@ nodeIds :: AstRuleGraph -> Interface
 nodeIds (AstRuleGraph ns _) = map (\(RuleNode id _ _) -> id) ns
 
 edgeIds :: AstRuleGraph -> [EdgeKey]
-edgeIds (AstRuleGraph _ es) = map (\(AstRuleEdge is src tgt) -> (id, src, tgt)) es
+edgeIds (AstRuleGraph _ es) = map (\(AstRuleEdge id bidi src tgt _) -> (id, src, tgt)) es
 
 source :: EdgeKey -> NodeKey
 source (_, nk, _) = nk
@@ -234,7 +234,7 @@ oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (edgeIds lhs)) 
     where
         compileNode nk = cn
              where
-                cn = if nk `elem` dom nif
+                cn = if nk `elem` nif
                         then LUN (oilrNodeId lhs nk) (GtE o, GtE i, GtE l, r)
                         else LUN (oilrNodeId lhs nk) (Equ o, Equ i, Equ l, r)
                 o = outdegree lhs nk - l
@@ -243,16 +243,19 @@ oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (edgeIds lhs)) 
                 r = GtE 0 -- TODO!
         compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
+-- Note that when making unique IDs from the RHS we _always_ use the LHS graph, not the RHS.
+-- The inclusion of the graph in the unique ID is purely to identify elements that belong to
+-- same rule, and should not be used for any other purpose.
 oilrCompileRhs :: AstRuleGraph -> AstRuleGraph -> Interface -> SemiOilrCode
 oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++ edgeInsertions
     where
         edgeDeletions  = [ DEE (oilrEdgeId lhs ek) | ek <- edgeIds lhs ]
-        nodeDeletions  = [ DEN (oilrNodeId lhs nk) | nk <- nodeIds lhs , not (nk `elem` dom nif) ]
-        nodeInsertions = [ ADN (oilrNodeId rhs nk) | nk <- nodeIds rhs , not (nk `elem` rng nif) ]
-        edgeInsertions = [ ADE (oilrEdgeId rhs ek) src tgt
+        nodeDeletions  = [ DEN (oilrNodeId lhs nk) | nk <- nodeIds lhs , not (nk `elem` nif) ]
+        nodeInsertions = [ ADN (oilrNodeId lhs nk) | nk <- nodeIds rhs , not (nk `elem` nif) ]
+        edgeInsertions = [ ADE (oilrEdgeId lhs ek) src tgt
                             | ek <- edgeIds rhs
-                            , let src = oilrNodeId rhs (source ek)
-                            , let tgt = oilrNodeId rhs (target ek) ]
+                            , let src = oilrNodeId lhs (source ek)
+                            , let tgt = oilrNodeId lhs (target ek) ]
 
 
 oilrCompileCondition NoCondition = []
@@ -262,8 +265,8 @@ oilrCompileCondition _ = notImplemented 12
 
 
 oilrNodeId :: AstRuleGraph -> NodeKey -> GraphElemId
-oilrNodeId g nk = (g, nk)
+oilrNodeId g nk = (g, N nk)
 
 oilrEdgeId :: AstRuleGraph -> EdgeKey -> GraphElemId
-oilrEdgeId g ek = (g, ek)
+oilrEdgeId g ek = (g, E ek)
 
