@@ -16,13 +16,9 @@ struct Node;
 struct Edge;
 struct Element;
 
-typedef union ListPayload {
-		struct Element *e;
-		long count;
-} ListPayload ;
-
 typedef struct DList {
-	union ListPayload data;
+	long count;
+	struct Element *el;
 	struct DList *head;
 	struct DList *next;
 	struct DList *prev;
@@ -96,8 +92,11 @@ long boolFlag = 1;
 
 #define nextElem(dl) ((dl)->next)
 #define prevElem(dl) ((dl)->prev)
-#define elementOfListItem(dl) ((dl)->data.e)
-#define listLength(dl) ((dl)->data.count)
+#define elementOfListItem(dl) ((dl)->el)
+#define setElementOfListItem(dl, elem) do { (dl)->el = (elem); } while (0)
+#define listLength(dl) ((dl)->count)
+#define incListLength(dl) ((dl)->count++)
+#define decListLength(dl) ((dl)->count--)
 
 void prependElem(DList *dl, DList *elem) {
 	DList *nx = dl->next;
@@ -107,7 +106,7 @@ void prependElem(DList *dl, DList *elem) {
 	if (nx)
 		dl->next->prev = elem;
 	dl->next = elem;
-	dl->data.count++;
+	incListLength(dl);
 }
 // void appendElem(DList *dl, DList *elem) {
 // 	elem->head = dl;
@@ -135,7 +134,7 @@ void removeElem(DList *elem) {
 
 	elem->next = NULL;
 	elem->prev = NULL;
-	dl->data.count--;
+	incListLength(dl);
 }
 
 /////////////////////////////////////////////////////////
@@ -150,8 +149,8 @@ void removeElem(DList *elem) {
 #define outListFor(n)      (&(n)->outEdges)
 #define inListFor(n)       (&(n)->inEdges)
 
-#define indeg(n)    (inListFor(n)->data.count)
-#define outdeg(n)   (outListFor(n)->data.count)
+#define indeg(n)    (listLength(inListFor(n)))
+#define outdeg(n)   (listLength(outListFor(n)))
 #define loopdeg(n)  ((n)->loops)
 #define isroot(n)   ((n)->root)
 
@@ -207,7 +206,7 @@ Element *allocElement() {
 Element *addNode() {
 	Element *el = allocElement();
 	Node *n = asNode(el);
-	chainFor(n)->data.e = el;
+	setElementOfListItem( chainFor(n), el );
 	indexNode(n);
 	return el;
 }
@@ -224,8 +223,8 @@ Element *addEdge(Element *src, Element *tgt) {
 	prependElem( inListFor(t), inChain(e) );
 	e->src = src;
 	e->tgt = tgt;
-	outChain(e)->data.e = el;
-	inChain(e)->data.e = el;
+	setElementOfListItem( outChain(e), el );
+	setElementOfListItem( inChain(e),  el );
 	indexNode(s);
 	indexNode(t);
 	return el;
@@ -262,36 +261,72 @@ void deleteEdge(Element *el) {
 /////////////////////////////////////////////////////////
 // graph search
 
-#define bind(el)   do { (el)->bound = 1; } while(0)
-#define unbind(el) do { (el)->bound = 0; } while(0)
 #define unbound(el) ( !(el)->bound )
+#define bound(el)   ( (el)->bound )
 
+void bind(Element *el) {
+	assert(el);
+	assert(unbound(el));
+	el->bound = 1;
+	// fprintf(stderr, "%lx+ ", (long) el);
+}
+void unbind(Element *el) {
+	if (el) {
+		// assert(bound(el));
+		el->bound = 0;
+	}
+	// fprintf(stderr, "%lx- ", (long) el);
+	printf("Unbound %p\n", el);
+}
 void unbindAll(Element **travs, long n) {
 	long i;
 	for (i=0; i<n; i++)
 		unbind(travs[n]);
 }
 
+Element *searchInList(DList **dlp) {
+	Element *e;
+	while (*dlp) {
+		*dlp = nextElem(*dlp);
+		if (*dlp && ( e=elementOfListItem(*dlp) ) && unbound(e) )
+			return e;
+	}
+	return NULL;
+}
+typedef enum {
+	OutEdge, InEdge
+} Direction;
+
+void lookupNode(DList **dlp, Element **node) {
+	unbind(*node);
+	while ( (*node = searchInList(dlp)) ) {
+		bind(*node);
+		boolFlag = 1;
+		return;
+	}
+	boolFlag = 0;
+}
+void followEdges(DList **dlp, Element **edge, Element **node, Direction dirn) {
+	unbind(*edge);
+	unbind(*node);
+	*node = NULL;
+	while ( (*edge = searchInList(dlp)) ) {
+		*node = (dirn==OutEdge) ? target(asEdge(*edge)) : source(asEdge(*edge));
+		if (unbound(*node)) {
+			bind(*edge);
+			bind(*node);
+			boolFlag = 1;
+			return;
+		}
+	}
+	boolFlag = 0;
+}
+
 #define makeSimpleTrav(travName, destination, list)  \
 void travName(Element **travs) {                     \
 	const long dest = (destination);                 \
 	static DList *dl = (list);                       \
-	Element *e;                                      \
-                                                     \
-	if ( (e = travs[dest]) )                         \
-		unbind(e);                                   \
-                                                     \
-	while (dl) {                                     \
-		dl = nextElem(dl);                           \
-		if (dl) {                                    \
-			e = elementOfListItem(dl);               \
-			bind(e);                                 \
-			travs[dest] = e;                         \
-			boolFlag = 1;                            \
-			return ;                                 \
-		}                                            \
-	}                                                \
-	boolFlag = 0;                                    \
+	lookupNode(&dl, &travs[dest]); \
 }
 
 #define makeTrav(travName, destination, ...) \
@@ -305,30 +340,18 @@ void travName(Element **travs) { \
 	if (!dl) \
 		dl = searchSpace[0]; \
  \
-	while (dl) { \
-		if ((e = travs[dest])) \
-			unbind(e); \
-		while (dl) { \
-			dl = nextElem(dl); \
-			if ( dl && unbound(dl) ) { \
-				e = elementOfListItem(dl); \
-				bind(e); \
-				travs[dest] = e; \
-				boolFlag = 1; \
-				return ; \
-			} \
-		} \
+	do { \
+		lookupNode(&dl, &travs[dest]); \
+		if (boolFlag) \
+			return ; \
 		dl = searchSpace[++pos]; \
-	} \
-	boolFlag = 0; \
+	} while (dl); \
 }
 
 #define makeExtendOutTrav(travName, fromTrav, edgeDestination, nodeDestination, predCode) \
 void travName(Element **travs) {                                                          \
-	const long eDest        = (edgeDestination), nDest = (nodeDestination);               \
-	Element *src            = travs[fromTrav];                                            \
-	Element *edge           = travs[edgeDestination],                                     \
-			*tgt            = travs[nodeDestination];                                     \
+	const long eDest=(edgeDestination), nDest=(nodeDestination);               \
+	Element *src=travs[fromTrav]; \
 	static DList *dl;                                                                     \
  	assert(edgeDestination != nodeDestination                                             \
 			&& fromTrav != edgeDestination                                                \
@@ -337,30 +360,9 @@ void travName(Element **travs) {                                                
 	if (!dl)                                                                              \
 		dl = outListFor(asNode(src));                                                     \
 	                                                                                      \
-	if (edge)                                                                             \
-		unbind(edge);                                                                     \
-	if (tgt)                                                                              \
-		unbind(tgt);                                                                      \
-	while (dl) {                                                                          \
-		dl = nextElem(dl);                                                                \
-	                                                                                      \
-		if (dl) {                                                                         \
-			edge = elementOfListItem(dl);                                                 \
-			tgt = target(asEdge(edge));                                                   \
-			assert(edge && tgt) ;                                                         \
-			if ( unbound(edge) && unbound(tgt) && (predCode) ) {                          \
-				bind(edge);                                                               \
-				bind(tgt);                                                                \
-				travs[eDest] = edge;                                                      \
-				travs[nDest] = tgt;                                                       \
-				boolFlag = 1;                                                             \
-				assert(!unbound(edge) && !unbound(tgt));                                  \
-				return;                                                                   \
-			}                                                                             \
-		}                                                                                 \
-	}                                                                                     \
-	dl = NULL;                                                                            \
-	boolFlag = 0;                                                                         \
+	do { \
+		followEdges(&dl, &travs[eDest], &travs[nDest], OutEdge); \
+	} while (! predCode); \
 }
 
 // no edge predicates can simply use this and then negate boolFlag
@@ -412,7 +414,7 @@ void dumpGraph() {
 			nodeCount++;
 			assert(unbound(elementOfListItem(index)));
 #endif
-			n = asNode(index->data.e);
+			n = asNode(elementOfListItem(index));
 			//printf("%lx %lx\n", (long) n, (long) g.pool);
 			printf("\t( n%ld, empty)\n", getId(n) );
 		}
@@ -424,10 +426,10 @@ void dumpGraph() {
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		index = &(g.idx[i]);
 		while ( (index = nextElem(index)) ) {
-			n = asNode(index->data.e);
+			n = asNode(elementOfListItem(index));
 			out = outListFor(n);
 			while ( (out = nextElem(out)) ) {
-				e = asEdge(out->data.e);
+				e = asEdge(elementOfListItem(out));
 				src = asNode(source(e));
 				tgt = asNode(target(e));
 				printf("\t( e%ld, n%ld, n%ld, empty)\n", getId(e), getId(src), getId(tgt) );
