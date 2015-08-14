@@ -39,6 +39,9 @@ postprocess mapping sois = map postprocessInstr sois
         translate id = definiteLookup id mapping
 
         postprocessInstr :: Instr GraphElemId GraphElemId -> Instr Int Int
+        postprocessInstr (DEF s)     = DEF s
+        postprocessInstr (ALP s)     = ALP s
+        postprocessInstr END         = END
         postprocessInstr (ADN n)     = ADN $ translate n
         postprocessInstr (ADE e s t) = ADE (translate e) (translate s) (translate t)
         postprocessInstr (DEN n)     = DEN $ translate n
@@ -46,22 +49,7 @@ postprocess mapping sois = map postprocessInstr sois
         postprocessInstr (RTN n)     = RTN $ translate n
         postprocessInstr (LUN n p)   = LUN (translate n) p
         postprocessInstr (LUE e s t) = LUE (translate e) (translate s) (translate t)
-        -- these below shouldn't be in the instruction stream at this stage -- they're 
-        -- only created by optimisations, however they're handled here for type-safety's
-        -- sake
-        postprocessInstr (XOE e s)   = XOE (translate e) (translate s)
-        postprocessInstr (XIE e t)   = XOE (translate e) (translate t)
-        postprocessInstr (XSN n e)   = XOE (translate n) (translate e)
-        postprocessInstr (XTN n e)   = XOE (translate n) (translate e)
-        postprocessInstr (ORB n)     = ORB $ translate n
-        postprocessInstr (CRS n p)   = CRS (translate n) p
-        -- WARNING: HERE BE DRAGONS. Haskell's type system won't do implicit 
-        -- conversion between the non-parameterised elements of the parameterised
-        -- type Isntr a b. unsafeCoerce allows this conversion by sidestepping 
-        -- the type system entirely! If any new parameterised elements are introduced
-        -- in Instr a b they _must_ be handled above. If they aren't, good luck
-        -- debugging the results! Don't say you weren't warned.
-        postprocessInstr soi         = unsafeCoerce soi
+        postprocessInstr i           = error $ show i ++ " is not implmented"
 
 elemIdMapping :: SemiOilrCode -> Mapping GraphElemId Int
 elemIdMapping sois = zip (nub [ id | id <- concatMap extractId sois ]) [0,1..]

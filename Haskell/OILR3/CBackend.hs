@@ -39,7 +39,7 @@ progToC travCount iss = consts ++ searchSpaces ++ cRuntime ++ predeclarations is
               ++ "#define OILR_I_BITS (" ++ (show iBits) ++ ")\n"
               ++ "#define OILR_L_BITS (" ++ (show lBits) ++ ")\n"
               ++ "#define OILR_R_BITS (" ++ (show rBits) ++ ")\n"
-              ++ "#define TRAV_COUNT (" ++ show travCount ++ ")\n"
+              -- ++ "#define TRAV_COUNT (" ++ show travCount ++ ")\n"
         oilr@(oBits,iBits,lBits,rBits) = oilrBits iss
 
 -- Generate C declarations so that the ordering of definitions
@@ -99,12 +99,15 @@ compileSearchSpaces ss = concatMap makeSpace ss ++ "long *searchSpaces[] = { " +
 compileDefn :: OilrProg -> String
 compileDefn is = concatMap compileInstr is
 
+makeModifyAndBind :: Int -> String -> [Int] -> String
+makeModifyAndBind i fun args = "\ttravs[" ++ show i ++ "] = " ++ makeCFunctionCall fun args
+
 
 compileInstr :: Instr Int Int -> String
-compileInstr (ADN n)         = makeCFunctionCall "addNodeByTrav" [n]
-compileInstr (ADE e src tgt) = makeCFunctionCall "addEdgeByTrav" [e, src, tgt]
-compileInstr (RTN n)         = makeCFunctionCall "setRootByTrav" [n]
-compileInstr (URN n)         = makeCFunctionCall "unsetRootByTrav" [n]
+compileInstr (ADN n)         = makeModifyAndBind n "addNode" []
+compileInstr (ADE e src tgt) = makeModifyAndBind e "addEdge" [src, tgt]
+compileInstr (RTN n)         = "setRoot(travs[" ++ n ++ "]);\n"
+compileInstr (URN n)         = "unsetRoot(travs[" ++  n ++ "]);\n"
 compileInstr (DEN n)         = makeCFunctionCall "deleteNodeByTrav" [n]
 compileInstr (DEE e)         = makeCFunctionCall "deleteEdgeByTrav" [e]
 
@@ -118,9 +121,11 @@ compileInstr (DEF "Main")  = startCFunction "_GPMAIN"
 compileInstr (DEF s)       = startCFunction s
 compileInstr END           = endCFunction 
 
-compileInstr (CRS n sig)     = makeCFunctionCall "resetTrav" [n] -- TODO
-compileInstr (LUN n sig)     = labelFor n  ++ ": " ++  makeCFunctionCall "findNode" [n]
-compileInstr (LUE n src tgt) = makeCFunctionCall "findEdge" [n, src, tgt]
+-- compileInstr (CRS n sig)     = makeCFunctionCall "resetTrav" [n] -- TODO
+compileInstr (LUN n sig)     = labelFor n  ++ ": " ++  makeCFunctionCall "lookupNode" [n]
+compileInstr (LUE n src tgt) = makeCFunctionCall "edgeBetween" [n, src, tgt]
+
+
 
 makeCFunction :: String -> [String] -> String
 makeCFunction name lines = concat [startCFunction name,  body, "\n}\n"]

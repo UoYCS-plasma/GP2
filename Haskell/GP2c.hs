@@ -19,11 +19,15 @@ import ParseGraph
 import ParseProgram
 import ProcessAst (makeHostGraph)
 
+data Flag = DisableOilr | EnableSearchPlan | EnableDebugging
+
 compiler = "gcc -g -O2 -Wall -Wno-error=unused-label -Wno-unused-label -Werror -o"
 
-{- options :: [ OptDescr Flag ]
-options = [ Option ['c'] ["one"] (NoArg $ MaxGraphs 1) "output a single graph, instead of all possible graphs",
-            Option ['n'] ["no-iso"] (OptArg maxIso "MAX") "disable the isomorphism checker, limiting to a maximum of MAX result graphs" ] -}
+
+options :: [ OptDescr Flag ]
+options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr) "Use only a single OILR index for all nodes.",
+            Option ['s'] ["search-plan"] (NoArg $ EnableSearchPlan) "disable the isomorphism checker, limiting to a maximum of MAX result graphs",
+            Option ['d'] ["debug"]   (NoArg $ EnableDebugging) "Enable verbose debugging output on compiled program's stdout" ]
 
 getStem :: String -> String
 getStem = takeWhile (/= '.')
