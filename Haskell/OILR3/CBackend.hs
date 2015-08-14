@@ -106,10 +106,10 @@ makeModifyAndBind i fun args = "\ttravs[" ++ show i ++ "] = " ++ makeCFunctionCa
 compileInstr :: Instr Int Int -> String
 compileInstr (ADN n)         = makeModifyAndBind n "addNode" []
 compileInstr (ADE e src tgt) = makeModifyAndBind e "addEdge" [src, tgt]
-compileInstr (RTN n)         = "setRoot(travs[" ++ n ++ "]);\n"
-compileInstr (URN n)         = "unsetRoot(travs[" ++  n ++ "]);\n"
-compileInstr (DEN n)         = makeCFunctionCall "deleteNodeByTrav" [n]
-compileInstr (DEE e)         = makeCFunctionCall "deleteEdgeByTrav" [e]
+compileInstr (RTN n)         = "setRoot(travs[" ++ show n ++ "]);\n"
+compileInstr (URN n)         = "unsetRoot(travs[" ++ show n ++ "]);\n"
+compileInstr (DEN n)         = "deleteNode(travs[" ++ show n ++ "]);\n"
+compileInstr (DEE e)         = "deleteEdge(travs[" ++ show e ++ "]);\n"
 
 compileInstr RET           = "return;"
 compileInstr (CAL s)       = makeCFunctionCall s []
