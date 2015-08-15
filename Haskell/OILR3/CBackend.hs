@@ -3,6 +3,8 @@ module OILR3.CBackend (hostToC, progToC) where
 import OILR3.Instructions
 import OILR3.CRuntime
 
+import Mapping
+
 import Data.List
 import Data.Bits
 import Debug.Trace
@@ -15,8 +17,8 @@ hostToC is = makeCFunction "_HOST" $ map hostCompileInstruction is
 
 hostCompileInstruction :: Instr Int Int -> String
 hostCompileInstruction (ADN n)   = makeCFunctionCall "addNode" []
-hostCompileInstruction (ADE e src tgt) = makeCFunctionCall "addEdgeById" [src,tgt]
-hostCompileInstruction (RTN n)   = makeCFunctionCall "setRootById" [n]
+hostCompileInstruction (ADE e src tgt) = makeCFunctionCallIntArgs "addEdgeById" [src,tgt]
+hostCompileInstruction (RTN n)   = makeCFunctionCallIntArgs "setRootById" [n]
 hostCompileInstruction i         = error $ "Instruction " ++ show i ++ " not implemented for host graphs"
 
 makeLoops :: OilrProg -> Maybe Int -> OilrProg -> OilrProg
@@ -33,8 +35,9 @@ progToC :: Int -> [OilrProg] -> String
 progToC travCount iss = consts ++ searchSpaces ++ cRuntime ++ predeclarations iss ++ concat defns
     where
         searchSpaces = compileSearchSpaces [ (i, is)
-                                           | (i, is) <- zip [1..] $ map snd $ makeSearchSpacesForDecl oilr (concat iss) ]
-        defns = map (compileDefn . (makeLoops [] Nothing) ) iss
+                                           | (i, is) <- zip [1..] $ map snd idx ]
+        idx = makeSearchSpacesForDecl oilr (concat iss)
+        defns = map ((compileDefn idx) . (makeLoops [] Nothing) ) iss
         consts = "#define OILR_O_BITS (" ++ (show oBits) ++ ")\n"
               ++ "#define OILR_I_BITS (" ++ (show iBits) ++ ")\n"
               ++ "#define OILR_L_BITS (" ++ (show lBits) ++ ")\n"
@@ -83,7 +86,7 @@ sigsForPred (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
         oShift = iShift + iBits
 
 
-makeSearchSpacesForDecl :: OilrIndexBits -> OilrProg -> [ (Pred, [Int]) ]
+makeSearchSpacesForDecl :: OilrIndexBits -> OilrProg -> Mapping Pred [Int]
 makeSearchSpacesForDecl bits is = map (sigsForPred bits) $ trace (show preds) preds
     where
         preds = ( nub . extractPredicates ) is
@@ -96,34 +99,55 @@ compileSearchSpaces ss = concatMap makeSpace ss ++ "long *searchSpaces[] = { " +
         makeSpaces (p, is) = "search_space_" ++ show p ++ ", "
 
 
-compileDefn :: OilrProg -> String
-compileDefn is = concatMap compileInstr is
+compileDefn :: Mapping Pred [Int] -> OilrProg -> String
+compileDefn idx is = case head is of
+    DEF "Main" -> concat cInstrs
+    DEF _      -> concat $ head cInstrs : preamble : tail cInstrs
+    _          -> error "Definition doesn't begin with DEF instruction"
+    where
+        cInstrs = map (compileInstr idx) is
+        preamble = "\tElement *matches[] = {" ++ slots
+            ++ "};\n\tDList   *state[]   = {" ++ slots ++ "};\n"
+        slots = concat $ intersperse "," $ filter (/="") $ map countMatches is
+        countMatches (LUN _ _)   = "NULL"
+        countMatches (LUE _ _ _) = "NULL"
+        countMatches (ADN _)     = "NULL"
+        countMatches (ADE _ _ _) = "NULL"
+        countMatches _           = ""
 
 makeModifyAndBind :: Int -> String -> [Int] -> String
-makeModifyAndBind i fun args = "\ttravs[" ++ show i ++ "] = " ++ makeCFunctionCall fun args
+makeModifyAndBind i fun args = "\t" ++ matchInd i ++ " = " ++ makeCFunctionCall fun (map matchInd args)
+    where
+        matchInd i = "matches[" ++ show i ++ "]"
 
 
-compileInstr :: Instr Int Int -> String
-compileInstr (ADN n)         = makeModifyAndBind n "addNode" []
-compileInstr (ADE e src tgt) = makeModifyAndBind e "addEdge" [src, tgt]
-compileInstr (RTN n)         = "setRoot(travs[" ++ show n ++ "]);\n"
-compileInstr (URN n)         = "unsetRoot(travs[" ++ show n ++ "]);\n"
-compileInstr (DEN n)         = "deleteNode(travs[" ++ show n ++ "]);\n"
-compileInstr (DEE e)         = "deleteEdge(travs[" ++ show e ++ "]);\n"
+compileInstr :: Mapping Pred [Int] -> Instr Int Int -> String
+compileInstr _ (ADN n)         = makeModifyAndBind n "addNode" []
+compileInstr _ (ADE e src tgt) = makeModifyAndBind e "addEdge" [src, tgt]
+compileInstr _ (RTN n)         = "setRoot(matches[" ++ show n ++ "]);\n"
+compileInstr _ (URN n)         = "unsetRoot(matches[" ++ show n ++ "]);\n"
+compileInstr _ (DEN n)         = "deleteNode(matches[" ++ show n ++ "]);\n"
+compileInstr _ (DEE e)         = "deleteEdge(matches[" ++ show e ++ "]);\n"
 
-compileInstr RET           = "return;"
-compileInstr (CAL s)       = makeCFunctionCall s []
-compileInstr (ALP s)       = asLongAsPossible s []
-compileInstr ORF           = "if (!boolFlag) return ;\n"
-compileInstr (ORB n)       = "if (!boolFlag) goto " ++ labelFor n ++ ";\n"
+compileInstr _ RET           = "return;"
+compileInstr _ (CAL s)       = makeCFunctionCall s []
+compileInstr _ (ALP s)       = asLongAsPossible s []
+compileInstr _ ORF           = "if (!boolFlag) return ;\n"
+compileInstr _ (ORB n)       = "if (!boolFlag) goto " ++ labelFor n ++ ";\n"
 
-compileInstr (DEF "Main")  = startCFunction "_GPMAIN"
-compileInstr (DEF s)       = startCFunction s
-compileInstr END           = endCFunction 
+compileInstr _ (DEF "Main")  = startCFunction "_GPMAIN"
+compileInstr _ (DEF s)       = startCFunction s
+compileInstr _ END           = endCFunction 
 
--- compileInstr (CRS n sig)     = makeCFunctionCall "resetTrav" [n] -- TODO
-compileInstr (LUN n sig)     = labelFor n  ++ ": " ++  makeCFunctionCall "lookupNode" [n]
-compileInstr (LUE n src tgt) = makeCFunctionCall "edgeBetween" [n, src, tgt]
+-- compileInstr (CRS n sig)     = makeCFunctionCallIntArgs "resetTrav" [n] -- TODO
+compileInstr idx (LUN n sig) = labelFor n  ++ ": "
+    ++ case definiteLookup sig idx of
+        []  -> error "Can't find a node in an empty search space!"
+        [s] -> makeCFunctionCall "makeSimpleTrav"
+                        [show n, makeCFunctionCallIntArgs "index" [s] ]
+        ss  -> makeCFunctionCall "makeTrav" 
+                        (show n:map (\s ->  "index(" ++ show s ++ ")") ss)
+compileInstr _ (LUE n src tgt) = makeCFunctionCallIntArgs "makeEdgeTrav" [n, src, tgt]
 
 
 
@@ -139,13 +163,15 @@ endCFunction :: String
 endCFunction = "}\n"
 
 asLongAsPossible :: String -> [Int] -> String
-asLongAsPossible fname args = concat [ "do {\n", makeCFunctionCall fname args, "} while (boolFlag);\n" ]
+asLongAsPossible fname args = concat [ "do {\n", makeCFunctionCallIntArgs fname args, "} while (boolFlag);\n" ]
 
+makeCFunctionCallIntArgs :: String -> [Int] -> String
+makeCFunctionCallIntArgs fname args = makeCFunctionCall fname $ map show args
 
-makeCFunctionCall :: String -> [Int] -> String
+makeCFunctionCall :: String -> [String] -> String
 makeCFunctionCall fname args = concat [ fname , "(", argStr, ");\n" ]
     where
-        argStr = intercalate ", " $ map show args
+        argStr = intercalate ", " args
 
 labelFor :: Int -> String
 labelFor n = "trav_no_" ++ show n

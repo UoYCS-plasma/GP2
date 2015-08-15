@@ -173,8 +173,6 @@ void removeElem(DList *elem) {
 #define getElementById(id) &(g.pool[(id)])
 #define elementId(el) ((el)-g.pool)
 
-#define space(id) (index( searchSpaces[*(id)] ))
-
 /////////////////////////////////////////////////////////
 // graph manipulation
 
@@ -400,58 +398,60 @@ void edgeBetween(Element **edge, Element *src, Element *tgt) {
 	boolFlag = 0;
 }
 
-#define makeSimpleTrav(travName, dest, list)  \
+// A simple Trav only searches a single OILR index
+#define makeSimpleTrav(dest, oilrInd)  \
 do { \
-	DList *dl = (state[dest]) ? state[dest] : (list); \
-	lookupNode(&dl, &travs[(dest)]); \
+	DList *dl = (state[dest]) ? state[dest] : (oilrInd); \
+	lookupNode(&dl, &matches[(dest)]); \
 	state[dest] = dl; \
-} while (0);
+} while (0)
 
-#define makeTrav(travName, dest, ...) \
-void travName(Element **travs) { \
+// a full Trav searches a list of OILR indices
+#define makeTrav(dest, ...) \
+do { \
 	static DList *searchSpace[] = { __VA_ARGS__ , NULL}; \
 	static long pos = 0; \
-	static DList *dl = NULL; \
-	Element *e = NULL; \
+	DList *dl = state[dest]; \
  \
-	if (!dl) \
+	if (!dl) { \
+		pos = 0; \
 		dl = searchSpace[0]; \
+	} \
  \
 	do { \
-		lookupNode(&dl, &travs[(dest)]); \
-		if (boolFlag) \
-			return ; \
-		dl = searchSpace[++pos]; \
-	} while (dl); \
-	dl = NULL; \
-	pos = 0; \
-}
+		lookupNode(&dl, &matches[(dest)]); \
+		if (boolFlag) { \
+			break ; \
+		} \
+	} while ( (dl = searchSpace[++pos]) ); \
+	state[dest] = dl; \
+} while (0)
 
-#define makeExtendOutTrav(travName, fromTrav, eDest, nDest, predCode) \
+#define makeExtendOutTrav(fromTrav, eDest, nDest, predCode) \
 do { \
-	Element *src=travs[fromTrav]; \
+	Element *src=matches[fromTrav]; \
 	DList *dl = (state[eDest]) ? state[eDest] : outListFor(asNode(src));    \
 	oilrStatus(src); \
  	assert(eDest != nDest && fromTrav != eDest && fromTrav != nDest);     \
 	assert(src);                           \
 	do { \
-		followEdges(&dl, &travs[eDest], &travs[nDest], OutEdge); \
+		followEdges(&dl, &matches[eDest], &matches[nDest], OutEdge); \
 	} while (boolFlag && ! predCode); \
 	state[eDest] = dl ; \
-} while (0);
+} while (0)
 
-#define makeEdgeTrav(travName, destTrav, srcTrav, tgtTrav) \
+#define makeEdgeTrav(srcTrav, edgeTrav, tgtTrav) \
 do { \
-	edgeBetween(&travs[destTrav], travs[srcTrav], travs[tgtTrav]); \
-} while (0);
+	edgeBetween(&matches[edgeTrav], matches[srcTrav], matches[tgtTrav]); \
+} while (0)
 
-#define makeAntiEdgeTrav(travName, destTrav, srcTrav, tgtTrav) \
+#define makeAntiEdgeTrav(srcTrav, tgtTrav) \
 do { \
 	Element *antiEdge = NULL; \
-	edgeBetween(&antiEdge, travs[srcTrav], travs[tgtTrav]); \
+	edgeBetween(&antiEdge, matches[srcTrav], matches[tgtTrav]); \
 	unbind(antiEdge); \
 	boolFlag = 1-boolFlag; \
-} while (0);
+} while (0)
 
 
 /////////////////////////////////////////////////////////
