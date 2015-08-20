@@ -21,7 +21,7 @@ import ProcessAst (makeHostGraph)
 
 data Flag = DisableOilr | EnableSearchPlan | EnableDebugging
 
-compiler = "gcc -g -O2 -Wall -Wno-error=unused-label -Wno-unused-label -Werror -o"
+compiler = "gcc -g -Wall -Wno-error=unused-label -Wno-unused-label -Werror -o"
 
 
 options :: [ OptDescr Flag ]

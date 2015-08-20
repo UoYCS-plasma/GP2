@@ -239,6 +239,7 @@ Element *allocElement() {
 	} else {
 		g.freeList = ne->free;
 	}
+	ne->bound = 0;
 	return ne;
 }
 
@@ -287,10 +288,13 @@ void addEdgeById(long sid, long tid) {
 
 void deleteNode(Element *el) {
 	Node *n = asNode(el);
+#ifndef NDEBUG
+	debug("(X) deleted node %ld\n", elementId(el));
 	if (indeg(n) + outdeg(n) + loopdeg(n)) {
 		printf("Dangling condition violated\n");
 		exit(1);
 	}
+#endif
 	unindexNode(n);
 	freeElement(el);
 }
@@ -301,6 +305,7 @@ void deleteEdge(Element *el) {
 	Edge *e = asEdge(el);
 	Node *src = asNode(source(e));
 	Node *tgt = asNode(target(e));
+	debug("-X> deleted edge %ld\n", elementId(el));
 	unindexNode(src);
 	unindexNode(tgt);
 	removeElem(outChain(e));
@@ -344,6 +349,7 @@ void unbindAll(Element **travs, long n) {
 }
 
 Element *searchList(DList **dlp) {
+	// iterate over the unbound nodes in doubly-linked list dlp
 	Element *e;
 	while (*dlp) {
 		*dlp = nextElem(*dlp);
@@ -357,6 +363,7 @@ typedef enum {
 } Direction;
 
 void lookupNode(DList **dlp, Element **node) {
+	// iterate over nodes in dlp, binding them to *node.
 	unbind(*node);
 	while ( (*node = searchList(dlp)) ) {
 		bindNode(*node);
@@ -366,9 +373,13 @@ void lookupNode(DList **dlp, Element **node) {
 	boolFlag = 0;
 }
 void followEdges(DList **dlp, Element **edge, Element **node, Direction dirn) {
+	// iterate over the edges in dlp, which are in the direction specified by dirn,
+	// bind the edge and node on the other end to *edge and *node respectively.
 	unbind(*edge);
 	unbind(*node);
 	while ( (*edge = searchList(dlp)) ) {
+		// we know edge is unbound, because searchList() checks.
+		// We still need to check that node is available.
 		*node = (dirn==OutEdge) ? target(asEdge(*edge)) : source(asEdge(*edge));
 		if (unbound(*node)) {
 			bindEdge(*edge);
@@ -381,11 +392,15 @@ void followEdges(DList **dlp, Element **edge, Element **node, Direction dirn) {
 	boolFlag = 0;
 }
 void edgeBetween(Element **edge, Element *src, Element *tgt) {
+	// Find an outgoing edge from src to tgt
+	// TODO: possible optimisation to be had in picking the shortest list to traverse
 	unbind(*edge);
 	DList *dl = outListFor(asNode(src));
+	assert(src != NULL); assert(tgt != NULL);
 	debug("out list for %ld contains %ld entries\n", elementId(src), outdeg(asNode(src)));
 	debug("\tSearching for edge between %ld and %ld... ", elementId(src), elementId(tgt) ); 
-	while ( (*edge = searchList(&dl)) && unbound(*edge) ) {
+	while ( (*edge = searchList(&dl)) ) {
+		// searchList() only returns unbound edges, so no check is necessary
 		if ( target(asEdge(*edge)) == tgt ) {
 			debug("found edge %ld\n", elementId(*edge));
 			bindEdge(*edge);

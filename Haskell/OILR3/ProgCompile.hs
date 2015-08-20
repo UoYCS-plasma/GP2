@@ -14,6 +14,7 @@ type SemiOilrCode = [Instr GraphElemId GraphElemId]
 type OilrCode = [Instr Int Int]
 
 
+
 type NodeKey = String
 type EdgeKey = (String, String, String)
 
@@ -28,8 +29,7 @@ compileProgram :: GPProgram -> ([OilrCode], Int)
 compileProgram (Program ds) = (map (postprocess mapping) prog , length mapping)
     where
         prog = map oilrCompileDeclaration ds
-        mapping = elemIdMapping $ concat prog
-
+        mapping = concat $ map elemIdMapping prog
 
 
 postprocess :: Mapping GraphElemId Int -> SemiOilrCode -> OilrCode
@@ -210,6 +210,7 @@ oilrSortNodeLookups is = reverse $ sortBy mostConstrained is
 
 -- TODO: needs work. Currently issues "n2 e12 e23 n1 n3" but ideally should be "n2 e12 n1 e23 n3"
 oilrInterleaveEdges :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode -> SemiOilrCode
+oilrInterleaveEdges _ es ns = ns ++ es  -- TODO: hack other cases not reachable
 oilrInterleaveEdges acc es [] = reverse acc ++ es
 oilrInterleaveEdges acc es (n@(LUN id _):ns) = oilrInterleaveEdges (nes ++ n:acc) es' ns
     where
@@ -228,7 +229,7 @@ oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (edgeIds lhs)) 
                 o = outdegree lhs nk - l
                 i = indegree lhs nk - l
                 l = loopCount lhs nk
-                r = GtE 0 -- TODO!
+                r = GtE 0 -- TODO! Root node support
         compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
 -- Note that when making unique IDs from the RHS we _always_ use the LHS graph, not the RHS.
@@ -257,4 +258,23 @@ oilrNodeId g nk = (g, N nk)
 
 oilrEdgeId :: AstRuleGraph -> EdgeKey -> GraphElemId
 oilrEdgeId g ek = (g, E ek)
+
+
+sameEdge :: EdgeKey -> EdgeKey -> Bool
+sameEdge (_, s1, t1) (_, s2, t2) = s1==s2 && t1==t2
+
+eliminateEdgeDeletions :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode
+eliminateEdgeDeletions acc [i]         = reverse (i:acc)
+eliminateEdgeDeletions acc ((DEE ek):is) =
+    if length is' == length is
+        then eliminateEdgeDeletions ((DEE ek):acc) is
+        else eliminateEdgeDeletions acc is
+    where
+        is' = [i | i <- is , i `notAddOf` ek  ]
+        notAddOf :: Instr GraphElemId GraphElemId -> EdgeKey -> Bool
+        notAddOf (ADE _ s t) (_,is,it) = not $ s==is && t==it
+        notAddOf _ _                   = True
+eliminateEdgeDeletions acc (i:is)      = eliminateEdgeDeletions (i:acc) is
+
+
 

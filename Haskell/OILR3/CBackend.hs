@@ -32,10 +32,8 @@ makeLoops acc prev (i:is) = case (i, prev) of
         
 
 progToC :: Int -> [OilrProg] -> String
-progToC travCount iss = consts ++ searchSpaces ++ cRuntime ++ predeclarations iss ++ concat defns
+progToC travCount iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
     where
-        searchSpaces = compileSearchSpaces [ (i, is)
-                                           | (i, is) <- zip [1..] $ map snd idx ]
         idx = makeSearchSpacesForDecl oilr (concat iss)
         defns = map ((compileDefn idx) . (makeLoops [] Nothing) ) iss
         consts = "#define OILR_O_BITS (" ++ (show oBits) ++ ")\n"
@@ -70,20 +68,20 @@ oilrBits iss = trace (show (f o, f i, f l, f r)) (f o, f i, f l, f r)
         (o, i, l, r) = unzip4 $ extractPredicates $ concat iss
         extract (Equ n) = n
         extract (GtE n) = n
-        bits n = head $ dropWhile (\x -> 2^x < n) [0,1..]
+        bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
 
 sigsForPred :: OilrIndexBits -> Pred -> (Pred, [Int])
 sigsForPred (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
     (p, nub [ o' `shift` oShift + i' `shift` iShift + l' `shift` lShift + r' `shift` rShift
-                | o' <- case o of Equ n -> [n] ; GtE n -> [n..(1 `shift` oBits)]
-                , i' <- case i of Equ n -> [n] ; GtE n -> [n..(1 `shift` iBits)]
-                , l' <- case l of Equ n -> [n] ; GtE n -> [n..(1 `shift` lBits)]
-                , r' <- case r of Equ n -> [n] ; GtE n -> [n..(1 `shift` rBits)] ])
+                | o' <- case o of Equ n -> [n] ; GtE n -> [n..(1 `shift` oBits)-1]
+                , i' <- case i of Equ n -> [n] ; GtE n -> [n..(1 `shift` iBits)-1]
+                , l' <- case l of Equ n -> [n] ; GtE n -> [n..(1 `shift` lBits)-1]
+                , r' <- case r of Equ n -> [n] ; GtE n -> [n..(1 `shift` rBits)-1] ])
     where
-        rShift = 0
-        lShift = rShift + rBits
-        iShift = lShift + lBits
         oShift = iShift + iBits
+        iShift = lShift + lBits
+        lShift = rShift + rBits
+        rShift = 0
 
 
 makeSearchSpacesForDecl :: OilrIndexBits -> OilrProg -> Mapping Pred [Int]
@@ -91,12 +89,6 @@ makeSearchSpacesForDecl bits is = map (sigsForPred bits) $ trace (show preds) pr
     where
         preds = ( nub . extractPredicates ) is
 
-
-compileSearchSpaces :: [ (Int, [Int]) ] -> String
-compileSearchSpaces ss = concatMap makeSpace ss ++ "long *searchSpaces[] = { " ++ concatMap makeSpaces ss ++ "};\n\n"
-    where
-        makeSpace (p, is) = "long search_space_" ++ show p ++ "[] = {" ++ ( concat $ intersperse ", " $  map show is ) ++ "};\n"
-        makeSpaces (p, is) = "search_space_" ++ show p ++ ", "
 
 
 compileDefn :: Mapping Pred [Int] -> OilrProg -> String
@@ -106,8 +98,8 @@ compileDefn idx is = case head is of
     _          -> error "Definition doesn't begin with DEF instruction"
     where
         cInstrs = map (compileInstr idx) is
-        preamble = "\tElement *matches[] = {" ++ slots
-            ++ "};\n\tDList   *state[]   = {" ++ slots ++ "};\n"
+        preamble = "\tElement *matches[] = {" ++ slots ++ ", NULL};"
+              ++ "\n\tDList   *state[]   = {" ++ slots ++ "};\n"
         slots = concat $ intersperse "," $ filter (/="") $ map countMatches is
         countMatches (LUN _ _)   = "NULL"
         countMatches (LUE _ _ _) = "NULL"
@@ -140,14 +132,14 @@ compileInstr _ (DEF s)       = startCFunction s
 compileInstr _ END           = endCFunction 
 
 -- compileInstr (CRS n sig)     = makeCFunctionCallIntArgs "resetTrav" [n] -- TODO
-compileInstr idx (LUN n sig) = labelFor n  ++ ": "
+compileInstr idx (LUN n sig) = labelFor n  ++ ":\n"
     ++ case definiteLookup sig idx of
         []  -> error "Can't find a node in an empty search space!"
         [s] -> makeCFunctionCall "makeSimpleTrav"
-                        [show n, makeCFunctionCallIntArgs "index" [s] ]
+                        [show n, "index(" ++ show s ++ ")" ]
         ss  -> makeCFunctionCall "makeTrav" 
                         (show n:map (\s ->  "index(" ++ show s ++ ")") ss)
-compileInstr _ (LUE n src tgt) = makeCFunctionCallIntArgs "makeEdgeTrav" [n, src, tgt]
+compileInstr _ (LUE n src tgt) = makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
 
 
 
@@ -157,7 +149,7 @@ makeCFunction name lines = concat [startCFunction name,  body, "\n}\n"]
         body = intercalate "\n\t" lines
 
 startCFunction :: String -> String
-startCFunction name = concat [ "\nvoid ", name, "() {\n\t" ]
+startCFunction name = concat [ "\nvoid ", name, "() {\n" ]
 
 endCFunction :: String
 endCFunction = "}\n"
@@ -169,7 +161,7 @@ makeCFunctionCallIntArgs :: String -> [Int] -> String
 makeCFunctionCallIntArgs fname args = makeCFunctionCall fname $ map show args
 
 makeCFunctionCall :: String -> [String] -> String
-makeCFunctionCall fname args = concat [ fname , "(", argStr, ");\n" ]
+makeCFunctionCall fname args = concat [ ('\t':fname) , "(", argStr, ");\n" ]
     where
         argStr = intercalate ", " args
 
