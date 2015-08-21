@@ -142,7 +142,9 @@ compileInstr _ UBA           = "\tABORT;\n"
 compileInstr _ END           = endCFunction 
 
 -- compileInstr (CRS n sig)     = makeCFunctionCallIntArgs "resetTrav" [n] -- TODO
-compileInstr idx (LUN n sig) = labelFor n  ++ ":\n\tdebug(\"In trav " ++ show n ++ "\\n\");\n"
+compileInstr idx (LUN n sig) = labelFor n
+    ++ ":\n\tdebug(\"In trav " ++ show n ++ "\\n\");"
+    ++ "\n\tcheckGraph();\n"
     ++ case definiteLookup sig idx of
         []  -> error "Can't find a node in an empty search space!"
         [s] -> makeCFunctionCall "makeSimpleTrav"

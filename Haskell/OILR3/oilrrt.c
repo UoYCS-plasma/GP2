@@ -71,6 +71,7 @@ Graph g;
 #define debug(...)
 #define debugCode(...)
 #define oilrStatus(...)
+#define checkGraph()
 #else
 #define debug(...) do { fprintf(stderr, __VA_ARGS__); } while (0)
 #define debugCode(c) do { c ; } while (0)
@@ -184,6 +185,37 @@ void removeElem(DList *elem) {
 
 #define getElementById(id) &(g.pool[(id)])
 #define elementId(el) ((el)-g.pool)
+
+#ifndef NDEBUG
+long walkChain(DList *dl, long len) {
+	while ( (dl = nextElem(dl)) )
+		len--;
+	return (len == 0);
+}
+void checkGraph() {
+	long i, iLen, nodes=0, inEdges=0, outEdges=0, loops=0;
+	DList *ind;
+	for (i=0; i<OILR_INDEX_SIZE; i++) {
+		ind = index(i);
+		iLen = listLength(ind);
+		nodes += iLen;
+		while ( (ind = nextElem(ind)) ) {
+			Node *n = asNode(elementOfListItem(ind));
+			iLen--;
+			outEdges += outdeg(n);
+			inEdges  += indeg(n);
+			loops    += loopdeg(n);
+			assert( walkChain( outListFor(n),  outdeg(n)  ) );
+			assert( walkChain( inListFor(n),   indeg(n)   ) );
+			assert( walkChain( loopListFor(n), loopdeg(n) ) );
+		}
+		assert(iLen == 0);
+	}
+	assert(nodes == g.nodeCount);
+	assert(inEdges == outEdges);
+	assert(outEdges + loops == g.edgeCount);
+}
+#endif
 
 /////////////////////////////////////////////////////////
 // graph manipulation
@@ -604,15 +636,25 @@ void dumpGraph() {
 // main
 
 int main(int argc, char **argv) {
+	long i;
 	g.pool = malloc(sizeof(Element) * DEFAULT_POOL_SIZE);
+	if (!g.pool)
+		exit(1);
 	g.poolSize = DEFAULT_POOL_SIZE;
 	g.nodeCount = 0;
 	g.edgeCount = 0;
 	g.freeId = 1;  // pool[0] is not used so zero can function as a NULL value
-	if (!g.pool)
-		exit(1);
+	for (i=0; i<OILR_INDEX_SIZE; i++) {
+		DList *ind = index(i);
+		ind->count = 0;
+		ind->head  = NULL;
+		ind->next  = NULL;
+		ind->prev  = NULL;
+	}
 
+	checkGraph();
 	_HOST();
+	checkGraph();
 	_GPMAIN();
 #ifndef NDEBUG
 	debug("Program completed in %ld bind and %ld unbind operations.\n", bindCount, unbindCount);
