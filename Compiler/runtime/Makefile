@@ -14,7 +14,7 @@ CC = gcc
 # CFLAGS = -pg -I../lib -I../inc -O2 -Wall -Wextra 
 
 # CLFAGS for optimised code.
-CFLAGS = -I../lib -I../inc -O2 -Wall -Wextra 
+CFLAGS = -I../lib -I../inc -O2 -fomit-frame-pointer -Wall -Wextra 
 
 default:	$(OBJECTS)
 		$(CC) $(OBJECTS) $(CFLAGS) -o GP2-run 		

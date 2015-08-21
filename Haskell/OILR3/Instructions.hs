@@ -2,6 +2,7 @@ module OILR3.Instructions where
 
 type Tid = Int -- Trav id
 
+data Flag = DisableOilr | DisableSearchPlan | EnableDebugging deriving (Eq, Show)
 
 data Dim = Equ Int | GtE Int deriving (Show, Eq)
 
@@ -17,9 +18,6 @@ type Pred = (Dim, Dim, Dim, Dim)
 
 data Instr a b = 
       OILR Int
-    -- Trav stack management
-    | DROT                  -- Drop Trav
-    | CLRT                  -- Clear Trav stack
     -- Graph manipulation
     | ADN a                 -- Add Node without Trav
     | ADE b a a             -- Add Edge between Nodes
@@ -28,18 +26,14 @@ data Instr a b =
     | RTN a                 -- Set root flag on node
     | URN a                 -- unset root flag on node
 
-    | ANT                   -- Add Node and push Trav
-    | AET                   -- Add Edge between top two Travs
-    | DNT                   -- Delete Node in Trav
-    | DET                   -- Delete Edge in Trav
-    | DNE                   -- Delete Node and Edge in Trav
     -- Stack machine prims
     | LIT Int               -- push literal on data stack
     | ADD                   -- add top two values on ds
     | SUB                   -- subtract top of stack from next on stack
     | SHL                   -- shift NoS left by ToS bits
     -- Definition
-    | DEF String
+    | RUL String
+    | PRO String
     | END
     -- Graph search
     -- | CRS a Pred            -- conditional reset of trav
@@ -48,6 +42,7 @@ data Instr a b =
     | XIE b a               -- extend match back along an incoming edge
     | XOE b a               -- extend match along an outgoing edge
     | NEC a a               -- no-edge condition
+    | UBA                   -- unbind all
     -- flow control
     | CAL String | ALP String -- call rule or proc once or as-long-as-possible
     | RET                   -- unconditinoal return from current rule or proc

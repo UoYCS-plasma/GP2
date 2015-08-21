@@ -19,14 +19,13 @@ import ParseGraph
 import ParseProgram
 import ProcessAst (makeHostGraph)
 
-data Flag = DisableOilr | EnableSearchPlan | EnableDebugging
-
-compiler = "gcc -g -Wall -Wno-error=unused-label -Wno-unused-label -Werror -o"
+debugCompiler = "gcc -g -Wall -Wno-error=unused-label -Wno-unused-label -Werror -o"
+perfCompiler  = "gcc -O2 -fomit-frame-pointer -Wall -Wno-error=unused-label -Wno-unused-label -Werror -o"
 
 
 options :: [ OptDescr Flag ]
 options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr) "Use only a single OILR index for all nodes.",
-            Option ['s'] ["search-plan"] (NoArg $ EnableSearchPlan) "disable the isomorphism checker, limiting to a maximum of MAX result graphs",
+            Option ['n'] ["no-search-plan"] (NoArg $ DisableSearchPlan) "Disable the search plan; use brute-force nodes-then-edges strategy",
             Option ['d'] ["debug"]   (NoArg $ EnableDebugging) "Enable verbose debugging output on compiled program's stdout" ]
 
 getStem :: String -> String
@@ -56,7 +55,7 @@ callCCompiler cc obj cFile = do
 main = do
     hSetBuffering stdout NoBuffering
     args <- getArgs
-    case getOpt Permute [] args of
+    case getOpt Permute options args of
         (flags, [progFile, hostFile], []) -> do
             let stem = getStem progFile
             let targ = stem ++ ".c"
@@ -64,11 +63,12 @@ main = do
             -- p <- readFile progFile
             pAST <- parseProgram progFile
             hAST <- parseHostGraph hostFile
-            let (prog, travCount) = compileProgram pAST
+            let prog = compileProgram flags pAST
             let host = compileHostGraph hAST
             -- putStrLn $ show prog
-            let progC = progToC travCount prog
+            let progC = progToC flags prog
             let hostC = hostToC host
+            let compiler = if EnableDebugging `elem` flags then debugCompiler else perfCompiler
             writeFile targ $ progC ++ hostC
             callCCompiler compiler exe targ
         _ -> do

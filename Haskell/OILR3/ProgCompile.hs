@@ -7,40 +7,40 @@ import Mapping
 
 import Data.List
 import Unsafe.Coerce
+import Debug.Trace
 
 data GraphElem = N NodeKey | E EdgeKey deriving (Show, Eq)
 type GraphElemId = (AstRuleGraph, GraphElem)
 type SemiOilrCode = [Instr GraphElemId GraphElemId]
 type OilrCode = [Instr Int Int]
 
-
-
 type NodeKey = String
 type EdgeKey = (String, String, String)
-
-
 
 type Interface = [String]
 
 notImplemented n = error $ "Not implemented: " ++ show n
 
 
-compileProgram :: GPProgram -> ([OilrCode], Int)
-compileProgram (Program ds) = (map (postprocess mapping) prog , length mapping)
+compileProgram :: [Flag] -> GPProgram -> [OilrCode]
+compileProgram flags (Program ds) = map postprocess mappings
     where
         prog = map oilrCompileDeclaration ds
-        mapping = concat $ map elemIdMapping prog
+        mappings = map elemIdMapping prog
 
 
-postprocess :: Mapping GraphElemId Int -> SemiOilrCode -> OilrCode
-postprocess mapping sois = map postprocessInstr sois
+postprocess :: (Mapping GraphElemId Int, SemiOilrCode) -> OilrCode
+postprocess (mapping, sois) = map postprocessInstr sois
     where
         translate :: GraphElemId -> Int
         translate id = definiteLookup id mapping
 
         postprocessInstr :: Instr GraphElemId GraphElemId -> Instr Int Int
-        postprocessInstr (DEF s)     = DEF s
+        postprocessInstr (PRO s)     = PRO s
+        postprocessInstr (RUL s)     = RUL s
         postprocessInstr (ALP s)     = ALP s
+        postprocessInstr (CAL s)     = CAL s
+        postprocessInstr UBA         = UBA
         postprocessInstr END         = END
         postprocessInstr (ADN n)     = ADN $ translate n
         postprocessInstr (ADE e s t) = ADE (translate e) (translate s) (translate t)
@@ -49,10 +49,11 @@ postprocess mapping sois = map postprocessInstr sois
         postprocessInstr (RTN n)     = RTN $ translate n
         postprocessInstr (LUN n p)   = LUN (translate n) p
         postprocessInstr (LUE e s t) = LUE (translate e) (translate s) (translate t)
+        postprocessInstr (NEC n1 n2) = NEC (translate n1) (translate n2)
         postprocessInstr i           = error $ show i ++ " is not implmented"
 
-elemIdMapping :: SemiOilrCode -> Mapping GraphElemId Int
-elemIdMapping sois = zip (nub [ id | id <- concatMap extractId sois ]) [0,1..]
+elemIdMapping :: SemiOilrCode -> (Mapping GraphElemId Int, SemiOilrCode)
+elemIdMapping sois = ( zip (nub [ id | id <- concatMap extractId sois ]) [0,1..], sois )
 
 extractId :: Instr a a -> [a]
 extractId (ADN n)      = [n]
@@ -141,7 +142,7 @@ oilrCompileDeclaration (ProcDecl p) = oilrCompileProc p
 oilrCompileDeclaration (AstRuleDecl r) = oilrCompileRule r
 
 oilrCompileProc :: Procedure -> SemiOilrCode
-oilrCompileProc (Procedure name ds cs) = (DEF name : concatMap oilrCompileCommand cs) ++ [END]
+oilrCompileProc (Procedure name ds cs) = (PRO name : concatMap oilrCompileCommand cs) ++ [END]
 
 oilrCompileMain :: Main -> SemiOilrCode
 oilrCompileMain (Main cs) = oilrCompileProc (Procedure "Main" [] cs)
@@ -197,10 +198,10 @@ loopCount g nk = length [ ek | ek <- edgeIds g , source ek == nk && target ek ==
 
 -- TODO: special handling for bidi edges!
 oilrCompileRule :: AstRule -> SemiOilrCode
-oilrCompileRule r@(AstRule name _ (lhs, rhs) _) = ( [DEF name] ++ body ++ [END] )
+oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UBA, END] )
     where
         nif  = nodeIds lhs `intersect` nodeIds rhs
-        body = oilrCompileLhs lhs nif ++ oilrCompileRhs lhs rhs nif
+        body = oilrCompileLhs lhs nif ++ oilrCompileCondition lhs cond ++ oilrCompileRhs lhs rhs nif
 
 -- Make sure the most constrained nodes are looked for first
 oilrSortNodeLookups :: SemiOilrCode -> SemiOilrCode
@@ -232,24 +233,31 @@ oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (edgeIds lhs)) 
                 r = GtE 0 -- TODO! Root node support
         compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
+oilrCompileCondition :: AstRuleGraph -> Condition -> SemiOilrCode
+oilrCompileCondition _ NoCondition = []
+oilrCompileCondition lhs (Not (Edge a b Nothing)) = [NEC (oilrNodeId lhs a) (oilrNodeId lhs b)]
+oilrCompileCondition _ _ = notImplemented 12
+
+
 -- Note that when making unique IDs from the RHS we _always_ use the LHS graph, not the RHS.
 -- The inclusion of the graph in the unique ID is purely to identify elements that belong to
 -- same rule, and should not be used for any other purpose.
 oilrCompileRhs :: AstRuleGraph -> AstRuleGraph -> Interface -> SemiOilrCode
 oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++ edgeInsertions
     where
-        edgeDeletions  = [ DEE (oilrEdgeId lhs ek) | ek <- edgeIds lhs ]
-        nodeDeletions  = [ DEN (oilrNodeId lhs nk) | nk <- nodeIds lhs , not (nk `elem` nif) ]
-        nodeInsertions = [ ADN (oilrNodeId lhs nk) | nk <- nodeIds rhs , not (nk `elem` nif) ]
+        nodeDeletions  = [ DEN (oilrNodeId lhs nk) | nk <- nodeIds lhs 
+                                                   , not (nk `elem` nif) ]
+        nodeInsertions = [ ADN (oilrNodeId lhs nk) | nk <- nodeIds rhs 
+                                                   , not (nk `elem` nif) ]
+        -- limit unnecessary edge deletion and insertion. TODO: check for parallel edges
+        edgeInterface  = edgeIds lhs `intersect` edgeIds rhs
+        edgeDeletions  = [ DEE (oilrEdgeId lhs ek) | ek <- edgeIds lhs
+                                                   , not $ ek `elem` edgeInterface ]
         edgeInsertions = [ ADE (oilrEdgeId lhs ek) src tgt
                             | ek <- edgeIds rhs
                             , let src = oilrNodeId lhs (source ek)
-                            , let tgt = oilrNodeId lhs (target ek) ]
-
-
-oilrCompileCondition NoCondition = []
-oilrCompileCondition _ = notImplemented 12
-
+                            , let tgt = oilrNodeId lhs (target ek)
+                            , not $ ek `elem` edgeInterface ]
 
 
 
@@ -258,23 +266,6 @@ oilrNodeId g nk = (g, N nk)
 
 oilrEdgeId :: AstRuleGraph -> EdgeKey -> GraphElemId
 oilrEdgeId g ek = (g, E ek)
-
-
-sameEdge :: EdgeKey -> EdgeKey -> Bool
-sameEdge (_, s1, t1) (_, s2, t2) = s1==s2 && t1==t2
-
-eliminateEdgeDeletions :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode
-eliminateEdgeDeletions acc [i]         = reverse (i:acc)
-eliminateEdgeDeletions acc ((DEE ek):is) =
-    if length is' == length is
-        then eliminateEdgeDeletions ((DEE ek):acc) is
-        else eliminateEdgeDeletions acc is
-    where
-        is' = [i | i <- is , i `notAddOf` ek  ]
-        notAddOf :: Instr GraphElemId GraphElemId -> EdgeKey -> Bool
-        notAddOf (ADE _ s t) (_,is,it) = not $ s==is && t==it
-        notAddOf _ _                   = True
-eliminateEdgeDeletions acc (i:is)      = eliminateEdgeDeletions (i:acc) is
 
 
 

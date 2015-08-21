@@ -27,12 +27,13 @@ makeLoops acc prev (i:is) = case (i, prev) of
     ( LUN n pr  , Nothing ) -> makeLoops (ORF:i:acc) (Just n) is
     ( LUN n pr  , Just p  ) -> makeLoops (ORB p:i:acc) (Just n) is
     ( LUE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is -- don't update the jump point!
+    ( NEC n _   , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is
     ( LUE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
     _                       -> makeLoops (i:acc) prev is
         
 
-progToC :: Int -> [OilrProg] -> String
-progToC travCount iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
+progToC :: [Flag] -> [OilrProg] -> String
+progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
     where
         idx = makeSearchSpacesForDecl oilr (concat iss)
         defns = map ((compileDefn idx) . (makeLoops [] Nothing) ) iss
@@ -40,7 +41,7 @@ progToC travCount iss = consts ++ cRuntime ++ predeclarations iss ++ concat defn
               ++ "#define OILR_I_BITS (" ++ (show iBits) ++ ")\n"
               ++ "#define OILR_L_BITS (" ++ (show lBits) ++ ")\n"
               ++ "#define OILR_R_BITS (" ++ (show rBits) ++ ")\n"
-              -- ++ "#define TRAV_COUNT (" ++ show travCount ++ ")\n"
+              ++ if EnableDebugging `elem` flags then "\n" else "#define NDEBUG\n"
         oilr@(oBits,iBits,lBits,rBits) = oilrBits iss
 
 -- Generate C declarations so that the ordering of definitions
@@ -48,8 +49,9 @@ progToC travCount iss = consts ++ cRuntime ++ predeclarations iss ++ concat defn
 predeclarations :: [OilrProg] -> String
 predeclarations iss = concatMap declare iss
     where
-        declare ((DEF "Main"):_) = ""
-        declare ((DEF s):_) = "\nvoid " ++ s ++ "();"
+        declare ((PRO "Main"):_) = ""
+        declare ((PRO s):_) = "\nvoid " ++ s ++ "();"
+        declare ((RUL s):_) = "\nvoid " ++ s ++ "();"
         declare _ = error "Found an ill-formed definition"
 
 
@@ -93,14 +95,19 @@ makeSearchSpacesForDecl bits is = map (sigsForPred bits) $ trace (show preds) pr
 
 compileDefn :: Mapping Pred [Int] -> OilrProg -> String
 compileDefn idx is = case head is of
-    DEF "Main" -> concat cInstrs
-    DEF _      -> concat $ head cInstrs : preamble : tail cInstrs
-    _          -> error "Definition doesn't begin with DEF instruction"
+    PRO _      -> concat (defines:cInstrs)
+    RUL _      -> concat $ defines : (head cInstrs) : preamble : (tail cInstrs)
+    _          -> error "Definition doesn't begin with PRO or RUL instruction"
     where
         cInstrs = map (compileInstr idx) is
-        preamble = "\tElement *matches[] = {" ++ slots ++ ", NULL};"
+        defines = "\n#undef ABORT"
+            ++ if nSlots > 0
+                  then "\n#define ABORT do { unbindAll(matches, " ++ show nSlots ++ "); return ; } while (0)\n"
+                  else "\n#define ABORT return"
+        preamble = "\n\tElement *matches[] = {" ++ slots ++ ", NULL};"
               ++ "\n\tDList   *state[]   = {" ++ slots ++ "};\n"
-        slots = concat $ intersperse "," $ filter (/="") $ map countMatches is
+        slots = concat $ intersperse "," $ take nSlots $ repeat "NULL"
+        nSlots = length $ filter (/="") $ map countMatches is
         countMatches (LUN _ _)   = "NULL"
         countMatches (LUE _ _ _) = "NULL"
         countMatches (ADN _)     = "NULL"
@@ -115,32 +122,36 @@ makeModifyAndBind i fun args = "\t" ++ matchInd i ++ " = " ++ makeCFunctionCall 
 
 compileInstr :: Mapping Pred [Int] -> Instr Int Int -> String
 compileInstr _ (ADN n)         = makeModifyAndBind n "addNode" []
-compileInstr _ (ADE e src tgt) = makeModifyAndBind e "addEdge" [src, tgt]
-compileInstr _ (RTN n)         = "setRoot(matches[" ++ show n ++ "]);\n"
-compileInstr _ (URN n)         = "unsetRoot(matches[" ++ show n ++ "]);\n"
-compileInstr _ (DEN n)         = "deleteNode(matches[" ++ show n ++ "]);\n"
-compileInstr _ (DEE e)         = "deleteEdge(matches[" ++ show e ++ "]);\n"
+compileInstr _ (ADE e src tgt) | src==tgt  = makeModifyAndBind e "addLoop" [src]
+                               | otherwise = makeModifyAndBind e "addEdge" [src, tgt]
+compileInstr _ (RTN n)         = "\tsetRoot(matches[" ++ show n ++ "]);\n"
+compileInstr _ (URN n)         = "\tunsetRoot(matches[" ++ show n ++ "]);\n"
+compileInstr _ (DEN n)         = "\tdeleteNode(matches[" ++ show n ++ "]);\n"
+compileInstr _ (DEE e)         = "\tdeleteEdge(matches[" ++ show e ++ "]);\n"
 
 compileInstr _ RET           = "return;"
-compileInstr _ (CAL s)       = makeCFunctionCall s []
+compileInstr m (CAL s)       = makeCFunctionCall s [] ++ compileInstr m ORF
 compileInstr _ (ALP s)       = asLongAsPossible s []
-compileInstr _ ORF           = "if (!boolFlag) return ;\n"
-compileInstr _ (ORB n)       = "if (!boolFlag) goto " ++ labelFor n ++ ";\n"
+compileInstr _ ORF           = "\tif (!boolFlag) ABORT ;\n"
+compileInstr _ (ORB n)       = "\tif (!boolFlag) goto " ++ labelFor n ++ ";\n"
 
-compileInstr _ (DEF "Main")  = startCFunction "_GPMAIN"
-compileInstr _ (DEF s)       = startCFunction s
+compileInstr _ (PRO "Main")  = startCFunction "_GPMAIN"
+compileInstr _ (PRO s)       = startCFunction s
+compileInstr _ (RUL s)       = startCFunction s
+compileInstr _ UBA           = "\tABORT;\n"
 compileInstr _ END           = endCFunction 
 
 -- compileInstr (CRS n sig)     = makeCFunctionCallIntArgs "resetTrav" [n] -- TODO
-compileInstr idx (LUN n sig) = labelFor n  ++ ":\n"
+compileInstr idx (LUN n sig) = labelFor n  ++ ":\n\tdebug(\"In trav " ++ show n ++ "\\n\");\n"
     ++ case definiteLookup sig idx of
         []  -> error "Can't find a node in an empty search space!"
         [s] -> makeCFunctionCall "makeSimpleTrav"
                         [show n, "index(" ++ show s ++ ")" ]
         ss  -> makeCFunctionCall "makeTrav" 
                         (show n:map (\s ->  "index(" ++ show s ++ ")") ss)
-compileInstr _ (LUE n src tgt) = makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
-
+compileInstr _ (LUE n src tgt) | src == tgt = makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
+                               | otherwise  = makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
+compileInstr _ (NEC src tgt)   = makeCFunctionCallIntArgs "makeAntiEdgeTrav" [src, tgt]
 
 
 makeCFunction :: String -> [String] -> String
@@ -149,7 +160,7 @@ makeCFunction name lines = concat [startCFunction name,  body, "\n}\n"]
         body = intercalate "\n\t" lines
 
 startCFunction :: String -> String
-startCFunction name = concat [ "\nvoid ", name, "() {\n" ]
+startCFunction name = concat [ "\nvoid ", name, "() {\n\tdebug(\"Entering ", name, "()\\n\");\n" ]
 
 endCFunction :: String
 endCFunction = "}\n"
