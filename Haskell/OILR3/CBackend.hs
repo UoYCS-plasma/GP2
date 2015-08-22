@@ -27,8 +27,8 @@ makeLoops acc prev [] = reverse acc
 makeLoops acc prev (i:is) = case (i, prev) of
     ( LUN n pr  , Nothing ) -> makeLoops (ORF:i:acc) (Just n) is
     ( LUN n pr  , Just p  ) -> makeLoops (ORB p:i:acc) (Just n) is
-    ( XOE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just n) is
-    ( XIE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just n) is
+    ( XOE _ e _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just e) is
+    ( XIE _ e _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just e) is
     ( LUE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is -- don't update the jump point!
     ( NEC n _   , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is
     ( LUE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
@@ -46,7 +46,10 @@ progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
               ++ "#define OILR_I_BITS (" ++ (show iBits) ++ ")\n"
               ++ "#define OILR_L_BITS (" ++ (show lBits) ++ ")\n"
               ++ "#define OILR_R_BITS (" ++ (show rBits) ++ ")\n"
-              ++ if EnableDebugging `elem` flags then "\n" else "#define NDEBUG\n"
+              ++ case (EnableDebugging `elem` flags, EnableParanoidDebugging `elem` flags) of 
+                    (False, False) -> "#define NDEBUG\n"
+                    (_, True)      -> "#define OILR_PARANOID_CHECKS\n"
+                    _              -> ""
         oilr@(oBits,iBits,lBits,rBits) = oilrBits iss
 
 -- Generate C declarations so that the ordering of definitions
@@ -160,8 +163,8 @@ compileInstr idx (LUN n sig) = labelFor n
                         (show n:map (\s ->  "index(" ++ show s ++ ")") ss)
 compileInstr _ (LUE n src tgt) | src == tgt = makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
                                | otherwise  = makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
-compileInstr _ (XOE src e tgt) = makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
-compileInstr _ (XIE src e tgt) = makeCFunctionCallIntArgs "makeExtendInTrav" [src, e, tgt, 1]
+compileInstr _ (XOE src e tgt) = labelFor e ++ ":\n\t" ++ makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
+compileInstr _ (XIE src e tgt) = labelFor e ++ ":\n\t" ++ makeCFunctionCallIntArgs "makeExtendInTrav" [src, e, tgt, 1]
 compileInstr _ (NEC src tgt)   = makeCFunctionCallIntArgs "makeAntiEdgeTrav" [src, tgt]
 
 

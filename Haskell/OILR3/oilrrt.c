@@ -4,12 +4,8 @@
 #include <string.h>
 
 #define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
-#define DEFAULT_POOL_SIZE (10000)
+#define DEFAULT_POOL_SIZE (1000000)
 #define ABORT return
-
-#if defined(OILR_PARANOID_CHECKS) && defined(NDEBUG)
-#undef NDEBUG
-#endif
 
 void _HOST();
 void _GPMAIN();

@@ -236,7 +236,27 @@ oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UB
 oilrSortNodeLookups :: SemiOilrCode -> SemiOilrCode
 oilrSortNodeLookups is = reverse $ sortBy mostConstrained is
     where
-        mostConstrained (LUN _ p1) (LUN _ p2) = compare p1 p2
+        mostConstrained (LUN _ p1) (LUN _ p2) = comparePreds p1 p2
+
+oilrSortEdgeLookups :: SemiOilrCode -> SemiOilrCode
+oilrSortEdgeLookups is = interesting ++ uninteresting
+    where
+        (interesting, uninteresting) = partition isInteresting is
+        isInteresting (LUE _ s t) | s == t    =  True
+                                  | otherwise = 
+            ( length $ filter (\(LUE e' s' t') -> s==s' && t==t' || s==t' && t==s') is ) > 1
+
+-- NOTE: haskell's standard compare on n-tuples doesn't give good results
+-- so I've developed a custom points-based approach
+comparePreds :: Pred -> Pred -> Ordering
+comparePreds p1 p2 = compare (predToWeight p1) (predToWeight p2)
+
+predToWeight :: Pred -> Int
+predToWeight (o, i, l, r) = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [o,i])
+
+valueForDim :: Dim -> Int
+valueForDim (GtE n) = n
+valueForDim (Equ n) = (n+1)*2
 
 -- TODO: needs work. Currently issues "n2 e12 e23 n1 n3" but ideally should be "n2 e12 n1 e23 n3"
 {- oilrInterleaveEdges :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode -> SemiOilrCode
@@ -252,7 +272,7 @@ oilrCompileLhs :: AstRuleGraph -> Interface -> SemiOilrCode
 oilrCompileLhs lhs nif = code
     where
         code   = mergeTravs nTravs eTravs
-        eTravs = map compileEdge (edgeIds lhs)
+        eTravs = oilrSortEdgeLookups $ map compileEdge (edgeIds lhs)
         nTravs = oilrSortNodeLookups $ map compileNode (nodeIds lhs)
         compileNode nk = cn
              where

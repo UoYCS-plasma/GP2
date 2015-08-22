@@ -10,6 +10,7 @@ data Dim = Equ Int | GtE Int deriving (Show, Eq)
 -- for a first cut
 instance Ord Dim where
     compare (Equ _) (GtE _) = GT
+    compare (GtE _) (Equ _) = LT
     compare (Equ x) (Equ y) = compare x y
     compare (GtE x) (GtE y) = compare x y
 
