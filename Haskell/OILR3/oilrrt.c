@@ -1,10 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
 #define DEFAULT_POOL_SIZE (10000)
 #define ABORT return
+
+#if defined(OILR_PARANOID_CHECKS) && defined(NDEBUG)
+#undef NDEBUG
+#endif
 
 void _HOST();
 void _GPMAIN();
@@ -71,7 +76,6 @@ Graph g;
 #define debug(...)
 #define debugCode(...)
 #define oilrStatus(...)
-#define checkGraph()
 #else
 #define debug(...) do { fprintf(stderr, __VA_ARGS__); } while (0)
 #define debugCode(c) do { c ; } while (0)
@@ -186,44 +190,6 @@ void removeElem(DList *elem) {
 #define getElementById(id) &(g.pool[(id)])
 #define elementId(el) ((el)-g.pool)
 
-#ifndef NDEBUG
-long walkChain(DList *dl, long len) {
-	while ( (dl = nextElem(dl)) )
-		len--;
-	return (len == 0);
-}
-void checkGraph() {
-	long i, iLen, nodes=0, inEdges=0, outEdges=0, loops=0;
-	DList *ind;
-	for (i=0; i<OILR_INDEX_SIZE; i++) {
-		ind = index(i);
-		iLen = listLength(ind);
-		nodes += iLen;
-		while ( (ind = nextElem(ind)) ) {
-			Node *n = asNode(elementOfListItem(ind));
-			iLen--;
-			outEdges += outdeg(n);
-			inEdges  += indeg(n);
-			loops    += loopdeg(n);
-			assert( walkChain( outListFor(n),  outdeg(n)  ) );
-			assert( walkChain( inListFor(n),   indeg(n)   ) );
-			assert( walkChain( loopListFor(n), loopdeg(n) ) );
-		}
-		assert(iLen == 0);
-	}
-	assert(nodes == g.nodeCount);
-	assert(inEdges == outEdges);
-	assert(outEdges + loops == g.edgeCount);
-}
-#endif
-
-/////////////////////////////////////////////////////////
-// graph manipulation
-
-#define setRoot(n)   do { (n)->root = 1 ; } while (0)
-#define unsetRoot(n) do { (n)->root = 0 ; } while (0)
-#define setRootById(n) setRoot( asNode(getElementById(n)) )
-
 long min(long x, long y) {
 	return (x<=y ? x : y);
 }
@@ -237,6 +203,49 @@ long signature(Node *n) {
 	assert(sig >= 0 && sig < OILR_INDEX_SIZE);
 	return sig;
 }
+
+#if defined(OILR_PARANOID_CHECKS) && !defined(NDEBUG)
+long walkChain(DList *dl) {
+	long len = 0;
+	while ( (dl = nextElem(dl)) )
+		len++;
+	return len;
+}
+void checkGraph() {
+	long i, iLen, nodes=0, inEdges=0, outEdges=0, loops=0;
+	DList *ind;
+	for (i=0; i<OILR_INDEX_SIZE; i++) {
+		ind = index(i);
+		iLen = listLength(ind);
+		nodes += iLen;
+		while ( (ind = nextElem(ind)) ) {
+			Node *n = asNode(elementOfListItem(ind));
+			oilrStatus(elementOfListItem(ind));
+			debug("\t\t -> o: %ld\n", walkChain(outListFor(n)));
+			iLen--;
+			outEdges += outdeg(n);
+			inEdges  += indeg(n);
+			loops    += loopdeg(n);
+			assert( walkChain(outListFor(n) ) == outdeg(n)  );
+			assert( walkChain(inListFor(n)  ) == indeg(n)   );
+			assert( walkChain(loopListFor(n)) == loopdeg(n) );
+		}
+		assert(iLen == 0);
+	}
+	assert(nodes == g.nodeCount);
+	assert(inEdges == outEdges);
+	assert(outEdges + loops == g.edgeCount);
+}
+#else
+#define checkGraph()
+#endif
+
+/////////////////////////////////////////////////////////
+// graph manipulation
+
+#define setRoot(n)   do { (n)->root = 1 ; } while (0)
+#define unsetRoot(n) do { (n)->root = 0 ; } while (0)
+#define setRootById(n) setRoot( asNode(getElementById(n)) )
 
 void freeElement(Element *ne) {
 	ne->free = g.freeList;
@@ -284,7 +293,7 @@ Element *allocElement() {
 	} else {
 		g.freeList = ne->free;
 	}
-	ne->bound = 0;
+	memset(ne, '\0', sizeof(Element));
 	return ne;
 }
 

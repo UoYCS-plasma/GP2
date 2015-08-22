@@ -13,7 +13,7 @@ init () [
 	(e2, n3, n4, empty)
 	(e3, n4, n2, empty) 
 
-	(e1, n2, n2, empty)
+	(e4, n2, n2, empty)
 ]
 interface = {n1}
 

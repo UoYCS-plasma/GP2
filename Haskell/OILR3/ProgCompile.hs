@@ -181,20 +181,26 @@ nodeIds (AstRuleGraph ns _) = map (\(RuleNode id _ _) -> id) ns
 edgeIds :: AstRuleGraph -> [EdgeKey]
 edgeIds (AstRuleGraph _ es) = map (\(AstRuleEdge id bidi src tgt _) -> (id, src, tgt)) es
 
+rootNodes :: AstRuleGraph -> [NodeKey]
+rootNodes (AstRuleGraph ns _) = [ nk | (RuleNode nk root _) <- ns , root == True ]
+
 source :: EdgeKey -> NodeKey
 source (_, nk, _) = nk
 
 target :: EdgeKey -> NodeKey
 target (_, _, nk) = nk
 
-indegree :: AstRuleGraph -> NodeKey -> Int
-indegree g nk = length [ ek | ek <- edgeIds g , target ek == nk ]
+inDegree :: AstRuleGraph -> NodeKey -> Int
+inDegree g nk = length [ ek | ek <- edgeIds g , target ek == nk ]
 
-outdegree :: AstRuleGraph -> NodeKey -> Int
-outdegree g nk = length [ ek | ek <- edgeIds g , source ek == nk ]
+outDegree :: AstRuleGraph -> NodeKey -> Int
+outDegree g nk = length [ ek | ek <- edgeIds g , source ek == nk ]
 
 loopCount :: AstRuleGraph -> NodeKey -> Int
 loopCount g nk = length [ ek | ek <- edgeIds g , source ek == nk && target ek == nk ]
+
+isRoot :: AstRuleGraph -> NodeKey -> Bool
+isRoot g nk = nk `elem` rootNodes g
 
 -- TODO: special handling for bidi edges!
 oilrCompileRule :: AstRule -> SemiOilrCode
@@ -227,10 +233,10 @@ oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (edgeIds lhs)) 
                 cn = if nk `elem` nif
                         then LUN (oilrNodeId lhs nk) (GtE o, GtE i, GtE l, r)
                         else LUN (oilrNodeId lhs nk) (Equ o, Equ i, Equ l, r)
-                o = outdegree lhs nk - l
-                i = indegree lhs nk - l
+                o = outDegree lhs nk - l
+                i = inDegree lhs nk - l
                 l = loopCount lhs nk
-                r = GtE 0 -- TODO! Root node support
+                r = if isRoot lhs nk then Equ 1 else GtE 0 -- TODO! Root node support
         compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
 oilrCompileCondition :: AstRuleGraph -> Condition -> SemiOilrCode

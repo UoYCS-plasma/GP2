@@ -26,7 +26,8 @@ perfCompiler  = "gcc -O2 -fomit-frame-pointer -Wall -Wno-error=unused-label -Wno
 options :: [ OptDescr Flag ]
 options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr) "Use only a single OILR index for all nodes.",
             Option ['n'] ["no-search-plan"] (NoArg $ DisableSearchPlan) "Disable the search plan; use brute-force nodes-then-edges strategy",
-            Option ['d'] ["debug"]   (NoArg $ EnableDebugging) "Enable verbose debugging output on compiled program's stdout" ]
+            Option ['d'] ["debug"]   (NoArg $ EnableDebugging) "Enable verbose debugging output on compiled program's stderr" ,
+            Option ['D'] ["extra-debug"]   (NoArg $ EnableParanoidDebugging) "Enable paranoid graph structure checks (implies -d)" ]
 
 getStem :: String -> String
 getStem = takeWhile (/= '.')

@@ -168,7 +168,7 @@ endCFunction :: String
 endCFunction = "}\n"
 
 asLongAsPossible :: String -> [Int] -> String
-asLongAsPossible fname args = concat [ "do {\n", makeCFunctionCallIntArgs fname args, "} while (boolFlag);\n" ]
+asLongAsPossible fname args = concat [ "\tdo {\n\t", makeCFunctionCallIntArgs fname args, "\t} while (boolFlag);\n\tboolFlag=1;\n" ]
 
 makeCFunctionCallIntArgs :: String -> [Int] -> String
 makeCFunctionCallIntArgs fname args = makeCFunctionCall fname $ map show args
