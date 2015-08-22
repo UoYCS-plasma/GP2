@@ -39,8 +39,8 @@ data Instr a b =
     -- | CRS a Pred            -- conditional reset of trav
     | LUN a Pred
     | LUE b a a
-    | XIE b a               -- extend match back along an incoming edge
-    | XOE b a               -- extend match along an outgoing edge
+    | XIE a b a             -- extend match back along an incoming edge
+    | XOE a b a             -- extend match along an outgoing edge 
     | NEC a a               -- no-edge condition
     | UBA                   -- unbind all
     -- flow control

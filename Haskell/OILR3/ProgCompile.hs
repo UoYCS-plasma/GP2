@@ -29,6 +29,25 @@ compileProgram flags (Program ds) = map postprocess mappings
         mappings = map elemIdMapping prog
 
 
+mergeTravs :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode
+mergeTravs nts ets = edgesToInstrs [] [] edges
+    where
+        edges  = [ (src, ed, tgt)
+                    | src@(LUN sn _)  <- nts
+                    , ed@(LUE e s t) <- ets
+                    , tgt@(LUN tn _)  <- nts
+                    , sn==s , tn==t ]
+
+edgesToInstrs acc _ [] = reverse acc
+edgesToInstrs acc seen ((LUN _ sp, LUE e s t, LUN _ tp):es) =
+    case (s==t, s `elem` seen, t `elem` seen) of
+        (_,     True,  True ) -> edgesToInstrs (LUE e s t:acc)          seen       es
+        (True,  False, _    ) -> edgesToInstrs (LUE e s t:LUN s sp:acc) (s:seen)   es
+        (False, False, True ) -> edgesToInstrs (XIE t e s:acc)          (s:seen)   es
+        (False, True,  False) -> edgesToInstrs (XOE s e t:acc)          (t:seen)   es
+        (False, False, False) -> edgesToInstrs (XOE s e t:LUN s sp:acc) (t:s:seen) es
+
+
 postprocess :: (Mapping GraphElemId Int, SemiOilrCode) -> OilrCode
 postprocess (mapping, sois) = map postprocessInstr sois
     where
@@ -49,6 +68,8 @@ postprocess (mapping, sois) = map postprocessInstr sois
         postprocessInstr (RTN n)     = RTN $ translate n
         postprocessInstr (LUN n p)   = LUN (translate n) p
         postprocessInstr (LUE e s t) = LUE (translate e) (translate s) (translate t)
+        postprocessInstr (XOE s e t) = XOE (translate s) (translate e) (translate t)
+        postprocessInstr (XIE t e s) = XIE (translate t) (translate e) (translate s)
         postprocessInstr (NEC n1 n2) = NEC (translate n1) (translate n2)
         postprocessInstr i           = error $ show i ++ " is not implmented"
 
@@ -63,6 +84,8 @@ extractId (LUN n _)    = [n]
 extractId (ADE e _ _)  = [e]
 extractId (DEE e)      = [e]
 extractId (LUE e _ _)  = [e]
+extractId (XOE _ e t)  = [e, t]
+extractId (XIE _ e s)  = [e, s]
 extractId _            = []
 
 
@@ -216,18 +239,21 @@ oilrSortNodeLookups is = reverse $ sortBy mostConstrained is
         mostConstrained (LUN _ p1) (LUN _ p2) = compare p1 p2
 
 -- TODO: needs work. Currently issues "n2 e12 e23 n1 n3" but ideally should be "n2 e12 n1 e23 n3"
-oilrInterleaveEdges :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode -> SemiOilrCode
+{- oilrInterleaveEdges :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode -> SemiOilrCode
 oilrInterleaveEdges _ es ns = ns ++ es  -- TODO: hack other cases not reachable
 oilrInterleaveEdges acc es [] = reverse acc ++ es
 oilrInterleaveEdges acc es (n@(LUN id _):ns) = oilrInterleaveEdges (nes ++ n:acc) es' ns
     where
         (nes, es') = partition (edgeFor id) es
         edgeFor id (LUE _ a b) = a == id || b == id
-        insertEdgeBeforeNode = notImplemented 20
+        insertEdgeBeforeNode = notImplemented 20 -}
 
 oilrCompileLhs :: AstRuleGraph -> Interface -> SemiOilrCode
-oilrCompileLhs lhs nif = oilrInterleaveEdges [] (map compileEdge (edgeIds lhs)) $ oilrSortNodeLookups ( map compileNode (nodeIds lhs) )
+oilrCompileLhs lhs nif = code
     where
+        code   = mergeTravs nTravs eTravs
+        eTravs = map compileEdge (edgeIds lhs)
+        nTravs = oilrSortNodeLookups $ map compileNode (nodeIds lhs)
         compileNode nk = cn
              where
                 cn = if nk `elem` nif

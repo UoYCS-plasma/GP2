@@ -21,14 +21,19 @@ hostCompileInstruction (ADE e src tgt) = makeCFunctionCallIntArgs "addEdgeById" 
 hostCompileInstruction (RTN n)   = makeCFunctionCallIntArgs "setRootById" [n]
 hostCompileInstruction i         = error $ "Instruction " ++ show i ++ " not implemented for host graphs"
 
+-- TODO: should be in ProgCompile!
 makeLoops :: OilrProg -> Maybe Int -> OilrProg -> OilrProg
 makeLoops acc prev [] = reverse acc
 makeLoops acc prev (i:is) = case (i, prev) of
     ( LUN n pr  , Nothing ) -> makeLoops (ORF:i:acc) (Just n) is
     ( LUN n pr  , Just p  ) -> makeLoops (ORB p:i:acc) (Just n) is
+    ( XOE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just n) is
+    ( XIE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just n) is
     ( LUE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is -- don't update the jump point!
     ( NEC n _   , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is
     ( LUE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
+    ( XIE _ _ _ , Nothing ) -> error "Extend-in instruction cannot be first"
+    ( XOE _ _ _ , Nothing ) -> error "Extend-out instruction cannot be first"
     _                       -> makeLoops (i:acc) prev is
         
 
@@ -106,13 +111,15 @@ compileDefn idx is = case head is of
                   else "\n#define ABORT return"
         preamble = "\n\tElement *matches[] = {" ++ slots ++ ", NULL};"
               ++ "\n\tDList   *state[]   = {" ++ slots ++ "};\n"
-        slots = concat $ intersperse "," $ take nSlots $ repeat "NULL"
-        nSlots = length $ filter (/="") $ map countMatches is
-        countMatches (LUN _ _)   = "NULL"
-        countMatches (LUE _ _ _) = "NULL"
-        countMatches (ADN _)     = "NULL"
-        countMatches (ADE _ _ _) = "NULL"
-        countMatches _           = ""
+        slots  = concat $ intersperse "," $ take nSlots $ repeat "NULL"
+        nSlots = sum $ map countMatches is
+        countMatches (LUN _ _)   = 1
+        countMatches (LUE _ _ _) = 1
+        countMatches (XOE _ _ _) = 2
+        countMatches (XIE _ _ _) = 2
+        countMatches (ADN _)     = 1
+        countMatches (ADE _ _ _) = 1
+        countMatches _           = 0
 
 makeModifyAndBind :: Int -> String -> [Int] -> String
 makeModifyAndBind i fun args = "\t" ++ matchInd i ++ " = " ++ makeCFunctionCall fun (map matchInd args)
@@ -153,6 +160,8 @@ compileInstr idx (LUN n sig) = labelFor n
                         (show n:map (\s ->  "index(" ++ show s ++ ")") ss)
 compileInstr _ (LUE n src tgt) | src == tgt = makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
                                | otherwise  = makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
+compileInstr _ (XOE src e tgt) = makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
+compileInstr _ (XIE src e tgt) = makeCFunctionCallIntArgs "makeExtendInTrav" [src, e, tgt, 1]
 compileInstr _ (NEC src tgt)   = makeCFunctionCallIntArgs "makeAntiEdgeTrav" [src, tgt]
 
 

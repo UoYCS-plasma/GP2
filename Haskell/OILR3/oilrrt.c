@@ -558,6 +558,19 @@ do { \
 	state[eDest] = dl ; \
 } while (0)
 
+#define makeExtendInTrav(toTrav, eDest, nDest, predCode) \
+do { \
+	Element *src=matches[toTrav]; \
+	DList *dl = (state[eDest]) ? state[eDest] : inListFor(asNode(src));    \
+	oilrStatus(src); \
+ 	assert(eDest != nDest && toTrav != eDest && toTrav != nDest);     \
+	assert(src);                           \
+	do { \
+		followEdges(&dl, &matches[eDest], &matches[nDest], InEdge); \
+	} while (boolFlag && ! predCode); \
+	state[eDest] = dl ; \
+} while (0)
+
 #define makeEdgeTrav(srcTrav, edgeTrav, tgtTrav) \
 do { \
 	edgeBetween(&matches[edgeTrav], matches[srcTrav], matches[tgtTrav]); \
