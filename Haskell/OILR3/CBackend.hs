@@ -153,7 +153,7 @@ compileInstr _ END           = endCFunction
 
 -- compileInstr (CRS n sig)     = makeCFunctionCallIntArgs "resetTrav" [n] -- TODO
 compileInstr idx (LUN n sig) = labelFor n
-    ++ ":\n\tdebug(\"In trav " ++ show n ++ "\\n\");"
+    ++ ":\n\tdebug(\"In LUN trav " ++ show n ++ "\\n\");"
     ++ "\n\tcheckGraph();\n"
     ++ case definiteLookup sig idx of
         []  -> error "Can't find a node in an empty search space!"
@@ -161,10 +161,18 @@ compileInstr idx (LUN n sig) = labelFor n
                         [show n, "index(" ++ show s ++ ")" ]
         ss  -> makeCFunctionCall "makeTrav" 
                         (show n:map (\s ->  "index(" ++ show s ++ ")") ss)
-compileInstr _ (LUE n src tgt) | src == tgt = makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
-                               | otherwise  = makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
-compileInstr _ (XOE src e tgt) = labelFor e ++ ":\n\t" ++ makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
-compileInstr _ (XIE src e tgt) = labelFor e ++ ":\n\t" ++ makeCFunctionCallIntArgs "makeExtendInTrav" [src, e, tgt, 1]
+compileInstr _ (LUE n src tgt) | src == tgt = 
+                                    "\tdebug(\"In loop trav " ++ show n ++ "\\n\");"
+                                    ++ makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
+                               | otherwise  =
+                                    "\tdebug(\"In edge trav " ++ show n ++ "\\n\");"
+                                    ++ makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
+compileInstr _ (XOE src e tgt) = labelFor e
+    ++ ":\n\tdebug(\"In XOE trav " ++ show e ++ "\\n\");"
+    ++ "\t" ++ makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
+compileInstr _ (XIE src e tgt) = labelFor e
+    ++ ":\n\tdebug(\"In XIE trav " ++ show e ++ "\\n\");"
+    ++ "\t" ++ makeCFunctionCallIntArgs "makeExtendInTrav" [src, e, tgt, 1]
 compileInstr _ (NEC src tgt)   = makeCFunctionCallIntArgs "makeAntiEdgeTrav" [src, tgt]
 
 
@@ -180,7 +188,7 @@ endCFunction :: String
 endCFunction = "}\n"
 
 asLongAsPossible :: String -> [Int] -> String
-asLongAsPossible fname args = concat [ "\tdo {\n\t", makeCFunctionCallIntArgs fname args, "\t} while (boolFlag);\n\tboolFlag=1;\n" ]
+asLongAsPossible fname args = concat [ "\tdo {\n\toilrReport();\n\t", makeCFunctionCallIntArgs fname args, "\t} while (boolFlag);\n\tboolFlag=1;\n" ]
 
 makeCFunctionCallIntArgs :: String -> [Int] -> String
 makeCFunctionCallIntArgs fname args = makeCFunctionCall fname $ map show args

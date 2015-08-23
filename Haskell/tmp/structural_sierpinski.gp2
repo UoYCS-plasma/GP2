@@ -39,7 +39,7 @@ prepare () [
 	(e2, n1, n2, empty)
 	(e3, n2, n1, empty)
 ]
-interface = {n1}
+interface = {n1,n2}
 where not edge(n2, n1)
 
 expand () [

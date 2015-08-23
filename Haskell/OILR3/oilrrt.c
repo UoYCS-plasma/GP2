@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <assert.h>
 #include <string.h>
 
@@ -21,9 +22,11 @@ struct Edge;
 struct Element;
 
 typedef struct DList {
-	long count;
+	union {
+		long count;
+		struct DList *head;
+	};
 	struct Element *el;
-	struct DList *head;
 	struct DList *next;
 	struct DList *prev;
 } DList;
@@ -34,7 +37,7 @@ typedef struct Node {
 	DList inEdges;
 	DList loops;
 	long root;
-	long sig;
+	// long sig;
 } Node;
 
 typedef struct Edge {
@@ -118,7 +121,7 @@ void prependElem(DList *dl, DList *elem) {
 #endif
 	DList *nx = dl->next;
 	elem->head = dl;
-	elem->prev = NULL ;
+	elem->prev = dl ;
 	elem->next = nx;
 	if (nx)
 		dl->next->prev = elem;
@@ -251,12 +254,12 @@ void freeElement(Element *ne) {
 
 void indexNode(Node *n) {
 	long sig = signature(n);
-	n->sig = sig;
+	// n->sig = sig;
 	prependElem(index(sig), chainFor(n));
 }
 void unindexNode(Node *n) {
 	removeElem(chainFor(n));
-	n->sig = -1;
+	// n->sig = -1;
 }
 
 void checkMemory(long neededElems) {
@@ -589,6 +592,25 @@ do { \
 /////////////////////////////////////////////////////////
 // utilities
 
+
+#ifndef NDEBUG
+void oilrReport() {
+	long i;
+	DList *index;
+	// OILR index population report
+	debug("OILR index stats:\n");
+	for (i=0; i<OILR_INDEX_SIZE; i++) {
+		index = &(g.idx[i]);
+		debug("\t[%03ld]: %ld", i, listLength(index) );
+		if ( (i+1) % 4  == 0 )
+			debug("\n");
+	}
+	debug("\n");
+}
+#else
+#define oilrReport()
+#endif
+
 #define getId(ne) (((Element *) (ne)) - g.pool)
 void dumpGraph() {
 	long i;
@@ -647,8 +669,8 @@ void dumpGraph() {
 	printf("]\n");
 	debug("%ld %ld\n\n", edgeIndexCount, edgeCount);
 	assert(edgeIndexCount == edgeCount);
+	oilrReport();
 }
-
 
 /////////////////////////////////////////////////////////
 // main

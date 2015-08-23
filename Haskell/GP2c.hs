@@ -19,10 +19,12 @@ import ParseGraph
 import ParseProgram
 import ProcessAst (makeHostGraph)
 
-compilerFlags = " -Wall -Wno-error=unused-label -Wno-unused-label -Wno-error=unused-variable -Werror -o"
+compilerFlagsCommon = " -Wall -Wno-error=unused-label -Wno-unused-label -Wno-error=unused-variable -Werror -o"
+compilerFlags32 = " -m32 -Wno-error=format= " ++ compilerFlagsCommon
+compilerFlags64 = " -m64 " ++ compilerFlagsCommon
 
-debugCompiler = "gcc -g " ++ compilerFlags
-perfCompiler  = "gcc -O2 -fomit-frame-pointer " ++ compilerFlags
+debugCompiler = "gcc -g " ++ compilerFlags64
+perfCompiler  = "gcc -O2 -fomit-frame-pointer " ++ compilerFlags64
 
 
 options :: [ OptDescr Flag ]
