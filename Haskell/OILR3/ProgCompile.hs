@@ -19,6 +19,16 @@ type EdgeKey = (String, String, String)
 
 type Interface = [String]
 
+colourMapping :: Mapping Colour Dim
+colourMapping = 
+    [ (Uncoloured, Equ 0)
+    , (Red       , Equ 1)
+    , (Green     , Equ 2)
+    , (Blue      , Equ 3)
+    , (Grey      , Equ 4)
+    , (Cyan      , GtE 0) ]
+
+
 notImplemented n = error $ "Not implemented: " ++ show n
 
 
@@ -225,6 +235,10 @@ loopCount g nk = length [ ek | ek <- edgeIds g , source ek == nk && target ek ==
 isRoot :: AstRuleGraph -> NodeKey -> Bool
 isRoot g nk = nk `elem` rootNodes g
 
+colour :: AstRuleGraph -> NodeKey -> Colour
+colour g nk = c
+    where (RuleNode _ _ (RuleLabel _ c) ) = definiteLookup nk g
+
 -- TODO: special handling for bidi edges!
 oilrCompileRule :: AstRule -> SemiOilrCode
 oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UBA, END] )
@@ -252,7 +266,7 @@ comparePreds :: Pred -> Pred -> Ordering
 comparePreds p1 p2 = compare (predToWeight p1) (predToWeight p2)
 
 predToWeight :: Pred -> Int
-predToWeight (o, i, l, r) = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [o,i])
+predToWeight (c, o, i, l, r) = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [o,i])
 
 valueForDim :: Dim -> Int
 valueForDim (GtE n) = n
@@ -277,12 +291,13 @@ oilrCompileLhs lhs nif = code
         compileNode nk = cn
              where
                 cn = if nk `elem` nif
-                        then LUN (oilrNodeId lhs nk) (GtE o, GtE i, GtE l, r)
-                        else LUN (oilrNodeId lhs nk) (Equ o, Equ i, Equ l, r)
+                        then LUN (oilrNodeId lhs nk) (c, GtE o, GtE i, GtE l, r)
+                        else LUN (oilrNodeId lhs nk) (c, Equ o, Equ i, Equ l, r)
                 o = outDegree lhs nk - l
                 i = inDegree lhs nk - l
                 l = loopCount lhs nk
-                r = if isRoot lhs nk then Equ 1 else GtE 0 -- TODO! Root node support
+                r = if isRoot lhs nk then Equ 1 else GtE 0
+                c = definiteLookup (colour lhs nk) colourMapping
         compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
 oilrCompileCondition :: AstRuleGraph -> Condition -> SemiOilrCode

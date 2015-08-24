@@ -17,6 +17,16 @@ long unbindCount = 0;
 /////////////////////////////////////////////////////////
 // graph structure
 
+typedef enum {
+	Cyan=-1,
+	Uncoloured=0,
+	Red,
+	Green,
+	Blue,
+	Grey
+//	Dashed
+} Colour;
+
 struct Node;
 struct Edge;
 struct Element;
@@ -36,8 +46,10 @@ typedef struct Node {
 	DList outEdges;
 	DList inEdges;
 	DList loops;
-	long root;
-	// long sig;
+	struct {
+		int root:1;
+		int colour:3;
+	};
 } Node;
 
 typedef struct Edge {
@@ -48,12 +60,12 @@ typedef struct Edge {
 } Edge;
 
 typedef struct Element {
+	long bound;
 	union {
 		Node n;
 		Edge e;
 		struct Element *free;
 	};
-	long bound;
 } Element;
 
 typedef struct Graph {

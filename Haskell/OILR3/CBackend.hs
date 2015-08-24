@@ -72,22 +72,24 @@ extractPredicates is = concatMap harvestPred is
           harvestPred _         = []
 
 oilrBits :: [OilrProg] -> OilrIndexBits
-oilrBits iss = trace (show (f o, f i, f l, f r)) (f o, f i, f l, f r)
+oilrBits iss = trace (show (f c, f o, f i, f l, f r)) (f c, f o, f i, f l, f r)
     where
         f = (bits . maximum . map extract) 
-        (o, i, l, r) = unzip4 $ extractPredicates $ concat iss
+        (c, o, i, l, r) = unzip5 $ extractPredicates $ concat iss
         extract (Equ n) = n
         extract (GtE n) = n
         bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
 
 sigsForPred :: OilrIndexBits -> Pred -> (Pred, [Int])
-sigsForPred (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
+sigsForPred (cBits, oBits, iBits, lBits, rBits) p@(c, o, i, l, r) =
     (p, nub [ o' `shift` oShift + i' `shift` iShift + l' `shift` lShift + r' `shift` rShift
-                | o' <- case o of Equ n -> [n] ; GtE n -> [n..(1 `shift` oBits)-1]
+                | c' <- case c of Equ n -> [n] ; GtE n -> [n..(1 `shift` cBits)-1]
+                , o' <- case o of Equ n -> [n] ; GtE n -> [n..(1 `shift` oBits)-1]
                 , i' <- case i of Equ n -> [n] ; GtE n -> [n..(1 `shift` iBits)-1]
                 , l' <- case l of Equ n -> [n] ; GtE n -> [n..(1 `shift` lBits)-1]
                 , r' <- case r of Equ n -> [n] ; GtE n -> [n..(1 `shift` rBits)-1] ])
     where
+        cShift = oShift + oBits
         oShift = iShift + iBits
         iShift = lShift + lBits
         lShift = rShift + rBits
