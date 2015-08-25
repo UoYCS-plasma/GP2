@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <string.h>
 
-#define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
+#define OILR_INDEX_SIZE (1<<(OILR_C_BITS+OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
 #define DEFAULT_POOL_SIZE (1000000)
 #define ABORT return
 
@@ -18,13 +18,13 @@ long unbindCount = 0;
 // graph structure
 
 typedef enum {
-	Cyan=-1,
 	Uncoloured=0,
 	Red,
 	Green,
 	Blue,
 	Grey
 //	Dashed
+	Cyan,
 } Colour;
 
 struct Node;
@@ -90,7 +90,7 @@ Graph g;
 #else
 #define debug(...) do { fprintf(stderr, __VA_ARGS__); } while (0)
 #define debugCode(c) do { c ; } while (0)
-#define oilrStatus(node) do { Element *mEl = (node); Node *mN = asNode(mEl); debug("\tNode %ld has OILR %ld: (%ld, %ld, %ld, %ld)\n", elementId(mEl), signature(mN), outdeg(mN), indeg(mN), loopdeg(mN), isroot(mN)); } while (0)
+#define oilrStatus(node) do { Element *mEl = (node); Node *mN = asNode(mEl); debug("\tNode %ld has OILR %ld: (%d, %ld, %ld, %ld, %d)\n", elementId(mEl), signature(mN), colour(mN), outdeg(mN), indeg(mN), loopdeg(mN), isroot(mN)); } while (0)
 #endif
 
 /////////////////////////////////////////////////////////
@@ -195,6 +195,7 @@ void removeElem(DList *elem) {
 #define outdeg(n)   (listLength(outListFor(n)))
 #define loopdeg(n)  (listLength(loopListFor(n)))
 #define isroot(n)   ((n)->root)
+#define colour(n)   ((n)->colour)
 
 #define index(sig) &(g.idx[sig])
 
@@ -206,11 +207,12 @@ long min(long x, long y) {
 }
 
 long signature(Node *n) {
-	long o = min( (1<<OILR_O_BITS)-1 , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
+	long c = min( (1<<OILR_C_BITS)-1 , colour(n) ) << (OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
+		 o = min( (1<<OILR_O_BITS)-1 , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
 		 i = min( (1<<OILR_I_BITS)-1 , indeg(n)  ) << (OILR_L_BITS+OILR_R_BITS),
 		 l = min( (1<<OILR_L_BITS)-1 , loopdeg(n)) << OILR_R_BITS,
 		 r = min( (1<<OILR_R_BITS)-1 , isroot(n) );
-	long sig = (o+i+l+r);
+	long sig = (c+o+i+l+r);
 	assert(sig >= 0 && sig < OILR_INDEX_SIZE);
 	return sig;
 }

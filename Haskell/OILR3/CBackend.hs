@@ -10,7 +10,7 @@ import Data.Bits
 import Debug.Trace
 
 type OilrProg = [Instr Int Int]
-type OilrIndexBits = (Int, Int, Int, Int)
+type OilrIndexBits = (Int, Int, Int, Int, Int)
 
 hostToC :: OilrProg -> String
 hostToC is = makeCFunction "_HOST" $ map hostCompileInstruction is
@@ -42,7 +42,8 @@ progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
     where
         idx = makeSearchSpacesForDecl oilr (concat iss)
         defns = map ((compileDefn idx) . (makeLoops [] Nothing) ) iss
-        consts = "#define OILR_O_BITS (" ++ (show oBits) ++ ")\n"
+        consts = "#define OILR_C_BITS (" ++ (show cBits) ++ ")\n"
+              ++ "#define OILR_O_BITS (" ++ (show oBits) ++ ")\n"
               ++ "#define OILR_I_BITS (" ++ (show iBits) ++ ")\n"
               ++ "#define OILR_L_BITS (" ++ (show lBits) ++ ")\n"
               ++ "#define OILR_R_BITS (" ++ (show rBits) ++ ")\n"
@@ -50,7 +51,7 @@ progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
                     (False, False) -> "#define NDEBUG\n"
                     (_, True)      -> "#define OILR_PARANOID_CHECKS\n"
                     _              -> ""
-        oilr@(oBits,iBits,lBits,rBits) = oilrBits iss
+        oilr@(cBits, oBits,iBits,lBits,rBits) = oilrBits iss
 
 -- Generate C declarations so that the ordering of definitions
 -- doesn't matter
@@ -64,7 +65,7 @@ predeclarations iss = concatMap declare iss
 
 
 oilrIndexTotalBits :: OilrIndexBits -> Int
-oilrIndexTotalBits (o,i,l,r) = o+i+l+r
+oilrIndexTotalBits (c,o,i,l,r) = c+o+i+l+r
 
 extractPredicates :: OilrProg -> [Pred]
 extractPredicates is = concatMap harvestPred is

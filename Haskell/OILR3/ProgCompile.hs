@@ -217,6 +217,10 @@ edgeIds (AstRuleGraph _ es) = map (\(AstRuleEdge id bidi src tgt _) -> (id, src,
 rootNodes :: AstRuleGraph -> [NodeKey]
 rootNodes (AstRuleGraph ns _) = [ nk | (RuleNode nk root _) <- ns , root == True ]
 
+nodeColours :: AstRuleGraph -> Mapping NodeKey Colour
+nodeColours (AstRuleGraph ns _) = [ (nk, c) | (RuleNode nk _ (RuleLabel _ c)) <- ns ]
+
+
 source :: EdgeKey -> NodeKey
 source (_, nk, _) = nk
 
@@ -236,8 +240,7 @@ isRoot :: AstRuleGraph -> NodeKey -> Bool
 isRoot g nk = nk `elem` rootNodes g
 
 colour :: AstRuleGraph -> NodeKey -> Colour
-colour g nk = c
-    where (RuleNode _ _ (RuleLabel _ c) ) = definiteLookup nk g
+colour g nk = definiteLookup nk $ nodeColours g
 
 -- TODO: special handling for bidi edges!
 oilrCompileRule :: AstRule -> SemiOilrCode
