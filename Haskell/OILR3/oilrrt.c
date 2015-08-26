@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
-#define DEFAULT_POOL_SIZE (1000000)
+#define DEFAULT_POOL_SIZE (10000000)
 #define ABORT return
 
 void _HOST();
@@ -193,6 +193,9 @@ long min(long x, long y) {
 	return (x<=y ? x : y);
 }
 
+#if OILR_INDEX_SIZE == 0
+#define signature(n) 0
+#else
 long signature(Node *n) {
 	long o = min( (1<<OILR_O_BITS)-1 , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
 		 i = min( (1<<OILR_I_BITS)-1 , indeg(n)  ) << (OILR_L_BITS+OILR_R_BITS),
@@ -202,6 +205,7 @@ long signature(Node *n) {
 	assert(sig >= 0 && sig < OILR_INDEX_SIZE);
 	return sig;
 }
+#endif
 
 #if defined(OILR_PARANOID_CHECKS) && !defined(NDEBUG)
 long walkChain(DList *dl) {

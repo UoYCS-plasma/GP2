@@ -40,7 +40,7 @@ makeLoops acc prev (i:is) = case (i, prev) of
 progToC :: [Flag] -> [OilrProg] -> String
 progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
     where
-        idx = makeSearchSpacesForDecl oilr (concat iss)
+        idx = makeSearchSpacesForDecl capBits oilr (concat iss)
         defns = map ((compileDefn idx) . (makeLoops [] Nothing) ) iss
         consts = "#define OILR_O_BITS (" ++ (show oBits) ++ ")\n"
               ++ "#define OILR_I_BITS (" ++ (show iBits) ++ ")\n"
@@ -50,7 +50,8 @@ progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
                     (False, False) -> "#define NDEBUG\n"
                     (_, True)      -> "#define OILR_PARANOID_CHECKS\n"
                     _              -> ""
-        oilr@(oBits,iBits,lBits,rBits) = oilrBits iss
+        oilr@(oBits,iBits,lBits,rBits) = oilrBits capBits iss
+        capBits = 8
 
 -- Generate C declarations so that the ordering of definitions
 -- doesn't matter
@@ -71,31 +72,32 @@ extractPredicates is = concatMap harvestPred is
     where harvestPred (LUN _ p) = [p]
           harvestPred _         = []
 
-oilrBits :: [OilrProg] -> OilrIndexBits
-oilrBits iss = trace (show (f o, f i, f l, f r)) (f o, f i, f l, f r)
+oilrBits :: Int -> [OilrProg] -> OilrIndexBits
+oilrBits cap iss = trace (show (f o, f i, f l, f r)) (f o, f i, f l, f r)
     where
-        f = (bits . maximum . map extract) 
+        f x = min cap $ (bits . maximum . map extract) x
         (o, i, l, r) = unzip4 $ extractPredicates $ concat iss
         extract (Equ n) = n
         extract (GtE n) = n
         bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
 
-sigsForPred :: OilrIndexBits -> Pred -> (Pred, [Int])
-sigsForPred (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
+sigsForPred :: Int -> OilrIndexBits -> Pred -> (Pred, [Int])
+sigsForPred cap (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
     (p, nub [ o' `shift` oShift + i' `shift` iShift + l' `shift` lShift + r' `shift` rShift
-                | o' <- case o of Equ n -> [n] ; GtE n -> [n..(1 `shift` oBits)-1]
-                , i' <- case i of Equ n -> [n] ; GtE n -> [n..(1 `shift` iBits)-1]
-                , l' <- case l of Equ n -> [n] ; GtE n -> [n..(1 `shift` lBits)-1]
-                , r' <- case r of Equ n -> [n] ; GtE n -> [n..(1 `shift` rBits)-1] ])
+                | o' <- case o of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` oBits)-1]
+                , i' <- case i of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` iBits)-1]
+                , l' <- case l of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` lBits)-1]
+                , r' <- case r of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` rBits)-1] ])
     where
-        oShift = iShift + iBits
-        iShift = lShift + lBits
-        lShift = rShift + rBits
+        capSize = (1 `shift` cap) - 1
+        oShift = iShift + min cap iBits
+        iShift = lShift + min cap lBits
+        lShift = rShift + min cap rBits
         rShift = 0
 
 
-makeSearchSpacesForDecl :: OilrIndexBits -> OilrProg -> Mapping Pred [Int]
-makeSearchSpacesForDecl bits is = map (sigsForPred bits) $ trace (show preds) preds
+makeSearchSpacesForDecl :: Int -> OilrIndexBits -> OilrProg -> Mapping Pred [Int]
+makeSearchSpacesForDecl cap bits is = map (sigsForPred cap bits) $ trace (show preds) preds
     where
         preds = ( nub . extractPredicates ) is
 
@@ -160,7 +162,7 @@ compileInstr idx (LUN n sig) = labelFor n
         [s] -> makeCFunctionCall "makeSimpleTrav"
                         [show n, "index(" ++ show s ++ ")" ]
         ss  -> makeCFunctionCall "makeTrav" 
-                        (show n:map (\s ->  "index(" ++ show s ++ ")") ss)
+                        (show n:map (\s ->  "index(" ++ show s ++ ")") (reverse ss) )
 compileInstr _ (LUE n src tgt) | src == tgt = 
                                     "\tdebug(\"In loop trav " ++ show n ++ "\\n\");"
                                     ++ makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
