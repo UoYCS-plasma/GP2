@@ -56,6 +56,7 @@ static bool validateProgram(string program_file)
    #ifdef DEBUG_PROGRAM
       /* analyseProgram prints the symbol table before exiting. */
       bool semantic_error = analyseProgram(gp_program, true, program_file);
+      if(semantic_error) printDotAST(gp_program, program_file);
    #else
       bool semantic_error = analyseProgram(gp_program, false, NULL);
    #endif
@@ -90,6 +91,12 @@ int main(int argc, char **argv)
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
    string program_file = NULL, host_file = NULL, output_file = NULL;
+
+   if(argc < 2)
+   {
+      print_to_console("%s", usage);
+      return 0; 
+   }
 
    if(strcmp(argv[1], "-p") == 0)
    {

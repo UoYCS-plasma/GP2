@@ -65,7 +65,7 @@ static int getArraySize(int number_of_items, int minimum_size)
    return number_of_items + 1;
 }
 
-static void generateMorphismCode(List *declarations, char type);
+static void generateMorphismCode(List *declarations, char type, bool first_call);
 static void generateProgramCode(GPCommand *command, CommandData data);
 static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
                              bool last_rule, CommandData data);
@@ -90,10 +90,10 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTF("#include \"morphism.h\"\n\n");
 
    /* Declare the global morphism variables for each rule. */
-   generateMorphismCode(declarations, 'd');
+   generateMorphismCode(declarations, 'd', true);
 
    /* Declare the runtime global variables and functions. */
-   generateMorphismCode(declarations, 'f');
+   generateMorphismCode(declarations, 'f', true);
 
    PTF("static void garbageCollect(void)\n");
    PTF("{\n");
@@ -183,7 +183,7 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    #endif
  
    /* Print the calls to allocate memory for each morphism. */
-   generateMorphismCode(declarations, 'm');
+   generateMorphismCode(declarations, 'm', true);
 
    /* Find the main declaration and generate code from its command sequence. */
    List *iterator = declarations;
@@ -223,10 +223,10 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
  * Type (f)reeMorphism switches on the printing of the freeMorphisms function.
  * For each rule declaration, a call to freeMorphism is printed. */
 
-static void generateMorphismCode(List *declarations, char type)
+static void generateMorphismCode(List *declarations, char type, bool first_call)
 {
    assert(type == 'm' || type == 'f' || type == 'd');
-   if(type == 'f') PTF("static void freeMorphisms(void)\n{\n");
+   if(type == 'f' && first_call) PTF("static void freeMorphisms(void)\n{\n");
    while(declarations != NULL)
    {
       GPDeclaration *decl = declarations->declaration;
@@ -237,7 +237,7 @@ static void generateMorphismCode(List *declarations, char type)
 
          case PROCEDURE_DECLARATION:
               if(decl->procedure->local_decls != NULL)
-                 generateMorphismCode(decl->procedure->local_decls, type);
+                 generateMorphismCode(decl->procedure->local_decls, type, false);
               break;
 
          case RULE_DECLARATION:
@@ -264,7 +264,7 @@ static void generateMorphismCode(List *declarations, char type)
       declarations = declarations->next;
    }
    if(type == 'd' || type == 'm') PTF("\n");
-   else PTF("}\n\n");
+   else if(first_call) PTF("}\n\n");
 }
 
 

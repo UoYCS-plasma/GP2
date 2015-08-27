@@ -50,7 +50,7 @@ compile-debug:	$(OBJECTS)
 
 
 parser.c parser.h: ast.h gpParser.y
-		bison gpParser.y
+		bison -t gpParser.y
 
 lexer.c:	parser.h gpLexer.lex 
 		flex gpLexer.lex

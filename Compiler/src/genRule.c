@@ -396,6 +396,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
    string fail_code = (type == 'b') ? "candidate_node = false;" : "return false;";
    if(type == 'b') PTFI("bool candidate_node = true;\n", 3);
    PTFI("if(host_node->matched) %s\n", 3, fail_code);
+   if(left_node->root) PTFI("if(!(host_node->root)) %s\n", 3, fail_code);
    if(left_node->label.mark != ANY)
       PTFI("if(host_node->label.mark != %d) %s\n", 3, left_node->label.mark, fail_code);
    emitDegreeCheck(left_node, 6);  
@@ -412,6 +413,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
            PTFI("host_node = getSource(host, host_edge);\n", 6);
       else PTFI("host_node = getTarget(host, host_edge);\n", 6);
       PTFI("if(host_node->matched) return false;\n", 6);
+      if(left_node->root) PTFI("if(!(host_node->root)) return false;\n", 6);
       if(left_node->label.mark != ANY)
          PTFI("if(host_node->label.mark != %d) return false;\n", 6, left_node->label.mark);
       emitDegreeCheck(left_node, 6);  
@@ -450,10 +452,8 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
       for(index = 0; index < node->predicate_count; index++)
          PTFI("evaluatePredicate%d(morphism);\n", indent + 3, 
               node->predicates[index]->bool_id);
-      PTFI("bool condition = false;\n", indent + 3);
       if(next_op != NULL) PTFI("bool next_match_result = false;\n", indent + 3);
-      PTFI("condition = evaluateCondition();\n", indent + 3);
-      PTFI("if(condition)", indent + 3);
+      PTFI("if(evaluateCondition())", indent + 3);
       if(next_op == NULL)
       { 
          PTF("\n");
@@ -467,7 +467,7 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
          PTF(" next_match_result = ");
          emitNextMatcherCall(next_op);
          PTF(";\n");
-         PTFI("if(condition && next_match_result) return true;\n", indent + 3);           
+         PTFI("if(next_match_result) return true;\n", indent + 3);           
       }
       PTFI("else\n", indent + 3);
       PTFI("{\n", indent + 3);  
