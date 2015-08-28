@@ -172,6 +172,8 @@ oilrCompileMain (Main cs) = oilrCompileProc (Procedure "Main" [] cs)
 
 oilrCompileCommand :: Command -> SemiOilrCode
 oilrCompileCommand (Block b) = oilrCompileBlock b
+-- oilrCompileCommand (IfStatement (SimpleCommand (RuleCall [r])) th el) =
+--     oilrCompilePredicateRule r ++ oilrCompileBlock th ++ oilrCompileBlock el
 oilrCompileCommand (IfStatement  cn th el) = notImplemented 2
 oilrCompileCommand (TryStatement cn th el) = notImplemented 3
 
@@ -231,6 +233,12 @@ oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UB
     where
         nif  = nodeIds lhs `intersect` nodeIds rhs
         body = oilrCompileLhs lhs nif ++ oilrCompileCondition lhs cond ++ oilrCompileRhs lhs rhs nif
+
+oilrCompilePredicateRule :: AstRule -> SemiOilrCode
+oilrCompilePredicateRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UBA, END] )
+    where
+        nif  = nodeIds lhs `intersect` nodeIds rhs
+        body = oilrCompileLhs lhs nif ++ oilrCompileCondition lhs cond
 
 -- Make sure the most constrained nodes are looked for first
 oilrSortNodeLookups :: SemiOilrCode -> SemiOilrCode

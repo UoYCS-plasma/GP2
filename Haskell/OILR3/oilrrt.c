@@ -121,15 +121,50 @@ void prependElem(DList *dl, DList *elem) {
 #endif
 	DList *nx = dl->next;
 	elem->head = dl;
-	elem->prev = dl ;
+	elem->prev = NULL;
 	elem->next = nx;
 	if (nx)
 		dl->next->prev = elem;
+	if (!listLength(dl))
+		dl->prev = elem;
 	dl->next = elem;
 	incListLength(dl);
 	assert(listLength(dl) == len+1);
 	assert(listLength(dl) >= 0 && listLength(dl) < g.poolSize);
 	debug("dl %p has length %ld after insert\n", dl, dl->count);
+}
+void appendElem(DList *dl, DList *elem) {
+#ifndef NDEBUG
+	long len = listLength(dl);
+#endif
+	DList *pv = dl->prev;
+	elem->head = dl;
+	elem->prev = pv;
+	elem->next = NULL;
+	if (pv)
+		dl->prev->next = elem;
+	if (!listLength(dl))
+		dl->next = elem;
+	dl->prev = elem;
+	incListLength(dl);
+	assert(listLength(dl) == len+1);
+	assert(listLength(dl) >= 0 && listLength(dl) < g.poolSize);
+	debug("dl %p has length %ld after insert\n", dl, dl->count);
+}
+void sliceBefore(DList *dl, DList *here) {
+	here->prev = NULL;
+	dl->next = here;
+}
+void spliceAfter(DList *dl, DList *first, DList *last) {
+	dl->prev->next = first;
+	first->prev = dl->prev;
+	last->next = NULL;
+	dl->prev = last;
+}
+void moveToFront(DList *dl, DList *this) {
+	DList *first=dl->next, *last=this->prev;
+	sliceBefore(dl, this);
+	spliceAfter(dl, first, last);
 }
 // void appendElem(DList *dl, DList *elem) {
 // 	elem->head = dl;
@@ -209,9 +244,14 @@ long signature(Node *n) {
 
 #if defined(OILR_PARANOID_CHECKS) && !defined(NDEBUG)
 long walkChain(DList *dl) {
-	long len = 0;
-	while ( (dl = nextElem(dl)) )
+	DList *l = dl;
+	long len=0, blen=0;
+	while ( (l = nextElem(l)) )
 		len++;
+	l = dl;
+ 	while ( (l = prevElem(l)) )
+		blen++;
+	assert(blen == len);
 	return len;
 }
 void checkGraph() {
@@ -436,8 +476,23 @@ void unbind(Element *el) {
 }
 void unbindAll(Element **travs, long n) {
 	long i;
-	for (i=0; i<n; i++)
+	for (i=0; i<n; i++) {
 		unbind(travs[i]);
+	}
+// // Move failed matches to end of chain
+// 	if (travs[0]) {
+// 		DList *n = chainFor(asNode(travs[0]));
+// 		DList *chain = n->head;
+// 		if (n != chain->next)
+// 			moveToFront(chain, n);
+// 	}
+// // Promote or demote travs[0]
+//	if (travs[0]) {
+//		Element *n = travs[0];
+//		DList *chain = chainFor(asNode(n))->head;
+//		unindexNode(asNode(n));
+//		appendElem(chain, chainFor(asNode(n)));
+//	}
 }
 
 Element *searchList(DList **dlp) {

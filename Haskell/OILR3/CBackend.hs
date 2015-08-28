@@ -51,7 +51,7 @@ progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
                     (_, True)      -> "#define OILR_PARANOID_CHECKS\n"
                     _              -> ""
         oilr@(oBits,iBits,lBits,rBits) = oilrBits capBits iss
-        capBits = 8
+        capBits = if DisableOilr `elem` flags then 0 else 8
 
 -- Generate C declarations so that the ordering of definitions
 -- doesn't matter
@@ -73,9 +73,11 @@ extractPredicates is = concatMap harvestPred is
           harvestPred _         = []
 
 oilrBits :: Int -> [OilrProg] -> OilrIndexBits
-oilrBits cap iss = trace (show (f o, f i, f l, f r)) (f o, f i, f l, f r)
+oilrBits cap iss = trace (show (f o, f i, f l, f' r)) (f o, f i, f l, f' r)
+    -- We can't cap the r dimension, because there's no other check for the root flag.
     where
-        f x = min cap $ (bits . maximum . map extract) x
+        f x = min cap $ f' x
+        f' = (bits . maximum . map extract)
         (o, i, l, r) = unzip4 $ extractPredicates $ concat iss
         extract (Equ n) = n
         extract (GtE n) = n
@@ -87,12 +89,12 @@ sigsForPred cap (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
                 | o' <- case o of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` oBits)-1]
                 , i' <- case i of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` iBits)-1]
                 , l' <- case l of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` lBits)-1]
-                , r' <- case r of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` rBits)-1] ])
+                , r' <- case r of Equ n -> [n] ; GtE n -> [n..(1 `shift` rBits)-1] ])
     where
         capSize = (1 `shift` cap) - 1
         oShift = iShift + min cap iBits
         iShift = lShift + min cap lBits
-        lShift = rShift + min cap rBits
+        lShift = rShift + rBits
         rShift = 0
 
 

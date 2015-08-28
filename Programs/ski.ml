@@ -13,9 +13,12 @@ let nextEdgeId () = let e = edgeId in edgeId <- e+1; e ;;
 let makeNode t =
     ( Printf.sprintf "\t(n%d, '%s')\n" (nextNodeId ()) t , "" )
 ;;
-let makeApp t args = 
- 
 
+let makeApp t args = 
+    let e1 = nextEdgeId () in
+    let e2 = nextEdgeId () in
+    ( Printf.sprintf "" , Printf.sprintf "" )
+;;
 let rec showSki = function
     | S None -> makeNode "S"
     | K None -> makeNode "K"
@@ -24,5 +27,4 @@ let rec showSki = function
     | K (Some a, b)    -> makeApp "K" [showSki a; showSki b]
     | I (Some a)       -> makeApp "I" [showSki a]
 ;;
-
 
