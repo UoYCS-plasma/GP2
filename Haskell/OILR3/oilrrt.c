@@ -4,8 +4,8 @@
 #include <assert.h>
 #include <string.h>
 
-#define OILR_INDEX_SIZE (1<<(OILR_C_BITS+OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
-#define DEFAULT_POOL_SIZE (1000000)
+#define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
+#define DEFAULT_POOL_SIZE (10000000)
 #define ABORT return
 
 void _HOST();
@@ -16,16 +16,6 @@ long unbindCount = 0;
 
 /////////////////////////////////////////////////////////
 // graph structure
-
-typedef enum {
-	Uncoloured=0,
-	Red,
-	Green,
-	Blue,
-	Grey
-//	Dashed
-	Cyan,
-} Colour;
 
 struct Node;
 struct Edge;
@@ -46,10 +36,7 @@ typedef struct Node {
 	DList outEdges;
 	DList inEdges;
 	DList loops;
-	struct {
-		int root:1;
-		int colour:3;
-	};
+	long root;
 } Node;
 
 typedef struct Edge {
@@ -90,7 +77,7 @@ Graph g;
 #else
 #define debug(...) do { fprintf(stderr, __VA_ARGS__); } while (0)
 #define debugCode(c) do { c ; } while (0)
-#define oilrStatus(node) do { Element *mEl = (node); Node *mN = asNode(mEl); debug("\tNode %ld has OILR %ld: (%d, %ld, %ld, %ld, %d)\n", elementId(mEl), signature(mN), colour(mN), outdeg(mN), indeg(mN), loopdeg(mN), isroot(mN)); } while (0)
+#define oilrStatus(node) do { Element *mEl = (node); Node *mN = asNode(mEl); debug("\tNode %ld has OILR %ld: (%ld, %ld, %ld, %ld)\n", elementId(mEl), signature(mN), outdeg(mN), indeg(mN), loopdeg(mN), isroot(mN)); } while (0)
 #endif
 
 /////////////////////////////////////////////////////////
@@ -133,15 +120,50 @@ void prependElem(DList *dl, DList *elem) {
 #endif
 	DList *nx = dl->next;
 	elem->head = dl;
-	elem->prev = dl ;
+	elem->prev = NULL;
 	elem->next = nx;
 	if (nx)
 		dl->next->prev = elem;
+	if (!listLength(dl))
+		dl->prev = elem;
 	dl->next = elem;
 	incListLength(dl);
 	assert(listLength(dl) == len+1);
 	assert(listLength(dl) >= 0 && listLength(dl) < g.poolSize);
 	debug("dl %p has length %ld after insert\n", dl, dl->count);
+}
+void appendElem(DList *dl, DList *elem) {
+#ifndef NDEBUG
+	long len = listLength(dl);
+#endif
+	DList *pv = dl->prev;
+	elem->head = dl;
+	elem->prev = pv;
+	elem->next = NULL;
+	if (pv)
+		dl->prev->next = elem;
+	if (!listLength(dl))
+		dl->next = elem;
+	dl->prev = elem;
+	incListLength(dl);
+	assert(listLength(dl) == len+1);
+	assert(listLength(dl) >= 0 && listLength(dl) < g.poolSize);
+	debug("dl %p has length %ld after insert\n", dl, dl->count);
+}
+void sliceBefore(DList *dl, DList *here) {
+	here->prev = NULL;
+	dl->next = here;
+}
+void spliceAfter(DList *dl, DList *first, DList *last) {
+	dl->prev->next = first;
+	first->prev = dl->prev;
+	last->next = NULL;
+	dl->prev = last;
+}
+void moveToFront(DList *dl, DList *this) {
+	DList *first=dl->next, *last=this->prev;
+	sliceBefore(dl, this);
+	spliceAfter(dl, first, last);
 }
 // void appendElem(DList *dl, DList *elem) {
 // 	elem->head = dl;
@@ -195,7 +217,6 @@ void removeElem(DList *elem) {
 #define outdeg(n)   (listLength(outListFor(n)))
 #define loopdeg(n)  (listLength(loopListFor(n)))
 #define isroot(n)   ((n)->root)
-#define colour(n)   ((n)->colour)
 
 #define index(sig) &(g.idx[sig])
 
@@ -206,22 +227,30 @@ long min(long x, long y) {
 	return (x<=y ? x : y);
 }
 
+#if OILR_INDEX_SIZE == 0
+#define signature(n) 0
+#else
 long signature(Node *n) {
-	long c = min( (1<<OILR_C_BITS)-1 , colour(n) ) << (OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
-		 o = min( (1<<OILR_O_BITS)-1 , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
+	long o = min( (1<<OILR_O_BITS)-1 , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
 		 i = min( (1<<OILR_I_BITS)-1 , indeg(n)  ) << (OILR_L_BITS+OILR_R_BITS),
 		 l = min( (1<<OILR_L_BITS)-1 , loopdeg(n)) << OILR_R_BITS,
 		 r = min( (1<<OILR_R_BITS)-1 , isroot(n) );
-	long sig = (c+o+i+l+r);
+	long sig = (o+i+l+r);
 	assert(sig >= 0 && sig < OILR_INDEX_SIZE);
 	return sig;
 }
+#endif
 
 #if defined(OILR_PARANOID_CHECKS) && !defined(NDEBUG)
 long walkChain(DList *dl) {
-	long len = 0;
-	while ( (dl = nextElem(dl)) )
+	DList *l = dl;
+	long len=0, blen=0;
+	while ( (l = nextElem(l)) )
 		len++;
+	l = dl;
+ 	while ( (l = prevElem(l)) )
+		blen++;
+	assert(blen == len);
 	return len;
 }
 void checkGraph() {
@@ -446,8 +475,23 @@ void unbind(Element *el) {
 }
 void unbindAll(Element **travs, long n) {
 	long i;
-	for (i=0; i<n; i++)
+	for (i=0; i<n; i++) {
 		unbind(travs[i]);
+	}
+// // Move failed matches to end of chain
+// 	if (travs[0]) {
+// 		DList *n = chainFor(asNode(travs[0]));
+// 		DList *chain = n->head;
+// 		if (n != chain->next)
+// 			moveToFront(chain, n);
+// 	}
+// // Promote or demote travs[0]
+//	if (travs[0]) {
+//		Element *n = travs[0];
+//		DList *chain = chainFor(asNode(n))->head;
+//		unindexNode(asNode(n));
+//		appendElem(chain, chainFor(asNode(n)));
+//	}
 }
 
 Element *searchList(DList **dlp) {

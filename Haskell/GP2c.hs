@@ -73,7 +73,7 @@ main = do
             -- putStrLn $ show prog
             let progC = progToC flags prog
             let hostC = hostToC host
-            let compiler = if EnableDebugging `elem` flags then debugCompiler else perfCompiler
+            let compiler = if ( EnableDebugging `elem` flags || EnableParanoidDebugging `elem` flags) then debugCompiler else perfCompiler
             writeFile targ $ progC ++ hostC
             callCCompiler compiler exe targ
         _ -> do

@@ -14,7 +14,7 @@ instance Ord Dim where
     compare (Equ x) (Equ y) = compare x y
     compare (GtE x) (GtE y) = compare x y
 
-type Pred = (Dim, Dim, Dim, Dim, Dim)
+type Pred = (Dim, Dim, Dim, Dim)
 
 
 data Instr a b = 

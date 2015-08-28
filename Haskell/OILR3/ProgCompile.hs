@@ -182,6 +182,8 @@ oilrCompileMain (Main cs) = oilrCompileProc (Procedure "Main" [] cs)
 
 oilrCompileCommand :: Command -> SemiOilrCode
 oilrCompileCommand (Block b) = oilrCompileBlock b
+-- oilrCompileCommand (IfStatement (SimpleCommand (RuleCall [r])) th el) =
+--     oilrCompilePredicateRule r ++ oilrCompileBlock th ++ oilrCompileBlock el
 oilrCompileCommand (IfStatement  cn th el) = notImplemented 2
 oilrCompileCommand (TryStatement cn th el) = notImplemented 3
 
@@ -249,6 +251,12 @@ oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UB
         nif  = nodeIds lhs `intersect` nodeIds rhs
         body = oilrCompileLhs lhs nif ++ oilrCompileCondition lhs cond ++ oilrCompileRhs lhs rhs nif
 
+oilrCompilePredicateRule :: AstRule -> SemiOilrCode
+oilrCompilePredicateRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UBA, END] )
+    where
+        nif  = nodeIds lhs `intersect` nodeIds rhs
+        body = oilrCompileLhs lhs nif ++ oilrCompileCondition lhs cond
+
 -- Make sure the most constrained nodes are looked for first
 oilrSortNodeLookups :: SemiOilrCode -> SemiOilrCode
 oilrSortNodeLookups is = reverse $ sortBy mostConstrained is
@@ -269,7 +277,7 @@ comparePreds :: Pred -> Pred -> Ordering
 comparePreds p1 p2 = compare (predToWeight p1) (predToWeight p2)
 
 predToWeight :: Pred -> Int
-predToWeight (c, o, i, l, r) = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [o,i])
+predToWeight (o, i, l, r) = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [o,i])
 
 valueForDim :: Dim -> Int
 valueForDim (GtE n) = n
@@ -294,13 +302,12 @@ oilrCompileLhs lhs nif = code
         compileNode nk = cn
              where
                 cn = if nk `elem` nif
-                        then LUN (oilrNodeId lhs nk) (c, GtE o, GtE i, GtE l, r)
-                        else LUN (oilrNodeId lhs nk) (c, Equ o, Equ i, Equ l, r)
+                        then LUN (oilrNodeId lhs nk) (GtE o, GtE i, GtE l, r)
+                        else LUN (oilrNodeId lhs nk) (Equ o, Equ i, Equ l, r)
                 o = outDegree lhs nk - l
                 i = inDegree lhs nk - l
                 l = loopCount lhs nk
                 r = if isRoot lhs nk then Equ 1 else GtE 0
-                c = definiteLookup (colour lhs nk) colourMapping
         compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
 oilrCompileCondition :: AstRuleGraph -> Condition -> SemiOilrCode
