@@ -40,13 +40,13 @@ first(a,b,c:atom; x,y:list)
  => 
 [ (n0, a:x) (n1, b:x:1 # grey) | (e0, n0, n1, c:x:1) ]
 interface = {n0, n1}
-where length(x) != 0
+where length(x) > 0
 
 clean_up(a:atom; x:list) 
 [ (n0, a:x) | ] 
 => 
 [ (n0, a) | ]
 interface = {n0}
-where length(x) != 0
+where length(x) > 0
 
 

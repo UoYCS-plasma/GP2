@@ -21,7 +21,7 @@ static unsigned hashHostList(HostAtom *list, int length)
    {
       HostAtom atom = list[index];
       int value = atom.type == 'i' ? atom.num : atom.str[0];
-      hash = 33 * hash + value;
+      hash = ((hash << 5) + hash) + value; /* hash = hash * 33 + value */
    }
    return hash % LIST_TABLE_SIZE ;
 }

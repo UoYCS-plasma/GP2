@@ -132,16 +132,13 @@ void generateFixedListMatchingCode(Rule *rule, RuleLabel label, int indent)
       int atom_count = 1;
       while(item != NULL)
       {
-         PTFI("/* Check if the end of the host list has been reached. */\n", indent + 3);
-         PTFI("if(item == NULL) break;\n", indent + 3);
          PTFI("/* Matching rule atom %d. */\n", indent + 3, atom_count);
          generateAtomMatchingCode(rule, item->atom, indent + 3);
-         PTFI("item = item->next;\n\n", indent + 3);
          atom_count++;
+         if(item->next != NULL) PTFI("item = item->next;\n\n", indent + 3);
          item = item->next;
       }
-      PTFI("/* If there are no more host atoms to match, success! */\n", indent + 3);
-      PTFI("if(item == NULL) match = true;\n", indent + 3);
+      PTFI("match = true;\n", indent + 3);
       PTFI("} while(false);\n\n", indent);
    }
    /* Reset the flag before function exit. */
@@ -277,7 +274,7 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
    PTFI("HostAtom sublist[label.length - %d];\n", indent + 6, host_atoms_matched);
    PTFI("int list_index = 0;\n", indent + 6);
    PTFI("HostListItem *iterator = start;\n", indent + 6);
-   PTFI("while(start != item->next)\n", indent + 6);
+   PTFI("while(item->next != start)\n", indent + 6);
    PTFI("{\n", indent + 6);
    PTFI("sublist[list_index++] = iterator->atom;\n", indent + 9);
    PTFI("item = item->next;\n", indent + 9);

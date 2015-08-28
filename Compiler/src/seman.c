@@ -28,7 +28,7 @@ bool analyseProgram(List *gp_program, bool debug, string program_file)
 
 bool declarationScan(List *ast, string scope)
 {
-   /* These variables are declared static so that their  are unchanged
+   /* These variables are declared static so that their values are unchanged
     * on recursive calls. */
    static int main_count = 0;
    static bool name_clash = false;
@@ -359,7 +359,7 @@ GPRule *findRuleDeclaration(List *global_declarations, string name,
          GPDeclaration *declaration = local_declarations->declaration;
          if(declaration->type == RULE_DECLARATION)
          {
-            int length = strlen(declaration->rule->name) - strlen(procedure->name) + 1;
+            int length = strlen(procedure->name) + 1;
             /* TODO: There is a problem with this (see below), but it will do for now. */
             if(strcmp(declaration->rule->name, name) == 0 ||
                strcmp(declaration->rule->name + length, name) == 0)
