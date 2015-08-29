@@ -116,7 +116,7 @@ compileDefn idx is = case head is of
             ++ if nSlots > 0
                   then "\n#define ABORT do { unbindAll(matches, " ++ show nSlots ++ "); return ; } while (0)\n"
                   else "\n#define ABORT return"
-        preamble = "\n\tElement *matches[] = {" ++ slots ++ ", NULL};"
+        preamble = "\n\tElement *matches[] = { NULL, " ++ slots ++ "};"
               ++ "\n\tDList   *state[]   = {" ++ slots ++ "};\n"
         slots  = concat $ intersperse "," $ take nSlots $ repeat "NULL"
         nSlots = sum $ map countMatches is

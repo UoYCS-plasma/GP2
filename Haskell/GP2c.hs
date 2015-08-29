@@ -29,6 +29,7 @@ perfCompiler  = "gcc -O2 -fomit-frame-pointer " ++ compilerFlags64
 
 options :: [ OptDescr Flag ]
 options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr) "Use only a single OILR index for all nodes.",
+            Option ['S'] ["dump-prog"] (NoArg $ OilrInstructions) "Emit raw OILR instructions instead of compiling via C",
             Option ['n'] ["no-search-plan"] (NoArg $ DisableSearchPlan) "Disable the search plan; use brute-force nodes-then-edges strategy",
             Option ['d'] ["debug"]   (NoArg $ EnableDebugging) "Enable verbose debugging output on compiled program's stderr" ,
             Option ['D'] ["extra-debug"]   (NoArg $ EnableParanoidDebugging) "Enable paranoid graph structure checks (implies -d)" ]
@@ -71,6 +72,9 @@ main = do
             let prog = compileProgram flags pAST
             let host = compileHostGraph hAST
             -- putStrLn $ show prog
+            if OilrInstructions `elem` flags
+                then putStrLn $ show prog
+                else return ()
             let progC = progToC flags prog
             let hostC = hostToC host
             let compiler = if ( EnableDebugging `elem` flags || EnableParanoidDebugging `elem` flags) then debugCompiler else perfCompiler

@@ -40,6 +40,7 @@ compileProgram flags (Program ds) = map postprocess mappings
 
 
 mergeTravs :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode
+mergeTravs nts []  = nts
 mergeTravs nts ets = edgesToInstrs [] [] edges
     where
         edges  = [ (src, ed, tgt)
@@ -249,13 +250,14 @@ oilrCompileRule :: AstRule -> SemiOilrCode
 oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UBA, END] )
     where
         nif  = nodeIds lhs `intersect` nodeIds rhs
-        body = oilrCompileLhs lhs nif ++ oilrCompileCondition lhs cond ++ oilrCompileRhs lhs rhs nif
+        body = left ++ oilrCompileCondition lhs cond ++ oilrCompileRhs lhs rhs nif
+        left = oilrCompileLhs cond lhs nif
 
 oilrCompilePredicateRule :: AstRule -> SemiOilrCode
 oilrCompilePredicateRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UBA, END] )
     where
         nif  = nodeIds lhs `intersect` nodeIds rhs
-        body = oilrCompileLhs lhs nif ++ oilrCompileCondition lhs cond
+        body = oilrCompileLhs cond lhs nif ++ oilrCompileCondition lhs cond
 
 -- Make sure the most constrained nodes are looked for first
 oilrSortNodeLookups :: SemiOilrCode -> SemiOilrCode
@@ -283,27 +285,22 @@ valueForDim :: Dim -> Int
 valueForDim (GtE n) = n
 valueForDim (Equ n) = (n+1)*2
 
--- TODO: needs work. Currently issues "n2 e12 e23 n1 n3" but ideally should be "n2 e12 n1 e23 n3"
-{- oilrInterleaveEdges :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode -> SemiOilrCode
-oilrInterleaveEdges _ es ns = ns ++ es  -- TODO: hack other cases not reachable
-oilrInterleaveEdges acc es [] = reverse acc ++ es
-oilrInterleaveEdges acc es (n@(LUN id _):ns) = oilrInterleaveEdges (nes ++ n:acc) es' ns
-    where
-        (nes, es') = partition (edgeFor id) es
-        edgeFor id (LUE _ a b) = a == id || b == id
-        insertEdgeBeforeNode = notImplemented 20 -}
+applyConds :: Condition -> NodeName -> Pred -> Pred
+applyConds (Eq [Indeg n] [Val (Int v)]) name (o,i,l,r) = (o, Equ v, l, r)
+applyConds _ _ p = p
 
-oilrCompileLhs :: AstRuleGraph -> Interface -> SemiOilrCode
-oilrCompileLhs lhs nif = code
+oilrCompileLhs :: Condition -> AstRuleGraph -> Interface -> SemiOilrCode
+oilrCompileLhs cs lhs nif = code
     where
-        code   = mergeTravs nTravs eTravs
+        code   = trace (show nTravs) $ mergeTravs nTravs eTravs
         eTravs = oilrSortEdgeLookups $ map compileEdge (edgeIds lhs)
         nTravs = oilrSortNodeLookups $ map compileNode (nodeIds lhs)
+        compileNode :: NodeName -> Instr GraphElemId GraphElemId
         compileNode nk = cn
              where
                 cn = if nk `elem` nif
-                        then LUN (oilrNodeId lhs nk) (GtE o, GtE i, GtE l, r)
-                        else LUN (oilrNodeId lhs nk) (Equ o, Equ i, Equ l, r)
+                        then LUN (oilrNodeId lhs nk) $ applyConds cs nk (GtE o, GtE i, GtE l, r)
+                        else LUN (oilrNodeId lhs nk) $ applyConds cs nk (Equ o, Equ i, Equ l, r)
                 o = outDegree lhs nk - l
                 i = inDegree lhs nk - l
                 l = loopCount lhs nk
@@ -313,7 +310,8 @@ oilrCompileLhs lhs nif = code
 oilrCompileCondition :: AstRuleGraph -> Condition -> SemiOilrCode
 oilrCompileCondition _ NoCondition = []
 oilrCompileCondition lhs (Not (Edge a b Nothing)) = [NEC (oilrNodeId lhs a) (oilrNodeId lhs b)]
-oilrCompileCondition _ _ = notImplemented 12
+oilrCompileCondition _ (Eq _ _) = []  -- rule atoms handled in applyConds
+oilrCompileCondition _ c = trace ("\n ** Skipping condition " ++ show c) []
 
 
 -- Note that when making unique IDs from the RHS we _always_ use the LHS graph, not the RHS.
