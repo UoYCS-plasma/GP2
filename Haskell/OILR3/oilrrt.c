@@ -573,6 +573,25 @@ void loopOnNode(Element *node, Element **edge) {
 	boolFlag = 0;
 }
 
+void adjustWeighting(DList **searchSpace, long **weights, long count) {
+	DList *ind1, *ind2;
+	long i, s1, s2, w1, w2;
+	for (i=count-1; i>0; i--) {
+		ind1 = searchSpace[i];
+		ind2 = searchSpace[i-1];
+		s1 = listLength( ind1 );
+		s2 = listLength( ind2 );
+		w1 = weights[i];
+		w2 = weights[i-1];
+		if (s1 > 0) {
+			if (s2 == 0 || w1 > w2) {
+				searchSpace[i] = ind2;
+				searchSpace[i-1] = ind1;
+			}
+		}
+	}
+}
+
 // A simple Trav only searches a single OILR index
 #define makeSimpleTrav(dest, oilrInd)  \
 do { \
@@ -585,19 +604,25 @@ do { \
 #define makeTrav(dest, ...) \
 do { \
 	static DList *searchSpace[] = { __VA_ARGS__ , NULL}; \
+	static long weights[] = { __VA_ARGS__ } \
 	static long pos = 0; \
 	DList *dl = state[dest]; \
+	\
+	adjustWeighting(searchSpace, weights); \
  \
 	if (!dl) { \
+		weights[pos]--; \
 		pos = 0; \
 		dl = searchSpace[0]; \
 	} \
  \
 	do { \
+		weights[pos]++; \
 		lookupNode(&dl, &matches[(dest)]); \
 		if (boolFlag) { \
 			break ; \
 		} \
+		weights[pos]--; \
 	} while ( (dl = searchSpace[++pos]) ); \
 	state[dest] = dl; \
 } while (0)
