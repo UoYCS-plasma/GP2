@@ -70,6 +70,12 @@ Graph g;
 #define asNode(el) (&(el)->n)
 #define asEdge(el) (&(el)->e)
 
+typedef struct SearchSpaceComponent {
+	long weight;
+	DList *data;
+} SearchSpaceComponent;
+
+
 #ifdef NDEBUG
 #define debug(...)
 #define debugCode(...)
@@ -573,24 +579,29 @@ void loopOnNode(Element *node, Element **edge) {
 	boolFlag = 0;
 }
 
-void adjustWeighting(DList **searchSpace, long **weights, long count) {
+void adjustWeighting(SearchSpaceComponent *searchSpace, long count) {
+	SearchSpaceComponent spc1, spc2;
 	DList *ind1, *ind2;
 	long i, s1, s2, w1, w2;
 	for (i=count-1; i>0; i--) {
-		ind1 = searchSpace[i];
-		ind2 = searchSpace[i-1];
+		spc1 = searchSpace[i];
+		spc2 = searchSpace[i-1];
+		ind1 = spc1.data;
+		ind2 = spc2.data;
 		s1 = listLength( ind1 );
-		s2 = listLength( ind2 );
-		w1 = weights[i];
-		w2 = weights[i-1];
 		if (s1 > 0) {
+			s2 = listLength( ind2 );
+			w1 = spc1.weight;
+			w2 = spc2.weight;
 			if (s2 == 0 || w1 > w2) {
-				searchSpace[i] = ind2;
-				searchSpace[i-1] = ind1;
+				searchSpace[i] = spc2;
+				searchSpace[i-1] = spc1;
 			}
 		}
 	}
 }
+#define heavier(ssc) ((ssc).weight++)
+#define lighter(ssc) ((ssc).weight--)
 
 // A simple Trav only searches a single OILR index
 #define makeSimpleTrav(dest, oilrInd)  \
@@ -601,29 +612,28 @@ do { \
 } while (0)
 
 // a full Trav searches a list of OILR indices
-#define makeTrav(dest, ...) \
+#define makeTrav(dest, spcSize, ...) \
 do { \
-	static DList *searchSpace[] = { __VA_ARGS__ , NULL}; \
-	static long weights[] = { __VA_ARGS__ } \
+	static SearchSpaceComponent searchSpace[] = { __VA_ARGS__ , {0, NULL} }; \
 	static long pos = 0; \
 	DList *dl = state[dest]; \
-	\
-	adjustWeighting(searchSpace, weights); \
+	adjustWeighting(searchSpace, (spcSize)); \
  \
 	if (!dl) { \
-		weights[pos]--; \
 		pos = 0; \
-		dl = searchSpace[0]; \
-	} \
+		dl = searchSpace[0].data; \
+	} else { \
+		lighter(searchSpace[pos]); \
+	}\
  \
 	do { \
-		weights[pos]++; \
+		heavier(searchSpace[pos]); \
 		lookupNode(&dl, &matches[(dest)]); \
 		if (boolFlag) { \
 			break ; \
 		} \
-		weights[pos]--; \
-	} while ( (dl = searchSpace[++pos]) ); \
+		lighter(searchSpace[pos]); \
+	} while ( (dl = searchSpace[++pos].data) ); \
 	state[dest] = dl; \
 } while (0)
 

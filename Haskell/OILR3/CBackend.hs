@@ -164,7 +164,7 @@ compileInstr idx (LUN n sig) = labelFor n
         [s] -> makeCFunctionCall "makeSimpleTrav"
                         [show n, "index(" ++ show s ++ ")" ]
         ss  -> makeCFunctionCall "makeTrav" 
-                        (show n:map (\s ->  "index(" ++ show s ++ ")") (reverse ss) )
+                        (show n:show (length ss):map (\s ->  "{0, index(" ++ show s ++ ")}") ss )
 compileInstr _ (LUE n src tgt) | src == tgt = 
                                     "\tdebug(\"In loop trav " ++ show n ++ "\\n\");"
                                     ++ makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
