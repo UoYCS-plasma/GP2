@@ -166,17 +166,17 @@ compileInstr idx (LUN n sig) = labelFor n
         ss  -> makeCFunctionCall "makeTrav" 
                         (show n:show (length ss):map (\s ->  "{0, index(" ++ show s ++ ")}") ss )
 compileInstr _ (LUE n src tgt) | src == tgt = 
-                                    "\tdebug(\"In loop trav " ++ show n ++ "\\n\");"
+                                    "\tdebug(\"In loop trav " ++ show n ++ "\\n\");\n"
                                     ++ makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
                                | otherwise  =
-                                    "\tdebug(\"In edge trav " ++ show n ++ "\\n\");"
+                                    "\tdebug(\"In edge trav " ++ show n ++ "\\n\");\n"
                                     ++ makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
 compileInstr _ (XOE src e tgt) = labelFor e
-    ++ ":\n\tdebug(\"In XOE trav " ++ show e ++ "\\n\");"
-    ++ "\t" ++ makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
+    ++ ":\n\tdebug(\"In XOE trav " ++ show e ++ "\\n\");\n"
+    ++ makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
 compileInstr _ (XIE src e tgt) = labelFor e
-    ++ ":\n\tdebug(\"In XIE trav " ++ show e ++ "\\n\");"
-    ++ "\t" ++ makeCFunctionCallIntArgs "makeExtendInTrav" [src, e, tgt, 1]
+    ++ ":\n\tdebug(\"In XIE trav " ++ show e ++ "\\n\");\n"
+    ++ makeCFunctionCallIntArgs "makeExtendInTrav" [src, e, tgt, 1]
 compileInstr _ (NEC src tgt)   = makeCFunctionCallIntArgs "makeAntiEdgeTrav" [src, tgt]
 
 

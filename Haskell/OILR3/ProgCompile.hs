@@ -6,6 +6,7 @@ import GPSyntax
 import Mapping
 
 import Data.List
+import Data.Maybe
 import Unsafe.Coerce
 import Debug.Trace
 
@@ -45,18 +46,23 @@ mergeTravs nts ets = edgesToInstrs [] [] edges
     where
         edges  = [ (src, ed, tgt)
                     | src@(LUN sn _)  <- nts
-                    , ed@(LUE e s t) <- ets
                     , tgt@(LUN tn _)  <- nts
+                    , ed@(LUE e s t)  <- ets
                     , sn==s , tn==t ]
+
+-- TODO: when we use LUN to find a node with loops, and then don't modify the
+-- loops, OILR indexing guarantees that those loops exist (which is all we care
+-- about). Therefore with full indexing enabled, we can save some bind ops by
+-- not bothering to match the loops.
 
 edgesToInstrs acc _ [] = reverse acc
 edgesToInstrs acc seen ((LUN _ sp, LUE e s t, LUN _ tp):es) =
-    case (s==t, s `elem` seen, t `elem` seen) of
-        (_,     True,  True ) -> edgesToInstrs (LUE e s t:acc)          seen       es
-        (True,  False, _    ) -> edgesToInstrs (LUE e s t:LUN s sp:acc) (s:seen)   es
-        (False, False, True ) -> edgesToInstrs (XIE t e s:acc)          (s:seen)   es
-        (False, True,  False) -> edgesToInstrs (XOE s e t:acc)          (t:seen)   es
-        (False, False, False) -> edgesToInstrs (XOE s e t:LUN s sp:acc) (t:s:seen) es
+    case (s==t, s `elemIndex` seen, t `elemIndex` seen) of
+        (_,     Just _ , Just _ ) -> edgesToInstrs (LUE e s t:acc)          seen       es
+        (True,  Nothing, _      ) -> edgesToInstrs (LUE e s t:LUN s sp:acc) (s:seen)   es
+        (False, Nothing, Just _ ) -> edgesToInstrs (XIE t e s:acc)          (s:seen)   es
+        (False, Just _ , Nothing) -> edgesToInstrs (XOE s e t:acc)          (t:seen)   es
+        (False, Nothing, Nothing) -> edgesToInstrs (XOE s e t:LUN s sp:acc) (t:s:seen) es
 
 
 postprocess :: (Mapping GraphElemId Int, SemiOilrCode) -> OilrCode
@@ -292,7 +298,7 @@ applyConds _ _ p = p
 oilrCompileLhs :: Condition -> AstRuleGraph -> Interface -> SemiOilrCode
 oilrCompileLhs cs lhs nif = code
     where
-        code   = trace (show nTravs) $ mergeTravs nTravs eTravs
+        code   = trace (show eTravs) $ mergeTravs nTravs eTravs
         eTravs = oilrSortEdgeLookups $ map compileEdge (edgeIds lhs)
         nTravs = oilrSortNodeLookups $ map compileNode (nodeIds lhs)
         compileNode :: NodeName -> Instr GraphElemId GraphElemId

@@ -209,8 +209,8 @@ void removeElem(DList *elem) {
 /////////////////////////////////////////////////////////
 // graph traversal
 
-#define source(e)   (((e)->src))
-#define target(e)   (((e)->tgt))
+#define source(e)   ((e)->src)
+#define target(e)   ((e)->tgt)
 #define outChain(e) (&(e)->outList)
 #define inChain(e)  (&(e)->inList)
 
@@ -219,10 +219,14 @@ void removeElem(DList *elem) {
 #define inListFor(n)       (&(n)->inEdges)
 #define loopListFor(n)     (&(n)->loops)
 
-#define indeg(n)    (listLength(inListFor(n)))
 #define outdeg(n)   (listLength(outListFor(n)))
+#define indeg(n)    (listLength(inListFor(n)))
 #define loopdeg(n)  (listLength(loopListFor(n)))
 #define isroot(n)   ((n)->root)
+
+// Warning: beware of double-evaluation of expressions in these macros!
+#define realOutdeg(n) (outdeg(n) + loopdeg(n))
+#define realIndeg(n)  (indeg(n)  + loopdeg(n))
 
 #define index(sig) &(g.idx[sig])
 
