@@ -17,7 +17,7 @@ Main = try (init; Colour!; if grey_root then fail)
 Colour = (ColourNode; try Invalid then break)!; Backtrack
 ColourNode = {colour_blue, colour_red}
 Invalid = {joined_reds, joined_blues}
-Backtrack = try {back_red, back_blue} else break;
+Backtrack = try {back_red, back_blue} else break
 
 init()
 [ (n0, empty) | ]
