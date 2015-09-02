@@ -7,6 +7,7 @@ static bool getIfCommandType(GPCommand *command);
 static bool getTryLoopCommandType(GPCommand *command, bool first_sequence,
                                   bool first_command);
 static bool neverFails(GPCommand *command);
+static bool nullCommand(GPCommand *command);
 
 void staticAnalysis(List *declarations)
 {
@@ -85,6 +86,7 @@ static void annotate(GPCommand *command)
       case ALAP_STATEMENT:
       {
            GPCommand *loop_body = command->loop_stmt.loop_body;
+           if(nullCommand(loop_body)) print_error("Warning: Possible nontermination in loop.\n"); 
            /* Only analyse the loop body for backtracking if if it possible
             * for the loop body to fail. */
            if(!neverFails(loop_body))
@@ -119,6 +121,9 @@ static bool getIfCommandType(GPCommand *command)
       case COMMAND_SEQUENCE:
       {
            List *commands = command->commands;
+           /* Go to the first non-null command in the sequence. */
+           while(commands != NULL && nullCommand(commands->command))
+              commands = commands->next;
            int command_position = 1;
            bool graph_recording = false;
            while(commands != NULL)
@@ -128,8 +133,8 @@ static bool getIfCommandType(GPCommand *command)
               command_position++;
               commands = commands->next;
            }
-           /* If there is only one command in the sequence which does not require
-            * graph recording, no recording is required overall. */
+           /* If the sequence only contains one command, and that command does not
+            * require graph recording, no recording is required overall. */
            if(command_position <= 2 && !graph_recording) return false;
            else return true;
       }
@@ -182,13 +187,16 @@ static bool getIfCommandType(GPCommand *command)
  * command to be analysed, and a pointer to the first simple command
  * in that AST. */
 static bool getTryLoopCommandType(GPCommand *command, bool first_sequence,
-                                      bool first_command)
+                                  bool first_command)
 {
    switch(command->type)
    {
       case COMMAND_SEQUENCE:
       {
            List *commands = command->commands;
+           /* Go to the first non-null command in the sequence. */
+           while(commands != NULL && nullCommand(commands->command))
+              commands = commands->next;
            int command_position = 1;
            bool graph_recording = false;
 
@@ -290,7 +298,7 @@ static bool getTryLoopCommandType(GPCommand *command, bool first_sequence,
 
            bool cond_recording = getTryLoopCommandType(condition, first_sequence, first_command);
            /* A try statement's then command "follows" the condition in that it uses the 
-            * graph state from the condition. */
+            * graph state from the condition, so pass false as the second argument. */
            bool then_recording = getTryLoopCommandType(then_command, false, first_command);
            bool else_recording = getTryLoopCommandType(else_command, first_sequence, first_command);
            return cond_recording || then_recording || else_recording;
@@ -359,8 +367,18 @@ static bool neverFails(GPCommand *command)
            else return false;
 
       case RULE_SET_CALL:
+      {
+           List *rule_set = command->rule_set;
+           while(rule_set != NULL)
+           {
+              if(!rule_set->rule_call.rule->empty_lhs) return false;
+              else rule_set = rule_set->next;
+           }
+           return true;
+
            if(command->rule_set->rule_call.rule->empty_lhs) return true;
            else return false;
+      }
 
       case PROCEDURE_CALL:
            return neverFails(command->proc_call.procedure->commands);
@@ -377,6 +395,68 @@ static bool neverFails(GPCommand *command)
       case PROGRAM_OR:
            if(!neverFails(command->or_stmt.left_command)) return false;
            if(!neverFails(command->or_stmt.right_command)) return false;
+           else return true;
+
+      case BREAK_STATEMENT:
+      case SKIP_STATEMENT:
+           return true;
+
+      case FAIL_STATEMENT:
+           return false;
+
+      default:
+           print_to_log("Error (neverFails): Unexpected command type %d.\n",
+                        command->type);
+           break;
+   }
+   return false;
+}
+
+/* Returns true if the passed GP 2 command succeeds and does not change the host graph. */
+static bool nullCommand(GPCommand *command)
+{
+   switch(command->type)
+   {
+      case COMMAND_SEQUENCE:
+      { 
+           List *commands = command->commands;
+           while(commands != NULL)
+           {
+              if(!nullCommand(commands->command)) return false;
+              else commands = commands->next;
+           }
+           return true;
+      }
+      case RULE_CALL:
+           if(command->rule_call.rule->is_predicate) return true;
+           else return false;
+
+      case RULE_SET_CALL:
+      {
+           List *rule_set = command->rule_set;
+           while(rule_set != NULL)
+           {
+              if(!rule_set->rule_call.rule->is_predicate) return false;
+              else rule_set = rule_set->next;
+           }
+           return true;
+      }
+
+      case PROCEDURE_CALL:
+           return nullCommand(command->proc_call.procedure->commands);
+
+      case IF_STATEMENT:
+      case TRY_STATEMENT:
+           if(!nullCommand(command->cond_branch.then_command)) return false;
+           if(!nullCommand(command->cond_branch.else_command)) return false;
+           else return true;
+
+      case ALAP_STATEMENT:
+           return true;
+
+      case PROGRAM_OR:
+           if(!nullCommand(command->or_stmt.left_command)) return false;
+           if(!nullCommand(command->or_stmt.right_command)) return false;
            else return true;
 
       case BREAK_STATEMENT:
