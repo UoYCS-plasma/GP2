@@ -50,6 +50,8 @@ progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
                     (False, False) -> "#define NDEBUG\n"
                     (_, True)      -> "#define OILR_PARANOID_CHECKS\n"
                     _              -> ""
+              ++ if EnableExecutionTrace `elem` flags then "#define OILR_EXECUTION_TRACE\n" else ""
+                    
         oilr@(oBits,iBits,lBits,rBits) = oilrBits capBits iss
         capBits = if DisableOilr `elem` flags then 0 else 8
 
@@ -108,16 +110,17 @@ makeSearchSpacesForDecl cap bits is = map (sigsForPred cap bits) $ trace (show p
 compileDefn :: Mapping Pred [Int] -> OilrProg -> String
 compileDefn idx is = case head is of
     PRO _      -> concat (defines:cInstrs)
-    RUL _      -> concat $ defines : (head cInstrs) : preamble : (tail cInstrs)
+    RUL r      -> concat $ defines : (head cInstrs) : preamble r : (tail cInstrs)
     _          -> error "Definition doesn't begin with PRO or RUL instruction"
     where
         cInstrs = map (compileInstr idx) is
         defines = "\n#undef ABORT"
             ++ if nSlots > 0
-                  then "\n#define ABORT do { unbindAll(matches, " ++ show nSlots ++ "); return ; } while (0)\n"
+                  then "\n#define ABORT do { trace(boolFlag?'s':'f'); unbindAll(matches, " ++ show nSlots ++ "); return ; } while (0)\n"
                   else "\n#define ABORT return"
-        preamble = "\n\tElement *matches[] = { NULL, " ++ slots ++ "};"
+        preamble id = "\n\tElement *matches[] = { NULL, " ++ slots ++ "};"
               ++ "\n\tDList   *state[]   = {" ++ slots ++ "};\n"
+              ++ "#ifdef OILR_EXECUTION_TRACE\n\t oilrCurrentRule=" ++ show id ++ ";\n#endif\n"
         slots  = concat $ intersperse "," $ take nSlots $ repeat "NULL"
         nSlots = sum $ map countMatches is
         countMatches (LUN _ _)   = 1

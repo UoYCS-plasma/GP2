@@ -31,6 +31,7 @@ options :: [ OptDescr Flag ]
 options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr) "Use only a single OILR index for all nodes.",
             Option ['S'] ["dump-prog"] (NoArg $ OilrInstructions) "Emit raw OILR instructions instead of compiling via C",
             Option ['n'] ["no-search-plan"] (NoArg $ DisableSearchPlan) "Disable the search plan; use brute-force nodes-then-edges strategy",
+            Option ['T'] ["trace"]   (NoArg $ EnableExecutionTrace) "Enable execution trace via GraphViz" ,
             Option ['d'] ["debug"]   (NoArg $ EnableDebugging) "Enable verbose debugging output on compiled program's stderr" ,
             Option ['D'] ["extra-debug"]   (NoArg $ EnableParanoidDebugging) "Enable paranoid graph structure checks (implies -d)" ]
 

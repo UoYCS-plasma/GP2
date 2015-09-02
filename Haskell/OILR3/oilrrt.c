@@ -458,6 +458,51 @@ void deleteEdge(Element *el) {
 #define unbound(el) ( !(el)->bound )
 #define bound(el)   ( (el)->bound )
 
+#define OILR_EXECUTION_TRACE
+#ifdef OILR_EXECUTION_TRACE
+FILE *oilrTraceFile;
+long oilrTraceId=0;
+char *oilrCurrentRule="";
+void trace(c) {
+	fprintf(oilrTraceFile, "%c", c);
+}
+void oilrTrace(Element *el) {
+	DList *ndl, *edl;
+	Element *node, *edge;
+	Node *n; Edge *e;
+	char format;
+	long i;
+	fprintf(oilrTraceFile, "%ld %s :", oilrTraceId, oilrCurrentRule);
+	for (i=0; i<OILR_INDEX_SIZE; i++) {
+		ndl = index(i);
+		while ( (ndl = nextElem(ndl)) ) {
+			node = elementOfListItem(ndl);
+			n = asNode( node );
+			edl = outListFor(n);
+			format = node == el ? '?' : bound(node) ? '!' : ' ';
+			fprintf(oilrTraceFile, " %c%ld", format, elementId(node));
+			while ( (edl = nextElem(edl)) ) {
+				edge = elementOfListItem(edl);
+				e = asEdge( edge );
+				format = edge == el ? '?' : bound(edge) ? '!' : ' ';
+				fprintf(oilrTraceFile, " %c%ld->%ld", format, elementId(source(e)), elementId(target(e)));
+			}
+			edl = loopListFor(n);
+			while ( (edl = nextElem(edl)) ) {
+				edge = elementOfListItem(edl);
+				e = asEdge( edge );
+				format = edge == el ? '?' : bound(edge) ? '!' : ' ';
+				fprintf(oilrTraceFile, " %c%ld->%ld", format, elementId(source(e)), elementId(target(e)));
+			}
+		}
+	}
+	fprintf(oilrTraceFile, "\n");
+	oilrTraceId++;
+}
+#else
+#define oilrTrace()
+#endif
+
 #ifdef NDEBUG
 #define bindEdge(el) bind(el)
 #define bindNode(el) bind(el)
@@ -473,6 +518,8 @@ void bind(Element *el) {
 	assert(unbound(el));
 	el->bound = 1;
 	bindCount++;
+	trace('b');
+	oilrTrace(el);
 }
 void unbind(Element *el) {
 	if (el) {
@@ -488,6 +535,7 @@ void unbindAll(Element **travs, long n) {
 	for (i=0; i<n; i++) {
 		unbind(travs[i]);
 	}
+	oilrTrace(NULL);
 // // Move failed matches to end of chain
 // 	if (travs[0]) {
 // 		DList *n = chainFor(asNode(travs[0]));
@@ -709,34 +757,35 @@ void oilrReport() {
 #endif
 
 #define getId(ne) (((Element *) (ne)) - g.pool)
-void dumpGraph() {
+void dumpGraph(FILE *file) {
 	long i;
 	DList *index, *out;
 	Node *n, *src, *tgt;
 	Edge *e;
+	char *rootStatus, *boundStatus;
 #ifndef NDEBUG
 	long nodeCount = 0, nodeIndexCount = 0;
 	long edgeCount = 0, edgeIndexCount = 0;
 #endif
-	printf("[\n");
+	fprintf(file, "[\n");
 	// Dump nodes
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		index = &(g.idx[i]);
 		debugCode( nodeIndexCount += listLength(index) );
 		while ( (index = nextElem(index)) ) {
-			char *rootStatus;
 			debugCode( nodeCount++ );
 			assert(unbound(elementOfListItem(index)));
 			n = asNode(elementOfListItem(index));
 			rootStatus = isroot(n) ? " (R)" : "";
-			printf("\t( n%ld%s, empty)\n", getId(n), rootStatus );
+			boundStatus = bound(elementOfListItem(index)) ? " +" : "";
+			fprintf(file, "\t( n%ld%s%s, empty)\n", getId(n), boundStatus, rootStatus );
 		}
 	}
 	debug("%ld %ld\n", nodeIndexCount, nodeCount);
 	assert(nodeIndexCount == nodeCount);
 	assert(nodeCount == g.nodeCount);
 
-	printf("|\n");
+	fprintf(file, "|\n");
 	// Dump edges and loops
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		index = &(g.idx[i]);
@@ -750,7 +799,8 @@ void dumpGraph() {
 				e = asEdge(elementOfListItem(out));
 				src = asNode(source(e));
 				tgt = asNode(target(e));
-				printf("\t( e%ld, n%ld, n%ld, empty)\n", getId(e), getId(src), getId(tgt) );
+				boundStatus = bound(elementOfListItem(out)) ? " +" : "";
+				fprintf(file, "\t( e%ld%s, n%ld, n%ld, empty)\n", getId(e), boundStatus, getId(src), getId(tgt) );
 			}
 			out = loopListFor(n);
 			debugCode( edgeIndexCount += listLength(out) );
@@ -759,11 +809,11 @@ void dumpGraph() {
 				assert(unbound(elementOfListItem(out)));
 				e = asEdge(elementOfListItem(out));
 				src = asNode(source(e));
-				printf("\t( e%ld, n%ld, n%ld, empty)\n", getId(e), getId(src), getId(src) );
+				fprintf(file, "\t( e%ld, n%ld, n%ld, empty)\n", getId(e), getId(src), getId(src) );
 			}
 		}
 	}
-	printf("]\n");
+	fprintf(file, "]\n");
 	debug("%ld %ld\n\n", edgeIndexCount, edgeCount);
 	assert(edgeIndexCount == edgeCount);
 	oilrReport();
@@ -781,6 +831,9 @@ int main(int argc, char **argv) {
 	g.nodeCount = 0;
 	g.edgeCount = 0;
 	g.freeId = 1;  // pool[0] is not used so zero can function as a NULL value
+#ifdef OILR_EXECUTION_TRACE
+	oilrTraceFile = stderr;
+#endif
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		DList *ind = index(i);
 		ind->count = 0;
@@ -795,11 +848,11 @@ int main(int argc, char **argv) {
 	_GPMAIN();
 #ifndef NDEBUG
 	debug("Program completed in %ld bind and %ld unbind operations.\n", bindCount, unbindCount);
-#else
+#elif ! defined(OILR_EXECUTION_TRACE)
 	fprintf(stderr, "Program completed in %ld bind operations.\n", bindCount);
 #endif
 	//assert(bindCount == unbindCount);
-	dumpGraph();
+	dumpGraph(stdout);
 	free(g.pool);
 	return 0;
 }
