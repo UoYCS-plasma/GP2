@@ -24,8 +24,8 @@ colourMapping :: Mapping Colour Dim
 colourMapping = 
     [ (Uncoloured, Equ 0)
     , (Red       , Equ 1)
-    , (Green     , Equ 2)
-    , (Blue      , Equ 3)
+    , (Blue      , Equ 2)
+    , (Green     , Equ 3)
     , (Grey      , Equ 4)
     , (Cyan      , GtE 0) ]
 
@@ -344,6 +344,7 @@ oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++
                             , let src = oilrNodeId lhs (source ek)
                             , let tgt = oilrNodeId lhs (target ek)
                             , not $ ek `elem` edgeInterface ]
+        -- colourChanges = [ STC (oilrNodeId lhs nk) | nk <- ]
 
 
 

@@ -76,14 +76,14 @@ extractPredicates is = concatMap harvestPred is
           harvestPred _         = []
 
 oilrBits :: Int -> [OilrProg] -> OilrIndexBits
-oilrBits cap iss = OilrIndexBits (f o) (f i) (f l) (f' r) 0
+oilrBits cap iss = OilrIndexBits (f o) (f i) (f l) (f' r) (f c)
     -- We can't cap the r dimension, because there's no other check for the root flag.
     where
         f x = min cap $ f' x
         f' = (bits . maximum . map extract)
-        (o, i, l, r) = unzip4 $ explodePreds $ extractPredicates $ concat iss
-        explodePreds :: [Pred] -> [(Dim, Dim, Dim, Dim)]
-        explodePreds prs = [ (oDim pr, iDim pr, lDim pr, rDim pr) | pr <- prs ]
+        (o, i, l, r, c) = unzip5 $ explodePreds $ extractPredicates $ concat iss
+        explodePreds :: [Pred] -> [(Dim, Dim, Dim, Dim, Dim)]
+        explodePreds prs = [ (oDim pr, iDim pr, lDim pr, rDim pr, cDim pr) | pr <- prs ]
         extract (Equ n) = n
         extract (GtE n) = n
         bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
