@@ -10,7 +10,7 @@ import Data.Bits
 import Debug.Trace
 
 type OilrProg = [Instr Int Int]
-type OilrIndexBits = (Int, Int, Int, Int)
+data OilrIndexBits = OilrIndexBits { oBits::Int, iBits::Int, lBits::Int, rBits::Int, cBits::Int} deriving (Show, Eq)
 
 hostToC :: OilrProg -> String
 hostToC is = makeCFunction "_HOST" $ map hostCompileInstruction is
@@ -42,17 +42,18 @@ progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
     where
         idx = makeSearchSpacesForDecl capBits oilr (concat iss)
         defns = map ((compileDefn idx) . (makeLoops [] Nothing) ) iss
-        consts = "#define OILR_O_BITS (" ++ (show oBits) ++ ")\n"
-              ++ "#define OILR_I_BITS (" ++ (show iBits) ++ ")\n"
-              ++ "#define OILR_L_BITS (" ++ (show lBits) ++ ")\n"
-              ++ "#define OILR_R_BITS (" ++ (show rBits) ++ ")\n"
+        consts = "#define OILR_O_BITS (" ++ (show $ oBits oilr) ++ ")\n"
+              ++ "#define OILR_I_BITS (" ++ (show $ iBits oilr) ++ ")\n"
+              ++ "#define OILR_L_BITS (" ++ (show $ lBits oilr) ++ ")\n"
+              ++ "#define OILR_R_BITS (" ++ (show $ rBits oilr) ++ ")\n"
+              ++ "#define OILR_C_BITS (" ++ (show $ cBits oilr) ++ ")\n"
               ++ case (EnableDebugging `elem` flags, EnableParanoidDebugging `elem` flags) of 
                     (False, False) -> "#define NDEBUG\n"
                     (_, True)      -> "#define OILR_PARANOID_CHECKS\n"
                     _              -> ""
               ++ if EnableExecutionTrace `elem` flags then "#define OILR_EXECUTION_TRACE\n" else ""
                     
-        oilr@(oBits,iBits,lBits,rBits) = oilrBits capBits iss
+        oilr = oilrBits capBits iss
         capBits = if DisableOilr `elem` flags then 0 else 8
 
 -- Generate C declarations so that the ordering of definitions
@@ -67,7 +68,7 @@ predeclarations iss = concatMap declare iss
 
 
 oilrIndexTotalBits :: OilrIndexBits -> Int
-oilrIndexTotalBits (o,i,l,r) = o+i+l+r
+oilrIndexTotalBits (OilrIndexBits o i l r c) = o+i+l+r+c
 
 extractPredicates :: OilrProg -> [Pred]
 extractPredicates is = concatMap harvestPred is
@@ -75,7 +76,7 @@ extractPredicates is = concatMap harvestPred is
           harvestPred _         = []
 
 oilrBits :: Int -> [OilrProg] -> OilrIndexBits
-oilrBits cap iss = trace (show (f o, f i, f l, f' r)) (f o, f i, f l, f' r)
+oilrBits cap iss = OilrIndexBits (f o) (f i) (f l) (f' r) 0
     -- We can't cap the r dimension, because there's no other check for the root flag.
     where
         f x = min cap $ f' x
@@ -88,19 +89,23 @@ oilrBits cap iss = trace (show (f o, f i, f l, f' r)) (f o, f i, f l, f' r)
         bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
 
 sigsForPred :: Int -> OilrIndexBits -> Pred -> (Pred, [Int])
-sigsForPred cap (oBits, iBits, lBits, rBits) pr =
+sigsForPred cap bits pr =
     (pr, nub [ o' `shift` oShift + i' `shift` iShift + l' `shift` lShift + r' `shift` rShift
-                | o' <- case o of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` oBits)-1]
-                , i' <- case i of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` iBits)-1]
-                , l' <- case l of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` lBits)-1]
-                , r' <- case r of Equ n -> [n] ; GtE n -> [n..(1 `shift` rBits)-1] ])
+                | o' <- sigForDim (oBits bits) o
+                , i' <- sigForDim (iBits bits) i
+                , l' <- sigForDim (lBits bits) l
+                , r' <- sigForDim (rBits bits) r ])
     where
         ( o, i, l, r ) = (oDim pr, iDim pr, lDim pr, rDim pr)
         capSize = (1 `shift` cap) - 1
-        oShift = iShift + min cap iBits
-        iShift = lShift + min cap lBits
-        lShift = rShift + rBits
+        oShift = iShift + (min cap $ iBits bits)
+        iShift = lShift + (min cap $ lBits bits)
+        lShift = rShift + rBits bits
         rShift = 0
+
+        sigForDim :: Int -> Dim -> [Int]
+        sigForDim _ (Equ n) = [ min capSize n ]
+        sigForDim b (GtE n) = [ min capSize n .. ( 1 `shift` b)-1 ]
 
 
 makeSearchSpacesForDecl :: Int -> OilrIndexBits -> OilrProg -> Mapping Pred [Int]
