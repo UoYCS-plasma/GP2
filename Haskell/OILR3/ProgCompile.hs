@@ -285,14 +285,18 @@ comparePreds :: Pred -> Pred -> Ordering
 comparePreds p1 p2 = compare (predToWeight p1) (predToWeight p2)
 
 predToWeight :: Pred -> Int
-predToWeight (o, i, l, r) = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [o,i])
+predToWeight pr = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [o,i])
+    where o = oDim pr 
+          i = iDim pr
+          l = lDim pr
+          r = rDim pr
 
 valueForDim :: Dim -> Int
 valueForDim (GtE n) = n
 valueForDim (Equ n) = (n+1)*2
 
 applyConds :: Condition -> NodeName -> Pred -> Pred
-applyConds (Eq [Indeg n] [Val (Int v)]) name (o,i,l,r) = (o, Equ v, l, r)
+applyConds (Eq [Indeg n] [Val (Int v)]) name pr = pr { iDim = Equ v }
 applyConds _ _ p = p
 
 oilrCompileLhs :: Condition -> AstRuleGraph -> Interface -> SemiOilrCode
@@ -305,8 +309,8 @@ oilrCompileLhs cs lhs nif = code
         compileNode nk = cn
              where
                 cn = if nk `elem` nif
-                        then LUN (oilrNodeId lhs nk) $ applyConds cs nk (GtE o, GtE i, GtE l, r)
-                        else LUN (oilrNodeId lhs nk) $ applyConds cs nk (Equ o, Equ i, Equ l, r)
+                        then LUN (oilrNodeId lhs nk) $ applyConds cs nk (Pred { oDim=GtE o, iDim=GtE i, lDim=GtE l, rDim=r } )
+                        else LUN (oilrNodeId lhs nk) $ applyConds cs nk (Pred { oDim=Equ o, iDim=Equ i, lDim=Equ l, rDim=r } )
                 o = outDegree lhs nk - l
                 i = inDegree lhs nk - l
                 l = loopCount lhs nk

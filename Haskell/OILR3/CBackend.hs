@@ -80,19 +80,22 @@ oilrBits cap iss = trace (show (f o, f i, f l, f' r)) (f o, f i, f l, f' r)
     where
         f x = min cap $ f' x
         f' = (bits . maximum . map extract)
-        (o, i, l, r) = unzip4 $ extractPredicates $ concat iss
+        (o, i, l, r) = unzip4 $ explodePreds $ extractPredicates $ concat iss
+        explodePreds :: [Pred] -> [(Dim, Dim, Dim, Dim)]
+        explodePreds prs = [ (oDim pr, iDim pr, lDim pr, rDim pr) | pr <- prs ]
         extract (Equ n) = n
         extract (GtE n) = n
         bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
 
 sigsForPred :: Int -> OilrIndexBits -> Pred -> (Pred, [Int])
-sigsForPred cap (oBits, iBits, lBits, rBits) p@(o, i, l, r) =
-    (p, nub [ o' `shift` oShift + i' `shift` iShift + l' `shift` lShift + r' `shift` rShift
+sigsForPred cap (oBits, iBits, lBits, rBits) pr =
+    (pr, nub [ o' `shift` oShift + i' `shift` iShift + l' `shift` lShift + r' `shift` rShift
                 | o' <- case o of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` oBits)-1]
                 , i' <- case i of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` iBits)-1]
                 , l' <- case l of Equ n -> [min capSize n] ; GtE n -> [min capSize n..(1 `shift` lBits)-1]
                 , r' <- case r of Equ n -> [n] ; GtE n -> [n..(1 `shift` rBits)-1] ])
     where
+        ( o, i, l, r ) = (oDim pr, iDim pr, lDim pr, rDim pr)
         capSize = (1 `shift` cap) - 1
         oShift = iShift + min cap iBits
         iShift = lShift + min cap lBits
