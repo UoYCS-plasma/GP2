@@ -17,7 +17,8 @@ instance Ord Dim where
 data Pred = Pred { oDim :: Dim
                  , iDim :: Dim
                  , lDim :: Dim
-                 , rDim :: Dim } 
+                 , rDim :: Dim
+                 , cDim :: Dim } 
     deriving (Show, Eq)
 
 

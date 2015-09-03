@@ -302,19 +302,20 @@ applyConds _ _ p = p
 oilrCompileLhs :: Condition -> AstRuleGraph -> Interface -> SemiOilrCode
 oilrCompileLhs cs lhs nif = code
     where
-        code   = trace (show eTravs) $ mergeTravs nTravs eTravs
+        code   = mergeTravs nTravs eTravs
         eTravs = oilrSortEdgeLookups $ map compileEdge (edgeIds lhs)
         nTravs = oilrSortNodeLookups $ map compileNode (nodeIds lhs)
         compileNode :: NodeName -> Instr GraphElemId GraphElemId
         compileNode nk = cn
              where
                 cn = if nk `elem` nif
-                        then LUN (oilrNodeId lhs nk) $ applyConds cs nk (Pred { oDim=GtE o, iDim=GtE i, lDim=GtE l, rDim=r } )
-                        else LUN (oilrNodeId lhs nk) $ applyConds cs nk (Pred { oDim=Equ o, iDim=Equ i, lDim=Equ l, rDim=r } )
+                        then LUN (oilrNodeId lhs nk) $ applyConds cs nk (Pred { oDim=GtE o, iDim=GtE i, lDim=GtE l, rDim=r , cDim=c } )
+                        else LUN (oilrNodeId lhs nk) $ applyConds cs nk (Pred { oDim=Equ o, iDim=Equ i, lDim=Equ l, rDim=r , cDim=c } )
                 o = outDegree lhs nk - l
                 i = inDegree lhs nk - l
                 l = loopCount lhs nk
                 r = if isRoot lhs nk then Equ 1 else GtE 0
+                c = definiteLookup (colour lhs nk) colourMapping
         compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
 oilrCompileCondition :: AstRuleGraph -> Condition -> SemiOilrCode
