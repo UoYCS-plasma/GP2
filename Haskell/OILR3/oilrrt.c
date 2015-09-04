@@ -720,6 +720,15 @@ do { \
 	edgeBetween(&matches[edgeTrav], matches[srcTrav], matches[tgtTrav]); \
 } while (0)
 
+#define makeBidiEdgeTrav(n1Trav, edgeTrav, n2Trav) \
+do { \
+	edgeBetween(&matches[edgeTrav], matches[n1Trav], matches[n2Trav]); \
+	if (!boolFlag) { \
+		boolFlag = 1; \
+		edgeBetween(&matches[edgeTrav], matches[n2Trav], matches[n1Trav]); \
+	} \
+} while (0)
+
 #define makeLoopTrav(nTrav, edgeTrav) \
 do { \
 	loopOnNode(matches[nTrav], &matches[edgeTrav]); \

@@ -218,13 +218,16 @@ oilrCompileSimple Fail   = [ FLS , RET ]
 
 
 nodeIds :: AstRuleGraph -> Interface
-nodeIds (AstRuleGraph ns _) = map (\(RuleNode id _ _) -> id) ns
+nodeIds (AstRuleGraph ns _)   = [ id | (RuleNode id _ _) <- ns ]
 
 edgeIds :: AstRuleGraph -> [EdgeKey]
-edgeIds (AstRuleGraph _ es) = map (\(AstRuleEdge id bidi src tgt _) -> (id, src, tgt)) es
+edgeIds (AstRuleGraph _ es)   = [ (id, src, tgt) | (AstRuleEdge id _ src tgt _) <- es ]
 
 rootNodes :: AstRuleGraph -> [NodeKey]
 rootNodes (AstRuleGraph ns _) = [ nk | (RuleNode nk root _) <- ns , root == True ]
+
+bidiEdges :: AstRuleGraph -> [EdgeKey]
+bidiEdges (AstRuleGraph _ es) = [ (id, src, tgt) | (AstRuleEdge id bidi src tgt _) <- es , bidi == True ]
 
 nodeColours :: AstRuleGraph -> Mapping NodeKey Colour
 nodeColours (AstRuleGraph ns _) = [ (nk, c) | (RuleNode nk _ (RuleLabel _ c)) <- ns ]
@@ -251,7 +254,10 @@ isRoot g nk = nk `elem` rootNodes g
 colour :: AstRuleGraph -> NodeKey -> Colour
 colour g nk = definiteLookup nk $ nodeColours g
 
--- TODO: special handling for bidi edges!
+isBidi :: AstRuleGraph -> EdgeKey -> Bool
+isBidi g ek = ek `elem` bidiEdges g
+
+
 oilrCompileRule :: AstRule -> SemiOilrCode
 oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UBA, END] )
     where
@@ -316,7 +322,9 @@ oilrCompileLhs cs lhs nif = code
                 l = loopCount lhs nk
                 r = if isRoot lhs nk then Equ 1 else GtE 0
                 c = definiteLookup (colour lhs nk) colourMapping
-        compileEdge ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
+        compileEdge ek
+            | isBidi lhs ek = LBE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
+            | otherwise     = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
 
 oilrCompileCondition :: AstRuleGraph -> Condition -> SemiOilrCode
 oilrCompileCondition _ NoCondition = []
