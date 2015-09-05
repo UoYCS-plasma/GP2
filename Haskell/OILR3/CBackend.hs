@@ -30,8 +30,10 @@ makeLoops acc prev (i:is) = case (i, prev) of
     ( XOE _ e _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just e) is
     ( XIE _ e _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just e) is
     ( LUE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is -- don't update the jump point!
+    ( LBE n _ _ , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is
     ( NEC n _   , Just p  ) -> makeLoops (ORB p:i:acc) (Just p) is
     ( LUE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
+    ( LBE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
     ( XIE _ _ _ , Nothing ) -> error "Extend-in instruction cannot be first"
     ( XOE _ _ _ , Nothing ) -> error "Extend-out instruction cannot be first"
     _                       -> makeLoops (i:acc) prev is
@@ -133,6 +135,7 @@ compileDefn idx is = case head is of
         nSlots = sum $ map countMatches is
         countMatches (LUN _ _)   = 1
         countMatches (LUE _ _ _) = 1
+        countMatches (LBE _ _ _) = 1
         countMatches (XOE _ _ _) = 2
         countMatches (XIE _ _ _) = 2
         countMatches (ADN _)     = 1
@@ -176,12 +179,13 @@ compileInstr idx (LUN n sig) = labelFor n
                         [show n, "index(" ++ show s ++ ")" ]
         ss  -> makeCFunctionCall "makeTrav" 
                         (show n:show (length ss):map (\s ->  "{0, index(" ++ show s ++ ")}") ss )
-compileInstr _ (LUE n src tgt) | src == tgt = 
-                                    "\tdebug(\"In loop trav " ++ show n ++ "\\n\");\n"
-                                    ++ makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
-                               | otherwise  =
-                                    "\tdebug(\"In edge trav " ++ show n ++ "\\n\");\n"
-                                    ++ makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
+compileInstr _ (LUE n src tgt)
+    | src == tgt = "\tdebug(\"In loop trav " ++ show n ++ "\\n\");\n"
+                ++ makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
+    | otherwise  = "\tdebug(\"In edge trav " ++ show n ++ "\\n\");\n"
+                ++ makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
+compileInstr _ (LBE n a b) = "\tdebug(\"In bidi trav " ++ show n ++ "\\n\");\n"
+                          ++ makeCFunctionCallIntArgs "makeBidiEdgeTrav" [src, a, b]
 compileInstr _ (XOE src e tgt) = labelFor e
     ++ ":\n\tdebug(\"In XOE trav " ++ show e ++ "\\n\");\n"
     ++ makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
