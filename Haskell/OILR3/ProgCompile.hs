@@ -88,6 +88,7 @@ postprocess (mapping, sois) = map postprocessInstr sois
         postprocessInstr (XOE s e t) = XOE (translate s) (translate e) (translate t)
         postprocessInstr (XIE t e s) = XIE (translate t) (translate e) (translate s)
         postprocessInstr (NEC n1 n2) = NEC (translate n1) (translate n2)
+        postprocessInstr OK          = OK
         postprocessInstr i           = error $ show i ++ " is not implmented"
 
 elemIdMapping :: SemiOilrCode -> (Mapping GraphElemId Int, SemiOilrCode)
@@ -262,7 +263,7 @@ oilrCompileRule :: AstRule -> SemiOilrCode
 oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = ( [RUL name] ++ body ++ [UBA, END] )
     where
         nif  = nodeIds lhs `intersect` nodeIds rhs
-        body = left ++ oilrCompileCondition lhs cond ++ oilrCompileRhs lhs rhs nif
+        body = left ++ oilrCompileCondition lhs cond ++ (OK:oilrCompileRhs lhs rhs nif)
         left = oilrCompileLhs cond lhs nif
 
 oilrCompilePredicateRule :: AstRule -> SemiOilrCode

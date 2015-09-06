@@ -43,7 +43,7 @@ progToC :: [Flag] -> [OilrProg] -> String
 progToC flags iss = consts ++ cRuntime ++ predeclarations iss ++ concat defns
     where
         idx = makeSearchSpacesForDecl capBits oilr (concat iss)
-        defns = map ((compileDefn idx) . (makeLoops [] Nothing) ) iss
+        defns = map ((compileDefn (RecursiveRules `elem` flags) idx) . (makeLoops [] Nothing) ) iss
         consts = "#define OILR_O_BITS (" ++ (show $ oBits oilr) ++ ")\n"
               ++ "#define OILR_I_BITS (" ++ (show $ iBits oilr) ++ ")\n"
               ++ "#define OILR_L_BITS (" ++ (show $ lBits oilr) ++ ")\n"
@@ -64,8 +64,8 @@ predeclarations :: [OilrProg] -> String
 predeclarations iss = concatMap declare iss
     where
         declare ((PRO "Main"):_) = ""
-        declare ((PRO s):_) = "\nvoid " ++ s ++ "();"
-        declare ((RUL s):_) = "\nvoid " ++ s ++ "();"
+        declare ((PRO s):_) = "\nvoid " ++ s ++ "(long recursive);"
+        declare ((RUL s):_) = "\nvoid " ++ s ++ "(long recursive);"
         declare _ = error "Found an ill-formed definition"
 
 
@@ -117,17 +117,19 @@ makeSearchSpacesForDecl cap bits is = map (sigsForPred cap bits) $ trace (show p
 
 
 
-compileDefn :: Mapping Pred [Int] -> OilrProg -> String
-compileDefn idx is = case head is of
-    PRO _      -> concat (defines:cInstrs)
-    RUL r      -> concat $ defines : (head cInstrs) : preamble r : (tail cInstrs)
+compileDefn :: Bool -> Mapping Pred [Int] -> OilrProg -> String
+compileDefn recurse idx is = case head is of
+    PRO _      -> concat (defines False "":cInstrs)
+    RUL r      -> concat $ defines recurse r : (head cInstrs) : preamble r : (tail cInstrs)
     _          -> error "Definition doesn't begin with PRO or RUL instruction"
     where
         cInstrs = map (compileInstr idx) is
-        defines = "\n#undef ABORT"
-            ++ if nSlots > 0
-                  then "\n#define ABORT do { trace(boolFlag?'s':'f'); unbindAll(matches, " ++ show nSlots ++ "); return ; } while (0)\n"
-                  else "\n#define ABORT return"
+        defines rec id = "\n#undef ABORT\n#undef RECURSE"
+            ++ "\n#define ABORT "
+            ++ ( if nSlots > 0
+                  then "do { trace(boolFlag?'s':'f'); unbindAll(matches, " ++ show nSlots ++ "); return ; } while (0)\n"
+                  else "return" )
+            ++ ( "\n#define RECURSE " ++ if rec then id ++ "(1)" else "" )
         preamble id = "\n\tElement *matches[] = { NULL, " ++ slots ++ "};"
               ++ "\n\tDList   *state[]   = {" ++ slots ++ "};\n"
               ++ "#ifdef OILR_EXECUTION_TRACE\n\t oilrCurrentRule=" ++ show id ++ ";\n#endif\n"
@@ -157,9 +159,10 @@ compileInstr _ (URN n)         = "\tunsetRoot(matches[" ++ show n ++ "]);\n"
 compileInstr _ (DEN n)         = "\tdeleteNode(matches[" ++ show n ++ "]);\n"
 compileInstr _ (DEE e)         = "\tdeleteEdge(matches[" ++ show e ++ "]);\n"
 
+compileInstr _ OK            = "\tif (recursive) { RECURSE; boolFlag=1; }\n"
 compileInstr _ RET           = "return;"
-compileInstr m (CAL s)       = makeCFunctionCall s [] ++ compileInstr m ORF
-compileInstr _ (ALP s)       = asLongAsPossible s []
+compileInstr m (CAL s)       = makeCFunctionCall s ["0"] ++ compileInstr m ORF
+compileInstr _ (ALP s)       = asLongAsPossible s [1]
 compileInstr _ ORF           = "\tif (!boolFlag) ABORT ;\n"
 compileInstr _ (ORB n)       = "\tif (!boolFlag) goto " ++ labelFor n ++ ";\n"
 
@@ -185,7 +188,7 @@ compileInstr _ (LUE n src tgt)
     | otherwise  = "\tdebug(\"In edge trav " ++ show n ++ "\\n\");\n"
                 ++ makeCFunctionCallIntArgs "makeEdgeTrav" [src, n, tgt]
 compileInstr _ (LBE n a b) = "\tdebug(\"In bidi trav " ++ show n ++ "\\n\");\n"
-                          ++ makeCFunctionCallIntArgs "makeBidiEdgeTrav" [src, a, b]
+                          ++ makeCFunctionCallIntArgs "makeBidiEdgeTrav" [a, n, b]
 compileInstr _ (XOE src e tgt) = labelFor e
     ++ ":\n\tdebug(\"In XOE trav " ++ show e ++ "\\n\");\n"
     ++ makeCFunctionCallIntArgs "makeExtendOutTrav" [src, e, tgt, 1]
@@ -201,7 +204,7 @@ makeCFunction name lines = concat [startCFunction name,  body, "\n}\n"]
         body = intercalate "\n\t" lines
 
 startCFunction :: String -> String
-startCFunction name = concat [ "\nvoid ", name, "() {\n\tdebug(\"Entering ", name, "()\\n\");\n" ]
+startCFunction name = concat [ "\nvoid ", name, "(long recursive) {\n\tdebug(\"Entering ", name, "()\\n\");\n" ]
 
 endCFunction :: String
 endCFunction = "}\n"

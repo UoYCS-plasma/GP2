@@ -7,6 +7,7 @@
 #define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS+OILR_C_BITS))
 #define DEFAULT_POOL_SIZE (10000000)
 #define ABORT return
+#define RECURSE
 
 void _HOST();
 void _GPMAIN();
@@ -458,12 +459,11 @@ void deleteEdge(Element *el) {
 #define unbound(el) ( !(el)->bound )
 #define bound(el)   ( (el)->bound )
 
-#define OILR_EXECUTION_TRACE
 #ifdef OILR_EXECUTION_TRACE
 FILE *oilrTraceFile;
 long oilrTraceId=0;
 char *oilrCurrentRule="";
-void trace(c) {
+void trace(char c) {
 	fprintf(oilrTraceFile, "%c", c);
 }
 void oilrTrace(Element *el) {
@@ -500,7 +500,8 @@ void oilrTrace(Element *el) {
 	oilrTraceId++;
 }
 #else
-#define oilrTrace()
+#define trace(c)
+#define oilrTrace(e)
 #endif
 
 #ifdef NDEBUG

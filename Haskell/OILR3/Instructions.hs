@@ -2,7 +2,7 @@ module OILR3.Instructions where
 
 type Tid = Int -- Trav id
 
-data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace deriving (Eq, Show)
+data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace deriving (Eq, Show)
 
 data Dim = Equ Int | GtE Int deriving (Show, Eq)
 
@@ -52,6 +52,7 @@ data Instr a b =
     | UBA                   -- unbind all
     -- flow control
     | CAL String | ALP String -- call rule or proc once or as-long-as-possible
+    | OK                    -- match completed, start modification
     | RET                   -- unconditinoal return from current rule or proc
     | ORB a                 -- back to a if success flag is unset
     | ORF                   -- exit procedure if success flag is unset
