@@ -867,6 +867,20 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
+
+#define ALAP(rule, recursive, ...) do { \
+	DList *state[] = { __VA_ARGS__ }; \
+	oilrReport(); \
+	(rule)((recursive), state); \
+} while (boolFlag); \
+boolFlag=1;
+
+#define CALL(rule, ...) do { \
+	DList *state[] = { __VA_ARGS__ }; \
+	(rule)(0, state); \
+	if (!boolFlag) ABORT ; \
+} while (0);
+
 /////////////////////////////////////////////////////////
 // generated code goes here....
 

@@ -34,7 +34,7 @@ notImplemented n = error $ "Not implemented: " ++ show n
 
 
 compileProgram :: [Flag] -> GPProgram -> [OilrCode]
-compileProgram flags (Program ds) = map postprocess mappings
+compileProgram flags (Program ds) = map (insertOrbs [] Nothing . postprocess) mappings
     where
         prog = map oilrCompileDeclaration ds
         mappings = map elemIdMapping prog
@@ -64,6 +64,22 @@ edgesToInstrs acc seen ((LUN _ sp, LUE e s t, LUN _ tp):es) =
         (False, Just _ , Nothing) -> edgesToInstrs (XOE s e t:acc)          (t:seen)   es
         (False, Nothing, Nothing) -> edgesToInstrs (XOE s e t:LUN s sp:acc) (t:s:seen) es
 
+insertOrbs :: OilrCode -> Maybe Int -> OilrCode -> OilrCode
+insertOrbs acc prev [] = reverse acc
+insertOrbs acc prev (i:is) = case (i, prev) of
+    ( LUN n pr  , Nothing ) -> insertOrbs (ORF:i:acc) (Just n) is
+    ( LUN n pr  , Just p  ) -> insertOrbs (ORB p:i:acc) (Just n) is
+    ( XOE _ e _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just e) is
+    ( XIE _ e _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just e) is
+    ( LUE n _ _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just p) is -- don't update the jump point!
+    ( LBE n _ _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just p) is
+    ( NEC n _   , Just p  ) -> insertOrbs (ORB p:i:acc) (Just p) is
+    ( LUE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
+    ( LBE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
+    ( XIE _ _ _ , Nothing ) -> error "Extend-in instruction cannot be first"
+    ( XOE _ _ _ , Nothing ) -> error "Extend-out instruction cannot be first"
+    _                       -> insertOrbs (i:acc) prev is
+        
 
 postprocess :: (Mapping GraphElemId Int, SemiOilrCode) -> OilrCode
 postprocess (mapping, sois) = map postprocessInstr sois
