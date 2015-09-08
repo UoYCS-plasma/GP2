@@ -170,7 +170,7 @@ unbindAndRet oilr id =
            , "} while (0);" ]
 
 recursionCode :: String -> String
-recursionCode id = makeCFunctionCall id [ "1", "state" ]
+recursionCode id = makeCFunctionCall id [ "recursive<<1", "state" ]
 
 
 {-         defines rec id = "\n#undef ABORT\n#undef RECURSE"
@@ -202,8 +202,8 @@ compileRule oilr is = map compile is
                              , "" ]
         compile ORF         = orFail
         compile (ORB n)     = orBack n
-        compile (ADN n)     = addNode
-        compile (ADE _ s t) = addEdge s t
+        compile (ADN n)     = addBoundNode n
+        compile (ADE e s t) = addBoundEdge e s t
         compile (RTN n)     = setBoundRoot n
         compile (URN n)     = unsetBoundRoot n
         compile (DEN n)     = deleteBoundNode n
@@ -233,11 +233,13 @@ orFail = concat [ "\tif (!boolFlag) " , exitRule , ";"]
 orBack :: Int -> String
 orBack n = concat [ "\tif (!boolFlag) goto " , labelFor n , ";"]
 
-addNode :: String
-addNode = makeCFunctionCall "addNode" []
+addBoundNode :: Int -> String
+addBoundNode n = modifyAndBind n "addNode" []
 
-addEdge :: Int -> Int -> String
-addEdge s t = makeCFunctionCall "addEdge" $ map bindingFor [s, t]
+addBoundEdge :: Int -> Int -> Int -> String
+addBoundEdge e s t = if s==t
+                        then modifyAndBind e "addLoop" $ [ bindingFor s ]
+                        else modifyAndBind e "addEdge" $ map bindingFor [s, t]
 
 deleteBoundNode :: Int -> String
 deleteBoundNode n = makeCFunctionCall "deleteNode" [ bindingFor n ]
@@ -255,7 +257,10 @@ bindingFor :: Int -> String
 bindingFor n = concat [ "matches[" , show n , "]" ]
 
 exitRule :: String
-exitRule = "ABORT;"
+exitRule = "\tABORT;"
+
+modifyAndBind :: Int -> String -> [String] -> String
+modifyAndBind i fun args = concat [ '\t' : bindingFor i , " = ", makeCFunctionCall fun args ]
 
 {- compileDefn :: Bool -> Mapping Pred [Int] -> OilrProg -> String
 compileDefn recurse idx is = case head is of

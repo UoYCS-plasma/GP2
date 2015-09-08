@@ -121,6 +121,22 @@ long boolFlag = 1;
 #define incListLength(dl) ((dl)->count++)
 #define decListLength(dl) ((dl)->count--)
 
+#if defined(OILR_PARANOID_CHECKS) && !defined(NDEBUG)
+long walkChain(DList *dl) {
+	DList *l = dl;
+	long len=0, blen=0;
+	while ( (l = nextElem(l)) )
+		len++;
+	l = dl;
+ 	while ( (l = prevElem(l)) )
+		blen++;
+	assert(blen == len);
+	return len;
+}
+#else
+#define walkChain(dl)
+#endif
+
 void prependElem(DList *dl, DList *elem) {
 #ifndef NDEBUG
 	long len = listLength(dl);
@@ -135,6 +151,7 @@ void prependElem(DList *dl, DList *elem) {
 		dl->prev = elem;
 	dl->next = elem;
 	incListLength(dl);
+	walkChain(dl);
 	assert(listLength(dl) == len+1);
 	assert(listLength(dl) >= 0 && listLength(dl) < g.poolSize);
 	debug("dl %p has length %ld after insert\n", dl, dl->count);
@@ -153,6 +170,7 @@ void appendElem(DList *dl, DList *elem) {
 		dl->next = elem;
 	dl->prev = elem;
 	incListLength(dl);
+	walkChain(dl);
 	assert(listLength(dl) == len+1);
 	assert(listLength(dl) >= 0 && listLength(dl) < g.poolSize);
 	debug("dl %p has length %ld after insert\n", dl, dl->count);
@@ -253,17 +271,6 @@ long signature(Node *n) {
 #endif
 
 #if defined(OILR_PARANOID_CHECKS) && !defined(NDEBUG)
-long walkChain(DList *dl) {
-	DList *l = dl;
-	long len=0, blen=0;
-	while ( (l = nextElem(l)) )
-		len++;
-	l = dl;
- 	while ( (l = prevElem(l)) )
-		blen++;
-	assert(blen == len);
-	return len;
-}
 void checkGraph() {
 	long i, iLen, nodes=0, inEdges=0, outEdges=0, loops=0;
 	DList *ind;
@@ -271,10 +278,13 @@ void checkGraph() {
 		ind = index(i);
 		iLen = listLength(ind);
 		nodes += iLen;
+		debug("\tind: %ld has len: %ld\n", i, iLen);
 		while ( (ind = nextElem(ind)) ) {
 			Node *n = asNode(elementOfListItem(ind));
 			oilrStatus(elementOfListItem(ind));
 			debug("\t\t -> o: %ld\n", walkChain(outListFor(n)));
+			debug("\t\t -> i: %ld\n", walkChain(inListFor(n)));
+			debug("\t\t -> l: %ld\n", walkChain(loopListFor(n)));
 			iLen--;
 			outEdges += outdeg(n);
 			inEdges  += indeg(n);
@@ -283,6 +293,7 @@ void checkGraph() {
 			assert( walkChain(inListFor(n)  ) == indeg(n)   );
 			assert( walkChain(loopListFor(n)) == loopdeg(n) );
 		}
+		// debug("//%ld\n", iLen);
 		assert(iLen == 0);
 	}
 	assert(nodes == g.nodeCount);
