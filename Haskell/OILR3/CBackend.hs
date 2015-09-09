@@ -15,6 +15,7 @@ data OilrIndexBits = OilrIndexBits { oBits::Int, iBits::Int, lBits::Int, rBits::
 data OilrProps = OilrProps { flags   :: [Flag]
                            , spaces  :: Mapping Pred [Int]
                            , oilrInd :: OilrIndexBits
+                           , stateMask :: Mapping String [Int] 
                            , nSlots   :: Mapping String Int }
 
 
@@ -51,12 +52,13 @@ progToC flags decls = consts ++ cRuntime ++ cCode
 
 analyseProg :: [Flag] -> [OilrProg] -> OilrProps
 analyseProg fs decls = OilrProps { flags = fs , spaces = spcs , oilrInd = bits
-                                 , nSlots = slots }
+                                 , nSlots = slots, stateMask = mask }
     where
         spcs = makeSearchSpaces capBits bits $ concat decls
         bits = oilrBits capBits decls
         capBits = if DisableOilr `elem` fs then 0 else 8
         slots = map makeSlots decls
+        mask  = map makeMask decls
 
 makeSlots :: OilrProg -> (String, Int)
 makeSlots is = ( idFor is , sum $ map countMatches is )
@@ -70,15 +72,28 @@ makeSlots is = ( idFor is , sum $ map countMatches is )
         countMatches (ADE _ _ _) = 1
         countMatches _           = 0
 
+makeMask :: OilrProg -> (String, [Int])
+makeMask is = ( idFor is , concatMap mask is )
+    where
+        mask (LUN _ _)   = [-1]
+        mask (LUE _ _ _) = [0]
+        mask (LBE _ _ _) = [0]
+        mask (XOE _ _ _) = [0, 0]
+        mask (XIE _ _ _) = [0, 0]
+        mask _           = []
+
 idFor :: OilrProg -> String
 idFor (PRO s:_) = s
 idFor (RUL s:_) = s
 idFor is = error $ "Malformed rule or procedure body: " ++ show is
 
 slotsFor :: OilrProps -> String -> String
-slotsFor oilr id = concat $ intersperse "," $ take n $ repeat "NULL"
+slotsFor oilr id = intercalate "," $ take n $ repeat "NULL"
     where
         n = definiteLookup id $ nSlots oilr
+
+maskFor :: OilrProps -> String -> String
+maskFor oilr id = intercalate "," $ map show $ definiteLookup id $ stateMask oilr
 
 -- Generate C prototypes so that the ordering of definitions
 -- doesn't matter
@@ -190,16 +205,7 @@ useRecursion oilr = if RecursiveRules `elem` flags oilr then "1" else "0"
 compileRule :: OilrProps -> OilrProg -> [String]
 compileRule oilr is = map compile is
     where
-        compile (RUL id)    = 
-            intercalate "\n" [ redef "ABORT" $ unbindAndRet oilr id
-                             , redef "RECURSE" $ recursionCode id
-                             , startCFunction id [("long", "recursive")
-                                                 ,("DList", "**state")]
-                             , concat ["\tElement *matches[] = { NULL, ", slotsFor oilr id, "};"]
-                             , intercalate "\n" [ "#ifdef OILR_EXECUTION_TRACE"
-                                                , "\toilrCurrentRule=" ++ show id ++ ";"
-                                                , "#endif" ]
-                             , "" ]
+        compile (RUL id)    = intercalate "\n" $ ruleHeader oilr id
         compile ORF         = orFail
         compile (ORB n)     = orBack n
         compile (ADN n)     = addBoundNode n
@@ -217,15 +223,27 @@ compileRule oilr is = map compile is
         compile (XIE src e tgt)  = [ ]
         compile (NEC src tgt)    = [ ] -}
 
-rulePreamble :: OilrProps -> String -> [String]
-rulePreamble oilr id = [ redef "ABORT" $ unbindAndRet oilr id
-                       , redef "RECURSE" $ recursionCode id
-                       , startCFunction id []
-                       , concat ["Element *matches[] = { NULL, ", slotsFor oilr id, "};"]
-                       , intercalate "\n" [ "#ifdef OILR_EXECUTION_TRACE"
-                                          , "oilrCurrentRule=" ++ show id
-                                          , ";\n#endif\n" ]
-                       , "" ]
+
+ruleHeader :: OilrProps -> String -> [String]
+ruleHeader oilr id = [ redef "ABORT" $ unbindAndRet oilr id
+                     , redef "RECURSE" $ recursionCode id
+                     , startCFunction id [("long", "recursive")
+                                         ,("DList", "**state")]
+                     , concat ["\tElement *matches[] = { NULL, " , slots, "};"]
+                     , intercalate "\n" [ "#ifdef OILR_EXECUTION_TRACE"
+                                        , "\toilrCurrentRule=" ++ show id ++ ";"
+                                        , "#endif" ]
+                     , concat [ "\tlong stateMask[] = { ", mask, "};"]
+                     , concat [ "\tlong i; for (i=0; i<"
+                              , show maskSize
+                              , "; i++) state[i] = (DList*) ((long) state[i] & stateMask[i]);" ]
+                     , "" ]
+    where
+        slots = slotsFor oilr id
+        mask  = maskFor  oilr id
+        maskSize = length $ definiteLookup id $ stateMask oilr
+
+
 
 orFail :: String
 orFail = concat [ "\tif (!boolFlag) " , exitRule , ";"]

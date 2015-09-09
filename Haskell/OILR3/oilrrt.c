@@ -525,10 +525,14 @@ void oilrTrace(Element *el) {
 #define bindLoop(el)  do { Element *macroL = (el); bind(macroL) ; debug("\tBound loop %ld (on %ld)\n", elementId(macroL), elementId(source(asEdge(macroL)))); } while (0)
 #endif
 
-void bind(Element *el) {
+#define bind(e) bindExcl(e)
+void bindShrd(Element *el, long id) {
+	el->bound |= id;
+}
+void bindExcl(Element *el) {
 	assert(el);
 	assert(unbound(el));
-	el->bound = 1;
+	el->bound = -1;
 	bindCount++;
 	trace('b');
 	oilrTrace(el);
@@ -704,7 +708,9 @@ do { \
 #define makeExtendOutTrav(fromTrav, eDest, nDest, predCode) \
 do { \
 	Element *src=matches[fromTrav]; \
-	DList *dl = (state[eDest]) ? state[eDest] : outListFor(asNode(src));    \
+	DList *dl = (state[eDest]) \
+					? state[eDest] \
+					: outListFor(asNode(src));    \
 	oilrStatus(src); \
  	assert(eDest != nDest && fromTrav != eDest && fromTrav != nDest);     \
 	assert(src);                           \
