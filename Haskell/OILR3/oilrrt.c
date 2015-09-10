@@ -48,7 +48,13 @@ typedef struct Edge {
 } Edge;
 
 typedef struct Element {
-	long bound;
+	union {
+		long bound;
+		struct {
+			char boundHere;
+			char boundElsewhere;
+		};
+	};
 	union {
 		Node n;
 		Edge e;
@@ -467,8 +473,11 @@ void deleteEdge(Element *el) {
 /////////////////////////////////////////////////////////
 // graph search
 
-#define unbound(el) ( !(el)->bound )
-#define bound(el)   ( (el)->bound )
+#define unbound(el)         ( !(el)->bound       )
+#define bound(el)           (  (el)->bound       )
+#define unboundHere(el)     ( !(el)->boundHere   )
+#define boundHere(el)       (  (el)->boundHere   )
+#define boundGlobally(el)   (  (el)->bound == -1 )
 
 #ifdef OILR_EXECUTION_TRACE
 FILE *oilrTraceFile;
@@ -525,21 +534,41 @@ void oilrTrace(Element *el) {
 #define bindLoop(el)  do { Element *macroL = (el); bind(macroL) ; debug("\tBound loop %ld (on %ld)\n", elementId(macroL), elementId(source(asEdge(macroL)))); } while (0)
 #endif
 
-#define bind(e) bindExcl(e)
-void bindShrd(Element *el, long id) {
-	el->bound |= id;
-}
-void bindExcl(Element *el) {
+// Explanation of binding rules:
+// - An exclusive bind sets all bits of el->bound
+// - A shared bind sets el->boundHere
+// - When a rule hands off to a recursive call to itself it should call 
+//     packBinds() on all its matches. packBinds() sets el->boundElsewhere
+//     and unsets el->boundHere
+
+void bindHere(Element *el) {
+	// local bind operation
 	assert(el);
-	assert(unbound(el));
-	el->bound = -1;
+	assert(unboundHere(el));
+	el->boundHere = 1;
 	bindCount++;
 	trace('b');
 	oilrTrace(el);
 }
+void bind(Element *el) {
+	// global bind operation
+	assert(el);
+	assert(unbound(el));
+	el->bound = -1;
+	bindCount++;
+	trace('B');
+	oilrTrace(el);
+}
+void unbindHere(Element *el) {
+	if (el) {
+		assert(!boundGlobally(el));
+		el->boundHere = 0;
+		unbindCount++;
+		debug("\tUnbound %ld\n", elementId(el));
+	}
+}
 void unbind(Element *el) {
 	if (el) {
-		// assert(bound(el));
 		el->bound = 0;
 		unbindCount++;
 		debug("\tUnbound %ld\n", elementId(el));
@@ -566,6 +595,23 @@ void unbindAll(Element **travs, long n) {
 //		unindexNode(asNode(n));
 //		appendElem(chain, chainFor(asNode(n)));
 //	}
+}
+
+void bindElsewhere(Element *el) {
+	// This is not a real bind operation, just moving a value
+	// from one field to another, so we don't update bindCount
+	assert(! boundGlobally(el));
+	el->boundElsewhere = el->boundHere;
+	el->boundHere = 0;
+}
+void packBinds(Element **boundElems, long count) {
+	Element *el;
+	long i;
+	for (i=0; i<count; i++) {
+		el = boundElems[i];
+		if ( el && boundHere(el) && ! boundGlobally(el) )
+			bindElsewhere( el );
+	}
 }
 
 Element *searchList(DList **dlp) {
