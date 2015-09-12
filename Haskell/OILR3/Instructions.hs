@@ -2,7 +2,7 @@ module OILR3.Instructions where
 
 type Tid = Int -- Trav id
 
-data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace deriving (Eq, Show)
+data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace | Compile32Bit deriving (Eq, Show)
 
 data Dim = Equ Int | GtE Int deriving (Show, Eq)
 

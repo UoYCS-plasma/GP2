@@ -6,7 +6,7 @@
 
 #define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS+OILR_C_BITS))
 #define DEFAULT_POOL_SIZE (100000000)
-#define ABORT return
+#define DONE return
 #define RECURSE
 
 void _HOST();
@@ -94,26 +94,9 @@ typedef struct SearchSpaceComponent {
 #endif
 
 /////////////////////////////////////////////////////////
-// stack-machine
+// stack-machine (removed)
 
-#define DS_SIZE 16
-long ds[DS_SIZE];
-long *dsp = ds;
 long boolFlag = 1;
-
-#define DEF(id) void (id)() {
-#define END     }
-#define POP     (*(dsp--))
-#define TOS     (*(dsp))
-#define LIT(n)  do { *(++dsp) = (n); } while (0);
-#define ADD     do { long sum = POP + TOS ; TOS = sum; } while (0);
-#define SUB     do { long val = POP ; TOS = TOS - val; } while (0);
-#define SHL     do { long bits = POP ; TOS = TOS << bits } while (0);
-#define SHR     do { long bits = POP ; TOS = TOS >> bits } while (0);
-#define LT      do { long n = POP; boolFlag = ( n >= POP ); } while (0);
-#define GT      do { long n = POP; boolFlag = ( n <= POP ); } while (0);
-#define EMIT    do { printf("%ld\n", POP); } while (0);
-
 
 
 /////////////////////////////////////////////////////////
@@ -941,7 +924,7 @@ boolFlag=1;
 #define CALL(rule, ...) do { \
 	DList *state[] = { __VA_ARGS__ }; \
 	(rule)(0, state); \
-	if (!boolFlag) ABORT ; \
+	if (!boolFlag) DONE ; \
 } while (0);
 
 /////////////////////////////////////////////////////////

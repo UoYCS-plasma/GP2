@@ -19,12 +19,22 @@ import ParseGraph
 import ParseProgram
 import ProcessAst (makeHostGraph)
 
-compilerFlagsCommon = " -Wall -Wno-error=unused-label -Wno-unused-label -Wno-error=unused-variable -Werror -o"
-compilerFlags32 = " -m32 -Wno-error=format= " ++ compilerFlagsCommon
-compilerFlags64 = " -m64 " ++ compilerFlagsCommon
+debugCompiler = "gcc -g "
+perfCompiler  = "gcc -O2 -fomit-frame-pointer "
 
-debugCompiler = "gcc -g " ++ compilerFlags64
-perfCompiler  = "gcc -O2 -fomit-frame-pointer " ++ compilerFlags64
+compilerFlags32 = " -m32 -Wno-error=format= "
+compilerFlags64 = " -m64 "
+
+compilerFlagsCommon = " -Wall -Wno-error=unused-label -Wno-unused-label -Wno-error=unused-variable -Werror -o"
+
+getCompilerFor flags = concat [ cc, arch, compilerFlagsCommon ]
+    where
+        cc = if ( EnableDebugging `elem` flags || EnableParanoidDebugging `elem` flags)
+                then debugCompiler
+                else perfCompiler
+        arch = if Compile32Bit `elem` flags
+                    then compilerFlags32
+                    else compilerFlags64
 
 
 options :: [ OptDescr Flag ]
@@ -34,6 +44,7 @@ options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr) "Use only a single OI
             Option ['n'] ["no-search-plan"] (NoArg $ DisableSearchPlan) "Disable the search plan; use brute-force nodes-then-edges strategy",
             Option ['T'] ["trace"]   (NoArg $ EnableExecutionTrace) "Enable execution trace via GraphViz" ,
             Option ['d'] ["debug"]   (NoArg $ EnableDebugging) "Enable verbose debugging output on compiled program's stderr" ,
+            Option ['3'] ["32-bit"]  (NoArg $ Compile32Bit) "Compile a 32-bit executable" ,
             Option ['D'] ["extra-debug"]   (NoArg $ EnableParanoidDebugging) "Enable paranoid graph structure checks (implies -d)" ]
 
 getStem :: String -> String
@@ -59,7 +70,6 @@ callCCompiler cc obj cFile = do
         (ExitFailure _) -> error "Compilation failed."
 
 
-
 main = do
     hSetBuffering stdout NoBuffering
     args <- getArgs
@@ -79,7 +89,7 @@ main = do
                 else return ()
             let progC = progToC flags prog
             let hostC = hostToC host
-            let compiler = if ( EnableDebugging `elem` flags || EnableParanoidDebugging `elem` flags) then debugCompiler else perfCompiler
+            let compiler = getCompilerFor flags
             writeFile targ $ progC ++ hostC
             callCCompiler compiler exe targ
         _ -> do

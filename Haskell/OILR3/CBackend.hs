@@ -163,7 +163,7 @@ compileProc :: OilrProps -> OilrProg -> [String]
 compileProc oilr is = map compile is
     where
         compile (PRO "Main") = compile (PRO "_GPMAIN")
-        compile (PRO id) = intercalate "\n" [ redef "ABORT" "return"
+        compile (PRO id) = intercalate "\n" [ redef "DONE" "return"
                                             , redef "RECURSE" "" 
                                             , startCFunction id [] ]
         compile (CAL id) = makeCFunctionCall "CALL" [id, slotsFor oilr id]
@@ -192,16 +192,6 @@ recursionCode :: String -> String
 recursionCode id = makeCFunctionCall id [ "(recursive+1)&0x1fff", "state" ]
 
 
-{-         defines rec id = "\n#undef ABORT\n#undef RECURSE"
-            ++ "\n#define ABORT "
-            ++ ( if nSlots > 0
-                  then "do { trace(boolFlag?'s':'f'); unbindAll(matches, " ++ show nSlots ++ "); return ; } while (0)\n"
-                  else "return" )
-            ++ ( "\n#define RECURSE " ++ if rec then id ++ "(1, state)" else "" )
-        preamble id = "\n\tElement *matches[] = { NULL, " ++ slots ++ "};"
-              ++ "\n\tDList   *state[]   = {" ++ slots ++ "};\n"
-              ++ "#ifdef OILR_EXECUTION_TRACE\n\t oilrCurrentRule=" ++ show id ++ ";\n#endif\n" -}
-
 useRecursion :: OilrProps -> String
 useRecursion oilr = if RecursiveRules `elem` flags oilr then "1" else "0"
     
@@ -229,7 +219,7 @@ compileRule oilr is = map compile is
 
 
 ruleHeader :: OilrProps -> String -> [String]
-ruleHeader oilr id = [ redef "ABORT" $ unbindAndRet oilr id
+ruleHeader oilr id = [ redef "DONE" $ unbindAndRet oilr id
                      , redef "RECURSE" $ recursionCode id
                      , startCFunction id [("long", "recursive")
                                          ,("DList", "**state")]
@@ -279,45 +269,18 @@ bindingFor :: Int -> String
 bindingFor n = concat [ "matches[" , show n , "]" ]
 
 exitRule :: String
-exitRule = "\tABORT;"
+exitRule = "\tDONE;"
 
 modifyAndBind :: Int -> String -> [String] -> String
 modifyAndBind i fun args = concat [ '\t' : bindingFor i , " = ", makeCFunctionCall fun args ]
 
-{- compileDefn :: Bool -> Mapping Pred [Int] -> OilrProg -> String
-compileDefn recurse idx is = case head is of
-    -- PRO _      -> concat (defines False "":cInstrs)
-    -- RUL r      -> concat $ defines recurse r : (head cInstrs) : preamble r : (tail cInstrs)
-    -- _          -> error "Definition doesn't begin with PRO or RUL instruction"
-    where
-        cInstrs = map (compileInstr idx) is
-        defines rec id = "\n#undef ABORT\n#undef RECURSE"
-            ++ "\n#define ABORT "
-            ++ ( if nSlots > 0
-                  then "do { trace(boolFlag?'s':'f'); unbindAll(matches, " ++ show nSlots ++ "); return ; } while (0)\n"
-                  else "return" )
-            ++ ( "\n#define RECURSE " ++ if rec then id ++ "(1, state)" else "" )
-        preamble id = "\n\tElement *matches[] = { NULL, " ++ slots ++ "};"
-              ++ "\n\tDList   *state[]   = {" ++ slots ++ "};\n"
-              ++ "#ifdef OILR_EXECUTION_TRACE\n\t oilrCurrentRule=" ++ show id ++ ";\n#endif\n"
-        slots  = concat $ intersperse "," $ take nSlots $ repeat "NULL"
-        nSlots = sum $ map countMatches is
-        countMatches (LUN _ _)   = 1
-        countMatches (LUE _ _ _) = 1as a sole-trader.
-        countMatches (LBE _ _ _) = 1
-        countMatches (XOE _ _ _) = 2
-        countMatches (XIE _ _ _) = 2
-        countMatches (ADN _)     = 1
-        countMatches (ADE _ _ _) = 1
-        countMatches _           = 0
--}
 
 makeModifyAndBind :: Int -> String -> [Int] -> String
 makeModifyAndBind i fun args = "\t" ++ matchInd i ++ " = " ++ makeCFunctionCall fun (map matchInd args)
     where
         matchInd i = "matches[" ++ show i ++ "]"
 
-
+-- TODO: this mess needs to go! 
 compileInstr :: Mapping Pred [Int] -> Instr Int Int -> String
 compileInstr _ (ADN n)         = makeModifyAndBind n "addNode" []
 compileInstr _ (ADE e src tgt) | src==tgt  = makeModifyAndBind e "addLoop" [src]
@@ -329,7 +292,7 @@ compileInstr _ RET           = "return;"
 compileInstr _ (PRO "Main")  = startCFunction "_GPMAIN" []
 compileInstr _ (PRO s)       = startCFunction s []
 compileInstr _ (RUL s)       = startCFunction s []
-compileInstr _ UBA           = "\tABORT;\n"
+compileInstr _ UBA           = "\tDONE;\n"
 compileInstr _ END           = endCFunction 
 
 -- compileInstr (CRS n sig)     = makeCFunctionCallIntArgs "resetTrav" [n] -- TODO
