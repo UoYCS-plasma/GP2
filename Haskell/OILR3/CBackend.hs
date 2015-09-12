@@ -184,8 +184,12 @@ unbindAndRet oilr id =
            , "return;"
            , "} while (0);" ]
 
+-- The mask on "recursive" is to prevent stack-overflows from too much
+-- recursion TODO: the limit could be tuned to the individual rule, based on
+-- the number and type of travs in the rule (as the largest component of the
+-- stack frame is the matches[] array.
 recursionCode :: String -> String
-recursionCode id = makeCFunctionCall id [ "recursive<<1", "state" ]
+recursionCode id = makeCFunctionCall id [ "(recursive+1)&0x1fff", "state" ]
 
 
 {-         defines rec id = "\n#undef ABORT\n#undef RECURSE"

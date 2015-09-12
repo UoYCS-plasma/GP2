@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS+OILR_C_BITS))
-#define DEFAULT_POOL_SIZE (10000000)
+#define DEFAULT_POOL_SIZE (100000000)
 #define ABORT return
 #define RECURSE
 
