@@ -59,16 +59,25 @@ addNodesToHost m@(GM _ nms _) rhs ni h =
     (h'', relabelMapping ++ zip insertedRhsNodes insertedHostNodes)
     where
     h''                     = foldr (relabelNode m rhs) h' relabelMapping 
-    (h', insertedHostNodes) = newNodeList h [ nodeEval (m, h, rhs) (nLabel rhs n)
+    (h', insertedHostNodes) = newNodeList h [ nodeEval (m, h, rhs) (nLabel rhs n) Nothing
                                             | n <- insertedRhsNodes ]
     relabelMapping          = [ (ri, definiteLookup li nms) | (li, ri) <- ni]
     insertedRhsNodes        = allNodeKeys rhs \\ rng ni
 
 relabelNode :: GraphMorphism -> RuleGraph -> (NodeKey, NodeKey) -> HostGraph -> HostGraph
-relabelNode m rhs (rnk, hnk) h = nReLabel h hnk $ nodeEval (m, h, rhs) $ nLabel rhs rnk 
+relabelNode m rhs (rnk, hnk) h = nReLabel h hnk
+                               $ nodeEval (m, h, rhs)
+                                    (nLabel rhs rnk)
+                                    (Just $ nLabel h hnk)
 
-nodeEval :: EvalContext -> RuleNode -> HostNode
-nodeEval ec (RuleNode name isRoot label) = HostNode name isRoot $ labelEval ec label
+nodeEval :: EvalContext -> RuleNode -> Maybe HostNode -> HostNode
+nodeEval ec (RuleNode name isRoot label) hn = HostNode name isRoot $ fixColour hn $ labelEval ec label
+    where
+        fixColour (Just n) (HostLabel l Cyan) = (HostLabel l $ hostColour n)
+        fixColour Nothing  (HostLabel l Cyan) = error "Tried to create a Cyan node!" 
+        fixColour _ l = l
+        hostColour (HostNode _ _ (HostLabel _ c ) ) = c
+
 
 -- Adds all RHS edges to the graph. The NodeMatches argument stores the mappings of
 -- all RHS NodeIds to host graph NodeIds.
