@@ -8,6 +8,8 @@ import ParseGraph
 import GPSyntax
 import Mapping
 
+import Debug.Trace
+
 program :: Parser GPProgram
 program  =  do { ds <- many1Commented declaration ; return $ Program ds }
 
@@ -33,10 +35,12 @@ commandSequence :: Parser [Command]
 commandSequence  =  sepBy1 command (symbol ";")
 
 command :: Parser Command
-command  =  do { keyword "if" ; c <- block ; keyword "then" ; t <- block ;
+command  =  do { keyword "if" ; c <- block ;
+                 t <- option skip $ do { keyword "then" ; block } ;
                  e <- option skip $ do { keyword "else" ; block } ;
                  return $ IfStatement c t e }
-       <|>  do { keyword "try" ; c <- block ; keyword "then" ; t <- block ;
+       <|>  do { keyword "try" ; c <- block ;
+                 t <- option skip $ do { keyword "then" ; block } ;
                  e <- option skip $ do { keyword "else" ; block } ;
                  return $ TryStatement c t e }
        <|>  do { b <- block ; return $ Block b }
@@ -131,7 +135,7 @@ atom  =  do { op <- oneOf "+-*/." ; spaces ;
               { '+' -> Plus ; '-' -> Minus ; '*' -> Times ; '/' -> Div ; '.' -> Concat }
 
 ruleColour :: Parser Colour
-ruleColour  =  do { symbol "#" ; c <- many1 lower ;
+ruleColour  =  do { symbol "#" ; c <- many1 lower ; spaces ;
                     let { rc = lookup c ruleColours } ;
                     guard $ isJust rc ; return $ fromJust rc }
           <|>  return Uncoloured

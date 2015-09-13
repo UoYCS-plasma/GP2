@@ -50,7 +50,7 @@ hostList :: Parser [HostAtom]
 hostList  =  do { keyword "empty" ; return [] } <|>  sepBy1 value (symbol ":")
 
 hostColour :: Parser Colour
-hostColour  =  do { symbol "#" ; c <- many1 lower ;
+hostColour  =  do { symbol "#" ; c <- many1 lower ; spaces ;
                     let { hc = lookup c hostColours } ;
                     guard $ isJust hc ; return $ fromJust hc }
           <|>  return Uncoloured

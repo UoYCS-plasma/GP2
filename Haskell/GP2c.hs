@@ -60,7 +60,7 @@ parseHostGraph graphFile = do
 parseProgram progFile = do
     p <- readFile progFile
     case parse program progFile p of
-        Left e     -> error "Compilation of program failed"
+        Left e     -> error $ "Compilation of program failed:\n" ++ show e
         Right prog -> return prog
 
 callCCompiler cc obj cFile = do
