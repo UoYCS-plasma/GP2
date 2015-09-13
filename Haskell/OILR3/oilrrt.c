@@ -27,9 +27,13 @@ typedef struct DList {
 		long count;
 		struct DList *head;
 	};
-	struct Element *el;
 	struct DList *next;
 	struct DList *prev;
+#ifndef OILR_COMPACT_LISTS
+	// OILR_COMPACT_LISTS forces Element to be 128 byte alignmened, which lets
+	// us simply mask the address of any list to find the Element.
+	struct Element *el;
+#endif
 } DList;
 
 typedef struct Node {
@@ -60,6 +64,11 @@ typedef struct Element {
 		Edge e;
 		struct Element *free;
 	};
+#ifdef OILR_COMPACT_LISTS
+	// WARNING: with OILR_COMPACT_LISTS defined Element must be _exactly_
+	// OILR_ELEM_ALIGN bytes in size!
+	char pad[16];
+#endif
 } Element;
 
 typedef struct Graph {
@@ -102,10 +111,19 @@ long boolFlag = 1;
 /////////////////////////////////////////////////////////
 // doubly-linked list support
 
+#define OILR_ELEM_MASK (~(OILR_ELEM_ALIGN-1))
+
 #define nextElem(dl) ((dl)->next)
 #define prevElem(dl) ((dl)->prev)
-#define elementOfListItem(dl) ((dl)->el)
-#define setElementOfListItem(dl, elem) do { (dl)->el = (elem); } while (0)
+#ifdef OILR_COMPACT_LISTS
+#define OILR_ELEM_ALIGN 128
+	// TODO: introduce a union to prevent this casting evil
+#	define elementOfListItem(dl) ((Element *)((long)(dl)&(OILR_ELEM_MASK)))
+#	define setElementOfListItem(dl, elem)
+#else
+#	define elementOfListItem(dl) ((dl)->el)
+#	define setElementOfListItem(dl, elem) do { (dl)->el = (elem); } while (0)
+#endif
 #define listLength(dl) ((dl)->count)
 #define incListLength(dl) ((dl)->count++)
 #define decListLength(dl) ((dl)->count--)
@@ -316,30 +334,17 @@ void unindexNode(Node *n) {
 	// n->sig = -1;
 }
 
-void checkMemory(long neededElems) {
-	Element *newPool;
-	if (g.freeId + neededElems >= g.poolSize) {
-		newPool = realloc(g.pool, sizeof(Element) * g.poolSize);
-		if (!newPool) {
-			printf("Ran out of memory. :( Sadface\n");
-		}
-		assert(newPool == g.pool);
-		debug("Expanded memory to %ld elements\n", g.poolSize);
-	}
-	debug("g.freeId: %ld\n", g.freeId);
-}
 Element *allocElement() {
 	Element *ne = g.freeList;
-
 	if (ne == NULL) {
 		if (g.freeId == g.poolSize) {
-			g.poolSize = g.poolSize * 2;
-			g.pool = realloc(g.pool, sizeof(Element) * g.poolSize);
-			if (!g.pool) {
-				printf("Ran out of memory. :( Sadface\n");
-				exit(1);
-			}
-			debug("Memory grew to %ld elements\n", g.poolSize);
+			// g.poolSize = g.poolSize * 2;
+			// g.pool = realloc(g.pool, sizeof(Element) * g.poolSize);
+			// if (!g.pool) {
+			printf("Ran out of memory. :( Sadface\n");
+			exit(1);
+			//}
+			//debug("Memory grew to %ld elements\n", g.poolSize);
 		}
 		assert(g.freeId < g.poolSize);
 		ne = &(g.pool[g.freeId++]);
@@ -880,9 +885,18 @@ void dumpGraph(FILE *file) {
 
 int main(int argc, char **argv) {
 	long i;
+#ifdef OILR_COMPACT_LISTS
+	int failure = posix_memalign((void*)(&g.pool), OILR_ELEM_ALIGN, sizeof(Element) * DEFAULT_POOL_SIZE);
+	assert(sizeof(Element) == OILR_ELEM_ALIGN);
+	if (failure) {
+#else
 	g.pool = malloc(sizeof(Element) * DEFAULT_POOL_SIZE);
-	if (!g.pool)
+	if (!g.pool) {
+#endif
+		printf("Couldn't couldn't allocate %ld MiB\n", DEFAULT_POOL_SIZE*sizeof(Element)/(1024*1024));
 		exit(1);
+	}
+	fprintf(stderr, "Allocated %ld MiB\n", DEFAULT_POOL_SIZE*sizeof(Element)/(1024*1024));
 	g.poolSize = DEFAULT_POOL_SIZE;
 	g.nodeCount = 0;
 	g.edgeCount = 0;
@@ -890,6 +904,10 @@ int main(int argc, char **argv) {
 #ifdef OILR_EXECUTION_TRACE
 	oilrTraceFile = stderr;
 #endif
+	// printf("sizeof(Element) = %ld\n", sizeof(Element));
+	// printf("elem[0]=%p elem[1]=%p", &g.pool[0], &g.pool[1]);
+	// exit(0);
+	assert(DEFAULT_POOL_SIZE * sizeof(Element) > 0);
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		DList *ind = index(i);
 		ind->count = 0;

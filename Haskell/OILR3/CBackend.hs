@@ -16,6 +16,7 @@ data OilrProps = OilrProps { flags   :: [Flag]
                            , spaces  :: Mapping Pred [Int]
                            , oilrInd :: OilrIndexBits
                            , stateMask :: Mapping String [Int] 
+                           , recMask :: String  -- recursion limit mask
                            , nSlots   :: Mapping String Int }
 
 
@@ -46,19 +47,23 @@ progToC flags decls = consts ++ cRuntime ++ cCode
                             (False, False) -> "#define NDEBUG\n"
                             (_, True)      -> "#define OILR_PARANOID_CHECKS\n"
                             _              -> ""
+                        , if CompactLists `elem` flags
+                            then "#define OILR_COMPACT_LISTS\n"
+                            else ""
                         , if EnableExecutionTrace `elem` flags
                             then "#define OILR_EXECUTION_TRACE\n"
                             else ""  ]
 
 analyseProg :: [Flag] -> [OilrProg] -> OilrProps
 analyseProg fs decls = OilrProps { flags = fs , spaces = spcs , oilrInd = bits
-                                 , nSlots = slots, stateMask = mask }
+                                 , nSlots = slots, recMask = rMask, stateMask = sMask }
     where
         spcs = makeSearchSpaces capBits bits $ concat decls
         bits = oilrBits capBits decls
         capBits = if DisableOilr `elem` fs then 0 else 8
         slots = map makeSlots decls
-        mask  = map makeMask decls
+        sMask  = map makeMask decls
+        rMask  = if Compile32Bit `elem` fs then "0xfff" else "0x1fff"
 
 makeSlots :: OilrProg -> (String, Int)
 makeSlots is = ( idFor is , sum $ map countMatches is )
@@ -188,8 +193,8 @@ unbindAndRet oilr id =
 -- recursion TODO: the limit could be tuned to the individual rule, based on
 -- the number and type of travs in the rule (as the largest component of the
 -- stack frame is the matches[] array.
-recursionCode :: String -> String
-recursionCode id = makeCFunctionCall id [ "(recursive+1)&0x1fff", "state" ]
+recursionCode :: String -> String -> String
+recursionCode rMask id = makeCFunctionCall id [ "(recursive+1)&" ++ rMask, "state" ]
 
 
 useRecursion :: OilrProps -> String
@@ -220,7 +225,7 @@ compileRule oilr is = map compile is
 
 ruleHeader :: OilrProps -> String -> [String]
 ruleHeader oilr id = [ redef "DONE" $ unbindAndRet oilr id
-                     , redef "RECURSE" $ recursionCode id
+                     , redef "RECURSE" $ recursionCode (recMask oilr) id
                      , startCFunction id [("long", "recursive")
                                          ,("DList", "**state")]
                      , concat ["\tElement *matches[] = { NULL, " , slots, "};"]
