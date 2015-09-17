@@ -9,6 +9,7 @@ import System.Exit
 import Text.Parsec
 
 import OILR3.Instructions
+import OILR3.Preprocessor
 import OILR3.HostCompile
 import OILR3.ProgCompile
 import OILR3.CBackend
@@ -54,7 +55,7 @@ getStem = takeWhile (/= '.')
 parseHostGraph graphFile = do
     g <- readFile graphFile
     case parse hostGraph graphFile g of
-        Left e     -> error "Compilation of host graph failed" -- print e
+        Left e     -> error $ "Compilation of host graph failed" ++ show e
         Right host -> return $ makeHostGraph host
 
 parseProgram progFile = do

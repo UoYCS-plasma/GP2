@@ -81,6 +81,9 @@ insertOrbs acc prev (i:is) = case (i, prev) of
     _                       -> insertOrbs (i:acc) prev is
         
 
+-- TODO: is there a reason we can't apply this transformation to node and edge
+-- identifiers before we compile? I have a recollection that there might be, but
+-- I didn't write down what it was... drat.
 postprocess :: (Mapping GraphElemId Int, SemiOilrCode) -> OilrCode
 postprocess (mapping, sois) = map postprocessInstr sois
     where
@@ -105,6 +108,9 @@ postprocess (mapping, sois) = map postprocessInstr sois
         postprocessInstr (XIE t e s) = XIE (translate t) (translate e) (translate s)
         postprocessInstr (NEC n1 n2) = NEC (translate n1) (translate n2)
         postprocessInstr OK          = OK
+        postprocessInstr TRU         = TRU
+        postprocessInstr FLS         = FLS
+        postprocessInstr RET         = RET
         postprocessInstr i           = error $ show i ++ " is not implmented"
 
 elemIdMapping :: SemiOilrCode -> (Mapping GraphElemId Int, SemiOilrCode)
@@ -209,10 +215,12 @@ oilrCompileCommand (Block b) = oilrCompileBlock b
 -- oilrCompileCommand (IfStatement (SimpleCommand (RuleCall [r])) th el) =
 --     oilrCompilePredicateRule r ++ oilrCompileBlock th ++ oilrCompileBlock el
 oilrCompileCommand (IfStatement  cn th el) = notImplemented 2
-oilrCompileCommand (TryStatement cn th el) = notImplemented 3
+oilrCompileCommand (TryStatement cn th el) =
+        -- TODO: may produce incorrect behaviour with command sequences and proc calls!
+        oilrCompileBlock cn ++ oilrCompileBlock th ++ oilrCompileBlock el
 
 oilrCompileBlock :: Block -> SemiOilrCode
-oilrCompileBlock (ComSeq cs)       = notImplemented 4
+oilrCompileBlock (ComSeq cs)       = concatMap oilrCompileCommand cs
 oilrCompileBlock (LoopedComSeq cs) = notImplemented 5
 oilrCompileBlock (SimpleCommand s) = oilrCompileSimple s
 oilrCompileBlock (ProgramOr a b)   = notImplemented 6
