@@ -219,6 +219,7 @@ oilrCompileCommand (TryStatement cn th el) =
         -- TODO: may produce incorrect behaviour with command sequences and proc calls!
         oilrCompileBlock cn ++ oilrCompileBlock th ++ oilrCompileBlock el
 
+-- returns a pair of (compiledCode, newDefs)
 oilrCompileBlock :: Block -> SemiOilrCode
 oilrCompileBlock (ComSeq cs)       = concatMap oilrCompileCommand cs
 oilrCompileBlock (LoopedComSeq cs) = notImplemented 5
@@ -234,7 +235,6 @@ oilrCompileSimple (ProcedureCall       p) = [ CAL p ]
 oilrCompileSimple (LoopedProcedureCall p) = [ ALP p ]
 oilrCompileSimple Skip   = [ TRU , RET ]
 oilrCompileSimple Fail   = [ FLS , RET ]
-
 
 
 -- -------------------------------------------------------------------

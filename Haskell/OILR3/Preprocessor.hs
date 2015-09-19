@@ -144,23 +144,28 @@ data Condition = NoCondition
 
 -}
 
-ppProg :: GPProgram -> GPProgram
-ppProg (Program ds) = Program $ map ppDecl ds
+type Preprocessor a b = a -> [(a, b)]
 
 
-ppDecl :: Declaration -> Declaration
-ppDecl (MainDecl (Main cs)) = ppDecl $ ProcDecl $ Procedure "_GPMAIN" [] cs
-ppDecl (ProcDecl p )        = ProcDecl $ ppProc p
-ppDecl (AstRuleDecl r)      = AstRuleDecl $ ppRule r
+
+ppProg :: Preprocessor GPProgram [IRDefn]
+ppProg = notImplemented 10
 
 
-ppProc :: Procedure -> Procedure
+ppDecl :: Preprocessor Declaration IRDefn
+ppDecl = notImplemented 11
+
+
+ppProc :: Preprocessor Procedure Procedure
 ppProc (Procedure id ds cs) = notImplemented 1
 
 ppRule :: AstRule -> AstRule
 ppRule r@(AstRule id vs (lhs, rhs) cs) = r
 
-
-
-
+{-
+ppLiftSeqs :: Command -> ([IRDefn], Block)
+ppLiftSeqs (Block (ComSeq cs))       = (defs, Block (SimpleCommand (ProcedureCall defName)))
+ppLiftSeqs (Block (LoopedComSeq cs)) = (defs, Block (SimpleCommand (LoopedProcedureCall defName)))
+ppLiftSeqs (Block (ProgramOr a b)) = []
+-}
 
