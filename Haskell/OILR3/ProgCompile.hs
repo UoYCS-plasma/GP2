@@ -150,25 +150,6 @@ data Main = Main [Command] deriving Show
 
 data Procedure = Procedure ProcName [Declaration] [Command] deriving Show
 
-data Command = Block Block
-             | IfStatement Block Block Block 
-             | TryStatement Block Block Block
-    deriving Show
-
-data Block = ComSeq [Command]
-           | LoopedComSeq [Command]
-           | SimpleCommand SimpleCommand
-           | ProgramOr Block Block      
-    deriving (Show)
-      
-data SimpleCommand = RuleCall [RuleName]
-                   | LoopedRuleCall [RuleName]
-                   | ProcedureCall ProcName
-                   | LoopedProcedureCall ProcName
-                   | Skip
-                   | Fail
-    deriving Show
-
 data Rule = Rule RuleName [Variable] (AstRuleGraph, AstRuleGraph) NodeInterface 
             EdgeInterface Condition deriving Show
 
@@ -205,12 +186,27 @@ oilrCompileDeclaration (ProcDecl p) = oilrCompileProc p
 oilrCompileDeclaration (AstRuleDecl r) = oilrCompileRule r
 
 oilrCompileProc :: Procedure -> SemiOilrCode
-oilrCompileProc (Procedure name ds cs) = (PRO name : concatMap oilrCompileCommand cs) ++ [END]
+oilrCompileProc (Procedure name ds cs) = (PRO name : concatMap oilrCompileExpr cs) ++ [END]
 
 oilrCompileMain :: Main -> SemiOilrCode
 oilrCompileMain (Main cs) = oilrCompileProc (Procedure "Main" [] cs)
 
-oilrCompileCommand :: Command -> SemiOilrCode
+
+oilrCompileExpr :: Expr -> SemiOilrCode
+oilrCompileExpr (IfStatement  cn th el)    = notImplemented 2
+oilrCompileExpr (TryStatement cn th el)    = notImplemented 3
+oilrCompileExpr (Sequence es)              = concatMap oilrCompileExpr es
+oilrCompileExpr (ProgramOr a b)            = notImplemented 6
+oilrCompileExpr (RuleSet [r])              = [ CAL r ]
+oilrCompileExpr (ProcedureCall p)          = [ CAL p ]
+oilrCompileExpr Skip                       = [ TRU, RET ]
+oilrCompileExpr Fail                       = [ FLS, RET ]
+oilrCompileExpr (Looped (RuleSet [r]))     = [ ALP r ]
+oilrCompileExpr (Looped (ProcedureCall p)) = [ ALP p ]
+oilrCompileExpr (Looped e)                 = error $ "Invalid Loop construct " ++ show e
+oilrCompileExpr e                          = error $ "Unsupported: " ++ show e
+
+{- oilrCompileCommand :: Command -> SemiOilrCode
 oilrCompileCommand (Block b) = oilrCompileBlock b
 -- oilrCompileCommand (IfStatement (SimpleCommand (RuleCall [r])) th el) =
 --     oilrCompilePredicateRule r ++ oilrCompileBlock th ++ oilrCompileBlock el
@@ -235,7 +231,7 @@ oilrCompileSimple (ProcedureCall       p) = [ CAL p ]
 oilrCompileSimple (LoopedProcedureCall p) = [ ALP p ]
 oilrCompileSimple Skip   = [ TRU , RET ]
 oilrCompileSimple Fail   = [ FLS , RET ]
-
+-}
 
 -- -------------------------------------------------------------------
 -- rule compilation is complex...

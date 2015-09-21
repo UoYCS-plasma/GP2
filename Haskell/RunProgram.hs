@@ -46,8 +46,58 @@ findMain (_:ds) = findMain ds
 findMain [] = error "No main procedure defined."
 
 evalMain :: Int -> [Declaration] -> Main -> HostGraph -> [GraphState]
-evalMain max ds (Main coms) g = evalCommandSequence max ds coms (GS g 0)
+evalMain max ds (Main coms) g = evalExprSeq max ds coms (GS g 0)
 
+evalExprSeq :: Int -> [Declaration] -> [Expr] -> GraphState -> [GraphState]
+evalExprSeq _ _ _ (Failure rc) = [Failure rc]
+evalExprSeq _ _ _ Unfinished = [Unfinished]
+evalExprSeq max ds [] gs = [gs]
+evalExprSeq max ds (c:cs) gs =
+    concatMap handleExprSeq $ evalExpr max ds c gs
+    where handleExprSeq Unfinished   = [Unfinished]
+          handleExprSeq (Failure rc) = [Failure rc]
+          handleExprSeq gs'          = evalExprSeq max ds cs gs'
+
+{-
+data Expr = IfStatement Expr Expr Expr
+          | TryStatement Expr Expr Expr
+          | Looped Expr
+          | Sequence [Expr]
+          | ProcedureCall ProcName
+          | RuleSet [RuleName]
+          | Skip
+          | Fail
+          deriving (Show, Eq)
+          -}
+evalExpr :: Int -> [Declaration] -> Expr -> GraphState -> [GraphState]
+evalExpr _ _ _ (Failure rc)  = [Failure rc]
+evalExpr _ _ _ Unfinished    = [Unfinished]
+evalExpr max ds (IfStatement cond thn els) gs = 
+    concatMap handleIf $ evalExpr max ds cond gs
+    where handleIf Unfinished = [Unfinished]
+          handleIf (Failure rc) = evalExpr max ds els $ updAppCount (+rc) gs
+          handleIf _            = evalExpr max ds thn gs
+evalExpr max ds (TryStatement cond thn els) gs = 
+    concatMap handleTry $ evalExpr max ds cond gs
+    where handleTry Unfinished   = [Unfinished]
+          handleTry (Failure rc) = evalExpr max ds els $ updAppCount (+rc) gs
+          handleTry gs'          = evalExpr max ds thn gs'
+evalExpr max ds (Looped e) gs = concatMap handleLoop $ evalExpr max ds e gs
+    where handleLoop Unfinished = [Unfinished]
+          handleLoop (Failure rc) = [updAppCount (const rc) gs]
+          handleLoop gs' = evalExpr max ds (Looped e) gs'
+evalExpr max ds (ProgramOr a b) gs = evalExpr max ds a gs ++ evalExpr max ds b gs
+evalExpr max ds (RuleSet rs) (GS g rc) =
+    if rc == max then [Unfinished]
+    else case [ h | r <- rs , h <- applyRule g $ ruleLookup r ds ] of
+            [] -> [Failure rc]
+            hs -> [GS h (rc+1) | h <- hs]
+evalExpr max ds (Sequence es) gs = evalExprSeq max ds es gs
+evalExpr max ds (ProcedureCall proc) gs = evalExprSeq max (decls++ds) cs gs
+    where Procedure id decls cs = procLookup proc ds
+
+
+{-
 evalCommandSequence :: Int -> [Declaration] -> [Command] -> GraphState -> [GraphState]
 evalCommandSequence _ _ _ (Failure rc) = [Failure rc]
 evalCommandSequence _ _ _ Unfinished = [Unfinished]
@@ -72,7 +122,6 @@ evalCommand max ds (TryStatement cond pass fail) gs =
     where handleTry Unfinished   = [Unfinished]
           handleTry (Failure rc) = evalBlock max ds fail $ updAppCount (+rc) gs
           handleTry gs'        = evalBlock max ds pass gs'
-
 
 evalBlock :: Int -> [Declaration] -> Block -> GraphState -> [GraphState]
 evalBlock _ _ _ (Failure rc) = [Failure rc]
@@ -103,6 +152,7 @@ evalSimpleCommand max ds c@(LoopedProcedureCall proc) gs =
 evalSimpleCommand max ds Skip (GS g rc) = [GS g rc]
 evalSimpleCommand max ds Fail (GS _ rc) = [Failure rc]
 
+
 evalLooped :: Int -> [Declaration] -> SimpleCommand -> GraphState -> [GraphState]
 evalLooped max ds c gs  =
     [ gsFinal 
@@ -110,7 +160,7 @@ evalLooped max ds c gs  =
       gsFinal <- case gsInter of Unfinished -> [Unfinished]
                                  Failure rc -> [updAppCount (const rc) gs] -- NB!
                                  _          -> evalLooped max ds c gsInter ]
-
+-}
 procLookup :: ProcName -> [Declaration] -> Procedure
 procLookup id decls = case matches of
    []  -> error $ "Reference to undefined procedure " ++ id

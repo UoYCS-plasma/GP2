@@ -60,28 +60,40 @@ data Declaration = MainDecl Main
                  | RuleDecl Rule
      deriving Show
 
-data Main = Main [Command] deriving Show
+data Main = Main [Expr] deriving Show
 
-data Procedure = Procedure ProcName [Declaration] [Command] deriving Show
+data Procedure = Procedure ProcName [Declaration] [Expr] deriving Show
 
-data Command = Block Block
-             | IfStatement Block Block Block 
-             | TryStatement Block Block Block
-    deriving Show
+data Expr = IfStatement Expr Expr Expr
+          | TryStatement Expr Expr Expr
+          | Looped Expr
+          | Sequence [Expr]
+          | ProcedureCall ProcName
+          | RuleSet [RuleName]
+          | ProgramOr Expr Expr
+          | Skip
+          | Fail
+          deriving (Show, Eq)
 
-data Block = ComSeq [Command]
-           | LoopedComSeq [Command]
-           | SimpleCommand SimpleCommand
-           | ProgramOr Block Block      
-    deriving (Show)
-      
-data SimpleCommand = RuleCall [RuleName]
-                   | LoopedRuleCall [RuleName]
-                   | ProcedureCall ProcName
-                   | LoopedProcedureCall ProcName
-                   | Skip
-                   | Fail
-    deriving Show
+-- -- Old data structures, for references purposes
+-- data Command = Block Block
+--              | IfStatement Block Block Block 
+--              | TryStatement Block Block Block
+--     deriving Show
+-- 
+-- data Block = ComSeq [Command]
+--            | LoopedComSeq [Command]
+--            | SimpleCommand SimpleCommand
+--            | ProgramOr Block Block      
+--     deriving (Show)
+--       
+-- data SimpleCommand = RuleCall [RuleName]
+--                    | LoopedRuleCall [RuleName]
+--                    | ProcedureCall ProcName
+--                    | LoopedProcedureCall ProcName
+--                    | Skip
+--                    | Fail
+--     deriving Show
 
 -- GP Rule ADTs
 type Variable = (VarName, VarType)

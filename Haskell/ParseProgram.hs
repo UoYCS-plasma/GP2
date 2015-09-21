@@ -19,18 +19,58 @@ declaration  =  do { m <- gpMain    ; return $ MainDecl m }
            <|>  do { r <- rule      ; return $ AstRuleDecl r }
 
 gpMain :: Parser Main
-gpMain  =  do { keyword "Main" ; symbol "=" ; cs <- commandSequence ; return $ Main cs }
+gpMain  =  do { keyword "Main" ; symbol "=" ; cs <- exprSequence ; return $ Main cs }
 
 procedure :: Parser Procedure
 procedure  =  do { id <- upperIdent ; symbol "=" ;
                    ds <- option [] $
                            between (symbol "[") (symbol "]") (many1 localDeclaration) ;
-                   cs <- commandSequence ; return $ Procedure id ds cs }
+                   cs <- exprSequence ; return $ Procedure id ds cs }
 
 localDeclaration :: Parser Declaration
 localDeclaration  =  do { r <- rule ; return $ AstRuleDecl r }
                 <|>  do { p <- procedure ; return $ ProcDecl p }
 
+{-
+data Expr = IfStatement Expr Expr Expr
+          | TryStatement Expr Expr Expr
+          | Looped Expr
+          | Sequence [Expr]
+          | Set [Expr]
+          | ProcedureCall ProcName
+          | RuleCall RuleName
+          | Skip
+          | Fail
+          deriving (Show, Eq)
+          -}
+exprSequence :: Parser [Expr]
+exprSequence = sepBy1 expr (symbol ";")
+
+expr :: Parser Expr
+expr  =  do { keyword "if"  ; condExpr IfStatement }
+     <|> do { keyword "try" ; condExpr TryStatement }
+     <|> do { symbol "(" ; cs <- exprSequence ; symbol ")!" ; return $ Looped (Sequence cs) }
+     <|> do { symbol "(" ; cs <- exprSequence ; symbol ")" ; return $ Sequence cs }
+     <|> do { id <- upperIdent ; option (ProcedureCall id) $
+                                do { symbol "!" ; return $ Looped $ ProcedureCall id } }
+     <|> do { rs <- ruleSet ; option (RuleSet rs) $
+                                do { symbol "!" ; return $ Looped $ RuleSet rs } }
+                                 
+     <|> do { keyword "skip" ; return Skip }
+     <|> do { keyword "fail" ; return Fail }
+
+condExpr :: (Expr -> Expr -> Expr -> Expr) -> Parser Expr
+condExpr constr = do { c <- expr ;
+                       t <- option Skip $ do { keyword "then" ; expr } ;
+                       e <- option Skip $ do { keyword "else" ; expr } ;
+                       return $ constr c t e }
+
+ruleSet :: Parser [String]
+ruleSet  =  between (symbol "{") (symbol "}") (sepBy1 lowerIdent (symbol ","))
+       <|>  do { r <- lowerIdent ; return [r] }
+
+
+{-
 commandSequence :: Parser [Command] 
 commandSequence  =  sepBy1 command (symbol ";")
 
@@ -51,7 +91,7 @@ block  =  do { keyword "or" ; b1 <- block ; b2 <- block ; return $ ProgramOr b1 
      <|>  do { symbol "(" ; cs <- commandSequence ; symbol ")" ;
                option (ComSeq cs) $ do { symbol "!" ; return $ LoopedComSeq cs } }
      <|>  do { sc <- simpleCommand ; return $ SimpleCommand sc }
- 
+
 simpleCommand :: Parser SimpleCommand
 simpleCommand  =  do { keyword "skip" ; return Skip }
              <|>  do { keyword "fail" ; return Fail }
@@ -61,11 +101,7 @@ simpleCommand  =  do { keyword "skip" ; return Skip }
              <|>  do { rs <- ruleSetCall ; 
                        option (RuleCall rs) $
                               do { symbol "!" ; return $ LoopedRuleCall rs } }
-
-ruleSetCall :: Parser [String]
-ruleSetCall  =  between (symbol "{") (symbol "}") (sepBy1 lowerIdent (symbol ","))
-           <|>  do { r <- lowerIdent ; return [r] }
-
+-} 
 rule :: Parser AstRule
 rule  =  do { id <- lowerIdent ; symbol "(" ; ps <- parameters ; symbol ")" ;
               lhs <- ruleGraph ; symbol "=>" ; rhs <- ruleGraph ; interface ;
