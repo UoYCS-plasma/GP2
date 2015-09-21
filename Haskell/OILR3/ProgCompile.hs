@@ -191,6 +191,7 @@ oilrCompileProc (Procedure name ds cs) = (PRO name : concatMap oilrCompileExpr c
 oilrCompileMain :: Main -> SemiOilrCode
 oilrCompileMain (Main cs) = oilrCompileProc (Procedure "Main" [] cs)
 
+-- For (IfStatement cn th el), where cn is a single rule, we can introduce a new rule cn' which performs the matching part of the rule but not the transformation, as the output of cn will be discarded anyway.
 
 oilrCompileExpr :: Expr -> SemiOilrCode
 oilrCompileExpr (IfStatement  cn th el)    = notImplemented 2

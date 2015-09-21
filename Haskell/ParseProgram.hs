@@ -63,7 +63,10 @@ condExpr :: (Expr -> Expr -> Expr -> Expr) -> Parser Expr
 condExpr constr = do { c <- expr ;
                        t <- option Skip $ do { keyword "then" ; expr } ;
                        e <- option Skip $ do { keyword "else" ; expr } ;
-                       return $ constr c t e }
+                       case c of
+                       IfStatement _ _ _  -> error "Use brackets to nest if/try blocks"
+                       TryStatement _ _ _ -> error "Use brackets to nest try/if blocks"
+                       _                  -> return $ constr c t e }
 
 ruleSet :: Parser [String]
 ruleSet  =  between (symbol "{") (symbol "}") (sepBy1 lowerIdent (symbol ","))
