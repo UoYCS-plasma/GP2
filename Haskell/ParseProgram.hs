@@ -49,12 +49,12 @@ exprSequence = sepBy1 expr (symbol ";")
 expr :: Parser Expr
 expr  =  do { keyword "if"  ; condExpr IfStatement }
      <|> do { keyword "try" ; condExpr TryStatement }
-     <|> do { symbol "(" ; cs <- exprSequence ; symbol ")!" ; return $ Looped (Sequence cs) }
-     <|> do { symbol "(" ; cs <- exprSequence ; symbol ")" ; return $ Sequence cs }
-     <|> do { id <- upperIdent ; option (ProcedureCall id) $
+     <|> do { cs <- between (symbol "(") (symbol ")") exprSequence ;
+              option (Sequence cs) $ do { symbol "!" ; return $ Looped (Sequence cs) } }
+     <|> do { id <- upperIdent; option (ProcedureCall id) $
                                 do { symbol "!" ; return $ Looped $ ProcedureCall id } }
-     <|> do { rs <- ruleSet ; option (RuleSet rs) $
-                                do { symbol "!" ; return $ Looped $ RuleSet rs } }
+     <|> do { rs <- ruleSet; option (RuleSet rs) $
+                             do { symbol "!" ; return $ Looped $ RuleSet rs } }
                                  
      <|> do { keyword "skip" ; return Skip }
      <|> do { keyword "fail" ; return Fail }

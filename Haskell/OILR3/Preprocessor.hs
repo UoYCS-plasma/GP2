@@ -8,10 +8,6 @@ import Data.List
 -- Simplify a GP2 program to make compilation easier
 
 
--- TODO: instead of just transforming the existing (byzantine!) graph structure
--- perhaps we can use a simpler representation that would facilitate compilation
--- and code transformation?
-
 type ElemId = Integer
 type Name = String
 
@@ -28,7 +24,6 @@ data IRCall = IRLoop Name
 
 data IRLabel = IRLabel Colour
     deriving (Show, Eq)
-
 
 data IRElem = N ElemId IRLabel
             | E ElemId ElemId ElemId
