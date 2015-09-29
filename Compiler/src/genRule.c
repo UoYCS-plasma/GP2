@@ -862,15 +862,15 @@ void generateApplicationCode(Rule *rule)
    for(index = 0; index < rule->lhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->lhs, index);
+      if(!host_edge_index_declared)
+      {
+         PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
+         host_edge_index_declared = true;
+      }
+      else PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
       if(edge->interface == NULL) 
       {
-         if(!host_edge_index_declared)
-         {
-            PTFI("int host_edge_index;\n", 3);
-            host_edge_index_declared = true;
-         }
          /* Generate code to remove the edge. */
-         PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
          PTFI("if(record_changes)\n", 3);
          PTFI("{\n", 3);
          PTFI("Edge *edge = getEdge(host, host_edge_index);\n", 6);
@@ -882,12 +882,6 @@ void generateApplicationCode(Rule *rule)
       }
       else
       {
-         if(!host_edge_index_declared)
-         {
-            PTFI("int host_edge_index;\n", 3);
-            host_edge_index_declared = true;
-         }
-         PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
          PTFI("resetMatchedEdgeFlag(host, host_edge_index);\n\n", 3);
          if(edge->interface->relabelled || edge->interface->remarked)
          {
@@ -906,13 +900,13 @@ void generateApplicationCode(Rule *rule)
                if(label.length == 0 && label.mark == NONE) PTFI("label = blank_label;\n", 3);
                else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
                PTFI("/* Relabel the edge if its label is not equal to the RHS label. */\n", 3);
-               PTFI("if(!equalHostLabels(label_e%d, label))\n", 3, index);
+               PTFI("if(equalHostLabels(label_e%d, label)) removeHostList(label.list);\n", 3, index);
+               PTFI("else\n", 3);
                PTFI("{\n", 3);
                PTFI("if(record_changes) pushRelabelledEdge(host_edge_index, label_e%d);\n",
                     6, index);
                PTFI("relabelEdge(host, host_edge_index, label);\n", 6);
                PTFI("}\n", 3);
-               PTFI("else removeHostList(label.list);\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
              * component of the label). */
@@ -929,16 +923,17 @@ void generateApplicationCode(Rule *rule)
    /* (2) Delete/relabel nodes. */
    for(index = 0; index < rule->lhs->node_index; index++)
    { 
+      if(!host_node_index_declared)
+      {
+         PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
+         host_node_index_declared = true;
+      }
+      /* Generate code to remove the node. */
+      else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
       RuleNode *node = getRuleNode(rule->lhs, index);
       if(node->interface == NULL) 
       {
-         if(!host_node_index_declared)
-         {
-            PTFI("int host_node_index;\n", 3);
-            host_node_index_declared = true;
-         }
          /* Generate code to remove the node. */
-         PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
          PTFI("if(record_changes)\n", 3);
          PTFI("{\n", 3);
          PTFI("Node *node = getNode(host, host_node_index);\n", 6);
@@ -950,12 +945,6 @@ void generateApplicationCode(Rule *rule)
       }
       else
       {
-         if(!host_node_index_declared)
-         {
-            PTFI("int host_node_index;\n", 3);
-            host_node_index_declared = true;
-         }
-         PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
          PTFI("resetMatchedNodeFlag(host, host_node_index);\n\n", 3);
          RuleNode *rhs_node = node->interface;
          if(rhs_node->relabelled || rhs_node->remarked)
@@ -976,13 +965,13 @@ void generateApplicationCode(Rule *rule)
                else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
                
                /* If the two labels are equal, no relabelling needs to be done. */
-               PTFI("if(!equalHostLabels(label_n%d, label))\n", 3, index);
+               PTFI("if(equalHostLabels(label_n%d, label)) removeHostList(label.list);\n", 3, index);
+               PTFI("else\n", 3);
                PTFI("{\n", 3);
                PTFI("if(record_changes) pushRelabelledNode(host_node_index, label_n%d);\n",
                     6, index);
                PTFI("relabelNode(host, host_node_index, label);\n", 6);
                PTFI("}\n", 3);
-               PTFI("else removeHostList(label.list);\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
              * component of the label). */
@@ -996,12 +985,6 @@ void generateApplicationCode(Rule *rule)
          }
          if(rhs_node->root_changed)
          {
-            if(!host_node_index_declared)
-            {
-               PTFI("int host_node_index;\n", 3);
-               host_node_index_declared = true;
-            }
-            PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
             /* The root is changed in two cases:
              * (1) The LHS node is rooted and the RHS node is non-rooted.
              * (2) The LHS node is non-rooted, the RHS node is rooted, and
