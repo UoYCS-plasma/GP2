@@ -40,12 +40,12 @@ resultWith f gs = let (gs',fc',uc',bds') = foldl add ([], 0, 0, (maxBound, 0)) g
     add (gs, fc, uc, bds)         Unfinished   = (gs, fc, uc+1, bds)
     add (gs, fc, uc, (low, high)) (Failure rc) = (gs, fc+1, uc, (min rc low, max rc high))
         
-findMain :: [Declaration] -> Main
-findMain ((MainDecl m):ds) = m
+findMain :: [Declaration] -> Declaration
+findMain (m@(Main _):ds) = m
 findMain (_:ds) = findMain ds
 findMain [] = error "No main procedure defined."
 
-evalMain :: Int -> [Declaration] -> Main -> HostGraph -> [GraphState]
+evalMain :: Int -> [Declaration] -> Declaration -> HostGraph -> [GraphState]
 evalMain max ds (Main coms) g = evalExprSeq max ds coms (GS g 0)
 
 evalExprSeq :: Int -> [Declaration] -> [Expr] -> GraphState -> [GraphState]
@@ -94,7 +94,7 @@ evalExpr max ds (RuleSet rs) (GS g rc) =
             hs -> [GS h (rc+1) | h <- hs]
 evalExpr max ds (Sequence es) gs = evalExprSeq max ds es gs
 evalExpr max ds (ProcedureCall proc) gs = evalExprSeq max (decls++ds) cs gs
-    where Procedure id decls cs = procLookup proc ds
+    where Proc id decls cs = procLookup proc ds
 
 
 {-
@@ -161,12 +161,12 @@ evalLooped max ds c gs  =
                                  Failure rc -> [updAppCount (const rc) gs] -- NB!
                                  _          -> evalLooped max ds c gsInter ]
 -}
-procLookup :: ProcName -> [Declaration] -> Procedure
+procLookup :: ProcName -> [Declaration] -> Declaration
 procLookup id decls = case matches of
    []  -> error $ "Reference to undefined procedure " ++ id
    d:_ -> d
    where
-   matches = [d | ProcDecl d@(Procedure name _ _) <- decls, name == id]
+   matches = [d | d@(Proc name _ _) <- decls, name == id]
 
 ruleLookup :: RuleName -> [Declaration] -> Rule
 ruleLookup id decls = case matches of

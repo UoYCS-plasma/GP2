@@ -36,7 +36,7 @@ notImplemented n = error $ "Not implemented: " ++ show n
 compileProgram :: [Flag] -> GPProgram -> [OilrCode]
 compileProgram flags (Program ds) = map (insertOrbs [] Nothing . postprocess) mappings
     where
-        prog = map oilrCompileDeclaration ds
+        prog = map oilrCompileDeclaration $ oilrHeavyLifter ds
         mappings = map elemIdMapping prog
 
 
@@ -202,7 +202,7 @@ oilrCompileExpr (RuleSet [r])              = [ CAL r ]
 oilrCompileExpr (ProcedureCall p)          = [ CAL p ]
 oilrCompileExpr Skip                       = [ TRU, RET ]
 oilrCompileExpr Fail                       = [ FLS, RET ]
-oilrCompileExpr (Looped (RuleSet [r]))     = [ ALP r ]
+oilrCompileExpr (Looped (RuleSet rs))      = [ ALP r | r <- rs ] -- TODO: not nondeterministic!
 oilrCompileExpr (Looped (ProcedureCall p)) = [ ALP p ]
 oilrCompileExpr (Looped e)                 = error $ "Invalid Loop construct " ++ show e
 oilrCompileExpr e                          = error $ "Unsupported: " ++ show e
@@ -210,12 +210,17 @@ oilrCompileExpr e                          = error $ "Unsupported: " ++ show e
 
 -- oilrHeavyLifter promotes sequences to procedures
 oilrHeavyLifter :: [Declaration] -> [Declaration]
-oilrHeavyLifter ((Proc lbl scp es):ds) = Proc lbl scp es' : oilrHeavyLifter (newDs++ds)
-    where (es', newDs) = oilrLifter es []
+oilrHeavyLifter [] = []
+oilrHeavyLifter (d:ds) = case d of
+    Main es         -> Main es' : oilrHeavyLifter (newDs++ds)
+        where (es', newDs) = oilrLifter es []
+    Proc lbl scp es -> Proc lbl scp es' : oilrHeavyLifter (newDs++ds)
+        where (es', newDs) = oilrLifter es []
+    d               -> d : oilrHeavyLifter ds
 
 oilrLifter :: [Expr] -> [(Expr, [Declaration])] -> ([Expr], [Declaration])
-oilrLifter (Sequence s:es) acc = oilrLifter es (ProcedureCall pr, (Proc pr [] s):acc)
-    where pr = "Proc__" ++ show length acc
+oilrLifter (Sequence s:es) acc = oilrLifter es ((ProcedureCall pr, [Proc pr [] s]):acc)
+    where pr = "Proc__" ++ show (length acc)
 oilrLifter (e:es)          acc = oilrLifter es ((e, []):acc) 
 oilrLifter []              acc = (es, concat dss)
     where (es, dss) = unzip acc

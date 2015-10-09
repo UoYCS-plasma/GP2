@@ -18,18 +18,18 @@ declaration  =  do { gpMain }
            <|>  do { procedure }
            <|>  do { r <- rule      ; return $ AstRuleDecl r }
 
-gpMain :: Parser Main
+gpMain :: Parser Declaration
 gpMain  =  do { keyword "Main" ; symbol "=" ; cs <- exprSequence ; return $ Main cs }
 
-procedure :: Parser Procedure
+procedure :: Parser Declaration
 procedure  =  do { id <- upperIdent ; symbol "=" ;
                    ds <- option [] $
                            between (symbol "[") (symbol "]") (many1 localDeclaration) ;
-                   cs <- exprSequence ; return $ Procedure id ds cs }
+                   cs <- exprSequence ; return $ Proc id ds cs }
 
 localDeclaration :: Parser Declaration
 localDeclaration  =  do { r <- rule ; return $ AstRuleDecl r }
-                <|>  do { p <- procedure ; return $ ProcDecl p }
+                <|>  procedure
 
 {-
 data Expr = IfStatement Expr Expr Expr
