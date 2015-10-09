@@ -54,15 +54,15 @@ type EdgeName = String
 -- GP Program ADTs
 data GPProgram = Program [Declaration] deriving Show
 
-data Declaration = MainDecl Main
-                 | ProcDecl Procedure
+data Declaration = Main [Expr]
+                 | Proc ProcName [Declaration] [Expr]
                  | AstRuleDecl AstRule
                  | RuleDecl Rule
      deriving Show
 
-data Main = Main [Expr] deriving Show
+-- data Main = Main [Expr] deriving Show
 
-data Procedure = Procedure ProcName [Declaration] [Expr] deriving Show
+-- data Procedure = Procedure ProcName [Declaration] [Expr] deriving Show
 
 data Expr = IfStatement Expr Expr Expr
           | TryStatement Expr Expr Expr

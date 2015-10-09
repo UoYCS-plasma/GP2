@@ -181,15 +181,15 @@ data Condition = NoCondition
 
 
 oilrCompileDeclaration :: Declaration -> SemiOilrCode
-oilrCompileDeclaration (MainDecl m) = oilrCompileMain m
-oilrCompileDeclaration (ProcDecl p) = oilrCompileProc p
+oilrCompileDeclaration m@(Main _)      = oilrCompileMain m
+oilrCompileDeclaration p@(Proc _ _ _)  = oilrCompileProc p
 oilrCompileDeclaration (AstRuleDecl r) = oilrCompileRule r
 
-oilrCompileProc :: Procedure -> SemiOilrCode
-oilrCompileProc (Procedure name ds cs) = (PRO name : concatMap oilrCompileExpr cs) ++ [END]
+oilrCompileProc :: Declaration -> SemiOilrCode
+oilrCompileProc (Proc name ds cs) = (PRO name : concatMap oilrCompileExpr cs) ++ [END]
 
-oilrCompileMain :: Main -> SemiOilrCode
-oilrCompileMain (Main cs) = oilrCompileProc (Procedure "Main" [] cs)
+oilrCompileMain :: Declaration -> SemiOilrCode
+oilrCompileMain (Main cs) = oilrCompileProc (Proc "Main" [] cs)
 
 -- For (IfStatement cn th el), where cn is a single rule, we can introduce a new rule cn' which performs the matching part of the rule but not the transformation, as the output of cn will be discarded anyway.
 
@@ -207,32 +207,20 @@ oilrCompileExpr (Looped (ProcedureCall p)) = [ ALP p ]
 oilrCompileExpr (Looped e)                 = error $ "Invalid Loop construct " ++ show e
 oilrCompileExpr e                          = error $ "Unsupported: " ++ show e
 
-{- oilrCompileCommand :: Command -> SemiOilrCode
-oilrCompileCommand (Block b) = oilrCompileBlock b
--- oilrCompileCommand (IfStatement (SimpleCommand (RuleCall [r])) th el) =
---     oilrCompilePredicateRule r ++ oilrCompileBlock th ++ oilrCompileBlock el
-oilrCompileCommand (IfStatement  cn th el) = notImplemented 2
-oilrCompileCommand (TryStatement cn th el) =
-        -- TODO: may produce incorrect behaviour with command sequences and proc calls!
-        oilrCompileBlock cn ++ oilrCompileBlock th ++ oilrCompileBlock el
 
--- returns a pair of (compiledCode, newDefs)
-oilrCompileBlock :: Block -> SemiOilrCode
-oilrCompileBlock (ComSeq cs)       = concatMap oilrCompileCommand cs
-oilrCompileBlock (LoopedComSeq cs) = notImplemented 5
-oilrCompileBlock (SimpleCommand s) = oilrCompileSimple s
-oilrCompileBlock (ProgramOr a b)   = notImplemented 6
+-- oilrHeavyLifter promotes sequences to procedures
+oilrHeavyLifter :: [Declaration] -> [Declaration]
+oilrHeavyLifter ((Proc lbl scp es):ds) = Proc lbl scp es' : oilrHeavyLifter (newDs++ds)
+    where (es', newDs) = oilrLifter es []
 
-oilrCompileSimple :: SimpleCommand -> SemiOilrCode
-oilrCompileSimple (RuleCall      [r]) = [ CAL r ]
-oilrCompileSimple (LoopedRuleCall [r]) = [ ALP r ]
-oilrCompileSimple (RuleCall       rs) = notImplemented 7 -- non-deterministic choice(?)
-oilrCompileSimple (LoopedRuleCall rs) = notImplemented 8
-oilrCompileSimple (ProcedureCall       p) = [ CAL p ]
-oilrCompileSimple (LoopedProcedureCall p) = [ ALP p ]
-oilrCompileSimple Skip   = [ TRU , RET ]
-oilrCompileSimple Fail   = [ FLS , RET ]
--}
+oilrLifter :: [Expr] -> [(Expr, [Declaration])] -> ([Expr], [Declaration])
+oilrLifter (Sequence s:es) acc = oilrLifter es (ProcedureCall pr, (Proc pr [] s):acc)
+    where pr = "Proc__" ++ show length acc
+oilrLifter (e:es)          acc = oilrLifter es ((e, []):acc) 
+oilrLifter []              acc = (es, concat dss)
+    where (es, dss) = unzip acc
+
+
 
 -- -------------------------------------------------------------------
 -- rule compilation is complex...

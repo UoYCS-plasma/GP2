@@ -51,8 +51,8 @@ makeSymbolTable scope table decls  = foldl' (makeSymbolTable' scope) table decls
 
 makeSymbolTable' :: Scope -> SymbolTable -> Declaration -> SymbolTable
 makeSymbolTable' scope table decl = case decl of
-  MainDecl _ -> table
-  ProcDecl _ -> table 
+  Main _ -> table
+  Proc _ -> table 
   AstRuleDecl (AstRule id vars _ _) -> enterVariables scope id table vars
  
 enterVariables :: Scope -> RuleID -> SymbolTable -> [Variable] -> SymbolTable

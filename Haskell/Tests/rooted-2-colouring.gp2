@@ -1,4 +1,4 @@
-Main = try (init; Colour!; unroot) 
+Main = (init; Colour!; unroot) 
 
 Colour = ({mark_blue, mark_red}; Invalid)!; Back
 Invalid = {joined_reds, joined_blues}

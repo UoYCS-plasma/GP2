@@ -151,8 +151,6 @@ ppDecl :: Preprocessor Declaration IRDefn
 ppDecl = notImplemented 11
 
 
-ppProc :: Preprocessor Procedure Procedure
-ppProc (Procedure id ds cs) = notImplemented 1
 
 ppRule :: AstRule -> AstRule
 ppRule r@(AstRule id vs (lhs, rhs) cs) = r

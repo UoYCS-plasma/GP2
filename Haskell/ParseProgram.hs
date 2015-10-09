@@ -14,8 +14,8 @@ program :: Parser GPProgram
 program  =  do { ds <- many1Commented declaration ; return $ Program ds }
 
 declaration :: Parser Declaration
-declaration  =  do { m <- gpMain    ; return $ MainDecl m }
-           <|>  do { p <- procedure ; return $ ProcDecl p }
+declaration  =  do { gpMain }
+           <|>  do { procedure }
            <|>  do { r <- rule      ; return $ AstRuleDecl r }
 
 gpMain :: Parser Main
