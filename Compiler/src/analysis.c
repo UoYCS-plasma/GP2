@@ -412,7 +412,7 @@ static bool neverFails(GPCommand *command)
    return false;
 }
 
-/* Returns true if the passed GP 2 command succeeds and does not change the host graph. */
+/* Returns true if the passed GP 2 command does not change the host graph. */
 static bool nullCommand(GPCommand *command)
 {
    switch(command->type)
@@ -461,10 +461,8 @@ static bool nullCommand(GPCommand *command)
 
       case BREAK_STATEMENT:
       case SKIP_STATEMENT:
-           return true;
-
       case FAIL_STATEMENT:
-           return false;
+           return true;
 
       default:
            print_to_log("Error (neverFails): Unexpected command type %d.\n",
