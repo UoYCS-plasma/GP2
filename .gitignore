@@ -9,7 +9,6 @@ TODO
 *.swp
 *.log
 *.o
-*.out
 core*
 tmp/
 *.a

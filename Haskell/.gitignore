@@ -6,3 +6,4 @@ IsoChecker
 ViewGraph
 gp2
 gp2c
+Tests/*.c

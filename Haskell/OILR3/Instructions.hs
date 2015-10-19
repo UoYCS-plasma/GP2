@@ -34,6 +34,9 @@ data Pred = Pred { cDim :: Dim
                  , rDim :: Dim } 
     deriving (Show, Eq)
 
+data Dirn = In | Out | Either deriving (Eq, Show)
+
+
 
 data Instr a b = 
       OILR Int
@@ -58,11 +61,11 @@ data Instr a b =
     -- Graph search
     -- | CRS a Pred            -- conditional reset of trav
     | LUN a Pred
-    | LUE b a a
-    | LBE b a a             -- do an omni-directional edge match
-    | XIE a b a             -- extend match back along an incoming edge
-    | XOE a b a             -- extend match along an outgoing edge 
-    | NEC a a               -- no-edge condition
+    | LUE b a a Dirn        -- look up an edge between two bound nodes. Optionally 
+    | XTE a b a Dirn        -- extend match along an edge pointing in Direction
+--    | XIE a b a             -- extend match back along an incoming edge
+--    | XOE a b a             -- extend match along an outgoing edge 
+    | NEC a a               -- negative edge condition
     | UBA                   -- unbind all
     -- flow control
     | CAL String | ALP String -- call rule or proc once or as-long-as-possible

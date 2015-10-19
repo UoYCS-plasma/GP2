@@ -72,24 +72,20 @@ analyseProg fs decls = OilrProps { flags = fs , spaces = spcs , oilrInd = bits
 makeSlots :: OilrProg -> (String, Int)
 makeSlots is = ( idFor is , sum $ map countMatches is )
     where
-        countMatches (LUN _ _)   = 1
-        countMatches (LUE _ _ _) = 1
-        countMatches (LBE _ _ _) = 1
-        countMatches (XOE _ _ _) = 2
-        countMatches (XIE _ _ _) = 2
-        countMatches (ADN _)     = 1
-        countMatches (ADE _ _ _) = 1
-        countMatches _           = 0
+        countMatches (LUN _ _)     = 1
+        countMatches (LUE _ _ _ _) = 1
+        countMatches (XTE _ _ _ _) = 2
+        countMatches (ADN _)       = 1
+        countMatches (ADE _ _ _)   = 1
+        countMatches _             = 0
 
 makeMask :: OilrProg -> (String, [Int])
 makeMask is = ( idFor is , concatMap mask is )
     where
-        mask (LUN _ _)   = [-1]
-        mask (LUE _ _ _) = [0]
-        mask (LBE _ _ _) = [0]
-        mask (XOE _ _ _) = [0, 0]
-        mask (XIE _ _ _) = [0, 0]
-        mask _           = []
+        mask (LUN _ _)     = [-1]
+        mask (LUE _ _ _ _) = [0]
+        mask (XTE _ _ _ _) = [0, 0]
+        mask _             = []
 
 idFor :: OilrProg -> String
 idFor (PRO s:_) = s
@@ -203,10 +199,13 @@ unbindAndRet oilr id =
 recursionCode :: String -> String -> String
 recursionCode rMask id = makeCFunctionCall id [ "(recursive+1)&" ++ rMask, "state" ]
 
-
 useRecursion :: OilrProps -> String
 useRecursion oilr = if RecursiveRules `elem` flags oilr then "1" else "0"
-    
+
+matchComplete :: OilrProps -> String
+matchComplete oilr = if useRecursion oilr == "1"
+                        then "if (recursive) { RECURSE; boolFlag=1; }\n"
+                        else ""
 
 compileRule :: OilrProps -> OilrProg -> [String]
 compileRule oilr is = map compile is
@@ -222,14 +221,36 @@ compileRule oilr is = map compile is
         compile (DEN n)     = deleteBoundNode n
         compile (DEE e)     = deleteBoundEdge e
         compile UBA         = exitRule
+        compile OK          = matchComplete oilr
+        compile RET         = "return;"
         compile END         = endCFunction
-        compile i           = compileInstr (spaces oilr) i
-{-        compile (LUN n sig)      = [ labelFor n ++ ":"  ]
-        compile (LUE n src tgt)  = [ ]
-        compile (XOE src e tgt)  = [ ]
-        compile (XIE src e tgt)  = [ ]
-        compile (NEC src tgt)    = [ ] -}
+        compile i           = compileTrav oilr i
 
+compileTrav :: OilrProps -> Instr Int Int -> String
+compileTrav oilr i = intercalate "\n" [ travHeader oilr i, travBody oilr i ]
+
+travHeader :: OilrProps -> Instr Int Int -> String
+travHeader oilr i = 
+    intercalate "\n" [ labelFor (idOfInstr i) ++ ":"
+                     , makeCFunctionCall "debug" [ show "In trav %s\n", show $ show i ]
+                     , makeCFunctionCall "checkGraph" [] ]
+    where idOfInstr (LUN n _)     = n
+          idOfInstr (LUE e _ _ _) = e
+          idOfInstr (XTE _ e _ _) = e
+
+travBody :: OilrProps -> Instr Int Int -> String
+travBody oilr (LUN n sig) = case definiteLookup sig $ spaces oilr of
+    [s] -> makeCFunctionCall "makeSimpleTrav" [ show n , "index(" ++ show s ++ ")"]
+    ss  -> makeCFunctionCall "makeTrav" ( show n
+                                        : show (length ss)
+                                        : ["{0, index("++show s++")}" | s <- ss] )
+travBody _ i@(LUE e s t Either) = makeCFunctionCallIntArgs "makeBidiEdgeTrav" [s, e, t]
+travBody _ i@(LUE e s t Out)
+    | s == t    = makeCFunctionCallIntArgs "makeLoopTrav" [s, e]
+    | otherwise = makeCFunctionCallIntArgs "makeEdgeTrav" [s, e, t]
+travBody _ i@(XTE s e t In)  = makeCFunctionCallIntArgs "makeExtendInTrav"  [s, e, t, 1]
+travBody _ i@(XTE s e t Out) = makeCFunctionCallIntArgs "makeExtendOutTrav" [s, e, t, 1]
+travBody _ (NEC s t) = makeCFunctionCallIntArgs "makeAntiEdgeTrav" [s, t]
 
 ruleHeader :: OilrProps -> String -> [String]
 ruleHeader oilr id = [ redef "DONE" $ unbindAndRet oilr id
@@ -251,8 +272,6 @@ ruleHeader oilr id = [ redef "DONE" $ unbindAndRet oilr id
         slots = slotsFor oilr id
         mask  = maskFor  oilr id
         maskSize = length $ definiteLookup id $ stateMask oilr
-
-
 
 orFail :: String
 orFail = concat [ "\tif (!boolFlag) " , exitRule , ";"]
@@ -292,28 +311,13 @@ exitRule = "\tDONE;"
 modifyAndBind :: Int -> String -> [String] -> String
 modifyAndBind i fun args = concat [ '\t' : bindingFor i , " = ", makeCFunctionCall fun args ]
 
-
 makeModifyAndBind :: Int -> String -> [Int] -> String
 makeModifyAndBind i fun args = "\t" ++ matchInd i ++ " = " ++ makeCFunctionCall fun (map matchInd args)
     where
         matchInd i = "matches[" ++ show i ++ "]"
 
--- TODO: this mess needs to go! 
+{- -- TODO: this mess needs to go! 
 compileInstr :: Mapping Pred [Int] -> Instr Int Int -> String
--- compileInstr _ (ADN n)         = makeModifyAndBind n "addNode" []
--- compileInstr _ (ADE e src tgt) | src==tgt  = makeModifyAndBind e "addLoop" [src]
---                                | otherwise = makeModifyAndBind e "addEdge" [src, tgt]
--- 
-compileInstr _ OK            = "\tif (recursive) { RECURSE; boolFlag=1; }\n"
-compileInstr _ RET           = "return;"
-
--- compileInstr _ (PRO "Main")  = startCFunction "_GPMAIN" []
--- compileInstr _ (PRO s)       = startCFunction s []
--- compileInstr _ (RUL s)       = startCFunction s []
--- compileInstr _ UBA           = "\tDONE;\n"
--- compileInstr _ END           = endCFunction 
-
--- compileInstr (CRS n sig)     = makeCFunctionCallIntArgs "resetTrav" [n] -- TODO
 compileInstr idx (LUN n sig) = labelFor n
     ++ ":\n\tdebug(\"In LUN trav " ++ show n ++ "\\n\");"
     ++ "\n\tcheckGraph();\n"
@@ -323,7 +327,7 @@ compileInstr idx (LUN n sig) = labelFor n
                         [show n, "index(" ++ show s ++ ")" ]
         ss  -> makeCFunctionCall "makeTrav" 
                         (show n:show (length ss):map (\s->"{0, index("++show s++")}") ss)
-compileInstr _ (LUE n src tgt)
+compileInstr _ (LUE n src tgt Out)
     | src == tgt = "\tdebug(\"In loop trav " ++ show n ++ "\\n\");\n"
                 ++ makeCFunctionCallIntArgs "makeLoopTrav" [src, n]
     | otherwise  = "\tdebug(\"In edge trav " ++ show n ++ "\\n\");\n"
@@ -337,7 +341,7 @@ compileInstr _ (XIE src e tgt) = labelFor e
     ++ ":\n\tdebug(\"In XIE trav " ++ show e ++ "\\n\");\n"
     ++ makeCFunctionCallIntArgs "makeExtendInTrav" [src, e, tgt, 1]
 compileInstr _ (NEC src tgt)   = makeCFunctionCallIntArgs "makeAntiEdgeTrav" [src, tgt]
-
+-}
 
 makeCFunction :: String -> [String] -> String
 makeCFunction name lines = concat [startCFunction name [],  body, "\n}\n"]

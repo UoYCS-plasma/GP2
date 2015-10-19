@@ -35,9 +35,9 @@ mergeTravs nts []  = nts
 mergeTravs nts ets = edgesToInstrs [] [] edges
     where
         edges  = [ (src, ed, tgt)
-                    | src@(LUN sn _)  <- nts
-                    , tgt@(LUN tn _)  <- nts
-                    , ed@(LUE e s t)  <- ets
+                    | src@(LUN sn _)   <- nts
+                    , tgt@(LUN tn _)   <- nts
+                    , ed@(LUE e s t _) <- ets
                     , sn==s , tn==t ]
 
 -- TODO: when we use LUN to find a node with loops, and then don't modify the
@@ -46,28 +46,29 @@ mergeTravs nts ets = edgesToInstrs [] [] edges
 -- not bothering to match the loops.
 
 edgesToInstrs acc _ [] = reverse acc
-edgesToInstrs acc seen ((LUN _ sp, LUE e s t, LUN _ tp):es) =
+edgesToInstrs acc seen ((LUN _ sp, LUE e s t d, LUN _ tp):es) =
     case (s==t, s `elemIndex` seen, t `elemIndex` seen) of
-        (_,     Just _ , Just _ ) -> edgesToInstrs (LUE e s t:acc)          seen       es
-        (True,  Nothing, _      ) -> edgesToInstrs (LUE e s t:LUN s sp:acc) (s:seen)   es
-        (False, Nothing, Just _ ) -> edgesToInstrs (XIE t e s:acc)          (s:seen)   es
-        (False, Just _ , Nothing) -> edgesToInstrs (XOE s e t:acc)          (t:seen)   es
-        (False, Nothing, Nothing) -> edgesToInstrs (XOE s e t:LUN s sp:acc) (t:s:seen) es
+        (_,     Just _ , Just _ ) -> edgesToInstrs (LUE e s t d:acc)          seen     es
+        (True,  Nothing, _      ) -> edgesToInstrs (LUE e s t d:LUN s sp:acc) (s:seen) es
+        (False, Nothing, Just _ ) -> edgesToInstrs (XTE t e s In:acc)         (s:seen) es
+        (False, Just _ , Nothing) -> edgesToInstrs (XTE s e t Out:acc)        (t:seen) es
+        (False, Nothing, Nothing) -> edgesToInstrs (XTE s e t Out:LUN s sp:acc) (t:s:seen) es
+edgesToInstrs _ _ ((_, LUE _ _ _ In, _):es) = error "Found an unexpected in-edge"
 
 insertOrbs :: OilrCode -> Maybe Int -> OilrCode -> OilrCode
 insertOrbs acc prev [] = reverse acc
 insertOrbs acc prev (i:is) = case (i, prev) of
-    ( LUN n pr  , Nothing ) -> insertOrbs (ORF:i:acc) (Just n) is
-    ( LUN n pr  , Just p  ) -> insertOrbs (ORB p:i:acc) (Just n) is
-    ( XOE _ e _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just e) is
-    ( XIE _ e _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just e) is
-    ( LUE n _ _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just p) is -- don't update the jump point!
-    ( LBE n _ _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just p) is
-    ( NEC n _   , Just p  ) -> insertOrbs (ORB p:i:acc) (Just p) is
-    ( LUE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
-    ( LBE _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
-    ( XIE _ _ _ , Nothing ) -> error "Extend-in instruction cannot be first"
-    ( XOE _ _ _ , Nothing ) -> error "Extend-out instruction cannot be first"
+    ( LUN n pr    , Nothing ) -> insertOrbs (ORF:i:acc) (Just n) is
+    ( LUN n pr    , Just p  ) -> insertOrbs (ORB p:i:acc) (Just n) is
+    ( XTE _ e _ _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just e) is
+--    ( XOE _ e _   , Just p  ) -> insertOrbs (ORB p:i:acc) (Just e) is
+--    ( XIE _ e _   , Just p  ) -> insertOrbs (ORB p:i:acc) (Just e) is
+    ( LUE n _ _ _ , Just p  ) -> insertOrbs (ORB p:i:acc) (Just p) is -- don't update the jump point!
+    ( NEC n _     , Just p  ) -> insertOrbs (ORB p:i:acc) (Just p) is
+    ( LUE _ _ _ _ , Nothing ) -> error "Tried to match an edge before a node"
+    ( XTE _ _ _ _ , Nothing ) -> error "Nothing to extend!"
+    -- ( XIE _ _ _   , Nothing ) -> error "Extend-in instruction cannot be first"
+    -- ( XOE _ _ _   , Nothing ) -> error "Extend-out instruction cannot be first"
     _                       -> insertOrbs (i:acc) prev is
         
 
@@ -95,9 +96,10 @@ postprocess (mapping, sois) = map postprocessInstr sois
         postprocessInstr (URN n)     = URN $ translate n
         postprocessInstr (CON n c)   = CON (translate n) c
         postprocessInstr (LUN n p)   = LUN (translate n) p
-        postprocessInstr (LUE e s t) = LUE (translate e) (translate s) (translate t)
-        postprocessInstr (XOE s e t) = XOE (translate s) (translate e) (translate t)
-        postprocessInstr (XIE t e s) = XIE (translate t) (translate e) (translate s)
+        postprocessInstr (LUE e s t d) = LUE (translate e) (translate s) (translate t) d
+        postprocessInstr (XTE s e t d) = XTE (translate s) (translate e) (translate t) d
+        -- postprocessInstr (XOE s e t) = XOE (translate s) (translate e) (translate t)
+        -- postprocessInstr (XIE t e s) = XIE (translate t) (translate e) (translate s)
         postprocessInstr (NEC n1 n2) = NEC (translate n1) (translate n2)
         postprocessInstr OK          = OK
         postprocessInstr TRU         = TRU
@@ -109,15 +111,15 @@ elemIdMapping :: SemiOilrCode -> (Mapping GraphElemId Int, SemiOilrCode)
 elemIdMapping sois = ( zip (nub [ id | id <- concatMap extractId sois ]) [0,1..], sois )
 
 extractId :: Instr a a -> [a]
-extractId (ADN n)      = [n]
-extractId (DEN n)      = [n]
-extractId (RTN n)      = [n]
-extractId (LUN n _)    = [n]
-extractId (ADE e _ _)  = [e]
-extractId (DEE e)      = [e]
-extractId (LUE e _ _)  = [e]
-extractId (XOE _ e t)  = [e, t]
-extractId (XIE _ e s)  = [e, s]
+extractId (ADN n)       = [n]
+extractId (DEN n)       = [n]
+extractId (RTN n)       = [n]
+extractId (LUN n _)     = [n]
+extractId (ADE e _ _)   = [e]
+extractId (DEE e)       = [e]
+extractId (LUE e _ _ _) = [e]
+-- extractId (XOE _ e t)  = [e, t]
+-- extractId (XIE _ e s)  = [e, s]
 extractId _            = []
 
 
@@ -242,10 +244,8 @@ oilrSortEdgeLookups :: SemiOilrCode -> SemiOilrCode
 oilrSortEdgeLookups is = interesting ++ uninteresting
     where
         (interesting, uninteresting) = partition isInteresting is
-        isInteresting (LBE _ s t) | s == t    = error "bidi loops not allowed!"
-                                  | otherwise = False
-        isInteresting (LUE _ s t) | s == t    = True  -- loop
-                                  | otherwise = length [ e | LUE e s' t' <- is --parallel
+        isInteresting (LUE _ s t d) | s == t    = True  -- loop
+                                    | otherwise = length [ e | LUE e s' t' d <- is --parallel
                                                            ,  s==s' && t==t'
                                                            || s==t' && t==s' ] > 1
 
@@ -286,8 +286,8 @@ oilrCompileLhs cs lhs nif = code
                 r = if isRoot lhs nk then Equ 1 else GtE 0
                 c = definiteLookup (colour lhs nk) colourMapping
         compileEdge ek
-            | isBidi lhs ek = LBE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
-            | otherwise     = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek)
+            | isBidi lhs ek = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek) Either
+            | otherwise     = LUE (oilrEdgeId lhs ek) (oilrNodeId lhs $ source ek) (oilrNodeId lhs $ target ek) Out
 
 oilrCompileCondition :: AstRuleGraph -> Condition -> SemiOilrCode
 oilrCompileCondition _ NoCondition = []
