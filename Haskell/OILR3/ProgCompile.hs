@@ -93,6 +93,7 @@ postprocess (mapping, sois) = map postprocessInstr sois
         postprocessInstr (DEE e)     = DEE $ translate e
         postprocessInstr (RTN n)     = RTN $ translate n
         postprocessInstr (URN n)     = URN $ translate n
+        postprocessInstr (CON n c)   = CON (translate n) c
         postprocessInstr (LUN n p)   = LUN (translate n) p
         postprocessInstr (LUE e s t) = LUE (translate e) (translate s) (translate t)
         postprocessInstr (XOE s e t) = XOE (translate s) (translate e) (translate t)

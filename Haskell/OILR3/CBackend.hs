@@ -218,6 +218,7 @@ compileRule oilr is = map compile is
         compile (ADE e s t) = addBoundEdge e s t
         compile (RTN n)     = setBoundRoot n
         compile (URN n)     = unsetBoundRoot n
+        compile (CON n c)   = setBoundColour n c
         compile (DEN n)     = deleteBoundNode n
         compile (DEE e)     = deleteBoundEdge e
         compile UBA         = exitRule
@@ -278,6 +279,9 @@ setBoundRoot n = makeCFunctionCall "setRoot" ["asNode(" ++ bindingFor n ++ ")"]
 
 unsetBoundRoot :: Int -> String
 unsetBoundRoot n = makeCFunctionCall "unsetRoot" ["asNode(" ++ bindingFor n ++ ")"]
+
+setBoundColour :: Int -> Int -> String
+setBoundColour n c = makeCFunctionCall "setColour" [ "asNode(" ++ bindingFor n ++ ")", show c]
 
 bindingFor :: Int -> String
 bindingFor n = concat [ "matches[" , show n , "]" ]
