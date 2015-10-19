@@ -1,0 +1,24 @@
+Main = root ; swap
+
+root () [
+	(n1, empty # blue)
+	(n2, empty # red)
+|
+] => [
+	(n1 (R), empty # blue)
+	(n2, empty # red)
+|
+]
+interface = {n1, n2}
+
+swap () [
+	(n1 (R), empty # blue)
+	(n2, empty # red)
+|
+] => [
+	(n1, empty # blue)
+	(n2 (R), empty # red)
+|
+]
+interface = {n1, n2}
+

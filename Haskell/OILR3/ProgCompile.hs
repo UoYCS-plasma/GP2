@@ -7,7 +7,6 @@ import Mapping
 
 import Data.List
 import Data.Maybe
-import Unsafe.Coerce
 import Debug.Trace
 
 data GraphElem = N NodeKey | E EdgeKey deriving (Show, Eq)
@@ -20,23 +19,14 @@ type EdgeKey = (String, String, String)
 
 type Interface = [String]
 
-colourMapping :: Mapping Colour Dim
-colourMapping = 
-    [ (Uncoloured, Equ 0)
-    , (Red       , Equ 1)
-    , (Blue      , Equ 2)
-    , (Green     , Equ 3)
-    , (Grey      , Equ 4)
-    , (Cyan      , GtE 0) ]
-
-
 notImplemented n = error $ "Not implemented: " ++ show n
 
 
 compileProgram :: [Flag] -> GPProgram -> [OilrCode]
 compileProgram flags (Program ds) = map (insertOrbs [] Nothing . postprocess) mappings
     where
-        prog = map oilrCompileDeclaration $ oilrHeavyLifter ds
+        prog = map oilrCompileDeclaration ds -- $ trace (show lifted) lifted
+        lifted = oilrHeavyLifter ds
         mappings = map elemIdMapping prog
 
 
@@ -102,6 +92,7 @@ postprocess (mapping, sois) = map postprocessInstr sois
         postprocessInstr (DEN n)     = DEN $ translate n
         postprocessInstr (DEE e)     = DEE $ translate e
         postprocessInstr (RTN n)     = RTN $ translate n
+        postprocessInstr (URN n)     = URN $ translate n
         postprocessInstr (LUN n p)   = LUN (translate n) p
         postprocessInstr (LUE e s t) = LUE (translate e) (translate s) (translate t)
         postprocessInstr (XOE s e t) = XOE (translate s) (translate e) (translate t)
@@ -133,52 +124,6 @@ extractId _            = []
 -- -------------------------------------------------------------------
 -- program OILR instruction generation
 -- -------------------------------------------------------------------
-
-{-   A handy AST reference...
-
-data HostEdge = HostEdge NodeName NodeName HostLabel deriving Show
-data AstHostGraph = AstHostGraph [HostNode] [HostEdge] deriving Show
-data GPProgram = Program [Declaration] deriving Show
-
-data Declaration = MainDecl Main
-                 | ProcDecl Procedure
-                 | AstRuleDecl AstRule
-                 | RuleDecl Rule
-     deriving Show
-
-data Main = Main [Command] deriving Show
-
-data Procedure = Procedure ProcName [Declaration] [Command] deriving Show
-
-data Rule = Rule RuleName [Variable] (AstRuleGraph, AstRuleGraph) NodeInterface 
-            EdgeInterface Condition deriving Show
-
-data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph) 
-               Condition  deriving Show
-data AstRuleGraph = AstRuleGraph [RuleNode] [AstRuleEdge] deriving (Show,Eq)
-data AstRuleEdge = AstRuleEdge EdgeName Bool NodeName NodeName RuleLabel deriving (Show, Eq)
-
-data RuleNode = RuleNode NodeName Bool RuleLabel deriving (Show, Eq)
-data Condition = NoCondition
-               | TestInt VarName
-               | TestChr VarName
-               | TestStr VarName
-               | TestAtom VarName
-               | Edge NodeName NodeName (Maybe RuleLabel)
-               | Eq GPList GPList
-               | NEq GPList GPList
-               | Greater RuleAtom RuleAtom
-               | GreaterEq RuleAtom RuleAtom
-               | Less RuleAtom RuleAtom
-               | LessEq RuleAtom RuleAtom
-               | Not Condition
-               | Or Condition Condition
-               | And Condition Condition
-    deriving Show
-
-
--}
-
 
 oilrCompileDeclaration :: Declaration -> SemiOilrCode
 oilrCompileDeclaration m@(Main _)      = oilrCompileMain m
@@ -255,10 +200,10 @@ target :: EdgeKey -> NodeKey
 target (_, _, nk) = nk
 
 inDegree :: AstRuleGraph -> NodeKey -> Int
-inDegree g nk = length [ ek | ek <- edgeIds g , target ek == nk ]
+inDegree  g nk = length [ ek | ek <- edgeIds g , target ek == nk , not $ isBidi g ek ]
 
 outDegree :: AstRuleGraph -> NodeKey -> Int
-outDegree g nk = length [ ek | ek <- edgeIds g , source ek == nk ]
+outDegree g nk = length [ ek | ek <- edgeIds g , source ek == nk , not $ isBidi g ek ]
 
 loopCount :: AstRuleGraph -> NodeKey -> Int
 loopCount g nk = length [ ek | ek <- edgeIds g , source ek == nk && target ek == nk ]
@@ -270,7 +215,7 @@ colour :: AstRuleGraph -> NodeKey -> Colour
 colour g nk = definiteLookup nk $ nodeColours g
 
 isBidi :: AstRuleGraph -> EdgeKey -> Bool
-isBidi g ek = ek `elem` bidiEdges g
+isBidi g ek@(_,s,t) = ek `elem` bidiEdges g  &&  s /= t -- a bidi loop is just a loop!
 
 
 oilrCompileRule :: AstRule -> SemiOilrCode
@@ -296,9 +241,12 @@ oilrSortEdgeLookups :: SemiOilrCode -> SemiOilrCode
 oilrSortEdgeLookups is = interesting ++ uninteresting
     where
         (interesting, uninteresting) = partition isInteresting is
-        isInteresting (LUE _ s t) | s == t    =  True
-                                  | otherwise = 
-            ( length $ filter (\(LUE e' s' t') -> s==s' && t==t' || s==t' && t==s') is ) > 1
+        isInteresting (LBE _ s t) | s == t    = error "bidi loops not allowed!"
+                                  | otherwise = False
+        isInteresting (LUE _ s t) | s == t    = True  -- loop
+                                  | otherwise = length [ e | LUE e s' t' <- is --parallel
+                                                           ,  s==s' && t==t'
+                                                           || s==t' && t==s' ] > 1
 
 -- NOTE: haskell's standard compare on n-tuples doesn't give good results
 -- so I've developed a custom points-based approach
@@ -311,10 +259,9 @@ predToWeight pr = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [
           i = iDim pr
           l = lDim pr
           r = rDim pr
-
-valueForDim :: Dim -> Int
-valueForDim (GtE n) = n
-valueForDim (Equ n) = (n+1)*2
+          valueForDim :: Dim -> Int
+          valueForDim (GtE n) = n
+          valueForDim (Equ n) = (n+1)*2
 
 applyConds :: Condition -> NodeName -> Pred -> Pred
 applyConds (Eq [Indeg n] [Val (Int v)]) name pr = pr { iDim = Equ v }
@@ -347,12 +294,12 @@ oilrCompileCondition lhs (Not (Edge a b Nothing)) = [NEC (oilrNodeId lhs a) (oil
 oilrCompileCondition _ (Eq _ _) = []  -- rule atoms handled in applyConds
 oilrCompileCondition _ c = trace ("\n ** Skipping condition " ++ show c) []
 
-
--- Note that when making unique IDs from the RHS we _always_ use the LHS graph, not the RHS.
--- The inclusion of the graph in the unique ID is purely to identify elements that belong to
--- same rule, and should not be used for any other purpose.
+-- Note that when making unique IDs from the RHS we _always_ use the LHS graph,
+-- not the RHS.  The inclusion of the graph in the unique ID is purely to
+-- identify elements that belong to same rule, and should not be used for any
+-- other purpose!
 oilrCompileRhs :: AstRuleGraph -> AstRuleGraph -> Interface -> SemiOilrCode
-oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++ edgeInsertions
+oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++ edgeInsertions ++ newRoots ++ unRoots ++ colourChanges
     where
         nodeDeletions  = [ DEN (oilrNodeId lhs nk) | nk <- nodeIds lhs 
                                                    , not (nk `elem` nif) ]
@@ -367,7 +314,13 @@ oilrCompileRhs lhs rhs nif = edgeDeletions ++ nodeDeletions ++ nodeInsertions ++
                             , let src = oilrNodeId lhs (source ek)
                             , let tgt = oilrNodeId lhs (target ek)
                             , not $ ek `elem` edgeInterface ]
-        -- colourChanges = [ STC (oilrNodeId lhs nk) | nk <- ]
+        newRoots      = [ RTN (oilrNodeId lhs nk)
+                            | nk <- nodeIds rhs , isRoot rhs nk && not (isRoot lhs nk) ]
+        unRoots       = [ URN (oilrNodeId lhs nk)
+                            | nk <- nodeIds lhs , isRoot lhs nk && not (isRoot rhs nk) ]
+        colourChanges = [ CON (oilrNodeId lhs nk)
+                              (definiteLookup (colour rhs nk) colourIds)
+                              | nk <- nodeIds rhs , colour lhs nk /= colour rhs nk  ]
 
 
 

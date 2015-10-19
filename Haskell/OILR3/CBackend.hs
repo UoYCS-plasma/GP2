@@ -10,7 +10,11 @@ import Data.Bits
 import Debug.Trace
 
 type OilrProg = [Instr Int Int]
-data OilrIndexBits = OilrIndexBits { oBits::Int, iBits::Int, lBits::Int, rBits::Int, cBits::Int} deriving (Show, Eq)
+data OilrIndexBits = OilrIndexBits { cBits::Int
+                                   , oBits::Int
+                                   , iBits::Int
+                                   , lBits::Int
+                                   , rBits::Int } deriving (Show, Eq)
 
 data OilrProps = OilrProps { flags   :: [Flag]
                            , spaces  :: Mapping Pred [Int]
@@ -19,7 +23,6 @@ data OilrProps = OilrProps { flags   :: [Flag]
                            , recMask :: String  -- recursion limit mask
                            , nSlots   :: Mapping String Int }
 
-
 hostToC :: OilrProg -> String
 hostToC is = makeCFunction "_HOST" $ map hostCompileInstruction is
 
@@ -27,8 +30,9 @@ hostCompileInstruction :: Instr Int Int -> String
 hostCompileInstruction (ADN n)   = makeCFunctionCall "addNode" []
 hostCompileInstruction (ADE e src tgt) = makeCFunctionCallIntArgs "addEdgeById" [src,tgt]
 hostCompileInstruction (RTN n)   = makeCFunctionCallIntArgs "setRootById" [n]
+hostCompileInstruction (CON n c) = makeCFunctionCallIntArgs "setColourById" [n, c]
+hostCompileInstruction NOP       = ""
 hostCompileInstruction i         = error $ "Instruction " ++ show i ++ " not implemented for host graphs"
-
 
 progToC :: [Flag] -> [OilrProg] -> String
 progToC flags decls = consts ++ cRuntime ++ cCode
@@ -37,11 +41,11 @@ progToC flags decls = consts ++ cRuntime ++ cCode
         cCode = intercalate "\n" $ prototypes decls
                                 ++ concatMap (compileDefn oilr) decls
         ind = oilrInd oilr
-        consts = concat [ "#define OILR_O_BITS (" ++ (show $ oBits ind) ++ ")\n"
+        consts = concat [ "#define OILR_C_BITS (" ++ (show $ cBits ind) ++ ")\n"
+                        , "#define OILR_O_BITS (" ++ (show $ oBits ind) ++ ")\n"
                         , "#define OILR_I_BITS (" ++ (show $ iBits ind) ++ ")\n"
                         , "#define OILR_L_BITS (" ++ (show $ lBits ind) ++ ")\n"
                         , "#define OILR_R_BITS (" ++ (show $ rBits ind) ++ ")\n"
-                        , "#define OILR_C_BITS (" ++ (show $ cBits ind) ++ ")\n"
                         , case ( EnableDebugging         `elem` flags
                                , EnableParanoidDebugging `elem` flags) of 
                             (False, False) -> "#define NDEBUG\n"
@@ -60,7 +64,7 @@ analyseProg fs decls = OilrProps { flags = fs , spaces = spcs , oilrInd = bits
     where
         spcs = makeSearchSpaces capBits bits $ concat decls
         bits = oilrBits capBits decls
-        capBits = if DisableOilr `elem` fs then 0 else 8
+        capBits = if DisableOilr `elem` fs then 1 else 16
         slots = map makeSlots decls
         sMask  = map makeMask decls
         rMask  = if Compile32Bit `elem` fs then "0xfff" else "0x1fff"
@@ -112,7 +116,7 @@ prototypes decls = map proto decls
 
 
 oilrIndexTotalBits :: OilrIndexBits -> Int
-oilrIndexTotalBits (OilrIndexBits o i l r c) = o+i+l+r+c
+oilrIndexTotalBits (OilrIndexBits c o i l r) = c+o+i+l+r
 
 extractPredicates :: OilrProg -> [Pred]
 extractPredicates is = concatMap harvestPred is
@@ -120,7 +124,7 @@ extractPredicates is = concatMap harvestPred is
           harvestPred _         = []
 
 oilrBits :: Int -> [OilrProg] -> OilrIndexBits
-oilrBits cap iss = OilrIndexBits (f o) (f i) (f l) (f' r) (f c)
+oilrBits cap iss = OilrIndexBits (f c) (f o) (f i) (f l) (f' r)
     -- We can't cap the r dimension, because there's no other check for the root flag.
     where
         f x = min cap $ f' x
@@ -133,15 +137,18 @@ oilrBits cap iss = OilrIndexBits (f o) (f i) (f l) (f' r) (f c)
         bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
 
 sigsForPred :: Int -> OilrIndexBits -> Pred -> (Pred, [Int])
-sigsForPred cap bits pr =
-    (pr, nub [ o' `shift` oShift + i' `shift` iShift + l' `shift` lShift + r' `shift` rShift
-                | o' <- sigForDim (oBits bits) o
-                , i' <- sigForDim (iBits bits) i
-                , l' <- sigForDim (lBits bits) l
-                , r' <- sigForDim (rBits bits) r ])
+sigsForPred cap bits pr = (pr, nub [   c' `shift` cShift + o' `shift` oShift
+                                     + i' `shift` iShift + l' `shift` lShift
+                                     + r' `shift` rShift
+                                   | c' <- sigForDim (cBits bits) c
+                                   , o' <- sigForDim (oBits bits) o
+                                   , i' <- sigForDim (iBits bits) i
+                                   , l' <- sigForDim (lBits bits) l
+                                   , r' <- sigForDim (rBits bits) r ])
     where
-        ( o, i, l, r ) = (oDim pr, iDim pr, lDim pr, rDim pr)
+        ( c, o, i, l, r ) = (cDim pr, oDim pr, iDim pr, lDim pr, rDim pr)
         capSize = (1 `shift` cap) - 1
+        cShift = oShift + (min cap $ oBits bits)
         oShift = iShift + (min cap $ iBits bits)
         iShift = lShift + (min cap $ lBits bits)
         lShift = rShift + rBits bits
@@ -267,10 +274,10 @@ deleteBoundEdge :: Int -> String
 deleteBoundEdge e = makeCFunctionCall "deleteEdge" [ bindingFor e ]
 
 setBoundRoot :: Int -> String
-setBoundRoot n = makeCFunctionCall "setRoot" [bindingFor n]
+setBoundRoot n = makeCFunctionCall "setRoot" ["asNode(" ++ bindingFor n ++ ")"]
 
 unsetBoundRoot :: Int -> String
-unsetBoundRoot n = makeCFunctionCall "unsetRoot" [bindingFor n]
+unsetBoundRoot n = makeCFunctionCall "unsetRoot" ["asNode(" ++ bindingFor n ++ ")"]
 
 bindingFor :: Int -> String
 bindingFor n = concat [ "matches[" , show n , "]" ]
@@ -289,18 +296,18 @@ makeModifyAndBind i fun args = "\t" ++ matchInd i ++ " = " ++ makeCFunctionCall 
 
 -- TODO: this mess needs to go! 
 compileInstr :: Mapping Pred [Int] -> Instr Int Int -> String
-compileInstr _ (ADN n)         = makeModifyAndBind n "addNode" []
-compileInstr _ (ADE e src tgt) | src==tgt  = makeModifyAndBind e "addLoop" [src]
-                               | otherwise = makeModifyAndBind e "addEdge" [src, tgt]
-
+-- compileInstr _ (ADN n)         = makeModifyAndBind n "addNode" []
+-- compileInstr _ (ADE e src tgt) | src==tgt  = makeModifyAndBind e "addLoop" [src]
+--                                | otherwise = makeModifyAndBind e "addEdge" [src, tgt]
+-- 
 compileInstr _ OK            = "\tif (recursive) { RECURSE; boolFlag=1; }\n"
 compileInstr _ RET           = "return;"
 
-compileInstr _ (PRO "Main")  = startCFunction "_GPMAIN" []
-compileInstr _ (PRO s)       = startCFunction s []
-compileInstr _ (RUL s)       = startCFunction s []
-compileInstr _ UBA           = "\tDONE;\n"
-compileInstr _ END           = endCFunction 
+-- compileInstr _ (PRO "Main")  = startCFunction "_GPMAIN" []
+-- compileInstr _ (PRO s)       = startCFunction s []
+-- compileInstr _ (RUL s)       = startCFunction s []
+-- compileInstr _ UBA           = "\tDONE;\n"
+-- compileInstr _ END           = endCFunction 
 
 -- compileInstr (CRS n sig)     = makeCFunctionCallIntArgs "resetTrav" [n] -- TODO
 compileInstr idx (LUN n sig) = labelFor n

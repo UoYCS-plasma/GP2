@@ -1,0 +1,15 @@
+Main = col
+
+col () [
+	(n1, empty)
+	(n2, empty # red)
+	(n3, empty # green)
+|
+] => [
+	(n1, empty # blue )
+	(n2, empty # blue )
+	(n3, empty # blue )
+|
+]
+interface = {n1, n2, n3}
+

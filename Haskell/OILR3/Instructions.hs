@@ -1,10 +1,23 @@
 module OILR3.Instructions where
 
+import GPSyntax
+import Mapping
+
 type Tid = Int -- Trav id
 
 data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace | Compile32Bit | CompactLists deriving (Eq, Show)
 
 data Dim = Equ Int | GtE Int deriving (Show, Eq)
+
+colourIds :: Mapping Colour Int
+colourIds = [ (Uncoloured, 0)
+            , (Red       , 1)
+            , (Blue      , 2)
+            , (Green     , 3)
+            , (Grey      , 4) ]
+
+colourMapping :: Mapping Colour Dim
+colourMapping = (Cyan, GtE 0) : [ (c, Equ n) | (c, n) <- colourIds ]
 
 -- TODO: this may not be adequate due to sort order of n-tuples, but it will do
 -- for a first cut
@@ -14,11 +27,11 @@ instance Ord Dim where
     compare (Equ x) (Equ y) = compare x y
     compare (GtE x) (GtE y) = compare x y
 
-data Pred = Pred { oDim :: Dim
+data Pred = Pred { cDim :: Dim
+                 , oDim :: Dim
                  , iDim :: Dim
                  , lDim :: Dim
-                 , rDim :: Dim
-                 , cDim :: Dim } 
+                 , rDim :: Dim } 
     deriving (Show, Eq)
 
 
@@ -31,6 +44,7 @@ data Instr a b =
     | DEE b                 -- Delete Edge with id
     | RTN a                 -- Set root flag on node
     | URN a                 -- unset root flag on node
+    | CON a Int             -- colour a node
 
     -- Stack machine prims
     | LIT Int               -- push literal on data stack
@@ -58,4 +72,5 @@ data Instr a b =
     | ORF                   -- exit procedure if success flag is unset
     -- logical operators
     | TRU  | FLS            -- set status register to true or false respectively
+    | NOP
     deriving (Show, Eq)

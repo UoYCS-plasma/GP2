@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <string.h>
 
-#define OILR_INDEX_SIZE (1<<(OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS+OILR_C_BITS))
+#define OILR_INDEX_SIZE (1<<(OILR_C_BITS+OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
 #define DEFAULT_POOL_SIZE (100000000)
 #define DONE return
 #define RECURSE
@@ -14,6 +14,9 @@ void _GPMAIN();
 long bindCount   = 0;
 long unbindCount = 0;
 
+char *colourNames[] = {
+	"", "# red", "# blue", "# green", "# grey"
+};
 
 /////////////////////////////////////////////////////////
 // graph structure
@@ -41,7 +44,9 @@ typedef struct Node {
 	DList outEdges;
 	DList inEdges;
 	DList loops;
-	long root;
+	int label;
+	unsigned int root:1;
+	unsigned int colour:31;
 } Node;
 
 typedef struct Edge {
@@ -49,20 +54,23 @@ typedef struct Edge {
 	struct Element *tgt;
 	DList outList;
 	DList inList;
+	int label:32;
+	unsigned int mark:1;
 } Edge;
 
 typedef struct Element {
+	union {
+		Node n;
+		Edge e;
+		struct Element *free;
+	};
+	int label;
 	union {
 		long bound;
 		struct {
 			char boundHere;
 			char boundElsewhere;
 		};
-	};
-	union {
-		Node n;
-		Edge e;
-		struct Element *free;
 	};
 #ifdef OILR_COMPACT_LISTS
 	// WARNING: with OILR_COMPACT_LISTS defined Element must be _exactly_
@@ -99,7 +107,7 @@ typedef struct SearchSpaceComponent {
 #else
 #define debug(...) do { fprintf(stderr, __VA_ARGS__); } while (0)
 #define debugCode(c) do { c ; } while (0)
-#define oilrStatus(node) do { Element *mEl = (node); Node *mN = asNode(mEl); debug("\tNode %ld has OILR %ld: (%ld, %ld, %ld, %ld)\n", elementId(mEl), signature(mN), outdeg(mN), indeg(mN), loopdeg(mN), isroot(mN)); } while (0)
+#define oilrStatus(node) do { Element *mEl = (node); Node *mN = asNode(mEl); debug("\tNode %ld has OILR %ld: (%ld, %ld, %ld, %d)\n", elementId(mEl), signature(mN), outdeg(mN), indeg(mN), loopdeg(mN), isroot(mN)); } while (0)
 #endif
 
 /////////////////////////////////////////////////////////
@@ -249,6 +257,7 @@ void removeElem(DList *elem) {
 #define indeg(n)    (listLength(inListFor(n)))
 #define loopdeg(n)  (listLength(loopListFor(n)))
 #define isroot(n)   ((n)->root)
+#define colour(n)   ((n)->colour)
 
 // Warning: beware of double-evaluation of expressions in these macros!
 #define realOutdeg(n) (outdeg(n) + loopdeg(n))
@@ -263,15 +272,16 @@ long min(long x, long y) {
 	return (x<=y ? x : y);
 }
 
-#if OILR_INDEX_SIZE == 0
-#define signature(n) 0
+#if OILR_INDEX_SIZE <= 1
+#define signature(n) isroot(n)
 #else
 long signature(Node *n) {
-	long o = min( (1<<OILR_O_BITS)-1 , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
+	long c = min( (1<<OILR_C_BITS)-1 , colour(n) ) << (OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
+		 o = min( (1<<OILR_O_BITS)-1 , outdeg(n) ) << (OILR_I_BITS+OILR_L_BITS+OILR_R_BITS),
 		 i = min( (1<<OILR_I_BITS)-1 , indeg(n)  ) << (OILR_L_BITS+OILR_R_BITS),
 		 l = min( (1<<OILR_L_BITS)-1 , loopdeg(n)) << OILR_R_BITS,
 		 r = min( (1<<OILR_R_BITS)-1 , isroot(n) );
-	long sig = (o+i+l+r);
+	long sig = (c+o+i+l+r);
 	assert(sig >= 0 && sig < OILR_INDEX_SIZE);
 	return sig;
 }
@@ -314,25 +324,40 @@ void checkGraph() {
 /////////////////////////////////////////////////////////
 // graph manipulation
 
-#define setRoot(n)   do { (n)->root = 1 ; } while (0)
-#define unsetRoot(n) do { (n)->root = 0 ; } while (0)
-#define setRootById(n) setRoot( asNode(getElementById(n)) )
+void indexNode(Node *n) {
+	long sig = signature(n);
+	prependElem(index(sig), chainFor(n));
+}
+void unindexNode(Node *n) {
+	removeElem(chainFor(n));
+}
 
+
+void setRoot(Node *n) {
+	unindexNode(n);
+	n->root = 1;
+	indexNode(n);
+}
+void unsetRoot(Node *n) {
+	unindexNode(n);
+	n->root = 0;
+	indexNode(n);
+}
+void setColour(Node *n, long c) {
+	unindexNode(n);
+	n->colour = c;
+	indexNode(n);
+}
+// #define setRoot(n)   do { (n)->root = 1 ; } while (0)
+// #define unsetRoot(n) do { (n)->root = 0 ; } while (0)
+#define setRootById(n) setRoot( asNode(getElementById(n)) )
+// #define setColour(n, c)     do { (n)->colour = (c) ; } while (0)
+#define setColourById(n, c) setColour( asNode(getElementById(n)), (c) )
 void freeElement(Element *ne) {
 	ne->free = g.freeList;
 	g.freeList = ne;
 }
 
-
-void indexNode(Node *n) {
-	long sig = signature(n);
-	// n->sig = sig;
-	prependElem(index(sig), chainFor(n));
-}
-void unindexNode(Node *n) {
-	removeElem(chainFor(n));
-	// n->sig = -1;
-}
 
 Element *allocElement() {
 	Element *ne = g.freeList;
@@ -839,7 +864,7 @@ void dumpGraph(FILE *file) {
 			n = asNode(elementOfListItem(index));
 			rootStatus = isroot(n) ? " (R)" : "";
 			boundStatus = bound(elementOfListItem(index)) ? " +" : "";
-			fprintf(file, "\t( n%ld%s%s, empty)\n", getId(n), boundStatus, rootStatus );
+			fprintf(file, "\t( n%ld%s%s, empty %s)\n", getId(n), boundStatus, rootStatus, colourNames[colour(n)] );
 		}
 	}
 	debug("%ld %ld\n", nodeIndexCount, nodeCount);

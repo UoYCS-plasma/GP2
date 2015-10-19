@@ -35,7 +35,7 @@ drawNode (nk, HostNode _ root label)  =
 drawLabel :: HostLabel -> String
 drawLabel (HostLabel atoms Uncoloured) = "label=\"" ++ (intercalate ":" $ map printHostAtom atoms) ++ "\""
 drawLabel (HostLabel atoms col) = "label=\"" ++ (intercalate ":" $ map printHostAtom atoms )
-    ++ "\" " ++ " style=filled color=" ++ show col
+    ++ "\" " ++ " style=filled fillcolor=" ++ show col
 
 
 
