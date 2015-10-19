@@ -1,0 +1,9 @@
+[
+ (n1, empty # green)
+ (n2, empty # green)
+ (n3, empty # green)
+|
+ (e2, n1, n2, empty)
+ (e3, n3, n2, empty)
+ (e1, n3, n3, empty)
+]
