@@ -43,7 +43,7 @@ transform :: GraphMorphism -> Rule -> HostGraph -> [NodeKey] -> HostGraph
 transform m@(GM _ _ ems) r@(Rule _ _ (lhs, rhs) ni ei _) h hns = 
    addEdgesToHost m rhs ei rhsToHostMap addedNodesGraph   
    where 
-   (addedNodesGraph, rhsToHostMap) = addNodesToHost m rhs ni removedItemsGraph
+   (addedNodesGraph, rhsToHostMap) = addNodesToHost m lhs rhs ni removedItemsGraph
    removedItemsGraph = rmNodeList (rmEdgeList h deletedHostEdges) hns                 
    deletedHostEdges  = [ definiteLookup leid ems | leid <- allEdgeKeys lhs \\ dom ei ]
 
@@ -54,29 +54,45 @@ transform m@(GM _ _ ems) r@(Rule _ _ (lhs, rhs) ni ei _) h hns =
 -- The mapping is created by appending two lists: the list generated from
 -- the interface and the graph morphism, and the zip of the new RHS nodes
 -- with the new host nodes (obtained from the call to newNodeList).
-addNodesToHost :: GraphMorphism -> RuleGraph -> NodeInterface -> HostGraph -> (HostGraph, NodeMatches)
-addNodesToHost m@(GM _ nms _) rhs ni h = 
+addNodesToHost :: GraphMorphism -> RuleGraph -> RuleGraph -> NodeInterface -> HostGraph -> (HostGraph, NodeMatches)
+addNodesToHost m@(GM _ nms _) lhs rhs ni h = 
     (h'', relabelMapping ++ zip insertedRhsNodes insertedHostNodes)
     where
-    h''                     = foldr (relabelNode m rhs) h' relabelMapping 
-    (h', insertedHostNodes) = newNodeList h [ nodeEval (m, h, rhs) (nLabel rhs n) Nothing
+    h''                     = foldr (relabelNode m lhs rhs) h' relabelMapping 
+    (h', insertedHostNodes) = newNodeList h [ nodeEval (m, h, rhs) (nLabel lhs n) (nLabel rhs n) Nothing
                                             | n <- insertedRhsNodes ]
     relabelMapping          = [ (ri, definiteLookup li nms) | (li, ri) <- ni]
     insertedRhsNodes        = allNodeKeys rhs \\ rng ni
 
-relabelNode :: GraphMorphism -> RuleGraph -> (NodeKey, NodeKey) -> HostGraph -> HostGraph
-relabelNode m rhs (rnk, hnk) h = nReLabel h hnk
+relabelNode :: GraphMorphism -> RuleGraph -> RuleGraph -> (NodeKey, NodeKey) -> HostGraph -> HostGraph
+relabelNode m lhs rhs (rnk, hnk) h = nReLabel h hnk
                                $ nodeEval (m, h, rhs)
+                                    (nLabel lhs rnk)
                                     (nLabel rhs rnk)
                                     (Just $ nLabel h hnk)
 
-nodeEval :: EvalContext -> RuleNode -> Maybe HostNode -> HostNode
-nodeEval ec (RuleNode name isRoot label) hn = HostNode name isRoot $ fixColour hn $ labelEval ec label
-    where
-        fixColour (Just n) (HostLabel l Cyan) = (HostLabel l $ hostColour n)
-        fixColour Nothing  (HostLabel l Cyan) = error "Tried to create a Cyan node!" 
-        fixColour _ l = l
-        hostColour (HostNode _ _ (HostLabel _ c ) ) = c
+-- TODO: incorrect root handling! In order to correctly set the root flag we
+-- need to know the root flag of _both_ the LHS and the RHS of the rule, as a
+-- non-root LHS can match a root host node. Using only the RHS root flag like
+-- this causes roots to be wrongly set and unset.
+
+nodeEval :: EvalContext -> RuleNode -> RuleNode -> Maybe HostNode -> HostNode
+nodeEval ec lrn@(RuleNode _ isLRoot _) rrn@(RuleNode name isRRoot label) hn = HostNode name rootStatus $ fixColour hn $ labelEval ec label
+    where rootStatus = case (isLRoot, isRRoot) of
+                            (True, True)   -> True
+                            (True, False)  -> False
+                            (False, True)  -> True
+                            (False, False) -> curRootStatus hn
+
+          curRootStatus :: Maybe HostNode -> Bool
+          curRootStatus Nothing                 = False
+          curRootStatus (Just (HostNode _ r _)) = r
+
+          fixColour :: Maybe HostNode -> HostLabel -> HostLabel
+          fixColour (Just n) (HostLabel l Cyan) = (HostLabel l $ hostColour n)
+          fixColour Nothing  (HostLabel l Cyan) = error "Tried to create a Cyan node!" 
+          fixColour _ l = l
+          hostColour (HostNode _ _ (HostLabel _ c ) ) = c
 
 
 -- Adds all RHS edges to the graph. The NodeMatches argument stores the mappings of
