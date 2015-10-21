@@ -1,5 +1,8 @@
 [
 	(n1, empty # blue)
 	(n2, empty # red)
+	(n3, empty # grey)
 |
+	(e1, n1, n2, empty)
+	(e2, n2, n3, empty)
 ]

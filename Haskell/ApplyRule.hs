@@ -89,8 +89,8 @@ nodeEval ec lrn@(RuleNode _ isLRoot _) rrn@(RuleNode name isRRoot label) hn = Ho
           curRootStatus (Just (HostNode _ r _)) = r
 
           fixColour :: Maybe HostNode -> HostLabel -> HostLabel
-          fixColour (Just n) (HostLabel l Cyan) = (HostLabel l $ hostColour n)
-          fixColour Nothing  (HostLabel l Cyan) = error "Tried to create a Cyan node!" 
+          fixColour (Just n) (HostLabel l Any) = (HostLabel l $ hostColour n)
+          fixColour Nothing  (HostLabel l Any) = error "Tried to create a Any-colour node!" 
           fixColour _ l = l
           hostColour (HostNode _ _ (HostLabel _ c ) ) = c
 

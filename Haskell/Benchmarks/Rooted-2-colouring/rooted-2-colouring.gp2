@@ -12,9 +12,9 @@ init(x:list) [
 
 
 unroot(x:list) [
-	( n1(R), x # cyan ) |
+	( n1(R), x # any ) |
 ] => [
-	( n1, x # cyan ) |
+	( n1, x # any ) |
 ] interface = { n1 }
 
 

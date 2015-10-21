@@ -1,15 +1,17 @@
 Main = col
 
 col () [
-	(n1, empty)
+	(n1, empty # any)
 	(n2, empty # red)
-	(n3, empty # green)
+	(n3, empty # any)
 |
 ] => [
-	(n1, empty # blue )
+	(n1, empty # any )
 	(n2, empty # blue )
 	(n3, empty # blue )
 |
+	(e1, n1, n2, empty)
+	(e2, n2, n3, empty)
 ]
 interface = {n1, n2, n3}
 
