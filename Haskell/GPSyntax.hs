@@ -3,7 +3,7 @@ module GPSyntax where
 import Graph
 
 gpChars :: [Char]
-gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , ['0'..'9'] , ['_'], ['-'] ]
+gpChars = concat [ ['A'..'Z'] , ['a'..'z'] , ['0'..'9'] , ['_'] ]
 
 keywords :: [String]
 keywords = map fst hostColours ++ map fst gpTypes ++
