@@ -13,7 +13,7 @@ doLabelsMatch :: HostLabel -> RuleLabel -> Maybe Environment
 doLabelsMatch (HostLabel has hc) (RuleLabel ras rc) = if colourMatch hc rc then atomsMatch has ras else Nothing
 
 colourMatch :: Colour -> Colour -> Bool
-colourMatch _  Cyan = True
+colourMatch _  Any = True
 colourMatch hc rc   = (hc == rc)
 
 atomsMatch :: [HostAtom] -> [RuleAtom] -> Maybe Environment

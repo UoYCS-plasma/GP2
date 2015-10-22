@@ -12,7 +12,7 @@ keywords = map fst hostColours ++ map fst gpTypes ++
             "and", "not", "edge", "empty", "indeg", "outdeg",
             "slength", "llength"]
 
-data Colour = Uncoloured | Red | Green | Blue | Grey | Dashed | Cyan
+data Colour = Uncoloured | Red | Green | Blue | Grey | Dashed | Any
   deriving (Ord, Eq, Show)
 
 hostColours :: [ (String, Colour) ]
@@ -25,7 +25,7 @@ hostColours = [
     ("dashed", Dashed) ]
 
 ruleColours :: [ (String, Colour) ]
-ruleColours = ("cyan", Cyan) : hostColours
+ruleColours = ("any", Any) : hostColours
 
 data VarType = IntVar | ChrVar | StrVar | AtomVar | ListVar
   deriving (Eq, Show)

@@ -332,7 +332,6 @@ void unindexNode(Node *n) {
 	removeElem(chainFor(n));
 }
 
-
 void setRoot(Node *n) {
 	unindexNode(n);
 	n->root = 1;
@@ -348,11 +347,9 @@ void setColour(Node *n, long c) {
 	n->colour = c;
 	indexNode(n);
 }
-// #define setRoot(n)   do { (n)->root = 1 ; } while (0)
-// #define unsetRoot(n) do { (n)->root = 0 ; } while (0)
 #define setRootById(n) setRoot( asNode(getElementById(n)) )
-// #define setColour(n, c)     do { (n)->colour = (c) ; } while (0)
 #define setColourById(n, c) setColour( asNode(getElementById(n)), (c) )
+
 void freeElement(Element *ne) {
 	ne->free = g.freeList;
 	g.freeList = ne;
@@ -363,13 +360,8 @@ Element *allocElement() {
 	Element *ne = g.freeList;
 	if (ne == NULL) {
 		if (g.freeId == g.poolSize) {
-			// g.poolSize = g.poolSize * 2;
-			// g.pool = realloc(g.pool, sizeof(Element) * g.poolSize);
-			// if (!g.pool) {
 			printf("Ran out of memory. :( Sadface\n");
 			exit(1);
-			//}
-			//debug("Memory grew to %ld elements\n", g.poolSize);
 		}
 		assert(g.freeId < g.poolSize);
 		ne = &(g.pool[g.freeId++]);

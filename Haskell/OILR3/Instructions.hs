@@ -17,7 +17,7 @@ colourIds = [ (Uncoloured, 0)
             , (Grey      , 4) ]
 
 colourMapping :: Mapping Colour Dim
-colourMapping = (Cyan, GtE 0) : [ (c, Equ n) | (c, n) <- colourIds ]
+colourMapping = (Any, GtE 0) : [ (c, Equ n) | (c, n) <- colourIds ]
 
 -- TODO: this may not be adequate due to sort order of n-tuples, but it will do
 -- for a first cut

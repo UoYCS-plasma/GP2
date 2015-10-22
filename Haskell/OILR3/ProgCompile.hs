@@ -179,7 +179,6 @@ oilrLifter []              acc = (es, concat dss)
 -- rule compilation is complex...
 -- -------------------------------------------------------------------
 
-
 nodeIds :: AstRuleGraph -> Interface
 nodeIds (AstRuleGraph ns _)   = [ id | (RuleNode id _ _) <- ns ]
 
@@ -194,7 +193,6 @@ bidiEdges (AstRuleGraph _ es) = [ (id, src, tgt) | (AstRuleEdge id bidi src tgt 
 
 nodeColours :: AstRuleGraph -> Mapping NodeKey Colour
 nodeColours (AstRuleGraph ns _) = [ (nk, c) | (RuleNode nk _ (RuleLabel _ c)) <- ns ]
-
 
 source :: EdgeKey -> NodeKey
 source (_, nk, _) = nk

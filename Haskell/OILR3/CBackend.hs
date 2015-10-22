@@ -120,14 +120,15 @@ extractPredicates is = concatMap harvestPred is
           harvestPred _         = []
 
 oilrBits :: Int -> [OilrProg] -> OilrIndexBits
-oilrBits cap iss = OilrIndexBits (f c) (f o) (f i) (f l) (f' r)
+oilrBits cap iss = OilrIndexBits (fc c) (f o) (f i) (f l) (f' r)
     -- We can't cap the r dimension, because there's no other check for the root flag.
     where
-        f x = min cap $ f' x
-        f' = (bits . maximum . map extract)
-        (o, i, l, r, c) = unzip5 $ explodePreds $ extractPredicates $ concat iss
+        fc x = if f' x == 0 then 0 else ( bits $ length colourIds )
+        f x  = min cap $ f' x
+        f'   = (bits . maximum . map extract)
+        (c, o, i, l, r) = unzip5 $ explodePreds $ extractPredicates $ concat iss
         explodePreds :: [Pred] -> [(Dim, Dim, Dim, Dim, Dim)]
-        explodePreds prs = [ (oDim pr, iDim pr, lDim pr, rDim pr, cDim pr) | pr <- prs ]
+        explodePreds prs = [ (cDim pr, oDim pr, iDim pr, lDim pr, rDim pr) | pr <- prs ]
         extract (Equ n) = n
         extract (GtE n) = n
         bits n = head $ dropWhile (\x -> 2^x <= n) [0,1..]
@@ -294,13 +295,16 @@ deleteBoundEdge :: Int -> String
 deleteBoundEdge e = makeCFunctionCall "deleteEdge" [ bindingFor e ]
 
 setBoundRoot :: Int -> String
-setBoundRoot n = makeCFunctionCall "setRoot" ["asNode(" ++ bindingFor n ++ ")"]
+setBoundRoot n = makeCFunctionCall "setRoot" [ asNode $ bindingFor n ]
 
 unsetBoundRoot :: Int -> String
-unsetBoundRoot n = makeCFunctionCall "unsetRoot" ["asNode(" ++ bindingFor n ++ ")"]
+unsetBoundRoot n = makeCFunctionCall "unsetRoot" [ asNode $ bindingFor n ]
 
 setBoundColour :: Int -> Int -> String
-setBoundColour n c = makeCFunctionCall "setColour" [ "asNode(" ++ bindingFor n ++ ")", show c]
+setBoundColour n c = makeCFunctionCall "setColour" [ asNode (bindingFor n) , show c]
+
+asNode :: String -> String
+asNode s = concat [ "asNode(", s, ")" ]
 
 bindingFor :: Int -> String
 bindingFor n = concat [ "matches[" , show n , "]" ]

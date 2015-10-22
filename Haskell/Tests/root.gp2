@@ -3,22 +3,30 @@ Main = root ; swap
 root () [
 	(n1, empty # blue)
 	(n2, empty # red)
+	(n3, empty # grey)
 |
+	(e1, n1, n2, empty)
+	(e2, n2, n3, empty)
 ] => [
 	(n1 (R), empty # blue)
 	(n2, empty # red)
+	(n3, empty # grey)
 |
+	(e1, n1, n2, empty)
+	(e2, n2, n3, empty)
 ]
-interface = {n1, n2}
+interface = {n1, n2, n3}
 
 swap () [
 	(n1 (R), empty # blue)
 	(n2, empty # red)
 |
+	(e1, n1, n2, empty)
 ] => [
 	(n1, empty # blue)
 	(n2 (R), empty # red)
 |
+	(e1, n1, n2, empty)
 ]
 interface = {n1, n2}
 
