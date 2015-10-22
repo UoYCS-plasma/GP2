@@ -58,27 +58,33 @@ addNodesToHost :: GraphMorphism -> RuleGraph -> RuleGraph -> NodeInterface -> Ho
 addNodesToHost m@(GM _ nms _) lhs rhs ni h = 
     (h'', relabelMapping ++ zip insertedRhsNodes insertedHostNodes)
     where
-    h''                     = foldr (relabelNode m lhs rhs) h' relabelMapping 
-    (h', insertedHostNodes) = newNodeList h [ nodeEval (m, h, rhs) (nLabel lhs n) (nLabel rhs n) Nothing
+    h''                     = foldr (relabelNode m ni lhs rhs) h' relabelMapping 
+    (h', insertedHostNodes) = newNodeList h [ nodeEval (m, h, rhs)
+                                              Nothing -- no lhs node
+                                              (nLabel rhs n)
+                                              Nothing
                                             | n <- insertedRhsNodes ]
     relabelMapping          = [ (ri, definiteLookup li nms) | (li, ri) <- ni]
     insertedRhsNodes        = allNodeKeys rhs \\ rng ni
 
-relabelNode :: GraphMorphism -> RuleGraph -> RuleGraph -> (NodeKey, NodeKey) -> HostGraph -> HostGraph
-relabelNode m lhs rhs (rnk, hnk) h = nReLabel h hnk
-                               $ nodeEval (m, h, rhs)
-                                    (nLabel lhs rnk)
-                                    (nLabel rhs rnk)
-                                    (Just $ nLabel h hnk)
+relabelNode :: GraphMorphism -> NodeInterface -> RuleGraph -> RuleGraph -> (NodeKey, NodeKey) -> HostGraph -> HostGraph
+relabelNode m ni lhs rhs (rnk, hnk) h =
+    nReLabel h hnk $ nodeEval (m, h, rhs)
+                     (getLeftNode ni lhs rnk)
+                     (nLabel rhs rnk)
+                     (Just $ nLabel h hnk)
 
--- TODO: incorrect root handling! In order to correctly set the root flag we
--- need to know the root flag of _both_ the LHS and the RHS of the rule, as a
--- non-root LHS can match a root host node. Using only the RHS root flag like
--- this causes roots to be wrongly set and unset.
+-- Given a nodekey from the RHS, get the corresponding one from the LHS
+getLeftNode :: NodeInterface -> RuleGraph -> NodeKey -> Maybe RuleNode
+getLeftNode ni lhs rnk = case lookup rnk ni' of
+                            Nothing  -> Nothing
+                            Just lnk -> Just $ nLabel lhs lnk
+    where ni' = [ (r,l) | (l,r) <- ni ]
 
-nodeEval :: EvalContext -> RuleNode -> RuleNode -> Maybe HostNode -> HostNode
-nodeEval ec lrn@(RuleNode _ isLRoot _) rrn@(RuleNode name isRRoot label) hn = HostNode name rootStatus $ fixColour hn $ labelEval ec label
-    where rootStatus = case (isLRoot, isRRoot) of
+
+nodeEval :: EvalContext -> Maybe RuleNode -> RuleNode -> Maybe HostNode -> HostNode
+nodeEval ec lrn rrn@(RuleNode name isRRoot label) hn = HostNode name rootStatus $ fixColour hn $ labelEval ec label
+    where rootStatus = case (isLRoot lrn, isRRoot) of
                             (True, True)   -> True
                             (True, False)  -> False
                             (False, True)  -> True
@@ -87,6 +93,10 @@ nodeEval ec lrn@(RuleNode _ isLRoot _) rrn@(RuleNode name isRRoot label) hn = Ho
           curRootStatus :: Maybe HostNode -> Bool
           curRootStatus Nothing                 = False
           curRootStatus (Just (HostNode _ r _)) = r
+
+          isLRoot :: Maybe RuleNode -> Bool
+          isLRoot Nothing = False
+          isLRoot (Just (RuleNode _ r _)) = r
 
           fixColour :: Maybe HostNode -> HostLabel -> HostLabel
           fixColour (Just n) (HostLabel l Any) = (HostLabel l $ hostColour n)
