@@ -181,6 +181,7 @@ assignTypes' scope rule table a = case a of
     Var (name, gpType) -> Var (name, newType) 
         where newType = getType name $ symbolInScope name scope rule table
     Slength a -> Slength (assignTypes' scope rule table a)
+    Neg a -> Neg (assignTypes' scope rule table a)
     Plus a b -> Plus (assignTypes' scope rule table a) (assignTypes' scope rule table b)
     Minus a b -> Minus (assignTypes' scope rule table a) (assignTypes' scope rule table b)
     Times a b -> Times (assignTypes' scope rule table a) (assignTypes' scope rule table b)

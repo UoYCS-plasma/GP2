@@ -41,13 +41,13 @@ intExpEval ec@(GM env _ _, _, _) a = case a of
    Outdeg node        -> degExpEval ec node outdegree
    Llength list       -> length list
    Slength exp        -> length $ stringExpEval env exp
-   Neg exp            -> 0 - intExpEval ec exp
+   Neg exp            -> negate $ intExpEval ec exp
    Plus exp1 exp2     -> intExpEval ec exp1 + intExpEval ec exp2
    Minus exp1 exp2    -> intExpEval ec exp1 - intExpEval ec exp2
    Times exp1 exp2    -> intExpEval ec exp1 * intExpEval ec exp2
    -- TODO: handle division by 0
    Div exp1 exp2      -> intExpEval ec exp1 `div` intExpEval ec exp2
-   _                  -> error "Expecting an integer expression."
+   _                  -> error $ "Expecting an integer expression." ++ show a
 
 degExpEval :: EvalContext -> NodeName -> (HostGraph -> NodeKey -> Int) -> Int
 degExpEval (GM _ nms _, g, r) node deg =

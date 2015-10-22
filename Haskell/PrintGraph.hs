@@ -32,7 +32,7 @@ printHostLabel (HostLabel atoms colour) =
        ++ printColour colour
 
 printHostAtom :: HostAtom -> String
-printHostAtom (Int i)  =  filter isDigit $ show i
+printHostAtom (Int i)  =  show i
 printHostAtom (Chr c)  =  show c
 printHostAtom (Str s)  =  show s
 

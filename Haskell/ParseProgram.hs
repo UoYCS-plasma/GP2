@@ -4,6 +4,7 @@ import Data.Char (toLower, isDigit)
 import Data.Maybe (fromJust, isJust)
 import Control.Monad (guard)
 import Text.Parsec
+import Text.Parsec.Expr
 import ParseGraph
 import GPSyntax
 import Mapping
@@ -153,12 +154,20 @@ gpLabel  =  do { as <- list ; rc <- ruleColour ; return $ RuleLabel as rc }
 list :: Parser GPList
 list  =  do { keyword "empty" ; return [] } <|> sepBy1 atom (symbol ":")
 
+atom :: Parser RuleAtom
+atom = buildExpressionParser atomops atom'
+
+atomops = [ [ Prefix (do { symbol "-"; return Neg }) ],
+            [ Infix  (do { symbol "."; return Concat }) AssocLeft ],
+            [ Infix  (do { symbol "*"; return Times }) AssocLeft, 
+              Infix  (do { symbol "/"; return Div }) AssocLeft ],
+            [ Infix  (do { symbol "+"; return Plus }) AssocLeft,
+              Infix  (do { symbol "~"; return Minus }) AssocLeft ] ]
+
 -- Var atoms are temporarily assigned the type ListVar.  Actual
 -- types are determined later.
-atom :: Parser RuleAtom
-atom  =  do { op <- oneOf "+-*/." ; spaces ;
-              a1 <- atom ; a2 <- atom ; return $ cons op a1 a2 }
-    <|>  do { symbol "~" ; a <- atom ; return $ Neg a }
+atom' :: Parser RuleAtom
+atom' =  do { symbol "(" ; a <- atom ; symbol ")" ; return a }
     <|>  do { keyword "indeg"   ; symbol "(" ; id <- lowerIdent ;
                                   symbol ")" ; return $ Indeg id }
     <|>  do { keyword "outdeg"  ; symbol "(" ; id <- lowerIdent ;
@@ -169,9 +178,6 @@ atom  =  do { op <- oneOf "+-*/." ; spaces ;
                                   symbol ")" ; return $ Slength a }
     <|>  do { v <- value ; return $ Val v }
     <|>  do { id <- lowerIdent ; return $ Var (id,ListVar) }
-  where
-  cons op  =  case op of
-              { '+' -> Plus ; '-' -> Minus ; '*' -> Times ; '/' -> Div ; '.' -> Concat }
 
 ruleColour :: Parser Colour
 ruleColour  =  do { symbol "#" ; c <- many1 lower ; spaces ;
@@ -180,30 +186,33 @@ ruleColour  =  do { symbol "#" ; c <- many1 lower ; spaces ;
           <|>  return Uncoloured
 
 condition :: Parser Condition
-condition  =  do { keyword "int"  ; id <- lowerIdent ; return $ TestInt id }
-         <|>  do { keyword "char" ; id <- lowerIdent ; return $ TestChr id }
-         <|>  do { keyword "str"  ; id <- lowerIdent ; return $ TestStr id }
-         <|>  do { keyword "atom" ; id <- lowerIdent ; return $ TestAtom id }
-         <|>  do { keyword "edge" ; symbol "(" ;
-                   s <- lowerIdent ; symbol "," ; t <- lowerIdent ;
-                   ml <- option Nothing $
-                                do { symbol "," ; l <- gpLabel ; return $ Just l } ;
-                   symbol ")" ; return $ Edge s t ml }
-         <|>  do { keyword "not" ; c <- condition ; return $ Not c }
-         <|>  do { keyword "and" ; c1 <- condition ; c2 <- condition ;
-                   return $ And c1 c2 }
-         <|>  do { keyword "or"  ; c1 <- condition ; c2 <- condition ;
-                   return $ Or c1 c2 }
-         <|>  ( try $ do { a1 <- atom ;
-                           op <- (    do { symbol ">"  ; return Greater }
-                                 <|>  do { symbol ">=" ; return GreaterEq }
-                                 <|>  do { symbol "<"  ; return Less }
-                                 <|>  do { symbol "<=" ; return LessEq } ) ;
-                           a2 <- atom ; return $ op a1 a2 } )
-         <|>  ( try $ do { l1 <- list ;
-                           op <- (    do { symbol "=" ;  return Eq }
-                                 <|>  do { symbol "!=" ; return NEq } ) ;
-                           l2 <- list ; return $ op l1 l2 } )
+condition = buildExpressionParser boolops predicate
+
+boolops = [ [ Prefix (do { symbol "not" ; return Not }) ],
+            [ Infix  (do { symbol "and" ; return And }) AssocLeft ],
+            [ Infix  (do { symbol "or"  ; return Or }) AssocLeft ] ]
+
+predicate :: Parser Condition
+predicate =  do { symbol "(" ; c <- condition ; symbol ")" ; return c }
+        <|>  do { keyword "int"  ; id <- lowerIdent ; return $ TestInt id }
+        <|>  do { keyword "char" ; id <- lowerIdent ; return $ TestChr id }
+        <|>  do { keyword "str"  ; id <- lowerIdent ; return $ TestStr id }
+        <|>  do { keyword "atom" ; id <- lowerIdent ; return $ TestAtom id }
+        <|>  do { keyword "edge" ; symbol "(" ;
+                  s <- lowerIdent ; symbol "," ; t <- lowerIdent ;
+                  ml <- option Nothing $
+                               do { symbol "," ; l <- gpLabel ; return $ Just l } ;
+                  symbol ")" ; return $ Edge s t ml }
+        <|>  ( try $ do { a1 <- atom ;
+                          op <- (    do { symbol ">"  ; return Greater }
+                                <|>  do { symbol ">=" ; return GreaterEq }
+                                <|>  do { symbol "<"  ; return Less }
+                                <|>  do { symbol "<=" ; return LessEq } ) ;
+                          a2 <- atom ; return $ op a1 a2 } )
+        <|>  ( try $ do { l1 <- list ;
+                          op <- (    do { symbol "=" ;  return Eq }
+                                <|>  do { symbol "!=" ; return NEq } ) ;
+                          l2 <- list ; return $ op l1 l2 } )
 
 upperIdent :: Parser String
 upperIdent  =  do { id <- identifier upper ; spaces; return id }
