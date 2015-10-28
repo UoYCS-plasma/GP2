@@ -1,0 +1,29 @@
+Main = { r1 , r2 } ; { r3 , r4 }
+
+r1 () [
+	(n1, 0) |
+] => [
+	(n1, 0 # blue) |
+]
+interface = {n1}
+
+r2 () [
+	(n1, 0 # any) |
+] => [
+	(n1, 1 # any) |
+]
+interface = {n1}
+
+// always  fails
+r3 () [
+	(n1, -1 # red) |
+] => [ | ]
+interface = {n1}
+
+r4 (x : int) [
+	(n1, x # any) |
+] => [
+	(n1, x # green) |
+]
+interface = {n1}
+
