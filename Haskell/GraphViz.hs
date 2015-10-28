@@ -19,7 +19,7 @@ drawGraph g = "digraph {\n\tgraph [ autosize=false size=\"8,8!\" ratio=fill ];\n
 
 -- data HostEdge = HostEdge NodeName NodeName HostLabel deriving Show
 drawEdge :: (EdgeKey,HostLabel) -> String
-drawEdge (ek, label) = src ++ " -> " ++ dst ++ " [ " ++ drawLabel label ++ " ];"
+drawEdge (ek, label@(HostLabel _ c)) = src ++ " -> " ++ dst ++ " [ " ++ drawLabel label ++ (if c == Dashed then " style=dashed" else "") ++ " ];"
     where
         src = showNodeKey $ source ek
         dst = showNodeKey $ target ek
