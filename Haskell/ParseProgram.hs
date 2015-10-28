@@ -162,7 +162,7 @@ atomops = [ [ Prefix (do { symbol "-"; return Neg }) ],
             [ Infix  (do { symbol "*"; return Times }) AssocLeft, 
               Infix  (do { symbol "/"; return Div }) AssocLeft ],
             [ Infix  (do { symbol "+"; return Plus }) AssocLeft,
-              Infix  (do { symbol "~"; return Minus }) AssocLeft ] ]
+              Infix  (do { symbol "-"; return Minus }) AssocLeft ] ]
 
 -- Var atoms are temporarily assigned the type ListVar.  Actual
 -- types are determined later.
@@ -204,10 +204,10 @@ predicate =  do { symbol "(" ; c <- condition ; symbol ")" ; return c }
                                do { symbol "," ; l <- gpLabel ; return $ Just l } ;
                   symbol ")" ; return $ Edge s t ml }
         <|>  ( try $ do { a1 <- atom ;
-                          op <- (    do { symbol ">"  ; return Greater }
-                                <|>  do { symbol ">=" ; return GreaterEq }
-                                <|>  do { symbol "<"  ; return Less }
-                                <|>  do { symbol "<=" ; return LessEq } ) ;
+                          op <- (    do { symbol ">="  ; return GreaterEq }
+                                <|>  do { symbol ">" ; return Greater }
+                                <|>  do { symbol "<="  ; return LessEq }
+                                <|>  do { symbol "<" ; return Less } ) ;
                           a2 <- atom ; return $ op a1 a2 } )
         <|>  ( try $ do { l1 <- list ;
                           op <- (    do { symbol "=" ;  return Eq }

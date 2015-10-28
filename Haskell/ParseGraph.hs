@@ -59,7 +59,9 @@ value :: Parser HostAtom
 value = intLit <|> strLit <|> charLit
 
 intLit :: Parser HostAtom
-intLit  =  do { ds <- many1 digit ; spaces ; return $ Int (read ds) }
+intLit  = do { sign <- optionMaybe (char '-') ;
+               ds   <- many1 digit ; spaces ;
+               return ( case sign of { Nothing -> Int (read ds) ; Just _  -> Int $ negate (read ds) } ) }
 
 charLit :: Parser HostAtom
 charLit  =  do { c <- between (char '\'') (char '\'') gpChar ;

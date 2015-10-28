@@ -30,18 +30,18 @@ prepare () [
 	(e1, n1, n2, empty)
 ] => [
 	(n1, empty # grey)
-	(n2, empty # green)
+	(n2, empty )
 	|
-	(e1, n1, n2, empty)
+	(e1, n1, n2, empty # dashed)
 ]
 interface = {n1,n2}
 
 expand () [
 	(n1, empty # grey)
-	(n2, empty # green)
+	(n2, empty )
 	(n3, empty)
 	| 
-	(e1, n1, n2, empty)
+	(e1, n1, n2, empty # dashed)
 	(e2, n2, n3, empty) 
 	(e3, n3, n1, empty)
 ] => [

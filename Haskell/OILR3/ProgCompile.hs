@@ -253,11 +253,12 @@ comparePreds :: Pred -> Pred -> Ordering
 comparePreds p1 p2 = compare (predToWeight p1) (predToWeight p2)
 
 predToWeight :: Pred -> Int
-predToWeight pr = 4 * valueForDim r + 2*valueForDim l + (sum $ map valueForDim [o,i])
-    where o = oDim pr 
-          i = iDim pr
-          l = lDim pr
-          r = rDim pr
+predToWeight pr = 4*r + 2*(l+c) + o + i
+    where c = valueForDim $ cDim pr
+          o = valueForDim $ oDim pr 
+          i = valueForDim $ iDim pr
+          l = valueForDim $ lDim pr
+          r = valueForDim $ rDim pr
           valueForDim :: Dim -> Int
           valueForDim (GtE n) = n
           valueForDim (Equ n) = (n+1)*2
