@@ -98,8 +98,8 @@ extern int parse_target;
           				        "string.\n", yylineno);                   
                                    return 0; }  
 
-[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?. { yylval.dnum = atof(yytext); return DNUM; } 
-[0-9]+              { yylval.num = atoi(yytext); return NUM; } 
+[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)? { yylval.dnum = atof(yytext); return DNUM; } 
+[-+]?[0-9]+              { yylval.num = atoi(yytext); return NUM; } 
 
  /* GP2 keywords */ 
 Main		    return MAIN;
