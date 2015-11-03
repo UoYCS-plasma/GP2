@@ -14,9 +14,7 @@ void _GPMAIN();
 long bindCount   = 0;
 long unbindCount = 0;
 
-char *colourNames[] = {
-	"", "# red", "# blue", "# green", "# grey"
-};
+char *colourNames[] = { "", "# red", "# blue", "# green", "# grey" };
 
 /////////////////////////////////////////////////////////
 // graph structure

@@ -23,4 +23,7 @@ tags :
 clean :
 	rm -f *.o OILR3/*.o $(TARGETS)
 
+sloc : OILR3/oilrrt.c
+	grep -v '\s*//' $< | grep -v '^\s*$$' | wc -l
+
 .PHONY : gp2 gp2c
