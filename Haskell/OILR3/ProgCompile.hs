@@ -222,7 +222,6 @@ isBidi g ek@(_,s,t) = ek `elem` bidiEdges g  &&  s /= t -- a bidi loop is just a
 
 oilrCompileRule :: AstRule -> SemiOilrCode
 oilrCompileRule r@(AstRule name _ (lhs, rhs) cond) = 
-    (trace (show $ makeIR lhs rhs)) 
     ( [RUL name] ++ body ++ [UBA, END] )
     where
         nif  = nodeIds lhs `intersect` nodeIds rhs
