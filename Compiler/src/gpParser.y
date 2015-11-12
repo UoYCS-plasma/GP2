@@ -388,8 +388,13 @@ Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
  /* Layout information for the editor. This is ignored by the parser. */
 Position: '(' DNUM ',' DNUM ')'         { } 
         | '(' NUM ',' NUM ')'           { } 
+        | '(' NUM ',' '-' NUM ')'           { } 
+        | '(' '-' NUM ','  NUM ')'           { } 
+        | '(' '-' NUM ',' '-' NUM ')'           { } 
         | '(' DNUM ',' NUM ')'          { } 
+        | '(' DNUM ',' '-' NUM ')'          { } 
         | '(' NUM ',' DNUM ')'          { }
+        | '(' '-' NUM ',' DNUM ')'          { }
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
