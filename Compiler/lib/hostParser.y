@@ -97,8 +97,13 @@ RootNode: /* empty */
  /* Layout information for the editor. This is ignored by the parser. */
 Position: '(' DNUM ',' DNUM ')'         { } 
         | '(' NUM ',' NUM ')'           { } 
+        | '(' NUM ',' '-' NUM ')'           { } 
+        | '(' '-' NUM ','  NUM ')'           { } 
+        | '(' '-' NUM ',' '-' NUM ')'           { } 
         | '(' DNUM ',' NUM ')'          { } 
+        | '(' DNUM ',' '-' NUM ')'          { } 
         | '(' NUM ',' DNUM ')'          { }
+        | '(' '-' NUM ',' DNUM ')'          { }
 
 HostEdgeList: HostEdge			{ }
             | HostEdgeList HostEdge	{ } 
