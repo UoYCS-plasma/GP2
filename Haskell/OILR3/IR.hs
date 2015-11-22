@@ -5,21 +5,23 @@ import Data.List
 import GPSyntax
 import Graph
 
-import OILR3.Instructions
 
 
 type Id = String
 
-data OilrMod a = Same a  |  Change a a   deriving (Show, Eq)
+data OilrMod a = Same a  |  Change a a  |  Check a  deriving (Show, Eq)
 
 data IRLabel = IRInt Int
-             | IRVar Id
+             | IRVar Id  -- Integer variable
+             | IRLst Id  -- GP 2 list. preserved but not manipulated
+             | IRAny
              | IREmpty
      deriving (Show, Eq)
 
 data OilrElem = IRNode  Id  Colour  IRLabel  Bool
               | IREdge  Id  Colour  IRLabel  Bool  Id Id
-              | IRNac   OilrElem
+              | IREql   IRLabel IRLabel
+              | IRNot   OilrElem
               | IRNothing
      deriving (Show, Eq)
 
@@ -29,44 +31,61 @@ data OilrIR   = IRProc Id OilrExpr
               | IRRule Id OilrRule
      deriving (Show, Eq)
 
-data OilrExpr = IRSeq [OilrExpr]
+data OilrExpr = IRSeqn [OilrExpr]
               | IRSet [Id]
-              | IRBrn OilrExpr OilrExpr
-              | IRTrn OilrExpr   -- transaction that rolls-back if OilrExpr fails
-              | IRDsc OilrExpr -- "discard" -- transaction that always rolls-back
-              | IRCal Id | IRLoo OilrExpr
-              | IRTru | IRFls
+              | IRBran OilrExpr OilrExpr
+              | IRTrns OilrExpr   -- transaction that rolls-back if OilrExpr fails
+              | IRDscd OilrExpr -- "discard" -- transaction that always rolls-back
+              | IRCall Id | IRLoop OilrExpr
+              | IRTrue | IRFals
      deriving (Show, Eq)
 
-makeIR :: [Flag] -> GPProgram -> [OilrIR]
-makeIR flags (Program ds) = map declIR ds
+makeIR :: GPProgram -> [OilrIR]
+makeIR (Program ds) = map declIR ds
 
 declIR :: Declaration -> OilrIR
 declIR (Main cs)                          = declIR (Proc "Main" [] cs)
-declIR (AstRuleDecl r@(AstRule id _ _ _)) = IRRule id $ ruleDeclIR r
-declIR p@(Proc id ds cs)                  = IRProc id $ exprIR (Sequence cs) -- TODO: ???
+declIR p@(Proc id ds [c])                 = IRProc id $ exprIR c
+declIR p@(Proc id ds cs)                  = IRProc id $ exprIR (Sequence cs)
+declIR (AstRuleDecl r@(AstRule id _ _ _)) = IRRule id $ ruleIR r
 
 exprIR :: Expr -> OilrExpr
 exprIR (RuleSet rs)            = IRSet rs
-exprIR (Sequence es)           = IRTrn (IRSeq $ map exprIR es)
-exprIR (IfStatement cn th el)  = IRSeq [IRDsc (exprIR cn), IRBrn (exprIR th) (exprIR el)]
-exprIR (TryStatement cn th el) = IRSeq [IRTrn (exprIR cn), IRBrn (exprIR th) (exprIR el)]
+exprIR (Sequence es)           = IRTrns (IRSeqn $ map exprIR es)
+exprIR (IfStatement cn th el)  =
+        IRSeqn [IRDscd (exprIR cn), IRBran (exprIR th) (exprIR el)]
+exprIR (TryStatement cn th el) =
+        IRSeqn [IRTrns (exprIR cn), IRBran (exprIR th) (exprIR el)]
 exprIR (ProgramOr a b)          = error "Not implemented"
-exprIR (ProcedureCall p)        = IRCal p
-exprIR (Looped (RuleSet rs))    = IRLoo (IRSet rs)
-exprIR (Looped (ProcedureCall p))=IRLoo (IRCal p)
-exprIR (Looped s@(Sequence _))  = IRLoo (exprIR s)
-exprIR Skip                     = IRTru
-exprIR Fail                     = IRFls
+exprIR (ProcedureCall p)        = IRCall p
+exprIR (Looped (RuleSet rs))    = IRLoop (IRSet rs)
+exprIR (Looped (ProcedureCall p))=IRLoop (IRCall p)
+exprIR (Looped s@(Sequence _))  = IRLoop (exprIR s)
+exprIR Skip                     = IRTrue
+exprIR Fail                     = IRFals
 
 
-ruleDeclIR :: AstRule -> OilrRule
-ruleDeclIR  = error ""
+-- data AstRule = AstRule RuleName [Variable] (AstRuleGraph, AstRuleGraph) Condition
+ruleIR :: AstRule -> OilrRule
+ruleIR (AstRule id vs (lhs, rhs) cond) = ruleGraphIR lhs rhs ++ irConds
+    where irConds = case ruleCondIR cond of
+                        IRNothing              -> []
+                        e@(IREdge _ _ _ _ _ _) -> [Same e]
+                        c                      -> [Check c]
+
 
 ruleGraphIR :: AstRuleGraph -> AstRuleGraph -> OilrRule
 ruleGraphIR lhs rhs = nodes ++ edges
     where nodes = map irNode $ allNodePairs lhs rhs
           edges = makeIREdges lhs rhs
+
+ruleCondIR :: Condition -> OilrElem
+ruleCondIR NoCondition         = IRNothing
+ruleCondIR (Not c)             = IRNot $ ruleCondIR c
+ruleCondIR (Edge s t Nothing)                = IREdge "" Any IRAny           False s t
+ruleCondIR (Edge s t (Just (RuleLabel l c))) = IREdge "" c   (makeIRLabel l) False s t
+ruleCondIR (Eq as bs)          = IREql (makeIRLabel as) (makeIRLabel bs)
+ruleCondIR c = error $ "Unsupported conditional: " ++ show c
 
 -- Node mangling
 
@@ -150,8 +169,9 @@ makeIRLabel :: [RuleAtom] -> IRLabel
 makeIRLabel []                  = IREmpty
 makeIRLabel [Val (Int i)]       = IRInt i
 makeIRLabel [Val v]             = error $ "Unsupported literal value: " ++ show v
-makeIRLabel [Var (var, IntVar)] = IRVar var
-makeIRLabel [Var (var, t)]      = error $ var ++ " is of unsupported type: " ++ show t
+makeIRLabel [Var (v, IntVar)]   = IRVar v
+makeIRLabel [Var (v, ListVar)]  = IRLst v  -- only valid if v is not evaluated!
+makeIRLabel [Var (v, t)]        = error $ v ++ " is of unsupported type: " ++ show t
 makeIRLabel [atom]              = error $ "Unsupported atom: " ++ show atom
 makeIRLabel (x:xs)              = error "List type labels are not supported"
 

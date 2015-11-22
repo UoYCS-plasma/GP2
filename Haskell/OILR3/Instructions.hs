@@ -1,7 +1,9 @@
 module OILR3.Instructions where
 
-import GPSyntax
-import Mapping
+import OILR3.IR
+
+import GPSyntax   -- for colours
+import Mapping    -- for mappings
 
 type Tid = Int -- Trav id
 
@@ -34,46 +36,106 @@ data Pred = Pred { cDim :: Dim
                  , rDim :: Dim } 
     deriving (Show, Eq)
 
-data Dirn = In | Out | Either deriving (Eq, Show)
+data Dir = In | Out | Either deriving (Eq, Show)
+
+-- Match registers...
+type Dst = Int
+type Src = Int
+type Tgt = Int
+type End = Int
+
+-- Other instr params
+type Col = Int
+type Spc = Int
+
+type Target = String
+
+-- Machine structure
+--
+-- Registers:  bool-flag   b-frame-pointer   match-reg-file
 
 
+data Instr =
+      OILR Int          -- Number of OILR indices
+    -- Graph modification
+    | ABN Dst           -- Add and Bind Node to register Dst
+    | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
+    | DBN Dst           -- Delete Bound Node 
+    | DBE Dst           -- Delete Bound Node
+    
+    | RBN Dst Bool      -- set Root on Bound Node to Bool
+    
+    | CBL Dst Col       -- Colour Bound eLement
+    | LBL Dst Int       -- Label Bound eLement with Int
 
-data Instr a b = 
-      OILR Int
-    -- Graph manipulation
-    | ADN a                 -- Add Node without Trav
-    | ADE b a a             -- Add Edge between Nodes
-    | DEN a                 -- Delete Node with id
-    | DEE b                 -- Delete Edge with id
-    | RTN a                 -- Set root flag on node
-    | URN a                 -- unset root flag on node
-    | CON a Int             -- colour a node
-
-    -- Stack machine prims
-    | LIT Int               -- push literal on data stack
-    | ADD                   -- add top two values on ds
-    | SUB                   -- subtract top of stack from next on stack
-    | SHL                   -- shift NoS left by ToS bits
-    -- Definition
-    | RUL String
-    | PRO String
-    | END
     -- Graph search
-    -- | CRS a Pred            -- conditional reset of trav
-    | LUN a Pred
-    | LUE b a a Dirn        -- look up an edge between two bound nodes. Optionally 
-    | XTE a b a Dirn        -- extend match along an edge pointing in Direction
---    | XIE a b a             -- extend match back along an incoming edge
---    | XOE a b a             -- extend match along an outgoing edge 
-    | NEC a a               -- negative edge condition
-    | UBA                   -- unbind all
-    -- flow control
-    | CAL String | ALP String -- call rule or proc once or as-long-as-possible
-    | OK                    -- match completed, start modification
-    | RET                   -- unconditinoal return from current rule or proc
-    | ORB a                 -- back to a if success flag is unset
-    | ORF                   -- exit procedure if success flag is unset
-    -- logical operators
-    | TRU  | FLS            -- set status register to true or false respectively
-    | NOP
-    deriving (Show, Eq)
+    | BND Dst Spc          -- Bind next unbound NoDe in Spc to Dst
+    | BED Dst End End Dir  -- Bind EDge between Ends in Dir
+    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
+    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
+
+    -- Definitions & program structure
+    | TAR Target           -- jump TARget
+    | BRZ Target           -- BRanch if Zero
+    | CAL Target           -- CALl Target, pushing current IP to call-stack
+    | RET                  -- RETurn to IP on top of call-stack
+
+    -- Backtracking
+    | CCP                  -- Create CheckPoint for backtracking
+    | BAK                  -- roll-BAcK to last checkpoint
+    | COM                  -- COMmit changes and discard top b-frame
+
+    -- Stack machine
+    | BLL Dst              -- push Bound eLement Label to stack
+    | BLC Dst              -- push Bound eLement Colour to stack
+    | BLR Dst              -- push Bound eLement Rootedness to stack
+
+    -- Misc
+    | NOP                  -- No-op
+
+
+
+compileProg :: [OilrIR] -> [[Instr]]
+compileProg = map compileProc
+
+
+
+compileProc :: OilrIR -> [Instr]
+compileProc (IRProc name e) = TAR (mangle name) : compileExpr e
+
+{- data OilrExpr = IRSeqn [OilrExpr]
+              | IRSet [Id]
+              | IRBran OilrExpr OilrExpr
+              | IRTrns OilrExpr   -- transaction that rolls-back if OilrExpr fails
+              | IRDscd OilrExpr -- "discard" -- transaction that always rolls-back
+              | IRCall Id | IRLoop OilrExpr
+              | IRTrue | IRFals
+     deriving (Show, Eq) -}
+
+
+compileExpr :: OilrExpr -> [Instr]
+compileExpr (IRSet rs)     = compileSet rs
+compileExpr (IRBran th el) = compileBranch th el
+compileExpr (IRTrns e)     = compileTrns e
+compileExpr (IRDscd e)     = compileDscd e
+compileExpr (IRCall id)    = compileCall (mangle id)
+compileExpr (IRLoop e)     = compileLoop e
+compileExpr IRTrue         = [ TRU ]
+compileExpr IRFals         = [ FAL ]
+
+
+compileSet :: [] -> [Instr]
+compileSet = error "dong"
+
+compileBranch :: OilrExpr -> OilrExpr -> [Instr]
+compileBranch th el = 
+
+
+
+mangle :: String -> String
+mangle "Main"  = "OILR_Main"
+mangle s@(i:_) | i `elem` ['A'..'Z'] = "OILR_proc_" ++ s
+               | otherwise           = "OILR_rule_" ++ s
+
+
+

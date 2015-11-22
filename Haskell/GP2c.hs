@@ -11,9 +11,12 @@ import Text.Parsec
 import OILR3.Instructions
 import OILR3.Preprocessor
 import OILR3.HostCompile
-import OILR3.ProgCompile
-import OILR3.CBackend
-import OILR3.CRuntime
+-- import OILR3.ProgCompile
+import OILR3.IR
+import OILR3.Optimiser
+-- import OILR3.CBackend
+
+import OILR3.Backends.C
 
 -- import GPSyntax -- debug code
 import ParseGraph
@@ -83,7 +86,9 @@ main = do
             -- p <- readFile progFile
             pAST <- parseProgram progFile
             hAST <- parseHostGraph hostFile
-            let prog = compileProgram flags pAST
+            let prog   = optimise $ makeIR pAST
+            putStrLn $ show prog
+            -- let prog = compileProgram flags pAST
             let host = compileHostGraph hAST
             -- putStrLn $ show prog
             if OilrInstructions `elem` flags
