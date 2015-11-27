@@ -10,8 +10,9 @@ CC = gcc
 # CLFAGS for optimised code.
 CFLAGS = -I../inc -O2 -fomit-frame-pointer -Wall -Wextra 
 
-# Builds the library object files. 
+# Builds the library object files and the shared library libgp2.a.
 default:	$(OBJECTS)
+		ar rcs libgp2.a *.o
 
 hostParser.c hostParser.h: graph.h hostParser.y
 		bison hostParser.y

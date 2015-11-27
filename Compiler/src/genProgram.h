@@ -17,7 +17,7 @@
 #include "globals.h"
 
 void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
-                         string host_file, string output_file);
+                         string host_file, string output_dir);
 
 /* Each GP 2 control construct is translated into a fragment of C code. 
  * I give the "broad strokes" translation here, excluding the more fiddly

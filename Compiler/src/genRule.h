@@ -40,11 +40,11 @@
  
 /* Takes the root of the AST of a GP 2 program and generates C modules for
  * each rule in the program. */
-void generateRules(List *declarations);
+void generateRules(List *declarations, string output_dir);
 
 /* Create a C module to match and apply the rule. The generated files are
  * called <rule_name>.h and <rule_name>.c.*/
-void generateRuleCode(Rule *rule, bool predicate);
+void generateRuleCode(Rule *rule, bool predicate, string output_dir);
 
 /* The three functions below write the function apply_<rule_name> that makes the 
  * necessary changes to the host graph according to the rule and morphism. 

@@ -13,34 +13,28 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
 default:	$(OBJECTS)
 		make build
 		./GP2-compile $(prog) $(host)
-		cd ../runtime && make
-
-output-file:	$(OBJECTS)
-		make build
-		./GP2-compile -o $(output) $(prog) $(host)
-		cd ../runtime && make
+		cd /tmp/gp2 && make
 
 # Builds everything and runs valgrind on the runtime executable.
 debug:		$(OBJECTS)	
 		make build
 		./GP2-compile $(prog) $(host) 
-		cd ../runtime && make && $(VALGRIND) ./GP2-run 
+		cd /tmp/gp2 && make && $(VALGRIND) ./GP2-run 
 
 # As above, but the -c flag is passed to GP2-compile.
 copy:		$(OBJECTS)
 		make build
 		./GP2-compile -c $(prog) $(host)
-		cd ../runtime && make
+		cd /tmp/gp2 && make
 
 copy-debug:	$(OBJECTS)	
 		make build
 		./GP2-compile -c $(prog) $(host) 
-		cd ../runtime && make && $(VALGRIND) ./GP2-run 
+		cd /tmp/gp2 && make && $(VALGRIND) ./GP2-run 
 
 # Builds the executable GP2-compile.
 build:		$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
-		cd ../lib && make
 
 
 # Builds the executable GP2-compile and runs it with valgrind.
@@ -78,17 +72,12 @@ transform.o:	../inc/globals.h ast.h rule.h transform.h
 
 #Cleanup
 clean:
+		rm *.o 
 		if [ -e "gp2.log" ]; then rm gp2.log; fi
 		if [ -e "gp2.trace" ]; then rm gp2.trace; fi
-		cd ../runtime && make clean
-
-clean-obj:
-		rm *.o 
 
 clean-all:
-		rm parser.c parser.h lexer.c
 		cd ../lib && make clean-all
 		cd ../src
-		make clean-obj
+		rm parser.c parser.h lexer.c
 		make clean
-

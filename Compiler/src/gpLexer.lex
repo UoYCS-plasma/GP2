@@ -176,18 +176,6 @@ list		    return LIST;
 [A-Z][a-zA-Z0-9_]{0,63}  { yylval.id = strdup(yytext); return PROCID; } /* other characters may be allowed. */
 [a-z][a-zA-Z0-9_]{0,63}  { yylval.id = strdup(yytext); return ID; }
 
- /* This rule catches an invalid identifier: a sequence of digits followed
-  * by one valid non-numeric identifier character followed by any valid 
-  * identifier character. In this case, token ID is returned to continue
-  * the parse and potentially catch more invalid identifiers. abort_scan is 
-  * also set to prevent semantic checking from starting. */
-[0-9]+[a-zA-Z_-][a-zA-Z0-9_]*  { print_to_console("Error (%s): Identifiers must "
-     			              	"start with a letter.\n", yytext); 
-		                 print_to_log("%d.%d-%d.%d: Invalid identifier: %s.\n",
-			                 yylloc.first_line, yylloc.first_column,
-			                 yylloc.last_line, yylloc.last_column, yytext);
-			         return 0; }
-
 [ \t\r]+              /* ignore white space */
 \n		      { yycolumn = 1; }  /* reset yycolumn on newline */
 <<EOF>>		      { return 0; }

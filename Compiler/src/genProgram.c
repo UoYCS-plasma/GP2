@@ -74,11 +74,15 @@ static void generateLoopStatement(GPCommand *command, CommandData data);
 static void generateFailureCode(string rule_name, CommandData data);
 
 void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
-                         string host_file, string output_file)
+                         string host_file, string output_dir)
 {
-   file = fopen("../runtime/main.c", "w");
+   int length = strlen(output_dir) + 7;
+   char main_file[length];
+   strcpy(main_file, output_dir);
+   strcat(main_file, "/main.c");
+   file = fopen(main_file, "w");
    if(file == NULL) { 
-     perror("../runtime/main.c");
+     perror(main_file);
      exit(1);
    }
 
@@ -156,9 +160,9 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTF("int main(void)\n");
    PTF("{\n");
    PTFI("srand(time(NULL));\n", 3);
-   PTFI("openLogFile(\"../gp2.log\");\n", 3);
+   PTFI("openLogFile(\"gp2.log\");\n", 3);
    #if defined GRAPH_TRACING || defined RULE_TRACING || defined BACKTRACK_TRACING
-      PTFI("openTraceFile(\"../gp2.trace\");\n", 3);
+      PTFI("openTraceFile(\"gp2.trace\");\n", 3);
    #endif
 
    PTFI("host = buildHostGraph();\n", 3);
@@ -168,12 +172,10 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTFI("return 0;\n", 6);
    PTFI("}\n", 3);
 
-   if(output_file == NULL) PTFI("string output = \"../gp2.output\";\n", 3);
-   else PTFI("string output = \"%s\";\n", 3, output_file);
-   PTFI("FILE *output_file = fopen(output, \"w\");\n", 3);
+   PTFI("FILE *output_file = fopen(\"gp2.output\", \"w\");\n", 3);
    PTFI("if(output_file == NULL)\n", 3);
    PTFI("{\n", 3);
-   PTFI("perror(output);\n", 6);
+   PTFI("perror(\"gp2.output\");\n", 6);
    PTFI("exit(1);\n", 6);
    PTFI("}\n", 3);
 
@@ -198,9 +200,9 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
       iterator = iterator->next;
    }
    PTF("   printGraph(host, output_file);\n");
-   PTF("   printf(\"Output graph saved to file %%s\\n\", output);\n");
+   PTF("   printf(\"Output graph saved to file gp2.output\\n\");\n");
    PTF("   garbageCollect();\n");
-   PTF("   printf(\"Graph changes recorded: %%d\\n\", graph_change_count);\n");
+   //PTF("   printf(\"Graph changes recorded: %%d\\n\", graph_change_count);\n");
    PTF("   fclose(output_file);\n");
    PTF("   return 0;\n");
    PTF("}\n\n");

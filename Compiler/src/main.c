@@ -19,6 +19,7 @@
 #include "globals.h"
 #include "genProgram.h"
 #include "genRule.h"
+#include "libheaders.h"
 #include "parser.h"
 #include "pretty.h"
 #include "seman.h" 
@@ -75,22 +76,90 @@ static bool validateHostGraph(string host_file)
    return (yyparse() == 0);
 }
 
+#define LIB_HEADERS 7
+unsigned char *headers[LIB_HEADERS] = {globals_h, debug_h, graph_h, graphStacks_h,
+                                       hostParser_h, label_h, morphism_h};
+
+string file_names[LIB_HEADERS] = {"globals.h", "debug.h", "graph.h", "graphStacks.h", 
+                                  "hostParser.h", "label.h", "morphism.h"};
+
+void makeLibHeaders(string output_dir, unsigned char **headers, string *file_names,
+                    int header_count)
+{
+   int i;
+   for(i = 0; i < header_count; i++)
+   {
+      int length = strlen(output_dir) + strlen(file_names[i]) + 1;
+      char file_name[length];
+      strcpy(file_name, output_dir);
+      strcat(file_name, "/");
+      strcat(file_name, file_names[i]);
+      
+      FILE *file = fopen(file_name, "w");
+      if(file == NULL) { 
+         perror(file_name);
+         exit(1);
+      }  
+      fprintf(file, "%s", headers[i]);
+      fclose(file);
+   }
+}
+
+/* Controls the CFLAGS in the generated makefile. */
+bool debug_flags = false;
+
+void printMakeFile(string output_dir)
+{
+   int length = strlen(output_dir) + 9;
+   char makefile_name[length];
+   strcpy(makefile_name, output_dir);
+   strcat(makefile_name, "/");
+   strcat(makefile_name, "Makefile");
+   FILE *makefile = fopen(makefile_name, "w");
+   if(makefile == NULL) { 
+      perror("Makefile");
+      exit(1);
+   }
+   
+   char current_dir[1024];
+   if(getcwd(current_dir, sizeof(current_dir)) == NULL) {
+      perror("getcwd() error");
+      exit(1);
+   }
+
+   fprintf(makefile, "LIB=%s\n", current_dir);
+   fprintf(makefile, "OBJECTS := $(patsubst %%.c, %%.o, $(wildcard *.c))\n");  
+   fprintf(makefile, "CC=gcc\n\n");
+
+   if(debug_flags) fprintf(makefile, "CFLAGS = -g -L$(LIB) -Wall -Wextra -lgp2debug\n\n");
+   else fprintf(makefile, "CFLAGS = -L$(LIB) -fomit-frame-pointer -O2 -Wall -Wextra -lgp2\n\n");
+
+   fprintf(makefile, "default:\t$(OBJECTS)\n\t\t$(CC) $(OBJECTS) $(CFLAGS) -o GP2-run\n\n");
+   fprintf(makefile, "%%.o:\t\t%%.c\n\t\t$(CC) -c $(CFLAGS) -o $@ $<\n\n");
+   fprintf(makefile, "clean:\t\n\t\trm *\n");
+   fclose(makefile);
+} 
+
+   
 bool graph_copying = false;
 
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "GP2-compile [flags] <program_file> <host_file>\n"
+                        "GP2-compile [-c] [-d] [-o <outdir>] <program_file> <host_file>\n"
                         "GP2-compile -p <program_file>\n"
                         "GP2-compile -h <host_file>\n\n"
                         "Flags:\n"
                         "-c - Enable graph copying.\n"
-                        "-o <output_file> - Specify the file to store the GP 2 program output.\n\n";
-   openLogFile("gp2.log");
+                        "-d - Compile program with GCC debugging flags.\n"
+                        "-p - Validate a GP 2 program.\n"
+                        "-h - Validate a GP 2 host graph.\n"
+                        "-o - Specify directory for generated code and program output.\n\n";
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
-   string program_file = NULL, host_file = NULL, output_file = NULL;
+   string program_file = NULL, host_file = NULL, output_dir = NULL;
+   openLogFile("/tmp/gp2-compile.log");
 
    if(argc < 2)
    {
@@ -133,6 +202,10 @@ int main(int argc, char **argv)
                  graph_copying = true;
                  break;
 
+            case 'd':
+                 debug_flags = true;
+                 break;
+
             case 'o':
                  argv_index++;
                  if(argv_index == argc)
@@ -140,7 +213,7 @@ int main(int argc, char **argv)
                     print_to_console("%s", usage);
                     return 0; 
                  }
-                 output_file = argv[argv_index];
+                 output_dir = argv[argv_index];
                  break;
 
             default:
@@ -156,6 +229,13 @@ int main(int argc, char **argv)
       }
       program_file = argv[argv_index++];
       host_file = argv[argv_index];
+   }
+
+   /* If no output directory specified, make a directory in /tmp. */
+   if(output_dir == NULL) 
+   {
+      mkdir("/tmp/gp2", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+      output_dir = "/tmp/gp2";
    }
 
    if(validate)
@@ -195,12 +275,14 @@ int main(int argc, char **argv)
       else
       {
          print_to_console("Generating program code...\n\n");
-         generateRules(gp_program);
+         generateRules(gp_program, output_dir);
          staticAnalysis(gp_program);   
          #ifdef DEBUG_PROGRAM
             printDotAST(gp_program, program_file);
          #endif
-         generateRuntimeMain(gp_program, host_nodes, host_edges, host_file, output_file);
+         generateRuntimeMain(gp_program, host_nodes, host_edges, host_file, output_dir);
+         makeLibHeaders(output_dir, headers, file_names, LIB_HEADERS);
+         printMakeFile(output_dir);
       }
    }
    if(yyin != NULL) fclose(yyin);
@@ -208,3 +290,4 @@ int main(int argc, char **argv)
    closeLogFile();
    return 0;
 }
+

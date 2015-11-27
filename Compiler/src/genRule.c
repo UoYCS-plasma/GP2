@@ -17,7 +17,7 @@ FILE *header = NULL;
 FILE *file = NULL;
 Searchplan *searchplan = NULL;
 
-void generateRules(List *declarations)
+void generateRules(List *declarations, string output_dir)
 {
    while(declarations != NULL)
    {
@@ -29,7 +29,7 @@ void generateRules(List *declarations)
 
          case PROCEDURE_DECLARATION:
               if(decl->procedure->local_decls != NULL)
-                 generateRules(decl->procedure->local_decls);
+                 generateRules(decl->procedure->local_decls, output_dir);
               break;
 
          case RULE_DECLARATION:
@@ -40,7 +40,7 @@ void generateRules(List *declarations)
                * program. */
               decl->rule->empty_lhs = rule->lhs == NULL;
               decl->rule->is_predicate = isPredicate(rule);
-              generateRuleCode(rule, decl->rule->is_predicate);
+              generateRuleCode(rule, decl->rule->is_predicate, output_dir);
               freeRule(rule);
               break;
          }
@@ -54,25 +54,29 @@ void generateRules(List *declarations)
 }
 
 /* Create a C module to match and apply the rule. */
-void generateRuleCode(Rule *rule, bool predicate)
+void generateRuleCode(Rule *rule, bool predicate, string output_dir)
 {
-   /* Create files ../runtime/<rule name>.h and ../runtime/<rule name>.c */
-   int length = strlen(rule->name) + 14;
+   /* Create files <output dir>/<rule name>.h and <output dir>/<rule name>.c */
+   int length = strlen(output_dir) + strlen(rule->name) + 3;
 
    char header_name[length];
-   char file_name[length];
-   strcpy(header_name, "../runtime/");
-   strcpy(file_name, "../runtime/");
+   strcpy(header_name, output_dir);
+   strcat(header_name, "/");
    strcat(header_name, rule->name);
-   strcat(file_name, rule->name);
    strcat(header_name, ".h");
-   strcat(file_name, ".c");
 
    header = fopen(header_name, "w");
    if(header == NULL) { 
       perror(header_name);
       exit(1);
    }  
+
+   char file_name[length];
+   strcpy(file_name, output_dir);
+   strcat(file_name, "/");
+   strcat(file_name, rule->name);
+   strcat(file_name, ".c");
+
    file = fopen(file_name, "w");
    if(file == NULL) { 
       perror(file_name);

@@ -467,7 +467,7 @@ AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
  /* GP 2 identifiers */
 ProcID: PROCID 				/* default $$ = $1 */ 
 RuleID: ID		         	/* default $$ = $1 */ 
-NodeID: ID				/* default $$ = $1 */ 
+NodeID: ID				/* default $$ = $1 */
 EdgeID: ID				/* default $$ = $1 */ 
 Variable: ID		  		/* default $$ = $1 */ 
 

@@ -93,6 +93,7 @@ void printDotAST(List *const gp_ast, string file_name)
    print_to_dot_file("node0->node1\n");
 
    resetRuleAndProcedureIds(gp_ast);
+   next_id = 1;
    printASTList(gp_ast, dot_file);
    print_to_dot_file("}\n\n");
    fclose(dot_file);
