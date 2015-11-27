@@ -80,20 +80,13 @@ extern int parse_target;
 "\"\""				 { yylval.str = strdup(""); return STR; } 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
-<IN_STRING>[a-zA-Z0-9_ ]{0,63} 	 { yylval.str = strdup(yytext); return STR; }
+ /* ASCII characters 040-176 (octal) */
+<IN_STRING>[\040,\041,\043-\172]{0,63}  { yylval.str = strdup(yytext); return STR; }
 <IN_STRING>(\n)                  { print_to_log("%d.%d-%d.%d: String "
           				        "continues on new line.\n", 
                                         yylloc.first_line, yylloc.first_column, 
                                         yylloc.last_line, yylloc.last_column); 	
                                    return 0; }
-<IN_STRING>[^\"a-zA-Z0-9_]       { print_to_console("Warning: Invalid character "
-                                                "in string: '%c'.\n", yytext[0]); 
-			           print_to_log("%d.%d-%d.%d: Invalid character: "
-          				        "'%c'.\n", 
-                                           yylloc.first_line, yylloc.first_column, 
-                                           yylloc.last_line, yylloc.last_column,
-                                           yytext[0]);	
-				   yylval.str = strdup(yytext); return STR; }
 <IN_STRING><<EOF>>   		 { print_to_log("Line %d: Unterminated "
           				        "string.\n", yylineno);                   
                                    return 0; }  
