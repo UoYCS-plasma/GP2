@@ -639,7 +639,7 @@ static void generateFailureCode(string rule_name, CommandData data)
               data.indent, rule_name);
       else PTFI("fprintf(output_file, \"No output graph: Fail statement invoked\\n\");\n",
                 data.indent);
-      PTFI("printf(\"Output information saved to file %%s\\n\", output);\n", data.indent);
+      PTFI("printf(\"Output information saved to file gp2.output\");\n", data.indent);
       PTFI("garbageCollect();\n", data.indent);
       PTFI("printf(\"Graph changes recorded: %%d\\n\", graph_change_count);\n", data.indent);
       PTFI("fclose(output_file);\n", data.indent);

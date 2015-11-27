@@ -274,10 +274,10 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
    PTFI("HostAtom sublist[label.length - %d];\n", indent + 6, host_atoms_matched);
    PTFI("int list_index = 0;\n", indent + 6);
    PTFI("HostListItem *iterator = start;\n", indent + 6);
-   PTFI("while(item->next != start)\n", indent + 6);
+   PTFI("while(iterator != item->next)\n", indent + 6);
    PTFI("{\n", indent + 6);
    PTFI("sublist[list_index++] = iterator->atom;\n", indent + 9);
-   PTFI("item = item->next;\n", indent + 9);
+   PTFI("iterator = iterator->next;\n", indent + 9);
    PTFI("}\n", indent + 6);
    PTFI("HostList *list = makeHostList(sublist, label.length - %d, false);\n", indent + 6,  
         host_atoms_matched);
@@ -775,8 +775,6 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
    }
    if(context < 2)
    {
-      PTFI("HostList *list%d = makeHostList(array%d, list_length%d, false);\n",
-           indent, count, count, count);
       if(label.mark == ANY)
       /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
        * host item's label. */
@@ -785,12 +783,21 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
                        indent, host_label_count);
          else PTFI("HostLabel host_label%d = getEdgeLabel(host, host_edge_index);\n",
                    indent, host_label_count);
-         PTFI("label = makeHostLabel(host_label%d.mark, list_length%d, list%d);\n\n", 
-              indent, host_label_count, count, count);
-         host_label_count++;
       }
-      else PTFI("label = makeHostLabel(%d, list_length%d, list%d);\n\n", 
-                indent, label.mark, count, count);
+      PTFI("if(list_length%d > 0)\n", indent, count);
+      PTFI("{\n", indent);
+      PTFI("HostList *list%d = makeHostList(array%d, list_length%d, false);\n",
+           indent + 3, count, count, count);
+      if(label.mark == ANY)
+         PTFI("label = makeHostLabel(host_label%d.mark, list_length%d, list%d);\n", 
+              indent + 3, host_label_count, count, count);
+      else PTFI("label = makeHostLabel(%d, list_length%d, list%d);\n",
+                indent + 3, label.mark, count, count);
+      PTFI("}\n", indent);
+      if(label.mark == ANY)
+         PTFI("else label = makeEmptyLabel(host_label%d.mark);\n\n", indent, host_label_count);
+      else PTFI("else label = makeEmptyLabel(%d);\n\n", indent, label.mark);
+      host_label_count++;
    }
    else PTF("\n");
 }

@@ -932,7 +932,6 @@ void generateApplicationCode(Rule *rule)
          PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
          host_node_index_declared = true;
       }
-      /* Generate code to remove the node. */
       else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
       RuleNode *node = getRuleNode(rule->lhs, index);
       if(node->interface == NULL) 
@@ -958,8 +957,8 @@ void generateApplicationCode(Rule *rule)
             if(rhs_node->relabelled)
             {
                /* Generate code to evaluate the RHS label. Note that the code generated
-                * here is suitable for an edge relabelling independently of whether it
-                * is remarked or not. */
+                * here is suitable for a node relabelling independently of whether it
+                * is re-marked or not. */
                if(!label_declared) 
                {
                   PTFI("HostLabel label;\n", 3);
@@ -997,7 +996,7 @@ void generateApplicationCode(Rule *rule)
             /* Case (1) */
             if(node->root && !node->interface->root) 
             {
-               PTFI("if(record_changes) pushChangedRootNode(host_node_index);\n", 6);
+               PTFI("if(record_changes) pushChangedRootNode(host_node_index);\n", 3);
                PTFI("changeRoot(host, host_node_index);\n", 3);
             }
             /* Case (2) */
