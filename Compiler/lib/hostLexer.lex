@@ -5,6 +5,12 @@
   ================================                           
 
   The Flex specification for GP 2 host graph tokens.
+  
+  =============
+  Update Policy
+  =============
+  Changes to the GP 2 syntax as defined in this file must be mirrored in the
+  host graph lexer of the graphical editor.
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
@@ -80,6 +86,8 @@ dashed		    { yylval.mark = DASHED; return MARK; }
 "," |               
 ":" |     
 "-" |
+"<" |
+">" |
 "#"		    return yytext[0];
 
 "(R)"	 	    return ROOT;

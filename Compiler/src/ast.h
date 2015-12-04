@@ -7,6 +7,13 @@
   Module for creating and processing GP2's abstract syntax tree. Contains enum 
   type definitions, AST node definitions, prototypes for AST constructors and 
   prototypes for AST freeing functions.
+  
+  =============
+  Update Policy
+  =============
+  Changes to the AST data structures defined in this file must be mirrored in the
+  file GP2-editor/src/developer/translate/ast.h (and ast.c) in order to maintain
+  consistency with the graphical editor.
 
 /////////////////////////////////////////////////////////////////////////// */
 

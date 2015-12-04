@@ -6,6 +6,13 @@
 
   The Bison grammar for GP2 host graphs. The generated parser builds the host
   graph from the textual description of a host graph.
+  
+  =============
+  Update Policy
+  =============
+  Changes to the GP 2 syntax as defined in this file must be mirrored in the
+  host graph parser of the graphical editor, with possible updates to the
+  action rules of the editor's parser.
 
 //////////////////////////////////////////////////////////////////////////// */
 
@@ -68,6 +75,7 @@ HostList *host_list = NULL;
 
 %type <label> HostLabel
 %type <atom> HostAtom
+%type <id> NodeID EdgeID
 
 %error-verbose
 
@@ -85,9 +93,9 @@ HostGraph: '[' '|' ']'  		{ }
 HostNodeList: HostNode			{ }
             | HostNodeList HostNode	{ }
 
-HostNode: '(' NODE_ID RootNode ',' HostLabel ')' { node_map[$2] = addNode(host, is_root, $5); 
+HostNode: '(' NodeID RootNode ',' HostLabel ')' { node_map[$2] = addNode(host, is_root, $5); 
  				   	          is_root = false; } 
-HostNode: '(' NODE_ID RootNode ',' HostLabel Position ')'
+        | '(' NodeID RootNode ',' HostLabel Position ')'
     					{ node_map[$2] = addNode(host, is_root, $5); 
  					  is_root = false; } 
 
@@ -95,20 +103,20 @@ RootNode: /* empty */
 	| ROOT 				{ is_root = true; }
 
  /* Layout information for the editor. This is ignored by the parser. */
-Position: '(' DNUM ',' DNUM ')'         { } 
-        | '(' NUM ',' NUM ')'           { } 
-        | '(' NUM ',' '-' NUM ')'           { } 
-        | '(' '-' NUM ','  NUM ')'           { } 
-        | '(' '-' NUM ',' '-' NUM ')'           { } 
-        | '(' DNUM ',' NUM ')'          { } 
-        | '(' DNUM ',' '-' NUM ')'          { } 
-        | '(' NUM ',' DNUM ')'          { }
-        | '(' '-' NUM ',' DNUM ')'          { }
+Position: '<' DNUM ',' DNUM '>'         { } 
+        | '<' NUM ',' NUM '>'           { } 
+        | '<' NUM ',' '-' NUM '>'       { } 
+        | '<' '-' NUM ','  NUM '>'      { } 
+        | '<' '-' NUM ',' '-' NUM '>'   { } 
+        | '<' DNUM ',' NUM '>'          { } 
+        | '<' DNUM ',' '-' NUM '>'      { } 
+        | '<' NUM ',' DNUM '>'          { }
+        | '<' '-' NUM ',' DNUM '>'      { }
 
 HostEdgeList: HostEdge			{ }
             | HostEdgeList HostEdge	{ } 
 
-HostEdge: '(' EDGE_ID ',' NODE_ID ',' NODE_ID ',' HostLabel ')'
+HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
 					{ addEdge(host, $8, node_map[$4], node_map[$6]); }
 
 HostLabel: HostList			{ host_list = makeHostList(array, length, true);
@@ -133,6 +141,14 @@ HostAtom: NUM 				{ $$.type = 'i';
 					  $$.num = -($2); }
         | STR 				{ $$.type = 's'; 
 					  $$.str = $1; }
+
+/* I make the rule explicit for the NUM tokens, otherwise Bison reports a
+ * type clash: <id> != <num> */
+NodeID: NODE_ID				/* default $$ = $1 */
+      | NUM				{ $$ = $1; }
+
+EdgeID: EDGE_ID				/* default $$ = $1 */
+      | NUM				{ $$ = $1; }
 %%
 
 /* Bison calls yyerror whenever it encounters an error. It prints error

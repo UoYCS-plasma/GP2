@@ -6,6 +6,13 @@
 
   The Flex specification for the GP2 lexical analyser.
   Defines the tokens of GP2 and their associated regular expressions.
+  
+  =============
+  Update Policy
+  =============
+  Changes to the GP 2 grammar as defined in this file must be mirrored in the
+  file GP2-editor/src/developer/translate/gplexer.lex in order to maintain
+  consistency with the graphical editor.
 
 /////////////////////////////////////////////////////////////////////////// */ 
 

@@ -34,8 +34,5 @@ morphism.o:	../inc/globals.h label.h morphism.h
 
 # Cleanup
 clean:
-		rm *.o
-
-clean-all:
 		rm hostLexer.c hostParser.h hostParser.c
 		rm *.o

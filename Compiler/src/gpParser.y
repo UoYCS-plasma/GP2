@@ -7,6 +7,13 @@
   The Bison grammar for GP2 programs and rules. The generated parser builds an
   abstract syntax tree representation of a GP 2 program. There is also a host
   graph parser for syntactic analysis of host graphs.
+  
+  =============
+  Update Policy
+  =============
+  Changes to the GP 2 grammar as defined in this file must be mirrored in the
+  file GP2-editor/src/developer/translate/gpparser.y in order to maintain
+  consistency with the graphical editor.
 
 //////////////////////////////////////////////////////////////////////////// */
 
@@ -386,15 +393,15 @@ Edge: '(' EdgeID Bidirection ',' NodeID ',' NodeID ',' Label ')'
 					  if($5) free($5); if($7) free($7); }
 
  /* Layout information for the editor. This is ignored by the parser. */
-Position: '(' DNUM ',' DNUM ')'         { } 
-        | '(' NUM ',' NUM ')'           { } 
-        | '(' NUM ',' '-' NUM ')'           { } 
-        | '(' '-' NUM ','  NUM ')'           { } 
-        | '(' '-' NUM ',' '-' NUM ')'           { } 
-        | '(' DNUM ',' NUM ')'          { } 
-        | '(' DNUM ',' '-' NUM ')'          { } 
-        | '(' NUM ',' DNUM ')'          { }
-        | '(' '-' NUM ',' DNUM ')'          { }
+Position: '<' DNUM ',' DNUM '>'         { } 
+        | '<' NUM ',' NUM '>'           { } 
+        | '<' NUM ',' '-' NUM '>'       { } 
+        | '<' '-' NUM ','  NUM '>'      { } 
+        | '<' '-' NUM ',' '-' NUM '>'   { } 
+        | '<' DNUM ',' NUM '>'          { } 
+        | '<' DNUM ',' '-' NUM '>'      { } 
+        | '<' NUM ',' DNUM '>'          { }
+        | '<' '-' NUM ',' DNUM '>'      { }
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
@@ -468,7 +475,23 @@ AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
 ProcID: PROCID 				/* default $$ = $1 */ 
 RuleID: ID		         	/* default $$ = $1 */ 
 NodeID: ID				/* default $$ = $1 */
+      | NUM				{ char id[64]; int write;
+					  write = snprintf(id, 64, "%d", $1);
+				          if(write < 0) {
+					    yyerror("Node ID conversion failed.");
+					    exit(1);
+					  }
+					  else $$ = strdup(id);
+					}
 EdgeID: ID				/* default $$ = $1 */ 
+      | NUM				{ char id[64]; int write;
+					  write = snprintf(id, 64, "%d", $1);
+				          if(write < 0) {
+					    yyerror("Edge ID conversion failed.");
+					    exit(1);
+					  }
+					  else $$ = strdup(id);
+					}
 Variable: ID		  		/* default $$ = $1 */ 
 
 
