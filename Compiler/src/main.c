@@ -31,7 +31,8 @@
  * The variable parse_target is passed to the lexer which in turn sends
  * the appropriate token to the parser. */ 
 #define GP_PROGRAM 1 		
-#define GP_GRAPH 2	
+#define GP_GRAPH 2		
+#define GP_RULE 3	
 int parse_target = 0; 
 
 static bool validateProgram(string program_file)
@@ -62,6 +63,21 @@ static bool validateProgram(string program_file)
       bool semantic_error = analyseProgram(gp_program, false, NULL);
    #endif
    return (!syntax_error && !semantic_error);
+}
+
+static bool validateRule(string rule_file)
+{
+   yyin = fopen(rule_file, "r");
+   if(yyin == NULL) 
+   {  
+      perror(rule_file);
+      return false;
+   }
+   #ifdef PARSER_TRACE 
+      yydebug = 1; /* Bison outputs a trace of its parse to stderr. */
+   #endif
+   parse_target = GP_RULE;
+   return (yyparse() == 0);
 }
 
 static bool validateHostGraph(string host_file)
@@ -148,17 +164,19 @@ int main(int argc, char **argv)
    string const usage = "Usage:\n"
                         "GP2-compile [-c] [-d] [-o <outdir>] <program_file> <host_file>\n"
                         "GP2-compile -p <program_file>\n"
+                        "GP2-compile -r <rule_file>\n"
                         "GP2-compile -h <host_file>\n\n"
                         "Flags:\n"
                         "-c - Enable graph copying.\n"
                         "-d - Compile program with GCC debugging flags.\n"
+                        "-r - Validate a GP 2 rule.\n"
                         "-p - Validate a GP 2 program.\n"
                         "-h - Validate a GP 2 host graph.\n"
                         "-o - Specify directory for generated code and program output.\n\n";
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
-   string program_file = NULL, host_file = NULL, output_dir = NULL;
+   string program_file = NULL, host_file = NULL, rule_file = NULL, output_dir = NULL;
 
    if(argc < 2)
    {
@@ -185,6 +203,16 @@ int main(int argc, char **argv)
       }
       validate = true;
       host_file = argv[2];
+   }
+   else if(strcmp(argv[1], "-r") == 0)
+   {
+      if(argc != 3)
+      {
+         print_to_console("%s", usage);
+         return 0; 
+      }
+      validate = true;
+      rule_file = argv[2];
    }
    else
    {
@@ -260,8 +288,14 @@ int main(int argc, char **argv)
          if(result) print_to_console("Host graph %s is valid.\n\n", host_file);   
          else print_to_console("Host graph %s is invalid.\n\n", host_file);   
       }
+      if(rule_file != NULL)
+      {
+         bool result = validateRule(rule_file);
+         if(result) print_to_console("Rule %s is valid.\n\n", rule_file);   
+         else print_to_console("Rule %s is invalid.\n\n", rule_file);   
+      }
       if(yyin != NULL) fclose(yyin);
-      if(gp_program) freeAST(gp_program); 
+      if(gp_program) freeAST(gp_program);
       closeLogFile();
       return 0;
    }
