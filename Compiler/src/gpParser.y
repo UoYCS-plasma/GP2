@@ -31,7 +31,6 @@
 /* Declarations of global variables placed at the bottom of parser.h. */ 
  %code provides {
 extern List *gp_program; 
-extern GPRule *gp_rule; 
 extern int host_nodes, host_edges;
 extern int yylineno;
 extern string yytext;
