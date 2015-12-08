@@ -70,6 +70,10 @@ extern int parse_target;
      parse_target = 0; 
      return GP_GRAPH;  
   }
+  if(parse_target == 3) {
+     parse_target = 0; 
+     return GP_RULE;  
+  }
 %}
 
 
