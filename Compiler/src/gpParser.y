@@ -31,6 +31,7 @@
 /* Declarations of global variables placed at the bottom of parser.h. */ 
  %code provides {
 extern List *gp_program; 
+extern GPRule *gp_rule; 
 extern int host_nodes, host_edges;
 extern int yylineno;
 extern string yytext;
@@ -82,7 +83,7 @@ bool syntax_error = false;
 %token <str> STR 
 %token <id> PROCID ID           				
 %token ROOT BIDIRECTIONAL	
-%token GP_PROGRAM GP_GRAPH						
+%token GP_PROGRAM GP_GRAPH GP_RULE					
 
 %left OR 		/* Lowest precedence level */
 %left AND
@@ -204,6 +205,7 @@ bool syntax_error = false;
 
 Initialise: GP_PROGRAM Program		{ gp_program = $2; }
           | GP_GRAPH HostGraph          { }
+          | GP_RULE RuleDecl          	  { if ($2) freeASTRule($2); }
 
  /* Grammar for GP 2 program text. */
 Program: Declaration	      		{ $$ = addASTDecl(GLOBAL_DECLARATIONS, 
