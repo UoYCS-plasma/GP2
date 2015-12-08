@@ -126,6 +126,7 @@ bool syntax_error = false;
 %type <list_type> Type  
 %type <check_type> Subtype
 %type <id> NodeID EdgeID ProcID RuleID Variable
+%type <num> HostID
 
 /* This code is called whenever Bison discards a symbol during error recovery.
  * In the case of strings and identifiers, the dynamically allocated semantic
@@ -510,18 +511,18 @@ HostGraph: '[' '|' ']'  		{ }
 HostNodeList: HostNode			{ host_nodes++; }
             | HostNodeList HostNode	{ host_nodes++; }
 
-HostNode: '(' NodeID RootNode ',' HostLabel ')'
-    					{ if($2) free($2); } 
-HostNode: '(' NodeID RootNode ',' HostLabel Position ')'
-    					{ if($2) free($2); } 
+HostNode: '(' HostID RootNode ',' HostLabel ')'
+    					/* default $$ = $1; */ 
+HostNode: '(' HostID RootNode ',' HostLabel Position ')'
+    					/* default $$ = $1; */
 
 HostEdgeList: HostEdge			{ host_edges++; }
             | HostEdgeList HostEdge	{ host_edges++; } 
 
-HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
-					{ if($2) free($2); 
-					  if($4) free($4); 
-                     			  if($6) free($6); }
+HostEdge: '(' HostID ',' HostID ',' HostID ',' HostLabel ')'
+    					/* default $$ = $1; */
+
+HostID:	NUM				/* default $$ = $1 */
 
 HostLabel: HostList			{ }
          | _EMPTY			{ }

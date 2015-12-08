@@ -539,8 +539,8 @@ static void printRuleGraph(RuleGraph *graph, FILE *file)
       RuleNode *node = getRuleNode(graph, index);
       /* Five nodes per line */
       if(node_count != 0 && node_count % 5 == 0) PTF("\n  ");
-      if(node->root) PTF("(n%d(R), ", index);
-      else PTF("(n%d, ", index);
+      if(node->root) PTF("(%d(R), ", index);
+      else PTF("(%d, ", index);
       printRuleLabel(node->label, file);
       PTF(") ");
    }
@@ -555,9 +555,9 @@ static void printRuleGraph(RuleGraph *graph, FILE *file)
       RuleEdge *edge = getRuleEdge(graph, index);
       /* Three edges per line */
       if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
-      if(edge->bidirectional) PTF("(e%d(B), ", index);
-      else PTF("(e%d, ", index);
-      PTF("n%d, n%d, ", edge->source->index, edge->target->index);
+      if(edge->bidirectional) PTF("(%d(B), ", index);
+      else PTF("(%d, ", index);
+      PTF("%d, %d, ", edge->source->index, edge->target->index);
       printRuleLabel(edge->label, file);
       PTF(") ");
    }

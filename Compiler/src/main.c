@@ -159,7 +159,6 @@ int main(int argc, char **argv)
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
    string program_file = NULL, host_file = NULL, output_dir = NULL;
-   openLogFile("/tmp/gp2-compile.log");
 
    if(argc < 2)
    {
@@ -236,6 +235,15 @@ int main(int argc, char **argv)
    {
       mkdir("/tmp/gp2", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
       output_dir = "/tmp/gp2";
+      openLogFile("/tmp/gp2/gp2-compile.log");
+   }
+   else
+   {
+      int length = strlen(output_dir) + strlen("/gp2-compile.log");
+      char log_name[length];
+      strcpy(log_name, output_dir);
+      strcat(log_name, "/gp2-compile.log");
+      openLogFile(log_name);
    }
 
    if(validate)

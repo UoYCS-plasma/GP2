@@ -92,8 +92,6 @@ dashed		    { yylval.mark = DASHED; return MARK; }
 
 "(R)"	 	    return ROOT;
 
-n[0-9]+  	   { yylval.id = (int)strtol(yytext+1, NULL, 10); return NODE_ID; }
-e[0-9]+  	   { yylval.id = (int)strtol(yytext+1, NULL, 10); return EDGE_ID; }
 [ \t\r\n]          /* Ignore white space. */
 <<EOF>>		   { return 0; }
 .                  { fprintf(stderr, "Error: Invalid symbol '%c'\n", yytext[0]);

@@ -53,19 +53,17 @@ HostList *host_list = NULL;
 %locations /* Generates code to process locations of symbols in the source file. */
 
 %union {  
-  int num;   /* value of NUM token. */
+  int num;   /* value of NUM token and NodeID/EdgeID. */
   int dnum;   /* value of DNUM token. */
   char *str; /* value of STRING and CHAR tokens. */
-  int id;  /* value of NodeID and EdgeID tokens. */
   int mark;  /* enum MarkTypes, value of MARK token. */
 }
 
 /* Single character tokens do not need to be explicitly declared. */
 %token <mark> MARK
-%token <num> NUM 
+%token <num> NUM  
 %token <dnum> DNUM
 %token <str> STR      
-%token <id> NODE_ID EDGE_ID
 %token ROOT _EMPTY						
 
 %union {  
@@ -75,7 +73,7 @@ HostList *host_list = NULL;
 
 %type <label> HostLabel
 %type <atom> HostAtom
-%type <id> NodeID EdgeID
+%type <num> NodeID EdgeID
 
 %error-verbose
 
@@ -119,6 +117,9 @@ HostEdgeList: HostEdge			{ }
 HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
 					{ addEdge(host, $8, node_map[$4], node_map[$6]); }
 
+NodeID:  NUM				/* default $$ = $1 */
+EdgeID:  NUM				/* default $$ = $1 */
+
 HostLabel: HostList			{ host_list = makeHostList(array, length, true);
 					  $$ = makeHostLabel(NONE, length, host_list); 
 					  length = 0;
@@ -142,13 +143,6 @@ HostAtom: NUM 				{ $$.type = 'i';
         | STR 				{ $$.type = 's'; 
 					  $$.str = $1; }
 
-/* I make the rule explicit for the NUM tokens, otherwise Bison reports a
- * type clash: <id> != <num> */
-NodeID: NODE_ID				/* default $$ = $1 */
-      | NUM				{ $$ = $1; }
-
-EdgeID: EDGE_ID				/* default $$ = $1 */
-      | NUM				{ $$ = $1; }
 %%
 
 /* Bison calls yyerror whenever it encounters an error. It prints error

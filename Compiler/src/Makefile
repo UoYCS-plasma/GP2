@@ -35,6 +35,7 @@ copy-debug:	$(OBJECTS)
 # Builds the executable GP2-compile.
 build:		$(OBJECTS)
 		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
+		cd ../lib && make && cd ../src
 
 
 # Builds the executable GP2-compile and runs it with valgrind.
