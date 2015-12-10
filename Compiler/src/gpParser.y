@@ -442,20 +442,15 @@ LabelArg: /* empty */ 			{ $$ = NULL; }
 
  /* Grammar for labels */
 Label: List				{ $$ = newASTLabel(@$, NONE, $1); }
-     | _EMPTY				{ $$ = newASTLabel(@$, NONE, NULL); }
      | List '#' MARK	  		{ $$ = newASTLabel(@$, $3, $1); }
-     | _EMPTY '#' MARK	  		{ $$ = newASTLabel(@$, $3, NULL); }
      /* Any has a distinct token since it cannot occur in the host graph. */
      | List '#' ANY_MARK		{ $$ = newASTLabel(@$, $3, $1); }
-     | _EMPTY '#' ANY_MARK		{ $$ = newASTLabel(@$, $3, NULL); }
 
 
 List: AtomExp				{ $$ = addASTAtom(@1, $1, NULL); } 
     | List ':' AtomExp 			{ $$ = addASTAtom(@3, $3, $1); }
-    /* The empty keyword in the middle of a list is a syntax error. */
-    | List ':' _EMPTY			{ $$ = $1;
-    					  report_warning("Empty symbol in the "
-     					                 "middle of a list.\n"); }
+    | _EMPTY				{ $$ = NULL; }
+    | List ':' _EMPTY			/* default $$ = $1 */
 
 AtomExp: Variable			{ $$ = newASTVariable(@$, $1); if($1) free($1); }
        | NUM 				{ $$ = newASTNumber(@$, $1); }
@@ -526,15 +521,12 @@ HostEdge: '(' HostID ',' HostID ',' HostID ',' HostLabel ')'
 HostID:	NUM				/* default $$ = $1 */
 
 HostLabel: HostList			{ }
-         | _EMPTY			{ }
          | HostList '#' MARK	  	{ }
-         | _EMPTY '#' MARK	  	{ }
 
 HostList: HostExp 			{ } 
         | HostList ':' HostExp 		{ }
-        /* The empty keyword in the middle of a list is a syntax error. */
-        | HostList ':' _EMPTY	        { report_warning("Error: empty symbol in the "
-     					                 "middle of a list.\n"); }
+	| _EMPTY			{ }
+        | HostList ':' _EMPTY	        { }
 
 HostExp: NUM 				{ }
        | '-' NUM %prec UMINUS 	        { } 

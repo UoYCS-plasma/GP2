@@ -120,20 +120,28 @@ HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
 NodeID:  NUM				/* default $$ = $1 */
 EdgeID:  NUM				/* default $$ = $1 */
 
-HostLabel: HostList			{ host_list = makeHostList(array, length, true);
-					  $$ = makeHostLabel(NONE, length, host_list); 
-					  length = 0;
-					  host_list = NULL; }
-         | _EMPTY			{ $$ = blank_label; }
-         | HostList '#' MARK	  	{ host_list = makeHostList(array, length, true); 
-                                          $$ = makeHostLabel($3, length, host_list); 
-					  length = 0;
-					  host_list = NULL; }
-         | _EMPTY '#' MARK	  	{ $$ = makeEmptyLabel($3);  }
+HostLabel: HostList			{ if(length == 0) $$ = blank_label;	
+				          else {
+					     host_list = makeHostList(array, length, true);
+					     $$ = makeHostLabel(NONE, length, host_list); 
+					     length = 0;
+					     host_list = NULL; 
+					  }
+	  				}
+         | HostList '#' MARK	  	{ if(length == 0) $$ = makeEmptyLabel($3); 
+	 			          else {
+					     host_list = makeHostList(array, length, true); 
+                                             $$ = makeHostLabel($3, length, host_list); 
+					     length = 0;
+					     host_list = NULL;
+					  }
+					}
 
 HostList: HostAtom 			{ assert(length == 0);
 					  array[length++] = $1; } 
+        | _EMPTY			{ }
         | HostList ':' HostAtom		{ array[length++] = $3; } 
+        | HostList ':' _EMPTY    	/* default $$ = $1 */
 
 
 HostAtom: NUM 				{ $$.type = 'i'; 

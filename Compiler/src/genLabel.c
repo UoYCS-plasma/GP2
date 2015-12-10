@@ -549,7 +549,6 @@ void generateVariableResultCode(Rule *rule, int id, bool list_variable, int inde
          if(predicate->negated) PTFI("b%d = false;\n", indent + 6, predicate->bool_id);
          else PTFI("b%d = true;\n", indent + 6, predicate->bool_id);
       }
-      PTFI("break;\n", indent + 6);
       PTFI("}\n", indent + 3);
    }
    if(list_variable) PTFI("match = true;\n", indent + 3);
@@ -846,7 +845,9 @@ void generateIntExpression(RuleAtom *atom, int context, bool nested)
            break;
 
       case NEG:
-           PTF("(-%d)", atom->number);
+           PTF("(-");
+           generateIntExpression(atom->neg_exp, context, true);
+           PTF(")");
            break;
 
       case ADD:

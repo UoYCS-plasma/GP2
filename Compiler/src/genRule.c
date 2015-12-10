@@ -965,7 +965,7 @@ void generateApplicationCode(Rule *rule)
                   label_declared = true;
                }
                if(label.length == 0 && label.mark == NONE) PTFI("label = blank_label;\n", 3);
-               else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
+               else generateLabelEvaluationCode(label, true, list_count++, 0, 3);
                
                /* If the two labels are equal, no relabelling needs to be done. */
                PTFI("if(equalHostLabels(label_n%d, label)) removeHostList(label.list);\n", 3, index);
