@@ -548,10 +548,12 @@ void generateVariableResultCode(Rule *rule, int id, bool list_variable, int inde
          Predicate *predicate = variable.predicates[index];
          if(predicate->negated) PTFI("b%d = false;\n", indent + 6, predicate->bool_id);
          else PTFI("b%d = true;\n", indent + 6, predicate->bool_id);
-      }
+      } 
+      if(!list_variable) PTFI("break;\n", indent + 6);
       PTFI("}\n", indent + 3);
+      if(list_variable) PTFI("else match = true;\n", indent + 3);
    }
-   if(list_variable) PTFI("match = true;\n", indent + 3);
+   if(list_variable && variable.predicates == NULL) PTFI("match = true;\n", indent + 3);
    PTFI("}\n", indent);
    if(!list_variable) PTFI("else break;\n", indent); 
 }

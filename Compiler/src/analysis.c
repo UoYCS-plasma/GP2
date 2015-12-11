@@ -452,7 +452,7 @@ static bool nullCommand(GPCommand *command)
            else return true;
 
       case ALAP_STATEMENT:
-           return true;
+           return nullCommand(command->loop_stmt.loop_body);
 
       case PROGRAM_OR:
            if(!nullCommand(command->or_stmt.left_command)) return false;
