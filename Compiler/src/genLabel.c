@@ -625,7 +625,11 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
          else PTFI("label = makeEmptyLabel(%d);\n\n", indent, label.mark);
          host_label_count++;
       }
-      else PTFI("int length%d = 0;\n\n", indent, count);
+      else
+      {
+         PTFI("int list_length%d = 0;\n", indent, count);
+         PTFI("HostAtom *array%d = NULL;\n", indent, count);
+      }
       return;
    }
    /* The length of the evaluated list is not static because right labels contain an

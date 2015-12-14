@@ -593,17 +593,24 @@ static Condition *transformCondition(Rule *rule, GPCondition *ast_condition,
                                     left_label, right_label);
            condition->predicate = predicate;
 
-           RuleListItem *left_item = left_list->first;
-           while(left_item != NULL)
+           if(left_list != NULL)
            {
-              scanPredicateAtom(rule, left_item->atom, predicate);
-              left_item = left_item->next;
+              RuleListItem *left_item = left_list->first;
+              while(left_item != NULL)
+              {
+                 scanPredicateAtom(rule, left_item->atom, predicate);
+                 left_item = left_item->next;
+              }
            }
-           RuleListItem *right_item = right_list->first;
-           while(right_item != NULL)
+
+           if(right_list != NULL)
            {
-              scanPredicateAtom(rule, right_item->atom, predicate);
-              right_item = right_item->next;
+              RuleListItem *right_item = right_list->first;
+              while(right_item != NULL)
+              {
+                 scanPredicateAtom(rule, right_item->atom, predicate);
+                 right_item = right_item->next;
+              }
            }
            break;
 
