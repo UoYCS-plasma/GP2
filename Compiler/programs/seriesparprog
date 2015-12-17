@@ -11,7 +11,7 @@ Main = if ({par, seq}!; deleteBase; nonempty) then no else yes
 
 // An alternate program that performs a destructive test on the host graph.
 // The output is a single node labelled "yes" or "no". 
-//Main = {par, seq}!; deleteBase; if nonempty then no else yes
+// Main = {par, seq}!; deleteBase; if nonempty then no else yes
 
 par(a,b,x,y: int)
 [ (n0, x) (n1, y) | (e0, n0, n1, a) (e0, n0, n1, b) ] 

@@ -27,7 +27,7 @@
 // relabelling.
 
 Main = Start; Sort!; unmark_edge!; remove_root
-Start = make_root; add_indeg!; number_source!
+Start = add_indeg!; make_root; number_source!
 Sort = {number, hide_edge}
 
 make_root()

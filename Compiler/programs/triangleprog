@@ -24,9 +24,7 @@ interface = {n0}
 where m > n
 
 // The node labels, edge labels, and edge directions are used
-// to control the matching of the expansion triangles. I'm not
-// going to try and explain the mechanics in words. It's easier
-// to understand if you examine a graphical version of the program.
+// to control the matching of the expansion triangles. 
 expand(m,n,p,q: int)
 [ (n0(R), m:n) (n1, n) (n2, p) (n3, q) | 
   (e0, n1, n2, 0) (e1, n1, n3, 1) (e2, n2, n3, 2) ] 
