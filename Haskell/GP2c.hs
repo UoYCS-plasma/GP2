@@ -86,8 +86,8 @@ main = do
             -- p <- readFile progFile
             pAST <- parseProgram progFile
             hAST <- parseHostGraph hostFile
-            let prog   = optimise $ makeIR pAST
-            putStrLn $ show prog
+            let prog   = compileProg $ optimise $ makeIR pAST
+            putStrLn $ prettyPrint prog
             -- let prog = compileProgram flags pAST
             let host = compileHostGraph hAST
             -- putStrLn $ show prog

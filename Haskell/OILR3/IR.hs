@@ -5,11 +5,9 @@ import Data.List
 import GPSyntax
 import Graph
 
-
-
 type Id = String
 
-data OilrMod a = Same a  |  Change a a  |  Check a  deriving (Show, Eq)
+data OilrMod a = Same a  |  Change a a  | Create a | Delete a | Check a  deriving (Show, Eq)
 
 data IRLabel = IRInt Int
              | IRVar Id  -- Integer variable
@@ -18,7 +16,9 @@ data IRLabel = IRInt Int
              | IREmpty
      deriving (Show, Eq)
 
-data OilrElem = IRNode  Id  Colour  IRLabel  Bool
+type OILRig = (Int, Int, Int, Bool)
+
+data OilrElem = IRNode  Id  Colour  IRLabel  OILRig
               | IREdge  Id  Colour  IRLabel  Bool  Id Id
               | IREql   IRLabel IRLabel
               | IRNot   OilrElem
@@ -30,17 +30,17 @@ type OilrRule = [OilrMod OilrElem]
 data OilrIR   = IRProc Id OilrExpr
               | IRRule Id OilrRule
      deriving (Show, Eq)
+type OilrProg = [OilrIR]
 
 data OilrExpr = IRSeqn [OilrExpr]
-              | IRSet [Id]
-              | IRBran OilrExpr OilrExpr
+              | IRIf   OilrExpr OilrExpr OilrExpr
+              | IRTry  OilrExpr OilrExpr OilrExpr
               | IRTrns OilrExpr   -- transaction that rolls-back if OilrExpr fails
-              | IRDscd OilrExpr -- "discard" -- transaction that always rolls-back
-              | IRCall Id | IRLoop OilrExpr
+              | IRRuleSet [Id] | IRCall Id | IRLoop OilrExpr
               | IRTrue | IRFals
      deriving (Show, Eq)
 
-makeIR :: GPProgram -> [OilrIR]
+makeIR :: GPProgram -> OilrProg
 makeIR (Program ds) = map declIR ds
 
 declIR :: Declaration -> OilrIR
@@ -50,15 +50,15 @@ declIR p@(Proc id ds cs)                  = IRProc id $ exprIR (Sequence cs)
 declIR (AstRuleDecl r@(AstRule id _ _ _)) = IRRule id $ ruleIR r
 
 exprIR :: Expr -> OilrExpr
-exprIR (RuleSet rs)            = IRSet rs
+exprIR (RuleSet rs)            = IRRuleSet rs
 exprIR (Sequence es)           = IRTrns (IRSeqn $ map exprIR es)
-exprIR (IfStatement cn th el)  =
-        IRSeqn [IRDscd (exprIR cn), IRBran (exprIR th) (exprIR el)]
-exprIR (TryStatement cn th el) =
-        IRSeqn [IRTrns (exprIR cn), IRBran (exprIR th) (exprIR el)]
+exprIR (IfStatement cn th el)  = IRIf (exprIR cn) (exprIR th) (exprIR el)
+--        IRSeqn [IRDscd (exprIR cn), IRBran (exprIR th) (exprIR el)]
+exprIR (TryStatement cn th el) = IRTry (exprIR cn) (exprIR th) (exprIR el)
+--        IRSeqn [IRTrns (exprIR cn), IRBran (exprIR th) (exprIR el)]
 exprIR (ProgramOr a b)          = error "Not implemented"
 exprIR (ProcedureCall p)        = IRCall p
-exprIR (Looped (RuleSet rs))    = IRLoop (IRSet rs)
+exprIR (Looped (RuleSet rs))    = IRLoop (IRRuleSet rs)
 exprIR (Looped (ProcedureCall p))=IRLoop (IRCall p)
 exprIR (Looped s@(Sequence _))  = IRLoop (exprIR s)
 exprIR Skip                     = IRTrue
@@ -110,13 +110,13 @@ allNodeIds (AstRuleGraph lns _) (AstRuleGraph rns _) =
 
 packEdges :: OilrRule -> [OilrElem] -> [OilrElem] -> OilrRule
 packEdges acc [] []     = reverse acc
-packEdges acc [] (r:rs) =        packEdges (Change IRNothing r:acc) [] rs
-packEdges acc (l:ls) [] =        packEdges (Change l IRNothing:acc) ls []
+packEdges acc [] (r:rs) =        packEdges (Create r:acc) [] rs
+packEdges acc (l:ls) [] =        packEdges (Delete l:acc) ls []
 packEdges acc (l:ls) rs = case partition (==l) rs of
     (r:_, _) ->                  packEdges (Same l            :acc) ls (delete r rs)
     ([] , _) -> case partition (irEdgeSimilarity l) rs of
                     (r:_, _)  -> packEdges (Change l r        :acc) ls (delete r rs)
-                    ([],  _)  -> packEdges (Change l IRNothing:acc) ls rs
+                    ([],  _)  -> packEdges (Delete l:acc) ls rs
     -- TODO: make this more efficient by distinguishing structural changes from textual
 
 irEdgeSimilarity :: OilrElem -> OilrElem -> Bool
@@ -155,14 +155,14 @@ irEdge :: (Maybe AstRuleEdge, Maybe AstRuleEdge) -> OilrMod OilrElem
 irEdge = irElem makeIREdge edgeEquality
 
 irElem :: (a -> OilrElem) -> (a -> a -> Bool) -> (Maybe a, Maybe a) -> OilrMod OilrElem
-irElem mkElem _   (Just l, Nothing) = Change (mkElem l) IRNothing
-irElem mkElem _   (Nothing, Just r) = Change IRNothing (mkElem r)
+irElem mkElem _   (Just l, Nothing) = Delete (mkElem l)
+irElem mkElem _   (Nothing, Just r) = Create (mkElem r)
 irElem mkElem eql (Just l,  Just r)
             | l `eql` r  =  Same   (mkElem l)
             | otherwise  =  Change (mkElem l) (mkElem r)
 
 makeIRNode :: RuleNode -> OilrElem
-makeIRNode (RuleNode id root (RuleLabel l c)) = IRNode id c i root
+makeIRNode (RuleNode id root (RuleLabel l c)) = IRNode id c i (0,0,0,root)
     where i = makeIRLabel l
 
 makeIRLabel :: [RuleAtom] -> IRLabel
@@ -174,4 +174,5 @@ makeIRLabel [Var (v, ListVar)]  = IRLst v  -- only valid if v is not evaluated!
 makeIRLabel [Var (v, t)]        = error $ v ++ " is of unsupported type: " ++ show t
 makeIRLabel [atom]              = error $ "Unsupported atom: " ++ show atom
 makeIRLabel (x:xs)              = error "List type labels are not supported"
+
 
