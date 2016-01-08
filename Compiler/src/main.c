@@ -265,7 +265,7 @@ int main(int argc, char **argv)
    /* If no output directory specified, make a directory in /tmp. */
    if(output_dir == NULL) 
    {
-      mkdir("/tmp/gp2", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+      mkdir("/tmp/gp2", S_IRWXU | S_IRWXG | S_IRWXO );
       output_dir = "/tmp/gp2";
       openLogFile("/tmp/gp2/gp2-compile.log");
    }
