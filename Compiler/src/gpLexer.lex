@@ -91,8 +91,8 @@ extern int parse_target;
 "\"\""				 { yylval.str = strdup(""); return STR; } 
 "\""	            		 BEGIN(IN_STRING);
 <IN_STRING>"\""        		 BEGIN(INITIAL);
- /* ASCII characters 040-176 (octal) */
-<IN_STRING>[\040,\041,\043-\172]{0,63}  { yylval.str = strdup(yytext); return STR; }
+ /* ASCII characters 040, 041, 043-176 (octal) */
+<IN_STRING>[\040,\041,\043-\176]{0,63}  { yylval.str = strdup(yytext); return STR; }
 <IN_STRING>(\n)                  { print_to_log("%d.%d-%d.%d: String "
           				        "continues on new line.\n", 
                                         yylloc.first_line, yylloc.first_column, 
