@@ -267,6 +267,7 @@ int main(int argc, char **argv)
    {
       mkdir("/tmp/gp2", S_IRWXU | S_IRWXG | S_IRWXO );
       output_dir = "/tmp/gp2";
+      chmod(output_dir, S_IRWXU | S_IRWXG | S_IRWXO );
       openLogFile("/tmp/gp2/gp2-compile.log");
    }
    else
