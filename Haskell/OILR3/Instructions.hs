@@ -177,22 +177,24 @@ compileMod (Same x)   (regs, lhs, rhs) = case x of
     where r = length regs
 compileMod (Change left right) (regs, lhs, rhs) = case (left, right) of
     (IRNode id _ _ _     , IRNode _ _ _ _)
-                         -> ( (id,r):regs, BND r 2:lhs            , diffs r left right ++ rhs )
+                         -> ( (id,r):regs, BND r 2:lhs            , diffs regs r left right ++ rhs )
     (IREdge id _ _ bi s t, IREdge _ _ _ _ _ _)
-                         -> ( (id,r):regs, bed regs r s t bi:lhs  , diffs r left right ++ rhs )
+                         -> ( (id,r):regs, bed regs r s t bi:lhs  , diffs regs r left right ++ rhs )
     where r = length regs
 
 
-diffs :: Reg -> OilrElem -> OilrElem -> [Instr]
-diffs r (IRNode ib cb lb (_,_,_,rb)) (IRNode ia ca la (_,_,_,ra)) =
+diffs :: Mapping Id Int -> Reg -> OilrElem -> OilrElem -> [Instr]
+diffs regs r (IRNode ib cb lb (_,_,_,rb)) (IRNode ia ca la (_,_,_,ra)) =
     concat [ if cb /= ca then [CBL r $ definiteLookup ca colourIds] else []
            , if lb /= la then [LBL r 0] else []     -- TODO: label support
            , if rb /= ra then [RBN r ra] else [] ]
-diffs r (IREdge ib cb lb bb sb tb) (IREdge ia ca la ba sa ta)
+diffs regs r (IREdge ib cb lb bb sb tb) (IREdge ia ca la ba sa ta)
+    -- i = id, c = colour, l = label, b = bidi, s = source node, t = target node
     | sb == sa && tb == ta =
-        concat [ if cb /= ca then [CBL r $ definiteLookup ca edgeColourIds] else []
-               , if lb /= la then [LBL r 0] else []
-               , if bb /= ba then [ error "todo: delete and readd edge" ] else [] ]
+        case bb == ba || ba of 
+        True -> concat [ if cb /= ca then [CBL r $ definiteLookup ca edgeColourIds] else []
+                       , if lb /= la then [LBL r 0] else [] ]  -- TODO: label support
+        False -> [ DBE r, abe regs r sa ta, CBL r $ definiteLookup ca edgeColourIds, LBL r 0] -- TODO: label support
     | otherwise            = error "Edge source and target should not change"
 
 bed :: Mapping Id Reg -> Reg -> Id -> Id -> Bool -> Instr
