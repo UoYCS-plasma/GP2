@@ -1,7 +1,10 @@
 module OILR3.Optimiser where
 
 import Mapping
+
+import OILR3.Config
 import OILR3.IR
+
 import Debug.Trace
 
 {-
@@ -14,36 +17,36 @@ data OilrExpr = IRSeqn [OilrExpr]
      deriving (Show, Eq)
  -}
 
-optimise :: [OilrIR] -> [OilrIR]
-optimise is = map optimiseIR $ inliner is
+optimise :: OilrConfig -> [OilrIR] -> [OilrIR]
+optimise cf is = map (optimiseIR cf) $ inliner is
 
-optimiseIR :: OilrIR -> OilrIR
+optimiseIR :: OilrConfig -> OilrIR -> OilrIR
 -- Loops at the top-level do not need backtracking, because as soon as an 
 -- element of the sequence fails the whole program fails.
-optimiseIR (IRProc "Main" (IRTrns e@(IRSeqn _))) = IRProc "Main" $ optimiseExpr e
-optimiseIR (IRProc id e)                         = IRProc id     $ optimiseExpr e
-optimiseIR (IRRule id r)                         = IRRule id     $ optimiseRule r
+optimiseIR cf (IRProc "Main" (IRTrns e@(IRSeqn _))) = IRProc "Main" $ optimiseExpr cf e
+optimiseIR cf (IRProc id e)                         = IRProc id     $ optimiseExpr cf e
+optimiseIR cf (IRRule id r)                         = IRRule id     $ optimiseRule r
 
-optimiseExpr :: OilrExpr -> OilrExpr
+optimiseExpr :: OilrConfig -> OilrExpr -> OilrExpr
 -- Move transaction for sequences that begin with predicate rules...
-optimiseExpr (IRTrns (IRSeqn [e])) = optimiseExpr e
-optimiseExpr (IRTrns (IRSeqn (e:es)))
-    | all isLoop es = IRSeqn (optimiseExpr e:[optimiseExpr e' | e' <- es])
-    | isPredicate e = IRSeqn [ optimiseExpr e,  optimiseExpr (IRTrns (IRSeqn es)) ]
-    | otherwise  = IRTrns $ IRSeqn $ map optimiseExpr (e:es)
+optimiseExpr cf (IRTrns (IRSeqn [e])) = optimiseExpr cf e
+optimiseExpr cf (IRTrns (IRSeqn (e:es)))
+    | all isLoop es = IRSeqn (optimiseExpr cf e:[optimiseExpr cf e' | e' <- es])
+    -- | isPredicate cf e = IRSeqn [ optimiseExpr cf e,  optimiseExpr cf (IRTrns (IRSeqn es)) ]
+    | otherwise  = IRTrns $ IRSeqn $ map (optimiseExpr cf) (e:es)
 -- Simplify singlet sequences
-optimiseExpr (IRSeqn [x]) = optimiseExpr x
+optimiseExpr cf (IRSeqn [x]) = optimiseExpr cf x
 -- Remove unneeded transactions introduced by previous rule
-optimiseExpr (IRTrns e) = case e of
-    (IRSeqn [e]) -> optimiseExpr e
-    (IRSeqn es)  -> IRTrns $ IRSeqn $ map optimiseExpr es
-    _            -> optimiseExpr e
+optimiseExpr cf (IRTrns e) = case e of
+    (IRSeqn [e]) -> optimiseExpr cf e
+    (IRSeqn es)  -> IRTrns $ IRSeqn $ map (optimiseExpr cf) es
+    _            -> optimiseExpr cf e
 -- Terminal cases
-optimiseExpr (IRLoop e) = IRLoop $ optimiseExpr e
-optimiseExpr (IRIf (IRRuleSet rs) th el)
+optimiseExpr cf (IRLoop e) = IRLoop $ optimiseExpr cf e
+optimiseExpr cf (IRIf (IRRuleSet rs) th el)
     -- TODO: Optimise more non-transactional if cases...
-    | all isPred rs = IRTry (IRRuleSet rs) th el
-optimiseExpr e = e
+    | all (isPredicate cf) rs = IRTry (IRRuleSet rs) th el
+optimiseExpr cf e = e
 
 
 -- How the inliner works...
@@ -121,11 +124,8 @@ isLoop :: OilrExpr -> Bool
 isLoop (IRLoop _) = True
 isLoop _          = False
 
--- todo: implementation
-isPred _ = False
-
-isPredicate :: OilrExpr -> Bool
-isPredicate _ = False
+isPredicate :: OilrConfig -> Id -> Bool
+isPredicate cf id = id `elem` predicateRules cf
 
 optimiseRule :: OilrRule -> OilrRule
 optimiseRule r = r

@@ -12,6 +12,7 @@ import OILR3.Instructions
 import OILR3.Preprocessor
 import OILR3.HostCompile
 -- import OILR3.ProgCompile
+import OILR3.Config
 import OILR3.IR
 import OILR3.Optimiser
 -- import OILR3.CBackend
@@ -86,8 +87,9 @@ main = do
             -- p <- readFile progFile
             pAST <- parseProgram progFile
             hAST <- parseHostGraph hostFile
-            let p0 = optimise $ makeIR pAST
-            let prog   = compileProg p0
+            let ir = makeIR pAST
+            let cf = configureOilrMachine flags ir
+            let prog   = compileProg $ optimise cf ir
             putStrLn $ prettyPrint prog
             -- let prog = compileProgram flags pAST
             let host = compileHostGraph hAST

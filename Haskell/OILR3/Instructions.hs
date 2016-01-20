@@ -11,8 +11,6 @@ import Mapping    -- for mappings
 import Debug.Trace
 
 
-data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace | Compile32Bit | CompactLists deriving (Eq, Show)
-
 colourIds :: Mapping Colour Int
 colourIds = [ (Uncoloured, 0)
             , (Red       , 1)
