@@ -2,17 +2,17 @@ OBJECTS = debug.o graph.o graphStacks.o hostLexer.o hostParser.o label.o morphis
 
 CC = gcc
 # CFLAGS for debugging with gdb.
-# CFLAGS = -g -I../inc -Wall -Wextra 
+CFLAGS = -g -I../inc -Wall -Wextra 
 
 # CFLAGS for profiling with gprof.
 # CFLAGS = -pg -I../inc -O2 -Wall -Wextra 
 
 # CLFAGS for optimised code.
-CFLAGS = -I../inc -O2 -fomit-frame-pointer -Wall -Wextra 
+# CFLAGS = -I../inc -O2 -fomit-frame-pointer -Wall -Wextra 
 
 # Builds the library object files and the shared library libgp2.a.
 default:	$(OBJECTS)
-		ar rcs libgp2.a *.o
+		ar rcs libgp2debug.a *.o
 
 hostParser.c hostParser.h: graph.h hostParser.y
 		bison hostParser.y

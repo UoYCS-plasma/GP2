@@ -370,20 +370,14 @@ Node *getNode(Graph *graph, int index)
 {
    assert(index < graph->nodes.size);
    if(index == -1) return NULL;
-   Node *node = &(graph->nodes.items[index]);
-   /* Check if the queried node is a dummy node. */
-   if(node->index == -1) return NULL;
-   else return node;
+   else return &(graph->nodes.items[index]);
 }
 
 Edge *getEdge(Graph *graph, int index)
 {
    assert(index < graph->edges.size);
    if(index == -1) return NULL;
-   Edge *edge = &(graph->edges.items[index]);
-   /* Check if the queried edge is a dummy edge. */
-   if(edge->index == -1) return NULL;
-   else return edge;
+   else return &(graph->edges.items[index]);
 }
 
 RootNodes *getRootNodeList(Graph *graph)

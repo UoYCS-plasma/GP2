@@ -363,7 +363,7 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    PTFI("for(host_index = 0; host_index < host->nodes.size; host_index++)\n", 3);
    PTFI("{\n", 3);
    PTFI("Node *host_node = getNode(host, host_index);\n", 6);
-   PTFI("if(host_node == NULL) continue;\n", 6);
+   PTFI("if(host_node == NULL || host_node->index == -1) continue;\n", 6);
    PTFI("if(host_node->matched) continue;\n", 6);
    if(left_node->label.mark != ANY)
       PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
@@ -522,7 +522,7 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
    PTFI("for(host_index = 0; host_index < host->edges.size; host_index++)\n", 3);
    PTFI("{\n", 3);
    PTFI("Edge *host_edge = getEdge(host, host_index);\n", 6);
-   PTFI("if(host_edge == NULL) continue;\n", 6);
+   PTFI("if(host_edge == NULL || host_edge->index == -1) continue;\n", 6);
    PTFI("if(host_edge->matched) continue;\n", 6);
    if(left_edge->label.mark != ANY) 
       PTFI("if(host_edge->label.mark != %d) continue;\n\n", 6, left_edge->label.mark);
