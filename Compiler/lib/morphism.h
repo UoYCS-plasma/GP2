@@ -15,6 +15,7 @@
 #define INC_MATCH_H
 
 #include "globals.h"
+#include "graph.h"
 #include "label.h"
 
 typedef struct Assignment {
@@ -58,8 +59,10 @@ Morphism *makeMorphism(int nodes, int edges, int variables);
 
 /* This function is used to both initialise the morphism on creation and to 
  * reset the morphism after each rule application. The data in the morphism
- * are reset to their default values. */
-void initialiseMorphism(Morphism *morphism);
+ * are reset to their default values. 
+ * The host graph is passed as an optional second argument to reset the matched flags
+ * of all host graph items matched by the morphism. */
+void initialiseMorphism(Morphism *morphism, Graph *graph);
 void addNodeMap(Morphism *morphism, int left_index, int host_index, int assignments);
 void removeNodeMap(Morphism *morphism, int left_index);
 void addEdgeMap(Morphism *morphism, int left_index, int host_index, int assignments);
