@@ -171,32 +171,24 @@ static void generateMatchingCode(Rule *rule, bool predicate)
    PTFI("if(%d > host->number_of_nodes || %d > host->number_of_edges) return false;\n",
         3, rule->lhs->node_index, rule->lhs->edge_index);
    char item = searchplan->first->is_node ? 'n' : 'e';
-   PTFI("bool match = match_%c%d(morphism);\n", 3, item, searchplan->first->index);
+   
    if(predicate)
    {
-      /* Reset the matched flags in the host graph. This is normally done during
-       * rule application, but predicate rules are not applied! */
-      PTFI("int index;\n", 3);
-      PTFI("for(index = 0; index < %d; index++)\n", 3, rule->lhs->node_index);
-      PTFI("{\n", 3);
-      PTFI("int host_node_index = lookupNode(morphism, index);\n", 6);
-      PTFI("if(host_node_index >= 0) resetMatchedNodeFlag(host, host_node_index);\n", 6);
-      PTFI("}\n", 3);
-      if(rule->lhs->edge_index > 0)
-      {
-         PTFI("for(index = 0; index < %d; index++)\n", 3, rule->lhs->edge_index);
-         PTFI("{\n", 3);
-         PTFI("int host_edge_index = lookupEdge(morphism, index);\n", 6);
-         PTFI("if(host_edge_index >= 0) resetMatchedEdgeFlag(host, host_edge_index);\n", 6);
-         PTFI("}\n", 3);
-      }
+      PTFI("bool match = match_%c%d(morphism);\n", 3, item, searchplan->first->index);
+      /* Reset the matched flags in the host graph. This is normally done after
+       * rule application, but predicate rules are not applied. */
+      PTFI("initialiseMorphism(morphism, host);\n", 3);
+      PTFI("return match;\n", 3);
    }
-   PTFI("if(match) return true;\n", 3);
-   PTFI("else\n", 3);
-   PTFI("{\n", 3);
-   PTFI("initialiseMorphism(morphism);\n", 6);
-   PTFI("return false;\n", 6);
-   PTFI("}\n", 3);
+   else 
+   {
+      PTFI("if(match_%c%d(morphism)) return true;\n", 3, item, searchplan->first->index);
+      PTFI("else\n", 3);
+      PTFI("{\n", 3);
+      PTFI("initialiseMorphism(morphism, host);\n", 6);
+      PTFI("return false;\n", 6);
+      PTFI("}\n", 3);
+   }
    PTF("}\n\n");
 
    /* Iterator over the searchplan to print the definitions of the matching functions. */
@@ -737,7 +729,7 @@ void generateRemoveLHSCode(string rule_name)
    PTFI("}\n", 6);
    PTFI("removeNode(host, morphism->node_map[count].host_index);\n", 6);
    PTFI("}\n", 3);
-   PTFI("initialiseMorphism(morphism);\n", 3);
+   PTFI("initialiseMorphism(morphism, NULL);\n", 3);
    PTFI("}\n\n", 3);
 }
 
@@ -847,7 +839,6 @@ void generateApplicationCode(Rule *rule)
             PTFI("int outdegree%d = getOutdegree(host, node_index);\n", 3, index);
       }
    }
-   PTF("\n");
    bool label_declared = false, host_edge_index_declared = false,
         host_node_index_declared = false;
    /* Host graph modifications are performed in the following order: 
@@ -866,15 +857,15 @@ void generateApplicationCode(Rule *rule)
    for(index = 0; index < rule->lhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->lhs, index);
-      if(!host_edge_index_declared)
-      {
-         PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
-         host_edge_index_declared = true;
-      }
-      else PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
       if(edge->interface == NULL) 
       {
          /* Generate code to remove the edge. */
+         if(!host_edge_index_declared)
+         {
+            PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
+            host_edge_index_declared = true;
+         }
+         else PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
          PTFI("if(record_changes)\n", 3);
          PTFI("{\n", 3);
          PTFI("Edge *edge = getEdge(host, host_edge_index);\n", 6);
@@ -886,9 +877,14 @@ void generateApplicationCode(Rule *rule)
       }
       else
       {
-         PTFI("resetMatchedEdgeFlag(host, host_edge_index);\n\n", 3);
          if(edge->interface->relabelled || edge->interface->remarked)
          {
+            if(!host_edge_index_declared)
+            {
+               PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
+               host_edge_index_declared = true;
+            }
+            else PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
             RuleLabel label = edge->interface->label;
             PTFI("HostLabel label_e%d = getEdgeLabel(host, host_edge_index);\n", 3, index);
             if(edge->interface->relabelled)
@@ -927,15 +923,15 @@ void generateApplicationCode(Rule *rule)
    /* (2) Delete/relabel nodes. */
    for(index = 0; index < rule->lhs->node_index; index++)
    { 
-      if(!host_node_index_declared)
-      {
-         PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
-         host_node_index_declared = true;
-      }
-      else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
       RuleNode *node = getRuleNode(rule->lhs, index);
       if(node->interface == NULL) 
       {
+         if(!host_node_index_declared)
+         {
+            PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
+            host_node_index_declared = true;
+         }
+         else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
          /* Generate code to remove the node. */
          PTFI("if(record_changes)\n", 3);
          PTFI("{\n", 3);
@@ -948,10 +944,15 @@ void generateApplicationCode(Rule *rule)
       }
       else
       {
-         PTFI("resetMatchedNodeFlag(host, host_node_index);\n\n", 3);
          RuleNode *rhs_node = node->interface;
          if(rhs_node->relabelled || rhs_node->remarked)
          {
+            if(!host_node_index_declared)
+            {
+               PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
+               host_node_index_declared = true;
+            }
+            else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
             RuleLabel label = rhs_node->label;
             PTFI("HostLabel label_n%d = getNodeLabel(host, host_node_index);\n", 3, index);
             if(rhs_node->relabelled)
@@ -988,6 +989,12 @@ void generateApplicationCode(Rule *rule)
          }
          if(rhs_node->root_changed)
          {
+            if(!host_node_index_declared)
+            {
+               PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
+               host_node_index_declared = true;
+            }
+            else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
             /* The root is changed in two cases:
              * (1) The LHS node is rooted and the RHS node is non-rooted.
              * (2) The LHS node is non-rooted, the RHS node is rooted, and
@@ -1095,6 +1102,6 @@ void generateApplicationCode(Rule *rule)
       PTFI("pushAddedEdge(host_edge_index, edge_array_size%d == host->edges.size);\n", 6, index);
    }
    PTFI("/* Reset the morphism. */\n", 3);
-   PTFI("initialiseMorphism(morphism);\n}\n\n", 3);
+   PTFI("initialiseMorphism(morphism, host);\n}\n\n", 3);
 }
 

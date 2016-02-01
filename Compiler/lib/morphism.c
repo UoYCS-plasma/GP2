@@ -54,20 +54,24 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
       morphism->assignment = NULL;
       morphism->assigned_variables = NULL;
    }
-   initialiseMorphism(morphism);
+   initialiseMorphism(morphism, NULL);
    return morphism;
 }
 
-void initialiseMorphism(Morphism *morphism)
+void initialiseMorphism(Morphism *morphism, Graph *graph)
 { 
    int index;
    for(index = 0; index < morphism->nodes; index++)
-   { 
+   {
+      if(graph != NULL && morphism->node_map[index].host_index >= 0)
+         resetMatchedNodeFlag(graph, morphism->node_map[index].host_index);
       morphism->node_map[index].host_index = -1;
       morphism->node_map[index].assignments = 0;
    }
    for(index = 0; index < morphism->edges; index++)
    {
+      if(graph != NULL && morphism->edge_map[index].host_index >= 0)
+         resetMatchedEdgeFlag(graph, morphism->edge_map[index].host_index);
       morphism->edge_map[index].host_index = -1;
       morphism->edge_map[index].assignments = 0;
    }

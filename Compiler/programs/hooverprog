@@ -1,0 +1,28 @@
+// Delete the entire input graph.
+
+Main = deleteParallel!; deleteEdge!; deleteLoop!; deleteNode!
+
+deleteParallel(a,b,c:list) 
+[ (n0, a) (n1, b) | (e0, n0, n1, c # any) (e1, n0, n1, c # any) ] 
+=> 
+[ (n0, a) (n1, b) | ]
+interface = {n0, n1}
+
+deleteEdge(a,b,c:list) 
+[ (n0, a) (n1, b) | (e0, n0, n1, c # any) ] 
+=> 
+[ (n0, a) (n1, b) | ]
+interface = {n0, n1}
+
+deleteLoop(a,b:list) 
+[ (n0, a) | (e0, n0, n0, b # any) ] 
+=> 
+[ (n0, a) | ]
+interface = {n0}
+
+deleteNode(a:list) 
+[ (n0, a # any) | ] 
+=> 
+[ | ]
+interface = {}
+
