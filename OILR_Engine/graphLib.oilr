@@ -1,0 +1,156 @@
+9  constant: '\t'
+10 constant: '\n'
+27 constant: '\e'
+
+: #   [ '\n' = ] scan-in  ;   #immediate
+# and now we have comments. Yay!
+
+# allow aliasing of existing words without adding a
+# layer of indirection
+: alias:  #immediate  # ( xt -- )  ( -- )
+	create-immed  ,    # store the word being aliased
+	does        @ ,  # when called compile the aliased word
+;
+
+# make address manipulation more readable...
+' cell alias: cells
+' -    alias: before
+' +    alias: after
+
+# now let's implement conditionals
+: compile-jump     ,    here    0 ,  ;        #  xt -- addr
+: compile-conditional-jump   ' zbranch  compile-jump ;
+: compile-unconditional-jump ' branch   compile-jump ;
+: jump-target   dup   here swap -   swap !  ;
+
+variable: if-depth
+: if     #immediate   compile-conditional-jump   if-depth inc-var  ;
+: else   #immediate   compile-unconditional-jump   push   jump-target   pop ;
+: endif  #immediate   jump-target   if-depth dec-var ;
+
+
+# Imperative looping
+: times      #immediate   # n --
+	' push ,					# push i
+	here   ' peek ,				# this is where we jump back to
+	compile-conditional-jump    # jump out of loop if i==0
+	' pop , ' 1- , ' push ,     # decrement the counter
+	swap                        # leave NoS:exit-jump ToS:start-of-loop
+;
+: forever    #immediate
+	-1 compile-literal
+	' push ,   here   ' peek ,
+	compile-conditional-jump
+	swap
+;
+: repeat     #immediate    # exit-jump start-of-loop  -- 
+	next-cell -    compile-unconditional-jump   !
+	jump-target
+	' trash ,
+;
+
+
+# ################################################################# #
+
+variable: index-size
+
+: OILR #immediate
+	create # n --
+		dup index-size !
+		2* cells allot
+		init-host-graph
+	does  # n -- addr
+		2* cells after
+;
+
+# Index structure:  |  next  |  count
+: .idx-len  1 cell after  ;
+
+# List structure:   |  next  |  head  |  prev
+: .idx-next ;  #immediate
+: .idx-head  1 cell after  ;
+: .idx-prev  2 cells after ;       
+: .idx-elem  GraphElemMask and  ;  #  list -- elem
+
+# Elem Structure   |  flags  | ...
+: .elem-flags  ;  #immediate
+
+
+: ->next .idx-next @ ;
+: ->prev .idx-prev @ ;
+: ->head .idx-head @ ;
+
+
+: alloc-elem  #  -- elem
+	freelist @ dup  if
+		dup @ freelist !
+	else
+		drop here GraphElemSize allot
+	endif 
+;
+: free-elem   #  elem -- 
+	freelist @ over !
+	freelist !
+;
+
+2 constant: TypeBits
+
+0 constant: FreeType
+1 constant: NodeType
+2 constant: EdgeType
+
+: index-node   # node -- 
+	.elem-flags @  TypeBits shift-down
+;
+
+: init-node NodeType !  ;  # elem -- node
+: init-edge EdgeType !  ;
+
+: is-node?  .elem-flags @   NodeType  and  ;
+: is-edge?  .elem-flags @   EdgeType  and  ;
+
+: add-node   alloc-elem init-node index-node  ;  # --
+: delete-node   free-elem   ;         # --
+
+: nodes  times  add-node  repeat  ;   # n -- 
+
+# ################################################################# #
+
+: bits:  #immediate
+	create  #  offs bits -- offs'
+		over over , , +
+	does    #  flags addr -- field
+		dup @ push      # bits
+		1 cell after @  # offs
+		
+;
+	
+0 TypeBits bits: type-flag
+		 1 bits: b-flag
+		 3 bits: c-flag
+		 2 bits: o-flag
+		 2 bits: i-flag
+		 2 bits: l-flag
+		 1 bits: r-flag
+drop ;
+
+1 constant: LabelFlagBits
+3 constant: ColourFlagBits
+2 constant: OFlagBits
+2 constant: IFlagBits
+2 constant: LFlagBits
+1 constant: RFlagBits
+
+
+LabelFlagBits
+	ColourFlagBits +
+	OFlagBits +
+	IFlagBits +
+	LFlagBits +
+	RFlagBits + 
+		OILR index
+alloc-elem putx ;
+# add-node ;
+# 0n is-node? putn 
+# ;
+

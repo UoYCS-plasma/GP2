@@ -1093,7 +1093,7 @@ _char_lit:
 .align CELL_SIZE
 _node_lit:
 _edge_lit:
-	mov var_hostGraph, %ecx
+	mov var_host, %ecx
 	shl $GRAPH_ELEM_SHIFT, %eax
 	lea (%ecx, %eax), %eax
 	# TODO: add check for correct type
@@ -1138,13 +1138,6 @@ prim length # list -- int
 next
 
 
-
-# Graph prims ########################################
-
-prim initHostGraph, "init-host-graph"
-	align_dp_to GRAPH_ELEM_SIZE
-	mov %edi, var_hostGraph
-next
 
 
 ######################################################
@@ -1800,44 +1793,46 @@ data Instr =
     | FLS                  -- set the boolean register to FaLSe
 */
 
-prim regToElem  # reg -- elem
+variable host
+variable freelist
+
+constant GraphElemSize GRAPH_ELEM_SIZE
+constant GraphElemMask (-GRAPH_ELEM_SIZE)
+
+.macro getReg rnum dst=%eax
+	not \rnum
+	mov (%ebx, \rnum, 4), \dst
+.endm
+.macro setReg rnum src
+	not \rnum
+	mov \src, (%ebx, \rnum, 4)
+.endm
+
+prim initHostGraph, "init-host-graph"
+	align_dp_to GRAPH_ELEM_SIZE
+	mov %edi, var_host
+next
+
+prim getRegister "@r"  # reg -- elem
 	pop %eax
-	
+	getReg %eax
 	push %eax
 next
 
-prim abn  # (dst)
+prim setRegister "!r"  # val reg -- 
+	pop %eax
+	pop %edx
+	setReg %eax %edx
 next
-
-prim abe  # (dst src tgt)
-next
-
-word dbn  # (dst)
-	.long regToElem, deleteNode
-end
 
 prim allot  # size --
 	pop %eax
 	add %eax, %edi
 next
 
-word allocGraphElem, "alloc-graph-elem"
-	.long lit, GRAPH_ELEM_SIZE, allot
-end
-
 word setAsNode, "set-as-node"
 end
 
-word addNode "add-node"
-	.long allocGraphElem, setAsNode
-end
-
-word nodes  # n -- 
-end
-
-
-word addEdge "add-edge"  # n n --
-end
 
 
 .section .rodata
@@ -1867,8 +1862,6 @@ variable rs0
 variable dp0
 variable flagTableAddr
 variable dictPtr, ,"dict-ptr"
-
-variable hostGraph
 
 variable NotFoundException, notFoundHandler
 
