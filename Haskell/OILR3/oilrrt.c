@@ -44,7 +44,8 @@ typedef struct Node {
 	DList loops;
 	int label;
 	unsigned int root:1;
-	unsigned int colour:31;
+	unsigned int hasLabel:1;
+	unsigned int colour:30;
 } Node;
 
 typedef struct Edge {
