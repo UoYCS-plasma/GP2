@@ -1801,6 +1801,26 @@ constant GraphElemSize GRAPH_ELEM_SIZE
 constant GraphElemMask (-GRAPH_ELEM_SIZE)
 constant GraphElemShift GRAPH_ELEM_SHIFT
 
+string ColourUncoloured  ""
+string ColourRed         " # red"
+string ColourBlue        " # blue"
+string ColourGreen       " # green"
+string ColourGrey        " # grey"
+string ColourInvalid     " # invalid"
+string ColourDashed      " # dashed"
+
+constant ColourTable _colour_names
+
+_colour_names:
+	.long str_ColourUncoloured
+	.long str_ColourRed
+	.long str_ColourBlue
+	.long str_ColourGreen
+	.long str_ColourGrey
+	.long str_ColourInvalid
+	.long str_ColourInvalid
+	.long str_ColourDashed
+
 string StrLeader  "\t("
 string StrTrailer ")\n"
 string StrEmpty "empty"

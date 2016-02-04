@@ -151,12 +151,23 @@ variable: index-size
 ;
 
 2 constant: TypeBits
+1 constant: LabelFlagBits
+3 constant: ColourFlagBits
+2 constant: OFlagBits
+2 constant: IFlagBits
+2 constant: LFlagBits
+1 constant: RFlagBits
 
 0 constant: FreeType
 1 constant: NodeType
 2 constant: EdgeType
 
-4 constant: LabelFlagMask
+
+3 constant: ColourFlagShift
+
+4 	constant: LabelFlagMask
+7 ColourFlagShift shift-up
+	constant: ColourFlagMask
 
 : index-node   # node -- 
 	.elem-flags @  TypeBits shift-down
@@ -189,6 +200,20 @@ variable: index-size
 ;
 
 
+0 constant: Uncoloured
+1 constant: Red
+2 constant: Blue
+3 constant: Green
+4 constant: Grey
+7 constant: Dashed
+
+: get-colour  .elem-flags @  ColourFlagMask and   ColourFlagShift shift-down ;
+: colour  # colour elem --
+	push ColourFlagShift shift-up
+	peek .elem-flags @  ColourFlagMask not  and  or # clear the old colour then set the new
+	pop !
+;
+
 : graph-elem    GraphElemShift shift-up   host @   +    ; # n -- elem
 : get-elem-id   host @ -  GraphElemShift shift-down   ;  # elem -- n
 : count-elems   use-dict   here get-elem-id   use-anon  ;
@@ -206,9 +231,12 @@ exception: TODO
 		drop StrEmpty %s
 	endif
 ;
+: _put-colour  # elem --
+	get-colour ColourTable swap cells after @ %s
+;
 
 : put-node   # elem --
-	StrLeader %s   'n' %c   dup get-elem-id %d   StrComma %s   _put-label   StrTrailer %s
+	StrLeader %s   'n' %c   dup get-elem-id %d   StrComma %s   dup _put-label  _put-colour  StrTrailer %s
 	flush-output
 ;
 : put-edge
@@ -216,7 +244,7 @@ exception: TODO
 		dup get-elem-id %d   StrComma %s
 		dup .edge-src @ get-elem-id   'n' %c %d   StrComma %s
 		dup .edge-tgt @ get-elem-id   'n' %c %d   StrComma %s
-		_put-label   StrTrailer %s
+		dup _put-label   _put-colour   StrTrailer %s
 	flush-output
 ;
 
@@ -249,13 +277,6 @@ exception: TODO
 		 1 bits: r-flag  # Rootedness
 drop ;
 
-1 constant: LabelFlagBits
-3 constant: ColourFlagBits
-2 constant: OFlagBits
-2 constant: IFlagBits
-2 constant: LFlagBits
-1 constant: RFlagBits
-
 # 10 times  '.' putc  repeat  ;
 
 LabelFlagBits
@@ -270,12 +291,16 @@ LabelFlagBits
 
 3 nodes
 0n 1n edge
-0n 1n edge
+1n 0n edge
 1n 2n edge
 2n 0n edge
 
 42 1n label
 123 6e label
+
+Red 2n colour
+
+Dashed 4e colour
 
 dump-graph
 0-exit ;
