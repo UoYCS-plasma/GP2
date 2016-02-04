@@ -260,7 +260,7 @@ LabelFlagBits
 		OILR index
 
 # No definitions from here on down...
-10000 nodes
+3 nodes
 0n 1n edge
 0n 1n edge
 1n 2n edge
