@@ -8,7 +8,7 @@
 # return address on top of the stack!
 
 # Useful values ######################################
-.set HEAP_SIZE, 128*1024*1024  # 128 meg
+.set HEAP_SIZE, 32*1024*1024  # 32 meg
 .set SCRATCH_SIZE, 16*1024     # 16k
 .set BUFFER_SIZE,  16*1024     #  4k
 .set WORD_BUFFER_SIZE, 256
@@ -561,6 +561,12 @@ prim rshift, "shift-down" // int n -- int
 	pop %ecx
 	pop %eax
 	sar %cl, %eax
+	push %eax
+next
+prim urshift, "u-shift-down" // uint n -- uint
+	pop %ecx
+	pop %eax
+	shr %cl, %eax
 	push %eax
 next
 

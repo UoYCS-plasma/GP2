@@ -99,7 +99,26 @@ OutputBufferStart output-buffer !
 
 variable: index-size
 
-: init-host-graph
+# NOTE: bytes->elems gives the number of elems that will fit into 
+#   bytes of space. There may be space left over. note also the
+#   unsigned shift.
+: bytes->elems  GraphElemShift u-shift-down ;  # bytes -- n-elems
+
+: elems  GraphElemShift shift-up  ;  # n -- bytes
+' elems alias: elem
+
+: next-elem   1 elem after   ;  # elem -- elem+1
+
+
+
+: OILR #immediate
+	create # n --
+		dup index-size !
+		2* cells allot
+	does  # n -- addr
+		2* cells after
+;
+: host-graph #immediate
 	use-dict
 	elem-align-dp
 	here host !
@@ -107,14 +126,7 @@ variable: index-size
 	use-anon
 ;
 
-: OILR #immediate
-	create # n --
-		dup index-size !
-		2* cells allot
-		use-dict init-host-graph
-	does  # n -- addr
-		2* cells after
-;
+
 
 # Index structure:  |  next  |  count
 : .idx-len  1 cell after  ;
@@ -123,7 +135,7 @@ variable: index-size
 : .idx-next ;  #immediate
 : .idx-head  1 cell after  ;
 : .idx-prev  2 cells after ;       
-: .idx-elem  GraphElemMask and  ;  #  list -- elem
+: idx->elem  GraphElemMask and  ;  #  list -- elem
 
 # Elem Structure   |  flags  | ...
 : .elem-flags  ;  #immediate
@@ -148,6 +160,27 @@ variable: index-size
 : free-elem   #  elem -- 
 	freelist @ over !
 	freelist !
+;
+
+: available-space   # -- n-elems
+	use-dict
+	get-brk-addr here -   bytes->elems
+	use-anon
+;
+
+exception: OutOfMemory
+constant: MaxAlloc
+
+: check-space
+	available-space 1 <= if
+		get-heap-size
+		stash 0 < if
+			# high bit is already set, we can't double any more,
+			# and we're in danger of running into the stack and mmapped area
+			OutOfMemory raise
+		endif
+		pop 1 shift-up set-heap-size  # double the memory
+	endif
 ;
 
 2 constant: TypeBits
@@ -185,10 +218,24 @@ variable: index-size
 : is-edge?  .elem-flags @   EdgeType  and  ;
 
 # Graph element creation and deletion
-: add-node   alloc-elem init-node index-node  ;  # --
-: delete-node   free-elem   ;         # --
-: nodes  times  add-node  repeat  ;   # n -- 
-: edge   alloc-elem init-edge drop  ;  # --
+: unsafe-add-node   alloc-elem init-node index-node  ;  # --
+: unsafe-add-edge   alloc-elem init-edge drop ; # --
+
+: add-node  check-space unsafe-add-node ;
+: edge      check-space unsafe-add-edge ;
+
+: delete-node   free-elem   ;         # node --
+: delete-edge   free-elem   ;         # edge --
+
+
+: nodes   # n -- 
+	stash available-space  >=  if
+		# if there isn't space, allocate enough...
+		peek elems  grow-heap
+	endif
+	pop times  unsafe-add-node  repeat
+;
+
 
 
 : get-label-flag   .elem-flags @   LabelFlagMask   and   ;   # elem -- n
@@ -214,8 +261,8 @@ variable: index-size
 	pop !
 ;
 
-: graph-elem    GraphElemShift shift-up   host @   +    ; # n -- elem
-: get-elem-id   host @ -  GraphElemShift shift-down   ;  # elem -- n
+: graph-elem    elems   host @   +    ; # n -- elem
+: get-elem-id   host @ -  bytes->elems  ;  # elem -- n
 : count-elems   use-dict   here get-elem-id   use-anon  ;
 
 : spc 32 %c ;
@@ -252,55 +299,85 @@ exception: TODO
 	'[' putc '\n' putc
 	host @
 	count-elems  # number of elems
-	stash times   dup is-node? if  dup put-node  endif   GraphElemSize +  repeat   drop
+	stash times   dup is-node? if  dup put-node  endif   next-elem  repeat   drop
 	'|' putc '\n' putc
 	host @
-	pop   times   dup is-edge? if  dup put-edge  endif   GraphElemSize +  repeat
+	pop   times   dup is-edge? if  dup put-edge  endif   next-elem  repeat
 	']' putc '\n' putc
+;
+
+
+: bnd  #  dest spc -- bool
+	# traverse a single OILR index
+	drop drop false
+;
+: rtz  # bool --
+	if return endif  # do nothing true
+	trash unframe    # otherwise clear frame and return from calling function
+;
+
+: dbn  # reg --
+	$$  idx->elem  delete-node
+;
+: dbe  # reg --
+	$$  idx->elem  delete-edge
 ;
 
 
 # ################################################################# #
 
-: bits:  #immediate
-	create  #  offs bits -- offs'
-		over over , , +
-	does    #  flags addr -- field
+
+# ################################################################# #
+
+
+# LabelFlagBits
+# 	ColourFlagBits +
+# 	OFlagBits +
+# 	IFlagBits +
+# 	LFlagBits +
+# 	RFlagBits + 
+1		OILR index
+
+: rule
+	frame
+#	1 registers
+	0  0  bnd   # bind node from spc 0 in reg 0
+	rtz
+
+	0 dbn     # delete node bound in reg 0
+	unframe
 ;
-	
-0 TypeBits bits: type-flag
-		 1 bits: b-flag  # laBel
-		 3 bits: c-flag  # Colour
-		 2 bits: o-flag  # Out degree
-		 2 bits: i-flag  # In degree
-		 2 bits: l-flag  # Loop degree
-		 1 bits: r-flag  # Rootedness
-drop ;
 
-# 10 times  '.' putc  repeat  ;
 
-LabelFlagBits
-	ColourFlagBits +
-	OFlagBits +
-	IFlagBits +
-	LFlagBits +
-	RFlagBits + 
-		OILR index
+: Main
+;
 
-# No definitions from here on down...
 
-3 nodes
-0n 1n edge
-1n 0n edge
-1n 2n edge
-2n 0n edge
+# ################################################################# #
+# Host graph only! No definitions from here on down...
 
-42 1n label
-123 6e label
+host-graph
 
-Red 2n colour
+	3 nodes
+	0n 1n edge
+	1n 0n edge
+	1n 2n edge
+	2n 0n edge
 
-Dashed 4e colour
+	42 1n label
+	123 6e label
+
+	Red 2n colour
+
+	Dashed 4e colour
+
+# [ count-elems putn nl  get-brk-addr putx nl  anon-code-area-addr @ putx nl  0-exit ] handles OutOfMemory
+# forever  add-node  repeat
+# -1 times   LabelFlagBits drop  repeat
+# -1 times   host @ drop  repeat
+
+Main
 
 dump-graph
+available-space putn nl
 0-exit ;
