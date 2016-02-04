@@ -1794,10 +1794,17 @@ data Instr =
 */
 
 variable host
+variable hostFree, , "host-free"
 variable freelist
 
 constant GraphElemSize GRAPH_ELEM_SIZE
 constant GraphElemMask (-GRAPH_ELEM_SIZE)
+constant GraphElemShift GRAPH_ELEM_SHIFT
+
+string StrLeader  "\t("
+string StrTrailer ")\n"
+string StrEmpty "empty"
+string StrComma ", "
 
 .macro getReg rnum dst=%eax
 	not \rnum
@@ -1808,11 +1815,9 @@ constant GraphElemMask (-GRAPH_ELEM_SIZE)
 	mov \src, (%ebx, \rnum, 4)
 .endm
 
-prim initHostGraph, "init-host-graph"
+prim elemAlignDp, "elem-align-dp"
 	align_dp_to GRAPH_ELEM_SIZE
-	mov %edi, var_host
 next
-
 prim getRegister "@r"  # reg -- elem
 	pop %eax
 	getReg %eax
