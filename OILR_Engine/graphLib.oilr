@@ -1,9 +1,14 @@
+true constant: DEBUG
+
 9  constant: '\t'
 10 constant: '\n'
 27 constant: '\e'
 
+: MB 20 shift-up ;
+
 : #   [ '\n' = ] scan-in  ;   #immediate
 # and now we have comments. Yay!
+
 
 # allow aliasing of existing words without adding a
 # layer of indirection
@@ -30,6 +35,26 @@ variable: if-depth
 : if     #immediate   compile-conditional-jump   if-depth inc-var  ;
 : else   #immediate   compile-unconditional-jump   push   jump-target   pop ;
 : endif  #immediate   jump-target   if-depth dec-var ;
+
+
+# concatenative-style if
+: ifte  # S bool then else -- T
+	push push
+	if pop trash else trash pop endif
+	call
+;
+
+: [] [ ] ;
+# debugging code is from ? to end of line
+DEBUG
+	[ [] ]
+    [ [ [ '\n' = ] scan-in  ] ]
+ifte  as ?  #immediate
+# The above also shows how we can use the "as" defining word to do 
+# conditional compilation. What this says is "if DEBUG is non-zero
+# then define ? to be a no-op immediate word, otherwise define ? to
+# be a comment to end-of-line.
+
 
 
 # Imperative looping
@@ -97,7 +122,11 @@ OutputBufferStart output-buffer !
 
 # ################################################################# #
 
+variable: _real-index
 variable: index-size
+variable: bool-flag
+
+: oilr-index _real-index @ ;
 
 # NOTE: bytes->elems gives the number of elems that will fit into 
 #   bytes of space. There may be space left over. note also the
@@ -113,8 +142,10 @@ variable: index-size
 
 : OILR #immediate
 	create # n --
+		here 2 cells before push
 		dup index-size !
 		2* cells allot
+		pop _real-index !
 	does  # n -- addr
 		2* cells after
 ;
@@ -125,6 +156,20 @@ variable: index-size
 	here host-free !
 	use-anon
 ;
+
+# backtracking-stack primitives
+
+16 MB constant: BStackSize
+BStackSize buffer constant: b-stack-max
+b-stack-max BStackSize + constant: b-stack
+variable: bsp
+b-stack bsp !
+
+# The b-stack is executable. Executing it undoes the changes it documents
+# (if bool-flag is false) or frees logged resources (if true)
+: b-return  ip@ bsp !  trash  ;
+: b-push  bsp @   1 cell before stash !   pop bsp !  ;
+: b-call  DoAddr b-push  bsp @  call ;
 
 
 
@@ -202,9 +247,17 @@ constant: MaxAlloc
 7 ColourFlagShift shift-up
 	constant: ColourFlagMask
 
+: node-signature   .elem-flags @   TypeBits shift-down   ;  # node -- sig
 : index-node   # node -- 
-	.elem-flags @  TypeBits shift-down
-	drop  # todo
+	dup node-signature 
+?	dup putn nl
+	oilr-index
+		stash .idx-next
+		pop .idx-len  inc-var
+	drop
+;
+: unindex-node  # node --
+	
 ;
 
 : init-node   NodeType over .elem-flags !  ;  # elem -- node
@@ -224,7 +277,7 @@ constant: MaxAlloc
 : add-node  check-space unsafe-add-node ;
 : edge      check-space unsafe-add-edge ;
 
-: delete-node   free-elem   ;         # node --
+: delete-node   dup unindex-node free-elem   ;         # node --
 : delete-edge   free-elem   ;         # edge --
 
 
@@ -264,6 +317,8 @@ constant: MaxAlloc
 : graph-elem    elems   host @   +    ; # n -- elem
 : get-elem-id   host @ -  bytes->elems  ;  # elem -- n
 : count-elems   use-dict   here get-elem-id   use-anon  ;
+
+# ######   Graph output   ######################################### #
 
 : spc 32 %c ;
 
@@ -306,22 +361,101 @@ exception: TODO
 	']' putc '\n' putc
 ;
 
+: maybe   # -- bool
+	false  # todo: implementation based on pseudo-random numbers
+;
+
+: oilr-true  true  bool-flag ! ;
+: oilr-false false bool-flag ! ;
+
+# ######   OILR machine instructions   ############################ #
+
+#      OILR Int          -- Number of OILR indices
+#    -- Graph modification
+#    | ABN Dst           -- Add and Bind Node to register Dst
+#    | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
+#    | DBN Dst           -- Delete Bound Node 
+#    | DBE Dst           -- Delete Bound Node
+#    
+#    | RBN Dst Bool      -- set Root on Bound Node to Bool
+#    
+#    | CBL Dst Col       -- Colour Bound eLement
+#    | LBL Dst Int       -- Label Bound eLement with Int
+#
+#    -- Graph search
+#    | BND Dst Spc          -- Bind next unbound NoDe in Spc to Dst
+#    | BED Dst Reg Reg Dir  -- Bind EDge between Regs in Dir
+#    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
+#    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
+#
+#    -- Definitions & program structure
+#    | DEF Id               -- DEFine function Id
+#    | CAL Id               -- CALl Id, pushing current IP to call-stack
+#    | TAR Target           -- jump TARget
+#    | BRZ Target           -- BRanch if Zero (i.e. if bool flag is false)
+#    | BNZ Target           -- Branch if Non-Zero
+#    | BRA Target           -- Branch RAndomly. Take the branch 50% of the time.
+#    | BRN Target           -- unconditional BRaNch to Target
+#    | RET                  -- RETurn to IP on top of call-stack
+#    | RTZ                  -- ReTurn if Zero
+#    | RNZ                  -- Return if Non-Zero
+#
+#    -- Backtracking
+#    | BBT                  -- Begin BackTracking section
+#    | BAK                  -- unconditionally roll-BAcK backtracking section changes
+#    | EBT                  -- End BackTracking secion: commit if flag is true, rollback otherwise
+#    -- There is no rollback command. This needs to be done manually with reverse rules.
+#
+#    -- Stack machine
+#    | BLO Dst              -- push Bound eLement Out-degree to stack
+#    | BLI Dst              -- push Bound eLement In-degree to stack
+#    | BLL Dst              -- push Bound eLement looP-degree to stack
+#    | BLR Dst              -- push Bound eLement Rootedness to stack
+#    | BLN Dst              -- push Bound eLement's Numeric label to stack
+#    | BLC Dst              -- push Bound eLement Colour to stack
+#
+#    | SHL Int              -- SHift top-of-stack Left by Int bits
+#    | OR                   -- bitwise OR top 2 values on the stack
+#    | AND                  -- bitwise AND top 2 value on the stack
+#
+#    -- Misc
+#    | NOP                  -- No-OP
+#    | TRU                  -- set the boolean register to TRUe
+#    | FLS                  -- set the boolean register to FaLSe
+
 
 : bnd  #  dest spc -- bool
-	# traverse a single OILR index
+	# traverse a search space
+	# TODO: write this
 	drop drop false
 ;
-: rtz  # bool --
-	if return endif  # do nothing true
-	trash unframe    # otherwise clear frame and return from calling function
-;
-
 : dbn  # reg --
 	$$  idx->elem  delete-node
 ;
 : dbe  # reg --
 	$$  idx->elem  delete-edge
 ;
+
+# Branch instructions
+: brn  ' branch ,   ;  #immediate
+: brz  ' zbranch ,  ;  #immediate
+: bnz  ' not   , ' zbranch , ;  #immediate
+: bra  ' maybe , ' zbranch , ;  #immediate
+
+# Return instructions
+: ret  trash unframe  ;
+: rtz  if return endif      trash unframe   ;
+: rnz  if trash unframe endif   ;
+
+# Backtracking
+: bbt  ' b-return b-push ; 
+: bak  bool-flag @  false bool-flag !  b-call  bool-flag ! ;
+: ebt  b-call  ;
+
+# Misc
+: nop ;
+: tru  true  bool-flag ! ;
+: fls  false bool-flag ! ;
 
 
 # ################################################################# #
@@ -348,16 +482,12 @@ exception: TODO
 	unframe
 ;
 
-
-: Main
-;
-
+: Main ;
 
 # ################################################################# #
 # Host graph only! No definitions from here on down...
 
 host-graph
-
 	3 nodes
 	0n 1n edge
 	1n 0n edge

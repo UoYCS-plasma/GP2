@@ -334,15 +334,9 @@ next
 
 # The black-magic of forth: data with behaviour.
 #
-# ... | dodoes | behav | data ...
-#
-# A more typical implementation would have been:
-# 
-# ... | dodoes | ptr | data ... | behav
-#                  \______________7
-#
-# but we remove the indirection as we have anonymous functions
-#
+# ... | dodoes | ptr | data ... | ...  behav
+#                  \_________________7
+
 .align CELL_SIZE
 dodoes:
 	pushrs %esi
@@ -796,6 +790,10 @@ do_unframe:
 
 prim ipGet, "ip@"
 	push %esi
+next
+prim take
+	lodsl
+	push %eax
 next
 
 # Memory access ######################################
@@ -1743,61 +1741,6 @@ end
 
 # Graph manipulation ###############################
 
-/* 
-data Instr =
-      OILR Int          -- Number of OILR indices
-    -- Graph modification
-    | ABN Dst           -- Add and Bind Node to register Dst
-    | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
-    | DBN Dst           -- Delete Bound Node 
-    | DBE Dst           -- Delete Bound Node
-    
-    | RBN Dst Bool      -- set Root on Bound Node to Bool
-    
-    | CBL Dst Col       -- Colour Bound eLement
-    | LBL Dst Int       -- Label Bound eLement with Int
-
-    -- Graph search
-    | BND Dst Spc          -- Bind next unbound NoDe in Spc to Dst
-    | BED Dst Reg Reg Dir  -- Bind EDge between Regs in Dir
-    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
-    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
-
-    -- Definitions & program structure
-    | DEF Id               -- DEFine function Idopen source dev site
-    | CAL Id               -- CALl Id, pushing current IP to call-stack
-    | TAR Target           -- jump TARget
-    | BRZ Target           -- BRanch if Zero (i.e. if bool flag is false)
-    | BNZ Target           -- Branch if Non-Zero
-    | BRA Target           -- Branch RAndomly. Take the branch 50% of the time.
-    | BRN Target           -- unconditional BRaNch to Target
-    | RET                  -- RETurn to IP on top of call-stack
-    | RTZ                  -- ReTurn if Zero
-    | RNZ                  -- Return if Non-Zero
-
-    -- Backtracking
-    | BBT                  -- Begin BackTracking section
-    | BAK                  -- unconditionally roll-BAcK backtracking section changes
-    | EBT                  -- End BackTracking secion: commit if flag is true, rollback otherwise
-    -- There is no rollback command. This needs to be done manually with reverse rules.
-
-    -- Stack machine
-    | BLO Dst              -- push Bound eLement Out-degree to stack
-    | BLI Dst              -- push Bound eLement In-degree to stack
-    | BLL Dst              -- push Bound eLement looP-degree to stack
-    | BLR Dst              -- push Bound eLement Rootedness to stack
-    | BLN Dst              -- push Bound eLement's Numeric label to stack
-    | BLC Dst              -- push Bound eLement Colour to stack
-
-    | SHL Int              -- SHift top-of-stack Left by Int bits
-    | OR                   -- bitwise OR top 2 values on the stack
-    | AND                  -- bitwise AND top 2 value on the stack
-
-    -- Misc
-    | NOP                  -- No-OP
-    | TRU                  -- set the boolean register to TRUe
-    | FLS                  -- set the boolean register to FaLSe
-*/
 
 variable host
 variable hostFree, , "host-free"
