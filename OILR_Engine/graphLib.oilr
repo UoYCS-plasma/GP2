@@ -158,7 +158,6 @@ variable: bool-flag
 ;
 
 # backtracking-stack primitives
-
 16 MB constant: BStackSize
 BStackSize buffer constant: b-stack-max
 b-stack-max BStackSize + constant: b-stack
@@ -166,7 +165,7 @@ variable: bsp
 b-stack bsp !
 
 # The b-stack is executable. Executing it undoes the changes it documents
-# (if bool-flag is false) or frees logged resources (if true)
+# if bool-flag is false or frees preserved resources
 : b-return  ip@ bsp !  trash  ;
 : b-push  bsp @   1 cell before stash !   pop bsp !  ;
 : b-call  DoAddr b-push  bsp @  call ;
@@ -214,7 +213,6 @@ b-stack bsp !
 ;
 
 exception: OutOfMemory
-constant: MaxAlloc
 
 : check-space
 	available-space 1 <= if
@@ -290,6 +288,7 @@ constant: MaxAlloc
 ;
 
 
+: set-root-flag    stash .elem-flags @   RootFlagMask    or  pop .elem-flags !  ;  # bool elem --
 
 : get-label-flag   .elem-flags @   LabelFlagMask   and   ;   # elem -- n
 : set-label-flag   stash .elem-flags @   LabelFlagMask   or  pop .elem-flags !  ;  # n elem -- 
@@ -423,11 +422,14 @@ exception: TODO
 #    | TRU                  -- set the boolean register to TRUe
 #    | FLS                  -- set the boolean register to FaLSe
 
+: cbl  $$ idx->elem  colour ;   # colour reg
+: lbl  $$ idx->elem  label ;    # label  reg
+: rbn  $$ idx->elem  set-root-flag ;  # bool reg
 
 : bnd  #  dest spc -- bool
 	# traverse a search space
 	# TODO: write this
-	drop drop false
+	drop drop false bool-flag !
 ;
 : dbn  # reg --
 	$$  idx->elem  delete-node
@@ -484,6 +486,10 @@ exception: TODO
 
 : Main ;
 
+? exception: CompilationStackUnbalancedAfterProgram
+? ds-depth dup if  putn 32 putc CompilationStackUnbalancedAfterProgram raise  endif drop
+
+
 # ################################################################# #
 # Host graph only! No definitions from here on down...
 
@@ -501,6 +507,9 @@ host-graph
 
 	Dashed 4e colour
 
+? exception: CompilationStackUnbalancedAfterHost
+? ds-depth dup if  putn 32 putc CompilationStackUnbalancedAfterHost raise  endif drop
+
 # [ count-elems putn nl  get-brk-addr putx nl  anon-code-area-addr @ putx nl  0-exit ] handles OutOfMemory
 # forever  add-node  repeat
 # -1 times   LabelFlagBits drop  repeat
@@ -510,4 +519,5 @@ Main
 
 dump-graph
 available-space putn nl
-0-exit ;
+0-exit
+;
