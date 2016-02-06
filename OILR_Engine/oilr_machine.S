@@ -806,6 +806,9 @@ prim take
 	lodsl
 	push %eax
 next
+prim inspect
+	push (%esi)
+next
 
 # Memory access ######################################
 

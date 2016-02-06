@@ -285,7 +285,8 @@ end-bitfield
 : init-edge  # src tgt elem -- edge
 	EdgeType over .elem-flags !
 	stash .edge-tgt !
-	pop   .edge-src !
+	peek  .edge-src !
+	pop
 ;
 
 : is-node?  .elem-flags @   NodeType  and  ;
@@ -293,10 +294,10 @@ end-bitfield
 
 # Graph element creation and deletion
 : unsafe-add-node   alloc-elem init-node index-node  ;  # --
-: unsafe-add-edge   alloc-elem init-edge drop ; # --
+: unsafe-add-edge   alloc-elem init-edge             ;  # src tgt -- edge
 
-: add-node  check-space unsafe-add-node ;
-: edge      check-space unsafe-add-edge ;
+: add-node  check-space unsafe-add-node ;  # --
+: edge      check-space unsafe-add-edge ;  # src tgt -- edge
 
 : delete-node   dup unindex-node free-elem   ;         # node --
 : delete-edge   free-elem   ;         # edge --
@@ -484,6 +485,17 @@ exception: TODO
 
 # ################################################################# #
 
+: #tgt  ' peek ,  ' 1 ,  ' cell ,  ' after ,  ' @ ,   ; #immediate
+: -->  #tgt  edge drop ;  # src --
+: ..>  #tgt  edge  Dashed swap  colour ; # src --
+
+: -(  ; #immediate
+: .(  ; #immediate
+: )->  swap  #tgt edge  label ; # src label -- 
+: ).>  swap  #tgt edge  stash label  Dashed pop colour ; # src label -- 
+
+: path drop ;
+
 
 # ################################################################# #
 
@@ -517,17 +529,15 @@ exception: TODO
 
 host-graph
 	3 nodes
-	0n 1n edge
-	1n 0n edge
-	1n 2n edge
-	2n 0n edge
-
 	42 1n label
-	123 6e label
-
 	Red 2n colour
+	
+	#       3           4        5          6
+	1n  -( 23 )->  2n  -->  0n  ..>  1n  .( 6 ).>  0n  path
 
-	Dashed 4e colour
+
+
+#	Dashed 4e colour
 
 # ? exception: CompilationStackUnbalancedAfterHost
 # ? ds-depth dup if  putn 32 putc CompilationStackUnbalancedAfterHost raise  endif drop
