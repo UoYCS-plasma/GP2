@@ -226,26 +226,49 @@ exception: OutOfMemory
 	endif
 ;
 
-2 constant: TypeBits
-1 constant: LabelFlagBits
-3 constant: ColourFlagBits
-2 constant: OFlagBits
-2 constant: IFlagBits
-2 constant: LFlagBits
-1 constant: RFlagBits
+
+: bitfield     0    ;  #immediate
+: end-bitfield  drop ;  #immediate
+
+: make-bitmask  1 swap shift-up 1-  swap shift-up ; # shift width -- mask
+
+: bits:  #immediate
+	create  # shift width -- shift'
+		over over make-bitmask ,
+		over , dup , +
+	does
+;
+: mask  @  ;  #  bits -- mask
+: shift 1 cell after @ ;  # bits -- shift
+: width 2 cells after @ ; # bits -- width
+: raw   mask and ;  #  bitfield bits -- raw
+: value   stash raw   pop shift shift-down ;  #  bitfield bits -- value
+
+bitfield
+	2 bits: TypeFlag
+	1 bits: RFlag
+	2 bits: LFlag
+	2 bits: IFlag
+	2 bits: OFlag
+	3 bits: CFlag
+	1 bits: BFlag
+end-bitfield
 
 0 constant: FreeType
 1 constant: NodeType
 2 constant: EdgeType
 
+# 2 constant: TypeBits
+# 1 constant: LabelFlagBits
+# 3 constant: ColourFlagBits
+# 2 constant: OFlagBits
+# 2 constant: IFlagBits
+# 2 constant: LFlagBits
+# 1 constant: RFlagBits
 
-3 constant: ColourFlagShift
 
-4 	constant: LabelFlagMask
-7 ColourFlagShift shift-up
-	constant: ColourFlagMask
 
-: node-signature   .elem-flags @   TypeBits shift-down   ;  # node -- sig
+: node-signature   .elem-flags @   TypeFlag width  shift-down   ;  # node -- sig
 : index-node   # node -- 
 	dup node-signature 
 ?	dup putn nl
@@ -288,10 +311,10 @@ exception: OutOfMemory
 ;
 
 
-: set-root-flag    stash .elem-flags @   RootFlagMask    or  pop .elem-flags !  ;  # bool elem --
+: set-root-flag    stash .elem-flags @   RFlag mask    or  pop .elem-flags !  ;  # bool elem --
 
-: get-label-flag   .elem-flags @   LabelFlagMask   and   ;   # elem -- n
-: set-label-flag   stash .elem-flags @   LabelFlagMask   or  pop .elem-flags !  ;  # n elem -- 
+: has-label?   .elem-flags @   BFlag raw   ;   # elem -- n
+: set-label-flag   stash .elem-flags @   BFlag mask   or  pop .elem-flags !  ;  # n elem -- 
 
 : label  # label elem -- 
 	stash .elem-label !
@@ -306,10 +329,10 @@ exception: OutOfMemory
 4 constant: Grey
 7 constant: Dashed
 
-: get-colour  .elem-flags @  ColourFlagMask and   ColourFlagShift shift-down ;
+: get-colour  .elem-flags @  CFlag value  ;
 : colour  # colour elem --
-	push ColourFlagShift shift-up
-	peek .elem-flags @  ColourFlagMask not  and  or # clear the old colour then set the new
+	push CFlag shift  shift-up
+	peek .elem-flags @  CFlag mask not  and  or # clear the old colour then set the new
 	pop !
 ;
 
@@ -322,8 +345,6 @@ exception: OutOfMemory
 : spc 32 %c ;
 
 exception: TODO
-
-: has-label?    get-label-flag   ;
 
 : _put-label # elem -- 
 	dup has-label? if
@@ -380,13 +401,24 @@ exception: TODO
 #    
 #    | CBL Dst Col       -- Colour Bound eLement
 #    | LBL Dst Int       -- Label Bound eLement with Int
-#
+
+: abn  $$  add-node  swap ! ;
+: abe  $$  ;
+
+: dbn  $$ @  idx->elem  delete-node  ;
+: dbe  $$ @  idx->elem  delete-edge  ;
+
+: rbn  $$ @ idx->elem  set-root-flag ;  # bool reg
+: cbl  $$ @ idx->elem  colour ;   # colour reg
+: lbl  $$ @ idx->elem  label ;    # label  reg
+
+
 #    -- Graph search
 #    | BND Dst Spc          -- Bind next unbound NoDe in Spc to Dst
 #    | BED Dst Reg Reg Dir  -- Bind EDge between Regs in Dir
 #    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
 #    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
-#
+
 #    -- Definitions & program structure
 #    | DEF Id               -- DEFine function Id
 #    | CAL Id               -- CALl Id, pushing current IP to call-stack
@@ -422,20 +454,10 @@ exception: TODO
 #    | TRU                  -- set the boolean register to TRUe
 #    | FLS                  -- set the boolean register to FaLSe
 
-: cbl  $$ idx->elem  colour ;   # colour reg
-: lbl  $$ idx->elem  label ;    # label  reg
-: rbn  $$ idx->elem  set-root-flag ;  # bool reg
-
 : bnd  #  dest spc -- bool
 	# traverse a search space
 	# TODO: write this
 	drop drop false bool-flag !
-;
-: dbn  # reg --
-	$$  idx->elem  delete-node
-;
-: dbe  # reg --
-	$$  idx->elem  delete-edge
 ;
 
 # Branch instructions
@@ -507,8 +529,8 @@ host-graph
 
 	Dashed 4e colour
 
-? exception: CompilationStackUnbalancedAfterHost
-? ds-depth dup if  putn 32 putc CompilationStackUnbalancedAfterHost raise  endif drop
+# ? exception: CompilationStackUnbalancedAfterHost
+# ? ds-depth dup if  putn 32 putc CompilationStackUnbalancedAfterHost raise  endif drop
 
 # [ count-elems putn nl  get-brk-addr putx nl  anon-code-area-addr @ putx nl  0-exit ] handles OutOfMemory
 # forever  add-node  repeat

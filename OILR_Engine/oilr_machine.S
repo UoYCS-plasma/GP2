@@ -759,6 +759,17 @@ prim local, "$$"  # n -- addr
 	lea (%ebx, %eax, 4), %edx
 	push %edx
 next
+prim getLocal, "$$@" # n -- val
+	pop %eax
+	not %eax
+	mov (%ebx, %eax, 4), %eax
+	push %eax
+next
+prim setLocal "$$!"  # val n -- 
+	pop %eax
+	pop %edx
+	mov %edx, (%ebx, %eax, 4)
+next
 prim locals  # n -- 
 	# create a frame with n local variables
 	pushrs %ebx
