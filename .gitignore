@@ -9,7 +9,6 @@ TODO
 *.swp
 *.log
 *.o
-core*
 tmp/
 *.a
 *.txt

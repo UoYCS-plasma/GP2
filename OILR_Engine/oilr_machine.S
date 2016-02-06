@@ -1609,14 +1609,19 @@ end
 
 variable NotInADataBlock
 
-word lambda, "[", call  # -- addr
+word beginData, "begin-data-block"
 	.long quote, data, storeinc
 	.long here, zero, storeinc
-	.long DoAddr, storeinc
+end
+word endData, "end-data-block"
+	.long here, over, one, cell, add, sub, swap, set
+end
+
+word lambda, "[", call  # -- addr
+	.long beginData, DoAddr, storeinc
 end
 word endLambda, "]", call  # addr --
-	.long quote, return, storeinc
-	.long here, over, one, cell, add, sub, swap, set
+	.long quote, return, storeinc, endData
 end
 word dataLength, "data-length"  # lambda -- len
 	.long dup, lit, 2, cell, sub, get   # fetch the data instruction

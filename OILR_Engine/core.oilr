@@ -1,0 +1,167 @@
+true constant: DEBUG
+
+9  constant: '\t'
+10 constant: '\n'
+27 constant: '\e'
+
+: MB 20 shift-up ;
+
+: #   [ '\n' = ] scan-in  ;   #immediate
+# and now we have comments. Yay!
+
+
+# allow aliasing of existing words without adding a
+# layer of indirection
+: alias:  #immediate  # ( xt -- )  ( -- )
+	create-immed  ,    # store the word being aliased
+	does        @ ,  # when called compile the aliased word
+;
+
+# make address manipulation more readable...
+' cell alias: cells
+' -    alias: before
+' +    alias: after
+
+: next-cell  here   1 cell after   ;
+: prev-cell  here   1 cell before  ;
+
+# now let's implement conditionals
+: compile-jump     ,    here    0 ,  ;        #  xt -- addr
+: compile-conditional-jump   ' zbranch  compile-jump ;
+: compile-unconditional-jump ' branch   compile-jump ;
+: jump-target   dup   here swap -   swap !  ;
+
+variable: if-depth
+: if     #immediate   compile-conditional-jump   if-depth inc-var  ;
+: else   #immediate   compile-unconditional-jump   push   jump-target   pop ;
+: endif  #immediate   jump-target   if-depth dec-var ;
+
+
+# concatenative-style if
+: ifte  # S bool then else -- T
+	push push
+	if pop trash else trash pop endif
+	call
+;
+
+: [] [ ] ;
+# debugging code is from ? to end of line
+DEBUG
+	[ [] ]
+    [ [ [ '\n' = ] scan-in  ] ]
+ifte  as ?  #immediate
+# The above also shows how we can use the "as" defining word to do 
+# conditional compilation. What this says is "if DEBUG is non-zero
+# then define ? to be a no-op immediate word, otherwise define ? to
+# be a comment to end-of-line.
+
+
+
+# Imperative looping
+: times      #immediate   # n --
+	' push ,					# push i
+	here   ' peek ,				# this is where we jump back to
+	compile-conditional-jump    # jump out of loop if i==0
+	' pop , ' 1- , ' push ,     # decrement the counter
+	swap                        # leave NoS:exit-jump ToS:start-of-loop
+;
+: forever    #immediate
+	-1 compile-literal
+	' push ,   here   ' peek ,
+	compile-conditional-jump
+	swap
+;
+: repeat     #immediate    # exit-jump start-of-loop  -- 
+	next-cell -    compile-unconditional-jump   !
+	jump-target
+	' trash ,
+;
+
+# exceptions are basically just variables
+: exception:   #immediate    create-variable  ;
+
+
+# buffered output
+
+1000 cells buffer constant: OutputBufferStart
+variable: output-buffer
+OutputBufferStart output-buffer !
+: %s  # s -- 
+	# copy a string into the output buffer
+	dup @ push # length
+	1 cell after   peek   output-buffer @   copy-bytes
+	pop   output-buffer @   +   output-buffer !
+;
+: %c  # c -- 
+	# copy a char into the output buffer
+	output-buffer @ !b
+	output-buffer inc-var
+;
+: _c 
+	dup if
+		%c tail: _c
+	endif
+	drop
+;
+: %d  # n -- 
+	# copy an int into the output buffer
+	dup 0 < if
+		neg
+		'-' %c
+	endif
+	10 decompose
+	_c
+;
+: clear-output   OutputBufferStart output-buffer !   ;
+: flush-output
+	0   output-buffer @   ! # guarantee null-termination
+	OutputBufferStart putz
+	clear-output
+;
+
+# assertions
+
+exception: AssertionFailed
+: assertion-failed
+	WarningColour colour putz 
+	NoColour colour
+	AssertionFailed raise
+;
+: assertion:  #immediate
+	' 0 , ' = , compile-conditional-jump 
+	begin-data-block
+	[ dup ,b  '\n' = ] scan-in   0 ,b
+	end-data-block
+	' assertion-failed ,
+	jump-target
+;
+
+# structs
+
+: struct: #immediate
+	create
+		here 0 , 0 
+	does
+		@  # returns size-of structure when called
+;
+: bytes:        #immediate
+	create  # offs size
+		over , +
+	does
+		@ cells after
+;
+: cells:        #immediate
+	create  # offs size
+		over ,  cells +
+	does
+		@ cells after
+;
+: cell: #immediate
+	` cells:
+;
+: end-struct  swap ! ;  # save the struct size
+
+? ds-depth 0 =   assertion: Unbalanced stack after util library compilation
+
+
+# vim:ft=oilr

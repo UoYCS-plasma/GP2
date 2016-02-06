@@ -29,16 +29,17 @@ syn region Comment start="\<#\>" end="\n"
 " syn region String  start="\"\n" end="\""
 " syn region String  start="\"\t" end="\""
 
-syn match isDebug  /\<?\s\+.*/
+syn match isMacro  /\S*:\s\+\S\+/
+syn match isDefn   /^\S*:\s\+\S\+/
+syn match isDefn   /\<as\s\+\S\+/
+syn match assertion /\<assertion: .*/
+syn match isDebug  /\<?\s\+.*/ contains=assertion
 syn match isElem   /\<[0-9]\+[ne]\>/
 syn match isQuote  /\<'\s\+\S\+/
 syn match isQuote  /\<'\s\+`\s\+\S\+/
 syn match isQuote  /\<'\s\+\S\+:\s\+\S\+/
 syn match isImmed  /\<#\S\+/
 " syn match Number   /\<#\s\+[0-9]\+\>/
-syn match isMacro  /\S*:\s\+\S\+/
-syn match isDefn   /^\S*:\s\+\S\+/
-syn match isDefn   /\<as\s\+\S\+/
 syn match Number   /\<hex:\s\+[0-9a-f]\+\>/
 syn match Number   /\<oct:\s\+[0-8]\+\>/
 syn match Number   /\<bin:\s\+[01]\+\>/
@@ -52,6 +53,7 @@ syn region String  start="string:" end="\n" contains=stringEsc,isDefn
 
 syn region isImmed start="\<#\[\>" end="\<\]\>" contains=Number,Comment
 
+hi link assertion String
 hi isDebug ctermfg=brown guifg=brown
 hi link nestComment Comment
 hi link isHex Number

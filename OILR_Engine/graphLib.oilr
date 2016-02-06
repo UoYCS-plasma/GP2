@@ -1,132 +1,10 @@
-true constant: DEBUG
-
-9  constant: '\t'
-10 constant: '\n'
-27 constant: '\e'
-
-: MB 20 shift-up ;
-
-: #   [ '\n' = ] scan-in  ;   #immediate
-# and now we have comments. Yay!
-
-
-# allow aliasing of existing words without adding a
-# layer of indirection
-: alias:  #immediate  # ( xt -- )  ( -- )
-	create-immed  ,    # store the word being aliased
-	does        @ ,  # when called compile the aliased word
-;
-
-# make address manipulation more readable...
-' cell alias: cells
-' -    alias: before
-' +    alias: after
-
-: next-cell  here   1 cell after   ;
-: prev-cell  here   1 cell before  ;
-
-# now let's implement conditionals
-: compile-jump     ,    here    0 ,  ;        #  xt -- addr
-: compile-conditional-jump   ' zbranch  compile-jump ;
-: compile-unconditional-jump ' branch   compile-jump ;
-: jump-target   dup   here swap -   swap !  ;
-
-variable: if-depth
-: if     #immediate   compile-conditional-jump   if-depth inc-var  ;
-: else   #immediate   compile-unconditional-jump   push   jump-target   pop ;
-: endif  #immediate   jump-target   if-depth dec-var ;
-
-
-# concatenative-style if
-: ifte  # S bool then else -- T
-	push push
-	if pop trash else trash pop endif
-	call
-;
-
-: [] [ ] ;
-# debugging code is from ? to end of line
-DEBUG
-	[ [] ]
-    [ [ [ '\n' = ] scan-in  ] ]
-ifte  as ?  #immediate
-# The above also shows how we can use the "as" defining word to do 
-# conditional compilation. What this says is "if DEBUG is non-zero
-# then define ? to be a no-op immediate word, otherwise define ? to
-# be a comment to end-of-line.
-
-
-
-# Imperative looping
-: times      #immediate   # n --
-	' push ,					# push i
-	here   ' peek ,				# this is where we jump back to
-	compile-conditional-jump    # jump out of loop if i==0
-	' pop , ' 1- , ' push ,     # decrement the counter
-	swap                        # leave NoS:exit-jump ToS:start-of-loop
-;
-: forever    #immediate
-	-1 compile-literal
-	' push ,   here   ' peek ,
-	compile-conditional-jump
-	swap
-;
-: repeat     #immediate    # exit-jump start-of-loop  -- 
-	next-cell -    compile-unconditional-jump   !
-	jump-target
-	' trash ,
-;
-
-# exceptions are basically just variables
-: exception:   #immediate    create-variable  ;
-
-
-# buffered output
-
-1000 cells buffer constant: OutputBufferStart
-variable: output-buffer
-OutputBufferStart output-buffer !
-: %s  # s -- 
-	# copy a string into the output buffer
-	dup @ push # length
-	1 cell after   peek   output-buffer @   copy-bytes
-	pop   output-buffer @   +   output-buffer !
-;
-: %c  # c -- 
-	# copy a char into the output buffer
-	output-buffer @ !b
-	output-buffer inc-var
-;
-: _c 
-	dup if
-		%c tail: _c
-	endif
-	drop
-;
-: %d  # n -- 
-	# copy an int into the output buffer
-	dup 0 < if
-		neg
-		'-' %c
-	endif
-	10 decompose
-	_c
-;
-: clear-output   OutputBufferStart output-buffer !   ;
-: flush-output
-	0   output-buffer @   ! # guarantee null-termination
-	OutputBufferStart putz
-	clear-output
-;
-
-
 # ################################################################# #
 
 variable: _real-index
 variable: index-size
 variable: bool-flag
 
-: oilr-index _real-index @ ;
+: oilr-index _real-index @ call ;
 
 # NOTE: bytes->elems gives the number of elems that will fit into 
 #   bytes of space. There may be space left over. note also the
@@ -138,10 +16,9 @@ variable: bool-flag
 
 : next-elem   1 elem after   ;  # elem -- elem+1
 
-
-
 : OILR #immediate
 	create # n --
+		? dup 0 >  assertion: There must be at least one OILR index
 		here 2 cells before push
 		dup index-size !
 		2* cells allot
@@ -150,6 +27,7 @@ variable: bool-flag
 		2* cells after
 ;
 : host-graph #immediate
+?	_real-index @  assertion: Uninitialised OILR index
 	use-dict
 	elem-align-dp
 	here host !
@@ -171,19 +49,41 @@ b-stack bsp !
 : b-call  DoAddr b-push  bsp @  call ;
 
 
-
 # Index structure:  |  next  |  count
-: .idx-len  1 cell after  ;
+struct: dl-list
+	1 cell: .idx-first
+	1 cell: .idx-len
+end-struct
 
-# List structure:   |  next  |  head  |  prev
-: .idx-next ;  #immediate
-: .idx-head  1 cell after  ;
-: .idx-prev  2 cells after ;       
+# List item structure:   |  next  |  head  |  prev
+struct: dl-list-item
+	1 cell: .idx-next
+	1 cell: .idx-head
+	1 cell: .idx-prev
+end-struct
+
 : idx->elem  GraphElemMask and  ;  #  list -- elem
 
-# Elem Structure   |  flags  | ...
+# Elem Structure   |  flags  | label | ...
+struct: graph-elem
+	1 cell: .elem-flags
+	1 cell: .elem-label
+end-struct
+
+struct: graph-node
+	graph-elem   bytes: .node-elem
+	dl-list-item bytes: .node-index
+	dl-list      bytes: .node-out-edges
+	dl-list      bytes: .node-in-edges
+	dl-list      bytes: .node-loops
+end-struct
+
+
+
 : .elem-flags  ;  #immediate
 : .elem-label 1 cell after ;
+
+: .node-index 2 cells after ;
 
 : .edge-src 2 cells after ;
 : .edge-tgt 3 cells after ;
@@ -213,7 +113,6 @@ b-stack bsp !
 ;
 
 exception: OutOfMemory
-
 : check-space
 	available-space 1 <= if
 		get-heap-size
@@ -266,16 +165,38 @@ end-bitfield
 # 2 constant: LFlagBits
 # 1 constant: RFlagBits
 
+# doubly-linked-list support
 
+: next-item    .idx-next @  ;  # list -- item
+: prev-item    .idx-prev @  ;  # list -- item
+: head-of-list .idx-head @  ;  # list -- list
+
+: _first 2 $$@  ;
+: _item  1 $$@  ;  # readability aids for list-insert
+: _list  0 $$@  ;
+: list-insert  # item list --
+	2 locals
+?	_item assertion: uninitialised item in list insert
+?	_list assertion: uninitialised list in list insert
+	0  _item .idx-prev  !  # clear item.prev
+	_list next-item dup if .idx-prev  _item  !  else drop endif  # set list.next.prev to item
+	_list next-item  _item .idx-next  !   # set item.next to list.next
+	_item            _list .idx-next  !   # set list.next item
+	_list .idx-len  inc-var
+?	_list next-item prev-item 0 =  assertion: First list item has non-null .prev
+?	_list next-item _item       =  assertion: Head of _list is not _item
+?	_list .idx-len @          0 >  assertion: List length should be greater than zero
+?	_item head-of-list _list    =  assertion: _item.head doesn't point to _list
+;
+: cons  # item list -- 
+	dup next-item
+	3 locals  # first list item. Note reversed order
+	
+;
 
 : node-signature   .elem-flags @   TypeFlag width  shift-down   ;  # node -- sig
 : index-node   # node -- 
-	dup node-signature 
-?	dup putn nl
-	oilr-index
-		stash .idx-next
-		pop .idx-len  inc-var
-	drop
+	stash .node-index   pop node-signature oilr-index   list-insert
 ;
 : unindex-node  # node --
 	
@@ -308,7 +229,7 @@ end-bitfield
 		# if there isn't space, allocate enough...
 		peek elems  grow-heap
 	endif
-	pop times  unsafe-add-node  repeat
+	pop times  unsafe-add-node drop  repeat
 ;
 
 
@@ -496,6 +417,7 @@ exception: TODO
 
 : path drop ;
 
+? ds-depth 0 =   assertion: Unbalanced stack after graph library compilation
 
 # ################################################################# #
 
@@ -520,27 +442,30 @@ exception: TODO
 
 : Main ;
 
-? exception: CompilationStackUnbalancedAfterProgram
-? ds-depth dup if  putn 32 putc CompilationStackUnbalancedAfterProgram raise  endif drop
+? ds-depth 0 =   assertion: Unbalanced stack after program compilation
 
 
 # ################################################################# #
 # Host graph only! No definitions from here on down...
 
 host-graph
+	? ds-depth putn nl
 	3 nodes
+	? ds-depth putn nl
 	42 1n label
+	? ds-depth putn nl
 	Red 2n colour
+	? ds-depth putn nl
 	
 	#       3           4        5          6
 	1n  -( 23 )->  2n  -->  0n  ..>  1n  .( 6 ).>  0n  path
+	? ds-depth putn nl
 
 
 
 #	Dashed 4e colour
 
-# ? exception: CompilationStackUnbalancedAfterHost
-# ? ds-depth dup if  putn 32 putc CompilationStackUnbalancedAfterHost raise  endif drop
+? ds-depth 0 =  assertion: Unbalanced stack after host creation
 
 # [ count-elems putn nl  get-brk-addr putx nl  anon-code-area-addr @ putx nl  0-exit ] handles OutOfMemory
 # forever  add-node  repeat
