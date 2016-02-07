@@ -51,16 +51,24 @@ b-stack bsp !
 
 # Index structure:  |  next  |  count
 struct: dl-list
-	1 cell: .idx-first
-	1 cell: .idx-len
+	1 cell: .first
+	1 cell: .len
 end-struct
+
+: ->first .first @ ;
+: ->len  .len  @ ;
 
 # List item structure:   |  next  |  head  |  prev
 struct: dl-list-item
-	1 cell: .idx-next
-	1 cell: .idx-head
-	1 cell: .idx-prev
+	1 cell: .next
+	1 cell: .head
+	1 cell: .prev
 end-struct
+
+: ->next .next @ ;
+: ->prev .prev @ ;
+: ->head .head @ ;
+
 
 : idx->elem  GraphElemMask and  ;  #  list -- elem
 
@@ -87,10 +95,6 @@ end-struct
 
 : .edge-src 2 cells after ;
 : .edge-tgt 3 cells after ;
-
-: ->next .idx-next @ ;
-: ->prev .idx-prev @ ;
-: ->head .idx-head @ ;
 
 : alloc-elem  #  -- elem
 	freelist @ dup  if
@@ -167,36 +171,51 @@ end-bitfield
 
 # doubly-linked-list support
 
-: next-item    .idx-next @  ;  # list -- item
-: prev-item    .idx-prev @  ;  # list -- item
-: head-of-list .idx-head @  ;  # list -- list
+: next-item    .next @ ;  # list -- item
+: prev-item    .prev @ ;  # list -- item
+: head-of-list .head @  ;  # list -- list
 
-: _first 2 $$@  ;
-: _item  1 $$@  ;  # readability aids for list-insert
-: _list  0 $$@  ;
-: list-insert  # item list --
-	2 locals
+: _item  2 $$@  ;  # readability aids for cons
+: _list  1 $$@  ;
+: _next  0 $$@  ;
+: cons  # item list --
+	dup ->first
+	3 locals
 ?	_item assertion: uninitialised item in list insert
 ?	_list assertion: uninitialised list in list insert
-	0  _item .idx-prev  !  # clear item.prev
-	_list next-item dup if .idx-prev  _item  !  else drop endif  # set list.next.prev to item
-	_list next-item  _item .idx-next  !   # set item.next to list.next
-	_item            _list .idx-next  !   # set list.next item
-	_list .idx-len  inc-var
+	_next    _item .next  !   # item.next = &next 
+	_list    _item .head  !   # item.head = &list
+	Nothing  _item .prev  !   # item.prev = NULL
+	
+	_next  if   _item    _next  .prev !   endif   # first.prev = &item
+	_item    _list .first !   # list.first = &item
+
+	_list .len inc-var
 ?	_list next-item prev-item 0 =  assertion: First list item has non-null .prev
 ?	_list next-item _item       =  assertion: Head of _list is not _item
-?	_list .idx-len @          0 >  assertion: List length should be greater than zero
+?	_list .len @          0 >  assertion: List length should be greater than zero
 ?	_item head-of-list _list    =  assertion: _item.head doesn't point to _list
 ;
-: cons  # item list -- 
-	dup next-item
-	3 locals  # first list item. Note reversed order
-	
+
+: _prev  2 $$@  ;  # readability aids for uncons
+: _list  1 $$@  ;
+: _next  0 $$@  ;
+: uncons  # item -- 
+	stash ->prev  peek ->head   pop ->next
+	3 locals
+	_prev if
+		_next   _prev .next  !    # prev.next = &next
+	else
+		_next   _list .first !    # list.first = &next
+	endif
+	_next if   _prev   _next .prev  !  endif  # next.prev = &prev
+	_list .len dec-var
 ;
+
 
 : node-signature   .elem-flags @   TypeFlag width  shift-down   ;  # node -- sig
 : index-node   # node -- 
-	stash .node-index   pop node-signature oilr-index   list-insert
+	stash .node-index   pop node-signature oilr-index   cons
 ;
 : unindex-node  # node --
 	
@@ -428,19 +447,19 @@ exception: TODO
 # 	IFlagBits +
 # 	LFlagBits +
 # 	RFlagBits + 
-1		OILR index
+# 1		OILR index
 
-: rule
-	frame
-#	1 registers
-	0  0  bnd   # bind node from spc 0 in reg 0
-	rtz
-
-	0 dbn     # delete node bound in reg 0
-	unframe
-;
-
-: Main ;
+# : rule
+# 	frame
+# #	1 registers
+# 	0  0  bnd   # bind node from spc 0 in reg 0
+# 	rtz
+# 
+# 	0 dbn     # delete node bound in reg 0
+# 	unframe
+# ;
+# 
+# : Main ;
 
 ? ds-depth 0 =   assertion: Unbalanced stack after program compilation
 
@@ -448,19 +467,19 @@ exception: TODO
 # ################################################################# #
 # Host graph only! No definitions from here on down...
 
-host-graph
-	? ds-depth putn nl
-	3 nodes
-	? ds-depth putn nl
-	42 1n label
-	? ds-depth putn nl
-	Red 2n colour
-	? ds-depth putn nl
-	
-	#       3           4        5          6
-	1n  -( 23 )->  2n  -->  0n  ..>  1n  .( 6 ).>  0n  path
-	? ds-depth putn nl
-
+# host-graph
+# 	? ds-depth putn nl
+# 	3 nodes
+# 	? ds-depth putn nl
+# 	42 1n label
+# 	? ds-depth putn nl
+# 	Red 2n colour
+# 	? ds-depth putn nl
+# 	
+# 	#       3           4        5          6
+# 	1n  -( 23 )->  2n  -->  0n  ..>  1n  .( 6 ).>  0n  path
+# 	? ds-depth putn nl
+# 
 
 
 #	Dashed 4e colour
@@ -472,9 +491,10 @@ host-graph
 # -1 times   LabelFlagBits drop  repeat
 # -1 times   host @ drop  repeat
 
-Main
+# Main
+# 
+# dump-graph
+# available-space putn nl
+# 0-exit
 
-dump-graph
-available-space putn nl
-0-exit
-;
+# vim:ft=oilr

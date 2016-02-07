@@ -1,5 +1,6 @@
 true constant: DEBUG
 
+0 constant: Nothing
 9  constant: '\t'
 10 constant: '\n'
 27 constant: '\e'
@@ -54,7 +55,6 @@ ifte  as ?  #immediate
 # conditional compilation. What this says is "if DEBUG is non-zero
 # then define ? to be a no-op immediate word, otherwise define ? to
 # be a comment to end-of-line.
-
 
 
 # Imperative looping
@@ -148,13 +148,13 @@ exception: AssertionFailed
 	create  # offs size
 		over , +
 	does
-		@ cells after
+		@ +
 ;
 : cells:        #immediate
-	create  # offs size
+	create  # offs n
 		over ,  cells +
 	does
-		@ cells after
+		@ +
 ;
 : cell: #immediate
 	` cells:

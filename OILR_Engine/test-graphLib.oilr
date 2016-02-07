@@ -1,0 +1,64 @@
+# Test graph manipulation functions
+
+Testing Graph Library
+
+Testing Sizes of data structures
+	dl-list 2 cells = test: list size
+	dl-list-item 3 cells = test: list item size
+
+Testing Doubly-linked list accessors
+	0 .next  0  = test: .next
+	0 .head  4  = test: .head
+	0 .prev  8  = test: .prev
+	0 .len   4  = test: .len
+
+
+
+: doubly-linked-list: #immediate
+	create
+		dl-list allot
+	does
+;
+: doubly-linked-list-item: #immediate
+	create
+		dl-list-item allot
+	does
+;
+doubly-linked-list: list
+doubly-linked-list-item: item1
+doubly-linked-list-item: item2
+doubly-linked-list-item: item3
+
+
+Testing Empty list
+	list ->len    0       =  test: List length zero
+	list ->first  Nothing =  test: List is empty
+	
+Testing List insertion
+	item1 list cons
+	list ->len    1       =  test: list length 1
+	list ->first  item1   =  test: list has item1
+	list ->first ->next
+	              Nothing = test: singlet null terminator
+
+	item2 list cons
+	list ->len    2       =  test: list length 2
+	list ->first  item2   =  test: list first item2
+	list ->first ->next
+	              item1   =  test: list next item1
+
+	item3 list cons
+	list ->len    3       =  test: list length 3
+
+Testing List deletion
+	item2 uncons
+	list ->len    2       =  test: uncons to 2
+
+	item1 uncons
+	list ->len    1       =  test: uncons to 1
+	list ->first  item3   =  test: item3 at head
+
+
+nl 0-exit
+
+# vim:ft=oilr

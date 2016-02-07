@@ -631,6 +631,11 @@ prim double, "2*"
 	shl $1, %eax
 	push %eax
 next
+prim halve, "2/"
+	pop %eax
+	sar $1, %eax
+	push %eax
+next
 
 prim min // int int -- int
 	pop %eax
@@ -1027,7 +1032,7 @@ number_char_class:
 .byte  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 # 20:     !  "  #  $  %  &  '  (  )  *  +  ,  -  .  /
-.byte  0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 6, 4, 0
+.byte  0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 6, 0, 0
 
 # 30:  0  1  2  3  4  5  6  7  8  9  :  ;  <  =  >  ?
 .byte  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 0, 0, 0, 0, 0
@@ -1183,7 +1188,6 @@ word initialiseVM
 	#.long argv, get, one, cell, add, get
 	.long handleArgs
 1:
-	.long welcome
 .long tailcall, reset
 
 word reset
@@ -1203,6 +1207,7 @@ end
 word handleNextArg, "handle-next-arg"
 	# .long semicolon  # any uncalled code from the previous file?
 	# check if there's an argument left to handle
+	.long semicolon
 	.long nextArg, dup, zbranch, JUMP(1f)
 	.long zopenIn, tailcall, reset
 1:
@@ -1278,6 +1283,7 @@ end
 # when reading from files passed on the commandline.
 variable EndOfFile, exit0
 
+string SuccessColour, "[32m"
 string ErrorColour,   "[31m"
 string WarningColour, "[33m"
 string NoColour,      "[0m"
@@ -1728,20 +1734,8 @@ word useAnon, "use-anon"
 1:
 	.long anonCodeAreaAddr, get, dpSet
 	.long DoAddr, storeinc
-.long tailcall, prompt
+end
 
-word welcome
-	.long inChannel, get, isATTY, zbranch, JUMP(1f)
-	.long WelcomeMessage, puts
-1:
-end
-word prompt
-	.long inChannel, get, isATTY, zbranch, JUMP(1f)
-	.long nl, spc, putc, dsDepth, putn
-	.long lit, ',', putc, rsDepth, putn
-	.long promptText, get, puts
-1:
-end
 
 variable DataStackUnderflow
 variable DataStackOverflow
@@ -1859,7 +1853,6 @@ variable dictPtr, ,"dict-ptr"
 variable NotFoundException, notFoundHandler
 
 
-string WelcomeMessage "Welcome to Cantilever\n\n\tType an expression in Reverse-Polish form \n\tterminated with [33m;[0m or [33m=[0m (to see a numeric result). \n\tIf you have rlwrap installed you can use tab-completion\n"
 string byebye, "\n-- Toodle-pip!\n"
 string TooLong, "Word too long: "
 string NotFound, " is neither a dictionary word nor a recognised number\n"

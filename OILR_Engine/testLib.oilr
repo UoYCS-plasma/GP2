@@ -1,0 +1,15 @@
+
+: test: #immediate
+	` assertion: 
+	'.' compile-literal ' putc ,
+;
+
+: Testing #immediate
+	begin-data-block
+	[ dup ,b  '\n' = ] scan-in   0 ,b
+	end-data-block
+	' nl , ' putz ,
+	
+;
+
+# vim:ft=oilr
