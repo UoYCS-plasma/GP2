@@ -13,12 +13,14 @@ Testing Sizes of data structures
 	graph-node GraphElemSize <  true  test: node too large
 	graph-edge GraphElemSize <  true  test: edge too large
 
+
 Testing Doubly-linked list accessors
 	0 .next  0  test: .next
 	0 .head  4  test: .head
 	0 .prev  8  test: .prev
 	0 .len   4  test: .len
 
+ds-depth 0  = assertion: stack empty at end of graph test
 
 
 : doubly-linked-list: #immediate
@@ -72,7 +74,56 @@ Testing List deletion
 	list ->first  Nothing test: list empty again
 
 
-ds-depth 0  = assertion: stack empty at end of graph test
+bitfield
+	1 bits:   Pugh
+	2 bits:  Hugh
+	1 bits:  Barney-McGrew
+	1 bits:   Cuthbert
+	3 bits:  Dibble
+	1 bits:   Grub
+end-bitfield
+
+Testing Bit-fields
+	Pugh shift         0   test: Pugh shift
+	-1 Pugh set?       1   test: Pugh mask
+	1 Pugh clear-bits  0   test: Pugh clear-bits 1
+	-1 Pugh clear-bits -2  test: Pugh clear-bits 2
+	0 Pugh 1 set-bits  1   test: Pugh set-bits
+
+	Hugh shift         1   test: Hugh shift
+	-1 Hugh set?       6   test: Hugh mask
+	-1 Hugh value      3   test: Hugh value
+	0  Hugh 1 set-bits 2   test: Hugh set-bits 1
+	0  Hugh 2 set-bits 4   test: Hugh set-bits 2
+	0  Hugh 3 set-bits 6   test: Hugh set-bits 3
+	
+	Barney-McGrew shift 3  test: Barney-McGrew shift
+
+	-1 Grub set?       1 8 shift-up  test: Grub mask
+	-1 Grub value      1             test: Grub value
+
+
+1 OILR index
+
+Testing Host graph construction
+	host-graph
+	host @   dict-ptr @   test: dict-ptr has changed
+	host @   host-free @  test: non-empty graph
+	2 nodes
+	0n                host @ test: 0n addr same as host
+	0n is-node?       true   test: 0n is a node
+	0n is-bound?      false  test: 0n not yet bound
+	0n bind
+	0n is-bound?   true   test: bind 0n 
+	0n unbind
+	0n is-bound?   false  test: unbind 0n
+	
+	0n --> 1n  path
+	2e is-edge?    true   test: 2e is an edge
+	2e ->src       0n     test: 2e source
+	2e ->tgt       1n     test: 2e source
+
+ds-depth 0  = assertion: stack after graphLib test
 
 nl 0-exit
 

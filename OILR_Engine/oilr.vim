@@ -32,7 +32,7 @@ syn region Comment start="\<#\>" end="\n"
 syn match isMacro  /\S*:\s\+\S\+/
 syn match isDefn   /^\S*:\s\+\S\+/
 syn match isDefn   /\<as\s\+\S\+/
-syn match assertion /\<assertion: .*/
+syn match assertion /\<\(assertion\|test\): .*/
 syn match isDebug  /\<?\s\+.*/ contains=assertion
 syn match isElem   /\<[0-9]\+[ne]\>/
 syn match isQuote  /\<'\s\+\S\+/

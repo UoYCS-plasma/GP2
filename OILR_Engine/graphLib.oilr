@@ -18,16 +18,20 @@ variable: bool-flag
 
 : OILR #immediate
 	create # n --
-		? dup 0 >  assertion: There must be at least one OILR index
+?		dup 0 >  assertion: There must be at least one OILR index
 		here 2 cells before push
 		dup index-size !
 		2* cells allot
+?		peek @   DoDoesAddr  =  assertion: created broken index
 		pop _real-index !
-	does  # n -- addr
+	does  # n addr -- addr
+		swap
+?		dup  index-size @  <  assertion: requested invalid index
 		2* cells after
 ;
 : host-graph #immediate
 ?	_real-index @  assertion: Uninitialised OILR index
+	` ;
 	use-dict
 	elem-align-dp
 	here host !
@@ -97,6 +101,9 @@ struct: graph-edge
 end-struct
 ? graph-edge   10 cells   =   assertion: graph-edge is 10 cells
 
+: ->src  .edge-src @  ;
+: ->tgt  .edge-tgt @  ;
+
 # create a search space
 struct: search-space
 	1 cell:  .spc-posn
@@ -151,7 +158,10 @@ exception: OutOfMemory
 
 
 : bitfield     0    ;  #immediate
-: end-bitfield  drop ;  #immediate
+: end-bitfield  #immediate
+?	dup 1 cell 8 *  <=  assertion: Bitfield overflows one cell
+	drop
+;
 
 : make-bitmask  1 swap shift-up 1-  swap shift-up ; # shift width -- mask
 
@@ -161,11 +171,22 @@ exception: OutOfMemory
 		over , dup , +
 	does
 ;
+# : bit:  ` bits:  ; #immediate
+
 : mask  @  ;  #  bits -- mask
 : shift 1 cell after @ ;  # bits -- shift
 : width 2 cells after @ ; # bits -- width
-: raw   mask and ;  #  bitfield bits -- raw
-: value   stash raw   pop shift shift-down ;  #  bitfield bits -- value
+: set?    mask and ;  #  bitfield bits -- raw
+: value   stash set?   pop shift shift-down ;  #  bitfield bits -- value
+: clear-bits   # bitfield field -- bitfield'
+	mask not and
+;
+: set-bits  # bfld field val -- bfld'
+	# set field of cell at addr to val
+	push stash clear-bits
+	pop shift pop swap shift-up
+	or
+;
 
 bitfield
 	2 bits: TypeFlag
@@ -175,6 +196,7 @@ bitfield
 	2 bits: OFlag
 	3 bits: CFlag
 	1 bits: BFlag
+	1 bits: IsBound
 end-bitfield
 
 0 constant: FreeType
@@ -243,20 +265,21 @@ end-bitfield
 
 : init-node   NodeType over .elem-flags !  ;  # elem -- node
 : init-edge  # src tgt elem -- edge
+?	dup  host @  >   assertion: not an element in init-edge
 	EdgeType over .elem-flags !
 	stash .edge-tgt !
 	peek  .edge-src !
 	pop
 ;
 
-: is-node?  .elem-flags @   NodeType  and  ;
-: is-edge?  .elem-flags @   EdgeType  and  ;
+: is-node?  .elem-flags @   NodeType  and  bool ;
+: is-edge?  .elem-flags @   EdgeType  and  bool ;
 
 # Graph element creation and deletion
-: unsafe-add-node   alloc-elem init-node index-node  ;  # --
+: unsafe-add-node   alloc-elem init-node dup index-node  ;  # -- node
 : unsafe-add-edge   alloc-elem init-edge             ;  # src tgt -- edge
 
-: add-node  check-space unsafe-add-node ;  # --
+: add-node  check-space unsafe-add-node drop ;  # --
 : edge      check-space unsafe-add-edge ;  # src tgt -- edge
 
 : delete-node   dup unindex-node free-elem   ;         # node --
@@ -274,7 +297,7 @@ end-bitfield
 
 : set-root-flag    stash .elem-flags @   RFlag mask    or  pop .elem-flags !  ;  # bool elem --
 
-: has-label?   .elem-flags @   BFlag raw   ;   # elem -- n
+: has-label?   .elem-flags @   BFlag set?   ;   # elem -- n
 : set-label-flag   stash .elem-flags @   BFlag mask   or  pop .elem-flags !  ;  # n elem -- 
 
 : label  # label elem -- 
@@ -300,6 +323,22 @@ end-bitfield
 # : graph-elem    elems   host @   +    ; # n -- elem
 : get-elem-id   host @ -  bytes->elems  ;  # elem -- n
 : count-elems   use-dict   here get-elem-id   use-anon  ;
+
+# bind and unbind elements
+: is-bound?  # elem -- bool
+	.elem-flags @  IsBound  set?  bool
+;
+? variable: bind-ops
+: bind  # elem --
+?	dup is-bound?  false  = assertion: Element already bound
+	.elem-flags dup @   IsBound 1 set-bits   swap !
+?	bind-ops inc-var
+;
+: unbind
+?	dup is-bound?  true   = assertion: Element already unbound
+	.elem-flags dup @   IsBound clear-bits   swap !
+;  # elem --
+
 
 # ######   Graph output   ######################################### #
 
