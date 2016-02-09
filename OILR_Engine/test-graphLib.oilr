@@ -1,16 +1,23 @@
 # Test graph manipulation functions
 
-Testing Graph Library
+ds-depth 0  = assertion: stack empty at start of graph test
+
+Testing ### Graph Library
 
 Testing Sizes of data structures
-	dl-list 2 cells = test: list size
-	dl-list-item 3 cells = test: list item size
+	dl-list       2 cells   test: size of dl-list
+	dl-list-item  3 cells   test: size of dl-list-item
+	graph-elem    2 cells   test: size of graph-elem
+	graph-node   graph-elem  dl-list-item  dl-list 3 *  +  +  test: graph node size
+
+	graph-node GraphElemSize <  true  test: node too large
+	graph-edge GraphElemSize <  true  test: edge too large
 
 Testing Doubly-linked list accessors
-	0 .next  0  = test: .next
-	0 .head  4  = test: .head
-	0 .prev  8  = test: .prev
-	0 .len   4  = test: .len
+	0 .next  0  test: .next
+	0 .head  4  test: .head
+	0 .prev  8  test: .prev
+	0 .len   4  test: .len
 
 
 
@@ -29,35 +36,43 @@ doubly-linked-list-item: item1
 doubly-linked-list-item: item2
 doubly-linked-list-item: item3
 
+ds-depth 0  = assertion: stack empty at end of graph test
 
 Testing Empty list
-	list ->len    0       =  test: List length zero
-	list ->first  Nothing =  test: List is empty
+	list ->len    0       test: List length zero
+	list ->first  Nothing test: List is empty
 	
 Testing List insertion
 	item1 list cons
-	list ->len    1       =  test: list length 1
-	list ->first  item1   =  test: list has item1
+	list ->len    1       test: list length 1
+	list ->first  item1   test: list has item1
 	list ->first ->next
-	              Nothing = test: singlet null terminator
+	              Nothing test: singlet null terminator
 
 	item2 list cons
-	list ->len    2       =  test: list length 2
-	list ->first  item2   =  test: list first item2
+	list ->len    2       test: list length 2
+	list ->first  item2   test: list first item2
 	list ->first ->next
-	              item1   =  test: list next item1
+	              item1   test: list next item1
 
 	item3 list cons
-	list ->len    3       =  test: list length 3
+	list ->len    3       test: list length 3
 
 Testing List deletion
 	item2 uncons
-	list ->len    2       =  test: uncons to 2
+	list ->len           2     test: uncons to 2
+	list ->first ->next  item1 test: item1 after uncons
 
 	item1 uncons
-	list ->len    1       =  test: uncons to 1
-	list ->first  item3   =  test: item3 at head
+	list ->len    1       test: uncons to 1
+	list ->first  item3   test: item3 at head
 
+	item3 uncons
+	list ->len    0       test: uncons to 0
+	list ->first  Nothing test: list empty again
+
+
+ds-depth 0  = assertion: stack empty at end of graph test
 
 nl 0-exit
 

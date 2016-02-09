@@ -10,7 +10,7 @@
 # Useful values ######################################
 .set HEAP_SIZE, 32*1024*1024  # 32 meg
 .set SCRATCH_SIZE, 16*1024     # 16k
-.set BUFFER_SIZE,  16*1024     #  4k
+.set BUFFER_SIZE,  16*1024     # 16k
 .set WORD_BUFFER_SIZE, 256
 .set FLAG_TABLE_SIZE, (127-32) # non-space ASCII chars
 .set CELL_BITS, 2
@@ -21,7 +21,7 @@
 .set BASE_4_YEAR, 1461
 .set LILIAN_CORRECTION, 6345
 
-.set GRAPH_ELEM_SHIFT, 7
+.set GRAPH_ELEM_SHIFT, 6   #  1<<6 = 64 bytes per element
 .set GRAPH_ELEM_SIZE, (1<<GRAPH_ELEM_SHIFT)
 
 // #define CANTILEVER_COMPILATION_TRACE
@@ -1276,7 +1276,7 @@ word raise  # excp --
 1:
 	.long drop, labelForVar        #  lbl
 	.long ErrorUnhandled, puts
-	.long WarningColour, colour, puts, NoColour, colour, error
+	.long WarningColour, colour, puts, NoColour, colour, nl, error
 end
 
 # Default handler for EOF is to exit. This is over-ridden
@@ -1368,7 +1368,7 @@ word putx // n --
 	.long putnumber
 end
 
-word colour  #  colour -- 
+word colour "output-colour"  #  colour -- 
 	.long push
 	.long outChannel, get, isATTY, zbranch, JUMP(1f)
 	.long peek, puts
@@ -1861,6 +1861,9 @@ string UnbalancedRSInBranch, "Unbalanced use of RS in one branch of pattern matc
 string ErrorUnhandled, "Unhandled exception: "
 string DefaultPrompt, " ok "
 
+string Expected, "Expected "
+string Got,      " but got "
+string In,       " in test: "
 variable decimal_places, 0, "decimal-places"
 
 variable promptText, str_DefaultPrompt, "prompt-text"

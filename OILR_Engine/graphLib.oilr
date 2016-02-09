@@ -77,24 +77,44 @@ struct: graph-elem
 	1 cell: .elem-flags
 	1 cell: .elem-label
 end-struct
+: .elem-flags  ;  #immediate  # save an instruction or two
 
 struct: graph-node
-	graph-elem   bytes: .node-elem
+	graph-elem bytes:   .node-elem
 	dl-list-item bytes: .node-index
-	dl-list      bytes: .node-out-edges
-	dl-list      bytes: .node-in-edges
-	dl-list      bytes: .node-loops
+	dl-list bytes:      .node-out-edges
+	dl-list bytes:      .node-in-edges
+	dl-list bytes:      .node-loops
+end-struct
+? graph-node   11 cells   =   assertion: graph-node is 11 cells
+
+struct: graph-edge
+	graph-elem bytes:   .edge-elem
+	1 cell:             .edge-src
+	1 cell:             .edge-tgt
+	dl-list-item bytes: .edge-in-list
+	dl-list-item bytes: .edge-out-list
+end-struct
+? graph-edge   10 cells   =   assertion: graph-edge is 10 cells
+
+# create a search space
+struct: search-space
+	1 cell:  .spc-posn
+	1 cell:  .spc-next-index
 end-struct
 
+: space:  #immediate
+	create # ... n -- 
+		search-space allot
+		times  ,  repeat
+		0 ,      # null terminator
+	does  # addr -- node
+		stash @  if  # if we're part-way through an index
+			
+		endif
+		trash
+;
 
-
-: .elem-flags  ;  #immediate
-: .elem-label 1 cell after ;
-
-: .node-index 2 cells after ;
-
-: .edge-src 2 cells after ;
-: .edge-tgt 3 cells after ;
 
 : alloc-elem  #  -- elem
 	freelist @ dup  if
@@ -277,7 +297,7 @@ end-bitfield
 	pop !
 ;
 
-: graph-elem    elems   host @   +    ; # n -- elem
+# : graph-elem    elems   host @   +    ; # n -- elem
 : get-elem-id   host @ -  bytes->elems  ;  # elem -- n
 : count-elems   use-dict   here get-elem-id   use-anon  ;
 
@@ -360,6 +380,33 @@ exception: TODO
 #    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
 #    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
 
+: bnd  #  dest spc -- bool
+	# traverse a search space
+	call dup if
+		oilr-true return
+	endif
+	oilr-false
+;
+
+1  constant: DirOut
+0  constant: DirEither
+-1 constant: DirIn
+: bed  #  dest r1 r2 dir
+	# Bind an edge between nodes in r1 and r2 in direction dir
+;
+: ben  #  eDest nDest reg dir
+	# Bind an edge with one end at node in reg in dir, storing 
+	# edge in eDest and node on opposite end in nDest
+	
+	
+;
+: nec  #  src tgt
+	# check there is no edge from src to tgt
+	
+;
+
+
+
 #    -- Definitions & program structure
 #    | DEF Id               -- DEFine function Id
 #    | CAL Id               -- CALl Id, pushing current IP to call-stack
@@ -394,12 +441,6 @@ exception: TODO
 #    | NOP                  -- No-OP
 #    | TRU                  -- set the boolean register to TRUe
 #    | FLS                  -- set the boolean register to FaLSe
-
-: bnd  #  dest spc -- bool
-	# traverse a search space
-	# TODO: write this
-	drop drop false bool-flag !
-;
 
 # Branch instructions
 : brn  ' branch ,   ;  #immediate

@@ -1,33 +1,33 @@
 # Test our assertion handler
 
-Testing Core Library
+Testing ### Core Library
 
-: catch ;
+: catch ; 
 ' catch handles AssertionFailed
-0 1 = test: Exceptions
+	0 1   test: Exceptions (should fail)
 Nothing handles AssertionFailed
 
-
 Testing Constants
-	'\t' 9  =  test: Tab constant
-	'\n' 10 =  test: Newline constant
+	'\t' 9     test: Tab constant
+	'\n' 10    test: Newline constant
 
 Testing Unit conversion
-	1 MB   1024 dup *  =  test: MB suffix
-	1 cell 4 =            test: Cell size
+	1 MB   1024 dup *     test: MB suffix
+	1 cell 4              test: Cell size
 
 Testing Arithmetic
-	1  1 +  2 =  test: Basic addition
-	10 2 * 20 =  test: Basic multiplication
-	1 1+    2 =  test: Increment
-	1 1-    0 =  test: Decrement
-	-2 2*  -4 =  test: Doubling negatives
-	-4 2/  -2 =  test: Halving negatives
+	1  1 +  2    test: Basic addition
+	10 2 * 20    test: Basic multiplication
+	1 1+    2    test: Increment
+	1 1-    0    test: Decrement
+	-2 2*  -4    test: Doubling negatives
+	-4 2/  -2    test: Halving negatives
 
 
 
+ds-depth 0 test: stack-depth after test-core
 nl
-ds-depth 0 =  assertion: Stack unbalanced
+# ds-depth 0 =  assertion: Stack unbalanced
 0-exit
 
 # vim:ft=oilr

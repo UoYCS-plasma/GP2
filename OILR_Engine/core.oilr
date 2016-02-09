@@ -123,8 +123,8 @@ OutputBufferStart output-buffer !
 
 exception: AssertionFailed
 : assertion-failed
-	WarningColour colour putz 
-	NoColour colour
+	WarningColour output-colour putz 
+	NoColour output-colour
 	AssertionFailed raise
 ;
 : assertion:  #immediate
@@ -159,7 +159,7 @@ exception: AssertionFailed
 : cell: #immediate
 	` cells:
 ;
-: end-struct  swap ! ;  # save the struct size
+: end-struct  ` ; swap ! ;  #immediate # save the struct size
 
 ? ds-depth 0 =   assertion: Unbalanced stack after util library compilation
 

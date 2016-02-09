@@ -1,8 +1,31 @@
+: run-test  # act exp zstr -- 
+	# if a == b then do nothing, otherwise raise AssertionFailed
+	3 locals
+	1 $$@  2 $$@  =  if
+		'.' putc
+	else
+		nl  WarningColour output-colour
+		Expected puts  1 $$@ putn
+		Got      puts  2 $$@ putn
+		In       puts  0 $$@ putz
+		NoColour output-colour
+		AssertionFailed raise
+	endif
+;
 
 : test: #immediate
-	` assertion: 
-	'.' compile-literal ' putc ,
+	begin-data-block
+	[ dup ,b  '\n' = ] scan-in   0 ,b
+	end-data-block
+	' run-test ,
 ;
+
+
+# : test: #immediate
+# 	' = ,
+# 	` assertion: 
+# 	'.' compile-literal ' putc ,
+# ;
 
 : Testing #immediate
 	begin-data-block
