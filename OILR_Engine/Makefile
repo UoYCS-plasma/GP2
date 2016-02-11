@@ -12,7 +12,7 @@ test: core-test graph-test
 core-test: core.oilr testLib.oilr test-core.oilr
 	$(TARGET) $^
 
-graph-test: core.oilr graphLib.oilr testLib.oilr test-graphLib.oilr
+graph-test: core.oilr graphLib.oilr instructions.oilr testLib.oilr test-graphLib.oilr
 	$(TARGET) $^
 
 sloc: $(TARGET).S

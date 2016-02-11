@@ -106,8 +106,10 @@ Testing Bit-fields
 1 OILR index
 0 1 space: s0
 
+
+
 Testing Host graph node creation
-	host-graph
+	host-graph   # WARNING: No defs from here on!
 	host @   dict-ptr @   test: dict-ptr has changed
 	host @   host-free @  test: non-empty graph
 	2 nodes
