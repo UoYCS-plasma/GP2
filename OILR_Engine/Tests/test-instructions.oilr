@@ -1,0 +1,27 @@
+1 OILR index
+
+: bind-a-node
+	1 registers
+	0 0 bnd
+;
+
+: add-bound-node
+	1 registers
+	0 abn
+;
+
+host-graph
+
+10 nodes
+
+1n --> 1n path
+2n --> 3n --> 4n path
+
+
+
+Testing Search plans
+
+
+
+
+# vim:ft=oilr

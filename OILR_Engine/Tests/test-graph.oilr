@@ -2,8 +2,6 @@
 
 ds-depth 0  = assertion: stack empty at start of graph test
 
-Testing ### Graph Library
-
 Testing Sizes of data structures
 	dl-list       2 cells   test: size of dl-list
 	dl-list-item  3 cells   test: size of dl-list-item

@@ -1,7 +1,5 @@
 # Test our assertion handler
 
-Testing ### Core Library
-
 : catch ; 
 ' catch handles AssertionFailed
 	0 1   test: Exceptions (should fail)

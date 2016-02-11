@@ -1211,10 +1211,10 @@ word handleNextArg, "handle-next-arg"
 	.long nextArg, dup, zbranch, JUMP(1f)
 	.long zopenIn, tailcall, reset
 1:
-	# no args left: switch to reading stdin and
-	# reset EOF handler
-	.long drop, stdin, inChannel, set
-	.long quote, exit0, handles, EndOfFile
+	# no args left: exit
+	.long exit0
+#	.long drop, stdin, inChannel, set
+#	.long quote, exit0, handles, EndOfFile
 .long tailcall, reset
 word nextArg, "next-arg"
 	.long argv, get, one, cell, add
