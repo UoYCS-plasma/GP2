@@ -119,6 +119,14 @@ OutputBufferStart output-buffer !
 	clear-output
 ;
 
+# lambda inliner (saves lots of ' work , in immediate words)
+
+: inline  # lambda --
+	stash data-length CellBits shift-down  2 -
+	pop   1 cell after
+	swap keep drop
+;
+
 # assertions
 
 exception: AssertionFailed

@@ -14,6 +14,7 @@
 ;
 
 : test: #immediate
+?	here CellSize 1- and  0 = assertion: Misaligned dictionary pointer
 	begin-data-block
 	[ dup ,b  '\n' = ] scan-in   0 ,b
 	end-data-block
@@ -29,11 +30,13 @@
 
 : Testing #immediate
 	` ; 
+?	here CellSize 1- and  0 = assertion: Misaligned dictionary pointer
 	begin-data-block
 	[ dup ,b  '\n' = ] scan-in   0 ,b
 	end-data-block
-	' nl , ' putz ,
-	
+?	here CellSize 1- and  0 = assertion: Misaligned dictionary pointer after Testing
+	# ' nl , ' putz ,
+	[ nl putz ] inline
 ;
 
 # vim:ft=oilr

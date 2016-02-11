@@ -113,10 +113,12 @@ end-struct
 : space:  #immediate
 	create # ... n -- 
 		search-space allot
-		times  ,  repeat
+		times oilr-index ,  repeat
 		0 ,      # null terminator
 	does  # addr -- node
 		stash @  if  # if we're part-way through an index
+			peek @ ->next   dup peek !
+		else
 			
 		endif
 		trash
@@ -260,15 +262,36 @@ end-bitfield
 	stash .node-index   pop node-signature oilr-index   cons
 ;
 : unindex-node  # node --
-	
+	.node-index uncons
+;
+
+
+: set-edge-as-loop  # node edge --
+	# Put edge.edge-out-list into node.node-loops
+	stash .edge-out-list  over .node-loops cons
+	dup peek .edge-src !
+	pop      .edge-tgt !
+;
+: set-edge-src  #  src edge --
+	# put edge.edge-out-list into node.node-out-edges
+	stash .edge-out-list  over .node-out-edges cons
+	pop .edge-src !
+;
+: set-edge-tgt  #  tgt edge --
+	stash .edge-in-list  over .node-in-edges cons
+	pop .edge-tgt !
 ;
 
 : init-node   NodeType over .elem-flags !  ;  # elem -- node
 : init-edge  # src tgt elem -- edge
 ?	dup  host @  >   assertion: not an element in init-edge
 	EdgeType over .elem-flags !
-	stash .edge-tgt !
-	peek  .edge-src !
+	push over over = if  # src == tgt. It's a loop
+		drop peek set-edge-as-loop
+	else  # it's a regular edge
+		peek set-edge-tgt
+		peek set-edge-src
+	endif
 	pop
 ;
 
@@ -295,6 +318,7 @@ end-bitfield
 ;
 
 
+: is-root?  .elem-flags @  RFlag set?   ;  # elem -- n
 : set-root-flag    stash .elem-flags @   RFlag mask    or  pop .elem-flags !  ;  # bool elem --
 
 : has-label?   .elem-flags @   BFlag set?   ;   # elem -- n
@@ -305,6 +329,12 @@ end-bitfield
 	pop set-label-flag
 ;
 
+: out-deg  .node-out-edges ->len  ;  # node -- n
+: in-deg   .node-in-edges  ->len  ;  # node -- n
+: loop-deg .node-loops     ->len  ;  # node -- n
+
+: canonical-out-deg  stash out-deg pop loop-deg + ;
+: canonical-in-deg   stash in-deg  pop loop-deg + ;
 
 0 constant: Uncoloured
 1 constant: Red
@@ -358,7 +388,14 @@ exception: TODO
 ;
 
 : put-node   # elem --
-	StrLeader %s   'n' %c   dup get-elem-id %d   StrComma %s   dup _put-label  _put-colour  StrTrailer %s
+	StrLeader           %s
+		'n'             %c
+		dup get-elem-id %d
+		dup is-root? if RootMarker  %s endif
+		StrComma        %s
+		dup _put-label
+		_put-colour
+		StrTrailer      %s
 	flush-output
 ;
 : put-edge
@@ -419,24 +456,26 @@ exception: TODO
 #    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
 #    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
 
+1  constant: DirOut
+0  constant: DirEither
+-1 constant: DirIn
+
 : bnd  #  dest spc -- bool
 	# traverse a search space
 	call dup if
+		swap $$ !
 		oilr-true return
 	endif
 	oilr-false
 ;
 
-1  constant: DirOut
-0  constant: DirEither
--1 constant: DirIn
 : bed  #  dest r1 r2 dir
 	# Bind an edge between nodes in r1 and r2 in direction dir
+	
 ;
 : ben  #  eDest nDest reg dir
 	# Bind an edge with one end at node in reg in dir, storing 
 	# edge in eDest and node on opposite end in nDest
-	
 	
 ;
 : nec  #  src tgt
@@ -502,10 +541,16 @@ exception: TODO
 : tru  true  bool-flag ! ;
 : fls  false bool-flag ! ;
 
+# ################################################################# #
+
+: registers  #immediate
+	[ stash times 0 compile-literal repeat   pop locals ] inline
+;
 
 # ################################################################# #
 
-: #tgt  ' peek ,  ' 1 ,  ' cell ,  ' after ,  ' @ ,   ; #immediate
+# : #tgt  ' peek ,  ' 1 ,  ' cell ,  ' after ,  ' @ ,   ; #immediate
+: #tgt  [ peek 1 cell after @ ] inline   ; #immediate
 : -->  #tgt  edge drop ;  # src --
 : ..>  #tgt  edge  Dashed swap  colour ; # src --
 

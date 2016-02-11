@@ -1620,7 +1620,7 @@ word beginData, "begin-data-block"
 	.long here, zero, storeinc
 end
 word endData, "end-data-block"
-	.long here, over, one, cell, add, sub, swap, set
+	.long dpAlign, here, over, one, cell, add, sub, swap, set
 end
 
 word lambda, "[", call  # -- addr
@@ -1864,6 +1864,8 @@ string DefaultPrompt, " ok "
 string Expected, "Expected "
 string Got,      " but got "
 string In,       " in test: "
+string RootMarker " (R)"
+
 variable decimal_places, 0, "decimal-places"
 
 variable promptText, str_DefaultPrompt, "prompt-text"

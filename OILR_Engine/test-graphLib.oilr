@@ -122,6 +122,20 @@ Testing Host graph construction
 	2e is-edge?    true   test: 2e is an edge
 	2e ->src       0n     test: 2e source
 	2e ->tgt       1n     test: 2e source
+	0n out-deg     1      test: 0n out degree
+	0n in-deg      0      test: 0n in deg
+	0n loop-deg    0      test: 0n loop deg
+	0n canonical-out-deg 1 test: 0n read out deg
+
+	1n out-deg     0      test: 0n out degree
+	1n in-deg      1      test: 0n in deg
+	1n loop-deg    0      test: 0n loop deg
+
+	0n --> 0n --> 0n   path
+	0n out-deg     1      test: 0n out deg (loops)
+	0n in-deg      0      test: 0n in deg (loops)
+	0n loop-deg    2      test: 0n loop deg (loops)
+	0n canonical-out-deg 3 test: 0n real out deg (loops)
 
 ds-depth 0  = assertion: stack after graphLib test
 
