@@ -12,15 +12,15 @@
 #    | CBL Dst Col       -- Colour Bound eLement
 #    | LBL Dst Int       -- Label Bound eLement with Int
 
-: abn  $$  add-node  swap ! ;
-: abe  $$  ;
+: abn  $$  add-node  swap ! ;  # reg --
+: abe  $$ push push   $$@ pop $$@ edge   pop ! ;  # src tgt reg --
 
-: dbn  $$ @  ->elem  delete-node  ;
-: dbe  $$ @  ->elem  delete-edge  ;
+: dbn  $$@  ->elem  delete-node  ;
+: dbe  $$@  ->elem  delete-edge  ;
 
-: rbn  $$ @ ->elem  set-root-flag ;  # bool reg
-: cbl  $$ @ ->elem  colour ;   # colour reg
-: lbl  $$ @ ->elem  label ;    # label  reg
+: rbn  $$@ ->elem  set-root-flag ;  # bool reg
+: cbl  $$@ ->elem  colour ;   # colour reg
+: lbl  $$@ ->elem  label ;    # label  reg
 
 
 #    -- Graph search

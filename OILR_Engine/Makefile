@@ -1,12 +1,16 @@
 ASSEMBLER32=gcc -static -nostdlib -m32 -g 
 STEM=oilr_machine
 TARGET=./$(STEM)
+ISOCHKR=../Haskell/IsoChecker
 # PROF_TARGET=$(STEM)-profile
 
 
 all: $(TARGET) test
 
-test: core-test graph-test
+test: core-test graph-test test-progs
+
+test-progs: $(ISOCHKR) runprogs.sh
+	./runprogs.sh
 
 core-test: lib/*.oilr testLib.oilr test-core.oilr
 	$(TARGET) $^
