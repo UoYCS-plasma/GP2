@@ -1,4 +1,3 @@
-
 1 OILR index
 
 0 1 space: s0
@@ -6,11 +5,16 @@
 : delete_node
 	1 registers
 	0 s0 bnd 
+	rtz
+	# bool-flag @ if  delete_node  endif
 	0 dbn
+	s0 space-reset
 ;
 
 : Main 
 	delete_node
+	rtz
+	tail: Main
 ;
 
 host-graph

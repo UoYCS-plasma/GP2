@@ -3,6 +3,7 @@
 variable: _real-index
 variable: index-size
 variable: bool-flag
+true bool-flag !
 
 : oilr-index _real-index @ call ;
 
@@ -74,7 +75,7 @@ end-struct
 : ->head .head @ ;
 
 
-: idx->elem  GraphElemMask and  ;  #  list -- elem
+: ->elem  GraphElemMask and  ;  #  list -- elem
 
 # Elem Structure   |  flags  | label | ...
 struct: graph-elem
@@ -103,27 +104,6 @@ end-struct
 
 : ->src  .edge-src @  ;
 : ->tgt  .edge-tgt @  ;
-
-# create a search space
-struct: search-space
-	1 cell:  .spc-posn
-	1 cell:  .spc-next-index
-end-struct
-
-: space:  #immediate
-	create # ... n -- 
-		search-space allot
-		times oilr-index ,  repeat
-		0 ,      # null terminator
-	does  # addr -- node
-		stash @  if  # if we're part-way through an index
-			peek @ ->next   dup peek !
-		else
-			
-		endif
-		trash
-;
-
 
 : alloc-elem  #  -- elem
 	freelist @ dup  if
@@ -215,10 +195,6 @@ end-bitfield
 
 # doubly-linked-list support
 
-: next-item    .next @ ;  # list -- item
-: prev-item    .prev @ ;  # list -- item
-: head-of-list .head @  ;  # list -- list
-
 : _item  2 $$@  ;  # readability aids for cons
 : _list  1 $$@  ;
 : _next  0 $$@  ;
@@ -235,10 +211,10 @@ end-bitfield
 	_item    _list .first !   # list.first = &item
 
 	_list .len inc-var
-?	_list next-item prev-item 0 =  assertion: First list item has non-null .prev
-?	_list next-item _item       =  assertion: Head of _list is not _item
-?	_list .len @          0 >  assertion: List length should be greater than zero
-?	_item head-of-list _list    =  assertion: _item.head doesn't point to _list
+?	_list ->next ->prev 0        =  assertion: First list item has non-null .prev
+?	_list ->next        _item    =  assertion: Head of _list is not _item
+?	_list .len @        0        >  assertion: List length should be greater than zero
+?	_item ->head _list           =  assertion: _item.head doesn't point to _list
 ;
 
 : _prev  2 $$@  ;  # readability aids for uncons
@@ -351,6 +327,7 @@ end-bitfield
 ;
 
 # : graph-elem    elems   host @   +    ; # n -- elem
+: get-elem-by-id GraphElemShift shift-up  host @  swap  + ;  # n -- elem
 : get-elem-id   host @ -  bytes->elems  ;  # elem -- n
 : count-elems   use-dict   here get-elem-id   use-anon  ;
 
@@ -369,6 +346,55 @@ end-bitfield
 	.elem-flags dup @   IsBound clear-bits   swap !
 ;  # elem --
 
+
+# Boolean register
+: oilr-true  true  bool-flag ! ;
+: oilr-false false bool-flag ! ;
+
+
+# create a search space
+struct: search-space
+	1 cell:  .spc-posn
+	1 cell:  .spc-next-index
+end-struct
+: .spc-indices  search-space +  ;
+
+: space:  #immediate
+	create # ... n -- 
+		search-space allot
+		times oilr-index ,  repeat
+		0 ,      # null terminator
+	does  # addr -- node
+;
+
+: update-space   .spc-posn !  ;  # node-chain? spc --
+: space-cur      .spc-posn @  ;  # spc -- node-chain?
+: space-reset  # spc -- 
+	push   0 peek .spc-posn !   0 pop .spc-next-index !
+;
+: space-adv-ind  # spc -- chain
+	# advance to the next index in the search space
+	stash .spc-indices   peek .spc-next-index @   cells after   @
+		dup  pop  .spc-posn !
+	peek .spc-next-index  inc-var
+;
+: space-next-item  # spc -- node
+	stash space-cur dup if
+		->next 
+		dup peek update-space
+	else
+		drop peek space-adv-ind   if
+			pop tail: space-next-item
+		endif
+	endif
+	trash ->elem
+;
+: space-next-unbound  # spc -- node-chain?
+	stash space-next-item   dup if
+		dup is-bound? if   drop pop tail: space-next-unbound   endif
+	endif
+	trash
+;
 
 # ######   Graph output   ######################################### #
 
@@ -422,9 +448,6 @@ exception: TODO
 	false  # todo: implementation based on pseudo-random numbers
 ;
 
-: oilr-true  true  bool-flag ! ;
-: oilr-false false bool-flag ! ;
-
 # ######   OILR machine instructions   ############################ #
 
 #      OILR Int          -- Number of OILR indices
@@ -442,12 +465,12 @@ exception: TODO
 : abn  $$  add-node  swap ! ;
 : abe  $$  ;
 
-: dbn  $$ @  idx->elem  delete-node  ;
-: dbe  $$ @  idx->elem  delete-edge  ;
+: dbn  $$ @  ->elem  delete-node  ;
+: dbe  $$ @  ->elem  delete-edge  ;
 
-: rbn  $$ @ idx->elem  set-root-flag ;  # bool reg
-: cbl  $$ @ idx->elem  colour ;   # colour reg
-: lbl  $$ @ idx->elem  label ;    # label  reg
+: rbn  $$ @ ->elem  set-root-flag ;  # bool reg
+: cbl  $$ @ ->elem  colour ;   # colour reg
+: lbl  $$ @ ->elem  label ;    # label  reg
 
 
 #    -- Graph search
@@ -462,7 +485,8 @@ exception: TODO
 
 : bnd  #  dest spc -- bool
 	# traverse a search space
-	call dup if
+	space-next-unbound 
+	dup if
 		swap $$ !
 		oilr-true return
 	endif
@@ -527,9 +551,9 @@ exception: TODO
 : bra  ' maybe , ' zbranch , ;  #immediate
 
 # Return instructions
-: ret  trash unframe  ;
-: rtz  if return endif      trash unframe   ;
-: rnz  if trash unframe endif   ;
+: ret  trash ;
+: rtz  if return endif  trash ;
+: rnz  if trash endif   ;
 
 # Backtracking
 : bbt  ' b-return b-push ; 
@@ -544,7 +568,7 @@ exception: TODO
 # ################################################################# #
 
 : registers  #immediate
-	[ stash times 0 compile-literal repeat   pop locals ] inline
+	[ stash times 0 repeat   pop locals ] inline
 ;
 
 # ################################################################# #

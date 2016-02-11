@@ -104,22 +104,53 @@ Testing Bit-fields
 
 
 1 OILR index
+0 1 space: s0
 
-Testing Host graph construction
+Testing Host graph node creation
 	host-graph
 	host @   dict-ptr @   test: dict-ptr has changed
 	host @   host-free @  test: non-empty graph
 	2 nodes
+	0n ->elem      0n     test: 0n alignment
+	1n ->elem      1n     test: 1n alignment
+	0n get-elem-id    0      test: 0n has id 0
+	1n get-elem-id    1      test: 1n has id 1
+	0 get-elem-by-id  0n     test: id 0 is 0n
+	1 get-elem-by-id  1n     test: id 1 is 1n
 	0n                host @ test: 0n addr same as host
 	0n is-node?       true   test: 0n is a node
+
+Testing Host graph node binding
 	0n is-bound?      false  test: 0n not yet bound
 	0n bind
 	0n is-bound?   true   test: bind 0n 
 	0n unbind
 	0n is-bound?   false  test: unbind 0n
+	bind-ops @     1      test: 1 bind op logged
 	
+Testing Search spaces
+	s0 .spc-posn @                0        test: s0 pos 0
+	s0 .spc-next-index @          0        test: s0 next-ind 0
+	s0 .spc-indices @             0 index  test: s0 first entry is an OILR ind
+	s0 space-next-item         1n       test: first item in s0 is 1n
+	s0 space-next-item         0n       test: second item in s0 is 0n
+	bool-flag @                true     test: oilr-true after next-item
+	s0 space-next-item         Nothing  test: third item in s0 is Nothing
+#	bool-flag @                false    test: oilr-false after next-item
+	s0 space-reset
+	s0 space-next-item         1n       test: s0 has 1n after reset
+
+	s0 space-reset   1n bind
+	1n is-bound?                true    test: 1n is bound
+	s0 space-next-unbound         0n    test: 0n is first unbound
+
+
+Testing Host graph edge creation
 	0n --> 1n  path
 	2e is-edge?    true   test: 2e is an edge
+	2e ->elem      2e     test: 2e alignment
+
+	2e ->src ->elem 2e ->src test: 2e src is elem aligned
 	2e ->src       0n     test: 2e source
 	2e ->tgt       1n     test: 2e source
 	0n out-deg     1      test: 0n out degree
@@ -137,7 +168,10 @@ Testing Host graph construction
 	0n loop-deg    2      test: 0n loop deg (loops)
 	0n canonical-out-deg 3 test: 0n real out deg (loops)
 
+
+
 ds-depth 0  = assertion: stack after graphLib test
+
 
 nl 0-exit
 
