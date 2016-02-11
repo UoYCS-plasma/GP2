@@ -19,14 +19,12 @@
 
 host-graph
 
-10 nodes
+	10 nodes
 
 
 
 
 Main
 
-dump-graph
-0-exit
 
 # vim:ft=oilr

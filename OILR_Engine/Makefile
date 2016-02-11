@@ -5,7 +5,9 @@ ISOCHKR=../Haskell/IsoChecker
 # PROF_TARGET=$(STEM)-profile
 
 
-all: $(TARGET) tests test-progs
+all: $(TARGET)
+
+test: $(TARGET) tests test-progs
 
 tests: $(TARGET) Tests/*.oilr runtests.sh
 	./runtests.sh

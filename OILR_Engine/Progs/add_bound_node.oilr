@@ -1,23 +1,18 @@
-
 1 OILR index
 
-0 1 space: s0
 
-: delete_node
+: add_node
 	1 registers
-	0 s0 bnd 
-	0 dbn
+	0 abn
 ;
 
 : Main 
-	delete_node
+	add_node
 ;
 
 # ####################################### #
 
 host-graph
-
-	10 nodes
 
 Main
 

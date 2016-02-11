@@ -17,29 +17,6 @@ true bool-flag !
 
 : next-elem   1 elem after   ;  # elem -- elem+1
 
-: OILR #immediate
-	create # n --
-?		dup 0 >  assertion: There must be at least one OILR index
-		here 2 cells before push
-		dup index-size !
-		2* cells allot
-?		peek @   DoDoesAddr  =  assertion: created broken index
-		pop _real-index !
-	does  # n addr -- addr
-		swap
-?		dup  index-size @  <  assertion: requested invalid index
-		2* cells after
-;
-: host-graph #immediate
-?	_real-index @  assertion: Uninitialised OILR index
-	` ;
-	use-dict
-	elem-align-dp
-	here host !
-	here host-free !
-	use-anon
-;
-
 # backtracking-stack primitives
 16 MB constant: BStackSize
 BStackSize buffer constant: b-stack-max
@@ -276,9 +253,10 @@ end-bitfield
 
 # Graph element creation and deletion
 : unsafe-add-node   alloc-elem init-node dup index-node  ;  # -- node
-: unsafe-add-edge   alloc-elem init-edge             ;  # src tgt -- edge
+: add-node  check-space unsafe-add-node ;  # -- node
+: node      add-node drop ;  # -- 
 
-: add-node  check-space unsafe-add-node drop ;  # --
+: unsafe-add-edge   alloc-elem init-edge             ;  # src tgt -- edge
 : edge      check-space unsafe-add-edge ;  # src tgt -- edge
 
 : delete-node   dup unindex-node free-elem   ;         # node --

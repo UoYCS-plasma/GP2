@@ -173,6 +173,6 @@ Testing Host graph edge creation
 ds-depth 0  = assertion: stack after graphLib test
 
 
-nl 0-exit
+nl 0-exit ;
 
 # vim:ft=oilr

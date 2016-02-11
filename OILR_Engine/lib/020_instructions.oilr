@@ -1,3 +1,28 @@
+: OILR #immediate
+	create # n --
+?		dup 0 >  assertion: There must be at least one OILR index
+		here 2 cells before push
+		dup index-size !
+		2* cells allot
+?		peek @   DoDoesAddr  =  assertion: created broken index
+		pop _real-index !
+	does  # n addr -- addr
+		swap
+?		dup  index-size @  <  assertion: requested invalid index
+		2* cells after
+;
+: dump-graph-and-exit  ` ;  dump-graph  0-exit ;
+: host-graph #immediate
+?	_real-index @  assertion: Uninitialised OILR index
+	` ;
+	use-dict
+	elem-align-dp
+	here host !
+	here host-free !
+	' dump-graph-and-exit handles EndOfFile
+	use-anon
+;
+
 # ######   OILR machine instructions   ############################ #
 
 #      OILR Int          -- Number of OILR indices
@@ -37,6 +62,7 @@
 	# traverse a search space
 	space-next-unbound 
 	dup if
+		dup bind
 		swap $$ !
 		oilr-true return
 	endif
