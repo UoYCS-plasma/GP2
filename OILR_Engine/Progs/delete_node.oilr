@@ -1,0 +1,31 @@
+
+1 OILR index
+
+0 1 space: s0
+
+: delete_node
+	1 registers
+	? 1 putn
+	0 s0 bnd 
+	? 2 putn
+	0 dbn
+	? 3 putn
+;
+
+: Main 
+	delete_node
+;
+
+host-graph
+
+10 nodes
+
+
+
+
+Main
+
+dump-graph
+0-exit
+
+# vim:ft=oilr
