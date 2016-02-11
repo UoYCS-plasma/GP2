@@ -6,13 +6,12 @@ TARGET=./$(STEM)
 
 all: $(TARGET) test
 
-
 test: core-test graph-test
 
-core-test: core.oilr testLib.oilr test-core.oilr
+core-test: lib/*.oilr testLib.oilr test-core.oilr
 	$(TARGET) $^
 
-graph-test: core.oilr graphLib.oilr instructions.oilr testLib.oilr test-graphLib.oilr
+graph-test: lib/*.oilr testLib.oilr test-graphLib.oilr
 	$(TARGET) $^
 
 sloc: $(TARGET).S
