@@ -807,13 +807,6 @@ do_unframe:
 prim ipGet, "ip@"
 	push %esi
 next
-prim take
-	lodsl
-	push %eax
-next
-prim inspect
-	push (%esi)
-next
 
 # Memory access ######################################
 
@@ -1116,6 +1109,9 @@ _char_lit:
 .align CELL_SIZE
 _node_lit:
 _edge_lit:
+	movb 1(%esi), %dl  # peek at the next char
+	test %dl, %dl
+	jnz _num_err  # word must end with n or e to be a graph literal
 	mov var_host, %ecx
 	shl $GRAPH_ELEM_SHIFT, %eax
 	lea (%ecx, %eax), %eax

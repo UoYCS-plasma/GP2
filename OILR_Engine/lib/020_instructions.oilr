@@ -23,6 +23,7 @@
 	use-anon
 ;
 
+
 # ######   OILR machine instructions   ############################ #
 
 #      OILR Int          -- Number of OILR indices
@@ -58,7 +59,19 @@
 0  constant: DirEither
 -1 constant: DirIn
 
-: bnd  #  dest spc -- bool
+# Save and restore return stack pointers
+: rss rsp@ ;  # -- rsp
+: rsr rsp! ;  # rsp --
+: make-implicit-loop  #immediate
+	# WARNING. Return-stack jiggery-pokery!
+	# Explanation: inlines code to turn the currently executing function
+	# into the first instruction of a loop. The next call to
+	# return will initiate the next iteration.
+	[ pop  dup 1 cell before push  push ] inline
+;
+
+
+: bnd  #  dest spc -- 
 	# traverse a search space
 	space-next-unbound 
 	dup if
@@ -67,12 +80,20 @@
 		oilr-true return
 	endif
 	oilr-false
+	trash  # return from calling function (or initiate next cycle of implicit loop)
 ;
-
-: bed  #  dest r1 r2 dir
-	# Bind an edge between nodes in r1 and r2 in direction dir
-	
+: bed  #  dest src tgt
+	# Bind an edge from src to tgt
+#	$$@ push $$@ .node-out-edges  peek next-unbound-edge-to
+	dup if
+		dup bind
+		swap $$ !
+		oilr-true return
+	endif
+	trash
+	oilr-false
 ;
+: bbe  #  dest r1 r2
 : ben  #  eDest nDest reg dir
 	# Bind an edge with one end at node in reg in dir, storing 
 	# edge in eDest and node on opposite end in nDest

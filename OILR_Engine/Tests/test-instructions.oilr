@@ -1,8 +1,10 @@
 1 OILR index
 
+0 1 space: s0
+
 : bind-a-node
 	1 registers
-	0 0 bnd
+	0 s0 bnd
 ;
 
 : add-bound-node

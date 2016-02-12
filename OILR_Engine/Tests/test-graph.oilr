@@ -74,7 +74,7 @@ Testing List deletion
 
 bitfield
 	1 bits:   Pugh
-	2 bits:  Hugh
+	2 bits:  Pugh'
 	1 bits:  Barney-McGrew
 	1 bits:   Cuthbert
 	3 bits:  Dibble
@@ -88,12 +88,12 @@ Testing Bit-fields
 	-1 Pugh clear-bits -2  test: Pugh clear-bits 2
 	0 Pugh 1 set-bits  1   test: Pugh set-bits
 
-	Hugh shift         1   test: Hugh shift
-	-1 Hugh set?       6   test: Hugh mask
-	-1 Hugh value      3   test: Hugh value
-	0  Hugh 1 set-bits 2   test: Hugh set-bits 1
-	0  Hugh 2 set-bits 4   test: Hugh set-bits 2
-	0  Hugh 3 set-bits 6   test: Hugh set-bits 3
+	Pugh' shift         1   test: Hugh shift
+	-1 Pugh' set?       6   test: Hugh mask
+	-1 Pugh' value      3   test: Hugh value
+	0  Pugh' 1 set-bits 2   test: Hugh set-bits 1
+	0  Pugh' 2 set-bits 4   test: Hugh set-bits 2
+	0  Pugh' 3 set-bits 6   test: Hugh set-bits 3
 	
 	Barney-McGrew shift 3  test: Barney-McGrew shift
 

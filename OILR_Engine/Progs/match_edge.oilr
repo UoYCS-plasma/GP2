@@ -4,21 +4,27 @@
 0  1 space: s0
 0  1 space: s1
 
-: grow_match
-	4 registers
+: match_edge
+	3 registers
 	0 s0 bnd
-	0  1 2 DirOut ben
-	0 2  3 abe
+	1 s1 bnd
+	
+	2 dbe
+	1 dbn
+	0 dbn
 ;
 
 : Main 
-#	grow_match
+#	match_edge
 ;
 
 # ####################################### #
 
 host-graph
 
+	2 nodes
+	0n --> 1n  path 
+	
 
 Main
 
