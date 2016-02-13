@@ -62,13 +62,36 @@
 # Save and restore return stack pointers
 : rss rsp@ ;  # -- rsp
 : rsr rsp! ;  # rsp --
-: make-implicit-loop  #immediate
+: make-implicit-loop  # addr --
 	# WARNING. Return-stack jiggery-pokery!
 	# Explanation: inlines code to turn the currently executing function
 	# into the first instruction of a loop. The next call to
 	# return will initiate the next iteration.
-	[ pop  dup 1 cell before push  push ] inline
+	[ bool-flag @ not if  return  endif ] inline
+	' pop ,  compile-literal
+	[ push  push ] inline
 ;
+
+
+: compile-prefix-instr-and-args
+	stash @  times  word find call  repeat
+	pop 1 cell after ,
+;
+: arg-instr:   #immediate
+	create-immed   #  lambda n-args --
+		,  dup data-length keep  drop
+	does   #  addr  -- 
+		compile-prefix-instr-and-args
+;
+: arg-looping-instr:  #immediate
+	create-immed   # lambda n-args --
+		,  dup data-length keep  drop
+	does   #  addr --
+		here push
+		compile-prefix-instr-and-args
+		pop make-implicit-loop
+;
+
 
 
 : bnd  #  dest spc -- 
@@ -77,6 +100,7 @@
 	dup if
 		dup bind
 		swap $$ !
+		make-implicit-loop
 		oilr-true return
 	endif
 	oilr-false
@@ -165,7 +189,6 @@
 
 # ################################################################# #
 
-# : #tgt  ' peek ,  ' 1 ,  ' cell ,  ' after ,  ' @ ,   ; #immediate
 : #tgt  [ peek 1 cell after @ ] inline   ; #immediate
 : -->  #tgt  edge drop ;  # src --
 : ..>  #tgt  edge  Dashed swap  colour ; # src --
