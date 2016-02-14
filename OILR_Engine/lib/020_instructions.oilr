@@ -13,6 +13,7 @@
 ;
 : dump-graph-and-exit  ` ;  dump-graph  0-exit ;
 : host-graph #immediate
+?	0 0 stack-effect
 ?	_real-index @  assertion: Uninitialised OILR index
 	` ;
 	use-dict
@@ -28,24 +29,28 @@
 	# Explanation: inlines code to turn the currently executing function
 	# into the first instruction of a loop. The next call to
 	# return will initiate the next iteration.
+?	1 0 stack-effect
 	[ bool-flag @ not if  return  endif ] inline
 	' pop ,  compile-literal
 	[ push  push ] inline
 ;
 
 
-: compile-prefix-instr-and-args
+: compile-prefix-instr-and-args  # n --
+?	1 0 stack-effect
 	stash @  times  word find call  repeat
 	pop 1 cell after ,
 ;
 : arg-instr:   #immediate
 	create-immed   #  lambda n-args --
+?		2 0 stack-effect
 		,  dup data-length keep  drop
 	does   #  addr  -- 
 		compile-prefix-instr-and-args
 ;
 : arg-looping-instr:  #immediate
 	create-immed   # lambda n-args --
+?		2 0 stack-effect
 		,  dup data-length keep  drop
 	does   #  addr --
 		here push
@@ -98,9 +103,10 @@
 0  constant: DirEither
 -1 constant: DirIn
 
-# Save and restore return stack pointers
-: rss rsp@ ;  # -- rsp
-: rsr rsp! ;  # rsp --
+# Save and restore return stack pointers. These _must not_ be
+# words, otherwise their own return address will pollute the stack
+' rsp@ alias: rss  # -- rsp
+' rsp! alias: rsr  # rsp --
 
 [	space-next-unbound
 	dup if
@@ -112,6 +118,15 @@
 	endif
 ] 2 arg-looping-instr: bnd
 
+[	
+	dup if
+		dup bind
+		swap $$ !
+		oilr-true
+	else
+		oilr-false
+	endif
+] 3 arg-looping-instr: bed
 # : bnd  #  dest spc -- 
 # 	# traverse a search space
 # 	space-next-unbound 
@@ -124,17 +139,17 @@
 # 	oilr-false
 # 	trash  # return from calling function (or initiate next cycle of implicit loop)
 # ;
-: bed  #  dest src tgt
-	# Bind an edge from src to tgt
-#	$$@ push $$@ .node-out-edges  peek next-unbound-edge-to
-	dup if
-		dup bind
-		swap $$ !
-		oilr-true return
-	endif
-	trash
-	oilr-false
-;
+# : bed  #  dest src tgt
+# 	# Bind an edge from src to tgt
+# #	$$@ push $$@ .node-out-edges  peek next-unbound-edge-to
+# 	dup if
+# 		dup bind
+# 		swap $$ !
+# 		oilr-true return
+# 	endif
+# 	trash
+# 	oilr-false
+# ;
 : bbe  #  dest r1 r2
 : ben  #  eDest nDest reg dir
 	# Bind an edge with one end at node in reg in dir, storing 

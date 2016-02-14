@@ -273,7 +273,10 @@ end-bitfield
 
 
 : is-root?  .elem-flags @  RFlag set? bool  ;  # elem -- bool
-: set-root-flag    stash .elem-flags @   RFlag mask    or  pop .elem-flags !  ;  # bool elem --
+: set-root-flag  # n elem --
+?	2 0 stack-effect
+	stash .elem-flags @   swap   RFlag   swap  set-bits    pop .elem-flags ! 
+;
 
 exception: ElementIsUnlabelled
 

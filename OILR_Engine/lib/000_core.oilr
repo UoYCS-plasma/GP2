@@ -127,6 +127,25 @@ OutputBufferStart output-buffer !
 	swap keep drop
 ;
 
+# handy stack-effect checker...
+
+exception: StackCheckFailed
+variable: Sentinel  # we're using the address as a sentinel constant.
+: check-stack  # --
+	pop exhume
+	Sentinel <> if 
+		pop puts  nl
+		StackCheckFailed raise
+	endif
+	trash
+;
+: stack-effect  #immediate
+	dictionary @  .label  compile-literal
+	[	push push          #  n-in n-out str -- 
+		Sentinel swap bury
+		' check-stack 1 cell after push ]  inline
+;
+
 # assertions
 
 exception: AssertionFailed

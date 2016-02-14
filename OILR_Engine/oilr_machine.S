@@ -714,6 +714,31 @@ next
 prim over
 	push CELL_SIZE(%esp)
 next
+prim bury  #  .. a n -- a ..
+	pushrs %esi
+	pushrs %edi
+	pop %ecx
+	pop %edx
+	mov %esp, %esi
+	push $0
+	mov %esp, %edi
+	rep movsl
+	mov %edx, (%edi)
+	poprs %edi
+	poprs %esi
+next
+prim exhume   #  a .. n -- .. a
+	pushrs %esi
+	pushrs %edi
+	pop %ecx
+	lea (%esp, %ecx, CELL_SIZE), %edi
+	mov (%edi), %edx
+	lea -4(%edi), %esi
+	rep movsl
+	mov %edx, (%esp)
+	poprs %edi
+	poprs %esi
+next
 
 # Return stack prims #################################
 

@@ -1,10 +1,27 @@
 # Test our assertion handler
 
+: stack-effect-correct  # x y -- z
+	2 1 stack-effect
+	drop drop -1
+;
+: stack-effect-failure-(ok)  # x y --
+	2 1 stack-effect  # deliberately wrong
+	drop drop
+;
+
 : catch ; 
 ' catch handles AssertionFailed
 	0 1   test: Exceptions (should fail)
 Nothing handles AssertionFailed
 
+
+Testing Stack-checker
+	1 2 stack-effect-correct  -1  test: stack-effect-correct
+	' catch handles StackCheckFailed
+	1 2 stack-effect-failure-(ok)  Sentinel  test: stack-effect-incorrect
+	Nothing handles StackCheckFailed
+;
+ds-depth 0 test: stack-depth after test-core
 Testing Constants
 	'\t' 9     test: Tab constant
 	'\n' 10    test: Newline constant
@@ -21,9 +38,8 @@ Testing Arithmetic
 	-2 2*  -4    test: Doubling negatives
 	-4 2/  -2    test: Halving negatives
 
-
-
 ds-depth 0 test: stack-depth after test-core
+
 nl
 # ds-depth 0 =  assertion: Stack unbalanced
 0-exit

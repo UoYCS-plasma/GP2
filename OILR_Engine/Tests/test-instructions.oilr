@@ -4,21 +4,14 @@
 [ 99 oilr-true ] 0 arg-looping-instr: loo
 
 0 1 space: s0
+0 1 space: s1
 
 : prefix-test-rule
 	tst 23 10
 ;
-: prefix-loop-rule
-	loo
-;
-
-: bind-a-node
-;
-
-: add-bound-node
-	1 registers
-	abn 0 
-;
+# : prefix-loop-rule
+	# loo
+# ;
 
 host-graph
 	10 nodes
@@ -29,26 +22,34 @@ host-graph
 
 Testing Prefix instructions
 	prefix-test-rule          230   test: Prefix rule functionality
-	prefix-loop-rule          99   test: Implicity looping instructions
+	# prefix-loop-rule          99   test: Implicity looping instructions
 	ds-depth                  0     test: loop doesn't pollute stack
 
 
 Testing Search plans
-	1 registers
+	ds-depth  0 test: Stack imbalance before instructions
+
+	2 registers
 	rss
-	ds-depth  1 test: Stack imbalance before instructions
 	bnd 0 s0     0 $$@ is-bound?      true   test: r0 is bound
+	bnd 1 s1     0 $$@  1 $$@  =      false  test: r1 <> r0
 	             0 $$@ is-root?       false  test: r0 not root
-	rbn true 0   0 $$@ is-root?       true   test: r0 root
+	rsr
+	rbn 1 0      0 $$@ is-root?       true   test: r0 root
 	             0 $$@ get-colour     Uncoloured  test: r0 uncoloured
 	cbl Red 0    0 $$@ get-colour     Red         test: r0 red
 	             0 $$@ has-label?     false  test: r0 unlabelled
 	lbl 42 0     0 $$@ has-label?     true   test: r0 labelled
 	             0 $$@ get-label      42     test: r0 label is 42
-	ds-depth  1 test: Stack imbalance after instructions
-	rsr
+
+	ds-depth  0 test: Stack imbalance after instructions
 
 
+trash unframe # required clean-up after call to registers
+
+; 
+nl
+# dump-graph
 nl 0-exit ;
 
 # vim:ft=oilr
