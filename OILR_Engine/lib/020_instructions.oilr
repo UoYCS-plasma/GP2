@@ -23,45 +23,6 @@
 	use-anon
 ;
 
-
-# ######   OILR machine instructions   ############################ #
-
-#      OILR Int          -- Number of OILR indices
-#    -- Graph modification
-#    | ABN Dst           -- Add and Bind Node to register Dst
-#    | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
-#    | DBN Dst           -- Delete Bound Node 
-#    | DBE Dst           -- Delete Bound Node
-#    
-#    | RBN Dst Bool      -- set Root on Bound Node to Bool
-#    
-#    | CBL Dst Col       -- Colour Bound eLement
-#    | LBL Dst Int       -- Label Bound eLement with Int
-
-: abn  $$  add-node  swap ! ;  # reg --
-: abe  $$ push push   $$@ pop $$@ edge   pop ! ;  # src tgt reg --
-
-: dbn  $$@  ->elem  delete-node  ;
-: dbe  $$@  ->elem  delete-edge  ;
-
-: rbn  $$@ ->elem  set-root-flag ;  # bool reg
-: cbl  $$@ ->elem  colour ;   # colour reg
-: lbl  $$@ ->elem  label ;    # label  reg
-
-
-#    -- Graph search
-#    | BND Dst Spc          -- Bind next unbound NoDe in Spc to Dst
-#    | BED Dst Reg Reg Dir  -- Bind EDge between Regs in Dir
-#    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
-#    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
-
-1  constant: DirOut
-0  constant: DirEither
--1 constant: DirIn
-
-# Save and restore return stack pointers
-: rss rsp@ ;  # -- rsp
-: rsr rsp! ;  # rsp --
 : make-implicit-loop  # addr --
 	# WARNING. Return-stack jiggery-pokery!
 	# Explanation: inlines code to turn the currently executing function
@@ -92,20 +53,77 @@
 		pop make-implicit-loop
 ;
 
+# ######   OILR machine instructions   ############################ #
+
+#      OILR Int          -- Number of OILR indices
+#    -- Graph modification
+#    | ABN Dst           -- Add and Bind Node to register Dst
+#    | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
+#    | DBN Dst           -- Delete Bound Node 
+#    | DBE Dst           -- Delete Bound Node
+#    
+#    | RBN Dst Bool      -- set Root on Bound Node to Bool
+#    
+#    | CBL Dst Col       -- Colour Bound eLement
+#    | LBL Dst Int       -- Label Bound eLement with Int
+
+[ add-node  swap $$! ]                     1 arg-instr: abn
+[ push push  $$@ pop $$@ edge   pop $$! ]  1 arg-instr: abe
+
+# : abn  $$  add-node  swap ! ;  # reg --
+# : abe  $$ push push   $$@ pop $$@ edge   pop ! ;  # src tgt reg --
+
+[ $$@  ->elem  delete-node ]   1 arg-instr: dbn
+[ $$@  ->elem  delete-edge ]   1 arg-instr: dbe
+
+# : dbn  $$@  ->elem  delete-node  ;
+# : dbe  $$@  ->elem  delete-edge  ;
+
+[ $$@ ->elem  set-root-flag ]  2 arg-instr: rbn  # <bool reg>
+[ $$@ ->elem  colour ]         2 arg-instr: cbl  # <col reg>
+[ $$@ ->elem  label  ]         2 arg-instr: lbl  # <label reg>
+
+# : rbn  $$@ ->elem  set-root-flag ;  # bool reg
+# : cbl  $$@ ->elem  colour ;   # colour reg
+# : lbl  $$@ ->elem  label ;    # label  reg
 
 
-: bnd  #  dest spc -- 
-	# traverse a search space
-	space-next-unbound 
+#    -- Graph search
+#    | BND Dst Spc          -- Bind next unbound NoDe in Spc to Dst
+#    | BED Dst Reg Reg Dir  -- Bind EDge between Regs in Dir
+#    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
+#    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
+
+1  constant: DirOut
+0  constant: DirEither
+-1 constant: DirIn
+
+# Save and restore return stack pointers
+: rss rsp@ ;  # -- rsp
+: rsr rsp! ;  # rsp --
+
+[	space-next-unbound
 	dup if
 		dup bind
 		swap $$ !
-		make-implicit-loop
-		oilr-true return
+		oilr-true
+	else
+		oilr-false
 	endif
-	oilr-false
-	trash  # return from calling function (or initiate next cycle of implicit loop)
-;
+] 2 arg-looping-instr: bnd
+
+# : bnd  #  dest spc -- 
+# 	# traverse a search space
+# 	space-next-unbound 
+# 	dup if
+# 		dup bind
+# 		swap $$ !
+# 		make-implicit-loop
+# 		oilr-true return
+# 	endif
+# 	oilr-false
+# 	trash  # return from calling function (or initiate next cycle of implicit loop)
+# ;
 : bed  #  dest src tgt
 	# Bind an edge from src to tgt
 #	$$@ push $$@ .node-out-edges  peek next-unbound-edge-to

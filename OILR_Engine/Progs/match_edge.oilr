@@ -6,12 +6,14 @@
 
 : match_edge
 	3 registers
-	0 s0 bnd
-	1 s1 bnd
-	
-	2 dbe
-	1 dbn
-	0 dbn
+	rss
+	bnd 0 s0 
+	bnd 1 s1 
+	rsr
+
+	dbe 2 
+	dbn 1 
+	dbn 0 
 ;
 
 : Main 

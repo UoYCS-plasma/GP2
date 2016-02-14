@@ -5,8 +5,8 @@
 
 : delete_node
 	1 registers
-	0 s0 bnd 
-	0 dbn
+	bnd 0 s0 
+	dbn 0 
 ;
 
 : Main 

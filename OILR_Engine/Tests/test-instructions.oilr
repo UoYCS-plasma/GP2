@@ -13,21 +13,18 @@
 ;
 
 : bind-a-node
-	1 registers
-	0 s0 bnd
 ;
 
 : add-bound-node
 	1 registers
-	0 abn
+	abn 0 
 ;
 
 host-graph
+	10 nodes
 
-10 nodes
-
-1n --> 1n path
-2n --> 3n --> 4n path
+	1n --> 1n path
+	2n --> 3n --> 4n path
 
 
 Testing Prefix instructions
@@ -35,7 +32,21 @@ Testing Prefix instructions
 	prefix-loop-rule          99   test: Implicity looping instructions
 	ds-depth                  0     test: loop doesn't pollute stack
 
+
 Testing Search plans
+	1 registers
+	rss
+	ds-depth  1 test: Stack imbalance before instructions
+	bnd 0 s0     0 $$@ is-bound?      true   test: r0 is bound
+	             0 $$@ is-root?       false  test: r0 not root
+	rbn true 0   0 $$@ is-root?       true   test: r0 root
+	             0 $$@ get-colour     Uncoloured  test: r0 uncoloured
+	cbl Red 0    0 $$@ get-colour     Red         test: r0 red
+	             0 $$@ has-label?     false  test: r0 unlabelled
+	lbl 42 0     0 $$@ has-label?     true   test: r0 labelled
+	             0 $$@ get-label      42     test: r0 label is 42
+	ds-depth  1 test: Stack imbalance after instructions
+	rsr
 
 
 nl 0-exit ;

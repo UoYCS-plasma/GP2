@@ -5,10 +5,10 @@
 : delete_node
 	1 registers
 	rss
-	0 s0 bnd 
+	bnd 0 s0 
 	rsr
 	# bool-flag @ if  delete_node  endif
-	0 dbn
+	dbn 0 
 	s0 space-reset
 ;
 

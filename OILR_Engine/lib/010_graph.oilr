@@ -272,11 +272,17 @@ end-bitfield
 ;
 
 
-: is-root?  .elem-flags @  RFlag set?   ;  # elem -- n
+: is-root?  .elem-flags @  RFlag set? bool  ;  # elem -- bool
 : set-root-flag    stash .elem-flags @   RFlag mask    or  pop .elem-flags !  ;  # bool elem --
 
-: has-label?   .elem-flags @   BFlag set?   ;   # elem -- n
+exception: ElementIsUnlabelled
+
+: has-label?   .elem-flags @   BFlag set? bool  ;   # elem -- bool
 : set-label-flag   stash .elem-flags @   BFlag mask   or  pop .elem-flags !  ;  # n elem -- 
+: get-label  # elem -- n
+?	dup has-label? not if  ElementIsUnlabelled raise  endif
+	.elem-label @
+;
 
 : label  # label elem -- 
 	stash .elem-label !

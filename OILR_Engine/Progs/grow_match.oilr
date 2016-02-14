@@ -6,9 +6,11 @@
 
 : grow_match
 	4 registers
-	0 s0 bnd
-	0  1 2 DirOut ben
-	0 2  3 abe
+	rss
+	bnd 0 s0 
+	ben 0  1 2 DirOut 
+	rsr
+	abe 0 2  3 
 ;
 
 : Main 

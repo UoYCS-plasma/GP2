@@ -3,7 +3,7 @@
 
 : add_node
 	1 registers
-	0 abn
+	abn 0
 ;
 
 : Main 
