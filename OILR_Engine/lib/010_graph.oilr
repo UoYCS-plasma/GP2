@@ -1,21 +1,25 @@
 # ################################################################# #
 
+-1 1 u-shift-down GraphElemSize /modu drop  constant: TheoreticalMaxGraphSize
+
 variable: _real-index
 variable: index-size
 variable: bool-flag
+
 true bool-flag !
 
-: oilr-index _real-index @ call ;
+
+: oilr-index $( n -- addr )  _real-index @ call ;
 
 # NOTE: bytes->elems gives the number of elems that will fit into 
 #   bytes of space. There may be space left over. note also the
 #   unsigned shift.
-: bytes->elems  GraphElemShift u-shift-down ;  # bytes -- n-elems
+: bytes->elems  $( bytes -- n-elems )  GraphElemShift u-shift-down ;
 
-: elems  GraphElemShift shift-up  ;  # n -- bytes
+: elems  $( n -- bytes ) GraphElemShift shift-up  ;
 ' elems alias: elem
 
-: next-elem   1 elem after   ;  # elem -- elem+1
+: next-elem  $( elem -- elem+1 )  1 elem after   ;
 
 # backtracking-stack primitives
 16 MB constant: BStackSize
@@ -52,7 +56,7 @@ end-struct
 : ->head .head @ ;
 
 
-: ->elem  GraphElemMask and  ;  #  list -- elem
+: ->elem  $( list -- elem )  GraphElemMask and  ;
 
 # Elem Structure   |  flags  | label | ...
 struct: graph-elem
@@ -82,7 +86,7 @@ end-struct
 : ->src  .edge-src @  ;
 : ->tgt  .edge-tgt @  ;
 
-: alloc-elem  #  -- elem
+: alloc-elem  $(  -- elem )
 	freelist @ dup  if
 		dup @ freelist !
 	else
@@ -91,19 +95,19 @@ end-struct
 		use-anon
 	endif 
 ;
-: free-elem   #  elem -- 
+: free-elem   $(  elem --  )
 	freelist @ over !
 	freelist !
 ;
 
-: available-space   # -- n-elems
+: available-space   $( -- n-elems )
 	use-dict
 	get-brk-addr here -   bytes->elems
 	use-anon
 ;
 
 exception: OutOfMemory
-: check-space
+: check-space  $( -- )
 	available-space 1 <= if
 		get-heap-size
 		stash 0 < if
@@ -116,31 +120,29 @@ exception: OutOfMemory
 ;
 
 
-: bitfield     0    ;  #immediate
-: end-bitfield  #immediate
+: bitfield $( -- 0 )    0    ;  #immediate
+: end-bitfield $( n -- ) #immediate
 ?	dup 1 cell 8 *  <=  assertion: Bitfield overflows one cell
 	drop
 ;
 
-: make-bitmask  1 swap shift-up 1-  swap shift-up ; # shift width -- mask
+: make-bitmask $( shift width -- mask )  1 swap shift-up 1-  swap shift-up ;
 
 : bits:  #immediate
-	create  # shift width -- shift'
+	create  $( shift width -- shift' )
 		over over make-bitmask ,
 		over , dup , +
 	does
 ;
 # : bit:  ` bits:  ; #immediate
 
-: mask  @  ;  #  bits -- mask
-: shift 1 cell after @ ;  # bits -- shift
-: width 2 cells after @ ; # bits -- width
-: set?    mask and ;  #  bitfield bits -- raw
-: value   stash set?   pop shift shift-down ;  #  bitfield bits -- value
-: clear-bits   # bitfield field -- bitfield'
-	mask not and
-;
-: set-bits  # bfld field val -- bfld'
+: mask   $( bits -- mask  ) @  ;
+: shift  $( bits -- shift ) 1 cell after @ ;
+: width  $( bits -- width ) 2 cells after @ ;
+: set?        $( btld bits      -- raw   )   mask and ;
+: value       $( bfld bits      -- value )   stash set?   pop shift shift-down ;
+: clear-bits  $( bfld field     -- bfld' )   mask not and  ;
+: set-bits    $( bfld field val -- bfld' )
 	# set field of cell at addr to val
 	push stash clear-bits
 	pop shift pop swap shift-up
@@ -175,7 +177,7 @@ end-bitfield
 : _item  2 $$@  ;  # readability aids for cons
 : _list  1 $$@  ;
 : _next  0 $$@  ;
-: cons  # item list --
+: cons  $( item list -- )
 	dup ->first
 	3 locals
 ?	_item assertion: uninitialised item in list insert
@@ -197,7 +199,7 @@ end-bitfield
 : _prev  2 $$@  ;  # readability aids for uncons
 : _list  1 $$@  ;
 : _next  0 $$@  ;
-: uncons  # item -- 
+: uncons  $( item --  )
 	stash ->prev  peek ->head   pop ->next
 	3 locals
 	_prev if
@@ -210,33 +212,29 @@ end-bitfield
 ;
 
 
-: node-signature   .elem-flags @   TypeFlag width  shift-down   ;  # node -- sig
-: index-node   # node -- 
-	stash .node-index   pop node-signature oilr-index   cons
-;
-: unindex-node  # node --
-	.node-index uncons
-;
+: node-signature  $( node -- sig )  .elem-flags @   TypeFlag width  shift-down   ;
+: index-node      $( node --  ) stash .node-index   pop node-signature oilr-index   cons  ;
+: unindex-node    $( node -- )  .node-index uncons ;
 
 
-: set-edge-as-loop  # node edge --
+: set-edge-as-loop  $( node edge -- )
 	# Put edge.edge-out-list into node.node-loops
 	stash .edge-out-list  over .node-loops cons
 	dup peek .edge-src !
 	pop      .edge-tgt !
 ;
-: set-edge-src  #  src edge --
+: set-edge-src  $(  src edge -- )
 	# put edge.edge-out-list into node.node-out-edges
 	stash .edge-out-list  over .node-out-edges cons
 	pop .edge-src !
 ;
-: set-edge-tgt  #  tgt edge --
+: set-edge-tgt  $(  tgt edge -- )
 	stash .edge-in-list  over .node-in-edges cons
 	pop .edge-tgt !
 ;
 
-: init-node   NodeType over .elem-flags !  ;  # elem -- node
-: init-edge  # src tgt elem -- edge
+: init-node  $( elem -- node )   NodeType over .elem-flags !  ;
+: init-edge  $( src tgt elem -- edge )
 ?	dup  host @  >   assertion: not an element in init-edge
 	EdgeType over .elem-flags !
 	push over over = if  # src == tgt. It's a loop
@@ -252,18 +250,18 @@ end-bitfield
 : is-edge?  .elem-flags @   EdgeType  and  bool ;
 
 # Graph element creation and deletion
-: unsafe-add-node   alloc-elem init-node dup index-node  ;  # -- node
-: add-node  check-space unsafe-add-node ;  # -- node
-: node      add-node drop ;  # -- 
+: unsafe-add-node $( -- node ) alloc-elem init-node dup index-node  ;
+: add-node        $( -- node ) check-space unsafe-add-node ;
+: node            $( --  )     add-node drop ;
 
-: unsafe-add-edge   alloc-elem init-edge             ;  # src tgt -- edge
-: edge      check-space unsafe-add-edge ;  # src tgt -- edge
+: unsafe-add-edge  $( src tgt -- edge )   alloc-elem init-edge        ;
+: edge             $( src tgt -- edge )   check-space unsafe-add-edge ;
 
-: delete-node   dup unindex-node free-elem   ;         # node --
-: delete-edge   free-elem   ;         # edge --
+: delete-node      $( node -- )   dup unindex-node free-elem   ;
+: delete-edge      $( edge -- )   free-elem   ;
 
 
-: nodes   # n -- 
+: nodes   $( n --  )
 	stash available-space  >=  if
 		# if there isn't space, allocate enough...
 		peek elems  grow-heap
@@ -272,32 +270,31 @@ end-bitfield
 ;
 
 
-: is-root?  .elem-flags @  RFlag set? bool  ;  # elem -- bool
-: set-root-flag  # n elem --
-?	2 0 stack-effect
+: is-root?      $( elem -- bool ) .elem-flags @  RFlag set? bool  ;
+: set-root-flag $( n elem -- )
 	stash .elem-flags @   swap   RFlag   swap  set-bits    pop .elem-flags ! 
 ;
 
 exception: ElementIsUnlabelled
 
-: has-label?   .elem-flags @   BFlag set? bool  ;   # elem -- bool
-: set-label-flag   stash .elem-flags @   BFlag mask   or  pop .elem-flags !  ;  # n elem -- 
-: get-label  # elem -- n
+: has-label?     $( elem -- bool ) .elem-flags @   BFlag set? bool  ;
+: set-label-flag $( n elem --    ) stash .elem-flags @   BFlag mask   or  pop .elem-flags !  ;
+: get-label  $( elem -- n )
 ?	dup has-label? not if  ElementIsUnlabelled raise  endif
 	.elem-label @
 ;
 
-: label  # label elem -- 
+: label  $( label elem --  )
 	stash .elem-label !
 	pop set-label-flag
 ;
 
-: out-deg  .node-out-edges ->len  ;  # node -- n
-: in-deg   .node-in-edges  ->len  ;  # node -- n
-: loop-deg .node-loops     ->len  ;  # node -- n
+: out-deg   $( node -- n ) .node-out-edges ->len  ;
+: in-deg    $( node -- n ) .node-in-edges  ->len  ;
+: loop-deg  $( node -- n ) .node-loops     ->len  ;
 
-: canonical-out-deg  stash out-deg pop loop-deg + ;
-: canonical-in-deg   stash in-deg  pop loop-deg + ;
+: canonical-out-deg  $( node -- n ) stash out-deg pop loop-deg + ;
+: canonical-in-deg   $( node -- n ) stash in-deg  pop loop-deg + ;
 
 0 constant: Uncoloured
 1 constant: Red
@@ -319,24 +316,29 @@ exception: ElementIsUnlabelled
 : count-elems   use-dict   here get-elem-id   use-anon  ;
 
 # bind and unbind elements
-: is-bound?  # elem -- bool
+: is-bound?  $( elem -- bool )
 	.elem-flags @  IsBound  set?  bool
 ;
 ? variable: bind-ops
-: bind  # elem --
+: bind  $( elem -- )
 ?	dup is-bound?  false  = assertion: Element already bound
 	.elem-flags dup @   IsBound 1 set-bits   swap !
 ?	bind-ops inc-var
 ;
-: unbind
+: unbind  $( elem -- )
 ?	dup is-bound?  true   = assertion: Element already unbound
 	.elem-flags dup @   IsBound clear-bits   swap !
-;  # elem --
-
+;
+: unbind-if-bound  $(  elem? --  )
+	dup if  # test for null element
+		dup is-bound? if  unbind  endif
+	endif
+	drop
+;
 
 # Boolean register
-: oilr-true  true  bool-flag ! ;
-: oilr-false false bool-flag ! ;
+: oilr-true  $( -- ) true  bool-flag ! ;
+: oilr-false $( -- ) false bool-flag ! ;
 
 
 # create a search space
@@ -347,40 +349,51 @@ end-struct
 : .spc-indices  search-space +  ;
 
 : space:  #immediate
-	create # ... n -- 
+	create ( .. n -- )
+		# n+1 args are consumed...
+?		dup 1+ 0 stack-effect
 		search-space allot
 		times oilr-index ,  repeat
 		0 ,      # null terminator
-	does  # addr -- node
+	does  $( -- )
 ;
 
-: update-space   .spc-posn !  ;  # node-chain? spc --
-: space-cur      .spc-posn @  ;  # spc -- node-chain?
-: space-reset  # spc -- 
+: update-space  $( node-chain? spc -- )   .spc-posn !  ;
+: space-cur     $( spc -- node-chain? )   .spc-posn @  ;
+: space-reset  $( spc --  )
 	push   0 peek .spc-posn !   0 pop .spc-next-index !
 ;
-: space-adv-ind  # spc -- chain
+
+: space-adv-ind  $( spc -- )
 	# advance to the next index in the search space
 	stash .spc-indices   peek .spc-next-index @   cells after   @
-		dup  pop  .spc-posn !
-	peek .spc-next-index  inc-var
+		peek .spc-posn   !
+	pop .spc-next-index  inc-var
 ;
-: space-next-item  # spc -- node
+: space-next-item  $( spc -- elem )
 	stash space-cur dup if
 		->next 
 		dup peek update-space
 	else
-		drop peek space-adv-ind   if
+		drop peek space-adv-ind
+		peek space-cur  if
 			pop tail: space-next-item
 		endif
 	endif
 	trash ->elem
 ;
-: space-next-unbound  # spc -- node-chain?
+: space-next-unbound  $( spc -- node-chain? )
 	stash space-next-item   dup if
 		dup is-bound? if   drop pop tail: space-next-unbound   endif
 	endif
 	trash
+;
+: chain-next-unbound  $( list -- elem )
+?	dup  assertion: null list in chain-next-unbound
+	->next dup if
+		dup ->elem is-bound? if   tail: chain-next-unbound   endif
+	endif
+	->elem
 ;
 
 # ######   Graph output   ######################################### #
@@ -396,11 +409,11 @@ exception: TODO
 		drop StrEmpty %s
 	endif
 ;
-: _put-colour  # elem --
+: _put-colour  $( elem -- )
 	get-colour ColourTable swap cells after @ %s
 ;
 
-: put-node   # elem --
+: put-node   $( elem -- )
 	StrLeader           %s
 		'n'             %c
 		dup get-elem-id %d
@@ -411,7 +424,7 @@ exception: TODO
 		StrTrailer      %s
 	flush-output
 ;
-: put-edge
+: put-edge   $( elem -- )
 	StrLeader %s   'e' %c
 		dup get-elem-id %d   StrComma %s
 		dup .edge-src @ get-elem-id   'n' %c %d   StrComma %s
@@ -420,7 +433,7 @@ exception: TODO
 	flush-output
 ;
 
-: dump-graph
+: dump-graph  $( -- )
 	'[' putc '\n' putc
 	host @
 	count-elems  # number of elems
@@ -431,75 +444,44 @@ exception: TODO
 	']' putc '\n' putc
 ;
 
-: maybe   # -- bool
+: maybe   $( -- bool )
 	false  # todo: implementation based on pseudo-random numbers
 ;
 
 
 # ################################################################# #
 
-: registers  #immediate
+: registers  $( -- )  #immediate
 	[ stash times 0 repeat   pop locals ] inline
 ;
 
-
-# ################################################################# #
-
-
-# LabelFlagBits
-# 	ColourFlagBits +
-# 	OFlagBits +
-# 	IFlagBits +
-# 	LFlagBits +
-# 	RFlagBits + 
-# 1		OILR index
-
-# : rule
-# 	frame
-# #	1 registers
-# 	0  0  bnd   # bind node from spc 0 in reg 0
-# 	rtz
-# 
-# 	0 dbn     # delete node bound in reg 0
-# 	unframe
-# ;
-# 
-# : Main ;
+: OILR   #immediate
+	create $( n -- ) 
+?		dup 0 >  assertion: There must be at least one OILR index
+		here 2 cells before push
+		dup index-size !
+		2* cells allot
+?		peek @   DoDoesAddr  =  assertion: created broken index
+		pop _real-index !
+	does  $( n addr -- addr )
+		swap
+?		dup  index-size @  <  assertion: requested invalid index
+		2* cells after
+;
+: dump-graph-and-exit  ` ;  dump-graph  0-exit ;
+: host-graph #immediate
+?	0 0 stack-effect
+?	_real-index @  assertion: Uninitialised OILR index
+	` ;
+	use-dict
+	elem-align-dp
+	here host !
+	here host-free !
+	' dump-graph-and-exit handles EndOfFile
+	use-anon
+;
 
 ? ds-depth 0 =   assertion: Unbalanced stack after graphLib
 
-
-# ################################################################# #
-# Host graph only! No definitions from here on down...
-
-# host-graph
-# 	? ds-depth putn nl
-# 	3 nodes
-# 	? ds-depth putn nl
-# 	42 1n label
-# 	? ds-depth putn nl
-# 	Red 2n colour
-# 	? ds-depth putn nl
-# 	
-# 	#       3           4        5          6
-# 	1n  -( 23 )->  2n  -->  0n  ..>  1n  .( 6 ).>  0n  path
-# 	? ds-depth putn nl
-# 
-
-
-#	Dashed 4e colour
-
-? ds-depth 0 =  assertion: Unbalanced stack after host creation
-
-# [ count-elems putn nl  get-brk-addr putx nl  anon-code-area-addr @ putx nl  0-exit ] handles OutOfMemory
-# forever  add-node  repeat
-# -1 times   LabelFlagBits drop  repeat
-# -1 times   host @ drop  repeat
-
-# Main
-# 
-# dump-graph
-# available-space putn nl
-# 0-exit
 
 # vim:ft=oilr

@@ -56,22 +56,71 @@ ifte  as ?  #immediate
 # then define ? to be a no-op immediate word, otherwise define ? to
 # be a comment to end-of-line.
 
+: while-word   # S lambda -- T
+	push
+	word peek call if
+		pop
+		tail: while-word
+	else
+		trash
+	endif
+;
+
+: _nestable-comment  # nesting word -- nesting' bool
+	1 cell after @
+	stash ')' =   if
+		1- trash
+	else
+		pop '(' = if 1+ endif
+	endif
+	dup bool
+;
+
+: (  #immediate  1 ' _nestable-comment while-word  drop ;
+
+# Use the same machinery for automatic stack-signature checking
+
+')' dup 8 shift-up or  constant: StackSigEnd
+'-' dup 8 shift-up or  constant: StackSigDelim
+
+: _stack-effect-elem  # n -- n' bool
+	1 cell after @
+	stash ')' =  if
+		trash false return
+	else
+		pop StackSigDelim = if false return endif
+	endif
+	1+ true
+;
+# : $( #immediate
+# 	0 ' _stack-effect-elem while-word  compile-literal 
+# 	0 ' _stack-effect-elem while-word  compile-literal
+# 	` stack-effect
+# ;
+
+DEBUG
+	[ [ 0 ' _stack-effect-elem while-word  compile-literal
+	    0 ' _stack-effect-elem while-word  compile-literal
+		` stack-effect ] ]
+	[ [ 1 ' _nestable-comment while-word  drop ] ]
+ifte   as $(  #immediate
+
 
 # Imperative looping
-: times      #immediate   # n --
+: times      #immediate   ( -- exit-addr loop-addr )
 	' push ,					# push i
 	here   ' peek ,				# this is where we jump back to
 	compile-conditional-jump    # jump out of loop if i==0
 	' pop , ' 1- , ' push ,     # decrement the counter
 	swap                        # leave NoS:exit-jump ToS:start-of-loop
 ;
-: forever    #immediate
+: forever    #immediate   ( -- exit-addr loop-addr )
 	-1 compile-literal
 	' push ,   here   ' peek ,
 	compile-conditional-jump
 	swap
 ;
-: repeat     #immediate    # exit-jump start-of-loop  -- 
+: repeat     #immediate    ( exit-to-addr start-of-loop  -- )
 	next-cell -    compile-unconditional-jump   !
 	jump-target
 	' trash ,
@@ -86,13 +135,13 @@ ifte  as ?  #immediate
 1000 cells buffer constant: OutputBufferStart
 variable: output-buffer
 OutputBufferStart output-buffer !
-: %s  # s -- 
+: %s  $( s -- )
 	# copy a string into the output buffer
 	dup @ push # length
 	1 cell after   peek   output-buffer @   copy-bytes
 	pop   output-buffer @   +   output-buffer !
 ;
-: %c  # c -- 
+: %c  $( c -- )
 	# copy a char into the output buffer
 	output-buffer @ !b
 	output-buffer inc-var
@@ -103,7 +152,7 @@ OutputBufferStart output-buffer !
 	endif
 	drop
 ;
-: %d  # n -- 
+: %d  $( n -- )
 	# copy an int into the output buffer
 	dup 0 < if
 		neg
@@ -112,7 +161,7 @@ OutputBufferStart output-buffer !
 	10 decompose
 	_c
 ;
-: clear-output   OutputBufferStart output-buffer !   ;
+: clear-output   OutputBufferStart output-buffer !   ;  $( -- )
 : flush-output
 	0   output-buffer @   ! # guarantee null-termination
 	OutputBufferStart putz
@@ -121,7 +170,7 @@ OutputBufferStart output-buffer !
 
 # lambda inliner (saves lots of ' work , in immediate words)
 
-: inline  # lambda --
+: inline  $( lambda -- )
 	stash data-length CellBits shift-down  2 -
 	pop   1 cell after
 	swap keep drop
@@ -129,22 +178,22 @@ OutputBufferStart output-buffer !
 
 # handy stack-effect checker...
 
-exception: StackCheckFailed
-variable: Sentinel  # we're using the address as a sentinel constant.
-: check-stack  # --
-	pop exhume
-	Sentinel <> if 
-		pop puts  nl
-		StackCheckFailed raise
-	endif
-	trash
-;
-: stack-effect  #immediate
-	dictionary @  .label  compile-literal
-	[	push push          #  n-in n-out str -- 
-		Sentinel swap bury
-		' check-stack 1 cell after push ]  inline
-;
+# exception: StackCheckFailed
+# variable: Sentinel  # we're using the address as a sentinel constant.
+# : check-stack  # --
+# 	pop exhume
+# 	Sentinel <> if 
+# 		pop puts  nl
+# 		StackCheckFailed raise
+# 	endif
+# 	trash
+# ;
+# : stack-effect  #immediate
+# 	dictionary @  .label  compile-literal
+# 	[	push push          #  n-in n-out str -- 
+# 		Sentinel swap bury
+# 		' check-stack 1 cell after push ]  inline
+# ;
 
 # assertions
 

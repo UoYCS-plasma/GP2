@@ -740,6 +740,32 @@ prim exhume   #  a .. n -- .. a
 	poprs %esi
 next
 
+# Runtime stack checker ###############################
+
+# : stack-effect  #immediate
+# 	dictionary @  .label  compile-literal
+# 	[	push push          #  n-in n-out str -- 
+# 		Sentinel swap bury
+# 		' check-stack 1 cell after push ]  inline
+# ;
+variable StackCheckFailed
+constant Sentinel 0xcdcdcdcd
+word stackEffect "stack-effect", call
+	.long dictionary, get, label, compileLiteral
+	.long lit, 1f, lit, (2f-1f) >> CELL_BITS, keep, drop
+end
+1: # code to be inlined by stackEffect
+	.long push, push, Sentinel, swap, bury
+	.long lit, 2f, push
+2: # check stack effect
+	.long pop, exhume
+	.long Sentinel, neq, zbranch, JUMP(3f)
+	.long pop, puts, nl
+	.long StackCheckFailed, raise
+3:
+	.long trash
+end
+
 # Return stack prims #################################
 
 prim rspGet, "rsp@"
@@ -785,9 +811,9 @@ next
 prim local, "$$"  # n -- addr
 	# get cell n of current frame
 	pop %eax
-	not %eax
-	lea (%ebx, %eax, 4), %edx
-	push %edx
+	not %eax  # note: index inversion, as stack grows down!
+	lea (%ebx, %eax, 4), %eax
+	push %eax
 next
 prim getLocal, "$$@" # n -- val
 	pop %eax
@@ -797,6 +823,7 @@ prim getLocal, "$$@" # n -- val
 next
 prim setLocal "$$!"  # val n -- 
 	pop %eax
+	not %eax
 	pop %edx
 	mov %edx, (%ebx, %eax, 4)
 next

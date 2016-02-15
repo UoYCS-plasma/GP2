@@ -13,6 +13,21 @@
 	# loo
 # ;
 
+
+: bind-node
+	rss
+	bnd s0 0
+	rsr
+;
+
+: bind-node-plus-loop
+	rss
+	bnd s0 0 
+	blo 0  2
+	rsr
+;
+
+
 host-graph
 	10 nodes
 
@@ -29,12 +44,18 @@ Testing Prefix instructions
 Testing Search plans
 	ds-depth  0 test: Stack imbalance before instructions
 
-	2 registers
-	rss
-	bnd 0 s0     0 $$@ is-bound?      true   test: r0 is bound
-	bnd 1 s1     0 $$@  1 $$@  =      false  test: r1 <> r0
+	3 registers
+	bind-node
+	0 $$@ is-bound?      true   test: bind-node r0 bound 
+	bind-node-plus-loop
+	bool-flag @          true   test: rule succeeded
+	0 $$@ is-bound?      true   test: r0 is bound
+	# 0 $$@  1 $$@  =      false  test: r1 <> r0
+	2 $$@                10e    test: bind loop
+	2 $$@ is-bound?      true   test: r2 is bound
+
+# Testing Graph modification
 	             0 $$@ is-root?       false  test: r0 not root
-	rsr
 	rbn 1 0      0 $$@ is-root?       true   test: r0 root
 	             0 $$@ get-colour     Uncoloured  test: r0 uncoloured
 	cbl Red 0    0 $$@ get-colour     Red         test: r0 red
@@ -45,7 +66,7 @@ Testing Search plans
 	ds-depth  0 test: Stack imbalance after instructions
 
 
-trash unframe # required clean-up after call to registers
+unframe # required clean-up after call to registers
 
 ; 
 nl

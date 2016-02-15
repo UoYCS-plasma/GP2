@@ -2,6 +2,9 @@
 
 ds-depth 0  = assertion: stack empty at start of graph test
 
+Testing Theoretical maximum number of graph elements:
+	'\t' putc TheoreticalMaxGraphSize putn 
+
 Testing Sizes of data structures
 	dl-list       2 cells   test: size of dl-list
 	dl-list-item  3 cells   test: size of dl-list-item
@@ -10,13 +13,14 @@ Testing Sizes of data structures
 
 	graph-node GraphElemSize <  true  test: node too large
 	graph-edge GraphElemSize <  true  test: edge too large
-
+;
 
 Testing Doubly-linked list accessors
 	0 .next  0  test: .next
 	0 .head  4  test: .head
 	0 .prev  8  test: .prev
 	0 .len   4  test: .len
+;
 
 ds-depth 0  = assertion: stack empty at end of graph test
 
@@ -41,7 +45,8 @@ ds-depth 0  = assertion: stack empty at end of graph test
 Testing Empty list
 	list ->len    0       test: List length zero
 	list ->first  Nothing test: List is empty
-	
+;
+
 Testing List insertion
 	item1 list cons
 	list ->len    1       test: list length 1
@@ -57,7 +62,7 @@ Testing List insertion
 
 	item3 list cons
 	list ->len    3       test: list length 3
-
+;
 Testing List deletion
 	item2 uncons
 	list ->len           2     test: uncons to 2
@@ -70,7 +75,7 @@ Testing List deletion
 	item3 uncons
 	list ->len    0       test: uncons to 0
 	list ->first  Nothing test: list empty again
-
+;
 
 bitfield
 	1 bits:   Pugh
@@ -99,12 +104,17 @@ Testing Bit-fields
 
 	-1 Grub set?       1 8 shift-up  test: Grub mask
 	-1 Grub value      1             test: Grub value
-
+;
+Testing Global boolean register
+	oilr-false
+	bool-flag @     false  test: oilr-false
+	oilr-true
+	bool-flag @     true   test: oilr-true
+;
+ds-depth 0  = assertion: stack after graphLib boolean test
 
 1 OILR index
 0 1 space: s0
-
-
 
 Testing Host graph node creation
 	host-graph   # WARNING: No defs from here on!
@@ -119,14 +129,23 @@ Testing Host graph node creation
 	1 get-elem-by-id  1n     test: id 1 is 1n
 	0n                host @ test: 0n addr same as host
 	0n is-node?       true   test: 0n is a node
-
+;
 Testing Host graph node binding
 	0n is-bound?      false  test: 0n not yet bound
 	0n bind
 	0n is-bound?   true   test: bind 0n 
 	0n unbind
 	0n is-bound?   false  test: unbind 0n
-	bind-ops @     1      test: 1 bind op logged
+?	bind-ops @     1      test: 1 bind op logged
+;
+( Testing List traversal
+	0n --> 1n --> 1n  path
+	0n .node-out-edges ->len    1     test: 0n.out-edges
+	0n .node-in-edges  ->len    0     test: 0n.in-edges 
+	0n .node-loops     ->len    0     test: 0n.loops
+	1n .node-out-edges ->len    0     test: 1n.out-edges
+	1n .node-in-edges  ->len    1     test: 1n.in-edges
+	1n .node-loops     ->len    1     test: 1n.loops )
 	
 Testing Search spaces
 	s0 .spc-posn @                0        test: s0 pos 0
@@ -136,14 +155,13 @@ Testing Search spaces
 	s0 space-next-item         0n       test: second item in s0 is 0n
 	bool-flag @                true     test: oilr-true after next-item
 	s0 space-next-item         Nothing  test: third item in s0 is Nothing
-#	bool-flag @                false    test: oilr-false after next-item
 	s0 space-reset
 	s0 space-next-item         1n       test: s0 has 1n after reset
 
 	s0 space-reset   1n bind
 	1n is-bound?                true    test: 1n is bound
 	s0 space-next-unbound         0n    test: 0n is first unbound
-
+;
 
 Testing Host graph edge creation
 	0n --> 1n  path
@@ -167,7 +185,7 @@ Testing Host graph edge creation
 	0n in-deg      0      test: 0n in deg (loops)
 	0n loop-deg    2      test: 0n loop deg (loops)
 	0n canonical-out-deg 3 test: 0n real out deg (loops)
-
+;
 
 
 ds-depth 0  = assertion: stack after graphLib test

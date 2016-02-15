@@ -1,29 +1,3 @@
-: OILR #immediate
-	create # n --
-?		dup 0 >  assertion: There must be at least one OILR index
-		here 2 cells before push
-		dup index-size !
-		2* cells allot
-?		peek @   DoDoesAddr  =  assertion: created broken index
-		pop _real-index !
-	does  # n addr -- addr
-		swap
-?		dup  index-size @  <  assertion: requested invalid index
-		2* cells after
-;
-: dump-graph-and-exit  ` ;  dump-graph  0-exit ;
-: host-graph #immediate
-?	0 0 stack-effect
-?	_real-index @  assertion: Uninitialised OILR index
-	` ;
-	use-dict
-	elem-align-dp
-	here host !
-	here host-free !
-	' dump-graph-and-exit handles EndOfFile
-	use-anon
-;
-
 : make-implicit-loop  # addr --
 	# WARNING. Return-stack jiggery-pokery!
 	# Explanation: inlines code to turn the currently executing function
@@ -94,31 +68,53 @@
 
 
 #    -- Graph search
-#    | BND Dst Spc          -- Bind next unbound NoDe in Spc to Dst
-#    | BED Dst Reg Reg Dir  -- Bind EDge between Regs in Dir
-#    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
+#    | BND Spc Dst          -- Bind next unbound NoDe in Spc to Dst
+#    | BED Reg Reg Dst      -- Bind EDge between Regs in Dir
+#    | BIN Dst Dst Src      -- Bind Incoming-edge and Node from Src
+#    | BON Dst Dst Src      -- Bind Outgoing-edge and Node from Src
+#    | BLO Src Dst          -- Bind LOop on node in Src
 #    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
 
-1  constant: DirOut
-0  constant: DirEither
--1 constant: DirIn
 
 # Save and restore return stack pointers. These _must not_ be
 # words, otherwise their own return address will pollute the stack
 ' rsp@ alias: rss  # -- rsp
 ' rsp! alias: rsr  # rsp --
 
-[	space-next-unbound
+#  BND :: spc dest --
+: ins-bnd
+?	2 0 stack-effect
+	dup ->elem unbind-if-bound
+	swap space-next-unbound
 	dup if
 		dup bind
-		swap $$ !
+		swap $$!
 		oilr-true
 	else
 		oilr-false
 	endif
-] 2 arg-looping-instr: bnd
+;
+[ ins-bnd ] 2 arg-looping-instr: bnd
 
-[	
+#  BLO :: src dest --
+: ins-blo
+?	2 0 stack-effect
+	dup ->elem unbind-if-bound
+	swap ->elem .node-loops   chain-next-unbound
+	dup if
+		dup bind
+		swap $$!
+		oilr-true
+	else
+		oilr-false
+	endif
+;
+[ ins-blo ] 2 arg-looping-instr: blo
+
+#  BED :: src tgt dest --
+: ins-bed
+	dup ->elem unbind-if-bound
+	
 	dup if
 		dup bind
 		swap $$ !
@@ -126,7 +122,9 @@
 	else
 		oilr-false
 	endif
-] 3 arg-looping-instr: bed
+;
+[ ins-bed ] 3 arg-looping-instr: bed
+
 # : bnd  #  dest spc -- 
 # 	# traverse a search space
 # 	space-next-unbound 
@@ -151,6 +149,7 @@
 # 	oilr-false
 # ;
 : bbe  #  dest r1 r2
+;
 : ben  #  eDest nDest reg dir
 	# Bind an edge with one end at node in reg in dir, storing 
 	# edge in eDest and node on opposite end in nDest

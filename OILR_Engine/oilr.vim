@@ -25,6 +25,8 @@ syn match Number  /\<-\?[0-9]\+\>/
 syn match stringEsc /\\[n0"\\]/
 syn region String  start="s\" " end="\"" contains=stringEsc
 syn region String  start="z\" " end="\"" contains=stringEsc
+syn region nestComment start="\<(\>" end="\<)\>" contains=nestComment
+syn region stackEffect start="\<\$(\>" end="\<)\>"
 syn region Comment start="\<#\>" end="\n"
 " syn region String  start="\"\n" end="\""
 " syn region String  start="\"\t" end="\""
@@ -56,6 +58,7 @@ syn region isImmed start="\<#\[\>" end="\<\]\>" contains=Number,Comment
 hi link assertion String
 hi isDebug ctermfg=brown guifg=brown
 hi link nestComment Comment
+hi link stackEffect Type
 hi link isHex Number
 hi link isDec Number
 hi link isQuote Number
