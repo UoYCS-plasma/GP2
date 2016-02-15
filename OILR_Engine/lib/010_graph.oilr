@@ -303,8 +303,8 @@ exception: ElementIsUnlabelled
 4 constant: Grey
 7 constant: Dashed
 
-: get-colour  .elem-flags @  CFlag value  ;
-: colour  # colour elem --
+: get-colour $( elem -- colour )  .elem-flags @  CFlag value  ;
+: colour  $( colour elem -- )
 	push CFlag shift  shift-up
 	peek .elem-flags @  CFlag mask not  and  or # clear the old colour then set the new
 	pop !
@@ -331,7 +331,7 @@ exception: ElementIsUnlabelled
 ;
 : unbind-if-bound  $(  elem? --  )
 	dup if  # test for null element
-		dup is-bound? if  unbind  endif
+		dup is-bound? if  unbind return  endif
 	endif
 	drop
 ;

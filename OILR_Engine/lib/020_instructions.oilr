@@ -1,35 +1,30 @@
-: make-implicit-loop  # addr --
+: make-implicit-loop  $( addr -- )
 	# WARNING. Return-stack jiggery-pokery!
 	# Explanation: inlines code to turn the currently executing function
 	# into the first instruction of a loop. The next call to
 	# return will initiate the next iteration.
-?	1 0 stack-effect
 	[ bool-flag @ not if  return  endif ] inline
-	' pop ,  compile-literal
-	[ push  push ] inline
+	' pop ,  compile-literal ' push , ' push ,
 ;
 
 
-: compile-prefix-instr-and-args  # n --
-?	1 0 stack-effect
+: compile-prefix-instr-and-args  $( addr -- )
 	stash @  times  word find call  repeat
 	pop 1 cell after ,
 ;
 : arg-instr:   #immediate
-	create-immed   #  lambda n-args --
-?		2 0 stack-effect
+	create-immed   $(  lambda n-args -- )
 		,  dup data-length keep  drop
-	does   #  addr  -- 
+	does   $(  addr  --  )
 		compile-prefix-instr-and-args
 ;
 : arg-looping-instr:  #immediate
-	create-immed   # lambda n-args --
-?		2 0 stack-effect
+	create-immed   $( lambda n-args -- )
 		,  dup data-length keep  drop
-	does   #  addr --
-		here push
+	does   $(  addr -- )
+		here swap
 		compile-prefix-instr-and-args
-		pop make-implicit-loop
+		make-implicit-loop
 ;
 
 # ######   OILR machine instructions   ############################ #
@@ -81,24 +76,25 @@
 ' rsp@ alias: rss  # -- rsp
 ' rsp! alias: rsr  # rsp --
 
-#  BND :: spc dest --
-: ins-bnd
-?	2 0 stack-effect
-	dup ->elem unbind-if-bound
-	swap space-next-unbound
+: bind-and-store  $( addr elem -- )
 	dup if
 		dup bind
-		swap $$!
+		swap !
 		oilr-true
 	else
 		oilr-false
 	endif
 ;
+
+#  BND :: spc dest --
+: ins-bnd  $( spc dest -- )
+?	dup putn nl
+	$$ dup @ ->elem unbind-if-bound
+	swap  space-next-unbound  bind-and-store
+;
 [ ins-bnd ] 2 arg-looping-instr: bnd
 
-#  BLO :: src dest --
-: ins-blo
-?	2 0 stack-effect
+: ins-blo  $( src dest -- )
 	dup ->elem unbind-if-bound
 	swap ->elem .node-loops   chain-next-unbound
 	dup if

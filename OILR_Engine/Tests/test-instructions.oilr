@@ -42,7 +42,7 @@ Testing Prefix instructions
 
 
 Testing Search plans
-	ds-depth  0 test: Stack imbalance before instructions
+	# ds-depth  0 test: Stack imbalance before instructions
 
 	3 registers
 	bind-node

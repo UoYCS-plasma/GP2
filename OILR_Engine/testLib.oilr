@@ -2,7 +2,7 @@
 	# if a == b then do nothing, otherwise raise AssertionFailed
 	3 locals
 	1 $$@  2 $$@  =  if
-		'.' putc
+		'*' putc
 	else
 		nl  WarningColour output-colour
 		Expected puts  1 $$@ putn

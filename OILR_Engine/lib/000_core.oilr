@@ -37,7 +37,6 @@ variable: if-depth
 : else   #immediate   compile-unconditional-jump   push   jump-target   pop ;
 : endif  #immediate   jump-target   if-depth dec-var ;
 
-
 # concatenative-style if
 : ifte  # S bool then else -- T
 	push push
@@ -55,6 +54,34 @@ ifte  as ?  #immediate
 # conditional compilation. What this says is "if DEBUG is non-zero
 # then define ? to be a no-op immediate word, otherwise define ? to
 # be a comment to end-of-line.
+
+# exceptions are basically just variables
+: exception:   #immediate    create-variable  ;
+
+
+# over-ride some basic functions with bounds-checked versions
+: out-of-bounds?  # addr -- bool
+	dup HeapBaseAddr get-brk-addr btw? if drop false return endif
+	    lowest-mmap @   rs0 @     btw? if false return endif
+	true
+;
+
+? exception: ReadOutOfBounds
+? exception: WriteOutOfBounds
+? exception: CallOutOfBounds
+? exception: CallToNonWord
+? [  dup  out-of-bounds?  if  dup putx nl  ReadOutOfBounds  raise  endif  @  ] as @
+? [  dup  out-of-bounds?  if  dup putx nl  WriteOutOfBounds raise  endif  !b ] as !b
+? [  dup  out-of-bounds?  if  dup putx nl  WriteOutOfBounds raise  endif  !  ] as !
+? [  dup  out-of-bounds?  if  dup putx nl  CallOutOfBounds  raise  endif call ] as call
+
+? exception: DataStackUnderflow
+? exception: DupOnEmptyStack
+? exception: InvalidReturnAddr
+? [  ds-depth 0 <= if  DataStackUnderflow raise  endif drop ] as drop
+? [  ds-depth 1 <= if  DataStackUnderflow raise  endif swap ] as swap
+? [  ds-depth 0 <= if  DupOnEmptyStack    raise  endif dup  ] as dup
+# ? [  pop peek swap push  out-of-bounds? if InvalidReturnAddr raise endif  return ] as return
 
 : while-word   # S lambda -- T
 	push
@@ -126,9 +153,6 @@ ifte   as $(  #immediate
 	' trash ,
 ;
 
-# exceptions are basically just variables
-: exception:   #immediate    create-variable  ;
-
 
 # buffered output
 
@@ -168,6 +192,15 @@ OutputBufferStart output-buffer !
 	clear-output
 ;
 
+# debugging helper
+: addr->label  $( addr -- label ) 
+	# get the label from an arbitrary point in a word definition
+	dup is-anon? if  drop StrAnon  return  endif
+	forever  1 cell before dup @ DoAddr = if .cfa->.label trash return endif  repeat
+;
+: backtrace
+	rs0 @ rs-depth times   1 cell before dup @ 'spc' putc  addr->label puts repeat
+;
 # lambda inliner (saves lots of ' work , in immediate words)
 
 : inline  $( lambda -- )

@@ -166,7 +166,7 @@ str_text_\label:
 # Initialisation #####################################
 
 .section .data
-constant HeapBaseAddr . "heap-base-addr"
+constant HeapBaseAddr .
 
 
 .section .text
@@ -182,6 +182,7 @@ _start:
 	mov %eax, var_argv0
 	push $0
 	mov %esp, var_ds0
+	mov %esp, var_lowestMmap
 	mov %esp, %ebp
 	sub $DS_SIZE, %ebp
 	mov %ebp, var_rs0
@@ -1567,12 +1568,14 @@ word munmap  # len addr --
 end
 
 # Create a mem-mapped buffer
+variable lowestMmap, ds0, "lowest-mmap"
 word buffer  # len -- addr
 	.long push
 	.long minus_one                        # fd is ignored
 	.long MapPrivate, MapAnonymous, or     # set map options
 	.long ProtWrite, ProtRead, or          # set protections
 	.long pop, mmap
+	.long dup, lowestMmap, get, min, lowestMmap, set
 end
 
 word mmapFd "mmap-fd" # fd len -- addr
@@ -1658,6 +1661,18 @@ word compileLiteral, "compile-literal" // n --
 	.long quote, lit, storeinc, storeinc
 end
 
+word backtrace
+	.long rs0, get, rsDepth
+1:
+	.long dup, zbranch, JUMP(2f)
+	.long swap, one, cell
+	.long branch, JUMP(1b)
+2:
+end
+# : backtrace
+#	rs0 @ rs-depth times   1 cell before dup @ 'spc' putc  addr->label puts repeat
+#;
+
 # Words that create words ############################
 
 variable NotInADataBlock
@@ -1690,6 +1705,7 @@ word as, , call # addr --
 	.long word, keeps, header
 	.long dup, dataLength  # get length of data block
 	.long lit, CELL_BITS, rshift, keep, drop  # convert to cell length and keep.
+	.long useAnon
 end
 
 word header  # str --
@@ -1907,6 +1923,8 @@ string InvalidEsc, "Invalid escape char: "
 string UnbalancedRSInBranch, "Unbalanced use of RS in one branch of pattern match at "
 string ErrorUnhandled, "Unhandled exception: "
 string DefaultPrompt, " ok "
+string StrAnon, "(anon)"
+string StrLambda, "(lambda)"
 
 string Expected, "Expected "
 string Got,      " but got "
