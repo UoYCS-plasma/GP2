@@ -26,17 +26,26 @@ oilr-true  ;
 ;
 
 
-: bind-node
+: bind-node   $( -- elem )
+	1 registers
 	rss
 	bnd s0 0
 	rsr
+	0 $$@
+	ubr 0
 ;
 
 : bind-node-plus-loop
+	2 registers
 	rss
+? 	ds-depth putn 
 	bnd s0 0 
-	blo 0  2
+?	0 $$@ get-elem-id putn
+	blo 0  1
+?	1 $$@ putn 
 	rsr
+	ubr 0
+	ubr 1
 ;
 
 
@@ -56,10 +65,11 @@ Testing Prefix instructions
 Testing Search plans
 	# ds-depth  0 test: Stack imbalance before instructions
 
-	3 registers
-	bind-node
-	0 $$@ is-bound?      true   test: bind-node r0 bound 
-	bind-node-plus-loop
+	bind-node            9n     test: bind-node bound 9n
+	bool-flag @          true   test: bind-node returned true
+	9n is-bound?         false  test: bind-node 9n has been unbound 
+
+	bind-node-plus-loop  1n     test: bind-node-plus-loop bound 1n
 	bool-flag @          true   test: rule succeeded
 	0 $$@ is-bound?      true   test: r0 is bound
 	# 0 $$@  1 $$@  =      false  test: r1 <> r0
@@ -78,7 +88,6 @@ Testing Search plans
 	ds-depth  0 test: Stack imbalance after instructions
 
 
-unframe # required clean-up after call to registers
 
 ; 
 nl

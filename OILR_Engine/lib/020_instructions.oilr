@@ -4,6 +4,7 @@
 		swap !
 		oilr-true
 	else
+		drop drop
 		oilr-false
 	endif
 ;
@@ -94,25 +95,37 @@
 ' rsp@ alias: rss  # -- rsp
 ' rsp! alias: rsr  # rsp --
 
+: unbind-last-match   $( dest-addr --  )
+	@ unbind-if-bound
+;
+: find-position-in-loop-chain  $( src-reg dest-addr -- list )
+	@ stash if   # The destination contains a record of our position
+		drop pop .edge-out-list
+	else         # No such luck -- we're starting anew from src-reg
+		trash $$@ .node-loops
+	endif
+;
+
+: next-from-loop-chain  $( src-reg dest-addr -- elem? )
+	find-position-in-loop-chain  chain-next-unbound
+;
+: bind-or-try-again  $( elem? dest-addr -- )
+	over over !  # store result in dest whatever
+	over is-elem? if  over bind  endif
+;
+
 #  BND :: spc dest --
-: bnd  #loopins2  $( spc dest -- )
-?	dup putn nl
-	$$ dup @ ->elem unbind-if-bound
+: bnd   #loopins2   $( spc dest -- )
+	$$ dup @ unbind-if-bound
 	swap  space-next-unbound
 	bind-and-store
 	break-or-start-loop
 ;
 
 : blo   #loopins2  $( src dest -- )
-	dup ->elem unbind-if-bound
-	swap ->elem .node-loops   chain-next-unbound
-	dup if
-		dup bind
-		swap $$!
-		oilr-true
-	else
-		oilr-false
-	endif
+	$$ stash  unbind-last-match
+	    peek  next-from-loop-chain
+	     pop  bind-or-try-again
 ;
 
 #  BED :: src tgt dest --
@@ -200,6 +213,7 @@
 #    | TRU                  -- set the boolean register to TRUe
 #    | FLS                  -- set the boolean register to FaLSe
 
+
 # Branch instructions
 : brn  ' branch ,   ;  #immediate
 : brz  ' zbranch ,  ;  #immediate
@@ -220,6 +234,11 @@
 : nop ;
 : tru  true  bool-flag ! ;
 : fls  false bool-flag ! ;
+: ubr  #ins1  $( n -- )
+	# Unbind element held register n
+?	dup $$@  is-elem?  assertion: Attempted to unbind an invalid register
+	$$@  unbind
+;
 
 
 # ################################################################# #

@@ -61,7 +61,7 @@ ifte  as ?  #immediate
 
 # over-ride some basic functions with bounds-checked versions
 : out-of-bounds?  # addr -- bool
-	dup HeapBaseAddr get-brk-addr btw? if drop false return endif
+	dup HeapBaseAddr  brk-addr @  btw? if drop false return endif
 	    lowest-mmap @   rs0 @     btw? if false return endif
 	true
 ;

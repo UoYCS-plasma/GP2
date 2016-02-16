@@ -102,7 +102,7 @@ end-struct
 
 : available-space   $( -- n-elems )
 	use-dict
-	get-brk-addr here -   bytes->elems
+	brk-addr @   here -   bytes->elems
 	use-anon
 ;
 
@@ -246,8 +246,16 @@ end-bitfield
 	pop
 ;
 
-: is-node?  .elem-flags @   NodeType  and  bool ;
-: is-edge?  .elem-flags @   EdgeType  and  bool ;
+: in-graph? $( addr -- bool ) host @  brk-addr @  btw?
+: is-node?  $( addr -- bool ) .elem-flags @   NodeType  and  bool ;
+: is-edge?  $( addr -- bool ) .elem-flags @   EdgeType  and  bool ;
+: is-elem?  $( addr -- bool ) 
+?	dup in-graph? if 
+		.elem-flags @  TypeFlag mask  and  bool 
+?	else
+?		drop false
+?	endif
+;
 
 # Graph element creation and deletion
 : unsafe-add-node $( -- node ) alloc-elem init-node dup index-node  ;
@@ -451,9 +459,13 @@ exception: TODO
 
 # ################################################################# #
 
+: unbind-all
+	
+;
 : registers  $( -- )  #immediate
 	[ stash times 0 repeat   pop locals ] inline
 ;
+
 
 : OILR   #immediate
 	create $( n -- ) 

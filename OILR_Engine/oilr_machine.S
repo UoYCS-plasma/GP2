@@ -1234,7 +1234,7 @@ next
 
 word initialiseVM
 	# initialise the dictionary pointer
-	.long getBrkAddr, dup, dictPtr, set, dpSet
+	.long getBrkAddr, dup, dup, dictPtr, set, brkAddr, set, dpSet
 	# allocate default heap
 	.long lit, HEAP_SIZE, setHeapSize
 	# create scratchpad
@@ -1516,13 +1516,13 @@ end
 # Memory management ######################################
 
 word setBrkAddr "set-brk-addr"  # addr -- addr
-	.long SysBrk, syscall1
+	.long SysBrk, syscall1, dup, brkAddr, set
 end
 word getBrkAddr, "get-brk-addr"  #  -- addr
 	.long Zero, setBrkAddr
 end
 word getHeapSize "get-heap-size"  # -- n
-	.long getBrkAddr, HeapBaseAddr, sub
+	.long brkAddr, get, HeapBaseAddr, sub
 end
 
 # Todo: error handling on the following two functions
@@ -1926,6 +1926,7 @@ variable rs0
 variable dp0
 variable flagTableAddr
 variable dictPtr, ,"dict-ptr"
+variable brkAddr, ,"brk-addr"
 
 variable NotFoundException, notFoundHandler
 
