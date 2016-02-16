@@ -1,38 +1,49 @@
-: make-implicit-loop  $( addr -- )
-	# WARNING. Return-stack jiggery-pokery!
-	# Explanation: inlines code to turn the currently executing function
-	# into the first instruction of a loop. The next call to
-	# return will initiate the next iteration.
-	[ bool-flag @ not if  return  endif ] inline
-	' pop ,  compile-literal ' push , ' push ,
+: bind-and-store  $( addr elem -- )
+	dup if
+		dup bind
+		swap !
+		oilr-true
+	else
+		oilr-false
+	endif
+;
+: break-otherwise  $( -- )
+	bool-flag @ not if trash return  endif
 ;
 
+: break-or-start-loop $( addr -- )
+	# The loop start address is already on RS
+	bool-flag @ not if  trash trash return  endif
+;
 
-: compile-prefix-instr-and-args  $( addr -- )
-	stash @  times  word find call  repeat
-	pop 1 cell after ,
+# set up new behaviours for prefix instructions
+: consume-args  $( n -- )
+	times  word find call  repeat
 ;
-: arg-instr:   #immediate
-	create-immed   $(  lambda n-args -- )
-		,  dup data-length keep  drop
-	does   $(  addr  --  )
-		compile-prefix-instr-and-args
-;
-: arg-looping-instr:  #immediate
-	create-immed   $( lambda n-args -- )
-		,  dup data-length keep  drop
-	does   $(  addr -- )
-		here swap
-		compile-prefix-instr-and-args
-		make-implicit-loop
-;
+
+: 1-arg-ins-handler  $( xt -- )  1 consume-args  ,  ;
+: 2-arg-ins-handler  $( xt -- )  2 consume-args  ,  ;
+: 3-arg-ins-handler  $( xt -- )  3 consume-args  ,  ;
+: 4-arg-ins-handler  $( xt -- )  4 consume-args  ,  ;
+
+: looping-2-arg-ins-handler  $( xt -- ) [ this push ] inline   2 consume-args  ,  ;
+: looping-3-arg-ins-handler  $( xt -- ) [ this push ] inline   3 consume-args  ,  ;
+
+: #ins0 ; #immediate   # no-op for readability
+: #ins1  ' 1-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
+: #ins2  ' 2-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
+: #ins3  ' 3-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
+: #ins4  ' 4-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
+
+: #loopins2  ' looping-2-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
+: #loopins3  ' looping-3-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
 
 # ######   OILR machine instructions   ############################ #
 
 #      OILR Int          -- Number of OILR indices
 #    -- Graph modification
 #    | ABN Dst           -- Add and Bind Node to register Dst
-#    | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
+#    | ABE Src Tgt Dst   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
 #    | DBN Dst           -- Delete Bound Node 
 #    | DBE Dst           -- Delete Bound Node
 #    
@@ -41,26 +52,31 @@
 #    | CBL Dst Col       -- Colour Bound eLement
 #    | LBL Dst Int       -- Label Bound eLement with Int
 
-[ add-node  swap $$! ]                     1 arg-instr: abn
-[ push push  $$@ pop $$@ edge   pop $$! ]  1 arg-instr: abe
+: abn   #ins1  ( dest -- )
+	add-node  swap $$!
+;
+: abe   #ins3  ( src tgt dest -- )
+	push push  $$@ pop $$@ edge   pop $$!
+;
 
-# : abn  $$  add-node  swap ! ;  # reg --
-# : abe  $$ push push   $$@ pop $$@ edge   pop ! ;  # src tgt reg --
+: dbn   #ins1  ( reg -- )
+	$$@  ->elem  delete-node
+;
+: dbe   #ins1  ( reg -- )
+	$$@  ->elem  delete-edge
+;
 
-[ $$@  ->elem  delete-node ]   1 arg-instr: dbn
-[ $$@  ->elem  delete-edge ]   1 arg-instr: dbe
-
-# : dbn  $$@  ->elem  delete-node  ;
-# : dbe  $$@  ->elem  delete-edge  ;
-
-[ $$@ ->elem  set-root-flag ]  2 arg-instr: rbn  # <bool reg>
-[ $$@ ->elem  colour ]         2 arg-instr: cbl  # <col reg>
-[ $$@ ->elem  label  ]         2 arg-instr: lbl  # <label reg>
-
-# : rbn  $$@ ->elem  set-root-flag ;  # bool reg
-# : cbl  $$@ ->elem  colour ;   # colour reg
-# : lbl  $$@ ->elem  label ;    # label  reg
-
+# TODO: could these be consolidated into a single tag-bound-node instruction
+#  that sets bits for rootedness, colour and labelled-ness?
+: rbn   #ins2  ( bool reg -- )
+	$$@ ->elem  set-root-flag
+;
+: cbl   #ins2  ( col reg -- )
+	$$@ ->elem  colour
+;
+: lbl   #ins2  ( lbl reg -- )
+	$$@ ->elem  label
+;
 
 #    -- Graph search
 #    | BND Spc Dst          -- Bind next unbound NoDe in Spc to Dst
@@ -71,30 +87,23 @@
 #    | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
 
 
+# TODO: replace with a rpop instruction that removes a number of elements
+#  from the return stack?
 # Save and restore return stack pointers. These _must not_ be
 # words, otherwise their own return address will pollute the stack
 ' rsp@ alias: rss  # -- rsp
 ' rsp! alias: rsr  # rsp --
 
-: bind-and-store  $( addr elem -- )
-	dup if
-		dup bind
-		swap !
-		oilr-true
-	else
-		oilr-false
-	endif
-;
-
 #  BND :: spc dest --
-: ins-bnd  $( spc dest -- )
+: bnd  #loopins2  $( spc dest -- )
 ?	dup putn nl
 	$$ dup @ ->elem unbind-if-bound
-	swap  space-next-unbound  bind-and-store
+	swap  space-next-unbound
+	bind-and-store
+	break-or-start-loop
 ;
-[ ins-bnd ] 2 arg-looping-instr: bnd
 
-: ins-blo  $( src dest -- )
+: blo   #loopins2  $( src dest -- )
 	dup ->elem unbind-if-bound
 	swap ->elem .node-loops   chain-next-unbound
 	dup if
@@ -105,10 +114,9 @@
 		oilr-false
 	endif
 ;
-[ ins-blo ] 2 arg-looping-instr: blo
 
 #  BED :: src tgt dest --
-: ins-bed
+: bed   #loopins3  $( src tgt dest -- )
 	dup ->elem unbind-if-bound
 	
 	dup if
@@ -119,7 +127,6 @@
 		oilr-false
 	endif
 ;
-[ ins-bed ] 3 arg-looping-instr: bed
 
 # : bnd  #  dest spc -- 
 # 	# traverse a search space

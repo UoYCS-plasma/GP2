@@ -237,7 +237,7 @@ exception: AssertionFailed
 	AssertionFailed raise
 ;
 : assertion:  #immediate
-	' 0 , ' = , compile-conditional-jump 
+	' Zero , ' = , compile-conditional-jump 
 	begin-data-block
 	[ dup ,b  '\n' = ] scan-in   0 ,b
 	end-data-block

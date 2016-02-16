@@ -1,17 +1,29 @@
 1 OILR index
 
-[ * ]  2 arg-instr: tst
-[ 99 oilr-true ] 0 arg-looping-instr: loo
+: tst  #ins3      $( a b dest -- )  push  * pop $$! ;
+: loo  #loopins2  $( a reg -- )  $$! break-or-start-loop ;
+
+oilr-true  ;
 
 0 1 space: s0
 0 1 space: s1
 
-: prefix-test-rule
-	tst 23 10
+' trash alias: rsd
+
+: prefix-test-rule  $( -- n )
+	1 registers
+	rss
+	tst 23 10  0
+	rsr
+	0 $$@
 ;
-# : prefix-loop-rule
-	# loo
-# ;
+: prefix-loop-rule  $( -- n )
+	1 registers
+	rss
+	loo 99 0
+	rsr
+	0 $$@
+;
 
 
 : bind-node
@@ -37,7 +49,7 @@ host-graph
 
 Testing Prefix instructions
 	prefix-test-rule          230   test: Prefix rule functionality
-	# prefix-loop-rule          99   test: Implicity looping instructions
+	prefix-loop-rule          99   test: Implicity looping instructions
 	ds-depth                  0     test: loop doesn't pollute stack
 
 

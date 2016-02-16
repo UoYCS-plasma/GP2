@@ -567,9 +567,9 @@ next
 
 # Arithmetic prims ###################################
 
-constant zero, 0, "0"
-constant one,  1, "1"
-constant minus_one, -1 "-1"
+constant Zero, 0
+constant One,  1
+constant MinusOne, -1
 
 prim mul, "*"  // int int -- int
 	pop %eax
@@ -934,6 +934,20 @@ prim isAnonymous "is-anon?" # addr -- bool
 	push %edx
 next
 
+prim this  # -- addr
+	# returns the address at which it is compiled. Very meta
+	lea -4(%esi), %eax
+	push %eax
+next
+prim take   #  n -- v1 .. vn
+	# take arguments from the input stream
+	pop %ecx
+1:
+	lodsl
+	push %eax
+	loop 1b
+next
+
 # Flow control #######################################
 
 prim return
@@ -1108,7 +1122,7 @@ jump_table:
 	.long _num_err, _num_done, _natural, _char_lit, _node_lit, _edge_lit
 
 word number  #  str -- int bool
-	.long one, cell, add, znumber
+	.long One, cell, add, znumber
 end
 
 prim znumber  # zstr -- int bool
@@ -1265,7 +1279,7 @@ word handleNextArg, "handle-next-arg"
 	.long quote, exit0, handles, EndOfFile
 .long tailcall, reset
 word nextArg, "next-arg"
-	.long argv, get, one, cell, add
+	.long argv, get, One, cell, add
 	.long dup, argv, set
 	.long get
 end
@@ -1313,7 +1327,7 @@ word handles
 	# usage: ' fun handles Exception
 	#    set fun as handler for Exception
 	.long peek, get, call, set
-	.long pop, one, cell, add
+	.long pop, One, cell, add
 	.long push
 end
 
@@ -1340,14 +1354,14 @@ word error
 	.long inChannel, get, isATTY, zbranch, JUMP(1f)
 	.long clearInputBuffer, reset
 1:
-.long one, exit
+.long One, exit
 
 
 # Numeric Output #######################################
 
 word digit_to_char, "digit-to-char" # n -- c
 	.long dup 
-	.long zero, lit, 9, between, zbranch, JUMP(1f)
+	.long Zero, lit, 9, between, zbranch, JUMP(1f)
 	.long lit, '0', add
 	.long branch, JUMP(2f)
 1:
@@ -1355,7 +1369,7 @@ word digit_to_char, "digit-to-char" # n -- c
 2:
 end
 word decompose  # n base -- 0 c ... 
-	.long push, zero, swap
+	.long push, Zero, swap
 1:
 	.long peek, udivmod, digit_to_char, swap
 	.long dup, zbranch, JUMP(2f), branch, JUMP(1b)
@@ -1385,7 +1399,7 @@ word warn  # zstr len --
 	.long errChannel, get, write
 end
 word warns # nstr --
-	.long stash, one, cell, add
+	.long stash, One, cell, add
 	.long pop, get, warn
 end
 
@@ -1397,12 +1411,12 @@ word putz # zstr --
 	.long put
 end
 word puts #  nstr --  
-	.long stash, one, cell, add
+	.long stash, One, cell, add
 	.long pop, get, put
 end
 
 word putc  # c --
-	.long dspGet, one, put
+	.long dspGet, One, put
 	.long drop # drop on-stack buffer
 end
 
@@ -1432,13 +1446,13 @@ word zopen   # zstr mode -- fh
 	.long swap, push, push
 	.long lit, 0666, pop, pop
 	.long SysOpen, syscall3
-	.long dup, zero, lt, zbranch, JUMP(1f)
+	.long dup, Zero, lt, zbranch, JUMP(1f)
 	.long drop, FileOpenFailed, raise
 1:
 end
 word open  # str mode -- fh
 	.long push
-	.long one, cell, add
+	.long One, cell, add
 	.long pop, zopen
 end
 
@@ -1483,7 +1497,7 @@ variable CouldNotStatFile
 
 word statFD "stat-fd"
 	.long here, stash, swap, SysStat, syscall2
-	.long zero, lt, zbranch, JUMP(1f)
+	.long Zero, lt, zbranch, JUMP(1f)
 	.long CouldNotStatFile, raise
 1:
 	.long pop
@@ -1505,7 +1519,7 @@ word setBrkAddr "set-brk-addr"  # addr -- addr
 	.long SysBrk, syscall1
 end
 word getBrkAddr, "get-brk-addr"  #  -- addr
-	.long zero, setBrkAddr
+	.long Zero, setBrkAddr
 end
 word getHeapSize "get-heap-size"  # -- n
 	.long getBrkAddr, HeapBaseAddr, sub
@@ -1523,7 +1537,7 @@ end
 # System interface ########################################
 
 word exit0, "0-exit"
-	.long zero, exit
+	.long Zero, exit
 end
 
 word exit #  n -- 
@@ -1532,13 +1546,13 @@ end
 
 word bye, , call
 	.long byebye, puts, nl
-	.long zero, exit
+	.long Zero, exit
 end
 
 constant TCGETS, 0x00005401
 word isATTY "is-a-tty?"  # fd -- bool
 	.long push, scratchpadAddr, get, TCGETS, pop, SysIOCtl, syscall3
-	.long zero, eq
+	.long Zero, eq
 end
 
 # Memory mapping
@@ -1557,8 +1571,8 @@ constant ProtGrowsUp,   PROT_GROWSUP
 word mmap  # fd flags prot len -- addr
 	.long push, push, push, push
 	#     offs  fd   flag prot len  addr
-	.long zero, pop, pop, pop, pop, zero, SysMmap, syscall6
-	.long dup, lit, -200, minus_one, between, zbranch, JUMP(1f)
+	.long Zero, pop, pop, pop, pop, Zero, SysMmap, syscall6
+	.long dup, lit, -200, MinusOne, between, zbranch, JUMP(1f)
 	.long MmapFailed, raise
 1:
 end
@@ -1571,7 +1585,7 @@ end
 variable lowestMmap, ds0, "lowest-mmap"
 word buffer  # len -- addr
 	.long push
-	.long minus_one                        # fd is ignored
+	.long MinusOne                        # fd is ignored
 	.long MapPrivate, MapAnonymous, or     # set map options
 	.long ProtWrite, ProtRead, or          # set protections
 	.long pop, mmap
@@ -1589,7 +1603,7 @@ word bufferZFile "buffer-zfile" # zstr -- addr len fd
 end
 
 word bufferFile "buffer-file"  # str -- addr len fd
-	.long one, cell, add
+	.long One, cell, add
 	.long bufferZFile
 end
 
@@ -1650,7 +1664,7 @@ word cfaToLabel, ".cfa->.label"
 end
 
 word labelForVar, "label-for-var"
-	.long one, cell, sub, cfaToLabel
+	.long One, cell, sub, cfaToLabel
 end
 
 word nl
@@ -1665,7 +1679,7 @@ word backtrace
 	.long rs0, get, rsDepth
 1:
 	.long dup, zbranch, JUMP(2f)
-	.long swap, one, cell
+	.long swap, One, cell
 	.long branch, JUMP(1b)
 2:
 end
@@ -1679,10 +1693,10 @@ variable NotInADataBlock
 
 word beginData, "begin-data-block"
 	.long quote, data, storeinc
-	.long here, zero, storeinc
+	.long here, Zero, storeinc
 end
 word endData, "end-data-block"
-	.long dpAlign, here, over, one, cell, add, sub, swap, set
+	.long dpAlign, here, over, One, cell, add, sub, swap, set
 end
 
 word lambda, "[", call  # -- addr
@@ -1694,7 +1708,7 @@ end
 word dataLength, "data-length"  # lambda -- len
 	.long dup, lit, 2, cell, sub, get   # fetch the data instruction
 	.long quote, data, eq, zbranch, JUMP(1f)
-	.long one, cell, sub, get, return      # get the length in bytes and return
+	.long One, cell, sub, get, return      # get the length in bytes and return
 1:
 	.long NotInADataBlock, raise
 end
@@ -1722,7 +1736,7 @@ word define  #  str interp --
 end
 
 word defdoes   # str --
-	.long quote, dodoes, define, zero, storeinc  # behaviour field
+	.long quote, dodoes, define, Zero, storeinc  # behaviour field
 end
 word defword   # str -- 
 	.long quote, do, define
@@ -1759,7 +1773,7 @@ end
 word createVariable, "create-variable"  # --
 	.long semicolon, useDict
 	.long word, keeps, defvar
-	.long zero, storeinc
+	.long Zero, storeinc
 	.long useAnon
 end
 word createWord, "create-word"
