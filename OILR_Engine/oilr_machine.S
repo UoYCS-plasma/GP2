@@ -743,22 +743,17 @@ next
 
 # Runtime stack checker ###############################
 
-# : stack-effect  #immediate
-# 	dictionary @  .label  compile-literal
-# 	[	push push          #  n-in n-out str -- 
-# 		Sentinel swap bury
-# 		' check-stack 1 cell after push ]  inline
-# ;
 variable StackCheckFailed
 constant Sentinel 0xcdcdcdcd
 word stackEffect "stack-effect", call
 	.long dictionary, get, label, compileLiteral
+	# inline the stack-effect code...
 	.long lit, 1f, lit, (2f-1f) >> CELL_BITS, keep, drop
 end
 1: # code to be inlined by stackEffect
 	.long push, push, Sentinel, swap, bury
 	.long lit, 2f, push
-2: # check stack effect
+2: # check stack effect on function exit
 	.long pop, exhume
 	.long Sentinel, neq, zbranch, JUMP(3f)
 	.long pop, puts, nl
@@ -850,6 +845,15 @@ next
 prim decVar "dec-var"
 	pop %eax
 	decl (%eax)
+next
+
+prim inject
+	# schedule code to run when the _calling_ function, (not the one that
+	# calls inject!) returns
+	pop %eax
+	poprs %edx
+	pushrs %eax
+	pushrs %edx
 next
 
 do_unframe:

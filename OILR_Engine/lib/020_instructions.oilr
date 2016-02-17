@@ -27,17 +27,19 @@
 : 3-arg-ins-handler  $( xt -- )  3 consume-args  ,  ;
 : 4-arg-ins-handler  $( xt -- )  4 consume-args  ,  ;
 
-: looping-2-arg-ins-handler  $( xt -- ) [ this push ] inline   2 consume-args  ,  ;
-: looping-3-arg-ins-handler  $( xt -- ) [ this push ] inline   3 consume-args  ,  ;
+# [ this dup putx ] as this
+
+: looping-2-arg-ins-handler  $( xt -- ) ' this ,  2 consume-args  ,  ;
+: looping-3-arg-ins-handler  $( xt -- ) ' this ,  3 consume-args  ,  ;
 
 : #ins0 ; #immediate   # no-op for readability
-: #ins1  ' 1-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
-: #ins2  ' 2-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
-: #ins3  ' 3-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
-: #ins4  ' 4-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
+: #ins1  ' 1-arg-ins-handler   set-behaviour  ; #immediate
+: #ins2  ' 2-arg-ins-handler   set-behaviour  ; #immediate
+: #ins3  ' 3-arg-ins-handler   set-behaviour  ; #immediate
+: #ins4  ' 4-arg-ins-handler   set-behaviour  ; #immediate
 
-: #loopins2  ' looping-2-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
-: #loopins3  ' looping-3-arg-ins-handler   dictionary @ .bfa   !  ; #immediate
+: #loopins2  ' looping-2-arg-ins-handler   set-behaviour  ; #immediate
+: #loopins3  ' looping-3-arg-ins-handler   set-behaviour  ; #immediate
 
 # ######   OILR machine instructions   ############################ #
 
@@ -95,50 +97,51 @@
 ' rsp@ alias: rss  # -- rsp
 ' rsp! alias: rsr  # rsp --
 
-: unbind-last-match   $( dest-addr --  )
-	@ unbind-if-bound
+: rst #ins1  $( spc -- )
+	space-reset
 ;
-: find-position-in-loop-chain  $( src-reg dest-addr -- list )
-	@ stash if   # The destination contains a record of our position
-		drop pop .edge-out-list
-	else         # No such luck -- we're starting anew from src-reg
-		trash $$@ .node-loops
+
+
+: bnd  #loopins2  ( loop-addr spc dest-reg -- )
+	$$ stash @                         # -- loop-addr spc ?node
+	dup if  unbind  else  drop  endif  # -- loop-addr spc
+	space-next-unbound ->elem          # -- loop-addr ?node
+	dup pop !  # save result to dst-reg # -- loop-addr ?node
+	dup if
+		bind inject
+	else
+		drop drop trash
 	endif
 ;
 
-: next-from-loop-chain  $( src-reg dest-addr -- elem? )
-	find-position-in-loop-chain  chain-next-unbound
-;
-: bind-or-try-again  $( elem? dest-addr -- )
-	over over !  # store result in dest whatever
-	over is-elem? if  over bind  endif
-;
+# : blo   #loopins2  $( src-reg dest-reg -- )
+	# stash $$@   unbind-if-bound     ( src-reg dest-reg -- src-reg )
+	# $$@  peek $$@    next-from-loop-chain  ( src-reg --  )
+	     # pop       bind-or-try-again
+# ;
 
-#  BND :: spc dest --
-: bnd   #loopins2   $( spc dest -- )
-	$$ dup @ unbind-if-bound
-	swap  space-next-unbound
-	bind-and-store
-	break-or-start-loop
-;
 
-: blo   #loopins2  $( src dest -- )
-	$$ stash  unbind-last-match
-	    peek  next-from-loop-chain
-	     pop  bind-or-try-again
+: blo  #loopins2  ( loop-addr src-reg dest-reg -- )
+	$$ stash @ dup if  # if we already have an edge in dest-reg
+?		dup is-edge?  assertion: blo expects an edge in dest-reg
+		dup unbind   .edge-out-list  # -- loop-addr src-reg list
+		nip                          # -- loop-addr list
+	else
+		drop  $$@  .node-loops       # -- loop-addr list
+	endif
+	->next ->elem dup  pop !   # store next elem (or Nothing) in dest
+	dup if	                         # -- loop-addr elem
+		# bind elem and inject loop-addr
+		bind   inject
+	else                             # -- loop-addr null
+		# drop null, drop loop-addr, trash ret-addr of blo so that we
+		# jump back to the previous looping instr
+		drop drop trash
+	endif
 ;
 
 #  BED :: src tgt dest --
 : bed   #loopins3  $( src tgt dest -- )
-	dup ->elem unbind-if-bound
-	
-	dup if
-		dup bind
-		swap $$ !
-		oilr-true
-	else
-		oilr-false
-	endif
 ;
 
 # : bnd  #  dest spc -- 
@@ -222,8 +225,8 @@
 
 # Return instructions
 : ret  trash ;  # pop the return address
-: rtz  bool-flag @ if return endif  trash ;  # if true do nothing, else pop the return address
-: rnz  bool-flag @ if trash endif   ;  # if true pop the return address
+: rtz  oilr-false? if trash endif  ;  # if false pop the return address (return from caller)
+: rnz  oilr-true?  if trash endif  ;  # if true pop the return address (return from caller)
 
 # Backtracking
 : bbt  ' b-return b-push ; 
@@ -232,8 +235,8 @@
 
 # Misc
 : nop ;
-: tru  true  bool-flag ! ;
-: fls  false bool-flag ! ;
+' oilr-true  alias: tru
+' oilr-false alias: fls
 : ubr  #ins1  $( n -- )
 	# Unbind element held register n
 ?	dup $$@  is-elem?  assertion: Attempted to unbind an invalid register

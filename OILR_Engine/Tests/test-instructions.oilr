@@ -1,7 +1,9 @@
 1 OILR index
 
 : tst  #ins3      $( a b dest -- )  push  * pop $$! ;
-: loo  #loopins2  $( a reg -- )  $$! break-or-start-loop ;
+: loo  #loopins2  $( loop-addr a reg -- ) 
+	$$! drop
+;
 
 oilr-true  ;
 
@@ -29,25 +31,39 @@ oilr-true  ;
 : bind-node   $( -- elem )
 	1 registers
 	rss
-	bnd s0 0
+		bnd s0 0
 	rsr
+
+	rst s0
 	0 $$@
 	ubr 0
 ;
-
-: bind-node-plus-loop
+: bind-node-plus-loop  ( -- node edge )
 	2 registers
 	rss
-? 	ds-depth putn 
-	bnd s0 0 
-?	0 $$@ get-elem-id putn
-	blo 0  1
-?	1 $$@ putn 
+		bnd s0 0 
+		blo 0  1
 	rsr
+
+	rst s0
+		0 $$@
+		1 $$@
 	ubr 0
 	ubr 1
 ;
+: failing-bind-two-loops $( -- )
+	3 registers
+	rss
+		bnd s0 0
+		blo 0  1
+		blo 0  2
+	rsr
+	rst s0
 
+	ubr 0
+	ubr 1
+	ubr 2
+;
 
 host-graph
 	10 nodes
@@ -69,12 +85,17 @@ Testing Search plans
 	bool-flag @          true   test: bind-node returned true
 	9n is-bound?         false  test: bind-node 9n has been unbound 
 
-	bind-node-plus-loop  1n     test: bind-node-plus-loop bound 1n
+	bind-node-plus-loop  10e    test: bind-node-plus-loop bound 1n
+	                     1n     test: bind-node-plus-loop bound 10e
 	bool-flag @          true   test: rule succeeded
-	0 $$@ is-bound?      true   test: r0 is bound
+	10e is-bound?        false  test: 10e has been unbound
+	1n  is-bound?        false  test: 1n has been unbound
+
+	failing-bind-two-loops
+	bool-flag @          false  test: bool-flag false after failing rule
 	# 0 $$@  1 $$@  =      false  test: r1 <> r0
-	2 $$@                10e    test: bind loop
-	2 $$@ is-bound?      true   test: r2 is bound
+	# 2 $$@                10e    test: bind loop
+	# 2 $$@ is-bound?      true   test: r2 is bound
 
 # Testing Graph modification
 	             0 $$@ is-root?       false  test: r0 not root

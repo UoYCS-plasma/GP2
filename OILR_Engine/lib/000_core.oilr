@@ -198,8 +198,8 @@ OutputBufferStart output-buffer !
 	dup is-anon? if  drop StrAnon  return  endif
 	forever  1 cell before dup @ DoAddr = if .cfa->.label trash return endif  repeat
 ;
-: backtrace
-	rs0 @ rs-depth times   1 cell before dup @ 'spc' putc  addr->label puts repeat
+: backtrace  $( -- )
+	rs0 @ rs-depth times   1 cell before dup @ 'spc' putc  addr->label puts repeat nl
 ;
 # lambda inliner (saves lots of ' work , in immediate words)
 
@@ -209,6 +209,10 @@ OutputBufferStart output-buffer !
 	swap keep drop
 ;
 
+: set-behaviour  $( xt -- )
+	# set xt to be the behaviour for the most recently defined word
+	dictionary @ .bfa   !
+;
 # handy stack-effect checker...
 
 # exception: StackCheckFailed

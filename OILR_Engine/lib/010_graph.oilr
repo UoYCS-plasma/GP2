@@ -288,7 +288,7 @@ exception: ElementIsUnlabelled
 : has-label?     $( elem -- bool ) .elem-flags @   BFlag set? bool  ;
 : set-label-flag $( n elem --    ) stash .elem-flags @   BFlag mask   or  pop .elem-flags !  ;
 : get-label  $( elem -- n )
-?	dup has-label? not if  ElementIsUnlabelled raise  endif
+?	dup has-label?   assertion: get-label on unlabelled element
 	.elem-label @
 ;
 
@@ -329,12 +329,13 @@ exception: ElementIsUnlabelled
 ;
 ? variable: bind-ops
 : bind  $( elem -- )
-?	dup is-bound?  false  = assertion: Element already bound
+?	dup is-elem?        assertion: Can't bind a non graph element
+?	dup is-bound? not   assertion: Element already bound
 	.elem-flags dup @   IsBound 1 set-bits   swap !
 ?	bind-ops inc-var
 ;
 : unbind  $( elem -- )
-?	dup is-bound?  true   = assertion: Element already unbound
+?	dup is-bound?       assertion: Element already unbound
 	.elem-flags dup @   IsBound clear-bits   swap !
 ;
 : unbind-if-bound  $(  elem? --  )
@@ -347,7 +348,8 @@ exception: ElementIsUnlabelled
 # Boolean register
 : oilr-true  $( -- ) true  bool-flag ! ;
 : oilr-false $( -- ) false bool-flag ! ;
-
+: oilr-false?  $( -- bool )  bool-flag @ not ;
+: oilr-true?   $( -- bool )  bool-flag @ ;
 
 # create a search space
 struct: search-space
