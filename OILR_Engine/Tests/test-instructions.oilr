@@ -127,13 +127,22 @@ Testing Graph modification
 	1n has-label?      false       test: 1n unlabelled
 	'spc' putc
 
-	set-root-on-node  1n     test: set-root-on-node found 1n
-	1n is-root?       true   test: 9n root
-
+	set-root-on-node   1n          test: set-root-on-node found 1n
+	1n is-root?        true        test: 9n root
 	1n get-colour      Uncoloured  test: 1n not coloured
+	1n has-label?      false       test: 1n unlabelled
+
 	set-colour-on-node 1n          test: set-colour-on-node found 1n
+	1n is-root?        true        test: 9n root
 	1n get-colour      Red         test: 1n is Red
+	1n has-label?      false       test: 1n unlabelled
 	
+	set-label-on-node  1n          test: set-label-on-node found 1n
+	1n is-root?        true        test: 9n root
+	1n get-colour      Red         test: 1n is Red
+	1n has-label?      true        test: 1n unlabelled
+	1n get-label       42          test: 1n labelled with 42
+
 
 (	rbn 1 0      0 $$@ is-root?       true   test: r0 root
 	             0 $$@ get-colour     Uncoloured  test: r0 uncoloured
