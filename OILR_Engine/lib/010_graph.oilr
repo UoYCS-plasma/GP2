@@ -392,19 +392,28 @@ end-struct
 	endif
 	trash ->elem
 ;
-: space-next-unbound  $( spc -- node-chain? )
+: space-next-unbound  $( spc -- ?elem )
 	stash space-next-item   dup if
 		dup is-bound? if   drop pop tail: space-next-unbound   endif
 	endif
-	trash
+	trash ->elem
+	dup bool bool-flag !
 ;
-: chain-next-unbound  $( list -- elem )
+: chain-next-unbound  $( list -- ?elem )
 ?	dup  assertion: null list in chain-next-unbound
 	->next dup if
 		dup ->elem is-bound? if   tail: chain-next-unbound   endif
 	endif
 	->elem
+	dup bool bool-flag !  # set a return status
 ;
+# : ->next-unbound  $( list -- list' )
+# ?	dup  assertion: null list in next-unbound
+# 	->next dup if
+# 		dup ->elem is-bound? if  tail: ->next-unbound  endif
+# 	endif
+# ;
+
 
 # ######   Graph output   ######################################### #
 

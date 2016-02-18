@@ -1,8 +1,8 @@
 1 OILR index
 
 : tst  #ins3      $( a b dest -- )  push  * pop $$! ;
-: loo  #loopins2  $( loop-addr a reg -- ) 
-	$$! drop
+: loo  #loopins2  ( loop-addr a reg -- ) 
+	$$!  inject  
 ;
 
 oilr-true  ;
@@ -14,25 +14,21 @@ oilr-true  ;
 
 : prefix-test-rule  $( -- n )
 	1 registers
-	rss
 	tst 23 10  0
-	rsr
 	0 $$@
 ;
 : prefix-loop-rule  $( -- n )
 	1 registers
-	rss
 	loo 99 0
-	rsr
+	rsd
 	0 $$@
 ;
 
 
 : bind-node   $( -- elem )
 	1 registers
-	rss
 		bnd s0 0
-	rsr
+	rsd
 
 	rst s0
 	0 $$@
@@ -40,10 +36,10 @@ oilr-true  ;
 ;
 : bind-node-plus-loop  ( -- node edge )
 	2 registers
-	rss
 		bnd s0 0 
 		blo 0  1
-	rsr
+	rsd
+	rsd
 
 	rst s0
 		0 $$@
@@ -53,16 +49,42 @@ oilr-true  ;
 ;
 : failing-bind-two-loops $( -- )
 	3 registers
-	rss
 		bnd s0 0
 		blo 0  1
 		blo 0  2
-	rsr
+	rsd
+	rsd
+	rsd
 	rst s0
 
 	ubr 0
 	ubr 1
 	ubr 2
+;
+: set-root-on-node  $( -- node )
+	2 registers
+		bnd s0 0
+		blo 0  1
+	rsd
+	rsd
+	rst s0
+		rbn true 0
+	0 $$@
+	ubr 0
+	ubr 1
+;
+
+: set-colour-on-node  $( -- node )
+	2 registers
+		bnd s0 0
+		blo 0  1
+	rsd
+	rsd
+	rst s0
+		cbl Red 0
+	0 $$@
+	ubr 0
+	ubr 1
 ;
 
 host-graph
@@ -81,31 +103,45 @@ Testing Prefix instructions
 Testing Search plans
 	# ds-depth  0 test: Stack imbalance before instructions
 
-	bind-node            9n     test: bind-node bound 9n
+	bind-node            9n     test: bind-node found 9n
 	bool-flag @          true   test: bind-node returned true
 	9n is-bound?         false  test: bind-node 9n has been unbound 
+	'spc' putc
 
-	bind-node-plus-loop  10e    test: bind-node-plus-loop bound 1n
-	                     1n     test: bind-node-plus-loop bound 10e
+	bind-node-plus-loop  10e    test: bind-node-plus-loop found 1n
+	                     1n     test: bind-node-plus-loop found 10e
 	bool-flag @          true   test: rule succeeded
 	10e is-bound?        false  test: 10e has been unbound
 	1n  is-bound?        false  test: 1n has been unbound
+	'spc' putc
 
 	failing-bind-two-loops
 	bool-flag @          false  test: bool-flag false after failing rule
-	# 0 $$@  1 $$@  =      false  test: r1 <> r0
-	# 2 $$@                10e    test: bind loop
-	# 2 $$@ is-bound?      true   test: r2 is bound
+	1n is-bound?         false  test: 1n unbound
+	0n is-bound?         false  test: 0n unbound
+	'spc' putc
 
-# Testing Graph modification
-	             0 $$@ is-root?       false  test: r0 not root
-	rbn 1 0      0 $$@ is-root?       true   test: r0 root
+Testing Graph modification
+	1n is-root?        false       test: 9n not root
+	1n get-colour      Uncoloured  test: 1n not coloured
+	1n has-label?      false       test: 1n unlabelled
+	'spc' putc
+
+	set-root-on-node  1n     test: set-root-on-node found 1n
+	1n is-root?       true   test: 9n root
+
+	1n get-colour      Uncoloured  test: 1n not coloured
+	set-colour-on-node 1n          test: set-colour-on-node found 1n
+	1n get-colour      Red         test: 1n is Red
+	
+
+(	rbn 1 0      0 $$@ is-root?       true   test: r0 root
 	             0 $$@ get-colour     Uncoloured  test: r0 uncoloured
 	cbl Red 0    0 $$@ get-colour     Red         test: r0 red
 	             0 $$@ has-label?     false  test: r0 unlabelled
 	lbl 42 0     0 $$@ has-label?     true   test: r0 labelled
 	             0 $$@ get-label      42     test: r0 label is 42
-
+)
 	ds-depth  0 test: Stack imbalance after instructions
 
 

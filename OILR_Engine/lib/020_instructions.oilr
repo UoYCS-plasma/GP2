@@ -50,7 +50,7 @@
 #    | DBN Dst           -- Delete Bound Node 
 #    | DBE Dst           -- Delete Bound Node
 #    
-#    | RBN Dst Bool      -- set Root on Bound Node to Bool
+#    | RBN Bool Dst      -- set Root on Bound Node to Bool
 #    
 #    | CBL Dst Col       -- Colour Bound eLement
 #    | LBL Dst Int       -- Label Bound eLement with Int
@@ -94,32 +94,29 @@
 #  from the return stack?
 # Save and restore return stack pointers. These _must not_ be
 # words, otherwise their own return address will pollute the stack
-' rsp@ alias: rss  # -- rsp
-' rsp! alias: rsr  # rsp --
+# ' rsp@ alias: rss  # -- rsp
+# ' rsp! alias: rsr  # rsp --
+' trash alias: rdrop
 
 : rst #ins1  $( spc -- )
 	space-reset
 ;
 
-
 : bnd  #loopins2  ( loop-addr spc dest-reg -- )
 	$$ stash @                         # -- loop-addr spc ?node
 	dup if  unbind  else  drop  endif  # -- loop-addr spc
-	space-next-unbound ->elem          # -- loop-addr ?node
-	dup pop !  # save result to dst-reg # -- loop-addr ?node
-	dup if
-		bind inject
+	dup space-next-unbound             # -- loop-addr spc ?node
+	dup pop !  # save result to dst-reg # -- loop-addr spc ?node
+	oilr-true? if
+		# bind node, drop spc, inject loop-addr
+?		dup is-node? assertion: bnd found an edge. 
+ 		bind drop inject
 	else
-		drop drop trash
+		# drop null, reset spc, drop loop-addr, trash ret-addr
+		# of bnd and return to previous looping instr
+		drop  space-reset  drop trash
 	endif
 ;
-
-# : blo   #loopins2  $( src-reg dest-reg -- )
-	# stash $$@   unbind-if-bound     ( src-reg dest-reg -- src-reg )
-	# $$@  peek $$@    next-from-loop-chain  ( src-reg --  )
-	     # pop       bind-or-try-again
-# ;
-
 
 : blo  #loopins2  ( loop-addr src-reg dest-reg -- )
 	$$ stash @ dup if  # if we already have an edge in dest-reg
@@ -129,9 +126,11 @@
 	else
 		drop  $$@  .node-loops       # -- loop-addr list
 	endif
-	->next ->elem dup  pop !   # store next elem (or Nothing) in dest
-	dup if	                         # -- loop-addr elem
+?	dup Nothing <>    assertion: null list
+	chain-next-unbound dup  pop !   # store next elem (or Nothing) in dest
+	oilr-true? if                    # -- loop-addr elem
 		# bind elem and inject loop-addr
+?		dup is-edge?      assertion: blo found a node! :(
 		bind   inject
 	else                             # -- loop-addr null
 		# drop null, drop loop-addr, trash ret-addr of blo so that we
