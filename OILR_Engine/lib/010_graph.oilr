@@ -265,8 +265,12 @@ end-bitfield
 : unsafe-add-edge  $( src tgt -- edge )   alloc-elem init-edge        ;
 : edge             $( src tgt -- edge )   check-space unsafe-add-edge ;
 
-: delete-node      $( node -- )   dup unindex-node free-elem   ;
-: delete-edge      $( edge -- )   free-elem   ;
+: disconnect-edge  $( edge -- )
+	stash .edge-src @  # todo
+;
+
+: delete-node      $( node -- )   dup unindex-node     free-elem   ;
+: delete-edge      $( edge -- )   dup disconnect-edge  free-elem   ;
 
 
 : nodes   $( n --  )
@@ -459,7 +463,7 @@ exception: TODO
 	stash times   dup is-node? if  dup put-node  endif   next-elem  repeat   drop
 	'|' putc '\n' putc
 	host @
-	pop   times   dup is-edge? if  dup put-edge  endif   next-elem  repeat
+	pop   times   dup is-edge? if  dup put-edge  endif   next-elem  repeat   drop
 	']' putc '\n' putc
 ;
 
@@ -470,9 +474,6 @@ exception: TODO
 
 # ################################################################# #
 
-: unbind-all
-	
-;
 : registers  $( -- )  #immediate
 	[ stash times 0 repeat   pop locals ] inline
 ;

@@ -55,19 +55,46 @@
 #    | CBL Dst Col       -- Colour Bound eLement
 #    | LBL Dst Int       -- Label Bound eLement with Int
 
-: abn   #ins1  ( dest -- )
+: abn   #ins1  $( dest -- )
 	add-node  swap $$!
 ;
-: abe   #ins3  ( src tgt dest -- )
+: abe   #ins3  $( src tgt dest -- )
 	push push  $$@ pop $$@ edge   pop $$!
 ;
 
-: dbn   #ins1  ( reg -- )
-	$$@  ->elem  delete-node
+: dbn   #ins1  $( reg -- )
+	$$@  delete-node
 ;
-: dbe   #ins1  ( reg -- )
-	$$@  ->elem  delete-edge
+: dbe   #ins1  $( reg -- )
+	$$@  delete-edge
 ;
+
+
+
+: ran ;
+: rae ;
+: rdn ;
+: rde ;
+
+
+# Undo-able instructions
+: uabn  #ins1 $( dest -- )
+	add-node
+	dup b-push  ' ran b-push
+	swap $$!
+;
+: uabe  #ins3 $( src tgt dest -- )
+	push push $$@ pop $$@ edge
+	dup b-push  ' rae b-push
+	pop $$!
+;
+: udbn  #ins1 $( reg -- )
+	$$@ dup unindex-node  b-push  ' rdn b-push
+;
+: udbe
+	$$@ dup disconnect-edge  b-push  ' rde b-push
+;
+
 
 # TODO: could these be consolidated into a single tag-bound-node instruction
 #  that sets bits for rootedness, colour and labelled-ness?
@@ -139,40 +166,39 @@
 	endif
 ;
 
-#  BED :: src tgt dest --
-: bed   #loopins3  $( src tgt dest -- )
-;
-
-# : bnd  #  dest spc -- 
-# 	# traverse a search space
-# 	space-next-unbound 
-# 	dup if
-# 		dup bind
-# 		swap $$ !
-# 		make-implicit-loop
-# 		oilr-true return
-# 	endif
-# 	oilr-false
-# 	trash  # return from calling function (or initiate next cycle of implicit loop)
-# ;
-# : bed  #  dest src tgt
-# 	# Bind an edge from src to tgt
-# #	$$@ push $$@ .node-out-edges  peek next-unbound-edge-to
-# 	dup if
-# 		dup bind
-# 		swap $$ !
-# 		oilr-true return
-# 	endif
-# 	trash
-# 	oilr-false
-# ;
-: bbe  #  dest r1 r2
-;
-: ben  #  eDest nDest reg dir
+: bon  #loopins3   ( loop-addr src-reg eDest-reg nDest-reg -- )
 	# Bind an edge with one end at node in reg in dir, storing 
 	# edge in eDest and node on opposite end in nDest
-	
+	$$ stash swap $$ stash swap # -- loop src-reg e-addr n-addr
+	@ dup if                    # -- loop src-reg e-addr node
+		unbind                  # -- loop src-reg e-addr
+		@                       # -- loop src-reg edge
+?		dup assertion: bound edge cannot be null
+		dup unbind                 # -- loop src-reg edge
+		nip .edge-out-list         # -- loop list
+	else                           # -- loop src-reg e-addr null
+?		over @ Nothing =  assertion: e-dst must contain a null
+		drop drop $$@ .node-out-edges  # -- loop list
+	endif
+?	dup Nothing <>    assertion: null list in BON
+	chain-next-unbound dup  pop !  # -- loop ?edge
+	oilr-true? if                  # -- loop edge
+		dup .edge-tgt @  dup pop ! # -- loop edge node
+		bind bind inject           # -- 
+	else                           # -- loop null
+		pop !
+		drop trash
+	endif
 ;
+#  BED :: src tgt dest --
+: bed   #loopins3  ( loop-addr src tgt dest -- )
+	$$ stash @ dup if
+		dup unbind    .edge-out-list
+		nip
+	else
+	endif
+;
+
 : nec  #  src tgt
 	# check there is no edge from src to tgt
 	

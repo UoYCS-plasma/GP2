@@ -1898,9 +1898,6 @@ prim allot  # size --
 	add %eax, %edi
 next
 
-word setAsNode, "set-as-node"
-end
-
 
 
 .section .rodata

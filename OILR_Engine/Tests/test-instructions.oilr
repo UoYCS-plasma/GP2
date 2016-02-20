@@ -47,7 +47,7 @@ oilr-true  ;
 	ubr 0
 	ubr 1
 ;
-: failing-bind-two-loops $( -- )
+: failing-bind-two-loops ( -- )
 	3 registers
 		bnd s0 0
 		blo 0  1
@@ -61,20 +61,20 @@ oilr-true  ;
 	ubr 1
 	ubr 2
 ;
-: set-root-on-node  $( -- node )
+: set-root-on-node  ( -- node )
 	2 registers
 		bnd s0 0
 		blo 0  1
 	rsd
 	rsd
 	rst s0
-		rbn true 0
+		rbn 1 0
 	0 $$@
 	ubr 0
 	ubr 1
 ;
 
-: set-colour-on-node  $( -- node )
+: set-colour-on-node  ( -- node )
 	2 registers
 		bnd s0 0
 		blo 0  1
@@ -87,10 +87,55 @@ oilr-true  ;
 	ubr 1
 ;
 
+: set-label-on-node  ( -- node )
+	2 registers
+		bnd s0 0
+		blo 0  1
+	rsd
+	rsd
+	rst s0
+		lbl 42 0
+
+		0 $$@
+	ubr 0
+	ubr 1
+;
+
+: grow-match  ( -- node edge node )
+	3 registers
+		bnd s0 0
+		bon 0  1 2
+	rsd
+	rsd
+	rst s0
+		2 $$@  1 $$@  0 $$@
+	ubr 0
+	ubr 1
+	ubr 2
+;
+: bigger-match  ( -- node edge node )
+	5 registers
+		bnd s0 0
+		bon 0  1 2
+		bon 2  3 4
+	rsd
+	rsd
+	rsd
+	rst s0
+		4 $$@  3 $$@  2 $$@  1 $$@  0 $$@
+	ubr 0
+	ubr 1
+	ubr 2
+	ubr 3
+	ubr 4
+;
+
+
 host-graph
 	10 nodes
 
 	1n --> 1n path
+	8n --> 9n path
 	2n --> 3n --> 4n path
 
 
@@ -127,21 +172,38 @@ Testing Graph modification
 	1n has-label?      false       test: 1n unlabelled
 	'spc' putc
 
-	set-root-on-node   1n          test: set-root-on-node found 1n
-	1n is-root?        true        test: 9n root
-	1n get-colour      Uncoloured  test: 1n not coloured
-	1n has-label?      false       test: 1n unlabelled
-
 	set-colour-on-node 1n          test: set-colour-on-node found 1n
-	1n is-root?        true        test: 9n root
+	1n is-root?        false       test: 9n root
 	1n get-colour      Red         test: 1n is Red
 	1n has-label?      false       test: 1n unlabelled
+	'spc' putc
 	
+	set-root-on-node   1n          test: set-root-on-node found 1n
+	1n is-root?        true        test: 9n root
+	1n get-colour      Red         test: 1n coloured Red
+	1n has-label?      false       test: 1n unlabelled
+	'spc' putc
+
 	set-label-on-node  1n          test: set-label-on-node found 1n
 	1n is-root?        true        test: 9n root
 	1n get-colour      Red         test: 1n is Red
 	1n has-label?      true        test: 1n unlabelled
 	1n get-label       42          test: 1n labelled with 42
+
+Testing BON instruction
+	grow-match
+	bool-flag @         true       test: match worked
+    get-elem-id         8          test: src node
+	get-elem-id         11        test: out edge
+	get-elem-id         9         test: tgt node
+
+	bigger-match
+	bool-flag @         true       test: match worked
+    get-elem-id         2          test: src node
+	get-elem-id         12        test: out edge
+	get-elem-id         3         test: tgt node
+	get-elem-id         13        test: out edge
+	get-elem-id         4         test: tgt
 
 
 (	rbn 1 0      0 $$@ is-root?       true   test: r0 root
