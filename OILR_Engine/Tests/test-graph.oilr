@@ -78,12 +78,12 @@ Testing List deletion
 ;
 
 bitfield
-	1 bits:   Pugh
+	1 bits:  Pugh
 	2 bits:  Pugh'
 	1 bits:  Barney-McGrew
-	1 bits:   Cuthbert
+	1 bits:  Cuthbert
 	3 bits:  Dibble
-	1 bits:   Grub
+	1 bits:  Grub
 end-bitfield
 
 Testing Bit-fields

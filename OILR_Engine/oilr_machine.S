@@ -1537,6 +1537,12 @@ word growHeap "grow-heap"  # n --
 	.long getBrkAddr, add, setBrkAddr, drop
 end
 
+word inDict, "in-dict?"  #  addr -- bool
+	.long HeapBaseAddr, dictPtr, get, between
+end
+
+
+
 
 # System interface ########################################
 
@@ -1679,14 +1685,28 @@ word compileLiteral, "compile-literal" // n --
 	.long quote, lit, storeinc, storeinc
 end
 
-word backtrace
-	.long rs0, get, rsDepth
+prim addrToLabel, "addr-to-label"  # dict-addr -- label?
+	mov var_dictionary, %eax	
+	pop %edx
 1:
-	.long dup, zbranch, JUMP(2f)
-	.long swap, One, cell
-	.long branch, JUMP(1b)
+	mov (%eax), %eax
+	test %eax, %eax
+	jz 2f
+	cmp %eax, %edx
+	ja 1f
+	jmp 1b
+1:
+	add $LFA_OFFS, %eax
+	mov (%eax), %eax
 2:
-end
+	push %eax
+next
+
+# : addr->label  $( addr -- label ) 
+# 	# get the label from an arbitrary point in a word definition
+# 	dup is-anon? if  drop StrAnon  return  endif
+# 	forever  1 cell before dup @ DoAddr = if .cfa->.label trash return endif  repeat
+# ;
 # : backtrace
 #	rs0 @ rs-depth times   1 cell before dup @ 'spc' putc  addr->label puts repeat
 #;

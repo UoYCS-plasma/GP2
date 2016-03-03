@@ -265,6 +265,9 @@ end-bitfield
 : unsafe-add-edge  $( src tgt -- edge )   alloc-elem init-edge        ;
 : edge             $( src tgt -- edge )   check-space unsafe-add-edge ;
 
+: connect-edge     $( edge -- )
+	# todo
+;
 : disconnect-edge  $( edge -- )
 	stash .edge-src @  # todo
 ;

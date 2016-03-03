@@ -70,11 +70,42 @@
 ;
 
 
-
-: ran ;
-: rae ;
-: rdn ;
-: rde ;
+# reverse add-node
+: ran   ( <added-node> -- )
+	1 take
+	oilr-true? if  # commit
+		drop
+	else  # rollback
+		delete-node
+	endif
+;
+# reverse add-edge
+: rae   ( <added-edge> -- )
+	1 take
+	oilr-true? if  # commit
+		drop
+	else   # rollback
+		delete-edge
+	endif
+;
+# reverse delete-node
+: rdn   ( <deleted-node> -- )
+	1 take
+	oilr-true? if  # commit
+		free-elem
+	else   # rollback
+		index-node
+	endif
+;
+# reverse delete-edge
+: rde   ( <deleted-edge> -- )
+	1 take
+	oilr-true? if  # commit
+		free-elem
+	else   # rollback
+		connect-edge
+	endif
+;
 
 
 # Undo-able instructions
@@ -123,7 +154,7 @@
 # words, otherwise their own return address will pollute the stack
 # ' rsp@ alias: rss  # -- rsp
 # ' rsp! alias: rsr  # rsp --
-' trash alias: rdrop
+' trash alias: rsd
 
 : rst #ins1  $( spc -- )
 	space-reset
@@ -190,6 +221,30 @@
 		drop trash
 	endif
 ;
+
+: bin  #loopins3   ( loop-addr src-reg eDest-reg nDest-reg --  )
+	$$ stash swap $$ stash swap 
+	@ dup if
+		unbind
+		@ 
+?		dup assertion: bound edge cannot be null
+		dup unbind
+		nip .edge-in-list
+	else
+?		over @ Nothing = assertion: e-dst must contain a null
+		drop drop $$@ .node-in-edges
+	endif
+? 	dup Nothing <>   assertion: null list in BIN
+	chain-next-unbound dup pop !
+	oilr-true? if
+		dup .edge-src @ dup pop !
+		bind bind inject
+	else
+		pop !
+		drop trash
+	endif
+;
+
 #  BED :: src tgt dest --
 : bed   #loopins3  ( loop-addr src tgt dest -- )
 	$$ stash @ dup if
@@ -262,6 +317,8 @@
 : nop ;
 ' oilr-true  alias: tru
 ' oilr-false alias: fls
+' 1+ alias: inc
+' 1- alias: dec
 : ubr  #ins1  $( n -- )
 	# Unbind element held register n
 ?	dup $$@  is-elem?  assertion: Attempted to unbind an invalid register

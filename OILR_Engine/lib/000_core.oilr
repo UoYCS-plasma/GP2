@@ -185,24 +185,29 @@ OutputBufferStart output-buffer !
 	10 decompose
 	_c
 ;
-: clear-output   OutputBufferStart output-buffer !   ;  $( -- )
-: flush-output
+: clear-output   $( -- )  OutputBufferStart output-buffer !   ;
+: flush-output   $( -- )
 	0   output-buffer @   ! # guarantee null-termination
 	OutputBufferStart putz
 	clear-output
 ;
 
-# debugging helper
-: addr->label  $( addr -- label ) 
-	# get the label from an arbitrary point in a word definition
-	dup is-anon? if  drop StrAnon  return  endif
-	forever  1 cell before dup @ DoAddr = if .cfa->.label trash return endif  repeat
-;
-: backtrace  $( -- )
-	rs0 @ rs-depth times   1 cell before dup @ 'spc' putc  addr->label puts repeat nl
-;
-# lambda inliner (saves lots of ' work , in immediate words)
 
+# debugging helper
+: backtrace  $( -- )
+	rs0 @ rs-depth times
+		1 cell before dup @
+		'spc' putc
+		dup in-dict? if
+			addr-to-label puts
+		else
+			putx
+		endif
+	repeat nl
+;
+# ? [ backtrace raise ] as raise
+
+# lambda inliner (saves lots of ' work , in immediate words)
 : inline  $( lambda -- )
 	stash data-length CellBits shift-down  2 -
 	pop   1 cell after

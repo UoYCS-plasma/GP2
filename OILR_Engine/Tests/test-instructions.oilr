@@ -10,7 +10,7 @@ oilr-true  ;
 0 1 space: s0
 0 1 space: s1
 
-' trash alias: rsd
+# ' trash alias: rsd
 
 : prefix-test-rule  $( -- n )
 	1 registers
@@ -130,6 +130,35 @@ oilr-true  ;
 	ubr 4
 ;
 
+: grow-match-in  ( -- node edge node )
+	3 registers
+		bnd s0 0
+		bin 0  1 2
+	rsd
+	rsd
+	rst s0
+		2 $$@  1 $$@  0 $$@
+	ubr 0
+	ubr 1
+	ubr 2
+;
+: bigger-match-in  ( -- node edge node )
+	5 registers
+		bnd s0 0
+		bin 0  1 2
+		bin 2  3 4
+	rsd
+	rsd
+	rsd
+	rst s0
+		4 $$@  3 $$@  2 $$@  1 $$@  0 $$@
+	ubr 0
+	ubr 1
+	ubr 2
+	ubr 3
+	ubr 4
+;
+
 
 host-graph
 	10 nodes
@@ -205,6 +234,20 @@ Testing BON instruction
 	get-elem-id         13        test: out edge
 	get-elem-id         4         test: tgt
 
+Testing BIN instruction
+	grow-match-in
+	bool-flag @         true       test: match worked
+    get-elem-id         9          test: src node
+	get-elem-id         11        test: out edge
+	get-elem-id         8         test: tgt node
+
+	bigger-match-in
+	bool-flag @         true       test: match worked
+    get-elem-id         4          test: src node
+	get-elem-id         13        test: out edge
+	get-elem-id         3         test: tgt node
+	get-elem-id         12        test: out edge
+	get-elem-id         2         test: tgt
 
 (	rbn 1 0      0 $$@ is-root?       true   test: r0 root
 	             0 $$@ get-colour     Uncoloured  test: r0 uncoloured
