@@ -8,16 +8,16 @@ import System.Exit
 
 import Text.Parsec
 
-import OILR3.Instructions
-import OILR3.Preprocessor
-import OILR3.HostCompile
+import OILR4.Instructions
+import OILR4.Preprocessor
+import OILR4.HostCompile
 -- import OILR3.ProgCompile
-import OILR3.Config
-import OILR3.IR
-import OILR3.Optimiser
+import OILR4.Config
+import OILR4.IR
+import OILR4.Optimiser
 -- import OILR3.CBackend
 
-import OILR3.Backends.C
+import OILR4.Backends.C
 
 -- import GPSyntax -- debug code
 import ParseGraph
