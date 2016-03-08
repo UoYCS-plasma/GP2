@@ -1,6 +1,6 @@
-module OILR3.Config where
+module OILR4.Config where
 
-import OILR3.IR
+import OILR4.IR
 
 import Mapping
 
@@ -13,7 +13,7 @@ data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules 
 
 
 data OilrConfig = OilrConfig { compilerFlags  :: [Flag]
-                             , predicateRules :: [Id]   }
+                             , predicateRules :: [Id] }
 
 
 configureOilrMachine :: [Flag] -> [OilrIR] -> OilrConfig

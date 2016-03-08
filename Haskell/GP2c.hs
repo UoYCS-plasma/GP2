@@ -9,15 +9,11 @@ import System.Exit
 import Text.Parsec
 
 import OILR4.Instructions
-import OILR4.Preprocessor
 import OILR4.HostCompile
--- import OILR3.ProgCompile
 import OILR4.Config
 import OILR4.IR
 import OILR4.Optimiser
--- import OILR3.CBackend
 
-import OILR4.Backends.C
 
 -- import GPSyntax -- debug code
 import ParseGraph
@@ -97,11 +93,11 @@ main = do
             if OilrInstructions `elem` flags
                 then putStrLn $ show prog
                 else return ()
-            let progC = progToC flags prog
-            let hostC = hostToC host
-            let compiler = getCompilerFor flags
-            writeFile targ $ progC ++ hostC
-            callCCompiler compiler exe targ
+            -- let progC = progToC flags prog
+            -- let hostC = hostToC host
+            -- let compiler = getCompilerFor flags
+            -- writeFile targ $ progC ++ hostC
+            -- callCCompiler compiler exe targ
         _ -> do
             error "Nope"
 

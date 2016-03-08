@@ -1,9 +1,9 @@
-module OILR3.Optimiser where
+module OILR4.Optimiser where
 
 import Mapping
 
-import OILR3.Config
-import OILR3.IR
+import OILR4.Config
+import OILR4.IR
 
 import Debug.Trace
 

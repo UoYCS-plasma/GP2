@@ -1,4 +1,4 @@
-module OILR3.Preprocessor (ppProg) where
+module OILR4.Preprocessor (ppProg) where
 
 import GPSyntax
 import Mapping

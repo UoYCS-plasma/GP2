@@ -1,9 +1,11 @@
-module OILR3.IR where
+module OILR4.IR where
 
 import Data.List
 
 import GPSyntax
 import Graph
+
+import Mapping
 
 type Id = String
 
@@ -16,9 +18,19 @@ data IRLabel = IRInt Int
              | IREmpty
      deriving (Show, Eq)
 
-type OILRig = (Int, Int, Int, Bool)
+data Sig = Sig { outDeg      :: Int
+               , inDeg       :: Int
+               , loopDeg     :: Int
+               , rootDeg     :: Bool }
+     deriving (Show, Eq) 
 
-data OilrElem = IRNode  Id  Colour  IRLabel  OILRig
+instance Ord Sig where
+    (Sig _ _ _ True) `compare` (Sig _ _ _ False) = GT
+    (Sig _ _ _ False) `compare` (Sig _ _ _ True) = LT
+    (Sig o1 i1 l1 _) `compare` (Sig o2 i2 l2 _)  = (o1+i1+l1) `compare` (o2+i2+l2)
+
+
+data OilrElem = IRNode  Id  Colour  IRLabel  Sig
               | IREdge  Id  Colour  IRLabel  Bool  Id Id
               | IREql   IRLabel IRLabel
               | IRNot   OilrElem
@@ -80,8 +92,21 @@ ruleIR (AstRule id vs (lhs, rhs) cond) = ruleGraphIR lhs rhs ++ irConds
 -- Compile a pair of GP2 graphs to an IR rule
 ruleGraphIR :: AstRuleGraph -> AstRuleGraph -> OilrRule
 ruleGraphIR lhs rhs = nodes ++ edges
-    where nodes = map irNode $ allNodePairs lhs rhs
+    where nodes = map (irNode sigs) $ allNodePairs lhs rhs
           edges = makeIREdges lhs rhs
+          sigs  = makeSigs lhs
+
+makeSigs :: AstRuleGraph -> Mapping Id Sig
+makeSigs (AstRuleGraph ns es) = map makeSig ns
+    where makeSig :: RuleNode -> (Id, Sig)
+          makeSig (RuleNode id r _) = (id, Sig (nO id es) (nI id es) (nL id es) r) 
+          nO :: Id -> [AstRuleEdge] -> Int
+          nO id es = length $ filter (\(AstRuleEdge _ _ src tgt _) -> src == id && tgt /= id) es
+          nI :: Id -> [AstRuleEdge] -> Int
+          nI id es = length $ filter (\(AstRuleEdge _ _ src tgt _) -> tgt == id && src /= id) es
+          nL :: Id -> [AstRuleEdge] -> Int
+          nL id es = length $ filter (\(AstRuleEdge _ _ src tgt _) -> src == id && tgt == id) es
+
 
 -- Make sure conditional rules are compiled correctly
 ruleCondIR :: Condition -> OilrElem
@@ -178,8 +203,8 @@ makeIREdge (AstRuleEdge _ bidi src tgt (RuleLabel l c)) =
 -- IR creation functions
 ---------------------------------------------------------------------
 
-irNode :: (Maybe RuleNode, Maybe RuleNode) -> OilrMod OilrElem
-irNode = irElem makeIRNode (==)
+irNode :: Mapping Id Sig -> (Maybe RuleNode, Maybe RuleNode) -> OilrMod OilrElem
+irNode sigs = irElem (makeIRNode sigs) (==)
 
 irEdge :: (Maybe AstRuleEdge, Maybe AstRuleEdge) -> OilrMod OilrElem
 irEdge = irElem makeIREdge edgeEquality
@@ -191,9 +216,10 @@ irElem mkElem eql (Just l,  Just r)
             | l `eql` r  =  Same   (mkElem l)
             | otherwise  =  Change (mkElem l) (mkElem r)
 
-makeIRNode :: RuleNode -> OilrElem
-makeIRNode (RuleNode id root (RuleLabel l c)) = IRNode id c i (0,0,0,root)
+makeIRNode :: Mapping Id Sig -> RuleNode -> OilrElem
+makeIRNode sigs (RuleNode id root (RuleLabel l c)) = IRNode id c i sig
     where i = makeIRLabel l
+          sig = definiteLookup id sigs
 
 makeIRLabel :: [RuleAtom] -> IRLabel
 makeIRLabel []                  = IREmpty

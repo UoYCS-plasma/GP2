@@ -1,9 +1,9 @@
-module OILR3.Instructions where
+module OILR4.Instructions where
 
 import Data.List
 import Data.Bits
 
-import OILR3.IR
+import OILR4.IR
 
 import GPSyntax   -- for colours
 import Mapping    -- for mappings
@@ -20,7 +20,7 @@ colourIds = [ (Uncoloured, 0)
 edgeColourIds :: Mapping Colour Int
 edgeColourIds = [ (Uncoloured, 0) , (Dashed, 1) ]
 
-data Dir = In | Out | Either deriving (Eq, Show)
+-- data Dir = In | Out | Either deriving (Eq, Show)
 
 -- Match registers...
 type Dst = Int
@@ -42,12 +42,16 @@ data OilrIndexBits = OilrIndexBits { bBits::Int
                                    , lBits::Int
                                    , rBits::Int } deriving (Show, Eq)
 
+oilrIndexBits = OilrIndexBits 1 3 2 2 2 1
+
 -- Machine structure
 --
 -- Registers:  bool-flag   b-frame-pointer   match-reg-file
 
 data Instr =
       OILR Int          -- Number of OILR indices
+    | REGS Int          -- Size of local register file
+    | SUC               -- Match success. Clean up after matching, and possibly recurse
     -- Graph modification
     | ABN Dst           -- Add and Bind Node to register Dst
     | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
@@ -61,8 +65,10 @@ data Instr =
 
     -- Graph search
     | BND Dst Spc          -- Bind next unbound NoDe in Spc to Dst
-    | BED Dst Reg Reg Dir  -- Bind EDge between Regs in Dir
-    | BEN Dst Dst Src Dir  -- Bind Edge and Node by following an edge in Dir from Src
+    | BED Dst Reg Reg      -- Bind EDge from Reg1 to Reg2
+    | BON Dst Dst Src      -- Bind Edge and Node by following an edge from Src
+    | BIN Dst Dst Src      -- Bind Edge and Node by following an edge from Src
+    | BLO Dst Reg          -- Bind a LOop on node in Reg
     | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
 
     -- Definitions & program structure
@@ -84,7 +90,7 @@ data Instr =
     -- There is no rollback command. This needs to be done manually with reverse rules.
 
     -- Stack machine
-    | BLO Dst              -- push Bound eLement Out-degree to stack
+    -- | BLO Dst              -- push Bound eLement Out-degree to stack
     | BLI Dst              -- push Bound eLement In-degree to stack
     | BLL Dst              -- push Bound eLement looP-degree to stack
     | BLR Dst              -- push Bound eLement Rootedness to stack
@@ -133,8 +139,8 @@ compile (IRRule name es) = DEF (mangle name) : compileRule es
 
 -- Compile a rule definition
 compileRule :: OilrRule -> [Instr]
-compileRule ms = lhs ++ rhs
-    where (regs, lhs, rhs) = foldr compileMod ([], [], [RET]) $ reverse ms
+compileRule ms = REGS (length regs) : reverse (SUC:lhs) ++ reverse (RET:rhs)
+    where (regs, lhs, rhs) = foldr compileMod ([], [], []) $ reverse ms
 
 
 sortRule :: OilrRule -> OilrRule
@@ -179,10 +185,11 @@ compileMod (Change left right) (regs, lhs, rhs) = case (left, right) of
     (IREdge id _ _ bi s t, IREdge _ _ _ _ _ _)
                          -> ( (id,r):regs, bed regs r s t bi:lhs  , diffs regs r left right ++ rhs )
     where r = length regs
-
+compileMod (Check (IRNot (IREdge id _ _ _ s t))) (regs, lhs, rhs) = (regs, nec regs s t:lhs, rhs)
+-- compileMod x _ = error $ show x
 
 diffs :: Mapping Id Int -> Reg -> OilrElem -> OilrElem -> [Instr]
-diffs regs r (IRNode ib cb lb (_,_,_,rb)) (IRNode ia ca la (_,_,_,ra)) =
+diffs regs r (IRNode ib cb lb (Sig _ _ _ rb)) (IRNode ia ca la (Sig _ _ _ ra)) =
     concat [ if cb /= ca then [CBL r $ definiteLookup ca colourIds] else []
            , if lb /= la then [LBL r 0] else []     -- TODO: label support
            , if rb /= ra then [RBN r ra] else [] ]
@@ -196,11 +203,13 @@ diffs regs r (IREdge ib cb lb bb sb tb) (IREdge ia ca la ba sa ta)
     | otherwise            = error "Edge source and target should not change"
 
 bed :: Mapping Id Reg -> Reg -> Id -> Id -> Bool -> Instr
-bed regs r s t bidi = BED r (definiteLookup s regs) (definiteLookup t regs) (if bidi then Either else Out)
+bed regs r s t bidi = BED r (definiteLookup s regs) (definiteLookup t regs)
 
 abe :: Mapping Id Reg -> Reg -> Id -> Id -> Instr
 abe regs r s t = ABE r (definiteLookup s regs) (definiteLookup t regs)
 
+nec :: Mapping Id Reg -> Id -> Id -> Instr
+nec regs s t = NEC (definiteLookup s regs) (definiteLookup t regs)
 
 compileExpr :: Int -> OilrExpr -> [Instr]
 compileExpr i (IRRuleSet rs)       = compileSet (i+1) rs

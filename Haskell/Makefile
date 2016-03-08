@@ -5,10 +5,10 @@ TARGETS=gp2 gp2c ViewGraph IsoChecker
 
 all : tags $(TARGETS)
 
-gp2c : GP2c.hs OILR3/CRuntime.hs
+gp2c : GP2c.hs OILR4/CRuntime.hs
 	$(GHC) -o $@ $<
 
-OILR3/CRuntime.hs : OILR3/oilrrt.c
+OILR3/CRuntime.hs : OILR4/oilrrt.c
 	touch OILR3/CRuntime.hs
 
 gp2 : Main.hs

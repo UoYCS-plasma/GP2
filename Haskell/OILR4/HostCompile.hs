@@ -1,6 +1,6 @@
-module OILR3.HostCompile (compileHostGraph) where
+module OILR4.HostCompile (compileHostGraph) where
 
-import OILR3.Instructions
+import OILR4.Instructions
 
 import GPSyntax
 import Graph
