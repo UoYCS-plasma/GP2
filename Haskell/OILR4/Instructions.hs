@@ -4,6 +4,7 @@ import Data.List
 import Data.Bits
 
 import OILR4.IR
+import OILR4.Spaces
 
 import GPSyntax   -- for colours
 import Mapping    -- for mappings
@@ -30,19 +31,9 @@ type Reg = Int
 
 -- Other instr params
 type Col = Int
-type Spc = Int
 
 type Target = String
 
-
-data OilrIndexBits = OilrIndexBits { bBits::Int
-                                   , cBits::Int
-                                   , oBits::Int
-                                   , iBits::Int
-                                   , lBits::Int
-                                   , rBits::Int } deriving (Show, Eq)
-
-oilrIndexBits = OilrIndexBits 1 3 2 2 2 1
 
 -- Machine structure
 --
@@ -52,6 +43,7 @@ data Instr =
       OILR Int          -- Number of OILR indices
     | REGS Int          -- Size of local register file
     | SUC               -- Match success. Clean up after matching, and possibly recurse
+    | UBN Int           -- UnBiNd elements in n registers (possibly superfluous?)
     -- Graph modification
     | ABN Dst           -- Add and Bind Node to register Dst
     | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
@@ -139,7 +131,7 @@ compile (IRRule name es) = DEF (mangle name) : compileRule es
 
 -- Compile a rule definition
 compileRule :: OilrRule -> [Instr]
-compileRule ms = REGS (length regs) : reverse (SUC:lhs) ++ reverse (RET:rhs)
+compileRule ms = REGS (length regs) : reverse (SUC:lhs) ++ reverse (RET:UBN (length regs):rhs)
     where (regs, lhs, rhs) = foldr compileMod ([], [], []) $ reverse ms
 
 
@@ -172,16 +164,18 @@ compileMod (Create x) (regs, lhs, rhs) = case x of
     (IREdge id _ _ _ s t ) -> ( (id,r):regs, lhs                  , abe regs r s t:rhs )
     where r = length regs
 compileMod (Delete x) (regs, lhs, rhs) = case x of
-    (IRNode id _ _ _)      -> ( (id,r):regs, BND r 1:lhs          , DBN r:rhs )
+    (IRNode id _ _ _)      -> ( (id,r):regs, BND r spc:lhs          , DBN r:rhs )
     (IREdge id _ _ bi s t) -> ( (id,r):regs, bed regs r s t bi:lhs, DBE r:rhs )
     where r = length regs
+          spc = makeSpc (Delete x)
 compileMod (Same x)   (regs, lhs, rhs) = case x of
-    IRNode id _ _ _      -> ((id, r):regs, BND r 0:lhs            , rhs)
+    IRNode id _ _ _      -> ((id, r):regs, BND r spc:lhs            , rhs)
     IREdge id _ _ bi s t -> ((id, r):regs, bed regs r s t bi:lhs  , rhs)
     where r = length regs
+          spc = makeSpc (Same x)
 compileMod (Change left right) (regs, lhs, rhs) = case (left, right) of
     (IRNode id _ _ _     , IRNode _ _ _ _)
-                         -> ( (id,r):regs, BND r 2:lhs            , diffs regs r left right ++ rhs )
+                         -> ( (id,r):regs, BND r (makeSpc $ Change left right):lhs            , diffs regs r left right ++ rhs )
     (IREdge id _ _ bi s t, IREdge _ _ _ _ _ _)
                          -> ( (id,r):regs, bed regs r s t bi:lhs  , diffs regs r left right ++ rhs )
     where r = length regs

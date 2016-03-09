@@ -11,9 +11,19 @@ import Data.List
 
 data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace | Compile32Bit | CompactLists deriving (Eq, Show)
 
+data OilrIndexBits = OilrIndexBits { bBits::Int
+                                   , cBits::Int
+                                   , oBits::Int
+                                   , iBits::Int
+                                   , lBits::Int
+                                   , rBits::Int } deriving (Show, Eq)
+
+indBits = OilrIndexBits 1 3 2 2 2 1
+
+
 
 data OilrConfig = OilrConfig { compilerFlags  :: [Flag]
-                             , predicateRules :: [Id] }
+                             , predicateRules :: [String] }
 
 
 configureOilrMachine :: [Flag] -> [OilrIR] -> OilrConfig

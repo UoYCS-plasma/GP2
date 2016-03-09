@@ -4,7 +4,6 @@ import Data.List
 
 import GPSyntax
 import Graph
-
 import Mapping
 
 type Id = String
@@ -51,6 +50,9 @@ data OilrExpr = IRSeqn [OilrExpr]
               | IRRuleSet [Id] | IRCall Id | IRLoop OilrExpr
               | IRTrue | IRFals
      deriving (Show, Eq)
+
+type Spc = [Sig]
+
 
 -- IR compilation wrapper function
 makeIR :: GPProgram -> OilrProg
