@@ -13,6 +13,7 @@ import OILR4.HostCompile
 import OILR4.Config
 import OILR4.IR
 import OILR4.Optimiser
+import OILR4.OILROptim
 
 
 -- import GPSyntax -- debug code
@@ -85,8 +86,8 @@ main = do
             hAST <- parseHostGraph hostFile
             let ir = makeIR pAST
             let cf = configureOilrMachine flags ir
-            let prog   = compileProg $ optimise cf ir
-            putStrLn $ prettyPrint prog
+            let (cf', prog) = compileProg cf $ optimise cf ir
+            putStrLn $ prettyPrint cf' prog
             -- let prog = compileProgram flags pAST
             let host = compileHostGraph hAST
             -- putStrLn $ show prog

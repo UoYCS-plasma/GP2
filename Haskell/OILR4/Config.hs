@@ -2,12 +2,15 @@ module OILR4.Config where
 
 import OILR4.IR
 
+import GPSyntax  -- for colours
 import Mapping
 
 import Data.List
 
 -- OilrConfig represents the global configuration of the OILR machine
 -- for the current program.
+
+type Ind = Int  -- An OILR index is just an integer
 
 data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace | Compile32Bit | CompactLists deriving (Eq, Show)
 
@@ -23,13 +26,24 @@ indBits = OilrIndexBits 1 3 2 2 2 1
 
 
 data OilrConfig = OilrConfig { compilerFlags  :: [Flag]
-                             , predicateRules :: [String] }
+                             , predicateRules :: [String]
+                             , searchSpaces   :: Mapping Int [Ind]}
+
+colourIds :: Mapping Colour Int
+colourIds = [ (Uncoloured, 0)
+            , (Red       , 1)
+            , (Blue      , 2)
+            , (Green     , 3)
+            , (Grey      , 4) ]
+edgeColourIds :: Mapping Colour Int
+edgeColourIds = [ (Uncoloured, 0) , (Dashed, 1) ]
 
 
 configureOilrMachine :: [Flag] -> [OilrIR] -> OilrConfig
 configureOilrMachine flags prog =
     OilrConfig { predicateRules = findPredicateRules prog 
-               , compilerFlags  = flags }
+               , compilerFlags  = flags
+               , searchSpaces   = []}
 
 
 

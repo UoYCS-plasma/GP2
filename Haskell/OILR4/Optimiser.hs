@@ -31,9 +31,10 @@ optimiseExpr :: OilrConfig -> OilrExpr -> OilrExpr
 -- Move transaction for sequences that begin with predicate rules...
 optimiseExpr cf (IRTrns (IRSeqn [e])) = optimiseExpr cf e
 optimiseExpr cf (IRTrns (IRSeqn (e:es)))
-    | all isLoop es = IRSeqn (optimiseExpr cf e:[optimiseExpr cf e' | e' <- es])
+    -- Sequences where all but the first rule are looped don't require backtracking either...
+    | all isLoop es = IRSeqn ([optimiseExpr cf e' | e' <- (e:es)])
     -- | isPredicate cf e = IRSeqn [ optimiseExpr cf e,  optimiseExpr cf (IRTrns (IRSeqn es)) ]
-    | otherwise  = IRTrns $ IRSeqn $ map (optimiseExpr cf) (e:es)
+    | otherwise     = IRTrns $ IRSeqn $ map (optimiseExpr cf) (e:es)
 -- Simplify singlet sequences
 optimiseExpr cf (IRSeqn [x]) = optimiseExpr cf x
 -- Remove unneeded transactions introduced by previous rule
@@ -42,6 +43,7 @@ optimiseExpr cf (IRTrns e) = case e of
     (IRSeqn es)  -> IRTrns $ IRSeqn $ map (optimiseExpr cf) es
     _            -> optimiseExpr cf e
 -- Terminal cases
+optimiseExpr cf (IRSeqn es) = IRSeqn $ map (optimiseExpr cf) es
 optimiseExpr cf (IRLoop e) = IRLoop $ optimiseExpr cf e
 optimiseExpr cf (IRIf (IRRuleSet rs) th el)
     -- TODO: Optimise more non-transactional if cases...

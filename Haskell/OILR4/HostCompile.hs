@@ -1,5 +1,6 @@
 module OILR4.HostCompile (compileHostGraph) where
 
+import OILR4.Config
 import OILR4.Instructions
 
 import GPSyntax
