@@ -49,9 +49,11 @@ data Instr =
 
     -- Graph search
     | BND Dst Sid          -- Bind next unbound NoDe in Spc to Dst
-    | BED Dst Reg Reg      -- Bind EDge from Reg1 to Reg2
-    | BON Dst Dst Src      -- Bind Edge and Node by following an edge from Src
-    | BIN Dst Dst Src      -- Bind Edge and Node by following an edge from Src
+    | BOE Dst Src Tgt      -- Bind Out Edge from Src to Tgt
+    | BED Dst Reg Reg      -- Bind an EDge between Regs in either direction
+    | BON Dst Dst Src      -- Bind Out-edge and Node by following one of Src's outgoing edges
+    | BIN Dst Dst Tgt      -- Bind In-edge and Node by following one of Tgt's incoming edges
+    | BEN Dst Dst Reg      -- Bind Edge and Node in either direction from Reg
     | BLO Dst Reg          -- Bind a LOop on node in Reg
     | NEC Src Tgt          -- Negative Edge Condition from Src to Tgt
 
@@ -208,7 +210,9 @@ diffs regs r (IREdge ib cb lb bb sb tb) (IREdge ia ca la ba sa ta)
     | otherwise            = error "Edge source and target should not change"
 
 bed :: Mapping Id Reg -> Reg -> Id -> Id -> Bool -> Instr
-bed regs r s t bidi = BED r (definiteLookup s regs) (definiteLookup t regs)
+bed regs r s t False = BOE r (definiteLookup s regs) (definiteLookup t regs)
+bed regs r s t True  = BED r (definiteLookup s regs) (definiteLookup t regs)
+
 
 abe :: Mapping Id Reg -> Reg -> Id -> Id -> Instr
 abe regs r s t = ABE r (definiteLookup s regs) (definiteLookup t regs)
