@@ -31,10 +31,17 @@ type Target = String
 --
 -- Registers:  bool-flag   b-frame-pointer   match-reg-file
 
+type Prog = [Definition]
+type Definition = ( String,  ([Instr], DefBody, [Instr]) )
+data DefBody = ProcBody [Instr]
+             --          lhs     rhs
+             | RuleBody [Instr] [Instr]
+    deriving (Show, Eq)
+
 data Instr =
       OILR Int          -- Number of OILR indices
     | REGS Int          -- Size of local register file
-    | SUC               -- Match success. Clean up after matching, and possibly recurse
+    | SUC               -- Match success. Clean up after matchingthey, and possibly recurse
     | UBN Int           -- UnBiNd elements in n registers (possibly superfluous?)
     -- Graph modification
     | ABN Dst           -- Add and Bind Node to register Dst
@@ -99,27 +106,43 @@ data Instr =
 --    | STFT Int Feature     -- set the number of available Feature to be Int
     deriving (Show, Eq)
 
-prettyPrint :: OilrConfig -> [[Instr]] -> String
-prettyPrint cf iss = ssDefs ++ instrs
-    where instrs = concat $ concat [[ prettyPrintIns i ++ "\n" | i <- is ] | is <- iss ]
+
+prettyPrint :: OilrConfig -> Prog -> String
+prettyPrint cf prog = ssDefs ++ instrs
+    where instrs = concat [ i ++ "\n" | i <- concat [ prettyPrintDefn cf defn | defn <- prog ]]
           ssDefs = concatMap prettyPrintSS $ reverse $ searchSpaces cf
 
-prettyPrintSS (id, inds) = "ss " ++ show id ++ " " ++ show inds ++ "\n"
+prettyPrintSS (id, inds) = concat [ "\n", spc_name id, ":\n\t.long 0,0\n\t.long "
+                                  , intercalate "," (map show inds), "\n"]
 
+prettyPrintDefn :: OilrConfig -> Definition -> [String]
+prettyPrintDefn cf (name, (pre, RuleBody lhs rhs, post)) = 
+    ("\nrule " ++ name):[ "\t.long " ++ prettyPrintIns i | i <- concat [pre, lhs, rhs, post] ]
+prettyPrintDefn cf (name, (pre, ProcBody is, post)) =
+    ("\nproc " ++ name):[ prettyPrintIns i | i <- concat [pre, is, post] ]
 
-prettyPrintIns (DEF n) = '\n' : n ++ ":"
 prettyPrintIns (TAR n) = n ++ ":"
-prettyPrintIns i       = '\t' : show i
+prettyPrintIns (BND d ss) = concat [ "BND, ", show d, ", ", spc_name ss ]
+prettyPrintIns (BNZ t) = "BNZ, " ++ branch_offs t
+prettyPrintIns (CAL s) = "CAL, " ++ s
+prettyPrintIns i       = show i
+
+spc_name :: Int -> String
+spc_name n = concat [ "ss_", show n ]
+
+branch_offs :: String -> String
+branch_offs t = concat ["JUMP(", t, ")"]
 
 
-compileProg :: OilrConfig -> [OilrIR] -> (OilrConfig, [[Instr]])
+compileProg :: OilrConfig -> [OilrIR] -> (OilrConfig, Prog)
 compileProg cfg ir = foldr compile (cfg, []) ir
 
-compile :: OilrIR -> (OilrConfig, [[Instr]]) -> (OilrConfig, [[Instr]])
-compile (IRProc name e)  (cfg, is) = (cfg,  (DEF (mangle name):compileExpr t e++[RET]):is)
-    where t = length is * 1000
-compile (IRRule name es) (cfg, is) = (cfg', (DEF (mangle name):instrs):is)
-    where (instrs, cfg') = compileRule cfg es
+compile :: OilrIR -> (OilrConfig, Prog) -> (OilrConfig, Prog)
+compile (IRProc name e)  (cfg, is) = (cfg,  ((mangle name, ([], defn, [RET])):is) )
+    where defn = ProcBody (compileExpr t e)
+          t = length is * 1000
+compile (IRRule name es) (cfg, is) = (cfg', defn:is)
+    where (defn, cfg') = compileRule (mangle name) cfg es
 
 {- data OilrExpr = IRSeqn [OilrExpr]
               | IRRuleSet [Id]
@@ -137,10 +160,12 @@ compile (IRRule name es) (cfg, is) = (cfg', (DEF (mangle name):instrs):is)
               | IRNothing -}
 
 -- Compile a rule definition
-compileRule :: OilrConfig -> OilrRule -> ([Instr], OilrConfig)
-compileRule cfg ms = ( REGS (length regs)
-                       : reverse (SUC:lhs) ++ reverse (RET:UBN (length regs):rhs), cfg')
-    where (cfg', regs, lhs, rhs) = foldr compileMod (cfg, [], [], []) $ reverse ms
+compileRule :: String -> OilrConfig -> OilrRule -> (Definition, OilrConfig)
+compileRule name cfg ms = (defn, cfg')
+    where defn = ( name, ([REGS (length regs)]
+                       , RuleBody (reverse lhs) (SUC:reverse rhs)
+                       , [UBN (length regs), RET]) )
+          (cfg', regs, RuleBody lhs rhs) = foldr compileMod (cfg, [], RuleBody [] []) $ reverse ms
 
 
 sortRule :: OilrRule -> OilrRule
@@ -166,34 +191,39 @@ mostConstrainedElem (IRNode _ _ _ lOilr) (IRNode _ _ _ rOilr) = compare lOilr rO
 mostConstrainedElem a b = error $ "Don't know how to compare " ++ show a ++ " with " ++ show b
 
 
-compileMod :: (OilrMod OilrElem) -> (OilrConfig, Mapping Id Int, [Instr], [Instr]) -> (OilrConfig, Mapping Id Int, [Instr], [Instr])
-compileMod (Create x) (cfg, regs, lhs, rhs) = case x of
-    (IRNode id _ _ _     ) -> ( cfg, (id,r):regs, lhs                  , ABN r:rhs )
-    (IREdge id _ _ _ s t ) -> ( cfg, (id,r):regs, lhs                  , abe regs r s t:rhs )
+compileMod :: (OilrMod OilrElem) -> (OilrConfig, Mapping Id Int, DefBody) -> (OilrConfig, Mapping Id Int, DefBody)
+compileMod (Create x) (cfg, regs, body) = case x of
+    (IRNode id _ _ _     ) -> ( cfg, (id,r):regs, growRule body [] [ABN r] )
+    (IREdge id _ _ _ s t ) -> ( cfg, (id,r):regs, growRule body [] [abe regs r s t] )
     where r = length regs
-compileMod (Delete x) (cfg, regs, lhs, rhs) = case x of
-    (IRNode id _ _ _)      -> ( cfg', (id,r):regs, BND r sid:lhs          , DBN r:rhs )
-    (IREdge id _ _ bi s t) -> ( cfg, (id,r):regs, bed regs r s t bi:lhs, DBE r:rhs )
+compileMod (Delete x) (cfg, regs, body) = case x of
+    (IRNode id _ _ _)      -> ( cfg', (id,r):regs, growRule body [BND r sid] [DBN r] )
+    (IREdge id _ _ bi s t) -> ( cfg,  (id,r):regs, growRule body [bed regs r s t bi] [DBE r] )
     where r = length regs
           cfg' = makeSpc cfg (Delete x)
           sid = fst $ head $ searchSpaces cfg'
-compileMod (Same x)   (cfg, regs, lhs, rhs) = case x of
-    IRNode id _ _ _      -> (cfg', (id, r):regs, BND r sid:lhs            , rhs)
-    IREdge id _ _ bi s t -> (cfg, (id, r):regs, bed regs r s t bi:lhs  , rhs)
+compileMod (Same x)   (cfg, regs, body) = case x of
+    IRNode id _ _ _      -> (cfg', (id,r):regs, growRule body [BND r sid] [])
+    IREdge id _ _ bi s t -> (cfg,  (id,r):regs, growRule body [bed regs r s t bi] [])
     where r = length regs
           cfg' = makeSpc cfg (Same x)
           sid = fst $ head $ searchSpaces cfg'
-compileMod (Change left right) (cfg, regs, lhs, rhs) = case (left, right) of
+compileMod (Change left right) (cfg, regs, body) = case (left, right) of
     (IRNode id _ _ _     , IRNode _ _ _ _)
-                         -> (cfg',  (id,r):regs, BND r sid:lhs
-                            , diffs regs r left right ++ rhs )
+            -> (cfg', (id,r):regs, growRule body [BND r sid]         (diffs regs r left right) )
     (IREdge id _ _ bi s t, IREdge _ _ _ _ _ _)
-                         -> (cfg,  (id,r):regs, bed regs r s t bi:lhs  , diffs regs r left right ++ rhs )
+            -> (cfg,  (id,r):regs, growRule body [bed regs r s t bi] (diffs regs r left right) )
     where r = length regs
           cfg' = makeSpc cfg $ Change left right
           sid = fst $ head $ searchSpaces cfg'
-compileMod (Check (IRNot (IREdge id _ _ _ s t))) (cfg, regs, lhs, rhs) = (cfg, regs, nec regs s t:lhs, rhs)
+compileMod (Check (IRNot (IREdge id _ _ _ s t))) (cfg, regs, body) =
+                            (cfg, regs, growRule body [nec regs s t] [])
 -- compileMod x _ = error $ show x
+
+growRule :: DefBody -> [Instr] -> [Instr] -> DefBody
+growRule (RuleBody lhs rhs) lhsIns rhsIns = RuleBody lhs' rhs'
+    where lhs'  = lhsIns  ++ lhs
+          rhs'  = rhsIns  ++ rhs
 
 diffs :: Mapping Id Int -> Reg -> OilrElem -> OilrElem -> [Instr]
 diffs regs r (IRNode ib cb lb (Sig _ _ _ rb)) (IRNode ia ca la (Sig _ _ _ ra)) =
