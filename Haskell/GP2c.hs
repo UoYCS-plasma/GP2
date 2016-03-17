@@ -14,6 +14,7 @@ import OILR4.Config
 import OILR4.IR
 import OILR4.Optimiser
 import OILR4.OILROptim
+import OILR4.X86Backend
 
 
 -- import GPSyntax -- debug code
@@ -87,7 +88,7 @@ main = do
             let ir = makeIR pAST
             let cf = configureOilrMachine flags ir
             let (cf', prog) = compileProg cf $ optimise cf ir
-            putStrLn $ prettyPrint cf' prog
+            putStrLn $ compileX86 cf' prog
             -- let prog = compileProgram flags pAST
             let host = compileHostGraph hAST
             -- putStrLn $ show prog

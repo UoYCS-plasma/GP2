@@ -12,9 +12,7 @@ import Mapping    -- for mappings
 import Debug.Trace
 
 
--- data Dir = In | Out | Either deriving (Eq, Show)
-
--- Match registers...
+-- Match registers, for readability
 type Dst = Int
 type Src = Int
 type Tgt = Int
@@ -107,33 +105,6 @@ data Instr =
     deriving (Show, Eq)
 
 
-prettyPrint :: OilrConfig -> Prog -> String
-prettyPrint cf prog = ssDefs ++ instrs
-    where instrs = concat [ i ++ "\n" | i <- concat [ prettyPrintDefn cf defn | defn <- prog ]]
-          ssDefs = concatMap prettyPrintSS $ reverse $ searchSpaces cf
-
-prettyPrintSS (id, inds) = concat [ "\n", spc_name id, ":\n\t.long 0,0\n\t.long "
-                                  , intercalate "," (map show inds), "\n"]
-
-prettyPrintDefn :: OilrConfig -> Definition -> [String]
-prettyPrintDefn cf (name, (pre, RuleBody lhs rhs, post)) = 
-    ("\nrule " ++ name):[ "\t.long " ++ prettyPrintIns i | i <- concat [pre, lhs, rhs, post] ]
-prettyPrintDefn cf (name, (pre, ProcBody is, post)) =
-    ("\nproc " ++ name):[ prettyPrintIns i | i <- concat [pre, is, post] ]
-
-prettyPrintIns (TAR n) = n ++ ":"
-prettyPrintIns (BND d ss) = concat [ "BND, ", show d, ", ", spc_name ss ]
-prettyPrintIns (BNZ t) = "BNZ, " ++ branch_offs t
-prettyPrintIns (CAL s) = "CAL, " ++ s
-prettyPrintIns i       = show i
-
-spc_name :: Int -> String
-spc_name n = concat [ "ss_", show n ]
-
-branch_offs :: String -> String
-branch_offs t = concat ["JUMP(", t, ")"]
-
-
 compileProg :: OilrConfig -> [OilrIR] -> (OilrConfig, Prog)
 compileProg cfg ir = foldr compile (cfg, []) ir
 
@@ -143,21 +114,6 @@ compile (IRProc name e)  (cfg, is) = (cfg,  ((mangle name, ([], defn, [RET])):is
           t = length is * 1000
 compile (IRRule name es) (cfg, is) = (cfg', defn:is)
     where (defn, cfg') = compileRule (mangle name) cfg es
-
-{- data OilrExpr = IRSeqn [OilrExpr]
-              | IRRuleSet [Id]
-              | IRBran OilrExpr OilrExpr
-              | IRTrns OilrExpr   -- transaction that rolls-back if OilrExpr fails
-              | IRDscd OilrExpr -- "discard" -- transaction that always rolls-back
-              | IRCall Id | IRLoop OilrExpr
-              | IRTrue | IRFals
-     deriving (Show, Eq) -}
-
-{- data OilrElem = IRNode  Id  Colour  IRLabel  Bool
-              | IREdge  Id  Colour  IRLabel  Bool  Id Id
-              | IREql   IRLabel IRLabel
-              | IRNot   OilrElem
-              | IRNothing -}
 
 -- Compile a rule definition
 compileRule :: String -> OilrConfig -> OilrRule -> (Definition, OilrConfig)
@@ -227,6 +183,7 @@ growRule (RuleBody lhs rhs) lhsIns rhsIns = RuleBody lhs' rhs'
 
 diffs :: Mapping Id Int -> Reg -> OilrElem -> OilrElem -> [Instr]
 diffs regs r (IRNode ib cb lb (Sig _ _ _ rb)) (IRNode ia ca la (Sig _ _ _ ra)) =
+    -- TODO: root flag setting not detected!
     concat [ if cb /= ca then [CBL r $ definiteLookup ca colourIds] else []
            , if lb /= la then [LBL r 0] else []     -- TODO: label support
            , if rb /= ra then [RBN r ra] else [] ]
