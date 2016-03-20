@@ -572,7 +572,7 @@ void unbind(Element *el) {
 	}
 	//debug("\tUnbound %ld\n", ((el)==NULL ? 0 : elementId(el)));
 }
-void unbindAll(Element **travs, long n) {
+void unbindAll(Element **regs, long n) {
 	long i;
 	for (i=0; i<n; i++) {
 		unbind(travs[i]);
@@ -704,7 +704,7 @@ void adjustWeighting(SearchSpaceComponent *searchSpace, long count) {
 #define TRU() do { boolFlag = 1; } while (0);
 #define FLS() do { boolFlag = 0; } while (0);
 
-#define UBN(n)  unbindAll(regs, (n))
+#define UBN(n)  unbindAll(&regs, (n))
 
 
 
