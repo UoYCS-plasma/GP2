@@ -2,14 +2,16 @@ module OILR4.X86Backend (compileX86) where
 
 import OILR4.Instructions
 import OILR4.Config
+import OILR4.X86Runtime
 
 import Data.List
-
+import Data.Bits
 
 compileX86 :: OilrConfig -> Prog -> String
-compileX86 cf prog = concat [spaces, defs]
+compileX86 cf prog = concat [x86Runtime, indices, spaces, defs]
     where defs   = concatMap compileDefn prog
           spaces = concatMap compileSS $ searchSpaces cf
+          indices = compileInds $ getIndSize indBits
 
 compileDefn :: Definition -> String
 compileDefn (name, (pre, RuleBody lhs rhs, post)) = intercalate "\n" $
@@ -40,7 +42,7 @@ compileIns (CBL reg c)       = build ["CBN", show reg, show c]
 compileIns (LBL dst n)       = error "Compilation not implemented"
 
 
-compileIns (BND dst ss)      = build ["BND", show dst, spc_name ss]
+compileIns (BND dst ss)      = build ["BND", show dst, spcName ss]
 compileIns (BOE dst src tgt) = build ("BOE":[show n|n<-[dst,src,tgt]])
 compileIns (BED dst r0 r1)   = build ("BED":[show n|n<-[dst,r0,r1]])
 compileIns (BON d0 d1 src)   = error "Compilation not implemented"
@@ -81,15 +83,26 @@ compileIns (SHL n) = error "Compilation not implemented"
 compileIns i     = build [show i]
 
 
-compileSS (id, inds) = concat [ "\n", spc_name id, ":\n\t.long 0,0\n\t.long "
-                              , intercalate "," (map show inds), "\n"]
+compileSS (id, inds) = concat [ "\n", spcName id, ":\n\t.long 0,0\n\t.long "
+                              , intercalate "," (map indName inds), ", 0\n"]
+
+compileInds :: Int -> String
+compileInds n = concat [ "indices ", show n, "\n" ]
+
+
 
 build :: [String] -> String
 build ss = concat ("\t.long ":intersperse ", " ss)
 
-spc_name :: Int -> String
-spc_name n = concat [ "ss_", show n ]
+indName :: Int -> String
+indName n = concat [ "i", show n ]
+
+spcName :: Int -> String
+spcName n = concat [ "ss_", show n ]
 
 branch_offs :: String -> String
 branch_offs t = concat ["JUMP(", t, ")"]
+
+getIndSize :: OilrIndexBits -> Int
+getIndSize (OilrIndexBits b c o i l r) = (1 `shift` (b+c+o+i+l+r))
 

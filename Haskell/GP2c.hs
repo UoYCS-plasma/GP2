@@ -7,6 +7,7 @@ import System.Process (system)
 import System.Exit
 
 import Text.Parsec
+import Data.List
 
 import OILR4.Instructions
 import OILR4.HostCompile
@@ -15,6 +16,7 @@ import OILR4.IR
 import OILR4.Optimiser
 import OILR4.OILROptim
 import OILR4.X86Backend
+import OILR4.CBackend
 
 
 -- import GPSyntax -- debug code
@@ -22,23 +24,17 @@ import ParseGraph
 import ParseProgram
 import ProcessAst (makeHostGraph)
 
+
 debugCompiler = "gcc -g "
-perfCompiler  = "gcc -O2 -fomit-frame-pointer "
+perfCompiler  = "gcc -O2 "
 
-compilerFlags32 = " -m32 -Wno-error=format= "
-compilerFlags64 = " -m64 "
+compilerFlagsCommon = "-Wno-format -Wall -Wextra -m32 -o "
 
-compilerFlagsCommon = " -Wall -Wno-error=unused-label -Wno-unused-label -Wno-error=unused-variable -Werror -o"
-
-getCompilerFor flags = concat [ cc, arch, compilerFlagsCommon ]
+getCompilerFor flags = concat [ cc, compilerFlagsCommon ]
     where
         cc = if ( EnableDebugging `elem` flags || EnableParanoidDebugging `elem` flags)
                 then debugCompiler
                 else perfCompiler
-        arch = if Compile32Bit `elem` flags
-                    then compilerFlags32
-                    else compilerFlags64
-
 
 options :: [ OptDescr Flag ]
 options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr) "Use only a single OILR index for all nodes.",
@@ -68,7 +64,7 @@ parseProgram progFile = do
 
 callCCompiler cc obj cFile = do
     -- TODO: use of system is ugly and potentially dangerous!
-    exStatus <- system (cc ++ " " ++ obj ++ " " ++ cFile)
+    exStatus <- system $ intercalate " " [cc, obj, cFile]
     case exStatus of
         ExitSuccess -> return ()
         (ExitFailure _) -> error "Compilation failed."
@@ -88,18 +84,17 @@ main = do
             let ir = makeIR pAST
             let cf = configureOilrMachine flags ir
             let (cf', prog) = compileProg cf $ optimise cf ir
-            putStrLn $ compileX86 cf' prog
-            -- let prog = compileProgram flags pAST
-            let host = compileHostGraph hAST
+            let c = compileC cf' prog
+            -- let host = compileHostGraph hAST
             -- putStrLn $ show prog
+            let compiler = getCompilerFor flags
             if OilrInstructions `elem` flags
                 then putStrLn $ show prog
                 else return ()
-            -- let progC = progToC flags prog
-            -- let hostC = hostToC host
-            -- let compiler = getCompilerFor flags
-            -- writeFile targ $ progC ++ hostC
-            -- callCCompiler compiler exe targ
+            writeFile targ $ c
+            putStrLn $ intercalate " " [compiler,exe,targ]
+            callCCompiler compiler exe targ
+                     -- return ()
         _ -> do
             error "Nope"
 

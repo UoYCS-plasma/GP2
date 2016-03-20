@@ -1,10 +1,10 @@
 {-# LANGUAGE QuasiQuotes #-}
-module OILR3.CRuntime where
+module OILR4.CRuntime where
 
-import OILR3.EmbedFileContents
+import OILR4.EmbedFileContents
 
 cRuntime :: String
-cRuntime = [litFile|OILR3/oilrrt.c|]
+cRuntime = [litFile|OILR4/oilrrt.c|]
 
 
 

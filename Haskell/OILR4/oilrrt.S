@@ -28,6 +28,7 @@
 //#define CANTILEVER_EXECUTION_TRACE
 // #define CANTILEVER_STACK_TRACE
 
+#define BIND_MASK (1<<0)
 
 #ifdef CANTILEVER_EXECUTION_TRACE
 #define TRACE_CODE call _trace
@@ -77,6 +78,26 @@ dict_\label:
 	.align CELL_SIZE
 prim_\label:
 	TRACE_CODE
+.endm
+
+.macro proc label
+\label:
+	.long do
+proc_\label:
+.endm
+.macro rule label
+\label:
+	.long do
+rule_\label:
+.endm
+
+# Recursive macros? What could possibly go wrong?
+.macro indices count id=0
+.if (\id==\count)
+i\id:
+	.space 2*CELL_SIZE
+indices \count, "(\id+1)"
+.endif
 .endm
 
 .macro word label, name, behav=storeinc, handler=do
@@ -158,6 +179,21 @@ str_text_\label:
 	cmp $9, \to
 	ja \err
 .endm
+
+.macro reg reg
+	not \reg
+	lea (%ebx, \reg, CELL_SIZE), \reg
+.endm
+.macro get_reg reg
+	not \reg
+	mov (%ebx, \reg, CELL_SIZE), \reg
+.endm
+.macro set_reg reg val
+	not \reg
+	mov \val, (%ebx, \reg, CELL_SIZE)
+.endm
+
+
 
 ######################################################
 # C-style functions                                  #
@@ -807,36 +843,18 @@ next
 prim local, "$$"  # n -- addr
 	# get cell n of current frame
 	pop %eax
-	not %eax  # note: index inversion, as stack grows down!
-	lea (%ebx, %eax, 4), %eax
+	reg %eax
 	push %eax
 next
 prim getLocal, "$$@" # n -- val
 	pop %eax
-	not %eax
-	mov (%ebx, %eax, 4), %eax
+	get_reg %eax
 	push %eax
 next
 prim setLocal "$$!"  # val n -- 
 	pop %eax
-	not %eax
 	pop %edx
-	mov %edx, (%ebx, %eax, 4)
-next
-prim locals  # n -- 
-	# create a frame with n local variables
-	pushrs %ebx
-	mov %ebp, %ebx
-	pop %ecx
-1:
-	test %ecx, %ecx
-	jz 2f
-	pop %eax
-	dec %ecx
-	pushrs %eax
-	jmp 1b
-2:
-	pushrs $do_unframe
+	set_reg %eax %edx
 next
 prim incVar "inc-var"
 	pop %eax
@@ -1917,6 +1935,154 @@ prim allot  # size --
 	pop %eax
 	add %eax, %edi
 next
+
+word bytesToElems
+	.long GraphElemShift, urshift
+end
+word availableSpace
+	.long useDict
+	.long brkAddr, get, here, sub, bytesToElems
+	.long useAnon
+end
+
+word checkSpace  # -- elem
+	.long availableSpace, lit, 1, le, zbranch, JUMP(1f)
+	.long pop, lit, 1, lshift, setHeapSize # double memory
+1:
+end
+word allocElem  # -- elem 
+	.long freelist, get, dup, zbranch, JUMP(1f)
+	.long dup, get, freelist, set
+1:
+	.long useDict, drop, here, GraphElemSize, allot
+2:
+end
+
+constant FreeType 0
+constant NodeType 1
+constant EdgeType 2
+
+/* # Elem Structure   |  flags  | label | ...
+struct: graph-elem
+	1 cell: .elem-flags
+	1 cell: .elem-label
+end-struct
+: .elem-flags  ;  #immediate  # save an instruction or two
+*/
+
+word .elemFlags, , call
+	# deliberate no-op. flags is at an offset of 0
+end
+word .elemLabel
+	.long lit, 1, cell, add
+end
+
+
+# : init-node  $( elem -- node )   NodeType over .elem-flags !  ;
+word initNode
+	.long NodeType, over, .elemFlags, set
+end
+word unsafeAddNode # -- node
+	.long allocElem, initNode, dup # TODO, indexNode
+end
+word addNode
+	.long checkSpace, unsafeAddNode
+end
+
+/* : unsafe-add-edge  $( src tgt -- edge )   alloc-elem init-edge        ;
+: edge             $( src tgt -- edge )   check-space unsafe-add-edge ; */
+
+word initEdge
+	.long EdgeType, over, .elemFlags, set 
+end
+word unsafeAddEdge
+	.long allocElem, initEdge
+end
+word edge
+	.long checkSpace, unsafeAddEdge
+end
+
+
+# OILR instructions
+
+variable bool_flag
+
+prim TRU
+	movl $-1, bool_flag
+next
+prim FLS
+	movl $0, bool_flag
+next
+prim BNZ  #  > offs
+	lodsl                  # distance to branch
+	mov var_bool_flag, %edx  # test bool_flag
+	xor %ecx, %ecx
+	sub $CELL_SIZE, %eax   # because lodsl incremented %esi
+	test %edx, %edx        # bool is zero?
+	setz %cl
+	dec %ecx
+	and %ecx, %eax         # %ecx is 0 if %edx is non-zero
+	add %eax, %esi
+next
+
+prim RET
+	poprs %esi	
+next
+
+prim REGS  #  > n
+	# create a frame with n local variables
+	lodsl    # n
+	pushrs %ebx  # store old frame pointer
+	neg %eax
+	mov %ebp, %ebx # new frame pointer
+	lea (%ebp, %eax, CELL_SIZE), %ebp  # WARNING: this doesn't zero registers!
+	pushrs $do_unframe
+next
+
+
+word ABN  #  > dst
+	.long addNode, lit, 1, take, setLocal
+end
+word ABE  #  > dst src tgt
+	.long lit, 3, take, edge, swap, setLocal
+end
+
+.macro chain_next reg
+	mov (\reg), \reg
+.endm
+
+.section .text
+.align CELL_SIZE
+_spc_next_unbound:
+	# expects spc in %edx, clobbers %eax, %ecx
+	mov (%edx), %eax  # current chain
+	test %eax, %eax
+	jnz 1f
+	mov 4(%edx), %ecx # next chain
+	chain_next %ecx
+	addl $CELL_SIZE, 4(%edx)
+1:
+	
+ret
+
+.macro unbind reg
+	andl $~BIND_MASK, (\reg)
+.endm
+
+prim BND  # > dst ss
+	mov (%esi), %eax  # dst
+	mov 4(%esi), %edx # spc
+	get_reg %eax      # node?
+	test %eax, %eax   # is null?
+	jz 1f
+	unbind %eax
+1:
+	call _get_spc_next
+	pushrs %esi # MUST be done before %esi mod
+	lea 8(%esi), %esi  # delete args
+next
+
+
 
 
 

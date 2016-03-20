@@ -1,4 +1,4 @@
-module OILR3.EmbedFileContents where
+module OILR4.EmbedFileContents where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
