@@ -28,7 +28,7 @@ import ProcessAst (makeHostGraph)
 debugCompiler = "gcc -g "
 perfCompiler  = "gcc -O2 "
 
-compilerFlagsCommon = "-Wno-format -Wall -Wextra -m32 -o "
+compilerFlagsCommon = "-Wno-format -Wno-unused-label -Wall -Wextra -m32 -o "
 
 getCompilerFor flags = concat [ cc, compilerFlagsCommon ]
     where

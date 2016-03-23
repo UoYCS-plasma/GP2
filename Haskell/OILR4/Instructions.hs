@@ -232,7 +232,7 @@ compileExpr i IRFals         = [ FLS ]
 
 
 compileSequence :: Int -> [OilrExpr] -> [Instr]
-compileSequence i es = concat [ compileExpr i' e | (e, i') <- zip es [i..] ]
+compileSequence i es = intercalate [(brz i "end")] [ compileExpr i' e | (e, i') <- zip es [i..] ] ++ [tar i "end"]
 
 compileSet :: Int -> [Id] -> [Instr]
 compileSet i [r] = [ CAL (mangle r) ]

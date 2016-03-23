@@ -78,7 +78,7 @@ compileIns (BNZ t)           = build ["BNZ", t]
 compileIns (BRA t)           = build ["BRA", t]
 compileIns (BRN t)           = build ["BRN", t]
 
-compileIns (RET)             = "\n}"
+compileIns (RET)             = "l_exit:\n\treturn;\n}"
 -- compileIns (RTZ) = error "Compilation not implemented"
 -- compileIns (RNZ) = error "Compilation not implemented"
 
@@ -102,7 +102,7 @@ compileIns (SHL n) = error "Compilation not implemented"
 
 compileIns i     = build [show i]
 
-compileSS (id, inds) = concat [ "\nDList *", spcName id, "[] = { NULL,NULL, "
+compileSS (id, inds) = concat [ "\nDList *", spcName id, "[] = { "
                               , intercalate ", " (map indName inds), ", NULL };\n"]
 
 compileInds :: Int -> String

@@ -3,25 +3,30 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <string.h>
+#include <unistd.h>
 
 
 #define OILR_BIND_BITS 1
-#define OILR_INDEX_SIZE (1<<(OILR_C_BITS+OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS))
+#define OILR_INDEX_BITS (OILR_L_BITS+OILR_C_BITS+OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS)
+#define OILR_INDEX_SIZE (1<<(OILR_INDEX_BITS-1))
 #define DEFAULT_POOL_SIZE (100000000)
 #define DONE return
 #define RECURSE
+#define MIN_ALLOC_INCREMENT (1024*1024*4)  // 4 meg
 
-void _HOST();
-void _GPMAIN();
+#define OILR_ELEM_ALIGN 128
+#define OILR_ELEM_MASK  (~(OILR_ELEM_ALIGN-1))
+
+void OILR_Main();
 long bindCount   = 0;
 long unbindCount = 0;
+void *currentBrk;
+long lastAlloc = 0;
 
 char *colourNames[] = { "", "# red", "# blue", "# green", "# grey" };
 
 /////////////////////////////////////////////////////////
 // graph structure
-
-struct Element;
 
 typedef struct DList {
 	union {
@@ -30,14 +35,13 @@ typedef struct DList {
 	};
 	struct DList *next;
 	struct DList *prev;
-#ifndef OILR_COMPACT_LISTS
-	// OILR_COMPACT_LISTS forces Element to be 128 byte alignmened, which lets
-	// us simply mask the address of any list to find the Element.
-	struct Element *el;
-#endif
+	// Elements MUST be aligned to OILR_ELEM_ALIGN, which must in turn
+	// be a power of 2. That way we can simply mask-off a DList address
+	// to get to the containing Element.
 } DList;
 
 // Flags field bit packing (starting with low-order bits):
+
 #define flags(el) ((el)->flags)
 #define setFlags(el, f) do { (el)->flags = (f); } while (0)
 #define mask(bits, offs) (((1<<(bits))-1)<<(offs))
@@ -63,6 +67,8 @@ typedef struct DList {
 #define ODEG_MASK mask(OILR_O_BITS, ODEG_OFFS)
 #define oBits(el) (flags(el) & ODEG_MASK)
 
+#define OIL_MASK (ODEG_MASK | IDEG_MASK | LOOP_MASK)
+
 // Colour "cBits"
 #define COLR_OFFS (ODEG_OFFS+OILR_O_BITS)
 #define COLR_MASK mask(OILR_C_BITS, COLR_OFFS)
@@ -85,10 +91,14 @@ typedef struct DList {
 // Type (node, edge or free). Only used for assertions when debugging is enabled
 #define TYPE_OFFS (BIND_OFFS+OILR_BIND_BITS)
 #define TYPE_MASK mask(OILR_T_BITS, TYPE_OFFS)
-#define eType(el)  (((el)->flags)&TYPE_MASK)
-#define isNode(el) (eType(el) == NODE_TYPE)
-#define isEdge(el) (eType(el) == EDGE_TYPE)
-#define isFree(el) (eType(el) == FREE_TYPE)
+#define elType(el)  (((el)->flags)&TYPE_MASK)
+#define isNode(el) (elType(el) == NODE_TYPE)
+#define isEdge(el) (elType(el) == EDGE_TYPE)
+#define isFree(el) (elType(el) == FREE_TYPE)
+
+#define SIG_MASK (mask(OILR_INDEX_BITS, 0))
+#define signature(n) (flags(n) & SIG_MASK)
+
 
 typedef struct Element {
 	unsigned int flags;
@@ -107,11 +117,9 @@ typedef struct Element {
 			DList inList;
 		};
 		struct Element *free;
-#ifdef OILR_COMPACT_LISTS
-		// WARNING: with OILR_COMPACT_LISTS defined Element must be _exactly_
+		// WARNING: Element must be _exactly_
 		// OILR_ELEM_ALIGN bytes in size!
-		char pad[OILR_ELEM_ALIGN-2*sizeof(int)]
-#endif
+		char pad[OILR_ELEM_ALIGN-2*sizeof(int)];
 	};
 } Element;
 
@@ -127,12 +135,6 @@ typedef struct Graph {
 
 Graph g;
 
-typedef struct SearchSpaceComponent {
-	long weight;
-	DList *data;
-} SearchSpaceComponent;
-
-
 #ifdef NDEBUG
 #define debug(...)
 #define debugCode(...)
@@ -142,6 +144,17 @@ typedef struct SearchSpaceComponent {
 #define debugCode(c) do { c ; } while (0)
 #define oilrStatus(node) do { Element *mN = (node); debug("\tNode %ld has OILR %ld: (%ld, %ld, %ld, %d)\n", elementId(mN), signature(mN), outdeg(mN), indeg(mN), loopdeg(mN), isRoot(mN)); } while (0)
 #endif
+
+#define failwith(...)  do { fprintf(stderr, __VA_ARGS__); exit(1); } while (0)
+
+
+long max(long a, long b) {
+	return (a>b) ? a : b;
+}
+long min(long a, long b) {
+	return (a>b) ? b : a;
+}
+
 
 /////////////////////////////////////////////////////////
 // stack-machine (removed)
@@ -156,15 +169,9 @@ long boolFlag = 1;
 
 #define nextElem(dl) ((dl)->next)
 #define prevElem(dl) ((dl)->prev)
-#ifdef OILR_COMPACT_LISTS
-#define OILR_ELEM_ALIGN 128
-	// TODO: introduce a union to prevent this casting evil
-#	define elementOfListItem(dl) ((Element *)((long)(dl)&(OILR_ELEM_MASK)))
-#	define setElementOfListItem(dl, elem)
-#else
-#	define elementOfListItem(dl) ((dl)->el)
-#	define setElementOfListItem(dl, elem) do { (dl)->el = (elem); } while (0)
-#endif
+// TODO: introduce a union to prevent this casting evil
+#define elementOfListItem(dl) ((Element *)((long)(dl)&(OILR_ELEM_MASK)))
+
 #define listLength(dl) ((dl)->count)
 #define incListLength(dl) ((dl)->count++)
 #define decListLength(dl) ((dl)->count--)
@@ -299,12 +306,6 @@ void removeElem(DList *elem) {
 #define getElementById(id) &(g.pool[(id)])
 #define elementId(el) ((el)-g.pool)
 
-long min(long x, long y) {
-	return (x<=y ? x : y);
-}
-
-#define signature(n) flags(n)
-
 #if defined(OILR_PARANOID_CHECKS) && !defined(NDEBUG)
 void checkGraph() {
 	long i, iLen, nodes=0, inEdges=0, outEdges=0, loops=0;
@@ -342,12 +343,26 @@ void checkGraph() {
 /////////////////////////////////////////////////////////
 // graph manipulation
 
+void sign(Element *n) {
+	int f = flags(n) & ~OIL_MASK;  // clear current values
+	int o=min(outdeg(n), (1<<OILR_O_BITS)-1),
+		i=min(indeg(n) , (1<<OILR_I_BITS)-1),
+		l=min(loopdeg(n),(1<<OILR_L_BITS)-1);
+	f = f | (o<<ODEG_OFFS) | (i<<IDEG_OFFS) | (l<<LOOP_OFFS);
+	assert( (f & SIG_MASK) < OILR_INDEX_SIZE );
+	setFlags(n, f);
+}
 void indexNode(Element *n) {
-	long sig = signature(n);
-	prependElem(index(sig), chainFor(n));
+	sign(n);
+	prependElem(index(signature(n)), chainFor(n));
 }
 void unindexNode(Element *n) {
 	removeElem(chainFor(n));
+}
+void reindexNode(Element *n) {
+	long old = signature(n);
+	unindexNode(n);
+	reindexNode(n);
 }
 
 void setRoot(Element *n) {
@@ -376,34 +391,47 @@ void freeElement(Element *ne) {
 }
 
 
+void checkSpace(long n) {
+	// Ensure there is space to allocate n elements
+	if (g.freeId + n >= g.poolSize) {
+		assert( sbrk(0) == currentBrk );  // check malloc hasn't moved the brk!
+		if (lastAlloc)
+			lastAlloc += lastAlloc;
+		else  // our first allocation.
+			lastAlloc = max(MIN_ALLOC_INCREMENT, sizeof(Element) * n * 3);
+		currentBrk += lastAlloc;
+		if ( brk( currentBrk ) < 0 )
+			failwith("Couldn't move brk address to 0x%x\n", currentBrk);
+		debug("Allocated space for %d Elements\n", lastAlloc/sizeof(Element));
+		g.poolSize = lastAlloc/sizeof(Element);
+	}
+}
+
 Element *allocElement() {
 	Element *ne = g.freeList;
 	if (ne == NULL) {
-		if (g.freeId == g.poolSize) {
-			printf("Ran out of memory. :( Sadface\n");
-			exit(1);
-		}
 		assert(g.freeId < g.poolSize);
 		ne = &(g.pool[g.freeId++]);
 	} else {
 		g.freeList = ne->free;
 	}
 	memset(ne, '\0', sizeof(Element));
+	// setElType(type);
 	return ne;
 }
 
-Element *addNode() {
+Element *unsafeAddNode() {
 	Element *el = allocElement();
 	Element *n = el;
-	setElementOfListItem( chainFor(n)   , el );
-	setElementOfListItem( outListFor(n) , el );
-	setElementOfListItem( inListFor(n)  , el );
-	setElementOfListItem( loopListFor(n), el );
 	indexNode(n);
 	g.nodeCount++;
 	assert(indeg(n) == 0 && outdeg(n) == 0 && loopdeg(n) == 0);
 	debug("( ) Created node %ld\n", elementId(n));
 	return n;
+}
+Element *addNode() {
+	checkSpace(1);
+	return unsafeAddNode();
 }
 Element *addLoop(Element *node) {
 	Element *e = allocElement();
@@ -415,7 +443,6 @@ Element *addLoop(Element *node) {
 	prependElem(loopListFor(n), outChain(e) );
 	e->src = node;
 	e->tgt = node;
-	setElementOfListItem( outChain(e), e );
 	indexNode(n);
 	g.edgeCount++;
 	assert( lcLen+1 == listLength(loopListFor(n)) );
@@ -435,8 +462,6 @@ Element *addEdge(Element *s, Element *t) {
 	prependElem( inListFor(t), inChain(e) );
 	e->src = s;
 	e->tgt = t;
-	setElementOfListItem( outChain(e), e );
-	setElementOfListItem( inChain(e),  e );
 	indexNode(s);
 	indexNode(t);
 	g.edgeCount++;
@@ -488,6 +513,82 @@ void deleteEdge(Element *e) {
 	}
 	g.edgeCount--;
 }
+
+/////////////////////////////////////////////////////////
+// Host-graph DSL support
+
+// host  => <nodes> <spc> <labl>* <spc> <path>*
+// nodes => <int> <spc> ( "nodes" | "node" )
+// labl  => <nod> <spc> "labelled" <spc> <int>
+// path  => <nod> <spc> <edge>+ <spc> "path"
+// edge  => <ed> | <led>
+// ed    => "-->" <spc> <nod>
+// led   => "--(" <spc> <int> <spc> ")-->" <spc> <nod>
+// nod   => <int>
+
+#define DS_SIZE 16
+long ds[DS_SIZE];
+long *dsp=(ds-1);
+#define push(n) do { *(++dsp) = n; } while (0)
+#define peek()  (*dsp)
+#define pop()   (*(dsp--))
+
+#define MAX_TOK       16
+#define TOK_MATCH   "%15s"
+
+#define KW_NODES     537
+#define KW_NODE      422
+#define KW_EDGE      152
+#define KW_LABELLED  821
+#define KW_PATH      429
+#define KW_LEDGE_A   130
+#define KW_LEDGE_B   193
+
+long hash(char *str) {
+	char c;
+	long h=0;
+	while ( (c=*str) )
+		h += c;
+	return h;
+}
+
+int nextTok(FILE *f, char *tok) {
+	return fscanf(f, TOK_MATCH, tok);
+}
+void parseHost(FILE *host) {
+	char tok[MAX_TOK];
+	char *rem;
+	long n, h, cs;
+	
+	while ( nextTok(host, tok) > 0 ) {
+		n = strtol(tok, &rem, 10);
+		h = hash(tok);
+		if (*rem == '\0') {
+			// numeric value
+			push(n);
+		} else {
+			switch (h) {
+				case KW_NODES:
+				case KW_NODE:
+					checkSpace(peek());
+
+					break;
+				case KW_EDGE:  // n -- n'
+
+					break;
+				case KW_LEDGE_A:
+					break;
+				case KW_LEDGE_B:  // n l -- n'
+					break;
+				default:
+					failwith("Couldn't parse host graph. Problem token is '%s'\n", tok);
+			}
+		}
+	}
+	
+}
+
+
 
 /////////////////////////////////////////////////////////
 // graph search
@@ -564,9 +665,10 @@ void bind(Element *el) {
 	oilrTrace(el);
 }
 void unbind(Element *el) {
-	long flags = flags(el);
+	long fl;
 	if (el) {
-		setFlags( el, flags & ~BIND_MASK );
+		fl = flags(el);
+		setFlags( el, fl & ~BIND_MASK );
 		unbindCount++;
 		debug("\tUnbound %ld\n", elementId(el));
 	}
@@ -575,7 +677,7 @@ void unbind(Element *el) {
 void unbindAll(Element **regs, long n) {
 	long i;
 	for (i=0; i<n; i++) {
-		unbind(travs[i]);
+		unbind(regs[i]);
 	}
 	oilrTrace(NULL);
 }
@@ -659,52 +761,83 @@ void loopOnNode(Element *node, Element **edge) {
 	boolFlag = 0;
 }
 
-void adjustWeighting(SearchSpaceComponent *searchSpace, long count) {
-	SearchSpaceComponent spc1, spc2;
-	DList *ind1, *ind2;
-	long i, s1, s2, w1, w2;
-	for (i=count-1; i>0; i--) {
-		spc1 = searchSpace[i];
-		spc2 = searchSpace[i-1];
-		ind1 = spc1.data;
-		ind2 = spc2.data;
-		s1 = listLength( ind1 );
-		if (s1 > 0) {
-			s2 = listLength( ind2 );
-			w1 = spc1.weight;
-			w2 = spc2.weight;
-			if (s2 == 0 || w1 > w2) {
-				searchSpace[i] = spc2;
-				searchSpace[i-1] = spc1;
-			}
-		}
-	}
-}
-#define heavier(ssc) ((ssc).weight++)
-#define lighter(ssc) ((ssc).weight--)
 
+#define reg(r) (regs[(r)])
 
-
-#define reg(n) (regs[(n)])
+// The local jump-stack code uses 
+#define setReg(r, val) do { regs[(r)] = (val); } while (0)
+#define setFailTo(id)  do { failStack[++fsi] = (id) ; debug("fsi: %d\n", fsi); } while (0)
+#define fail()         goto *failStack[fsi--];
 
 // OILR instructions
 
-#define REGS(n)  Element *regs[n]; regs[0]=NULL
+#define REGS(n) \
+	static void *failStack[(n)] = { &&l_exit }; \
+	long fsi = 0; \
+	Element *regs[n]; regs[0]=NULL; \
 
-#define ABN(r) addNode();
+#define ABN(dst)            do { reg(dst) = addNode(); } while (0)
+#define ABE(dst, src, tgt)  do { reg(dst) = addEdge(reg(src), reg(tgt)); } while (0)
 #define DBE(r) deleteEdge(reg(r))
 		
-#define BND(dst, spc)      matchANode(reg(dst), reg(spc))
-#define BOE(dst, src, tgt) matchAnEdge(reg(dst), reg(src), reg(tgt))
-#define BED(dst, r1, r2)   matchBidi(reg(dst), reg(r1), reg(r2))
+#define BND(dst, spc) \
+	l_ ## dst : \
+	do { \
+		static DList *dl = NULL; \
+		static long pos = 0; \
+		if (!dl) { \
+			pos = 0; \
+			dl = (spc)[0]; \
+		} \
+		do { \
+			lookupNode(&dl, &reg(dst)); \
+		} while (!boolFlag && (dl=(spc)[++pos]) ); \
+		setReg( (dst), elementOfListItem(dl) ); \
+		if (boolFlag) { \
+			setFailTo(&&l_ ## dst); \
+		} else { \
+			fail(); \
+		} \
+	} while (0)
 
+#define BOE(dst, src, tgt) \
+	l_ ## dst : \
+	do { \
+		edgeBetween(&reg(dst), reg(src), reg(tgt)); \
+	} while (0)
+
+#define BED(dst, r1, r2) \
+	l_ ## dst : \
+	do { \
+		edgeBetween(&reg(dst), reg(r1), reg(r2)); \
+		if (!boolFlag) { \
+			boolFlag=1; \
+			edgeBetween(&reg(dst), reg(r2), reg(r1)); \
+		} \
+		if (boolFlag) \
+			setFailTo(dst); \
+		else \
+			fail(); \
+	} while (0) \
+
+#define NEC(src, tgt) \
+	do { \
+		Element *antiEdge = NULL; \
+		edgeBetween(&antiEdge, reg(src), reg(tgt)); \
+		unbind(antiEdge); \
+		boolFlag = !boolFlag; \
+		if (!boolFlag) fail(); \
+	} while (0)
+
+#define SUC()
 
 #define BNZ(tgt) if (boolFlag) goto tgt;
+#define BRZ(tgt) if (!boolFlag) goto tgt;
 
-#define TRU() do { boolFlag = 1; } while (0);
-#define FLS() do { boolFlag = 0; } while (0);
+#define TRU() do { boolFlag = 1; } while (0)
+#define FLS() do { boolFlag = 0; } while (0)
 
-#define UBN(n)  unbindAll(&regs, (n))
+#define UBN(n)  unbindAll(regs, (n))
 
 
 
@@ -807,7 +940,7 @@ void oilrReport() {
 	long i;
 	DList *index;
 	// OILR index population report
-	debug("OILR index stats:\n");
+	debug("OILR index stats (%d indices):\n", OILR_INDEX_SIZE);
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		index = &(g.idx[i]);
 		debug("\t[%03ld]: %ld", i, listLength(index) );
@@ -888,49 +1021,55 @@ void dumpGraph(FILE *file) {
 
 int main(int argc, char **argv) {
 	long i;
-#ifdef OILR_COMPACT_LISTS
-	int failure = posix_memalign((void*)(&g.pool), OILR_ELEM_ALIGN, sizeof(Element) * DEFAULT_POOL_SIZE);
-	assert(sizeof(Element) == OILR_ELEM_ALIGN);
-	if (failure) {
-#else
-	g.pool = malloc(sizeof(Element) * DEFAULT_POOL_SIZE);
-	if (!g.pool) {
-#endif
-		printf("Couldn't couldn't allocate %ld MiB\n", DEFAULT_POOL_SIZE*sizeof(Element)/(1024*1024));
-		exit(1);
-	}
-	fprintf(stderr, "Allocated %ld MiB\n", DEFAULT_POOL_SIZE*sizeof(Element)/(1024*1024));
-	g.poolSize = DEFAULT_POOL_SIZE;
+	
+	// C doesn't provide a way to get an extensible memory area
+	// that is guaranteed not to move, so we have to do it ourselves with brk().
+	// Screw C. Added bonus: brk always starts out aligned to a memory page, so we
+	// get aligned memory for free.
+	currentBrk = sbrk(0);  // get current brk address -- C doesn't give us a way to 
+	debug("Brk: 0x%x, sizeof(Element): %d, num inds: %d\n", currentBrk, sizeof(Element), OILR_INDEX_SIZE);
+	g.pool = currentBrk;
+	g.poolSize  = 0;
 	g.nodeCount = 0;
 	g.edgeCount = 0;
-	g.freeId = 1;  // pool[0] is not used so zero can function as a NULL value
+	g.freeId    = 1;  // we don't use g.pool->[0]
+
 #ifdef OILR_EXECUTION_TRACE
 	oilrTraceFile = stderr;
 #endif
-	// printf("sizeof(Element) = %ld\n", sizeof(Element));
-	// printf("elem[0]=%p elem[1]=%p", &g.pool[0], &g.pool[1]);
-	// exit(0);
-	assert(DEFAULT_POOL_SIZE * sizeof(Element) > 0);
-	for (i=0; i<OILR_INDEX_SIZE; i++) {
+
+/*	for (i=0; i<OILR_INDEX_SIZE; i++) {
 		DList *ind = index(i);
 		ind->count = 0;
 		ind->head  = NULL;
 		ind->next  = NULL;
 		ind->prev  = NULL;
-	}
+	} */
 
+	// checkGraph();
+	// _HOST();
+
+	addNode();
+	addEdgeById(1, 1);
+	addEdgeById(1, 1);
+	addEdgeById(1, 1);
+	setRootById(1);
 	checkGraph();
-	_HOST();
-	checkGraph();
-	_GPMAIN();
+	dumpGraph(stdout);
+
+	OILR_Main();
 #ifndef NDEBUG
 	debug("Program completed in %ld bind and %ld unbind operations.\n", bindCount, unbindCount);
 #elif ! defined(OILR_EXECUTION_TRACE)
 	fprintf(stderr, "Program completed in %ld bind operations.\n", bindCount);
 #endif
 	//assert(bindCount == unbindCount);
+
+	if (!boolFlag) {
+		debug("GP2 program failed.\n");
+		return 1;
+	}
 	dumpGraph(stdout);
-	free(g.pool);
 	return 0;
 }
 
@@ -940,13 +1079,13 @@ int main(int argc, char **argv) {
 	oilrReport(); \
 	(rule)((recursive), state); \
 } while (boolFlag); \
-boolFlag=1;
+boolFlag=1
 
 #define CALL(rule, ...) do { \
 	DList *state[] = { __VA_ARGS__ }; \
 	(rule)(0, state); \
 	if (!boolFlag) DONE ; \
-} while (0);
+} while (0)
 
 /////////////////////////////////////////////////////////
 // generated code goes here....
