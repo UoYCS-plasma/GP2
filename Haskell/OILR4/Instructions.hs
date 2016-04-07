@@ -39,12 +39,15 @@ data DefBody = ProcBody [Instr]
 data Instr =
       OILR Int          -- Number of OILR indices
     | REGS Int          -- Size of local register file
+    | RST Sid           -- Reset search-space state
     | SUC               -- Match success. Clean up after matchingthey, and possibly recurse
     | UBN Int           -- UnBiNd elements in n registers (possibly superfluous?)
     -- Graph modification
     | ABN Dst           -- Add and Bind Node to register Dst
     | ABE Dst Src Tgt   -- Add and Bind Edge to register Dst between nodes in Src & Tgt
+    | ABL Dst Src       -- Add and Bind Loop to register Dst on node Src
     | DBN Dst           -- Delete Bound Node 
+    | DBL Dst           -- Delete Bound Loop
     | DBE Dst           -- Delete Bound Node
     
     | RBN Dst Bool      -- set Root on Bound Node to Bool
@@ -65,6 +68,8 @@ data Instr =
     -- Definitions & program structure
     | DEF Id               -- DEFine function Idopen source dev site
     | CAL Id               -- CALl Id, pushing current IP to call-stack
+    | ALAP Id              -- run Id for As Long As Possible
+    | ONCE Id              -- run Id ONCE
     | TAR Target           -- jump TARget
     | BRZ Target           -- BRanch if Zero (i.e. if bool flag is false)
     | BNZ Target           -- Branch if Non-Zero
@@ -110,7 +115,7 @@ compileProg cfg ir = foldr compile (cfg, []) ir
 
 compile :: OilrIR -> (OilrConfig, Prog) -> (OilrConfig, Prog)
 compile (IRProc name e)  (cfg, is) = (cfg,  ((mangle name, ([], defn, [RET])):is) )
-    where defn = ProcBody (compileExpr t e)
+    where defn = ProcBody $ tidyInsStream [] (compileExpr t e)
           t = length is * 1000
 compile (IRRule name es) (cfg, is) = (cfg', defn:is)
     where (defn, cfg') = compileRule (mangle name) cfg es
@@ -120,9 +125,15 @@ compileRule :: String -> OilrConfig -> OilrRule -> (Definition, OilrConfig)
 compileRule name cfg ms = (defn, cfg')
     where defn = ( name, ([REGS (length regs)]
                        , RuleBody (reverse lhs) (SUC:reverse rhs)
-                       , [UBN (length regs), RET]) )
+                       , concat [ [UBN (length regs)]
+                                , resetSpcsFor lhs
+                                , [RET]] ) )
           (cfg', regs, RuleBody lhs rhs) = foldr compileMod (cfg, [], RuleBody [] []) $ reverse ms
 
+resetSpcsFor :: [Instr] -> [Instr]
+resetSpcsFor (BND _ s:is) = RST s:resetSpcsFor is
+resetSpcsFor (_:is) = resetSpcsFor is
+resetSpcsFor [] = []
 
 sortRule :: OilrRule -> OilrRule
 sortRule = sortBy mostConstrained
@@ -154,7 +165,9 @@ compileMod (Create x) (cfg, regs, body) = case x of
     where r = length regs
 compileMod (Delete x) (cfg, regs, body) = case x of
     (IRNode id _ _ _)      -> ( cfg', (id,r):regs, growRule body [BND r sid] [DBN r] )
-    (IREdge id _ _ bi s t) -> ( cfg,  (id,r):regs, growRule body [bed regs r s t bi] [DBE r] )
+    (IREdge id _ _ bi s t)
+        | s == t    -> ( cfg, (id,r):regs, growRule body [bed regs r s t bi] [DBL r] )
+        | otherwise -> ( cfg, (id,r):regs, growRule body [bed regs r s t bi] [DBE r] )
     where r = length regs
           cfg' = makeSpc cfg (Delete x)
           sid = fst $ head $ searchSpaces cfg'
@@ -197,12 +210,14 @@ diffs regs r (IREdge ib cb lb bb sb tb) (IREdge ia ca la ba sa ta)
     | otherwise            = error "Edge source and target should not change"
 
 bed :: Mapping Id Reg -> Reg -> Id -> Id -> Bool -> Instr
+bed regs r s t _ | s==t = BLO r (definiteLookup s regs)
 bed regs r s t False = BOE r (definiteLookup s regs) (definiteLookup t regs)
 bed regs r s t True  = BED r (definiteLookup s regs) (definiteLookup t regs)
 
 
 abe :: Mapping Id Reg -> Reg -> Id -> Id -> Instr
-abe regs r s t = ABE r (definiteLookup s regs) (definiteLookup t regs)
+abe regs r s t | s==t      = ABL r (definiteLookup s regs)
+               | otherwise = ABE r (definiteLookup s regs) (definiteLookup t regs)
 
 nec :: Mapping Id Reg -> Id -> Id -> Instr
 nec regs s t = NEC (definiteLookup s regs) (definiteLookup t regs)
@@ -229,6 +244,12 @@ compileExpr i (IRLoop e)     = concat [ [ tar i "bgn"],
 compileExpr i (IRCall id)    = [ CAL (mangle id) ]
 compileExpr i IRTrue         = [ TRU ]
 compileExpr i IRFals         = [ FLS ]
+
+
+tidyInsStream :: [Instr] -> [Instr] -> [Instr]
+tidyInsStream acc []             = reverse acc
+tidyInsStream acc (TRU:BRZ _:is) = tidyInsStream (TRU:acc) is
+tidyInsStream acc (i:is)         = tidyInsStream (i:acc) is
 
 
 compileSequence :: Int -> [OilrExpr] -> [Instr]

@@ -28,7 +28,7 @@ import ProcessAst (makeHostGraph)
 debugCompiler = "gcc -g "
 perfCompiler  = "gcc -O2 "
 
-compilerFlagsCommon = "-Wno-format -Wno-unused-label -Wall -Wextra -m32 -o "
+compilerFlagsCommon = "-Wno-format -Wno-unused-label -Wall -Wextra -Werror -m32 -o "
 
 getCompilerFor flags = concat [ cc, compilerFlagsCommon ]
     where
@@ -37,15 +37,24 @@ getCompilerFor flags = concat [ cc, compilerFlagsCommon ]
                 else perfCompiler
 
 options :: [ OptDescr Flag ]
-options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr) "Use only a single OILR index for all nodes.",
-            Option ['S'] ["dump-prog"] (NoArg $ OilrInstructions) "Emit raw OILR instructions instead of compiling via C",
-            Option ['r'] ["recursive"] (NoArg $ RecursiveRules) "Execute looped rules recursively.",
-            Option ['n'] ["no-search-plan"] (NoArg $ DisableSearchPlan) "Disable the search plan; use brute-force nodes-then-edges strategy",
-            Option ['T'] ["trace"]   (NoArg $ EnableExecutionTrace) "Enable execution trace via GraphViz" ,
-            Option ['c'] ["compact-lists"]   (NoArg $ CompactLists) "Use compact but non-portable doubly-linked list representation" ,
-            Option ['d'] ["debug"]   (NoArg $ EnableDebugging) "Enable verbose debugging output on compiled program's stderr" ,
-            Option ['3'] ["32-bit"]  (NoArg $ Compile32Bit) "Compile a 32-bit executable" ,
-            Option ['D'] ["extra-debug"]   (NoArg $ EnableParanoidDebugging) "Enable paranoid graph structure checks (implies -d)" ]
+options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr)
+                    "Use only a single OILR index for all nodes.",
+            Option ['S'] ["dump-prog"] (NoArg $ OilrInstructions)
+                    "Emit raw OILR instructions instead of compiling via C",
+            Option ['r'] ["recursive"] (NoArg $ RecursiveRules)
+                    "Execute looped rules recursively.",
+            Option ['n'] ["no-search-plan"] (NoArg $ DisableSearchPlan)
+                    "Disable the search plan; use brute-force nodes-then-edges strategy",
+            Option ['T'] ["trace"]   (NoArg $ EnableExecutionTrace)
+                    "Enable execution trace via GraphViz" ,
+            Option ['c'] ["compact-lists"]   (NoArg $ CompactLists)
+                    "Use compact but non-portable doubly-linked list representation" ,
+            Option ['d'] ["debug"]   (NoArg $ EnableDebugging)
+                    "Enable verbose debugging output on compiled program's stderr" ,
+            Option ['3'] ["32-bit"]  (NoArg $ Compile32Bit)
+                    "Compile a 32-bit executable" ,
+            Option ['D'] ["extra-debug"]   (NoArg $ EnableParanoidDebugging)
+                    "Enable paranoid graph structure checks (implies -d)" ]
 
 getStem :: String -> String
 getStem = takeWhile (/= '.')

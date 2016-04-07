@@ -35,6 +35,7 @@ compileIns (ABN dst)         = build ["ABN", show dst]
 compileIns (ABE dst src tgt) = build ("ABE":[show n|n<-[dst,src,tgt]])
 compileIns (DBN reg)         = build ["DBN", show reg]
 compileIns (DBE reg)         = build ["DBE", show reg]
+compileIns (DBL reg)         = build ["DBL", show reg]
 
 compileIns (RBN dst bool)    = error "Compilation not implemented"
 
