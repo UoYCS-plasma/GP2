@@ -236,6 +236,19 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            { 
               PTFI("{\n", 6);
               PTFI("HostLabel label;\n", 9);
+              /* Create runtime variables for each variable in the label. */
+              RuleListItem *item = predicate->edge_pred.label.list->first;
+              int count;
+              for(count = 0; count < predicate->edge_pred.label.length; count++)
+              {
+                 if(item->atom->type == VARIABLE)
+                 {
+                    /* generateVariableCode prints with indent 3. Indent of 9 is required. */
+                    PTF("      ");
+                    generateVariableCode(count, item->atom->variable.type);
+                 }
+                 item = item->next;
+              }
               generateLabelEvaluationCode(predicate->edge_pred.label, false, list_count++, 1, 9);
               PTFI("if(equalHostLabels(label, edge->label))\n", 9);
               PTFI("{\n", 9);
