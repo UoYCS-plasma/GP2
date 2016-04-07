@@ -121,14 +121,16 @@ compile (IRRule name es) (cfg, is) = (cfg', defn:is)
     where (defn, cfg') = compileRule (mangle name) cfg es
 
 -- Compile a rule definition
+nullBody = RuleBody [] []
 compileRule :: String -> OilrConfig -> OilrRule -> (Definition, OilrConfig)
 compileRule name cfg ms = (defn, cfg')
-    where defn = ( name, ([REGS (length regs)]
-                       , RuleBody (reverse lhs) (SUC:reverse rhs)
-                       , concat [ [UBN (length regs)]
-                                , resetSpcsFor lhs
-                                , [RET]] ) )
-          (cfg', regs, RuleBody lhs rhs) = foldr compileMod (cfg, [], RuleBody [] []) $ reverse ms
+    where defn = (name, (pre, body, post))
+          pre  = [REGS (length regs)]
+          body = RuleBody (reverse lhs) (SUC:reverse rhs)
+          post = concat [ [UBN (length regs)]
+                        , resetSpcsFor lhs
+                        , [RET] ]
+          (cfg', regs, RuleBody lhs rhs) = foldr compileMod (cfg, [], nullBody) $ reverse ms
 
 resetSpcsFor :: [Instr] -> [Instr]
 resetSpcsFor (BND _ s:is) = RST s:resetSpcsFor is
