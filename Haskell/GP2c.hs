@@ -24,6 +24,28 @@ import ParseGraph
 import ParseProgram
 import ProcessAst (makeHostGraph)
 
+options :: [ OptDescr Flag ]
+options = [ Option ['O'] ["no-oilr"] (NoArg NoOILR)
+                    "Use only a single OILR index for all nodes.",
+            Option ['M'] ["no-sort"] (NoArg NoMatchSort)
+                    "Don't sort rule nodes most-constrained-first",
+            Option ['P'] ["no-plan"] (NoArg NoSearchPlan)
+                    "Disable the search plan; use brute-force nodes-then-edges strategy",
+            Option ['R'] ["no-recursive"] (NoArg NoRecursion)
+                    "Disable recursive looped rule optimisation.",
+
+            Option ['D'] ["dump"] (ReqArg Dump "TYPE")
+                    "Don't compile; dump code to stdout. Valid options: c, oilr, ir",
+            Option ['3'] ["32-bit"]  (NoArg Compile32Bit)
+                    "Compile a 32-bit executable" ,
+
+            Option ['d'] ["debug"]   (NoArg EnableDebugging)
+                    "Enable verbose debugging output on compiled program's stderr" ,
+            Option ['e'] ["extra-debug"]   (NoArg EnableParanoidDebugging)
+                    "Enable paranoid graph structure checks (implies -d)",
+            Option ['t'] ["trace"]   (NoArg EnableExecutionTrace)
+                    "Enable execution trace" ]
+
 
 debugCompiler = "gcc -g "
 perfCompiler  = "gcc -O2 "
@@ -35,26 +57,6 @@ getCompilerFor flags = concat [ cc, compilerFlagsCommon ]
         cc = if ( EnableDebugging `elem` flags || EnableParanoidDebugging `elem` flags)
                 then debugCompiler
                 else perfCompiler
-
-options :: [ OptDescr Flag ]
-options = [ Option ['o'] ["no-oilr"] (NoArg $ DisableOilr)
-                    "Use only a single OILR index for all nodes.",
-            Option ['S'] ["dump-prog"] (NoArg $ OilrInstructions)
-                    "Emit raw OILR instructions instead of compiling via C",
-            Option ['r'] ["recursive"] (NoArg $ RecursiveRules)
-                    "Execute looped rules recursively.",
-            Option ['n'] ["no-search-plan"] (NoArg $ DisableSearchPlan)
-                    "Disable the search plan; use brute-force nodes-then-edges strategy",
-            Option ['T'] ["trace"]   (NoArg $ EnableExecutionTrace)
-                    "Enable execution trace via GraphViz" ,
-            Option ['c'] ["compact-lists"]   (NoArg $ CompactLists)
-                    "Use compact but non-portable doubly-linked list representation" ,
-            Option ['d'] ["debug"]   (NoArg $ EnableDebugging)
-                    "Enable verbose debugging output on compiled program's stderr" ,
-            Option ['3'] ["32-bit"]  (NoArg $ Compile32Bit)
-                    "Compile a 32-bit executable" ,
-            Option ['D'] ["extra-debug"]   (NoArg $ EnableParanoidDebugging)
-                    "Enable paranoid graph structure checks (implies -d)" ]
 
 getStem :: String -> String
 getStem = takeWhile (/= '.')
@@ -97,12 +99,14 @@ main = do
             -- let host = compileHostGraph hAST
             -- putStrLn $ show prog
             let compiler = getCompilerFor flags
-            if OilrInstructions `elem` flags
-                then putStrLn $ show prog
-                else return ()
-            writeFile targ $ c
-            putStrLn $ intercalate " " [compiler,exe,targ]
-            callCCompiler compiler exe targ
+            case find (\f -> case f of { Dump _ -> True; _ -> False }) flags of
+                Just (Dump "ir")   -> putStrLn $ prettyIR ir
+                Just (Dump "oilr") -> putStrLn $ prettyProg prog
+                Just (Dump "c")    -> putStrLn c
+                Just (Dump s)      -> error $ s ++ " is not a valid option to --dump."
+                Nothing            -> do writeFile targ $ c
+                                         putStrLn $ intercalate " " [compiler,exe,targ]
+                                         callCCompiler compiler exe targ
                      -- return ()
         _ -> do
             error "Nope"

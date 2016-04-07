@@ -1,5 +1,7 @@
 module OILR4.Config where
 
+import System.Console.GetOpt
+
 import OILR4.IR
 
 import GPSyntax  -- for colours
@@ -12,7 +14,20 @@ import Data.List
 
 type Ind = Int  -- An OILR index is just an integer
 
-data Flag = DisableOilr | DisableSearchPlan | OilrInstructions | RecursiveRules | EnableDebugging | EnableParanoidDebugging | EnableExecutionTrace | Compile32Bit | CompactLists deriving (Eq, Show)
+          -- Disable standard optimisations
+data Flag = NoOILR               -- switch off OILR indexing entirely
+          | NoMatchSort          -- don't sort node matches by constrainedness
+          | NoSearchPlan         -- match nodes & edges individually
+          | NoRecursion          -- don't apply looped rules recursively
+          -- Output options
+          | Dump String          -- dump an internal representation
+          -- Compilation options
+          | Compile32Bit         -- Generate 32 bit code
+          -- OILR Runtime options
+          | EnableDebugging
+          | EnableParanoidDebugging
+          | EnableExecutionTrace
+    deriving (Eq, Show)
 
 data OilrIndexBits = OilrIndexBits { bBits::Int
                                    , cBits::Int

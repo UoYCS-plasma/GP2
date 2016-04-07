@@ -110,6 +110,12 @@ data Instr =
     deriving (Show, Eq)
 
 
+prettyProg :: Prog -> String
+prettyProg prog = intercalate "\n" $ map prettyDefn prog
+    where prettyDefn (id, (pre, body, post)) = '\n':id ++ (intercalate "\n\t" $ ":":(map show $ concat [pre, smoosh body, post]))
+          smoosh (ProcBody is) = is
+          smoosh (RuleBody lhs rhs) = concat [lhs, rhs]
+
 compileProg :: OilrConfig -> [OilrIR] -> (OilrConfig, Prog)
 compileProg cfg ir = foldr compile (cfg, []) ir
 

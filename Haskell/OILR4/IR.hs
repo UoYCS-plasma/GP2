@@ -21,9 +21,12 @@ data Sig = Sig { outDeg      :: Int
                , inDeg       :: Int
                , loopDeg     :: Int
                , rootDeg     :: Bool }
+         | NoSig
      deriving (Show, Eq) 
 
 instance Ord Sig where
+    NoSig            `compare` (Sig _ _ _ _)     = LT
+    (Sig _ _ _ _)    `compare` NoSig             = GT
     (Sig _ _ _ True) `compare` (Sig _ _ _ False) = GT
     (Sig _ _ _ False) `compare` (Sig _ _ _ True) = LT
     (Sig o1 i1 l1 _) `compare` (Sig o2 i2 l2 _)  = (o1+i1+l1) `compare` (o2+i2+l2)
@@ -53,6 +56,14 @@ data OilrExpr = IRSeqn [OilrExpr]
 
 type Spc = [Sig]
 
+
+-- IR pretty-printer
+prettyIR :: OilrProg -> String
+prettyIR pr = concatMap prettyDecl pr
+    where  prettyDecl (IRProc id e) = concat [ "\nIRProc ", id, " (\n\t", prettyExpr e, "\n)"]
+           prettyDecl (IRRule id es) = concat [ "\nIRRule ", id, " [\n\t", prettyRule es, "\n]"]
+           prettyExpr = show
+           prettyRule es = intercalate "\n\t" $ map show es
 
 -- IR compilation wrapper function
 makeIR :: GPProgram -> OilrProg
@@ -221,7 +232,9 @@ irElem mkElem eql (Just l,  Just r)
 makeIRNode :: Mapping Id Sig -> RuleNode -> OilrElem
 makeIRNode sigs (RuleNode id root (RuleLabel l c)) = IRNode id c i sig
     where i = makeIRLabel l
-          sig = definiteLookup id sigs
+          sig = case lookup id sigs of
+                    Nothing -> NoSig
+                    Just s  -> s
 
 makeIRLabel :: [RuleAtom] -> IRLabel
 makeIRLabel []                  = IREmpty
