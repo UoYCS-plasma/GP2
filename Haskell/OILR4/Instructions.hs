@@ -129,14 +129,14 @@ nullBody = RuleBody [] []
 compileRule :: String -> OilrConfig -> OilrRule -> (Definition, OilrConfig)
 compileRule name cfg ms = (defn, cfg')
     where defn = (name, (pre, body, post))
-          {- planner = if NoSearchPlan `elem` compilerFlags cfg
+          merger = if NoMultiInstr `elem` compilerFlags cfg
                         then id
-                        else (searchPlan [] []) -}
-          sorter = if NoMatchSort `elem` compilerFlags cfg
+                        else (mergeInstr)
+          sorter = if NoSearchPlan `elem` compilerFlags cfg
                         then id
                         else (sortInstr [] [])
           pre  = [REGS (length regs)]
-          body = RuleBody (sorter $ reverse lhs) (SUC:reverse rhs)
+          body = RuleBody (merger $ sorter $ reverse lhs) (SUC:reverse rhs)
           post = concat [ [UBN (length regs)]
                         , resetSpcsFor lhs
                         , [RET] ]
@@ -147,19 +147,54 @@ resetSpcsFor (BND _ s:is) = RST s:resetSpcsFor is
 resetSpcsFor (_:is) = resetSpcsFor is
 resetSpcsFor [] = []
 
-{- combineInstr :: [Reg] -> [Instr] -> [Instr] -> [Instr]
-combineInstr rs acc (i@(BND r _):is) = mergeInstr (r:rs) (i:acc) $ concat [merged, rest]
-    where (mergeable, rest) = partition  is
-combineInstr _  acc [] = reverse acc -}
+edgeFor :: Int -> [Int] -> Instr -> Bool
+edgeFor r rs (BOE _ s t) | r==s && t `elem` rs = True
+edgeFor r rs (BOE _ s t) | r==t && s `elem` rs = True
+edgeFor r rs (BED _ a b) | r==a && b `elem` rs = True
+edgeFor r rs (BED _ a b) | r==b && a `elem` rs = True
+edgeFor _ _ _ = False
 
-merge :: Instr -> Instr -> [Instr]
-merge (BOE e s t) (BND n _)
-    | t == n   = [BON e n s]
-    | s == n   = [BIN e n t]
-merge (BED e a b) (BND n _)
-    | a == n   = [BEN e n a]
-    | b == n   = [BEN e n a]
-merge _ _ = []
+
+
+
+
+{-
+
+mergeTravs :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode
+mergeTravs nts []  = nts
+mergeTravs nts ets = edgesToInstrs [] [] edges
+    where
+        edges  = [ (src, ed, tgt)
+                    | src@(LUN sn _)   <- nts
+                    , tgt@(LUN tn _)   <- nts
+                    , ed@(LUE e s t _) <- ets
+                    , sn==s , tn==t ]
+
+edgesToInstrs acc _ [] = reverse acc
+edgesToInstrs acc seen ((LUN _ sp, LUE e s t d, LUN _ tp):es) =
+    case (s==t, s `elemIndex` seen, t `elemIndex` seen) of
+        (_,     Just _ , Just _ ) -> edgesToInstrs (LUE e s t d:acc)          seen     es
+        (True,  Nothing, _      ) -> edgesToInstrs (LUE e s t d:LUN s sp:acc) (s:seen) es
+        (False, Nothing, Just _ ) -> edgesToInstrs (XTE t e s In:acc)         (s:seen) es
+        (False, Just _ , Nothing) -> edgesToInstrs (XTE s e t Out:acc)        (t:seen) es
+        (False, Nothing, Nothing) -> edgesToInstrs (XTE s e t Out:LUN s sp:acc) (t:s:seen) es
+edgesToInstrs _ _ ((_, LUE _ _ _ In, _):es) = error "Found an unexpected in-edge"
+
+                    -}
+
+mergeInstr is = is
+    where merged = doMerge [] [] [ (src, edg, tgt) | src@(BND sn _)  <- is
+                                                   , tgt@(BND tn _)  <- is
+                                                   , edg@(BOE e s t) <- is
+                                                   , sn==s , tn==t ]
+
+doMerge acc seen ((BND _ ss, BOE r s t, BND _ _):ts) =
+    case (s `elemIndex` seen, t `elemIndex` seen) of
+        (Just _, Just _) -> doMerge (BOE r s t:acc) seen ts
+        (Nothing, Just _) -> doMerge (BIN r s t:acc) (s:seen) ts
+        (Just _, Nothing) -> doMerge (BON r t s:acc) (t:seen) ts
+        (Nothing, Nothing) -> doMerge (BON r t s:BND s ss:acc) (t:s:seen) ts
+doMerge acc _ [] = reverse acc
 
 sortInstr :: [Reg] -> [Instr] -> [Instr] -> [Instr]
 sortInstr rs acc (i@(BND r _):is) = sortInstr rs' (i:acc) $ concat [promoted, rest]
@@ -254,10 +289,11 @@ compileExpr i (IRTry cn th el) = concat [ compileExpr (i+1) cn
                                         , [ tar i "endT" ] ]
 compileExpr i (IRTrns e)     = concat [ [BBT] , compileExpr (i+1) e , [EBT] ]
 compileExpr i (IRSeqn es)    = compileSequence (i+1) es
-compileExpr i (IRLoop e)     = concat [ [tar i "bgn", ALAP],
+compileExpr i (IRLoop (IRRuleSet [r])) = [ ALAP (mangle r) ]
+compileExpr i (IRLoop e)     = concat [ [tar i "bgn" ],
                                         compileExpr (i+1) e,
                                         [bnz i "bgn", TRU] ]
-compileExpr i (IRCall id)    = [ CAL (mangle id) ]
+compileExpr i (IRCall id)    = [ ONCE (mangle id) ]
 compileExpr i IRTrue         = [ TRU ]
 compileExpr i IRFals         = [ FLS ]
 
@@ -265,6 +301,7 @@ compileExpr i IRFals         = [ FLS ]
 tidyInsStream :: [Instr] -> [Instr] -> [Instr]
 tidyInsStream acc []             = reverse acc
 tidyInsStream acc (TRU:BRZ _:is) = tidyInsStream (TRU:acc) is
+tidyInsStream acc (ALAP r: BRZ _:is) = tidyInsStream (ALAP r:acc) is
 tidyInsStream acc (i:is)         = tidyInsStream (i:acc) is
 
 
@@ -272,8 +309,8 @@ compileSequence :: Int -> [OilrExpr] -> [Instr]
 compileSequence i es = intercalate [(brz i "end")] [ compileExpr i' e | (e, i') <- zip es [i..] ] ++ [tar i "end"]
 
 compileSet :: Int -> [Id] -> [Instr]
-compileSet i [r] = [ CAL (mangle r) ]
-compileSet i rs = intercalate [(bnz i "end")] [ [CAL (mangle r)] | r <- rs ] ++ [tar i "end"]
+compileSet i [r] = [ ONCE (mangle r) ]
+compileSet i rs = intercalate [(bnz i "end")] [ [ONCE (mangle r)] | r <- rs ] ++ [tar i "end"]
 
 
 mangle :: String -> String

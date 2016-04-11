@@ -52,7 +52,8 @@ decl name = concat [ "void ", name, "()" ]
 
 -- compileIns (OILR n) = error "Compilation not implemented"
 -- compileIns (DEF name) = error "Compilation not implemented"
-compileIns (CAL name)        = build ["CAL", name]
+compileIns (ONCE name)       = build ["ONCE", name]
+compileIns (ALAP name)       = build ["ALAP", name]
 
 compileIns (REGS n)          = build ["REGS", show n]
 -- compileIns (SUC) = error "Compilation not implemented"
@@ -74,8 +75,8 @@ compileIns (LBL dst n)       = error "Compilation not implemented"
 compileIns (BND dst ss)      = build ["BND", show dst, spcName ss]
 compileIns (BOE dst src tgt) = build ("BOE":[show n|n<-[dst,src,tgt]])
 compileIns (BED dst r0 r1)   = build ("BED":[show n|n<-[dst,r0,r1]])
-compileIns (BON d0 d1 src)   = error "Compilation not implemented"
-compileIns (BIN d0 d1 tgt)   = error "Compilation not implemented"
+compileIns (BON d0 d1 src)   = build ("BON":[show n|n<-[d0,d1,src]])
+compileIns (BIN d0 d1 tgt)   = build ("BON":[show n|n<-[d0,d1,tgt]])
 compileIns (BEN d0 d1 r0)    = error "Compilation not implemented"
 compileIns (BLO dst r0)      = build ["BLO", show dst, show r0]
 compileIns (NEC src tgt)     = build ["NEC", show src, show tgt]

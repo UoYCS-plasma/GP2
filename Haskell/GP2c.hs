@@ -15,7 +15,7 @@ import OILR4.Config
 import OILR4.IR
 import OILR4.Optimiser
 import OILR4.OILROptim
-import OILR4.X86Backend
+-- import OILR4.X86Backend
 import OILR4.CBackend
 
 
@@ -27,8 +27,8 @@ import ProcessAst (makeHostGraph)
 options :: [ OptDescr Flag ]
 options = [ Option ['O'] ["no-oilr"] (NoArg NoOILR)
                     "Use only a single OILR index for all nodes.",
-            Option ['M'] ["no-sort"] (NoArg NoMatchSort)
-                    "Don't sort rule nodes most-constrained-first",
+            Option ['M'] ["no-multi"] (NoArg NoMultiInstr)
+                    "Don't use multi-element instructions.",
             Option ['P'] ["no-plan"] (NoArg NoSearchPlan)
                     "Disable the search plan; use brute-force nodes-then-edges strategy",
             Option ['R'] ["no-recursive"] (NoArg NoRecursion)

@@ -14,7 +14,6 @@
 #define OILR_INDEX_BITS (OILR_B_BITS+OILR_C_BITS+OILR_O_BITS+OILR_I_BITS+OILR_L_BITS+OILR_R_BITS)
 
 #define OILR_INDEX_SIZE (1<<(OILR_INDEX_BITS-1))
-#define DEFAULT_POOL_SIZE (100000000)
 #define DONE return
 #define MIN_ALLOC_INCREMENT (1024*1024*4)  // 4 meg
 
@@ -22,7 +21,7 @@
 #define OILR_ELEM_MASK  (~(OILR_ELEM_ALIGN-1))
 
 #ifndef MAX_RECURSE
-#	define MAX_RECURSE 128
+#	define MAX_RECURSE 1024
 #endif
 
 
@@ -454,6 +453,10 @@ Element *allocElement() {
 	// setElType(type);
 	return ne;
 }
+Element *safeAllocElement() {
+	checkSpace(1);
+	return allocElement();
+}
 
 Element *unsafeAddNode() {
 	Element *el = allocElement();
@@ -467,11 +470,10 @@ Element *unsafeAddNode() {
 	return n;
 }
 Element *addNode() {
-	checkSpace(1);
-	return unsafeAddNode();
+	return safeAllocElement();
 }
 Element *addLoop(Element *node) {
-	Element *e = allocElement();
+	Element *e = safeAllocElement();
 	Element *n     = node;
 	setElType(e, EDGE_TYPE);
 #ifndef NDEBUG
@@ -489,7 +491,7 @@ Element *addLoop(Element *node) {
 	return e;
 }
 Element *addEdge(Element *s, Element *t) {
-	Element *e = allocElement();
+	Element *e = safeAllocElement();
 	setElType(e, EDGE_TYPE);
 	assert(s != t);
 #ifndef NDEBUG
@@ -727,9 +729,6 @@ Element *searchList(DList **dlp) {
 	}
 	return NULL;
 }
-typedef enum {
-	OutEdge, InEdge
-} Direction;
 
 void lookupNode(DList **dlp, Element **node) {
 	// iterate over nodes in dlp, binding them to *node.
@@ -741,15 +740,16 @@ void lookupNode(DList **dlp, Element **node) {
 	}
 	boolFlag = 0;
 }
-void followEdges(DList **dlp, Element **edge, Element **node, Direction dirn) {
+void followOutEdges(Element **edge, Element **node, DList **dlp) {
 	// iterate over the edges in dlp, which are in the direction specified by dirn,
 	// bind the edge and node on the other end to *edge and *node respectively.
+//	DList *dlp = outListFor(src);
 	unbind(*edge);
 	unbind(*node);
 	while ( (*edge = searchList(dlp)) ) {
 		// we know edge is unbound, because searchList() checks.
 		// We still need to check that node is available.
-		*node = (dirn==OutEdge) ? target(*edge) : source(*edge);
+		*node = target(*edge);
 		if (unbound(*node)) {
 			bindEdge(*edge);
 			bindNode(*node);
@@ -808,13 +808,12 @@ void loopOnNode(Element **edge, Element *node) {
 // OILR instructions
 
 #define REGS(n) \
-	int i; \
 	static void *failStack[(n)]; \
-	long fsi = 0; \
+	static long fsi; \
 	Element *regs[n]; \
 	failStack[0] = &&l_exit; \
-	for (i=0; i<(n); i++) \
-		regs[i]=NULL
+	memset(regs, 0, sizeof(Element *)*(n)); \
+	fsi=0;
 
 #define ABN(dst)            do { reg(dst) = addNode(); } while (0)
 #define ABE(dst, src, tgt)  do { reg(dst) = addEdge(reg(src), reg(tgt)); } while (0)
@@ -846,6 +845,19 @@ void bnd(Element **dst, DList **spc, DList **dl, long *pos) {
 		bnd( &reg(dstR), (spc), &spc ## _dl, &spc ## _pos ); \
 		if (boolFlag) \
 			setFailTo(&&l_ ## dstR); \
+		else \
+			fail(); \
+	} while (0)
+
+#define BON(dstE, dstN, srcR) \
+	l_ ## dstN : \
+	do { \
+		static DList *dsp; \
+		if (!dsp) \
+			dsp = outListFor(reg(srcR)); \
+		followOutEdges( &reg(dstE), &reg(dstN), &dsp ); \
+		if (boolFlag) \
+			setFailTo(&&l_ ## dstN); \
 		else \
 			fail(); \
 	} while (0)
@@ -1032,8 +1044,8 @@ int main(int argc, char **argv) {
 	addEdgeById(1, 1);
 	addEdgeById(1, 1);
 	addEdgeById(1, 1);
-	addEdgeById(1, 1);
-	addEdgeById(1, 1);
+/*	addEdgeById(1, 1);
+	addEdgeById(1, 1);  */
 
 	setRootById(1);
 	checkGraph();
@@ -1055,10 +1067,9 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-#define CAL(fun) do { self=(fun); (fun)(); } while (0)
-#define ALAP() do { recursionDepth=MAX_RECURSE; } while (0)
-#define ONCE() do { recursionDepth=0; } while (0)
-	
+#define ALAP(id) do { recursionDepth=MAX_RECURSE; self=(id); do { (id)(); } while (boolFlag); boolFlag=1; } while (0)
+#define ONCE(id) do { recursionDepth=0; (id)(); } while (0)
+
 /* #define ALAP(rule, recursive, ...) do { \
 	DList *state[] = { __VA_ARGS__ }; \
 	oilrReport(); \
