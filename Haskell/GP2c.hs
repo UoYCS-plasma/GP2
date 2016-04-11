@@ -32,10 +32,11 @@ options = [ Option ['O'] ["no-oilr"] (NoArg NoOILR)
             Option ['P'] ["no-plan"] (NoArg NoSearchPlan)
                     "Disable the search plan; use brute-force nodes-then-edges strategy",
             Option ['R'] ["no-recursive"] (NoArg NoRecursion)
-                    "Disable recursive looped rule optimisation.",
+                    "Disable recursive strategy for looped rules.",
 
             Option ['D'] ["dump"] (ReqArg Dump "TYPE")
                     "Don't compile; dump code to stdout. Valid options: c, oilr, ir",
+
             Option ['3'] ["32-bit"]  (NoArg Compile32Bit)
                     "Compile a 32-bit executable" ,
 

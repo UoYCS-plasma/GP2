@@ -18,6 +18,7 @@ type Ind = Int  -- An OILR index is just an integer
 data Flag = NoOILR               -- switch off OILR indexing entirely
           | NoMatchSort          -- don't sort node matches by constrainedness
           | NoSearchPlan         -- match nodes & edges individually
+          | NoInline             -- don't inline procedures called from a single site
           | NoRecursion          -- don't apply looped rules recursively
           -- Output options
           | Dump String          -- dump an internal representation

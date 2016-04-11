@@ -31,6 +31,7 @@ makePreamble cf = concat [ trace (show flags) $ concatMap globalOpts flags, "\n"
           flags = compilerFlags cf
           globalOpts EnableDebugging         = "#define OILR_DEBUGGING\n"
           globalOpts EnableParanoidDebugging = "#define OILR_PARANOID_CHECKS\n"
+          globalOpts NoRecursion             = "#define MAX_RECURSE 0\n"
           globalOpts _ = ""
 
 -- Pre-declarations required for C, as we may have mutually recursive procs
@@ -51,7 +52,7 @@ decl name = concat [ "void ", name, "()" ]
 
 -- compileIns (OILR n) = error "Compilation not implemented"
 -- compileIns (DEF name) = error "Compilation not implemented"
-compileIns (CAL name)        = build [name]
+compileIns (CAL name)        = build ["CAL", name]
 
 compileIns (REGS n)          = build ["REGS", show n]
 -- compileIns (SUC) = error "Compilation not implemented"

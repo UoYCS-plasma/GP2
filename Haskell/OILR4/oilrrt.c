@@ -16,24 +16,29 @@
 #define OILR_INDEX_SIZE (1<<(OILR_INDEX_BITS-1))
 #define DEFAULT_POOL_SIZE (100000000)
 #define DONE return
-#define RECURSE
 #define MIN_ALLOC_INCREMENT (1024*1024*4)  // 4 meg
 
 #define OILR_ELEM_ALIGN 128
 #define OILR_ELEM_MASK  (~(OILR_ELEM_ALIGN-1))
+
+#ifndef MAX_RECURSE
+#	define MAX_RECURSE 128
+#endif
+
 
 void OILR_Main();
 long bindCount   = 0;
 long unbindCount = 0;
 void *currentBrk;
 long lastAlloc = 0;
+long recursionDepth = 0;
+void (*self)();
 
 char *colourNames[]   = { "", " # red", " # blue", " # green", " # grey" };
 char *edgeMarkNames[] = { "", " # dashed" };
 
 /////////////////////////////////////////////////////////
 // accessor macros
-
 
 
 #define nextElem(dl) ((dl)->next)
@@ -891,7 +896,7 @@ void bnd(Element **dst, DList **spc, DList **dl, long *pos) {
 		if (!boolFlag) fail(); \
 	} while (0)
 
-#define SUC()
+#define SUC() if (recursionDepth>0) do { recursionDepth--; (*self)(); boolFlag=1; } while (0)
 
 #define BNZ(tgt) if (boolFlag) goto tgt
 #define BRZ(tgt) if (!boolFlag) goto tgt
@@ -1022,6 +1027,14 @@ int main(int argc, char **argv) {
 	addEdgeById(1, 1);
 	addEdgeById(1, 1);
 	addEdgeById(1, 1);
+	addEdgeById(1, 1);
+
+	addEdgeById(1, 1);
+	addEdgeById(1, 1);
+	addEdgeById(1, 1);
+	addEdgeById(1, 1);
+	addEdgeById(1, 1);
+
 	setRootById(1);
 	checkGraph();
 //	dumpGraph(stdout);
@@ -1042,19 +1055,23 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-
-#define ALAP(rule, recursive, ...) do { \
+#define CAL(fun) do { self=(fun); (fun)(); } while (0)
+#define ALAP() do { recursionDepth=MAX_RECURSE; } while (0)
+#define ONCE() do { recursionDepth=0; } while (0)
+	
+/* #define ALAP(rule, recursive, ...) do { \
 	DList *state[] = { __VA_ARGS__ }; \
 	oilrReport(); \
 	(rule)((recursive), state); \
 } while (boolFlag); \
-boolFlag=1
+boolFlag=1 */
 
-#define CALL(rule, ...) do { \
+/* #define CALL(rule, ...) do { \
+	self = (rule); \
 	DList *state[] = { __VA_ARGS__ }; \
 	(rule)(0, state); \
 	if (!boolFlag) DONE ; \
-} while (0)
+} while (0) */
 
 /////////////////////////////////////////////////////////
 // generated code goes here....

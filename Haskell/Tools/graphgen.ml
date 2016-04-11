@@ -1,4 +1,4 @@
-type mode  = Grid of int * int | Linear of int | Cyclic of int | SeriesParallel of int
+type mode  = Cube of int * int * int | Grid of int * int | Linear of int | Cyclic of int | SeriesParallel of int
 type label = Empty | Int of int
 type graph = Node of int * label | Edge of int * int * int * label
 type settings = { mutable random_edge_labels:bool ; mutable random_node_labels:bool ; mutable tangle_factor:int }
@@ -87,6 +87,17 @@ let grid x y =
     (List.flatten nss, List.rev_append (List. rev (List.flatten ess)) ves)
 ;;
 
+let cube x y z =
+    let layer = grid in
+    let rec layers ?(acc=[]) = function
+        | 0 -> List.rev acc
+        | r -> layers ~acc:(layer x y :: acc) (r-1)
+    in
+    let (nss, ess) = List.split ( layers z ) in
+    let ves = cols nss in
+    (List.flatten nss, List.rev_append (List.rev (List.flatten ess)) ves)
+;;
+
 let parallel (ns, es) = match es with
     | Edge (e, s, t, lab) :: es ->
             (ns, nextEdge s t :: Edge (e, s, t, lab) :: es)
@@ -154,6 +165,8 @@ let rec parseArgs = function
     | "-re" :: args -> settings.random_edge_labels <- true ; parseArgs args
     | "-rn" :: args -> settings.random_node_labels <- true ; parseArgs args
     | "-t"  :: v :: args -> settings.tangle_factor <- int_of_string v ; parseArgs args
+    | "cube" :: x :: y :: z :: [] ->
+            Cube (int_of_string x, int_of_string y, int_of_string z)
     | "grid" :: x :: y :: [] ->
             Grid (int_of_string x, int_of_string y)
     | "linear" :: l :: [] ->
@@ -175,6 +188,8 @@ let main () =
     Random.self_init () ;
     let mode = parseArgs (List.tl (Array.to_list Sys.argv)) in
     let graph = match mode with
+    | Cube (x,y,z) ->
+            cube x y z
     | Grid (x,y) ->
             grid x y
     | Linear l ->

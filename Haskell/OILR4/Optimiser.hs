@@ -5,6 +5,8 @@ import Mapping
 import OILR4.Config
 import OILR4.IR
 
+import Data.List
+
 import Debug.Trace
 
 {-
@@ -25,7 +27,7 @@ optimiseIR :: OilrConfig -> OilrIR -> OilrIR
 -- element of the sequence fails the whole program fails.
 optimiseIR cf (IRProc "Main" (IRTrns e@(IRSeqn _))) = IRProc "Main" $ optimiseExpr cf e
 optimiseIR cf (IRProc id e)                         = IRProc id     $ optimiseExpr cf e
-optimiseIR cf (IRRule id r)                         = IRRule id     $ optimiseRule r
+optimiseIR cf (IRRule id r)                         = IRRule id     $ optimiseRule cf r
 
 optimiseExpr :: OilrConfig -> OilrExpr -> OilrExpr
 -- Move transaction for sequences that begin with predicate rules...
@@ -129,6 +131,38 @@ isLoop _          = False
 isPredicate :: OilrConfig -> Id -> Bool
 isPredicate cf id = id `elem` predicateRules cf
 
-optimiseRule :: OilrRule -> OilrRule
-optimiseRule r = r
+optimiseRule :: OilrConfig -> OilrRule -> OilrRule
+optimiseRule cf r = if NoMatchSort `elem` compilerFlags cf
+                        then r
+                        else sortRule r
+
+sortRule :: OilrRule -> OilrRule
+sortRule ms = sort ms
+
+isValidSort = isValidSort' []
+
+isValidSort' :: [Id] -> OilrRule -> Bool
+isValidSort' seen (m:n:ms)
+    | m < n  = trace ("Constrainedness") False
+    | unseenDeps m seen      = trace ("Unseen") False
+    | otherwise              = isValidSort' (see m seen) (n:ms)
+isValidSort' seen [m] = True  -- terminal case
+isValidSort' seen []  = True  -- just in case a null-rule comes along!
+
+see :: OilrMod -> [Id] -> [Id]
+see (Delete (IRNode id _ _ _))    seen = id:seen
+see (Create (IRNode id _ _ _))    seen = id:seen
+see (Same   (IRNode id _ _ _))    seen = id:seen
+see (Change (IRNode id _ _ _) _ ) seen = id:seen
+see _ seen = seen
+
+unseenDeps :: OilrMod -> [Id] -> Bool
+unseenDeps (Delete el) seen = unseenDeps' el seen 
+unseenDeps (Create el) seen = unseenDeps' el seen
+unseenDeps (Same el) seen = unseenDeps' el seen
+unseenDeps (Change el _) seen = unseenDeps' el seen
+unseenDeps (Check _) _ = False
+
+unseenDeps' (IREdge _ _ _ _ s t) seen = s `notElem` seen || t `notElem` seen
+unseenDeps' (IRNode _ _ _ _ )    _    = False
 

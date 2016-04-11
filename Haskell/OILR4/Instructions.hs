@@ -51,7 +51,6 @@ data Instr =
     | DBE Dst           -- Delete Bound Node
     
     | RBN Dst Bool      -- set Root on Bound Node to Bool
-    
     | CBL Dst Col       -- Colour Bound eLement
     | LBL Dst Int       -- Label Bound eLement with Int
 
@@ -67,9 +66,8 @@ data Instr =
 
     -- Definitions & program structure
     | DEF Id               -- DEFine function Idopen source dev site
-    | CAL Id               -- CALl Id, pushing current IP to call-stack
-    | ALAP Id              -- run Id for As Long As Possible
-    | ONCE Id              -- run Id ONCE
+    | ALAP Id              -- call Id for As Long As Possible
+    | ONCE Id              -- call Id ONCE
     | TAR Target           -- jump TARget
     | BRZ Target           -- BRanch if Zero (i.e. if bool flag is false)
     | BNZ Target           -- Branch if Non-Zero
@@ -131,8 +129,14 @@ nullBody = RuleBody [] []
 compileRule :: String -> OilrConfig -> OilrRule -> (Definition, OilrConfig)
 compileRule name cfg ms = (defn, cfg')
     where defn = (name, (pre, body, post))
+          {- planner = if NoSearchPlan `elem` compilerFlags cfg
+                        then id
+                        else (searchPlan [] []) -}
+          sorter = if NoMatchSort `elem` compilerFlags cfg
+                        then id
+                        else (sortInstr [] [])
           pre  = [REGS (length regs)]
-          body = RuleBody (reverse lhs) (SUC:reverse rhs)
+          body = RuleBody (sorter $ reverse lhs) (SUC:reverse rhs)
           post = concat [ [UBN (length regs)]
                         , resetSpcsFor lhs
                         , [RET] ]
@@ -143,30 +147,34 @@ resetSpcsFor (BND _ s:is) = RST s:resetSpcsFor is
 resetSpcsFor (_:is) = resetSpcsFor is
 resetSpcsFor [] = []
 
-sortRule :: OilrRule -> OilrRule
-sortRule = sortBy mostConstrained
+{- combineInstr :: [Reg] -> [Instr] -> [Instr] -> [Instr]
+combineInstr rs acc (i@(BND r _):is) = mergeInstr (r:rs) (i:acc) $ concat [merged, rest]
+    where (mergeable, rest) = partition  is
+combineInstr _  acc [] = reverse acc -}
 
-mostConstrained :: OilrMod OilrElem -> OilrMod OilrElem -> Ordering
--- created nodes are least constrained
-mostConstrained (Create IRNothing) _                   = LT
-mostConstrained _                  (Create IRNothing)  = GT
--- deleted nodes are most constrained
-mostConstrained (Delete a) (Delete b) = mostConstrainedElem a b
-mostConstrained (Delete _) _          = GT
-mostConstrained _          (Delete _) = LT
--- from here it gets woollier...
-mostConstrained (Change a _) (Change b _) = mostConstrainedElem a b
-mostConstrained (Same a)     (Same b)     = mostConstrainedElem a b
-mostConstrained (Change a _) (Same b)     = mostConstrainedElem a b
-mostConstrained (Same a)     (Change b _) = mostConstrainedElem a b
+merge :: Instr -> Instr -> [Instr]
+merge (BOE e s t) (BND n _)
+    | t == n   = [BON e n s]
+    | s == n   = [BIN e n t]
+merge (BED e a b) (BND n _)
+    | a == n   = [BEN e n a]
+    | b == n   = [BEN e n a]
+merge _ _ = []
 
+sortInstr :: [Reg] -> [Instr] -> [Instr] -> [Instr]
+sortInstr rs acc (i@(BND r _):is) = sortInstr rs' (i:acc) $ concat [promoted, rest]
+    where (promoted, rest) = partition promotable is
+          rs' = r:rs
+          promotable (BLO _ n)   | n `elem` rs' = True
+          promotable (BOE _ s t) | s `elem` rs' && t `elem` rs' = True
+          promotable (BED _ a b) | a `elem` rs' && b `elem` rs' = True
+          -- TODO: should we promote NECs or not?
+          promotable (NEC s t)   | s `elem` rs' && t `elem` rs' = True
+          promotable _ = False
+sortInstr rs acc (i:is) = sortInstr rs (i:acc) is
+sortInstr _  acc []     = reverse acc
 
-mostConstrainedElem :: OilrElem -> OilrElem -> Ordering
-mostConstrainedElem (IRNode _ _ _ lOilr) (IRNode _ _ _ rOilr) = compare lOilr rOilr
-mostConstrainedElem a b = error $ "Don't know how to compare " ++ show a ++ " with " ++ show b
-
-
-compileMod :: (OilrMod OilrElem) -> (OilrConfig, Mapping Id Int, DefBody) -> (OilrConfig, Mapping Id Int, DefBody)
+compileMod :: OilrMod -> (OilrConfig, Mapping Id Int, DefBody) -> (OilrConfig, Mapping Id Int, DefBody)
 compileMod (Create x) (cfg, regs, body) = case x of
     (IRNode id _ _ _     ) -> ( cfg, (id,r):regs, growRule body [] [ABN r] )
     (IREdge id _ _ _ s t ) -> ( cfg, (id,r):regs, growRule body [] [abe regs r s t] )
@@ -246,7 +254,7 @@ compileExpr i (IRTry cn th el) = concat [ compileExpr (i+1) cn
                                         , [ tar i "endT" ] ]
 compileExpr i (IRTrns e)     = concat [ [BBT] , compileExpr (i+1) e , [EBT] ]
 compileExpr i (IRSeqn es)    = compileSequence (i+1) es
-compileExpr i (IRLoop e)     = concat [ [ tar i "bgn"],
+compileExpr i (IRLoop e)     = concat [ [tar i "bgn", ALAP],
                                         compileExpr (i+1) e,
                                         [bnz i "bgn", TRU] ]
 compileExpr i (IRCall id)    = [ CAL (mangle id) ]

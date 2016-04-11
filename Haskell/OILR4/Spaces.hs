@@ -30,7 +30,7 @@ rShift i = i
 
 
 -- Compile list of valid indices to search for a given modification
-makeSpc :: OilrConfig -> OilrMod OilrElem -> OilrConfig
+makeSpc :: OilrConfig -> OilrMod -> OilrConfig
 makeSpc cfg (Same n)     = updateSpcMapping cfg $ indexIdsForNode n True
 makeSpc cfg (Change n _) = updateSpcMapping cfg $ indexIdsForNode n True
 makeSpc cfg (Create _)   = cfg

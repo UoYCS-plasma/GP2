@@ -8,7 +8,15 @@ import Mapping
 
 type Id = String
 
-data OilrMod a = Same a  |  Change a a  | Create a | Delete a | Check a  deriving (Show, Eq)
+data OilrMod = Create OilrElem
+             | Check OilrElem
+             | Same OilrElem
+             | Change OilrElem OilrElem
+             | Delete OilrElem
+    deriving (Show, Eq)
+
+instance Ord OilrMod where
+    a `compare` b = constrainedness a `compare` constrainedness b
 
 data IRLabel = IRInt Int
              | IRVar Id  -- Integer variable
@@ -24,13 +32,14 @@ data Sig = Sig { outDeg      :: Int
          | NoSig
      deriving (Show, Eq) 
 
-instance Ord Sig where
+{- instance Ord Sig where
+    NoSig            `compare` NoSig             = EQ
     NoSig            `compare` (Sig _ _ _ _)     = LT
     (Sig _ _ _ _)    `compare` NoSig             = GT
     (Sig _ _ _ True) `compare` (Sig _ _ _ False) = GT
     (Sig _ _ _ False) `compare` (Sig _ _ _ True) = LT
     (Sig o1 i1 l1 _) `compare` (Sig o2 i2 l2 _)  = (o1+i1+l1) `compare` (o2+i2+l2)
-
+    x `compare` y = error $ "Bugger: " ++ show [x,y] -}
 
 data OilrElem = IRNode  Id  Colour  IRLabel  Sig
               | IREdge  Id  Colour  IRLabel  Bool  Id Id
@@ -38,8 +47,14 @@ data OilrElem = IRNode  Id  Colour  IRLabel  Sig
               | IRNot   OilrElem
               | IRNothing
      deriving (Show, Eq)
+{- instance Ord OilrElem where
+    (IRNode _ _ _ a)     `compare` (IRNode _ _ _ b)     = a `compare` b
+    (IRNode _ _ _ _)     `compare` _                    = GT
+    _                    `compare` (IRNode _ _ _ _)     = GT
+    (IREdge _ _ _ _ _ _) `compare` (IREdge _ _ _ _ _ _) = EQ
+    a `compare` b = error $ "Arse: " ++ show [a,b] -}
 
-type OilrRule = [OilrMod OilrElem]
+type OilrRule = [OilrMod]
 
 data OilrIR   = IRProc Id OilrExpr
               | IRRule Id OilrRule
@@ -56,6 +71,31 @@ data OilrExpr = IRSeqn [OilrExpr]
 
 type Spc = [Sig]
 
+
+constrainedness :: OilrMod -> Int
+constrainedness (Delete el)   = eCon el * 10
+constrainedness (Change el _) = eCon el
+constrainedness _ = 0
+
+eCon :: OilrElem -> Int
+eCon (IRNode _ c l sig) = lCon l + cCon c + sCon sig
+eCon _                  = 0
+
+lCon :: IRLabel -> Int
+lCon (IRVar _) = 0
+lCon IRAny     = 0
+lCon IREmpty   = 1
+lCon (IRInt _) = 1
+
+cCon :: Colour -> Int
+cCon Any     = 0
+cCon _       = 1
+
+sCon :: Sig -> Int
+sCon (Sig o i l r)
+    | r         = o+i+(2*l)+1
+    | otherwise = o+i+(2*l)
+sCon NoSig = 0
 
 -- IR pretty-printer
 prettyIR :: OilrProg -> String
@@ -216,13 +256,13 @@ makeIREdge (AstRuleEdge _ bidi src tgt (RuleLabel l c)) =
 -- IR creation functions
 ---------------------------------------------------------------------
 
-irNode :: Mapping Id Sig -> (Maybe RuleNode, Maybe RuleNode) -> OilrMod OilrElem
+irNode :: Mapping Id Sig -> (Maybe RuleNode, Maybe RuleNode) -> OilrMod
 irNode sigs = irElem (makeIRNode sigs) (==)
 
-irEdge :: (Maybe AstRuleEdge, Maybe AstRuleEdge) -> OilrMod OilrElem
+irEdge :: (Maybe AstRuleEdge, Maybe AstRuleEdge) -> OilrMod
 irEdge = irElem makeIREdge edgeEquality
 
-irElem :: (a -> OilrElem) -> (a -> a -> Bool) -> (Maybe a, Maybe a) -> OilrMod OilrElem
+irElem :: (a -> OilrElem) -> (a -> a -> Bool) -> (Maybe a, Maybe a) -> OilrMod
 irElem mkElem _   (Just l, Nothing) = Delete (mkElem l)
 irElem mkElem _   (Nothing, Just r) = Create (mkElem r)
 irElem mkElem eql (Just l,  Just r)
