@@ -73,12 +73,14 @@ type Spc = [Sig]
 
 
 constrainedness :: OilrMod -> Int
-constrainedness (Delete el)   = eCon el * 10
+constrainedness (Delete el@(IRNode _ _ _ _))   = eCon el * 10
+constrainedness (Same el)   = eCon el
 constrainedness (Change el _) = eCon el
+constrainedness (Create (IRNode _ _ _ _))  = 1
 constrainedness _ = 0
 
 eCon :: OilrElem -> Int
-eCon (IRNode _ c l sig) = lCon l + cCon c + sCon sig
+eCon (IRNode _ c l sig) = lCon l + cCon c + sCon sig + 1
 eCon _                  = 0
 
 lCon :: IRLabel -> Int

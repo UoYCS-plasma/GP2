@@ -83,6 +83,9 @@ data Instr =
     | EBT                  -- End BackTracking secion: commit if flag is true, rollback otherwise
     -- There is no rollback command. This needs to be done manually with reverse rules.
 
+    -- Graph oracle
+    | ASRT Spc Int         -- Assert that Spc must contain at least Int nodes
+
     -- Stack machine
     -- | BLO Dst              -- push Bound eLement Out-degree to stack
     | BLI Dst              -- push Bound eLement In-degree to stack
@@ -131,7 +134,7 @@ compileRule name cfg ms = (defn, cfg')
     where defn = (name, (pre, body, post))
           merger = if NoMultiInstr `elem` compilerFlags cfg
                         then id
-                        else (mergeInstr)
+                        else (yama [] [])
           sorter = if NoSearchPlan `elem` compilerFlags cfg
                         then id
                         else (sortInstr [] [])
@@ -147,54 +150,48 @@ resetSpcsFor (BND _ s:is) = RST s:resetSpcsFor is
 resetSpcsFor (_:is) = resetSpcsFor is
 resetSpcsFor [] = []
 
-edgeFor :: Int -> [Int] -> Instr -> Bool
-edgeFor r rs (BOE _ s t) | r==s && t `elem` rs = True
-edgeFor r rs (BOE _ s t) | r==t && s `elem` rs = True
-edgeFor r rs (BED _ a b) | r==a && b `elem` rs = True
-edgeFor r rs (BED _ a b) | r==b && a `elem` rs = True
-edgeFor _ _ _ = False
+
+extends :: Int -> Instr -> Bool
+extends r (BND d _)   = r==d
+extends r (BOE _ s t) = r==s || r==t
+extends r (BED _ a b) = r==a || r==b
+extends _ _ = False
+
+
+see :: ([Int], [Int]) -> Int -> ([Int], [Int])
+see (s, u) n = ( (n:s), u )
+
+use :: ([Int], [Int]) -> Int -> ([Int], [Int])
+use (s, u) n = ( s \\ [n] , n:u )
+
+seen :: ([Int], [Int]) -> Int -> Bool
+seen (s, _) n = n `elem` s
+
+used :: ([Int], [Int]) -> Int -> Bool
+used (_, u) n = n `elem` u
+
+
+edgeTo n (BOE _ _ t) =  n==t
+edgeTo _ _ = False
+
+edgeFrom n (BOE _ s _) =  n==s
+edgeFrom _ _ = False
+
+yama acc seen (i@(BND r _):is) =
+    case (find (edgeTo r) is, find (edgeFrom r) is) of
+        (Just x@(BOE e s t), _      ) -> if s `elem` seen
+                                            then yama (BON e t s:acc) (r:seen) $ is \\ [x]
+                                            else yama (i:acc) (r:seen) is
+        (Nothing, Just x@(BOE e s t)) -> if t `elem` seen
+                                            then yama (BIN e s t:acc) (r:seen) $ is \\ [x]
+                                            else yama (i:acc) (r:seen) is
+        (Nothing, Nothing)            -> yama (i:acc) (r:seen) is
+yama acc seen (i:is) = yama (i:acc) seen is
+yama acc _ [] = reverse acc
+    
 
 
 
-
-
-{-
-
-mergeTravs :: SemiOilrCode -> SemiOilrCode -> SemiOilrCode
-mergeTravs nts []  = nts
-mergeTravs nts ets = edgesToInstrs [] [] edges
-    where
-        edges  = [ (src, ed, tgt)
-                    | src@(LUN sn _)   <- nts
-                    , tgt@(LUN tn _)   <- nts
-                    , ed@(LUE e s t _) <- ets
-                    , sn==s , tn==t ]
-
-edgesToInstrs acc _ [] = reverse acc
-edgesToInstrs acc seen ((LUN _ sp, LUE e s t d, LUN _ tp):es) =
-    case (s==t, s `elemIndex` seen, t `elemIndex` seen) of
-        (_,     Just _ , Just _ ) -> edgesToInstrs (LUE e s t d:acc)          seen     es
-        (True,  Nothing, _      ) -> edgesToInstrs (LUE e s t d:LUN s sp:acc) (s:seen) es
-        (False, Nothing, Just _ ) -> edgesToInstrs (XTE t e s In:acc)         (s:seen) es
-        (False, Just _ , Nothing) -> edgesToInstrs (XTE s e t Out:acc)        (t:seen) es
-        (False, Nothing, Nothing) -> edgesToInstrs (XTE s e t Out:LUN s sp:acc) (t:s:seen) es
-edgesToInstrs _ _ ((_, LUE _ _ _ In, _):es) = error "Found an unexpected in-edge"
-
-                    -}
-
-mergeInstr is = is
-    where merged = doMerge [] [] [ (src, edg, tgt) | src@(BND sn _)  <- is
-                                                   , tgt@(BND tn _)  <- is
-                                                   , edg@(BOE e s t) <- is
-                                                   , sn==s , tn==t ]
-
-doMerge acc seen ((BND _ ss, BOE r s t, BND _ _):ts) =
-    case (s `elemIndex` seen, t `elemIndex` seen) of
-        (Just _, Just _) -> doMerge (BOE r s t:acc) seen ts
-        (Nothing, Just _) -> doMerge (BIN r s t:acc) (s:seen) ts
-        (Just _, Nothing) -> doMerge (BON r t s:acc) (t:seen) ts
-        (Nothing, Nothing) -> doMerge (BON r t s:BND s ss:acc) (t:s:seen) ts
-doMerge acc _ [] = reverse acc
 
 sortInstr :: [Reg] -> [Instr] -> [Instr] -> [Instr]
 sortInstr rs acc (i@(BND r _):is) = sortInstr rs' (i:acc) $ concat [promoted, rest]

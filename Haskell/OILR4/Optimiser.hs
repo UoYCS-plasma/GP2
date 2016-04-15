@@ -134,10 +134,11 @@ isPredicate cf id = id `elem` predicateRules cf
 optimiseRule :: OilrConfig -> OilrRule -> OilrRule
 optimiseRule cf r = if NoMatchSort `elem` compilerFlags cf
                         then r
-                        else sortRule r
+                        else reverse $ sortRule r
 
 sortRule :: OilrRule -> OilrRule
-sortRule ms = sort ms
+sortRule ms = trace (intercalate "\n" (map show ms') ++ "\n") ms'
+    where ms' = sort $ trace (intercalate "\n" (map show ms) ++ "\n") ms
 
 isValidSort = isValidSort' []
 

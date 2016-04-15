@@ -12,12 +12,15 @@ import Data.Bits
 import Debug.Trace
 
 
-compileC :: OilrConfig -> Prog -> String
-compileC cf prog = concat [preamble, cRuntime, spaces, decls, defs]
+compileC :: OilrConfig -> Prog -> Maybe [Instr] -> String
+compileC cf prog host = concat [preamble, cRuntime, spaces, chost, decls, defs]
     where defs   = concatMap compileDefn prog
           decls  = concatMap compileDecl prog
           spaces = concatMap compileSS $ searchSpaces cf
           preamble = makePreamble cf
+          chost  = case host of
+                      Just h  -> compileHost h
+                      Nothing -> ""
 
 makePreamble :: OilrConfig -> String
 makePreamble cf = concat [ trace (show flags) $ concatMap globalOpts flags, "\n",
@@ -33,6 +36,17 @@ makePreamble cf = concat [ trace (show flags) $ concatMap globalOpts flags, "\n"
           globalOpts EnableParanoidDebugging = "#define OILR_PARANOID_CHECKS\n"
           globalOpts NoRecursion             = "#define MAX_RECURSE 0\n"
           globalOpts _ = ""
+
+-- Compile a host graph
+compileHost :: [Instr] -> String
+compileHost is = concat [ "\n\n", decl "_HOST", " {\n", build [ "addNodes", show nNodes], concat cs, compileIns RET, "\n\n" ]
+    where (nNodes, cs) = foldr makeHostElem (0, []) is
+          makeHostElem (ABN _)     (n, cs) = (n+1, cs)
+          makeHostElem (ABE _ s t) (n, cs) = (n, build ["addEdgeById", show s, show t]:cs)
+          makeHostElem (RBN id v)  (n, cs) = (n, build ["setRootById", show id]:cs)
+          makeHostElem NOP         (n, cs) = (n, cs)
+          makeHostElem i           (n, cs) = error $ "Don't know how to host-compile " ++ show i
+          makeNodes    _           (n, cs) = (n, cs)
 
 -- Pre-declarations required for C, as we may have mutually recursive procs
 compileDecl :: Definition -> String
@@ -67,7 +81,7 @@ compileIns (DBN reg)         = build ["DBN", show reg]
 compileIns (DBE reg)         = build ["DBE", show reg]
 compileIns (DBL reg)         = build ["DBL", show reg]
 
-compileIns (RBN dst bool)    = error "Compilation not implemented"
+compileIns (RBN dst bool)    = build ["RBN", show dst, if bool then "1" else "0"]
 
 compileIns (CBL reg c)       = build ["CBN", show reg, show c]
 compileIns (LBL dst n)       = error "Compilation not implemented"
@@ -76,7 +90,7 @@ compileIns (BND dst ss)      = build ["BND", show dst, spcName ss]
 compileIns (BOE dst src tgt) = build ("BOE":[show n|n<-[dst,src,tgt]])
 compileIns (BED dst r0 r1)   = build ("BED":[show n|n<-[dst,r0,r1]])
 compileIns (BON d0 d1 src)   = build ("BON":[show n|n<-[d0,d1,src]])
-compileIns (BIN d0 d1 tgt)   = build ("BON":[show n|n<-[d0,d1,tgt]])
+compileIns (BIN d0 d1 tgt)   = build ("BIN":[show n|n<-[d0,d1,tgt]])
 compileIns (BEN d0 d1 r0)    = error "Compilation not implemented"
 compileIns (BLO dst r0)      = build ["BLO", show dst, show r0]
 compileIns (NEC src tgt)     = build ["NEC", show src, show tgt]

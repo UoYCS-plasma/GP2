@@ -17,15 +17,24 @@
 #define DONE return
 #define MIN_ALLOC_INCREMENT (1024*1024*4)  // 4 meg
 
-#define OILR_ELEM_ALIGN 128
+#if __x86_64__
+#	define OILR_ELEM_ALIGN 128
+#else
+#	define OILR_ELEM_ALIGN 64
+#endif
 #define OILR_ELEM_MASK  (~(OILR_ELEM_ALIGN-1))
 
 #ifndef MAX_RECURSE
-#	define MAX_RECURSE 1024
+#if __x86_64__
+#   define MAX_RECURSE 40000
+#else
+#	define MAX_RECURSE 50000
+#endif
 #endif
 
 
 void OILR_Main();
+void _HOST();
 long bindCount   = 0;
 long unbindCount = 0;
 void *currentBrk;
@@ -36,19 +45,39 @@ void (*self)();
 char *colourNames[]   = { "", " # red", " # blue", " # green", " # grey" };
 char *edgeMarkNames[] = { "", " # dashed" };
 
+#define getElementById(id) &(g.pool[(id)])
+#define elementId(el) ((el)-g.pool)
+
 /////////////////////////////////////////////////////////
-// accessor macros
+// Doubly-linked list structure
 
-
-#define nextElem(dl) ((dl)->next)
-#define prevElem(dl) ((dl)->prev)
-#define headOfList(dl) ((dl)->head)
 // TODO: introduce a union to prevent this casting evil
 #define elementOfListItem(dl) ((Element *)((long)(dl)&(OILR_ELEM_MASK)))
 
 #define listLength(dl) ((dl)->count)
 #define incListLength(dl) ((dl)->count++)
 #define decListLength(dl) ((dl)->count--)
+
+#define nextElem(dl) ((dl)->next)
+#define prevElem(dl) ((dl)->prev)
+#define headOfList(dl) ((dl)->head)
+#define setNext(dl, elem)  do { nextElem(dl) = (elem); } while (0)
+#define setPrev(dl, elem)  do { prevElem(dl) = (elem); } while (0)
+#define setHead(dl, elem)  do { headOfList(dl) = (elem); } while (0)
+#define clearNext(dl)  do { nextElem(dl) = NULL ; } while (0)
+#define clearPrev(dl)  do { prevElem(dl) = NULL ; } while (0)
+#define clearHead(dl)  do { headOfList(dl) = NULL ; } while (0)
+typedef struct DList {
+	union {
+		long count;
+		struct DList *head;
+	};
+	struct DList *next;
+	struct DList *prev;
+	// Elements MUST be aligned to OILR_ELEM_ALIGN, which must in turn
+	// be a power of 2. That way we can simply mask-off a DList address
+	// to get to the containing Element.
+} DList;
 
 
 #define source(e)   ((e)->src)
@@ -72,24 +101,9 @@ char *edgeMarkNames[] = { "", " # dashed" };
 #define index(sig) &(g.idx[sig])
 #define indexIdFor(addr) ((addr)-g.idx)
 
-#define getElementById(id) &(g.pool[(id)])
-#define elementId(el) ((el)-g.pool)
-
 
 /////////////////////////////////////////////////////////
 // graph structure
-
-typedef struct DList {
-	union {
-		long count;
-		struct DList *head;
-	};
-	struct DList *next;
-	struct DList *prev;
-	// Elements MUST be aligned to OILR_ELEM_ALIGN, which must in turn
-	// be a power of 2. That way we can simply mask-off a DList address
-	// to get to the containing Element.
-} DList;
 
 // Flags field bit packing (starting with low-order bits):
 
@@ -290,14 +304,14 @@ void prependElem(DList *dl, DList *elem) {
 #endif
 	DList *nx = nextElem(dl);
 	assert(headOfList(elem) == NULL);
-	elem->head = dl;
-	elem->prev = NULL;
-	elem->next = nx;
+	setHead(elem, dl);
+	clearPrev(elem);
+	setNext(elem, nx);
 	if (nx)
-		nx->prev = elem;
+		setPrev(nx, elem);
 	if (listLength(dl) == 0)
-		dl->prev = elem;
-	dl->next = elem;
+		setPrev(dl, elem);
+	setNext(dl, elem);
 	incListLength(dl);
 	walkChain(dl);
 	assert(listLength(dl) == len+1);
@@ -317,18 +331,18 @@ void removeElem(DList *elem) {
 #endif
 	
 	if (nx)
-		nx->prev = pv;
+		setPrev(nx, pv);
 	else
-		dl->prev = pv;
+		setPrev(dl, pv);
 
 	if (pv)
-		pv->next = nx;
+		setNext(pv, nx);
 	else
-		dl->next = nx;
+		setNext(dl, nx);
 
-	elem->next = NULL;
-	elem->prev = NULL;
-	elem->head = NULL;
+	clearNext(elem);
+	clearPrev(elem);
+	clearHead(elem);
 	decListLength(dl);
 	assert(listLength(dl) == len-1);
 	assert(dl->count >= 0 && dl->count < g.poolSize);
@@ -435,7 +449,7 @@ void checkSpace(long n) {
 			lastAlloc = max(MIN_ALLOC_INCREMENT, sizeof(Element) * n * 3);
 		currentBrk += lastAlloc;
 		if ( brk( currentBrk ) < 0 )
-			failwith("Couldn't move brk address to 0x%x\n", currentBrk);
+			failwith("Couldn't move brk address to %p\n", currentBrk);
 		debug("Allocated space for %d Elements\n", lastAlloc/sizeof(Element));
 		g.poolSize = lastAlloc/sizeof(Element);
 	}
@@ -470,7 +484,14 @@ Element *unsafeAddNode() {
 	return n;
 }
 Element *addNode() {
-	return safeAllocElement();
+	checkSpace(1);
+	return unsafeAddNode();
+}
+void addNodes(long n) {
+	long i;
+	checkSpace(n);
+	for (i=0; i<n; i++)
+		unsafeAddNode();
 }
 Element *addLoop(Element *node) {
 	Element *e = safeAllocElement();
@@ -740,16 +761,37 @@ void lookupNode(DList **dlp, Element **node) {
 	}
 	boolFlag = 0;
 }
-void followOutEdges(Element **edge, Element **node, DList **dlp) {
-	// iterate over the edges in dlp, which are in the direction specified by dirn,
+void followOutEdges(Element **edge, Element **node, Element *src) {
+	// iterate over the out edges from src,
 	// bind the edge and node on the other end to *edge and *node respectively.
 //	DList *dlp = outListFor(src);
 	unbind(*edge);
 	unbind(*node);
-	while ( (*edge = searchList(dlp)) ) {
+	DList *dlp = *edge ? outChain(*edge) : outListFor(src);
+	while ( (*edge = searchList(&dlp)) ) {
 		// we know edge is unbound, because searchList() checks.
 		// We still need to check that node is available.
 		*node = target(*edge);
+		if (unbound(*node)) {
+			bindEdge(*edge);
+			bindNode(*node);
+			boolFlag = 1;
+			return;
+		}
+	}
+	*node = NULL;
+	boolFlag = 0;
+}
+void followInEdges(Element **edge, Element **node, Element *tgt) {
+	// iterate over the in edges from tgt,
+	// bind the edge and node on the other end to *edge and *node respectively.
+	unbind(*edge);
+	unbind(*node);
+	DList *dlp = *edge ? inChain(*edge) : inListFor(tgt);
+	while ( (*edge = searchList(&dlp)) ) {
+		// we know edge is unbound, because searchList() checks.
+		// We still need to check that node is available.
+		*node = source(*edge);
 		if (unbound(*node)) {
 			bindEdge(*edge);
 			bindNode(*node);
@@ -813,7 +855,9 @@ void loopOnNode(Element **edge, Element *node) {
 	Element *regs[n]; \
 	failStack[0] = &&l_exit; \
 	memset(regs, 0, sizeof(Element *)*(n)); \
-	fsi=0;
+	fsi=0
+	// fprintf(stderr, "%d: %p %p\n", MAX_RECURSE-recursionDepth, __builtin_frame_address(0), __builtin_frame_address(1))
+	
 
 #define ABN(dst)            do { reg(dst) = addNode(); } while (0)
 #define ABE(dst, src, tgt)  do { reg(dst) = addEdge(reg(src), reg(tgt)); } while (0)
@@ -852,10 +896,17 @@ void bnd(Element **dst, DList **spc, DList **dl, long *pos) {
 #define BON(dstE, dstN, srcR) \
 	l_ ## dstN : \
 	do { \
-		static DList *dsp; \
-		if (!dsp) \
-			dsp = outListFor(reg(srcR)); \
-		followOutEdges( &reg(dstE), &reg(dstN), &dsp ); \
+		followOutEdges( &reg(dstE), &reg(dstN), reg(srcR) ); \
+		if (boolFlag) \
+			setFailTo(&&l_ ## dstN); \
+		else \
+			fail(); \
+	} while (0)
+
+#define BIN(dstE, dstN, srcR) \
+	l_ ## dstN : \
+	do { \
+		followInEdges( &reg(dstE), &reg(dstN), reg(srcR) ); \
 		if (boolFlag) \
 			setFailTo(&&l_ ## dstN); \
 		else \
@@ -1001,6 +1052,32 @@ void dumpGraph(FILE *file) {
 	assert(edgeIndexCount == edgeCount);
 	oilrReport();
 }
+/* Drat. IDs are incorrect! :(
+ * void compactDumpGraph(FILE *file) {
+	int i;
+	Element *el;
+	char arrow[128];
+	fprintf(file, "%d nodes\n", g.nodeCount);
+	for (i=0; i<g.freeId; i++) {
+		el = getElementById(i);
+		if (elType(el) == NODE_TYPE) {
+			if ( isLabelled(el) || colour(el) || isRoot(el) ) {
+				sprintf(arrow, " : %d", getLabel(el));
+				fprintf(file, "%d%s%s%s\n", i, isRoot(el)?" R":"", isLabelled(el)?arrow:"", colour(el)?colourNames[colour(el)]:"");
+			}
+		} else if (elType(el) == EDGE_TYPE) {
+			if (isLabelled(el) && ! colour(el) )
+				sprintf(arrow, "-( %d )->", getLabel(el));
+			else if (isLabelled(el) && colour(el) )
+				sprintf(arrow, "=( %d )=>", getLabel(el));
+			else if (colour(el))
+				sprintf(arrow, "==>");
+			else
+				sprintf(arrow, "-->");
+			fprintf(file, "%d %s %d\n", elementId(source(el)), arrow, elementId(target(el)) );
+		}
+	}
+} */
 
 /////////////////////////////////////////////////////////
 // main
@@ -1032,22 +1109,9 @@ int main(int argc, char **argv) {
 	} */
 
 	// checkGraph();
-	// _HOST();
+	_HOST();
 
-	addNode();
-	addEdgeById(1, 1);
-	addEdgeById(1, 1);
-	addEdgeById(1, 1);
-	addEdgeById(1, 1);
-	addEdgeById(1, 1);
-
-	addEdgeById(1, 1);
-	addEdgeById(1, 1);
-	addEdgeById(1, 1);
-/*	addEdgeById(1, 1);
-	addEdgeById(1, 1);  */
-
-	setRootById(1);
+	// setRootById(1);
 	checkGraph();
 //	dumpGraph(stdout);
 
@@ -1064,10 +1128,11 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	dumpGraph(stdout);
+	// compactDumpGraph(stdout);
 	return 0;
 }
 
-#define ALAP(id) do { recursionDepth=MAX_RECURSE; self=(id); do { (id)(); } while (boolFlag); boolFlag=1; } while (0)
+#define ALAP(id) do { self=(id); do { recursionDepth=MAX_RECURSE; (id)(); } while (boolFlag); boolFlag=1; } while (0)
 #define ONCE(id) do { recursionDepth=0; (id)(); } while (0)
 
 /* #define ALAP(rule, recursive, ...) do { \

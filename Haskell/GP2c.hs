@@ -51,13 +51,14 @@ options = [ Option ['O'] ["no-oilr"] (NoArg NoOILR)
 debugCompiler = "gcc -g "
 perfCompiler  = "gcc -O2 "
 
-compilerFlagsCommon = "-Wno-format -Wno-unused-label -Wall -Wextra -Werror -m32 -o "
+compilerFlagsCommon = "-Wno-format -Wno-unused-label -Wall -Wextra -Werror -o "
 
 getCompilerFor flags = concat [ cc, compilerFlagsCommon ]
     where
+        arch = if Compile32Bit `elem` flags then " -m32 " else " -m64 "
         cc = if ( EnableDebugging `elem` flags || EnableParanoidDebugging `elem` flags)
-                then debugCompiler
-                else perfCompiler
+                then debugCompiler ++ arch
+                else perfCompiler ++ arch
 
 getStem :: String -> String
 getStem = takeWhile (/= '.')
@@ -96,9 +97,8 @@ main = do
             let ir = makeIR pAST
             let cf = configureOilrMachine flags ir
             let (cf', prog) = compileProg cf $ optimise cf ir
-            let c = compileC cf' prog
-            -- let host = compileHostGraph hAST
-            -- putStrLn $ show prog
+            let host = compileHostGraph hAST
+            let c = compileC cf' prog $ Just host
             let compiler = getCompilerFor flags
             case find (\f -> case f of { Dump _ -> True; _ -> False }) flags of
                 Just (Dump "ir")   -> putStrLn $ prettyIR ir
