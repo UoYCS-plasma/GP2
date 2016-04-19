@@ -137,8 +137,8 @@ optimiseRule cf r = if NoMatchSort `elem` compilerFlags cf
                         else reverse $ sortRule r
 
 sortRule :: OilrRule -> OilrRule
-sortRule ms = trace (intercalate "\n" (map show ms') ++ "\n") ms'
-    where ms' = sort $ trace (intercalate "\n" (map show ms) ++ "\n") ms
+sortRule ms = {- trace (intercalate "\n" (map show ms') ++ "\n") -} ms'
+    where ms' = sort $ {- trace (intercalate "\n" (map show ms) ++ "\n") -} ms
 
 isValidSort = isValidSort' []
 

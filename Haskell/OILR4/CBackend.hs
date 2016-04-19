@@ -4,6 +4,7 @@ import OILR4.IR
 import OILR4.Config
 import OILR4.Instructions
 import OILR4.CRuntime
+import OILR4.Spaces
 
 import Mapping
 
@@ -16,7 +17,9 @@ compileC :: OilrConfig -> Prog -> Maybe [Instr] -> String
 compileC cf prog host = concat [preamble, cRuntime, spaces, chost, decls, defs]
     where defs   = concatMap compileDefn prog
           decls  = concatMap compileDecl prog
-          spaces = concatMap compileSS $ searchSpaces cf
+          spaces = if UseCompactIndex `elem` compilerFlags cf
+                        then ( concatMap compileSS $ packedSpaces cf) ++ compileIndexMap cf
+                        else ( concatMap compileSS $ searchSpaces cf)
           preamble = makePreamble cf
           chost  = case host of
                       Just h  -> compileHost h
@@ -35,6 +38,9 @@ makePreamble cf = concat [ trace (show flags) $ concatMap globalOpts flags, "\n"
           globalOpts EnableDebugging         = "#define OILR_DEBUGGING\n"
           globalOpts EnableParanoidDebugging = "#define OILR_PARANOID_CHECKS\n"
           globalOpts NoRecursion             = "#define MAX_RECURSE 0\n"
+          globalOpts EnableExecutionTrace    = "#define OILR_EXECUTION_TRACE\n"
+          globalOpts UseCompactIndex         = concat [ "#define OILR_COMPACT_INDEX\n"
+                                                      , "#define OILR_PHYS_INDEX_SIZE ", show $ physIndCount cf, "\n"]
           globalOpts _ = ""
 
 -- Compile a host graph
@@ -54,7 +60,7 @@ compileDecl (name, _) = decl name ++ ";\n"
 
 compileDefn :: Definition -> String
 compileDefn (name, (pre, RuleBody lhs rhs, post)) = concat $
-    ('\n':'\n':(decl name ++ " {\n")):[ compileIns i
+    ('\n':'\n':(decl name ++ " {\n\toilrCurrentRule=" ++ show name ++ ";\n")):[ compileIns i
                         | i <- concat [pre, lhs, rhs, post] ]
 compileDefn (name, (pre, ProcBody is, post)) = concat $
     ('\n':'\n':(decl name ++ " {\n")):[ compileIns i
@@ -109,6 +115,8 @@ compileIns (RET)             = "l_exit:\n\treturn;\n}"
 -- compileIns (BAK) = error "Compilation not implemented"
 -- compileIns (EBT) = error "Compilation not implemented"
 
+compileIns (ASRT ss n) = build ["ASRT", spcName ss]
+
 compileIns (BLI dst) = error "Compilation not implemented"
 compileIns (BLL dst) = error "Compilation not implemented"
 compileIns (BLR dst) = error "Compilation not implemented"
@@ -125,12 +133,32 @@ compileIns (SHL n) = error "Compilation not implemented"
 
 compileIns i     = build [show i]
 
+
+
 compileSS (id, inds) = concat [ "\nDList *", name, "[] = { "
                               , intercalate ", " (map indName inds), ", NULL };\n"
                               , "DList *", name, "_dl;\n"
+                              , "long oracle_", name, ";\n"
                               , "long ",   name, "_pos;\n"]
     where name = spcName id
 
+compileIndexMap :: OilrConfig -> String
+compileIndexMap cf = concat [ "\tDList *indexMap[] = {"
+                            , intercalate ", " $ map showMapping [0..(indexCount cf)-1]
+                            , "};\n"]
+    where showMapping i = concat ["&g.idx[", show (definiteLookup i l2p), "]"]
+          l2p = logicalToPhys cf
+
+
+{- compileIndexMap cf = concat [ "\tDList *indexMap[] = {"
+                           , intercalate ", " $ map showMapping [0..(indexCount cf)-1]
+                           , "};\n"]
+    where showMapping i = concat ["&g.idx[", m i, "]"]
+          m x = if x `elem` unused
+                    then "0"
+                    else show x
+          unused = unusedInds n $ searchSpaces cf
+-}
 build :: [String] -> String
 build (ins:args) = '\t':concat [ins, "(", intercalate "," args, ");\n"]
 

@@ -84,7 +84,7 @@ data Instr =
     -- There is no rollback command. This needs to be done manually with reverse rules.
 
     -- Graph oracle
-    | ASRT Spc Int         -- Assert that Spc must contain at least Int nodes
+    | ASRT Sid Int         -- Assert that spc Sid must contain at least Int nodes
 
     -- Stack machine
     -- | BLO Dst              -- push Bound eLement Out-degree to stack
@@ -138,7 +138,10 @@ compileRule name cfg ms = (defn, cfg')
           sorter = if NoSearchPlan `elem` compilerFlags cfg
                         then id
                         else (sortInstr [] [])
-          pre  = [REGS (length regs)]
+          oracle = if UseOracle `elem` compilerFlags cfg
+                        then makeOracle
+                        else (\_ -> [])
+          pre  = [REGS (length regs)] ++ oracle lhs
           body = RuleBody (merger $ sorter $ reverse lhs) (SUC:reverse rhs)
           post = concat [ [UBN (length regs)]
                         , resetSpcsFor lhs
@@ -189,8 +192,11 @@ yama acc seen (i@(BND r _):is) =
 yama acc seen (i:is) = yama (i:acc) seen is
 yama acc _ [] = reverse acc
     
-
-
+makeOracle :: [Instr] -> [Instr]
+makeOracle is = ors
+    where ors = concatMap makeOra is
+          makeOra (BND _ s) = [ASRT s 1]
+          makeOra _         = []
 
 
 sortInstr :: [Reg] -> [Instr] -> [Instr] -> [Instr]

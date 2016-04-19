@@ -6,6 +6,7 @@ import OILR4.IR
 import GPSyntax
 import Mapping
 
+import Data.List
 import Data.Bits
 
 import Debug.Trace
@@ -28,7 +29,39 @@ lShift i = shift i $ rBits indBits
 rShift i = i
 
 
+analyseSS :: Mapping  Int [Ind] -> [Ind]
+analyseSS ss = {- trace (show $ differences) -} []
+    where intersections = [ s1 `intersect` s2 | (_,s1) <- ss, (_,s2) <- ss, s1/=s2 ]
+          differences   = [ s1 \\ s2 | (_,s1) <- ss, s2 <- intersections ]
 
+makePackedSpaces :: OilrConfig -> OilrConfig
+makePackedSpaces cf = cf { logicalToPhys=l2p, packedSpaces=s2p, physIndCount=length packed }
+    where packed = zip [0..] $ packIndices cf
+          l2p = [ (l, p) | (p, (_, ls)) <- packed, l <- ls ]
+          s2p = [ (s, ps) | (s, ls) <- searchSpaces cf, let ps = nub $ map lToP ls ]
+          lToP l = definiteLookup l l2p
+
+packIndices :: OilrConfig -> Mapping [Int] [Ind]
+packIndices cf = ([], unusedInds (indexCount cf) ss) : disjointSpaces [] ss 
+    where ss = searchSpaces cf
+
+unusedInds :: Int -> Mapping Int [Ind] -> [Int]
+unusedInds n ss = [0..n-1] \\ all
+    where all = concat $ map snd ss
+
+disjointSpaces :: [([Int],[Ind])] -> Mapping Int [Ind] -> [([Int],[Ind])]
+disjointSpaces acc ((i,s):ss) = disjointSpaces acc' ss
+    where acc' = s':concat [ints, difs]
+          -- the intersections between s and the acc'd spaces
+          ints = [ (i:is, d `intersect` s) | (is,d) <- acc ]
+          -- remove members of s from existing acc'd spaces
+          difs = [ (is, d \\ s) | (is,d) <- acc ]
+          -- remove members of all existing acc'd spaces from s
+          s'   = ([i], s \\ (nub $ concatMap snd acc))
+disjointSpaces acc [] = sortBy (\a b -> (length.fst) a `compare` (length.fst) b) $ filter (not.null.snd) acc
+
+
+    
 -- Compile list of valid indices to search for a given modification
 makeSpc :: OilrConfig -> OilrMod -> OilrConfig
 makeSpc cfg (Same n)     = updateSpcMapping cfg $ indexIdsForNode n True

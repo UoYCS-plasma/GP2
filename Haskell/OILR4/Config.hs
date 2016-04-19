@@ -8,6 +8,7 @@ import GPSyntax  -- for colours
 import Mapping
 
 import Data.List
+import Data.Bits
 
 -- OilrConfig represents the global configuration of the OILR machine
 -- for the current program.
@@ -25,6 +26,9 @@ data Flag = NoOILR               -- switch off OILR indexing entirely
           | Dump String          -- dump an internal representation
           -- Compilation options
           | Compile32Bit         -- Generate 32 bit code
+          -- Non-standard optimisations
+          | UseOracle            -- Use the graph oracle
+          | UseCompactIndex      -- Use a minimal set of OILR indices
           -- OILR Runtime options
           | EnableDebugging
           | EnableParanoidDebugging
@@ -39,12 +43,16 @@ data OilrIndexBits = OilrIndexBits { bBits::Int
                                    , rBits::Int } deriving (Show, Eq)
 
 indBits = OilrIndexBits 1 3 2 2 2 1
-
+indCount (OilrIndexBits b c o i l r) = 1 `shift` (b+c+o+i+l+r)
 
 
 data OilrConfig = OilrConfig { compilerFlags  :: [Flag]
                              , predicateRules :: [String]
-                             , searchSpaces   :: Mapping Int [Ind]}
+                             , indexCount     :: Int
+                             , physIndCount   :: Int
+                             , logicalToPhys  :: Mapping Int Int     -- mapping of logical onto physical spaces
+                             , packedSpaces   :: Mapping Int [Ind]   -- search spaces expressed as physical inds
+                             , searchSpaces   :: Mapping Int [Ind]}  -- search spaces expressed as logical inds
 
 colourIds :: Mapping Colour Int
 colourIds = [ (Uncoloured, 0)
@@ -60,6 +68,7 @@ configureOilrMachine :: [Flag] -> [OilrIR] -> OilrConfig
 configureOilrMachine flags prog =
     OilrConfig { predicateRules = findPredicateRules prog 
                , compilerFlags  = flags
+               , indexCount     = indCount indBits
                , searchSpaces   = []}
 
 

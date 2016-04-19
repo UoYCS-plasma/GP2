@@ -15,6 +15,7 @@ import OILR4.Config
 import OILR4.IR
 import OILR4.Optimiser
 import OILR4.OILROptim
+import OILR4.Spaces
 -- import OILR4.X86Backend
 import OILR4.CBackend
 
@@ -39,6 +40,11 @@ options = [ Option ['O'] ["no-oilr"] (NoArg NoOILR)
 
             Option ['3'] ["32-bit"]  (NoArg Compile32Bit)
                     "Compile a 32-bit executable" ,
+
+            Option ['a'] ["oracle"] (NoArg UseOracle)
+                    "Enable the graph oracle" ,
+            Option ['c'] ["compact-index"] (NoArg UseCompactIndex)
+                    "Enable abstraction layer over OILR indices",
 
             Option ['d'] ["debug"]   (NoArg EnableDebugging)
                     "Enable verbose debugging output on compiled program's stderr" ,
@@ -97,9 +103,11 @@ main = do
             let ir = makeIR pAST
             let cf = configureOilrMachine flags ir
             let (cf', prog) = compileProg cf $ optimise cf ir
+            let cf'' = makePackedSpaces cf'
             let host = compileHostGraph hAST
-            let c = compileC cf' prog $ Just host
+            let c = compileC cf'' prog $ Just host
             let compiler = getCompilerFor flags
+            -- putStrLn $ show $ packIndices cf'
             case find (\f -> case f of { Dump _ -> True; _ -> False }) flags of
                 Just (Dump "ir")   -> putStrLn $ prettyIR ir
                 Just (Dump "oilr") -> putStrLn $ prettyProg prog

@@ -58,6 +58,32 @@ char *edgeMarkNames[] = { "", " # dashed" };
 #define incListLength(dl) ((dl)->count++)
 #define decListLength(dl) ((dl)->count--)
 
+// #define OILR_COMPACT_LISTS
+
+#ifdef OILR_COMPACT_LISTS
+#define offs(dl, n) ((DList*)((Element*)(dl)+(n)))
+#define nextElem(dl) (offs(dl, (dl)->next))
+#define prevElem(dl) (offs(dl, (dl)->prev))
+#define headOfList(dl) (offs(dl, (dl)->head))
+#define setNext(dl, elem)  do { (dl)->next = elementId(elementOfListItem(elem))-elementId(elementOfListItem(dl)); } while (0)
+#define setPrev(dl, elem)  do { (dl)->prev = elementId(elementOfListItem(elem))-elementId(elementOfListItem(dl)); } while (0)
+#define setHead(dl, elem)  do { (dl)->head = elementId(elementOfListItem(elem))-elementId(elementOfListItem(dl)); } while (0)
+#define clearNext(dl)  do { setNext(dl, NULL) ; } while (0)
+#define clearPrev(dl)  do { setPrev(dl, NULL) ; } while (0)
+#define clearHead(dl)  do { setHead(dl, NULL) ; } while (0)
+typedef struct DList {
+	union {
+		int count;
+		int head;
+	};
+	int next;
+	int prev;
+	// Elements MUST be aligned to OILR_ELEM_ALIGN, which must in turn
+	// be a power of 2. That way we can simply mask-off a DList address
+	// to get to the containing Element.
+} DList;
+
+#else
 #define nextElem(dl) ((dl)->next)
 #define prevElem(dl) ((dl)->prev)
 #define headOfList(dl) ((dl)->head)
@@ -78,7 +104,7 @@ typedef struct DList {
 	// be a power of 2. That way we can simply mask-off a DList address
 	// to get to the containing Element.
 } DList;
-
+#endif
 
 #define source(e)   ((e)->src)
 #define target(e)   ((e)->tgt)
@@ -98,7 +124,12 @@ typedef struct DList {
 #define realOutdeg(n) (outdeg(n) + loopdeg(n))
 #define realIndeg(n)  (indeg(n)  + loopdeg(n))
 
-#define index(sig) &(g.idx[sig])
+#ifdef OILR_COMPACT_INDEX
+#	define index(sig) indexMap[sig]
+DList *indexMap[];
+#else
+#	define index(sig) &(g.idx[sig])
+#endif
 #define indexIdFor(addr) ((addr)-g.idx)
 
 
@@ -199,7 +230,11 @@ typedef struct Graph {
 	long edgeCount;
 	Element *pool;
 	Element *freeList;
+#ifdef OILR_COMPACT_INDEX
+	DList idx[OILR_PHYS_INDEX_SIZE];
+#else
 	DList idx[OILR_INDEX_SIZE];
+#endif
 } Graph;
 
 Graph g;
@@ -653,43 +688,36 @@ void parseHost(FILE *host) {
 
 
 #ifdef OILR_EXECUTION_TRACE
+#define nextTraceId() oilrTraceId++
 FILE *oilrTraceFile;
 long oilrTraceId=0;
-char *oilrCurrentRule="";
+char *oilrCurrentRule="_HOST";
 void trace(char c) {
 	fprintf(oilrTraceFile, "%c", c);
 }
 void oilrTrace(Element *el) {
-	DList *ndl, *edl;
-	Element *node, *edge;
-	Element *n; Element *e;
-	char format;
+	Element *x;
+	char *format;
 	long i;
 	fprintf(oilrTraceFile, "%ld %s :", oilrTraceId, oilrCurrentRule);
-	for (i=0; i<OILR_INDEX_SIZE; i++) {
-		ndl = index(i);
-		while ( (ndl = nextElem(ndl)) ) {
-			n = elementOfListItem(ndl);
-			edl = outListFor(n);
-			format = n == el ? '?' : bound(n) ? '!' : ' ';
-			fprintf(oilrTraceFile, " %c%ld", format, elementId(n));
-			while ( (edl = nextElem(edl)) ) {
-				e = elementOfListItem(edl);
-				format = e == el ? '?' : bound(e) ? '!' : ' ';
-				fprintf(oilrTraceFile, " %c%ld->%ld", format, elementId(source(e)), elementId(target(e)));
-			}
-			edl = loopListFor(n);
-			while ( (edl = nextElem(edl)) ) {
-				e = elementOfListItem(edl);
-				format = e == el ? '?' : bound(e) ? '!' : ' ';
-				fprintf(oilrTraceFile, " %c%ld->%ld", format, elementId(source(e)), elementId(target(e)));
-			}
+	for (i=0; i<g.freeId; i++) {
+		x = getElementById(i);
+		if (elType(x) == NODE_TYPE) {
+			format = x == el ? "?" : bound(x) ? "!" : "";
+			fprintf(oilrTraceFile, " %s%ld", format, elementId(x));
+		}
+	}
+	for (i=0; i<g.freeId; i++) {
+		x = getElementById(i);
+		if (elType(x) == EDGE_TYPE) {
+			format = x == el ? "?" : bound(x) ? "!" : "";
+			fprintf(oilrTraceFile, " %s%ld->%ld", format, elementId(source(x)), elementId(target(x)));
 		}
 	}
 	fprintf(oilrTraceFile, "\n");
-	oilrTraceId++;
 }
 #else
+#define nextTraceId()
 #define trace(c)
 #define oilrTrace(e)
 #endif
@@ -737,7 +765,6 @@ void unbindAll(Element **regs, long n) {
 	for (i=0; i<n; i++) {
 		unbind(regs[i]);
 	}
-	oilrTrace(NULL);
 }
 
 Element *searchList(DList **dlp) {
@@ -858,6 +885,16 @@ void loopOnNode(Element **edge, Element *node) {
 	fsi=0
 	// fprintf(stderr, "%d: %p %p\n", MAX_RECURSE-recursionDepth, __builtin_frame_address(0), __builtin_frame_address(1))
 	
+#define ASRT(spc) \
+	do { \
+		int i=0; \
+		while ((spc)[i] != NULL) \
+			if (listLength((spc)[i++])>0) \
+				goto pass_ ## spc; \
+		fail(); \
+	} while (0) ; \
+	pass_ ## spc :
+	
 
 #define ABN(dst)            do { reg(dst) = addNode(); } while (0)
 #define ABE(dst, src, tgt)  do { reg(dst) = addEdge(reg(src), reg(tgt)); } while (0)
@@ -967,7 +1004,7 @@ void bnd(Element **dst, DList **spc, DList **dl, long *pos) {
 #define TRU() do { boolFlag = 1; } while (0)
 #define FLS() do { boolFlag = 0; } while (0)
 
-#define UBN(n)  unbindAll(regs, (n))
+#define UBN(n)  do { unbindAll(regs, (n)); recursionDepth++; } while (0)
 #define RST(spc) do { spc ## _dl = (spc)[0] ; spc ## _pos = 0; } while (0)
 
 
@@ -983,7 +1020,7 @@ void oilrReport() {
 	// OILR index population report
 	debug("OILR index stats (%d indices):\n", OILR_INDEX_SIZE);
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
-		index = &(g.idx[i]);
+		index = index(i);
 		debug("\t[%03ld]: %ld", i, listLength(index) );
 		if ( (i+1) % 4  == 0 )
 			debug("\n");
@@ -1022,7 +1059,7 @@ void dumpGraph(FILE *file) {
 	long nodeCount = 0, nodeIndexCount = 0;
 	long edgeCount = 0, edgeIndexCount = 0;
 	for (i=0; i<OILR_INDEX_SIZE; i++) {
-		index = &(g.idx[i]);
+		index = index(i);
 		debugCode( nodeIndexCount += listLength(index) );
 	}
 #endif
@@ -1132,8 +1169,11 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-#define ALAP(id) do { self=(id); do { recursionDepth=MAX_RECURSE; (id)(); } while (boolFlag); boolFlag=1; } while (0)
-#define ONCE(id) do { recursionDepth=0; (id)(); } while (0)
+#define ALAP(id) do { nextTraceId(); self=(id); do { recursionDepth=MAX_RECURSE; (id)(); } while (boolFlag); boolFlag=1; trace(boolFlag?'S':'F'); oilrTrace(NULL); } while (0)
+#define ONCE(id) do { nextTraceId(); recursionDepth=0; (id)(); trace(boolFlag?'S':'F'); oilrTrace(NULL); } while (0)
+
+/* #define ALAP_ORACLE(id, ...) if (oracle(__VA_ARGS__)) ALAP(id)
+#define ONCE_ORACLE(id, ...) if (oracle(__VA_ARGS__)) ONCE(id) */
 
 /* #define ALAP(rule, recursive, ...) do { \
 	DList *state[] = { __VA_ARGS__ }; \
