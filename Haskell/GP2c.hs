@@ -41,8 +41,8 @@ options = [ Option ['O'] ["no-oilr"] (NoArg NoOILR)
             Option ['3'] ["32-bit"]  (NoArg Compile32Bit)
                     "Compile a 32-bit executable" ,
 
-            Option ['a'] ["oracle"] (NoArg UseOracle)
-                    "Enable the graph oracle" ,
+            Option ['a'] ["append"] (NoArg UseAppendToIndex)
+                    "Append index with modified nodes instead of prepending.",
             Option ['c'] ["compact-index"] (NoArg UseCompactIndex)
                     "Enable abstraction layer over OILR indices",
 

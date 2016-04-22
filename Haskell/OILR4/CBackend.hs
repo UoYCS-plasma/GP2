@@ -39,6 +39,7 @@ makePreamble cf = concat [ trace (show flags) $ concatMap globalOpts flags, "\n"
           globalOpts EnableParanoidDebugging = "#define OILR_PARANOID_CHECKS\n"
           globalOpts NoRecursion             = "#define MAX_RECURSE 0\n"
           globalOpts EnableExecutionTrace    = "#define OILR_EXECUTION_TRACE\n"
+          globalOpts UseAppendToIndex        = "#define OILR_INDEX_APPEND\n"
           globalOpts UseCompactIndex         = concat [ "#define OILR_COMPACT_INDEX\n"
                                                       , "#define OILR_PHYS_INDEX_SIZE ", show $ physIndCount cf, "\n"]
           globalOpts _ = ""
@@ -60,7 +61,7 @@ compileDecl (name, _) = decl name ++ ";\n"
 
 compileDefn :: Definition -> String
 compileDefn (name, (pre, RuleBody lhs rhs, post)) = concat $
-    ('\n':'\n':(decl name ++ " {\n\toilrCurrentRule=" ++ show name ++ ";\n")):[ compileIns i
+    ('\n':'\n':(decl name ++ " {\n\tsetCurrentRule(" ++ show name ++ ");\n")):[ compileIns i
                         | i <- concat [pre, lhs, rhs, post] ]
 compileDefn (name, (pre, ProcBody is, post)) = concat $
     ('\n':'\n':(decl name ++ " {\n")):[ compileIns i

@@ -29,6 +29,7 @@ data Flag = NoOILR               -- switch off OILR indexing entirely
           -- Non-standard optimisations
           | UseOracle            -- Use the graph oracle
           | UseCompactIndex      -- Use a minimal set of OILR indices
+          | UseAppendToIndex     -- Append to index instead of prepending
           -- OILR Runtime options
           | EnableDebugging
           | EnableParanoidDebugging

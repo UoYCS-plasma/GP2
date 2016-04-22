@@ -88,6 +88,7 @@ lCon (IRVar _) = 0
 lCon IRAny     = 0
 lCon IREmpty   = 1
 lCon (IRInt _) = 1
+lCon (IRLst _) = 0
 
 cCon :: Colour -> Int
 cCon Any     = 0

@@ -331,6 +331,28 @@ long walkChain(DList *dl) {
 #define walkChain(dl)
 #endif
 
+void appendElem(DList *dl, DList *elem) {
+#ifndef NDEBUG
+	long len = listLength(dl);
+	char *type;
+	long id = identList(dl, &type);
+#endif
+	DList *end = prevElem(dl);
+	assert(headOfList(elem) == NULL);
+	setHead(elem, dl);
+	clearNext(elem);
+	setPrev(elem, end);
+	if (end)
+		setNext(end, elem);
+	if (listLength(dl) == 0)
+		setNext(dl, elem);
+	setPrev(dl, elem);
+	incListLength(dl);
+	walkChain(dl);
+	assert(listLength(dl) == len+1);
+	assert(listLength(dl) >= 0 && listLength(dl) < g.poolSize);
+	debug("dl %s[%ld] has length %ld after insert\n", type, id, dl->count);
+}
 void prependElem(DList *dl, DList *elem) {
 #ifndef NDEBUG
 	long len = listLength(dl);
@@ -433,9 +455,14 @@ void sign(Element *n) {
 	assert( (f & SIG_MASK) < OILR_INDEX_SIZE );
 	setFlags(n, f);
 }
+// #define OILR_INDEX_APPEND
 void indexNode(Element *n) {
 	sign(n);
+#ifdef OILR_INDEX_APPEND
+	appendElem(index(signature(n)), chainFor(n));
+#else
 	prependElem(index(signature(n)), chainFor(n));
+#endif
 }
 void unindexNode(Element *n) {
 	removeElem(chainFor(n));
@@ -689,6 +716,7 @@ void parseHost(FILE *host) {
 
 #ifdef OILR_EXECUTION_TRACE
 #define nextTraceId() oilrTraceId++
+#define setCurrentRule(r) do { oilrCurrentRule=(r); } while (0)
 FILE *oilrTraceFile;
 long oilrTraceId=0;
 char *oilrCurrentRule="_HOST";
@@ -718,6 +746,7 @@ void oilrTrace(Element *el) {
 }
 #else
 #define nextTraceId()
+#define setCurrentRule(r)
 #define trace(c)
 #define oilrTrace(e)
 #endif
@@ -867,6 +896,50 @@ void loopOnNode(Element **edge, Element *node) {
 }
 
 
+// Backtracking instructions...
+#define B_STACK_SIZE (1024*1024*1)
+long bStack[B_STACK_SIZE];
+long *bsp = bStack+B_STACK_SIZE;
+long btDepth=0;
+
+#define pushB(v) do { *(--bsp)=(v); } while (0)
+
+enum BT_INSTR {
+	BEnd=0,  // i.e. b-stack sections are null terminated
+	BUnAdd,
+};
+
+void commit() {
+	while (*(bsp++));
+}
+void rollBack() {
+	long instr;
+	while ((instr = *bsp++)) {
+		switch (instr) {
+			default:
+				failwith("Unknown b-stack instruction: %d\n", instr);
+		}
+	}
+}
+
+void BBT() {
+	// TODO: shouldn't be managing this at runtime!
+	btDepth++;
+	pushB(BEnd);
+}
+void EBT() {
+	btDepth--;
+	if (boolFlag)
+		commit();
+	else
+		rollBack();
+}
+void BAK() {
+	btDepth--;
+	rollBack();
+}
+
+
 #define reg(r) (regs[(r)])
 
 // The local jump-stack code uses 
@@ -896,11 +969,13 @@ void loopOnNode(Element **edge, Element *node) {
 	pass_ ## spc :
 	
 
-#define ABN(dst)            do { reg(dst) = addNode(); } while (0)
+#define ABN(dst)            do { reg(dst) = addNode(); if (btDepth) { pushB(reg(dst); pushB(UnAdd) ) } } while (0)
 #define ABE(dst, src, tgt)  do { reg(dst) = addEdge(reg(src), reg(tgt)); } while (0)
 #define ABL(dst, src)       do { reg(dst) = addLoop(reg(src)); } while (0)
 #define DBE(r) deleteEdge(reg(r))
 #define DBL(r) deleteLoop(reg(r))
+
+#define CBN(r, c) setColour(reg(r), c)
 
 void bnd(Element **dst, DList **spc, DList **dl, long *pos) {
 	*pos = *dl ? *pos : 0; 
@@ -996,7 +1071,7 @@ void bnd(Element **dst, DList **spc, DList **dl, long *pos) {
 		if (!boolFlag) fail(); \
 	} while (0)
 
-#define SUC() if (recursionDepth>0) do { recursionDepth--; (*self)(); boolFlag=1; } while (0)
+#define SUC() if (recursionDepth>0) do { trace('S'); oilrTrace(NULL); nextTraceId(); recursionDepth--; (*self)(); boolFlag=1; } while (0)
 
 #define BNZ(tgt) if (boolFlag) goto tgt
 #define BRZ(tgt) if (!boolFlag) goto tgt
@@ -1169,7 +1244,7 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-#define ALAP(id) do { nextTraceId(); self=(id); do { recursionDepth=MAX_RECURSE; (id)(); } while (boolFlag); boolFlag=1; trace(boolFlag?'S':'F'); oilrTrace(NULL); } while (0)
+#define ALAP(id) do { nextTraceId(); self=(id); do { recursionDepth=MAX_RECURSE; (id)(); } while (boolFlag); trace(boolFlag?'S':'F'); boolFlag=1; oilrTrace(NULL); } while (0)
 #define ONCE(id) do { nextTraceId(); recursionDepth=0; (id)(); trace(boolFlag?'S':'F'); oilrTrace(NULL); } while (0)
 
 /* #define ALAP_ORACLE(id, ...) if (oracle(__VA_ARGS__)) ALAP(id)
