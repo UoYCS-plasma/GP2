@@ -78,7 +78,7 @@ clean:
 		if [ -e "gp2.trace" ]; then rm gp2.trace; fi
 
 clean-all:
-		cd ../lib && make clean-all
+		cd ../lib && make clean
 		cd ../src
 		rm parser.c parser.h lexer.c
 		make clean

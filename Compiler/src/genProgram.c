@@ -577,6 +577,7 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
          #endif
       }
    }
+   PTFI("success = true;", data.indent); /* Reset success flag before executing else branch. */
    generateProgramCode(command->cond_branch.else_command, new_data);
    PTFI("}\n", data.indent);
    if(data.context == IF_BODY || data.context == TRY_BODY) PTFI("break;\n", data.indent);
