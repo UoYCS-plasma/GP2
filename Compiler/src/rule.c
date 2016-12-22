@@ -392,7 +392,7 @@ static bool equalAtoms(RuleAtom *left_atom, RuleAtom *right_atom)
            return !strcmp(left_atom->string, right_atom->string);
 
       case NEG:
-           return !equalAtoms(left_atom->neg_exp, right_atom->neg_exp);
+           return equalAtoms(left_atom->neg_exp, right_atom->neg_exp);
 
       case CONCAT:
            if(!equalAtoms(left_atom->bin_op.left_exp, 

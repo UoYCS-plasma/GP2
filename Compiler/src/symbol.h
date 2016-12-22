@@ -46,7 +46,7 @@
  *       which side of the rule it occurs in. This is required for semantic
  *       analysis.
  *
- * Scope: The procedure in which the symbol is visible. Either "Global" or the
+ * Scope: The procedure in which the symbol is visible. Either "Main" or the
  *        name of a procedure in the program. All symbols have a scope.
  *
  * Rule Name: The rule in which the symbol is visible. NULL for symbols of type

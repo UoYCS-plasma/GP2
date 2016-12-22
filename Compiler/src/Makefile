@@ -12,36 +12,36 @@ VALGRIND = G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --tool=memcheck \
 # Usage: make prog=<path_to_program_file> host=<path_to_host_graph_file>
 default:	$(OBJECTS)
 		make build
-		./GP2-compile $(prog) $(host)
+		./gp2compile $(prog) $(host)
 		cd /tmp/gp2 && make
 
 # Builds everything and runs valgrind on the runtime executable.
 debug:		$(OBJECTS)	
 		make build
-		./GP2-compile $(prog) $(host) 
-		cd /tmp/gp2 && make && $(VALGRIND) ./GP2-run 
+		./gp2compile $(prog) $(host) 
+		cd /tmp/gp2 && make && $(VALGRIND) ./gp2run 
 
-# As above, but the -c flag is passed to GP2-compile.
+# As above, but the -c flag is passed to gp2compile.
 copy:		$(OBJECTS)
 		make build
-		./GP2-compile -c $(prog) $(host)
+		./gp2compile -c $(prog) $(host)
 		cd /tmp/gp2 && make
 
 copy-debug:	$(OBJECTS)	
 		make build
-		./GP2-compile -c $(prog) $(host) 
-		cd /tmp/gp2 && make && $(VALGRIND) ./GP2-run 
+		./gp2compile -c $(prog) $(host) 
+		cd /tmp/gp2 && make && $(VALGRIND) ./gp2run 
 
-# Builds the executable GP2-compile.
+# Builds the executable gp2compile.
 build:		$(OBJECTS)
-		$(CC) $(OBJECTS) $(LFLAGS) -o GP2-compile 
+		$(CC) $(OBJECTS) $(LFLAGS) -o gp2compile 
 		cd ../lib && make && cd ../src
 
 
-# Builds the executable GP2-compile and runs it with valgrind.
+# Builds the executable gp2compile and runs it with valgrind.
 compile-debug:	$(OBJECTS)
 		make build
-		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./GP2-compile $(prog) $(host)
+		$(VALGRIND) --suppressions=GNOME.supp/glib.supp ./gp2compile $(prog) $(host)
 
 
 parser.c parser.h: ast.h gpParser.y

@@ -261,6 +261,7 @@ void undoChanges(Graph *graph, int restore_point)
               node.in_edges = makeIntArray(0);
               node.outdegree = 0;
               node.indegree = 0;
+	      node.matched = false;
 
               graph->nodes.items[change.removed_node.index] = node;
               /* If the removal of the node created a hole, manually remove it from
@@ -282,9 +283,9 @@ void undoChanges(Graph *graph, int restore_point)
               edge.label = change.removed_edge.label;
               edge.source = change.removed_edge.source;
               edge.target = change.removed_edge.target;
+	      edge.matched = false;
  
-              int index = change.removed_edge.index;
-              graph->edges.items[index] = edge;
+              graph->edges.items[change.removed_edge.index] = edge;
 
               Node *source = getNode(graph, change.removed_edge.source);
               assert(source != NULL);

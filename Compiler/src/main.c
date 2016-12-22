@@ -169,7 +169,7 @@ void printMakeFile(string output_dir)
    if(debug_flags) fprintf(makefile, "CFLAGS = -g -L$(LIB) -Wall -Wextra -lgp2debug\n\n");
    else fprintf(makefile, "CFLAGS = -L$(LIB) -fomit-frame-pointer -O2 -Wall -Wextra -lgp2\n\n");
 
-   fprintf(makefile, "default:\t$(OBJECTS)\n\t\t$(CC) $(OBJECTS) $(CFLAGS) -o GP2-run\n\n");
+   fprintf(makefile, "default:\t$(OBJECTS)\n\t\t$(CC) $(OBJECTS) $(CFLAGS) -o gp2run\n\n");
    fprintf(makefile, "%%.o:\t\t%%.c\n\t\t$(CC) -c $(CFLAGS) -o $@ $<\n\n");
    fprintf(makefile, "clean:\t\n\t\trm *\n");
    fclose(makefile);

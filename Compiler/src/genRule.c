@@ -343,8 +343,9 @@ static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_
    PTFI("Node *host_node = getNode(host, nodes->index);\n", 6);
    PTFI("if(host_node == NULL) continue;\n", 6);
    PTFI("if(host_node->matched) continue;\n", 6);
-   if(left_node->label.mark != ANY)
-      PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
+   if(left_node->label.mark == ANY)
+      PTFI("if(host_node->label.mark == 0) continue;\n", 6);
+   else PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
    emitDegreeCheck(left_node, 6);  
    PTF("continue;\n\n");
 
@@ -372,8 +373,9 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    PTFI("Node *host_node = getNode(host, host_index);\n", 6);
    PTFI("if(host_node == NULL || host_node->index == -1) continue;\n", 6);
    PTFI("if(host_node->matched) continue;\n", 6);
-   if(left_node->label.mark != ANY)
-      PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
+   if(left_node->label.mark == ANY)
+      PTFI("if(host_node->label.mark == 0) continue;\n", 6);
+   else PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
    emitDegreeCheck(left_node, 6);  
    PTF("continue;\n\n");
 
@@ -408,8 +410,9 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
    if(type == 'b') PTFI("bool candidate_node = true;\n", 3);
    PTFI("if(host_node->matched) %s\n", 3, fail_code);
    if(left_node->root) PTFI("if(!(host_node->root)) %s\n", 3, fail_code);
-   if(left_node->label.mark != ANY)
-      PTFI("if(host_node->label.mark != %d) %s\n", 3, left_node->label.mark, fail_code);
+   if(left_node->label.mark == ANY)
+      PTFI("if(host_node->label.mark == 0) %s\n", 3, fail_code);
+   else PTFI("if(host_node->label.mark != %d) %s\n", 3, left_node->label.mark, fail_code);
    emitDegreeCheck(left_node, 6);  
    PTF("%s;\n\n", fail_code);
 
@@ -425,8 +428,9 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
       else PTFI("host_node = getTarget(host, host_edge);\n", 6);
       PTFI("if(host_node->matched) return false;\n", 6);
       if(left_node->root) PTFI("if(!(host_node->root)) return false;\n", 6);
-      if(left_node->label.mark != ANY)
-         PTFI("if(host_node->label.mark != %d) return false;\n", 6, left_node->label.mark);
+      if(left_node->label.mark == ANY)
+	 PTFI("if(host_node->label.mark == 0) return false;\n", 6);
+      else PTFI("if(host_node->label.mark != %d) return false;\n", 6, left_node->label.mark);
       emitDegreeCheck(left_node, 6);  
       PTF("return false;\n\n");
       PTFI("}\n", 3);
@@ -531,8 +535,9 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
    PTFI("Edge *host_edge = getEdge(host, host_index);\n", 6);
    PTFI("if(host_edge == NULL || host_edge->index == -1) continue;\n", 6);
    PTFI("if(host_edge->matched) continue;\n", 6);
-   if(left_edge->label.mark != ANY) 
-      PTFI("if(host_edge->label.mark != %d) continue;\n\n", 6, left_edge->label.mark);
+   if(left_edge->label.mark == ANY) 
+      PTFI("if(host_edge->label.mark == 0) continue;\n\n", 6);
+   else PTFI("if(host_edge->label.mark != %d) continue;\n\n", 6, left_edge->label.mark);
    PTFI("HostLabel label = host_edge->label;\n", 6);
    PTFI("bool match = false;\n", 6);
    if(hasListVariable(left_edge->label))
@@ -560,8 +565,9 @@ static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_
    PTFI("if(host_edge == NULL) continue;\n", 6);
    PTFI("if(host_edge->matched) continue;\n", 6);
    PTFI("if(host_edge->source != host_edge->target) continue;\n", 6);
-   if(left_edge->label.mark != ANY)
-      PTFI("if(host_edge->label.mark != %d) continue;\n\n", 6, left_edge->label.mark);
+   if(left_edge->label.mark == ANY)
+      PTFI("if(host_edge->label.mark == 0) continue;\n\n", 6);
+   else PTFI("if(host_edge->label.mark != %d) continue;\n\n", 6, left_edge->label.mark);
    PTFI("HostLabel label = host_edge->label;\n", 6);
    PTFI("bool match = false;\n", 6);
    if(hasListVariable(left_edge->label))
@@ -629,8 +635,9 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
    PTFI("if(host_edge == NULL) continue;\n", 6);
    PTFI("if(host_edge->matched) continue;\n", 6);
    PTFI("if(host_edge->source == host_edge->target) continue;\n", 6);
-   if(left_edge->label.mark != ANY)
-      PTFI("if(host_edge->label.mark != %d) continue;\n\n", 6, left_edge->label.mark);
+   if(left_edge->label.mark == ANY)
+      PTFI("if(host_edge->label.mark == 0) continue;\n\n", 6);
+   else PTFI("if(host_edge->label.mark != %d) continue;\n\n", 6, left_edge->label.mark);
 
    PTFI("/* If the end node has been matched, check that the %s of the\n", 6, end_node_type);
    PTFI(" * host edge is the image of the end node. */\n", 6);
