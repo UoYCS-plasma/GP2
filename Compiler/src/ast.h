@@ -149,12 +149,14 @@ typedef struct GPCommand {
        struct GPCommand *loop_body;
        bool record_changes;
        bool stop_recording;
+       bool inner_loop;
     } loop_stmt;                        /* ALAP_STATEMENT */
     struct { 
       struct GPCommand *left_command; 
       struct GPCommand *right_command; 
     } or_stmt;			        /* PROGRAM_OR */
-    /* skip, fail and break statements are represented by a GPCommand
+    bool inner_loop; 			/* BREAK_STATEMENT */      
+    /* skip and fail statements are represented by a GPCommand
      * containing only a type and location. */
   };
 } GPCommand;
@@ -169,8 +171,9 @@ GPCommand *newASTCondBranch(CommandType type, YYLTYPE location,
 	                    GPCommand *else_stmt);
 GPCommand *newASTAlap(YYLTYPE location, GPCommand *loop_body);
 GPCommand *newASTOrStmt(YYLTYPE location, GPCommand *left_stmt, GPCommand *right_stmt);
+GPCommand *newASTBreak(YYLTYPE location);
 GPCommand *newASTSkip(YYLTYPE location);
-GPCommand *newASTEmptyStatement(YYLTYPE location, CommandType type);
+GPCommand *newASTFail(YYLTYPE location);
 
 
 /* Definition of AST nodes for conditional expressions.*/

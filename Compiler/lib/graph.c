@@ -467,7 +467,7 @@ void printGraph(Graph *graph, FILE *file)
    int index, node_count = 0, edge_count = 0;
    if(graph == NULL || graph->number_of_nodes == 0) 
    {
-      PTF("[ | ]\n");
+      PTF("[ | ]\n\n");
       return;
    }
    PTF("[ ");

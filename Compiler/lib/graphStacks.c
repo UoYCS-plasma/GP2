@@ -289,16 +289,16 @@ void undoChanges(Graph *graph, int restore_point)
 
               Node *source = getNode(graph, change.removed_edge.source);
               assert(source != NULL);
-              if(source->first_out_edge == -1) source->first_out_edge = index;
-              else if(source->second_out_edge == -1) source->second_out_edge = index;
-              else addToIntArray(&(source->out_edges), index);
+              if(source->first_out_edge == -1) source->first_out_edge = edge.index;
+              else if(source->second_out_edge == -1) source->second_out_edge = edge.index;
+              else addToIntArray(&(source->out_edges), edge.index);
               source->outdegree++;
 
               Node *target = getNode(graph, change.removed_edge.target);
               assert(target != NULL);
-              if(target->first_in_edge == -1) target->first_in_edge = index;
-              else if(target->second_in_edge == -1) target->second_in_edge = index;
-              else addToIntArray(&(target->in_edges), index);
+              if(target->first_in_edge == -1) target->first_in_edge = edge.index;
+              else if(target->second_in_edge == -1) target->second_in_edge = edge.index;
+              else addToIntArray(&(target->in_edges), edge.index);
               target->indegree++;
               /* If the removal of the edge created a hole, manually remove it from
                * the holes array. */

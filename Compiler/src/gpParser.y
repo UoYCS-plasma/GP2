@@ -294,8 +294,8 @@ Block: '(' ComSeq ')' 	                { $$ = newASTCommandSequence(@$, $2); }
      | SimpleCommand 			/* default $$ = $1 */ 
      | SimpleCommand '!'		{ $$ = newASTAlap(@$, $1); }
      | SKIP				{ $$ = newASTSkip(@$); }
-     | FAIL				{ $$ = newASTEmptyStatement(@$, FAIL_STATEMENT); }
-     | BREAK				{ $$ = newASTEmptyStatement(@$, BREAK_STATEMENT); }
+     | FAIL				{ $$ = newASTFail(@$); }
+     | BREAK				{ $$ = newASTBreak(@$); }
 
 SimpleCommand: RuleSetCall 	        { $$ = newASTRuleSetCall(@$, $1); }
              | RuleID                   { $$ = newASTRuleCall(@$, $1); if($1) free($1); }

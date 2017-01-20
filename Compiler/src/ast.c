@@ -241,6 +241,7 @@ GPCommand *newASTAlap(YYLTYPE location, GPCommand *loop_body)
    command->loop_stmt.loop_body = loop_body;
    command->loop_stmt.record_changes = false;
    command->loop_stmt.stop_recording = false;
+   command->loop_stmt.inner_loop = false;
    return command;
 }
 
@@ -253,18 +254,24 @@ GPCommand *newASTOrStmt(YYLTYPE location, GPCommand *left_command,
    return command;
 }
 
+GPCommand *newASTBreak(YYLTYPE location)
+{
+   GPCommand *command = makeGPCommand(location, BREAK_STATEMENT); 
+   command->inner_loop = false; 
+   return command;
+}
+
 GPCommand *newASTSkip(YYLTYPE location)
 {
    GPCommand *command = makeGPCommand(location, SKIP_STATEMENT);
    return command;
 }
 
-GPCommand *newASTEmptyStatement(YYLTYPE location, CommandType type)
+GPCommand *newASTFail(YYLTYPE location)
 {
-   GPCommand *command = makeGPCommand(location, type);
+   GPCommand *command = makeGPCommand(location, FAIL_STATEMENT);
    return command;
 }
-
 
 GPCondition *makeGPCondition(YYLTYPE location, CommandType type)
 {

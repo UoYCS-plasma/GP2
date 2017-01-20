@@ -383,19 +383,38 @@ static void generateProgramCode(GPCommand *command, CommandData data)
            PTFI("/* Break Statement */\n", data.indent);
            if(data.restore_point >= 0)
            {
-              PTFI("/* Graph changes from loop body not required.\n", data.indent);
-              PTFI("   Discard them so that future graph roll backs are uncorrupted. */\n",
-                   data.indent);
-              #ifdef BACKTRACK_TRACING
-                 PTFI("print_trace(\"(%d) Discarding graph changes.\\n\\n\");\n",
-                      data.indent + 3, data.restore_point);
-              #endif
-              if(graph_copying) 
-              {
-                 PTFI("Graph *copy = popGraphs(%d);\n", data.indent, data.restore_point);
-                 PTFI("freeGraph(copy);\n", data.indent);
-              }
-              else PTFI("discardChanges(restore_point%d);\n", data.indent, data.restore_point);
+	      if(command->inner_loop)
+	      {
+	         PTFI("/* Update restore point for next iteration of inner loop. */\n", data.indent);
+		 #ifdef BACKTRACK_TRACING
+		    PTFI("print_trace(\"Updating restore point %d.\\n\");\n", 
+                         data.indent, data.restore_point);
+		    PTFI("print_trace(\"Old: %%d. New: %%d.\\n\\n\", restore_point%d, "
+                         "topOfGraphChangeStack());\n", data.indent, data.restore_point);
+		 #endif
+		 PTFI("if(success) restore_point%d = topOfGraphChangeStack();\n", data.indent, 
+		      data.restore_point);
+	      }
+              else
+	      {
+		 PTFI("/* Graph changes from loop body not required.\n", data.indent);
+		 PTFI("   Discard them so that future graph roll backs are uncorrupted. */\n",
+		      data.indent);
+		 if(graph_copying) 
+		 {
+		    PTFI("Graph *copy = popGraphs(%d);\n", data.indent, data.restore_point);
+		    PTFI("freeGraph(copy);\n", data.indent);
+		 }
+		 else 
+                 {
+                    PTFI("discardChanges(restore_point%d);\n", data.indent, data.restore_point);
+		    #ifdef BACKTRACK_TRACING
+		       PTFI("print_trace(\"Discarding graph changes.\\n\");\n", data.indent);
+		       PTFI("print_trace(\"New restore point %d: %%d.\\n\\n\", restore_point%d);\n",
+		            data.indent, data.restore_point, data.restore_point);
+		    #endif
+		 }
+	      }
            }
            PTFI("break;\n", data.indent);
            break;
@@ -519,12 +538,18 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
    if(condition_data.restore_point >= 0)
    {
       #ifdef BACKTRACK_TRACING
-         PTFI("print_trace(\"(%d) Recording graph changes.\\n\\n\");\n",
-              data.indent, condition_data.restore_point);
+         PTFI("print_trace(\"Recording graph changes.\\n\");\n", data.indent);
       #endif
       if(graph_copying) PTFI("copyGraph(host);\n", data.indent);
-      else PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
-                data.indent, condition_data.restore_point);
+      else 
+      {
+         PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
+              data.indent, condition_data.restore_point);
+         #ifdef BACKTRACK_TRACING
+	    PTFI("print_trace(\"Restore point %d: %%d.\\n\\n\", restore_point%d);\n,",
+	         data.indent, condition_data.restore_point, condition_data.restore_point);
+         #endif
+      }
    }
    PTFI("do\n", data.indent);
    PTFI("{\n", data.indent);
@@ -540,8 +565,9 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
          else PTFI("undoChanges(host, restore_point%d);\n", data.indent, 
                    condition_data.restore_point);
          #ifdef BACKTRACK_TRACING
-            PTFI("print_trace(\"(%d) Undoing graph changes.\\n\\n\");\n",
-                 data.indent, condition_data.restore_point);
+            PTFI("print_trace(\"Undoing graph changes from restore point %d: %%d.\\n\\n\", "
+		 "restore_point%d);\n", 
+		 data.indent, condition_data.restore_point, condition_data.restore_point);
          #endif
          #ifdef GRAPH_TRACING
             PTFI("print_trace(\"Restored graph:\\n\");\n", data.indent);
@@ -568,16 +594,17 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
          else PTFI("undoChanges(host, restore_point%d);\n", data.indent, 
                    condition_data.restore_point);
          #ifdef BACKTRACK_TRACING
-            PTFI("print_trace(\"(%d) Undoing graph changes.\\n\\n\");\n",
-                 new_data.indent, condition_data.restore_point);
+            PTFI("print_trace(\"Undoing graph changes from restore point %d: %%d.\\n\\n\", "
+		 "restore_point%d);\n", 
+		 data.indent, condition_data.restore_point, condition_data.restore_point);
          #endif
          #ifdef GRAPH_TRACING
-            PTFI("print_trace(\"Restored graph:\\n\");\n", new_data.indent);
-            PTFI("printGraph(host, trace_file);\n", new_data.indent);
+            PTFI("print_trace(\"Restored graph:\\n\");\n", data.indent);
+            PTFI("printGraph(host, trace_file);\n", data.indent);
          #endif
       }
    }
-   PTFI("success = true;", data.indent); /* Reset success flag before executing else branch. */
+   PTFI("success = true;\n", new_data.indent); /* Reset success flag before executing else branch. */
    generateProgramCode(command->cond_branch.else_command, new_data);
    PTFI("}\n", data.indent);
    if(data.context == IF_BODY || data.context == TRY_BODY) PTFI("break;\n", data.indent);
@@ -600,35 +627,60 @@ void generateLoopStatement(GPCommand *command, CommandData data)
    if(loop_data.restore_point >= 0)
    {
       #ifdef BACKTRACK_TRACING
-         PTFI("print_trace(\"(%d) Recording graph changes.\\n\\n\");\n",
-              data.indent, loop_data.restore_point);
+         PTFI("print_trace(\"Recording graph changes.\\n\\n\");\n", data.indent);
       #endif
       if(graph_copying) PTFI("copyGraph(host);\n", data.indent);
-      else PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
-                data.indent, loop_data.restore_point);
+      else 
+      { 
+         PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
+              data.indent, loop_data.restore_point);
+         #ifdef BACKTRACK_TRACING
+	    PTFI("print_trace(\"Restore point %d: %%d.\\n\\n\", restore_point%d);\n",
+	         data.indent, loop_data.restore_point, loop_data.restore_point);
+         #endif
+      }
    }
    PTFI("while(success)\n", data.indent);
    PTFI("{\n", data.indent);
    generateProgramCode(command->loop_stmt.loop_body, loop_data);
    if(loop_data.restore_point >= 0)
    {
-      PTFI("/* Graph changes from loop body may not have been used.\n", data.indent + 3);
-      PTFI("   Discard them so that future graph roll backs are uncorrupted. */\n",
-           data.indent + 3);
-      #ifdef BACKTRACK_TRACING
-         PTFI("print_trace(\"(%d) Discarding graph changes.\\n\\n\");\n",
-              data.indent + 3, loop_data.restore_point);
-      #endif
-      if(graph_copying)
+      if(command->loop_stmt.inner_loop)
       {
-         PTFI("if(success)\n", data.indent + 3);
-         PTFI("{\n", data.indent + 3);
-         PTFI("Graph *copy = popGraphs(%d);\n", data.indent + 6, loop_data.restore_point);
-         PTFI("freeGraph(copy);\n", data.indent + 6);
-         PTFI("}\n", data.indent + 3);
+         PTFI("/* Update restore point for next iteration of inner loop. */\n", data.indent + 3);
+	 #ifdef BACKTRACK_TRACING
+	    PTFI("print_trace(\"Updating restore point %d.\\n\");\n",
+		 data.indent + 3, loop_data.restore_point);
+            PTFI("print_trace(\"Old: %%d. New: %%d.\\n\\n\", restore_point%d, "
+                 "topOfGraphChangeStack());\n", data.indent + 3, loop_data.restore_point);
+	 #endif
+	 PTFI("if(success) restore_point%d = topOfGraphChangeStack();\n", data.indent + 3, 
+              loop_data.restore_point);
       }
-      else PTFI("if(success) discardChanges(restore_point%d);\n", 
-                data.indent + 3, loop_data.restore_point);
+      else
+      {
+	 PTFI("/* Graph changes from loop body may not have been used.\n", data.indent + 3);
+	 PTFI("   Discard them so that future graph roll backs are uncorrupted. */\n",
+	      data.indent + 3);
+	 if(graph_copying)
+	 {
+	    PTFI("if(success)\n", data.indent + 3);
+	    PTFI("{\n", data.indent + 3);
+	    PTFI("Graph *copy = popGraphs(%d);\n", data.indent + 6, loop_data.restore_point);
+	    PTFI("freeGraph(copy);\n", data.indent + 6);
+	    PTFI("}\n", data.indent + 3);
+	 }
+	 else 
+         {
+	    PTFI("if(success) discardChanges(restore_point%d);\n", 
+	         data.indent + 3, loop_data.restore_point);
+            #ifdef BACKTRACK_TRACING
+	         PTFI("print_trace(\"Discarding graph changes.\\n\");\n", data.indent + 3);
+	         PTFI("print_trace(\"New restore point %d: %%d.\\n\\n\", restore_point%d);\n",
+	              data.indent + 3, loop_data.restore_point, loop_data.restore_point);
+	    #endif
+         }
+      }
    }
    PTFI("}\n", data.indent);
    PTFI("success = true;\n", data.indent);
@@ -672,8 +724,8 @@ static void generateFailureCode(string rule_name, CommandData data)
          if(graph_copying) PTFI("host = popGraphs(%d);\n", data.indent, data.restore_point);
          else PTFI("undoChanges(host, restore_point%d);\n", data.indent, data.restore_point);
          #ifdef BACKTRACK_TRACING
-            PTFI("print_trace(\"(%d) Undoing graph changes.\\n\\n\");\n",
-                 data.indent, data.restore_point);
+            PTFI("print_trace(\"Undoing graph changes from restore point %d: %%d\\n\\n\", "
+		 "restore_point%d);\n", data.indent, data.restore_point, data.restore_point);
          #endif
          #ifdef GRAPH_TRACING
             PTFI("print_trace(\"Restored graph:\\n\");\n", data.indent);

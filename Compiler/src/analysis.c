@@ -17,7 +17,7 @@
 
 typedef enum {NO_BACKTRACK = 0, RECORD_CHANGES, COPY} copyType;
 
-static void annotate(GPCommand *command);
+static void annotate(GPCommand *command, bool in_loop);
 static bool getIfCommandType(GPCommand *command);
 static bool getTryLoopCommandType(GPCommand *command, bool first_sequence,
                                   bool first_command);
@@ -33,7 +33,7 @@ void staticAnalysis(List *declarations)
       switch(decl->type)
       {
          case MAIN_DECLARATION:
-              annotate(decl->main_program);
+              annotate(decl->main_program, false);
               break;
 
          case PROCEDURE_DECLARATION:
@@ -56,7 +56,7 @@ void staticAnalysis(List *declarations)
 
 /* Searches for conditional branching statements and loop bodies so that they 
  * can be analysed with respect to host graph backtracking. */
-static void annotate(GPCommand *command)
+static void annotate(GPCommand *command, bool in_loop)
 {
    switch(command->type)
    {
@@ -66,9 +66,9 @@ static void annotate(GPCommand *command)
            while(commands != NULL)
            {            
               /* Note that each command is annotated with the same restore
-               * point as each command in the sequence is independent with
+               * point because each command in the sequence is independent with
                * respect to graph backtracking. */
-              annotate(commands->command);
+              annotate(commands->command, in_loop);
               commands = commands->next;
            }
            break;
@@ -78,7 +78,7 @@ static void annotate(GPCommand *command)
            break;
 
       case PROCEDURE_CALL:
-           annotate(command->proc_call.procedure->commands);
+           annotate(command->proc_call.procedure->commands, in_loop);
            break;
 
       case IF_STATEMENT:
@@ -93,14 +93,15 @@ static void annotate(GPCommand *command)
            else graph_recording = getTryLoopCommandType(condition, true, true); 
            if(graph_recording) command->cond_branch.record_changes = true;
 
-           annotate(condition);
-           annotate(then_command);
-           annotate(else_command);
+           annotate(condition, in_loop);
+           annotate(then_command, in_loop);
+           annotate(else_command, in_loop);
            break;
       }
       case ALAP_STATEMENT:
       {
            GPCommand *loop_body = command->loop_stmt.loop_body;
+           if(in_loop == true) command->loop_stmt.inner_loop = true;
            if(nullCommand(loop_body)) print_error("Warning: Possible nontermination in loop.\n"); 
            /* Only analyse the loop body for backtracking if if it possible
             * for the loop body to fail. */
@@ -109,15 +110,18 @@ static void annotate(GPCommand *command)
               bool graph_recording = getTryLoopCommandType(loop_body, true, true);
               if(graph_recording) command->loop_stmt.record_changes = true;
            }
-           annotate(loop_body);
+           annotate(loop_body, true);
            break;
       }
       case PROGRAM_OR:
-           annotate(command->or_stmt.left_command);
-           annotate(command->or_stmt.right_command);
+           annotate(command->or_stmt.left_command, in_loop);
+           annotate(command->or_stmt.right_command, in_loop);
            break;
 
       case BREAK_STATEMENT:
+           if(in_loop == true) command->inner_loop = true;
+	   break;
+
       case SKIP_STATEMENT:
       case FAIL_STATEMENT:
            break;
@@ -221,7 +225,7 @@ static bool getTryLoopCommandType(GPCommand *command, bool first_sequence,
               bool cannot_fail = true;
               /* Check if the remaining commands in the sequence collectively
                * never fail. */
-              while(iterator != NULL)
+              while(iterator != NULL && cannot_fail)
               {
                  if(!neverFails(iterator->command)) cannot_fail = false;
                  iterator = iterator->next;
@@ -229,12 +233,13 @@ static bool getTryLoopCommandType(GPCommand *command, bool first_sequence,
               if(cannot_fail)
               {
                  /* If the remaining commands never fail, then find the first
-                  * loop in the remaining commands. If it exists, set its stop 
-                  * recording flag. */
+                  * loop in the remaining commands. If it exists, and it is not within
+                  * an outer loop, set its stop recording flag. */
                  iterator = commands;
                  while(iterator != NULL)
                  {
-                    if(iterator->command->type == ALAP_STATEMENT)
+                    if(iterator->command->type == ALAP_STATEMENT &&
+                       !(iterator->command->loop_stmt.inner_loop))
                     {
                        iterator->command->loop_stmt.stop_recording = true;
                        break;
@@ -461,7 +466,12 @@ static bool nullCommand(GPCommand *command)
            return nullCommand(command->proc_call.procedure->commands);
 
       case IF_STATEMENT:
+           if(!nullCommand(command->cond_branch.then_command)) return false;
+           if(!nullCommand(command->cond_branch.else_command)) return false;
+           else return true;
+
       case TRY_STATEMENT:
+           if(!nullCommand(command->cond_branch.condition)) return false;
            if(!nullCommand(command->cond_branch.then_command)) return false;
            if(!nullCommand(command->cond_branch.else_command)) return false;
            else return true;

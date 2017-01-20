@@ -42,6 +42,8 @@ void staticAnalysis(List *declarations);
  * (2) The 'stop recording' flag is set to true if recording of the host graph is 
  *     no longer needed after a certain point in a command sequence. This flag only
  *     exists on loops.
+ * (3) The 'inner loop' flag is set to true if the current loop is inside another loop.
+ *     Management of the graph changes stack differs between inner and outer loops.      	
  *
  * Examples
  * ========
