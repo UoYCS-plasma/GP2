@@ -148,7 +148,6 @@ typedef struct GPCommand {
     struct {
        struct GPCommand *loop_body;
        bool record_changes;
-       bool stop_recording;
        bool inner_loop;
     } loop_stmt;                        /* ALAP_STATEMENT */
     struct { 

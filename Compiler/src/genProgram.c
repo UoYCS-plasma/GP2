@@ -42,17 +42,21 @@ typedef enum {MAIN_BODY, IF_BODY, TRY_BODY, LOOP_BODY} ContextType;
 
 /* Structure containing data to pass between code generation functions.
  * context - The context of the current command.
- * record_changes - Set to true if the command is a branch statement whose
- *                  condition requires graph recording, or if the command is
- *                  a loop whose body requires graph recording.
+ * loop_depth - Marks the current loop depth. Initialised at 0 and incremented
+ *              when a loop body is entered. Used to generate correct backtracking 
+ *              management code for nested loops.
+ * record_changes - Set to true if the command is a branch statement or loop
+ *                  requiring graph recording in the condition or loop body
+ *                  respectively. 
  * restore_point - A non-negative integer if the command is part of a command
  *                 sequence that is recording host graph changes and -1 otherwise.
- *                 Its value is assigned the value of the global restore_point_count
- *                 if a command's rrecord_changes flag is set. The count is incremented
- *                 when assigned to ensure unique restore point names at runtime.
+ *                 Its value is assigned the value of the global restore_point_count.
+ *		   The count is incremented when assigned to ensure unique restore
+ *		   point names at runtime.
  * indent - For formatting the printed C code. */
  typedef struct CommandData {
    ContextType context;
+   int loop_depth;
    bool record_changes;
    int restore_point;
    int indent;
@@ -87,6 +91,9 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
 static void generateBranchStatement(GPCommand *command, CommandData data);
 static void generateLoopStatement(GPCommand *command, CommandData data);
 static void generateFailureCode(string rule_name, CommandData data);
+static bool neverFails(GPCommand *command);
+static bool nullCommand(GPCommand *command);
+static bool singleRule(GPCommand *command);
 
 void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
                          string host_file, string output_dir)
@@ -209,7 +216,7 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
       GPDeclaration *decl = iterator->declaration;
       if(decl->type == MAIN_DECLARATION)
       {
-         CommandData initialData = {MAIN_BODY, false, -1, 3}; 
+         CommandData initialData = {MAIN_BODY, 0, false, -1, 3}; 
          generateProgramCode(decl->main_program, initialData);
       }
       iterator = iterator->next;
@@ -293,16 +300,9 @@ static void generateProgramCode(GPCommand *command, CommandData data)
       {
            List *commands = command->commands;
            CommandData new_data = data;
-           bool stop_recording = false;
            while(commands != NULL)
            {
               GPCommand *command = commands->command;
-              if(command->type == ALAP_STATEMENT && command->loop_stmt.stop_recording)
-                 stop_recording = true;
-              /* If stop_recording is set to true above, every future iteration of this
-               * loop will unset the record_changes flag in the data it passes to
-               * generateProgramCode. */
-              if(stop_recording) new_data.record_changes = false;
               generateProgramCode(command, new_data);
               if(data.context == LOOP_BODY && commands->next != NULL)
                  PTFI("if(!success) break;\n\n", data.indent);             
@@ -446,7 +446,7 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
               data.indent, rule_name);
       #endif
       if(predicate) return;
-      if(data.record_changes && !graph_copying) 
+      if(data.restore_point >= 0 && !graph_copying) 
          PTFI("apply%s(true);\n", data.indent, rule_name);
       else PTFI("apply%s(false);\n", data.indent, rule_name);
       #ifdef GRAPH_TRACING
@@ -516,21 +516,48 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
    }
 }
 
-/* generateBranchStatement passes on the command data passed by the caller to
- * the calls to generate code for the then and else branches.
- * The flags from the GPCommand structure are used onlt to generate code for
- * the condition subprogram . */
+/* generateBranchStatement passes on the second argument 'data' to the calls to
+ * generate code for the then and else branches.
+ * The flags from the GPCommand structure are used only to generate code for
+ * the condition subprogram. */
 static void generateBranchStatement(GPCommand *command, CommandData data)
 {
+   /* Create new CommandData for the branch condition. */
    CommandData condition_data = data;
    condition_data.context = command->type == IF_STATEMENT ? IF_BODY : TRY_BODY;
    condition_data.indent = data.indent + 3;
-   if(command->cond_branch.record_changes)
+
+   /* No restore point set if:
+    * (1) The branch is if-then-else and the condition is sufficiently simple.
+    * (2) The branch is try-then-else and the condition is a null command.
+    * (3) The branch is try-then-else, the condition is sufficiently simple, and
+    *     both then and else are null commands. 
+    * One example of a sufficiently simple command is a single rule call.
+    * A single rule application in an if condition only needs to be matched: 
+    * if the match succeeds, do not apply the rule and execute the then branch. */
+   if(condition_data.context == IF_BODY)
    {
-      condition_data.record_changes = true;
-      condition_data.restore_point = restore_point_count++;
+      if(singleRule(command->cond_branch.condition))
+         condition_data.restore_point = -1;
+      else
+      {
+         condition_data.record_changes = true;
+         condition_data.restore_point = restore_point_count++;
+      }
    }
-   else condition_data.restore_point = -1;
+   else 
+   {
+      bool null_condition = nullCommand(command->cond_branch.condition);
+      bool simple_try = singleRule(command->cond_branch.condition)
+                      && nullCommand(command->cond_branch.then_command)
+                      && nullCommand(command->cond_branch.else_command);
+      if(null_condition || simple_try) condition_data.restore_point = -1;
+      else
+      {
+         condition_data.record_changes = true;
+         condition_data.restore_point = restore_point_count++;
+      }
+   }
 
    if(condition_data.context == IF_BODY) PTFI("/* If Statement */\n", data.indent);
    else PTFI("/* Try Statement */\n", data.indent);
@@ -546,7 +573,7 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
          PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n",
               data.indent, condition_data.restore_point);
          #ifdef BACKTRACK_TRACING
-	    PTFI("print_trace(\"Restore point %d: %%d.\\n\\n\", restore_point%d);\n,",
+	    PTFI("print_trace(\"Restore point %d: %%d.\\n\\n\", restore_point%d);\n",
 	         data.indent, condition_data.restore_point, condition_data.restore_point);
          #endif
       }
@@ -575,11 +602,22 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
          #endif
       }
    }
+   /* Update the indentation of the passed command data for the calls to generate the
+    * then-branch and else-branch code. */
    CommandData new_data = data;
    new_data.indent = data.indent + 3;
    PTFI("/* Then Branch */\n", data.indent);
    PTFI("if(success)\n", data.indent);
    PTFI("{\n", data.indent);
+   if(condition_data.context == TRY_BODY && condition_data.restore_point >= 0)
+   {
+      PTFI("discardChanges(restore_point%d);\n", new_data.indent, condition_data.restore_point);
+      #ifdef BACKTRACK_TRACING
+         PTFI("print_trace(\"Discarding graph changes.\\n\");\n", new_data.indent);
+         PTFI("print_trace(\"New restore point %d: %%d.\\n\\n\", restore_point%d);\n",
+              new_data.indent, condition_data.restore_point, condition_data.restore_point);
+      #endif
+   }
    generateProgramCode(command->cond_branch.then_command, new_data);
    PTFI("}\n", data.indent);
    PTFI("/* Else Branch */\n", data.indent);
@@ -589,18 +627,18 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
    {
       if(condition_data.restore_point >= 0)
       {
-         if(graph_copying) PTFI("host = popGraphs(%d);\n", data.indent, 
+         if(graph_copying) PTFI("host = popGraphs(%d);\n", new_data.indent, 
                                 condition_data.restore_point);
-         else PTFI("undoChanges(host, restore_point%d);\n", data.indent, 
+         else PTFI("undoChanges(host, restore_point%d);\n", new_data.indent, 
                    condition_data.restore_point);
          #ifdef BACKTRACK_TRACING
             PTFI("print_trace(\"Undoing graph changes from restore point %d: %%d.\\n\\n\", "
 		 "restore_point%d);\n", 
-		 data.indent, condition_data.restore_point, condition_data.restore_point);
+		 new_data.indent, condition_data.restore_point, condition_data.restore_point);
          #endif
          #ifdef GRAPH_TRACING
-            PTFI("print_trace(\"Restored graph:\\n\");\n", data.indent);
-            PTFI("printGraph(host, trace_file);\n", data.indent);
+            PTFI("print_trace(\"Restored graph:\\n\");\n", new_data.indent);
+            PTFI("printGraph(host, trace_file);\n", new_data.indent);
          #endif
       }
    }
@@ -613,16 +651,29 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
 
 void generateLoopStatement(GPCommand *command, CommandData data)
 {
+   /* Check for loop bodies that cause non-termination */
+   if(neverFails(command->loop_stmt.loop_body)) 
+   {
+     print_error("Error: Nontermination in loop.\n"); 
+     exit(0);
+   }
+   if(nullCommand(command->loop_stmt.loop_body))
+      print_error("Warning: Possible nontermination in loop.\n"); 
+
    CommandData loop_data = data;
    loop_data.context = LOOP_BODY;
+   loop_data.loop_depth++;
    loop_data.indent = data.indent + 3;
-   if(command->loop_stmt.record_changes)
+
+   /* If the loop body requires recording, assign it the next restore point. */
+   if(singleRule(command->loop_stmt.loop_body)) 
+      loop_data.restore_point = -1;
+   else
    {
       loop_data.record_changes = true;
       loop_data.restore_point = restore_point_count++;
    }
-   else loop_data.restore_point = -1;
-
+    
    PTFI("/* Loop Statement */\n", data.indent);
    if(loop_data.restore_point >= 0)
    {
@@ -645,7 +696,7 @@ void generateLoopStatement(GPCommand *command, CommandData data)
    generateProgramCode(command->loop_stmt.loop_body, loop_data);
    if(loop_data.restore_point >= 0)
    {
-      if(command->loop_stmt.inner_loop)
+      if(loop_data.loop_depth > 1)
       {
          PTFI("/* Update restore point for next iteration of inner loop. */\n", data.indent + 3);
 	 #ifdef BACKTRACK_TRACING
@@ -735,3 +786,204 @@ static void generateFailureCode(string rule_name, CommandData data)
    }
 }
 
+/* The function singleRule returns true if the passed command amounts to a single 
+ * rule call or something simpler. This prevents backtracking code from being
+ * generated when it would not be necessary, which would otherwise occur in 
+ * common program fragments such as (rule!) or (try rule).
+ * 
+ * The analysis skips leading null commands in a command sequence, and it also
+ * returns true if both operands of an OR statement fit the criteria. */
+
+static bool singleRule(GPCommand *command)
+{
+   switch(command->type)
+   {
+      case COMMAND_SEQUENCE:
+      {
+           List *commands = command->commands;
+           /* Go to the first non-null command in the sequence. */
+           while(commands != NULL && nullCommand(commands->command))
+              commands = commands->next;
+
+           if(commands == NULL) return true;
+           /* If there is more than one command remaining, return false. */
+           if(commands->next != NULL) return false;
+	   return singleRule(commands->command);	
+      }
+
+      case RULE_CALL:
+      case RULE_SET_CALL:
+           return true;
+
+      case PROCEDURE_CALL:
+           return singleRule(command->proc_call.procedure->commands);
+
+      case IF_STATEMENT:
+      case TRY_STATEMENT:
+      case ALAP_STATEMENT:
+           return false;
+
+      case PROGRAM_OR:
+      {
+           bool left_branch = singleRule(command->or_stmt.left_command);
+           bool right_branch = singleRule(command->or_stmt.right_command);
+           return left_branch && right_branch;
+      }
+      case SKIP_STATEMENT:
+      case FAIL_STATEMENT:
+      case BREAK_STATEMENT:
+           return true;
+
+      default:
+           print_to_log("Error (getCommandType): Unexpected command type %d.\n",
+                        command->type);
+           break;
+   }
+   return false;
+}
+
+
+/* A simple command is non-failing (NF) if it never fails. Specifically:
+ * 'skip' and 'break' are NF.
+ * 'fail' is not NF.
+ * A rule R is NF if its LHS is empty.
+ * A rule set is NF if all the rules in the set are NF. 
+ *
+ * The NF status of more complicated commands is defined recursively.
+ * A looped subprogram is NF.
+ * if/try C then P else Q is NF if both P and Q are NF.
+ * P or Q is NF if both P and Q are NF.
+ *
+ * A command sequence C1; ... ; Cn is NF if all its commands are NF. */
+ 
+/* The function neverFails returns true if the passed GP 2 command is non-failing.
+ * Used to test conditions and loop bodies: if these always succeed, then backtracking
+ * is not necessary for try statements and loops. */
+static bool neverFails(GPCommand *command)
+{
+   switch(command->type)
+   {
+      case COMMAND_SEQUENCE:
+      { 
+           List *commands = command->commands;
+           while(commands != NULL)
+           {
+              if(!neverFails(commands->command)) return false;
+              else commands = commands->next;
+           }
+           return true;
+      }
+      case RULE_CALL:
+           if(command->rule_call.rule->empty_lhs) return true;
+           else return false;
+
+      case RULE_SET_CALL:
+      {
+           List *rule_set = command->rule_set;
+           while(rule_set != NULL)
+           {
+              if(!rule_set->rule_call.rule->empty_lhs) return false;
+              else rule_set = rule_set->next;
+           }
+           return true;
+
+           if(command->rule_set->rule_call.rule->empty_lhs) return true;
+           else return false;
+      }
+
+      case PROCEDURE_CALL:
+           return neverFails(command->proc_call.procedure->commands);
+
+      case IF_STATEMENT:
+      case TRY_STATEMENT:
+           if(!neverFails(command->cond_branch.then_command)) return false;
+           if(!neverFails(command->cond_branch.else_command)) return false;
+           else return true;
+
+      case ALAP_STATEMENT:
+           return true;
+
+      case PROGRAM_OR:
+           if(!neverFails(command->or_stmt.left_command)) return false;
+           if(!neverFails(command->or_stmt.right_command)) return false;
+           else return true;
+
+      case BREAK_STATEMENT:
+      case SKIP_STATEMENT:
+           return true;
+
+      case FAIL_STATEMENT:
+           return false;
+
+      default:
+           print_to_log("Error (neverFails): Unexpected command type %d.\n",
+                        command->type);
+           break;
+   }
+   return false;
+}
+
+/* Returns true if the passed GP 2 command does not change the host graph. */
+static bool nullCommand(GPCommand *command)
+{
+   switch(command->type)
+   {
+      case COMMAND_SEQUENCE:
+      { 
+           List *commands = command->commands;
+           while(commands != NULL)
+           {
+              if(!nullCommand(commands->command)) return false;
+              else commands = commands->next;
+           }
+           return true;
+      }
+      case RULE_CALL:
+           if(command->rule_call.rule->is_predicate) return true;
+           else return false;
+
+      case RULE_SET_CALL:
+      {
+           List *rule_set = command->rule_set;
+           while(rule_set != NULL)
+           {
+              if(!rule_set->rule_call.rule->is_predicate) return false;
+              else rule_set = rule_set->next;
+           }
+           return true;
+      }
+
+      case PROCEDURE_CALL:
+           return nullCommand(command->proc_call.procedure->commands);
+
+      case IF_STATEMENT:
+           if(!nullCommand(command->cond_branch.then_command)) return false;
+           if(!nullCommand(command->cond_branch.else_command)) return false;
+           else return true;
+
+      case TRY_STATEMENT:
+           if(!nullCommand(command->cond_branch.condition)) return false;
+           if(!nullCommand(command->cond_branch.then_command)) return false;
+           if(!nullCommand(command->cond_branch.else_command)) return false;
+           else return true;
+
+      case ALAP_STATEMENT:
+           return nullCommand(command->loop_stmt.loop_body);
+
+      case PROGRAM_OR:
+           if(!nullCommand(command->or_stmt.left_command)) return false;
+           if(!nullCommand(command->or_stmt.right_command)) return false;
+           else return true;
+
+      case BREAK_STATEMENT:
+      case SKIP_STATEMENT:
+      case FAIL_STATEMENT:
+           return true;
+
+      default:
+           print_to_log("Error (nullCommand): Unexpected command type %d.\n",
+                        command->type);
+           break;
+   }
+   return false;
+}

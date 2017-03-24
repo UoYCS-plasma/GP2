@@ -1,4 +1,4 @@
-OBJECTS = analysis.o ast.o error.o genCondition.o genLabel.o genProgram.o \
+OBJECTS = ast.o error.o genCondition.o genLabel.o genProgram.o \
 	  genRule.o lexer.o main.o parser.o pretty.o rule.o searchplan.o \
 	  seman.o symbol.o transform.o 
 
@@ -54,7 +54,6 @@ lexer.c:	parser.h gpLexer.lex
 		$(CC) -c $(CFLAGS) -o $@ $<
 
 # Dependencies
-analysis.o:	../inc/globals.h ast.h analysis.h
 ast.o: 		../inc/globals.h ast.h error.h
 error.o:	../inc/globals.h
 genCondition.o:	../inc/globals.h genLabel.h rule.h genCondition.h
@@ -62,7 +61,7 @@ genLabel.o:	../inc/globals.h rule.h genLabel.h
 genProgram.o:	../inc/globals.h ast.h genProgram.h
 genRule.o:	../inc/globals.h genCondition.h genLabel.h rule.h searchplan.h transform.h genRule.h
 lexer.o:	../inc/globals.h parser.h
-main.o:		../inc/globals.h analysis.h error.h genProgram.h genRule.h libheaders.h parser.h pretty.h seman.h
+main.o:		../inc/globals.h error.h genProgram.h genRule.h libheaders.h parser.h pretty.h seman.h
 parser.o:	../inc/globals.h lexer.c parser.h 
 pretty.o:       ../inc/globals.h ast.h symbol.h pretty.h 
 rule.o:		../inc/globals.h rule.h

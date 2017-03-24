@@ -45,9 +45,9 @@
  * GP_GRAPH then it will parse using the grammar for GP2 host graphs.
  * The variable parse_target is passed to the lexer which in turn sends
  * the appropriate token to the parser. */ 
-#define GP_PROGRAM 1 		
-#define GP_GRAPH 2		
-#define GP_RULE 3	
+#define GP_PROGRAM 1
+#define GP_GRAPH 2
+#define GP_RULE 3
 int parse_target = 0; 
 
 static bool validateProgram(string program_file)
@@ -338,10 +338,6 @@ int main(int argc, char **argv)
       {
          print_to_console("Generating program code...\n\n");
          generateRules(gp_program, output_dir);
-         staticAnalysis(gp_program);   
-         #ifdef DEBUG_PROGRAM
-            printDotAST(gp_program, program_file);
-         #endif
          generateRuntimeMain(gp_program, host_nodes, host_edges, host_file, output_dir);
          makeLibHeaders(output_dir, headers, file_names, LIB_HEADERS);
          printMakeFile(output_dir);
