@@ -29,7 +29,6 @@
 
 /////////////////////////////////////////////////////////////////////////// */ 
 
-#include "analysis.h"
 #include "error.h"
 #include "globals.h"
 #include "genProgram.h"
