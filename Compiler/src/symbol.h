@@ -26,8 +26,13 @@
 #ifndef INC_SYMBOL_TABLE_H
 #define INC_SYMBOL_TABLE_H
 
+#include "common.h"
+
 #include <glib.h>
-#include "globals.h"
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 /* GP2 symbols are stored in struct Symbol. These are values of the symbol
  * table. The hash key of each symbol is its name in the GP2 program text.

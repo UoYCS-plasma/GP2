@@ -26,8 +26,16 @@
 #ifndef INC_GEN_LABEL_H
 #define INC_GEN_LABEL_H
 
-#include "globals.h"
+#include "common.h"
+#include "gp2enums.h"
 #include "rule.h"
+
+#include <assert.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 /* Used by genLabel, genRule and genCondition. Defined in genRule. */
 extern FILE *file;

@@ -32,9 +32,15 @@
 
 #define GRAPH_STACK_SIZE 4
 
-#include "globals.h"
+#include "common.h"
+#include "gp2enums.h"
 #include "graph.h"
 #include "label.h"
+
+#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
 
 /* A GraphChange stores the data sufficient to undo a particular graph modification.
  * Specifically, an undo operation must restore the graph to its exact state,

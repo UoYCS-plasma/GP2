@@ -26,9 +26,14 @@
 #ifndef INC_GEN_CONDITION_H
 #define INC_GEN_CONDITION_H
 
+#include "common.h"
 #include "genLabel.h"
-#include "globals.h"
 #include "rule.h"
+
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
 
 /* GP 2's condition code generation is demonstrated by example. 
  * Consider the condition

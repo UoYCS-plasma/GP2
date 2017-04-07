@@ -26,11 +26,16 @@
 #ifndef INC_SEMAN_H
 #define INC_SEMAN_H
 
-#include <glib.h>
 #include "ast.h"
-#include "globals.h"
+#include "common.h"
 #include "pretty.h"
 #include "symbol.h"
+
+#include <glib.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 /* GLib's hashtable data structure is used to implement GP2's symbol table.
  * GP2 identifiers are the keys. The values are lists of struct Symbols,

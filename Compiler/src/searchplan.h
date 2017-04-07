@@ -29,7 +29,11 @@
 #define INC_SEARCHPLAN_H
 
 #include "rule.h"
-#include "globals.h"
+#include "common.h"
+
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
 
 /* Search operations are categorised by a character as follows:
  * 'n': Non-root node.

@@ -30,12 +30,18 @@
 #define INC_GEN_RULE_H
 
 #include "ast.h"
+#include "common.h"
 #include "genCondition.h"
 #include "genLabel.h"
-#include "globals.h"
 #include "rule.h"
 #include "searchplan.h"
 #include "transform.h"
+
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 /* The functions in this module use a static searchplan of the LHS of a rule
  * to generate matching code. Each searchplan operation has a function that

@@ -98,12 +98,12 @@ void generateRuleCode(Rule *rule, bool predicate, string output_dir)
       exit(1);
    }
 
-   PTH("#include \"globals.h\"\n"
-       "#include \"graph.h\"\n"
-       "#include \"label.h\"\n"
-       "#include \"graphStacks.h\"\n"
-       "#include \"hostParser.h\"\n"
-       "#include \"morphism.h\"\n\n");
+   fprintf(header, "#include \"globals.h\"\n"
+                   "#include \"graph.h\"\n"
+                   "#include \"label.h\"\n"
+                   "#include \"graphStacks.h\"\n"
+                   "#include \"hostParser.h\"\n"
+                   "#include \"morphism.h\"\n\n");
    PTF("#include \"%s.h\"\n\n", rule->name);
 
    if(rule->condition != NULL)
@@ -180,7 +180,7 @@ static void generateMatchingCode(Rule *rule, bool predicate)
    }
    /* Generate the main matching function which sets up the runtime matching 
     * environment and calls the first matching function. */
-   PTH("bool match%s(Morphism *morphism);\n\n", rule->name);
+   fprintf(header, "bool match%s(Morphism *morphism);\n\n", rule->name);
    PTF("\nbool match%s(Morphism *morphism)\n", rule->name);
    PTF("{\n");
    PTFI("if(%d > host->number_of_nodes || %d > host->number_of_edges) return false;\n",
@@ -723,7 +723,7 @@ static void emitNextMatcherCall(SearchOp *next_operation)
 
 void generateRemoveLHSCode(string rule_name)
 {
-   PTH("void apply%s(Morphism *morphism, bool record_changes);\n", rule_name);
+   fprintf(header, "void apply%s(Morphism *morphism, bool record_changes);\n", rule_name);
    PTF("void apply%s(Morphism *morphism, bool record_changes)\n", rule_name);
    PTF("{\n");
 
@@ -757,7 +757,7 @@ void generateRemoveLHSCode(string rule_name)
 
 void generateAddRHSCode(Rule *rule)
 {
-   PTH("void apply%s(bool record_changes);\n", rule->name);
+   fprintf(header, "void apply%s(bool record_changes);\n", rule->name);
    PTF("void apply%s(bool record_changes)\n", rule->name);
    PTF("{\n");
    PTFI("int index;\n", 3);
@@ -832,7 +832,7 @@ void generateAddRHSCode(Rule *rule)
 
 void generateApplicationCode(Rule *rule)
 {
-   PTH("void apply%s(Morphism *morphism, bool record_changes);\n", rule->name);
+   fprintf(header, "void apply%s(Morphism *morphism, bool record_changes);\n", rule->name);
    PTF("void apply%s(Morphism *morphism, bool record_changes)\n", rule->name);
    PTF("{\n");
    /* Generate code to retrieve the values assigned to the variables in the

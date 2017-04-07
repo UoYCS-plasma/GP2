@@ -28,10 +28,15 @@
 #ifndef INC_PRETTY_H
 #define INC_PRETTY_H
 
-#include <glib.h>
 #include "ast.h"
-#include "globals.h"
+#include "common.h"
 #include "symbol.h" 
+
+#include <glib.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h>  
 
 #define print_to_dot_file(text, ...)                  \
   do { fprintf(dot_file, text, ## __VA_ARGS__); }     \

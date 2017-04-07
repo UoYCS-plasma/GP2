@@ -27,7 +27,14 @@
 #ifndef INC_STRUCTURES_H
 #define INC_STRUCTURES_H
 
-#include "globals.h"
+#include "common.h"
+#include "gp2enums.h"
+
+#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 /* The pointer <variables> points to a static array of struct Variable. 
  * variables is the first unused array index: once the array is populated, 

@@ -30,8 +30,12 @@
   do { fprintf(trace_file, trace, ##__VA_ARGS__); }   \
   while(0)
 
-#include "globals.h"
+#include "common.h"
 #include "graph.h"
+
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
 
 void openLogFile(string log_file_name);
 void closeLogFile(void);

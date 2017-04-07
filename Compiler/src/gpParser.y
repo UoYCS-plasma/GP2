@@ -55,7 +55,8 @@ extern bool syntax_error;
 
 /* Code placed in parser.c. */
 %{
-#include "globals.h"
+#include "common.h"
+#include "gp2enums.h"
 
 int yylex(void);
 

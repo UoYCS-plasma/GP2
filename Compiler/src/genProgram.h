@@ -29,7 +29,14 @@
 #define INC_GEN_PROGRAM_H
 
 #include "ast.h"
-#include "globals.h"
+#include "common.h"
+
+#include <assert.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
                          string host_file, string output_dir);

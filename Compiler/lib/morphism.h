@@ -29,9 +29,15 @@
 #ifndef INC_MATCH_H
 #define INC_MATCH_H
 
-#include "globals.h"
+#include "common.h"
 #include "graph.h"
 #include "label.h"
+
+#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 typedef struct Assignment {
    char type; /* (n)ot assigned, (i)nteger, (s)tring, (l)ist */

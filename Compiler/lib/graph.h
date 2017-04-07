@@ -27,8 +27,14 @@
 #ifndef INC_GRAPH_H
 #define INC_GRAPH_H
 
-#include "globals.h"
+#include "common.h"
+#include "gp2enums.h"
 #include "label.h"
+
+#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
 
 /* There are 7 marks, but the 'any' mark does not occur in host graphs. */
 #define NUMBER_OF_MARKS 6 

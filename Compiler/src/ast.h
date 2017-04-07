@@ -35,8 +35,14 @@
 #ifndef INC_AST_H
 #define INC_AST_H 
 
+#include "common.h"
+#include "gp2enums.h"
 #include "error.h"
-#include "globals.h"
+
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 /* The functions after each struct definition are AST node constructors. The
  * constructors are called from the Bison parser (gpparser.y) which provides 

@@ -27,8 +27,15 @@
 #define INC_TRANSFORM_H 
 
 #include "ast.h"
-#include "globals.h"
+#include "common.h"
+#include "gp2enums.h"
 #include "rule.h"
+
+#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
 
 Rule *transformRule(GPRule *ast_rule);
 

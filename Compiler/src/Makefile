@@ -54,21 +54,21 @@ lexer.c:	parser.h gpLexer.lex
 		$(CC) -c $(CFLAGS) -o $@ $<
 
 # Dependencies
-ast.o: 		../inc/globals.h ast.h error.h
-error.o:	../inc/globals.h
-genCondition.o:	../inc/globals.h genLabel.h rule.h genCondition.h
-genLabel.o:	../inc/globals.h rule.h genLabel.h
-genProgram.o:	../inc/globals.h ast.h genProgram.h
-genRule.o:	../inc/globals.h genCondition.h genLabel.h rule.h searchplan.h transform.h genRule.h
-lexer.o:	../inc/globals.h parser.h
-main.o:		../inc/globals.h error.h genProgram.h genRule.h libheaders.h parser.h pretty.h seman.h
-parser.o:	../inc/globals.h lexer.c parser.h 
-pretty.o:       ../inc/globals.h ast.h symbol.h pretty.h 
-rule.o:		../inc/globals.h rule.h
-searchplan.o:	../inc/globals.h rule.h searchplan.h
-seman.o:	../inc/globals.h ast.h symbol.h seman.h 
-symbol.o:	../inc/globals.h symbol.h
-transform.o:	../inc/globals.h ast.h rule.h transform.h 
+ast.o: 		../inc/common.h ../inc/gp2enums.h ast.h error.h
+error.o:	
+genCondition.o:	../inc/common.h genLabel.h rule.h genCondition.h
+genLabel.o:	../inc/common.h ../inc/gp2enums.h rule.h genLabel.h
+genProgram.o:	../inc/common.h ast.h genProgram.h
+genRule.o:	../inc/common.h genCondition.h genLabel.h rule.h searchplan.h transform.h genRule.h
+lexer.o:	../inc/common.h parser.h
+main.o:		../inc/common.h error.h genProgram.h genRule.h libheaders.h parser.h pretty.h seman.h
+parser.o:	../inc/common.h lexer.c parser.h 
+pretty.o:       ../inc/common.h ast.h symbol.h pretty.h 
+rule.o:		../inc/common.h ../inc/gp2enums.h rule.h
+searchplan.o:	../inc/common.h rule.h searchplan.h
+seman.o:	../inc/common.h ast.h symbol.h seman.h 
+symbol.o:	../inc/common.h symbol.h
+transform.o:	../inc/common.h ../inc/gp2enums.h ast.h rule.h transform.h 
 
 #Cleanup
 clean:

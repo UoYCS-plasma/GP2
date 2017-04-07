@@ -30,13 +30,29 @@
 /////////////////////////////////////////////////////////////////////////// */ 
 
 #include "error.h"
-#include "globals.h"
+#include "common.h"
 #include "genProgram.h"
 #include "genRule.h"
 #include "libheaders.h"
 #include "parser.h"
 #include "pretty.h"
 #include "seman.h" 
+
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <string.h> 
+
+/* Toggle tracing of the Bison parser. The trace is printed to stderr. */
+#undef PARSER_TRACE 
+
+/* Toggle debugging of the compiler through AST printing before and after 
+ * static analysis, and through printing of the symbol table. The output files
+ * are placed in the same directory as the input program with filenames
+ * <program>.dot and <program>.tab. */
+#undef DEBUG_PROGRAM
 
 /* The Bison parser has two separate grammars. The grammar that is parsed is 
  * determined by the first token it receives. If Bison receives GP_PROGRAM

@@ -24,13 +24,13 @@ hostLexer.c:	hostParser.h hostLexer.lex
 		$(CC) -c $(CFLAGS) -o $@ $<
 
 # Dependencies
-debug.o:	../inc/globals.h graph.h debug.h
-graph.o: 	../inc/globals.h label.h graph.h
-graphStacks.o:	../inc/globals.h graph.h label.h graphStacks.h
-hostLexer.o:	../inc/globals.h hostParser.h
-hostParser.o:	../inc/globals.h graph.h label.h hostParser.h
-label.o:	../inc/globals.h label.h
-morphism.o:	../inc/globals.h graph.h label.h morphism.h
+debug.o:	../inc/common.h graph.h debug.h
+graph.o: 	../inc/common.h ../inc/gp2enums.h label.h graph.h
+graphStacks.o:	../inc/common.h ../inc/gp2enums.h graph.h label.h graphStacks.h
+hostLexer.o:	../inc/common.h hostParser.h
+hostParser.o:	../inc/common.h graph.h label.h hostParser.h
+label.o:	../inc/common.h ../inc/gp2enums.h label.h
+morphism.o:	../inc/common.h graph.h label.h morphism.h
 
 # Cleanup
 clean:
