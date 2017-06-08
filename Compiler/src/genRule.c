@@ -98,8 +98,7 @@ void generateRuleCode(Rule *rule, bool predicate, string output_dir)
       exit(1);
    }
 
-   fprintf(header, "#include \"globals.h\"\n"
-                   "#include \"graph.h\"\n"
+   fprintf(header, "#include \"graph.h\"\n"
                    "#include \"label.h\"\n"
                    "#include \"graphStacks.h\"\n"
                    "#include \"hostParser.h\"\n"

@@ -26,7 +26,7 @@
 #ifndef INC_SYMBOL_TABLE_H
 #define INC_SYMBOL_TABLE_H
 
-#include "common.h"
+#include <inc/common.h>
 
 #include <glib.h>
 #include <stdbool.h>

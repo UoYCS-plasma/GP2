@@ -26,7 +26,7 @@
 #ifndef INC_ERROR_H
 #define INC_ERROR_H
 
-#include "common.h"
+#include <inc/common.h>
 
 #include <stdbool.h>
 #include <stdlib.h> 

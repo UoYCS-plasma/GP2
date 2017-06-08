@@ -36,10 +36,10 @@
  */
 
 %option noyywrap nodefault noinput nounput
-%option outfile="hostLexer.c"
+%option outfile="lexer.c"
 
 %{
-#include "hostParser.h" 
+#include "parser.h" 
 
 int yycolumn = 1;
 %}

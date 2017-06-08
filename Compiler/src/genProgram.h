@@ -29,7 +29,7 @@
 #define INC_GEN_PROGRAM_H
 
 #include "ast.h"
-#include "common.h"
+#include <inc/common.h>
 
 #include <assert.h>
 #include <stdarg.h>

@@ -32,8 +32,8 @@
 
 //////////////////////////////////////////////////////////////////////////// */
 
-/* The names of the generated C files. */
-%defines "parser.h"
+
+%defines /* Creates the header file "parser.h" */
 %output "parser.c"
 
 /* Code placed at the top of parser.h. ast.h is included here so that the 

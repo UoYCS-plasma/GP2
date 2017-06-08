@@ -30,7 +30,7 @@
 /////////////////////////////////////////////////////////////////////////// */ 
 
 #include "error.h"
-#include "common.h"
+#include <inc/common.h>
 #include "genProgram.h"
 #include "genRule.h"
 #include "libheaders.h"
@@ -60,9 +60,9 @@
  * GP_GRAPH then it will parse using the grammar for GP2 host graphs.
  * The variable parse_target is passed to the lexer which in turn sends
  * the appropriate token to the parser. */ 
-#define GP_PROGRAM 1
-#define GP_GRAPH 2
-#define GP_RULE 3
+// #define GP_PROGRAM 1
+// #define GP_GRAPH 2
+// #define GP_RULE 3
 int parse_target = 0; 
 
 static bool validateProgram(string program_file)

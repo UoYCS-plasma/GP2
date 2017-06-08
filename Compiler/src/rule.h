@@ -27,8 +27,8 @@
 #ifndef INC_STRUCTURES_H
 #define INC_STRUCTURES_H
 
-#include "common.h"
-#include "gp2enums.h"
+#include <inc/common.h>
+#include <inc/gp2enums.h>
 
 #include <assert.h>
 #include <stdbool.h>

@@ -5,7 +5,7 @@
 *~
 *.cmx
 *.cmo
-TODO
+TODO*
 *.swp
 *.log
 *.o
@@ -15,8 +15,6 @@ tmp/
 GP2-*
 GRIT
 Graphite*
-parser*
-lexer*
 root
 Definition
 YAM

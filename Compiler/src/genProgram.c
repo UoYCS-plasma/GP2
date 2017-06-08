@@ -112,7 +112,7 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTF("#include \"debug.h\"\n");
    PTF("#include \"graph.h\"\n");
    PTF("#include \"graphStacks.h\"\n");
-   PTF("#include \"hostParser.h\"\n");
+   PTF("#include \"parser.h\"\n");
    PTF("#include \"morphism.h\"\n\n");
 
    /* Declare the global morphism variables for each rule. */

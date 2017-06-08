@@ -31,9 +31,8 @@
 
 //////////////////////////////////////////////////////////////////////////// */
 
-/* The names of the generated C files. */
-%defines "hostParser.h"
-%output "hostParser.c"
+%defines /* Creates the header file "parser.h" */
+%output "parser.c"
 
 /* Code placed at the top of hostParser.h.  */
 %code requires {

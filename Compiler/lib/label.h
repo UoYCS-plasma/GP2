@@ -31,8 +31,8 @@
 
 #define LIST_TABLE_SIZE 100003
 
-#include "common.h"
-#include "gp2enums.h"
+#include <inc/common.h>
+#include <inc/gp2enums.h>
 
 #include <assert.h>
 #include <stdbool.h>
