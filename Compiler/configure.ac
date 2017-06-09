@@ -19,7 +19,8 @@ AC_PROG_RANLIB
 
 # Checks for libraries. To use the result, add LIBS = @LIBS@ to the appropriate 
 # Makefile.in and $(LIBS) to the C compiler call.
-AC_SEARCH_LIBS([g_hash_table_new_full], [glib])
+# AC_SEARCH_LIBS([g_hash_table_new_full], [glib])
+PKG_CHECK_MODULES([GLIB], [glib-2.0])
 
 # Checks for header files.
 AC_CHECK_HEADERS([glib.h stdlib.h string.h unistd.h])

@@ -43,7 +43,7 @@
 %option outfile="lexer.c"
 
 %{
-#include "common.h"
+#include <inc/common.h>
 #include "parser.h" 
 
 int yycolumn = 1;
@@ -73,22 +73,13 @@ extern int parse_target;
 
 %{
   /* Return the appropriate token according to the grammar to be parsed with.
-   * Bison token GP_PROGRAM triggers parsing with the program grammar.
-   * Bison token GP_GRAPH triggers parsing with the host graph grammar.
+   * parse_target is set to one of GP_PROGRAM, GP_RULE, or GP_GRAPH in main.c
+   * before yyparse() is called. 
    */  
   
-  if(parse_target == 1) {
-     parse_target = 0; 
-     return GP_PROGRAM;
-  }
-  if(parse_target == 2) {
-     parse_target = 0; 
-     return GP_GRAPH;  
-  }
-  if(parse_target == 3) {
-     parse_target = 0; 
-     return GP_RULE;  
-  }
+   if(parse_target == GP_PROGRAM) {parse_target = 0; return GP_PROGRAM;}
+   if(parse_target == GP_RULE) {parse_target = 0; return GP_RULE;}
+   if(parse_target == GP_GRAPH) {parse_target = 0; return GP_GRAPH;}
 %}
 
 
