@@ -40,7 +40,7 @@
   } while(0) 
 
 #define print_to_console(error_message, ...)                \
-  do { fprintf(stderr, error_message, ##__VA_ARGS__); }     \
+  do { fprintf(stdout, error_message, ##__VA_ARGS__); }     \
   while(0) 
 
 void openLogFile(string log_file_name);

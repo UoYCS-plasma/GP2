@@ -29,7 +29,7 @@
 #ifndef INC_MATCH_H
 #define INC_MATCH_H
 
-#include <inc/common.h>
+#include "common.h"
 #include "graph.h"
 #include "label.h"
 

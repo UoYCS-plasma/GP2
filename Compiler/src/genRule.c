@@ -101,7 +101,7 @@ void generateRuleCode(Rule *rule, bool predicate, string output_dir)
    fprintf(header, "#include \"graph.h\"\n"
                    "#include \"label.h\"\n"
                    "#include \"graphStacks.h\"\n"
-                   "#include \"hostParser.h\"\n"
+                   "#include \"parser.h\"\n"
                    "#include \"morphism.h\"\n\n");
    PTF("#include \"%s.h\"\n\n", rule->name);
 

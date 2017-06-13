@@ -27,8 +27,8 @@
 #ifndef INC_GRAPH_H
 #define INC_GRAPH_H
 
-#include <inc/common.h>
-#include <inc/gp2enums.h>
+#include "common.h"
+#include "gp2enums.h"
 #include "label.h"
 
 #include <assert.h>

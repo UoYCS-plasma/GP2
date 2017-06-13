@@ -30,7 +30,7 @@
   do { fprintf(trace_file, trace, ##__VA_ARGS__); }   \
   while(0)
 
-#include <inc/common.h>
+#include "common.h"
 #include "graph.h"
 
 #include <stdbool.h>

@@ -32,8 +32,8 @@
 
 #define GRAPH_STACK_SIZE 4
 
-#include <inc/common.h>
-#include <inc/gp2enums.h>
+#include "common.h"
+#include "gp2enums.h"
 #include "graph.h"
 #include "label.h"
 

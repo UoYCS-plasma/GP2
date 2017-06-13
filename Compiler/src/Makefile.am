@@ -11,4 +11,8 @@ gp2_SOURCES = ast.c ast.h error.c error.h genCondition.c genCondition.h \
               symbol.h transform.c transform.h
 gp2_LDADD = $(GLIB_LIBS) 
 
+TESTS = test.sh # Run when 'make check' is called.
 
+# Run when 'make installcheck' is called.
+installcheck-local:	installtest.sh 
+			./installtest.sh
