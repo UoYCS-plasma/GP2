@@ -38,7 +38,7 @@
 #include "seman.h" 
 
 #include <sys/stat.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include <stdbool.h>
 #include <stdlib.h> 
 #include <stdio.h> 
@@ -124,7 +124,7 @@ static bool validateHostGraph(string host_file)
 /* Controls the CFLAGS in the generated makefile. */
 bool debug_flags = false;
 
-void printMakeFile(string output_dir)
+void printMakeFile(string output_dir, string install_dir)
 {
    int length = strlen(output_dir) + 9;
    char makefile_name[length];
@@ -132,24 +132,23 @@ void printMakeFile(string output_dir)
    strcat(makefile_name, "/");
    strcat(makefile_name, "Makefile");
    FILE *makefile = fopen(makefile_name, "w");
-   if(makefile == NULL) { 
+   if(makefile == NULL)
+   { 
       perror("Makefile");
       exit(1);
    }
    
-   char current_dir[1024];
-   if(getcwd(current_dir, sizeof(current_dir)) == NULL) {
-      perror("getcwd() error");
-      exit(1);
+   if(install_dir != NULL) 
+   { 
+      fprintf(makefile, "INCDIR=%s/include\n", install_dir);
+      fprintf(makefile, "LIBDIR=%s/lib\n", install_dir);
    }
-
-   fprintf(makefile, "LIB=%s\n", current_dir);
    fprintf(makefile, "OBJECTS := $(patsubst %%.c, %%.o, $(wildcard *.c))\n");  
    fprintf(makefile, "CC=gcc\n\n");
 
    if(debug_flags) fprintf(makefile, "CFLAGS = -g -L$(LIB) -Wall -Wextra -lgp2\n\n");
-   else fprintf(makefile, "CFLAGS = -L$(LIB) -fomit-frame-pointer -O2 -Wall -Wextra -lgp2\n\n");
-
+   else fprintf(makefile, "CFLAGS = -I$(INCDIR) -L$(LIBDIR) -fomit-frame-pointer "
+                          "-O2 -Wall -Wextra -lgp2\n\n");
    fprintf(makefile, "default:\t$(OBJECTS)\n\t\t$(CC) $(OBJECTS) $(CFLAGS) -o gp2run\n\n");
    fprintf(makefile, "%%.o:\t\t%%.c\n\t\t$(CC) -c $(CFLAGS) -o $@ $<\n\n");
    fprintf(makefile, "clean:\t\n\t\trm *\n");
@@ -162,21 +161,23 @@ bool graph_copying = false;
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "gp2 [-c] [-d] [-o <outdir>] <program_file>\n"
+                        "gp2 [-c] [-d] [-l <rootdir>] [-o <outdir>] <program_file>\n"
                         "gp2 -p <program_file>\n"
                         "gp2 -r <rule_file>\n"
                         "gp2 -h <host_file>\n\n"
                         "Flags:\n"
                         "-c - Enable graph copying.\n"
                         "-d - Compile program with GCC debugging flags.\n"
-                        "-r - Validate a GP 2 rule.\n"
                         "-p - Validate a GP 2 program.\n"
+                        "-r - Validate a GP 2 rule.\n"
                         "-h - Validate a GP 2 host graph.\n"
+                        "-l - Specify root directory of installed files.\n"
                         "-o - Specify directory for generated code and program output.\n";
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
-   string program_file = NULL, host_file = NULL, rule_file = NULL, output_dir = NULL;
+   string program_file = NULL, host_file = NULL, rule_file = NULL, 
+          install_dir = NULL, output_dir = NULL;
 
    if(argc < 2)
    {
@@ -231,6 +232,16 @@ int main(int argc, char **argv)
 
             case 'd':
                  debug_flags = true;
+                 break;
+            
+            case 'l':
+                 argv_index++;
+                 if(argv_index == argc)
+                 {
+                    print_to_console("%s", usage);
+                    return 0; 
+                 }
+                 install_dir = argv[argv_index];
                  break;
 
             case 'o':
@@ -315,7 +326,7 @@ int main(int argc, char **argv)
          print_to_console("Generating program code...\n");
          generateRules(gp_program, output_dir);
          generateRuntimeMain(gp_program, output_dir);
-         printMakeFile(output_dir);
+         printMakeFile(output_dir, install_dir);
       }
    }
    if(yyin != NULL) fclose(yyin);
