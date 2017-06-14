@@ -15,7 +15,7 @@
   file GP2-editor/src/developer/translate/gpparser.y in order to maintain
   consistency with the graphical editor.
 
-  Copyright 2015-2016 Christopher Bak
+  Copyright 2015-2017 Christopher Bak
 
   This file is part of the GP 2 Compiler. The GP 2 Compiler is free software: 
   you can redistribute it and/or modify it under the terms of the GNU General

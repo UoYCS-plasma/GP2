@@ -1,30 +1,79 @@
-GP 2 Compiler
-=============
-Author: Chris Bak (November 27th 2015)
+## About GP 2
 
-Build Instructions
----------------------
+GP 2 (Graph Programs 2) is a rule-based, nondeterministic programming language for solving graph problems at a high level of abstraction, freeing programmers from handling low-level data structures. The core of GP 2 consists of four constructs: single-step application of a set of conditional graph-transformation rules, sequential composition, branching and iteration. The language has a small structural operational semantics and a visual editor for writing GP 2 programs, running them, and tracing their execution.
 
-To build the GP 2 compiler from source, run
+## The GP 2 Compiler
 
-> cd src
+The GP 2 compiler translates a GP 2 program into executable C code.
+The generated code is executable with the support of the GP 2 library.
 
-> make build
+Default usage:
+`gp2 [-c] [-d] [-l <rootdir>] [-o <outdir>] <gp2-program_file>`
 
-This builds the library object files and creates the binary `GP2-compile` in the *src* directory.
+Compiles *gp2-program* into C code. The generated code is placed in
+*/tmp/gp2* unless an alternate location is specified with the **-o** flag. 
 
-> ./GP2-compile \[-o /output-directory\] /path/to/program-file /path/to/host-graph-file
+To execute the generated code, run `make` and `./gp2run <host-graph-file>`
+from */tmp/gp2*.
 
-> ./GP2-compile -p /path/to/program-file
+If GP 2 is installed in a non-standard directory, use the **-l** option to 
+ensure the generated code can be compiled and executed. See Installation 
+for more information.
 
-> ./GP2-compile -h /path/to/host-graph-file
+Options:
 
--o specifies a directory for the generated files and the output. The default is */tmp/gp2*.
--p runs the parser and the semantic checker on the program file for validation. No code is generated.
--h run the parser on the host graph file for validation. No code is generated.
+**-c** - Enable graph copying.
 
-While in the *src* directory, running
+**-d** - Compile program with GCC debugging flags.
 
-> make prog=/path/to/program-file host=/path/to/host-graph-file
+**-l** - Specify root directory of installed files.
 
-builds the compiler, calls it (without the -o flag) on the passed program and host graph files, and builds the runtime system in the */tmp/gp2* directory. To execute the compiled GP 2 program, execute `GP2-run`.
+**-o** - Specify directory for generated code and program output.
+
+The compiler can also be used to validate GP 2 source files.
+
+Run `gp2 -p <program_file>` to validate a program.
+
+Run `gp2 -r <rule_file>` to validate a rule.
+
+Run `gp2 -h <host_file>` to validate a host graph.
+
+## Installation
+
+Superusers install GP 2 as follows: 
+
+1. Run `./configure` from the top-level directory to generate `config.h` and `Makefile`.
+
+2. Run `make`.
+
+3. Run `sudo make install`. 
+
+   This command will install files into the following directories:
+   * `/usr/local/bin`
+   * `/usr/local/lib`
+   * `/usr/local/include`
+
+If you are not a superuser, install GP 2 locally as follows:
+
+1. Run `./configure --prefix={dest-dir}' from the top-level directory.
+
+2. Run `make`.
+
+3. Run `make install`.
+
+   This command will install files into the following directories:
+   * `{dest-dir}/bin`
+   * `{dest-dir}/lib`
+   * `{dest-dir}/include`
+
+Call the compiler with `-l {dest-dir}` to ensure that the generated code compiles.
+
+## Copying
+
+See the file [COPYING](COPYING).
+
+## Authors
+
+The GP 2 language was designed by Detlef Plump.
+
+The GP 2 compiler and runtime library was developed by Christopher Bak.

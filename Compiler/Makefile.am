@@ -6,4 +6,4 @@ SUBDIRS = src lib
 EXTRA_DIST = programs 
 
 # Install into the doc directory
-doc_DATA = COPYING INSTALL README
+doc_DATA = COPYING README
