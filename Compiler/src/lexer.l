@@ -43,7 +43,7 @@
 %option outfile="lexer.c"
 
 %{
-#include <inc/common.h>
+#include "common.h"
 #include "parser.h" 
 
 int yycolumn = 1;

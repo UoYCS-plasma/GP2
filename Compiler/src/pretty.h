@@ -29,7 +29,7 @@
 #define INC_PRETTY_H
 
 #include "ast.h"
-#include <inc/common.h>
+#include "common.h"
 #include "symbol.h" 
 
 #include <glib.h>

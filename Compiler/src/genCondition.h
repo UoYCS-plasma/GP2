@@ -26,7 +26,7 @@
 #ifndef INC_GEN_CONDITION_H
 #define INC_GEN_CONDITION_H
 
-#include <inc/common.h>
+#include "common.h"
 #include "genLabel.h"
 #include "rule.h"
 

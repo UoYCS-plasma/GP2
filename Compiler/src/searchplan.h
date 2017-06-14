@@ -28,8 +28,8 @@
 #ifndef INC_SEARCHPLAN_H
 #define INC_SEARCHPLAN_H
 
+#include "common.h"
 #include "rule.h"
-#include <inc/common.h>
 
 #include <stdbool.h>
 #include <stdlib.h> 

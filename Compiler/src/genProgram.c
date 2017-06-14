@@ -62,27 +62,9 @@ typedef enum {MAIN_BODY, IF_BODY, TRY_BODY, LOOP_BODY} ContextType;
    int indent;
 } CommandData;
 
-/* If the host graph contains fewer than MIN_HOST_NODE_SIZE nodes, the host
- * graph is allocated memory for that number of nodes. Similarly for edges. */
-#define MIN_HOST_NODE_SIZE 128
-#define MIN_HOST_EDGE_SIZE 128
-
-/* Generates an appropriate initial node/edge array size for a graph. 
- * Returns the maximum of minimum_size and the smallest power of 2 greater 
- * than the number_of_items in the passed graph. number_of_items is obtained
- * from a call to countNodes or countEdges. */
-static int getArraySize(int number_of_items, int minimum_size)
-{
-   if(number_of_items < minimum_size) return minimum_size;
-   /* Return the smallest power of 2 greater than number_of_items. */
-   number_of_items--;
-   number_of_items |= number_of_items >> 1;
-   number_of_items |= number_of_items >> 2;
-   number_of_items |= number_of_items >> 4;
-   number_of_items |= number_of_items >> 8;
-   number_of_items |= number_of_items >> 16;
-   return number_of_items + 1;
-}
+/* Arguments passed to the newGraph function at runtime. */
+#define HOST_NODE_SIZE 128
+#define HOST_EDGE_SIZE 128
 
 static void generateMorphismCode(List *declarations, char type, bool first_call);
 static void generateProgramCode(GPCommand *command, CommandData data);
@@ -95,8 +77,7 @@ static bool neverFails(GPCommand *command);
 static bool nullCommand(GPCommand *command);
 static bool singleRule(GPCommand *command);
 
-void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
-                         string host_file, string output_dir)
+void generateRuntimeMain(List *declarations, string output_dir)
 {
    int length = strlen(output_dir) + 7;
    char main_file[length];
@@ -109,6 +90,7 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    }
 
    PTF("#include <time.h>\n");
+   PTF("#include \"common.h\"\n");
    PTF("#include \"debug.h\"\n");
    PTF("#include \"graph.h\"\n");
    PTF("#include \"graphStacks.h\"\n");
@@ -139,25 +121,17 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTF("Graph *host = NULL;\n");
    PTF("int *node_map = NULL;\n\n");
 
-   /* Print the function that builds the host graph through the host graph parser. */
-   PTF("static Graph *buildHostGraph(void)\n");
+   /* Print the function that builds the host graph via the host graph parser. */
+   PTF("static Graph *buildHostGraph(char *host_file)\n");
    PTF("{\n");
-   if(host_file == NULL)
-   {
-      PTFI("return newGraph(%d, %d);\n", 3, MIN_HOST_NODE_SIZE, MIN_HOST_EDGE_SIZE);
-      PTF("}\n\n");
-      return;
-   }
-   PTFI("yyin = fopen(\"%s\", \"r\");\n", 3, host_file);
+   PTFI("yyin = fopen(host_file, \"r\");\n", 3);
    PTFI("if(yyin == NULL)\n", 3);
    PTFI("{\n", 3);
-   PTFI("perror(\"%s\");\n", 6, host_file);
+   PTFI("perror(host_file);\n", 6);
    PTFI("return NULL;\n", 6);
    PTFI("}\n\n", 3);
-   int host_node_size = getArraySize(host_nodes, MIN_HOST_NODE_SIZE);
-   int host_edge_size = getArraySize(host_edges, MIN_HOST_EDGE_SIZE);
-   PTFI("host = newGraph(%d, %d);\n", 3, host_node_size, host_edge_size);
-   PTFI("node_map = calloc(%d, sizeof(int));\n", 3, host_node_size);
+   PTFI("host = newGraph(%d, %d);\n", 3, HOST_NODE_SIZE, HOST_EDGE_SIZE);
+   PTFI("node_map = calloc(%d, sizeof(int));\n", 3, HOST_NODE_SIZE);
    PTFI("if(node_map == NULL)\n", 3);
    PTFI("{\n", 3);
    PTFI("freeGraph(host);\n", 6);
@@ -179,18 +153,23 @@ void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
    PTF("bool success = true;\n\n");
 
    /* Open the runtime's main function and set up the execution environment. */
-   PTF("int main(void)\n");
+   PTF("int main(int argc, char **argv)\n");
    PTF("{\n");
    PTFI("srand(time(NULL));\n", 3);
-   PTFI("openLogFile(\"gp2.log\");\n", 3);
+   PTFI("openLogFile(\"gp2.log\");\n\n", 3);
+   PTFI("if(argc != 2)\n", 3);
+   PTFI("{\n", 3);
+   PTFI("fprintf(stderr, \"Error: missing <host-file> argument.\\n\");\n", 6);
+   PTFI("return 0;\n", 6);
+   PTFI("}\n\n", 3);    
    #if defined GRAPH_TRACING || defined RULE_TRACING || defined BACKTRACK_TRACING
       PTFI("openTraceFile(\"gp2.trace\");\n", 3);
    #endif
 
-   PTFI("host = buildHostGraph();\n", 3);
+   PTFI("host = buildHostGraph(argv[1]);\n", 3);
    PTFI("if(host == NULL)\n", 3);
    PTFI("{\n", 3);
-   PTFI("fprintf(stderr, \"Error parsing host graph file. Execution aborted.\\n\");\n", 6);
+   PTFI("fprintf(stderr, \"Error parsing host graph file.\\n\");\n", 6);
    PTFI("return 0;\n", 6);
    PTFI("}\n", 3);
 

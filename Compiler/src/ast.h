@@ -35,8 +35,7 @@
 #ifndef INC_AST_H
 #define INC_AST_H 
 
-#include <inc/common.h>
-#include <inc/gp2enums.h>
+#include "common.h"
 #include "error.h"
 
 #include <stdbool.h>

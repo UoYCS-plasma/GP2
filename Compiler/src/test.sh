@@ -2,18 +2,18 @@
 
 function clean-tmp {
    cd /tmp/gp2 
-   make clean
+   rm -f * 
    cd -
 }
 
-if ./gp2 -p test/writerprog | grep -q 'writerprog is valid.'; then
+if ./gp2 -p writerprog | grep -q 'writerprog is valid.'; then
    echo "PASS: Validation test passed."
 else
    echo "FAIL: Validation test failed."
    exit 1
 fi
 
-./gp2 test/writerprog test/writer-helloworld
+./gp2 writerprog
 
 if [ -d /tmp/gp2 ] && [ -f /tmp/gp2/main.c ]; then
    echo "PASS: Writer program compiled successfully."
@@ -25,4 +25,4 @@ fi
   
 echo "All tests passed!"
 clean-tmp
-
+exit 0

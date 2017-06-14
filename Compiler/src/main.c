@@ -30,10 +30,9 @@
 /////////////////////////////////////////////////////////////////////////// */ 
 
 #include "error.h"
-#include <inc/common.h>
+#include "common.h"
 #include "genProgram.h"
 #include "genRule.h"
-// #include "libheaders.h"
 #include "parser.h"
 #include "pretty.h"
 #include "seman.h" 
@@ -148,7 +147,7 @@ void printMakeFile(string output_dir)
    fprintf(makefile, "OBJECTS := $(patsubst %%.c, %%.o, $(wildcard *.c))\n");  
    fprintf(makefile, "CC=gcc\n\n");
 
-   if(debug_flags) fprintf(makefile, "CFLAGS = -g -L$(LIB) -Wall -Wextra -lgp2debug\n\n");
+   if(debug_flags) fprintf(makefile, "CFLAGS = -g -L$(LIB) -Wall -Wextra -lgp2\n\n");
    else fprintf(makefile, "CFLAGS = -L$(LIB) -fomit-frame-pointer -O2 -Wall -Wextra -lgp2\n\n");
 
    fprintf(makefile, "default:\t$(OBJECTS)\n\t\t$(CC) $(OBJECTS) $(CFLAGS) -o gp2run\n\n");
@@ -163,17 +162,17 @@ bool graph_copying = false;
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "GP2-compile [-c] [-d] [-o <outdir>] <program_file> <host_file>\n"
-                        "GP2-compile -p <program_file>\n"
-                        "GP2-compile -r <rule_file>\n"
-                        "GP2-compile -h <host_file>\n\n"
+                        "gp2 [-c] [-d] [-o <outdir>] <program_file>\n"
+                        "gp2 -p <program_file>\n"
+                        "gp2 -r <rule_file>\n"
+                        "gp2 -h <host_file>\n\n"
                         "Flags:\n"
                         "-c - Enable graph copying.\n"
                         "-d - Compile program with GCC debugging flags.\n"
                         "-r - Validate a GP 2 rule.\n"
                         "-p - Validate a GP 2 program.\n"
                         "-h - Validate a GP 2 host graph.\n"
-                        "-o - Specify directory for generated code and program output.\n\n";
+                        "-o - Specify directory for generated code and program output.\n";
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
@@ -249,14 +248,13 @@ int main(int argc, char **argv)
                  return 0;
          }
       }
-      /* The remaining parameters are the program file and the host graph file. */
-      if(argc - argv_index != 2)
+      /* The remaining parameter is the program file. */
+      if(argc - argv_index != 1)
       {
          print_to_console("%s", usage);
          return 0; 
       }
-      program_file = argv[argv_index++];
-      host_file = argv[argv_index];
+      program_file = argv[argv_index];
    }
 
    /* If no output directory specified, make a directory in /tmp. */
@@ -281,20 +279,20 @@ int main(int argc, char **argv)
       if(program_file != NULL) 
       {
          bool result = validateProgram(program_file);
-         if(result) print_to_console("Program %s is valid.\n\n", program_file);   
-         else print_to_console("Program %s is invalid.\n\n", program_file);   
+         if(result) print_to_console("Program %s is valid.\n", program_file);   
+         else print_to_console("Program %s is invalid.\n", program_file);   
       }
       if(host_file != NULL)
       {
          bool result = validateHostGraph(host_file);
-         if(result) print_to_console("Host graph %s is valid.\n\n", host_file);   
-         else print_to_console("Host graph %s is invalid.\n\n", host_file);   
+         if(result) print_to_console("Host graph %s is valid.\n", host_file);   
+         else print_to_console("Host graph %s is invalid.\n", host_file);   
       }
       if(rule_file != NULL)
       {
          bool result = validateRule(rule_file);
-         if(result) print_to_console("Rule %s is valid.\n\n", rule_file);   
-         else print_to_console("Rule %s is invalid.\n\n", rule_file);   
+         if(result) print_to_console("Rule %s is valid.\n", rule_file);   
+         else print_to_console("Rule %s is invalid.\n", rule_file);   
       }
       if(yyin != NULL) fclose(yyin);
       if(gp_program) freeAST(gp_program);
@@ -304,13 +302,9 @@ int main(int argc, char **argv)
    else
    {
       bool valid_program = validateProgram(program_file);
-      bool valid_host_graph = validateHostGraph(host_file);
       if(!valid_program)
-         print_to_console("Program %s is invalid. Build aborted.\n\n", program_file);   
-      if(!valid_host_graph)
-         print_to_console("Host graph %s is invalid. Build aborted.\n\n", host_file);  
-      if(!valid_program || !valid_host_graph)
       {
+         print_to_console("Program %s is invalid. Build aborted.\n", program_file);   
          if(yyin != NULL) fclose(yyin);
          if(gp_program) freeAST(gp_program); 
          closeLogFile();
@@ -318,9 +312,9 @@ int main(int argc, char **argv)
       }
       else
       {
-         print_to_console("Generating program code...\n\n");
+         print_to_console("Generating program code...\n");
          generateRules(gp_program, output_dir);
-         generateRuntimeMain(gp_program, host_nodes, host_edges, host_file, output_dir);
+         generateRuntimeMain(gp_program, output_dir);
          printMakeFile(output_dir);
       }
    }

@@ -37,7 +37,6 @@ AC_CHECK_FUNCS([getcwd mkdir strdup])
 # all project-local M4 macro files. Might not be necessary for GP2.
 # AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile
-                 inc/Makefile
                  lib/Makefile
                  src/Makefile])
 

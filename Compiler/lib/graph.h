@@ -28,7 +28,6 @@
 #define INC_GRAPH_H
 
 #include "common.h"
-#include "gp2enums.h"
 #include "label.h"
 
 #include <assert.h>

@@ -32,13 +32,14 @@
 #define LIST_TABLE_SIZE 100003
 
 #include "common.h"
-#include "gp2enums.h"
 
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h> 
+
+typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; 
 
 typedef struct HostLabel {
    MarkType mark;

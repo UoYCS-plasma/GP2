@@ -27,7 +27,7 @@
 #define INC_SEMAN_H
 
 #include "ast.h"
-#include <inc/common.h>
+#include "common.h"
 #include "pretty.h"
 #include "symbol.h"
 

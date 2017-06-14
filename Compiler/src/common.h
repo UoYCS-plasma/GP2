@@ -16,16 +16,16 @@
   along with the GP 2 Compiler. If not, see <http://www.gnu.org/licenses/>.
 
   ==================
-  Global Header File
+  Common Header File
   ==================
 
-  Includes C's standard libraries and contains global variables and structures. 
+  Contains global variables and structures, convenience macros and enum
+  definitions.
 
 /////////////////////////////////////////////////////////////////////////// */
 
-#ifndef INC_GLOBALS_H
-#define INC_GLOBALS_H
-
+#ifndef INC_COMMON_H
+#define INC_COMMON_H
 
 /* If defined, lists are stored in a hash table at runtime as a single point of
  * reference. Otherwise, nodes and edges point to their own copies of their list. */
@@ -49,17 +49,8 @@
 #define PTF printToFile
 #define PTFI printToFileIndented
 
-//#include <assert.h>
-//#include <dirent.h>
-//#include <errno.h>
-//#include <stdarg.h>
 #include <stdbool.h>
-#include <stdlib.h> 
-#include <stdio.h> 
-//#include <string.h> 
-//#include <sys/stat.h>
-//#include <sys/types.h>
-//#include <unistd.h>
+#include <stdio.h>
 
 typedef char* string;
 
@@ -77,6 +68,18 @@ typedef struct YYLTYPE {
   int last_column;
 } YYLTYPE;
 
+/* GP 2's variable types. */
+typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} GPType;
+
+typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; 
+
+typedef enum {INT_CHECK = 0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
+              EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
+              BOOL_NOT, BOOL_OR, BOOL_AND } ConditionType;
+
+typedef enum {INTEGER_CONSTANT = 0, STRING_CONSTANT, VARIABLE, LENGTH, INDEGREE,
+              OUTDEGREE, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType;
+
 #define YYLTYPE_IS_DECLARED 1 /* Tells Bison that YYLTYPE is defined here. */
 
-#endif /* INC_GLOBALS_H */
+#endif /* INC_COMMON_H */

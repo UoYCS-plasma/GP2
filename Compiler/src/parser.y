@@ -46,7 +46,6 @@
 /* Declarations of global variables placed at the bottom of parser.h. */ 
  %code provides {
 extern List *gp_program; 
-extern int host_nodes, host_edges;
 extern int yylineno;
 extern string yytext;
 extern FILE *yyin;
@@ -55,8 +54,7 @@ extern bool syntax_error;
 
 /* Code placed in parser.c. */
 %{
-#include <inc/common.h>
-#include <inc/gp2enums.h>
+#include "common.h"
 
 int yylex(void);
 
@@ -508,8 +506,7 @@ EdgeID: ID				/* default $$ = $1 */
 Variable: ID		  		/* default $$ = $1 */ 
 
 
-/* Grammar for host graphs. It is used to syntax check the host graph file 
- * and to count the number of nodes and edges in the host graph. */
+/* Grammar for host graphs. Used only to syntax check the host graph file */
 HostGraph: '[' '|' ']'  		{ }
          | '[' Position '|' '|' ']'  	{ }
          | '[' HostNodeList '|' ']'  	{ }
@@ -520,16 +517,16 @@ HostGraph: '[' '|' ']'  		{ }
          | '[' Position '|' HostNodeList '|' HostEdgeList ']' 
      					{ }
 
-HostNodeList: HostNode			{ host_nodes++; }
-            | HostNodeList HostNode	{ host_nodes++; }
+HostNodeList: HostNode			{ }
+            | HostNodeList HostNode	{ }
 
 HostNode: '(' HostID RootNode ',' HostLabel ')'
     					/* default $$ = $1; */ 
 HostNode: '(' HostID RootNode ',' HostLabel Position ')'
     					/* default $$ = $1; */
 
-HostEdgeList: HostEdge			{ host_edges++; }
-            | HostEdgeList HostEdge	{ host_edges++; } 
+HostEdgeList: HostEdge			{ }
+            | HostEdgeList HostEdge	{ } 
 
 HostEdge: '(' HostID ',' HostID ',' HostID ',' HostLabel ')'
     					/* default $$ = $1; */

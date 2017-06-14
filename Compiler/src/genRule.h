@@ -30,7 +30,7 @@
 #define INC_GEN_RULE_H
 
 #include "ast.h"
-#include <inc/common.h>
+#include "common.h"
 #include "genCondition.h"
 #include "genLabel.h"
 #include "rule.h"

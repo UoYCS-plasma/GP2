@@ -15,21 +15,34 @@
   You should have received a copy of the GNU General Public License
   along with the GP 2 Compiler. If not, see <http://www.gnu.org/licenses/>.
 
+  ==================
+  Common Header File
+  ==================
+
 /////////////////////////////////////////////////////////////////////////// */
 
-#ifndef GP2ENUMS_H
-#define GP2ENUMS_H
+#ifndef INC_COMMON_H
+#define INC_COMMON_H
 
-/* GP 2's variable types. */
-typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} GPType;
+/* If defined, lists are stored in a hash table at runtime as a single point of
+ * reference. Otherwise, nodes and edges point to their own copies of their list. */
+#define LIST_HASHING
 
-typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; 
+#define print_to_log(error_message, ...)                    \
+  do { fprintf(log_file, error_message, ##__VA_ARGS__); }   \
+  while(0)
 
-typedef enum {INT_CHECK = 0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
-              EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
-              BOOL_NOT, BOOL_OR, BOOL_AND } ConditionType;
+/* Convenience macro for printing. */
+#define printToFile(code, ...)	               \
+  do { fprintf(file, code, ##__VA_ARGS__); }   \
+  while(0) 
 
-typedef enum {INTEGER_CONSTANT = 0, STRING_CONSTANT, VARIABLE, LENGTH, INDEGREE,
-              OUTDEGREE, NEG, ADD, SUBTRACT, MULTIPLY, DIVIDE, CONCAT} AtomType;
+#define PTF printToFile
 
-#endif /* GP2ENUMS_H */
+#include <stdio.h>
+
+typedef char* string;
+
+extern FILE *log_file;
+
+#endif /* INC_COMMON_H */

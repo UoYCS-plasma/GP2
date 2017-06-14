@@ -29,7 +29,7 @@
 #define INC_GEN_PROGRAM_H
 
 #include "ast.h"
-#include <inc/common.h>
+#include "common.h"
 
 #include <assert.h>
 #include <stdarg.h>
@@ -38,8 +38,7 @@
 #include <stdio.h> 
 #include <string.h> 
 
-void generateRuntimeMain(List *declarations, int host_nodes, int host_edges,
-                         string host_file, string output_dir);
+void generateRuntimeMain(List *declarations, string output_dir);
 
 /* Each GP 2 control construct is translated into a fragment of C code. 
  * I give the "broad strokes" translation here, excluding the more fiddly

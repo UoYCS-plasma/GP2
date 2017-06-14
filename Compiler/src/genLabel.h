@@ -26,8 +26,7 @@
 #ifndef INC_GEN_LABEL_H
 #define INC_GEN_LABEL_H
 
-#include <inc/common.h>
-#include <inc/gp2enums.h>
+#include "common.h"
 #include "rule.h"
 
 #include <assert.h>
