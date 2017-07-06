@@ -1,9 +1,11 @@
-# Only necessary if AC_CONFIG_MACRO_DIR is on in configure.ac
-# ACLOCAL_AMFLAGS = -I m4
-
 SUBDIRS = src lib
 
-EXTRA_DIST = programs 
+EXTRA_DIST = programs README.md
+
+README: README.md
+	pandoc -f markdown -t plain --wrap=none $< -o $@
 
 # Install into the doc directory
 doc_DATA = COPYING README
+
+CLEANFILES = README
