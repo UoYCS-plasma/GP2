@@ -234,6 +234,7 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
       result_declared = true;
    }
    PTFI("HostListItem *start = item;\n", indent + 3);
+   PTFI("item = label.list->last;\n", indent + 3);
    int host_atoms_matched = atom_count -1;
    atom_count = label.length;
    if(item->atom->type == VARIABLE && item->atom->variable.type == LIST_VAR)
@@ -251,7 +252,6 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
            indent + 3);
       PTFI("if(start == NULL) break;\n\n", indent + 3);
       PTFI("/* Matching from the end of the host list. */\n", indent + 3);
-      PTFI("item = label.list->last;\n", indent + 3);
       while(item != NULL)
       {
          if(item->atom->type == VARIABLE && item->atom->variable.type == LIST_VAR) break;
