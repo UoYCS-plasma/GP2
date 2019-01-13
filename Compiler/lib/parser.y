@@ -47,6 +47,7 @@ extern struct Graph *host;
 extern int *node_map;
 extern string yytext;
 extern FILE *yyin;
+extern int yylineno;
 }
 
 /* Code placed in hostParser.c. */
@@ -171,7 +172,7 @@ HostAtom: NUM 				{ $$.type = 'i';
  * messages to stderr and log_file. */
 void yyerror(const char *error_message)
 {
-   fprintf(stderr, "Error at '%c': %s\n\n", yychar, error_message);
+   fprintf(stderr, "Error at line %d: %s\n", yylineno, error_message);
 }
 
   
