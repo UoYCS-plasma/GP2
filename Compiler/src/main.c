@@ -43,6 +43,8 @@
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h> 
+#include <ctype.h> 
+#include <limits.h>
 
 /* Toggle tracing of the Bison parser. The trace is printed to stderr. */
 #undef PARSER_TRACE 
@@ -172,45 +174,51 @@ int main(int argc, char **argv)
                         "-r - Validate a GP 2 rule.\n"
                         "-h - Validate a GP 2 host graph.\n"
                         "-l - Specify root directory of installed files.\n"
-                        "-o - Specify directory for generated code and program output.\n";
+                        "-o - Specify directory for generated code and program output.\n"
+                        "--max-nodes - Specify maximum number of nodes in a host graph.\n"
+                        "--max-edges - Specify maximum number of edges in a host graph.\n";
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
    string program_file = NULL, host_file = NULL, rule_file = NULL, 
           install_dir = NULL, output_dir = NULL;
 
+   unsigned int max_nodes = HOST_NODE_SIZE;
+   unsigned int max_edges = HOST_EDGE_SIZE;
+   char **p;
+
    if(argc < 2)
    {
       print_to_console("%s", usage);
-      return 0; 
+      exit(EXIT_FAILURE);
    }
 
    if(strcmp(argv[1], "-p") == 0)
    {
-      if(argc != 3)
+      if(argc < 3)
       {
          print_to_console("%s", usage);
-         return 0; 
+         exit(EXIT_FAILURE);
       }
       validate = true;
       program_file = argv[2];
    }
    else if(strcmp(argv[1], "-h") == 0)
    {
-      if(argc != 3)
+      if(argc < 3)
       {
          print_to_console("%s", usage);
-         return 0; 
+         exit(EXIT_FAILURE);
       }
       validate = true;
       host_file = argv[2];
    }
    else if(strcmp(argv[1], "-r") == 0)
    {
-      if(argc != 3)
+      if(argc < 3)
       {
          print_to_console("%s", usage);
-         return 0; 
+         exit(EXIT_FAILURE);
       }
       validate = true;
       rule_file = argv[2];
@@ -224,46 +232,76 @@ int main(int argc, char **argv)
       {
          string parameter = argv[argv_index];
          if(parameter[0] != '-') break;
-         switch(parameter[1])
+         if (strcmp(argv[argv_index], "--max-nodes") == 0)
          {
-            case 'c':
-                 graph_copying = true;
-                 break;
+             if(argc < argv_index+2)
+             {
+                 print_to_console("%s", usage);
+                 exit(EXIT_FAILURE);
+             }
+             long inp =  strtol(argv[++argv_index], p, 10);
+             if (inp > INT_MAX || inp < 1) {
+                print_to_console("Error: invalid size for max_nodes/max_edges\n");
+                exit(EXIT_FAILURE);
+             }
+             max_nodes = (unsigned int) inp;
+         }
+         else if (strcmp(argv[argv_index], "--max-edges") == 0)
+         {
+             if(argc < argv_index+2)
+             {
+                 print_to_console("%s", usage);
+                 exit(EXIT_FAILURE);
+             }
+             long inp =  strtol(argv[++argv_index], p, 10);
+             if (inp > INT_MAX || inp < 1) {
+                print_to_console("Error: invalid size for max_nodes/max_edges\n");
+                exit(EXIT_FAILURE);
+             }
+             max_edges = (unsigned int) inp;
+         }
+         else {
+            switch(parameter[1])
+            {
+               case 'c':
+                    graph_copying = true;
+                    break;
 
-            case 'd':
-                 debug_flags = true;
-                 break;
-            
-            case 'l':
-                 argv_index++;
-                 if(argv_index == argc)
-                 {
-                    print_to_console("%s", usage);
-                    return 0; 
-                 }
-                 install_dir = argv[argv_index];
-                 break;
+               case 'd':
+                    debug_flags = true;
+                    break;
 
-            case 'o':
-                 argv_index++;
-                 if(argv_index == argc)
-                 {
-                    print_to_console("%s", usage);
-                    return 0; 
-                 }
-                 output_dir = argv[argv_index];
-                 break;
+               case 'l':
+                    argv_index++;
+                    if(argv_index == argc)
+                    {
+                       print_to_console("%s", usage);
+                       exit(EXIT_FAILURE);
+                    }
+                    install_dir = argv[argv_index];
+                    break;
 
-            default:
-                 print_to_console("Error: invalid option \"%s\".\n", parameter);
-                 return 0;
+               case 'o':
+                    argv_index++;
+                    if(argv_index == argc)
+                    {
+                       print_to_console("%s", usage);
+                       exit(EXIT_FAILURE);
+                    }
+                    output_dir = argv[argv_index];
+                    break;
+
+               default:
+                    print_to_console("Error: invalid option \"%s\".\n", parameter);
+                    exit(EXIT_FAILURE);
+            }
          }
       }
       /* The remaining parameter is the program file. */
       if(argc - argv_index != 1)
       {
          print_to_console("%s", usage);
-         return 0; 
+         exit(EXIT_FAILURE);
       }
       program_file = argv[argv_index];
    }
@@ -319,13 +357,13 @@ int main(int argc, char **argv)
          if(yyin != NULL) fclose(yyin);
          if(gp_program) freeAST(gp_program); 
          closeLogFile();
-         return 0;
+         exit(EXIT_FAILURE);
       }
       else
       {
          print_to_console("Generating program code...\n");
          generateRules(gp_program, output_dir);
-         generateRuntimeMain(gp_program, output_dir);
+         generateRuntimeMain(gp_program, output_dir, max_nodes, max_edges);
          printMakeFile(output_dir, install_dir);
       }
    }
