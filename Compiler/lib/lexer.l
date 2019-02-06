@@ -1,5 +1,5 @@
-/*////////////////////////////////////////////////////////////////////////////
 
+/*////////////////////////////////////////////////////////////////////////////
   Copyright 2015-2017 Christopher Bak
 
   This file is part of the GP 2 Compiler. The GP 2 Compiler is free software: 
@@ -35,7 +35,7 @@
  * possible input.
  */
 
-%option noyywrap nodefault noinput nounput
+%option noyywrap yylineno nodefault noinput nounput
 %option outfile="lexer.c"
 
 %{
