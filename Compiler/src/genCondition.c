@@ -1,13 +1,13 @@
 /* Copyright 2015-2017 Christopher Bak
 
-  This file is part of the GP 2 Compiler. The GP 2 Compiler is free software: 
+  This file is part of the GP 2 Compiler. The GP 2 Compiler is free software:
   you can redistribute it and/or modify it under the terms of the GNU General
   Public License as published by the Free Software Foundation, either version 3
   of the License, or (at your option) any later version.
 
-  The GP 2 Compiler is distributed in the hope that it will be useful, but 
-  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
-  or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for 
+  The GP 2 Compiler is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+  or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
   more details.
 
   You should have received a copy of the GNU General Public License
@@ -18,7 +18,7 @@
 /* For each predicate in the condition, generate a boolean value 'bx', where x
  * is the ID of the predicate. The variables are initialised in such a way that
  * the condition always evaluates to true, so that the condition isn't erroneously
- * falsified when one of these variables is modified by the evaluation of a 
+ * falsified when one of these variables is modified by the evaluation of a
  * predicate. */
 void generateConditionVariables(Condition *condition)
 {
@@ -76,7 +76,7 @@ void generateConditionEvaluator(Condition *condition, bool nested)
            generateConditionEvaluator(condition->right_condition, true);
            if(nested) PTF(")");
            break;
-           
+
       case 'o':
            if(nested) PTF("(");
            generateConditionEvaluator(condition->left_condition, true);
@@ -169,13 +169,13 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
             switch(variable.type)
             {
                case INTEGER_VAR:
-                    PTFI("int var_%d = getIntegerValue(morphism, %d);\n\n", 3, 
+                    PTFI("int var_%d = getIntegerValue(morphism, %d);\n\n", 3,
                          index, index);
                     break;
 
                case CHARACTER_VAR:
                case STRING_VAR:
-                    PTFI("string var_%d = getStringValue(morphism, %d);\n\n", 3, 
+                    PTFI("string var_%d = getStringValue(morphism, %d);\n\n", 3,
                          index, index);
                     break;
 
@@ -183,7 +183,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
                case LIST_VAR:
                     PTFI("Assignment var_%d = assignment_%d;\n", 3, index, index);
                     break;
-               
+
                default:
                     print_to_log("Error (generateVariableCode): Unexpected type %d\n",
                                  variable.type);
@@ -223,8 +223,8 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
 
       case EDGE_PRED:
       {
-           int source = predicate->edge_pred.source;    
-           int target = predicate->edge_pred.target;    
+           int source = predicate->edge_pred.source;
+           int target = predicate->edge_pred.target;
            PTFI("Node *source = getNode(host, n%d);\n", 3, source);
            PTFI("bool edge_found = false;\n", 3);
            PTFI("int counter;\n", 3);
@@ -233,7 +233,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            PTFI("Edge *edge = getNthOutEdge(host, source, counter);\n", 6);
            PTFI("if(edge != NULL && edge->target == n%d)\n", 6, target);
            if(predicate->edge_pred.label.length >= 0)
-           { 
+           {
               PTFI("{\n", 6);
               PTFI("HostLabel label;\n", 9);
               /* Create runtime variables for each variable in the label. */
@@ -245,7 +245,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
                  {
                     /* generateVariableCode prints with indent 3. Indent of 9 is required. */
                     PTF("      ");
-                    generateVariableCode(count, item->atom->variable.type);
+                    generateVariableCode(item->atom->variable.id, item->atom->variable.type);
                  }
                  item = item->next;
               }
@@ -318,7 +318,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            break;
 
       default:
-           print_to_log("Error (generatePredicateCode): Unexpected type %d.\n", 
+           print_to_log("Error (generatePredicateCode): Unexpected type %d.\n",
                         predicate->type);
            break;
    }
@@ -349,4 +349,3 @@ void generatePredicateEvaluators(Rule *rule, Condition *condition)
            break;
    }
 }
-
