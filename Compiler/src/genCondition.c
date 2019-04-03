@@ -249,6 +249,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
                  }
                  item = item->next;
               }
+              PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 9, index);
               generateLabelEvaluationCode(predicate->edge_pred.label, false, list_count++, 1, 9);
               PTFI("if(equalHostLabels(label, edge->label))\n", 9);
               PTFI("{\n", 9);
@@ -291,6 +292,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            }
            else
            {
+              PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
               generateLabelEvaluationCode(left_label, false, list_count++, 2, 3);
               generateLabelEvaluationCode(right_label, false, list_count++, 3, 3);
               PTFI("if(", 3);
