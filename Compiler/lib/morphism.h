@@ -49,7 +49,11 @@ typedef struct Assignment {
 } Assignment;
 
 typedef struct Map {
-   int host_index;
+   //int host_index;
+   union {
+    Node *node;
+    Edge *edge;
+   };
    /* The number of variable-value assignments added by this node map.
     * Needed when matching backtracks in order to remove the appropriate
     * number of assignments from the morphism. */
@@ -84,10 +88,15 @@ Morphism *makeMorphism(int nodes, int edges, int variables);
  * The host graph is passed as an optional second argument to reset the matched flags
  * of all host graph items matched by the morphism. */
 void initialiseMorphism(Morphism *morphism, Graph *graph);
-void addNodeMap(Morphism *morphism, int left_index, int host_index, int assignments);
+void addNodeMap(Morphism *morphism, int left_index, Node *host_node, int assignments);
 void removeNodeMap(Morphism *morphism, int left_index);
-void addEdgeMap(Morphism *morphism, int left_index, int host_index, int assignments);
+void addEdgeMap(Morphism *morphism, int left_index, Edge *host_edge, int assignments);
 void removeEdgeMap(Morphism *morphism, int left_index);
+
+//void addNodeMap(Morphism *morphism, int left_index, int host_index, int assignments);
+//void removeNodeMap(Morphism *morphism, int left_index);
+//void addEdgeMap(Morphism *morphism, int left_index, int host_index, int assignments);
+//void removeEdgeMap(Morphism *morphism, int left_index);
 
 /* Tests a potential variable-value assignment against the assignments in the
  * morphism. If the variable is not in the assignment, its name and value are 
@@ -106,8 +115,8 @@ void removeAssignments(Morphism *morphism, int number);
 void pushVariableId(Morphism *morphism, int id);
 int popVariableId(Morphism *morphism);
 
-int lookupNode(Morphism *morphism, int left_index);
-int lookupEdge(Morphism *morphism, int left_index);
+Node *lookupNode(Morphism *morphism, int left_index);
+Edge *lookupEdge(Morphism *morphism, int left_index);
 
 /* These functions expect to be passed the id of a variable of the appropriate type. */
 int getIntegerValue(Morphism *morphism, int id);

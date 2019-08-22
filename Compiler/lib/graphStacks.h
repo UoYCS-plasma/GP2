@@ -57,40 +57,43 @@ typedef struct GraphChange
       /* Records the array index to which this item was added and a flag to signal
        * whether the item was added using an index from the holes array or not. */
       struct {
-         int index; 
-         bool hole_filled;  
-      } added_node, added_edge;
+         Node *node;
+      } added_node;
+      struct {
+        Edge *edge;
+      } added_edge;
       /* Records the root status and label of the removed node, along with its 
        * index in the node array and a flag set to true if the removal of this
        * node created a hole in the node array. */
       struct {
-         bool root;
-         HostLabel label;
-         int index;
-         bool hole_created;
+         Node *node;
       } removed_node;
       /* Records the label, source and target of the removed edge, along with its 
        * index in the edge array and a flag set to true if the removal of this
        * edge created a hole in the edge array. */
       struct {
-         HostLabel label;
-         int source;
-         int target;
-         int index;
-         bool hole_created;
+         Edge *edge;
       } removed_edge;
       /* Records the index of the relabelled item and the item's previous label. */
       struct {
-         int index;
+         Node *node;
          HostLabel old_label;
-      } relabelled_node, relabelled_edge;   
-      /* Records the index of the remarked item and the item's previous mark. */
+      } relabelled_node;
       struct {
-         int index;
+         Edge *edge;
+         HostLabel old_label;
+      } relabelled_edge;   
+      /* Records the remarked item and the item's previous mark. */
+      struct {
+         Node *node;
          MarkType old_mark;
-      } remarked_node, remarked_edge;   
-      /* Records the index of the node whose root status was changed. */
-      int changed_root_index;
+      } remarked_node;
+      struct {
+         Edge *edge;
+         MarkType old_mark;
+      } remarked_edge;
+      /* Records the node whose root status was changed. */
+      Node *changed_root_index;
    };
 } GraphChange; 
 
@@ -99,15 +102,24 @@ extern struct GraphChangeStack *graph_change_stack;
 extern int graph_change_count;
 
 int topOfGraphChangeStack(void);
-void pushAddedNode(int index, bool hole_filled);
-void pushAddedEdge(int index, bool hole_filled);
-void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created);
-void pushRemovedEdge(HostLabel label, int source, int target, int index, bool hole_created);
-void pushRelabelledNode(int index, HostLabel old_label);
-void pushRelabelledEdge(int index, HostLabel old_label);
-void pushRemarkedNode(int index, MarkType old_mark);
-void pushRemarkedEdge(int index, MarkType old_mark);
-void pushChangedRootNode(int index);
+void pushAddedNode(Node *node);
+void pushAddedEdge(Edge *edge);
+void pushRemovedNode(Node *node);
+void pushRemovedEdge(Edge *edge);
+void pushRelabelledNode(Node *node, HostLabel old_label);
+void pushRelabelledEdge(Edge *edge, HostLabel old_label);
+void pushRemarkedNode(Node *node, MarkType old_mark);
+void pushRemarkedEdge(Edge *edge, MarkType old_mark);
+void pushChangedRootNode(Node *node);
+//void pushAddedNode(int index, bool hole_filled);
+//void pushAddedEdge(int index, bool hole_filled);
+//void pushRemovedNode(bool root, HostLabel label, int index, bool hole_created);
+//void pushRemovedEdge(HostLabel label, int source, int target, int index, bool hole_created);
+//void pushRelabelledNode(int index, HostLabel old_label);
+//void pushRelabelledEdge(int index, HostLabel old_label);
+//void pushRemarkedNode(int index, MarkType old_mark);
+//void pushRemarkedEdge(int index, MarkType old_mark);
+//void pushChangedRootNode(int index);
 void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);
 void freeGraphChangeStack(void);
