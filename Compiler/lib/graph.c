@@ -259,7 +259,7 @@ void changeRoot(Graph *graph, Node *node)
 {
    if(node->root) removeRootNode(graph, node);
    else addRootNode(graph, node);
-   node->root = !root;
+   node->root = !node->root;
 }
 
 void resetMatchedNodeFlag(Node *node)
@@ -332,7 +332,7 @@ Node *yieldNextNode(Graph *graph, NodeList **current)
    return (*current)->node;
 }
 
-Edge *yieldNextOutEdge(Node *node, Edgelist **current)
+Edge *yieldNextOutEdge(Node *node, EdgeList **current)
 {
    if(*current == NULL) *current = node->out_edges;
 
@@ -354,14 +354,14 @@ Edge *yieldNextOutEdge(Node *node, Edgelist **current)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
        free((*current)->prev);
-       edge->in_srclist = false;
+       edge->in_srclst = false;
        // Don't try and delete edge here.
      }
    }
    return (*current)->edge;
 }
 
-Edge *yieldNextInEdge(Node *node, Edgelist **current)
+Edge *yieldNextInEdge(Node *node, EdgeList **current)
 {
    if(*current == NULL) *current = node->in_edges;
 
@@ -390,7 +390,7 @@ Edge *yieldNextInEdge(Node *node, Edgelist **current)
    return (*current)->edge;
 }
 
-Edge *yieldNextEdge(Graph *graph, Edgelist **current)
+Edge *yieldNextEdge(Graph *graph, EdgeList **current)
 {
    if(*current == NULL) *current = graph->edges;
 
@@ -437,13 +437,13 @@ RootNodes *getRootNodeList(Graph *graph)
    return graph->root_nodes;
 }
 
-Node *getSource(Graph *graph, Edge *edge) 
+Node *getSource(Edge *edge) 
 {
    assert(!edge->source->deleted);
    return edge->source;
 }
 
-Node *getTarget(Graph *graph, Edge *edge) 
+Node *getTarget(Edge *edge) 
 {
    assert(!edge->target->deleted);
    return edge->target;
@@ -518,11 +518,11 @@ void freeGraph(Graph *graph)
 
    EdgeList *elistpos = NULL;
    for(Edge *edge; (edge = yieldNextEdge(graph, &elistpos)) != NULL;)
-     removeEdge(edge);
+     removeEdge(graph, edge);
 
    NodeList *nlistpos = NULL;
    for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;)
-     removeNode(node);
+     removeNode(graph, node);
 
    if(graph->root_nodes != NULL)
    {

@@ -151,9 +151,9 @@ extern struct Edge dummy_edge;
 // Done this way so deleted nodes/edges are garbage
 // collected when passed by.
 Node *yieldNextNode(Graph *graph, NodeList **current);
-Node *yieldNextEdge(Graph *graph, EdgeList **current);
-Node *yieldNextOutEdge(Node *node, EdgeList **current);
-Node *yieldNextInEdge(Node *node, EdgeList **current);
+Edge *yieldNextEdge(Graph *graph, EdgeList **current);
+Edge *yieldNextOutEdge(Node *node, EdgeList **current);
+Edge *yieldNextInEdge(Node *node, EdgeList **current);
 
 RootNodes *getRootNodeList(Graph *graph);
 
