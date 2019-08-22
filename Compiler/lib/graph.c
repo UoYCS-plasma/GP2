@@ -417,13 +417,12 @@ Edge *yieldNextEdge(Graph *graph, Edgelist **current)
        {
          // Clean out references in src/trg to edge by iterating through them.
          // (If source/target garbage collected, in_srclst/trglst = false.)
+         EdgeList *elpos = NULL;
          if(edge->in_srclst)
-           for(EdgeList *elistpos = NULL, Edge *e;
-               (e = yieldNextOutEdge(edge->source, &elistpos)) != NULL;)
+           for(Edge *e; (e = yieldNextOutEdge(edge->source, &elpos)) != NULL;)
              ;
          if(edge->in_trglst)
-           for(EdgeList *elistpos = NULL, Edge *e;
-               (e = yieldNextInEdge(edge->target, &elistpos)) != NULL;)
+           for(Edge *e; (e = yieldNextInEdge(edge->target, &elpos)) != NULL;)
              ;
          removeHostList(edge->label.list);
          free(edge);
@@ -484,15 +483,13 @@ void printGraph(Graph *graph, FILE *file)
    }
    PTF("[ ");
    /* Maps a node's graph-index to the ID it is printed with (node_count). */
-   Node *output_indices[graph->nodes.size];
-   for(NodeList *nlistpos = NULL, Node *node;
-       (node = yieldNextNode(graph, &nlistpos)) != NULL;)
+   NodeList *nlistpos = NULL;
+   for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;)
    {
       /* Five nodes per line */
       if(node_count != 0 && node_count % 5 == 0) PTF("\n  ");
-      output_indices[node_count] = node;
-      if(node->root) PTF("(%d(R), ", node_count++);
-      else PTF("(%d, ", node_count++);
+      if(node->root) PTF("(%p(R), ", (void *) node);
+      else PTF("(%p, ", (void *) node);
       printHostLabel(node->label, file);
       PTF(") ");
    }
@@ -502,39 +499,32 @@ void printGraph(Graph *graph, FILE *file)
       return;
    }
    PTF("|\n  ");
-   for(EdgeList *elistpos = NULL, Edge *edge;
-       (edge = yieldNextEdge(graph, &elistpos)) != NULL;)
+   EdgeList *elistpos = NULL;
+   for(Edge *edge; (edge = yieldNextEdge(graph, &elistpos)) != NULL;)
    {
       /* Three edges per line */
       if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
-      PTF("(%d, ", edge_count++);
-
-      int src_index, trg_index;
-      for(int i = 0; i < node_count; i++)
-      {
-        if(edge->source == output_indices[i]) src_index = i;
-        if(edge->target == output_indices[i]) trg_index = i;
-      }
-      PTF("%d, %d, ", src_index, trg_index);
+      PTF("(%p, %p, %p, ", (void *) edge,
+          (void *) edge->source, (void *) edge->target);
       printHostLabel(edge->label, file);
       PTF(") ");
    }
    PTF("]\n\n");
 }
 
-void freeGraph(Graph *graph) 
+void freeGraph(Graph *graph)
 {
    if(graph == NULL) return;
 
-   for(EdgeList *elistpos = NULL, Edge *edge;
-       (edge = yieldNextEdge(graph, &elistpos)) != NULL;)
+   EdgeList *elistpos = NULL;
+   for(Edge *edge; (edge = yieldNextEdge(graph, &elistpos)) != NULL;)
      removeEdge(edge);
 
-   for(NodeList *nlistpos = NULL, Node *node;
-       (node = yieldNextNode(graph, &nlistpos)) != NULL;)
+   NodeList *nlistpos = NULL;
+   for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;)
      removeNode(node);
 
-   if(graph->root_nodes != NULL) 
+   if(graph->root_nodes != NULL)
    {
       RootNodes *iterator = graph->root_nodes;
       while(iterator != NULL)
