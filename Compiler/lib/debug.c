@@ -50,18 +50,12 @@ void closeTraceFile(void)
 }
 
 /* Invariants on graphs:
- * (1) For 0 <= i <= graph->nodes.size, if graph->nodes.items[i].index is -1,
- *     then i is in the holes array.
- * (2) The number of non-dummy nodes in the node array is equal to 
- *     graph->number_of_nodes.
- * (3) The number of edge indices >= 0 stored by a node is equal to its outdegree.
- * (4) The number of edge indices >= 0 stored by a node is equal to its indegree.
- * (5) For 0 <= i <= graph->edges.size, if graph->edges.items[i].index is -1,
- *     then i is in the holes array.
- * (6) The number of non-dummy edges in the edge array is equal to 
- *     graph->number_of_edges.
- * (7) Source and target consistency: For all edges E, if S is E's source and
- *     T is E's target, then E is in S's outedge list and E is in T's inedge list. 
+ * - The number of outgoing edges stored by a node is equal to its outdegree.
+ * - The number of incoming edges stored by a node is equal to its indegree.
+ * - The number of nodes in the node list is equal to graph->number_of_nodes.
+ * - The number of edges in the edge list is equal to graph->number_of_edges.
+ * - Source and target consistency: For all edges E, if S is E's source and
+ *   T is E's target, then E is in S's outedge list and T's inedge list.
  */
 
 bool validGraph(Graph *graph)
@@ -76,66 +70,35 @@ bool validGraph(Graph *graph)
 
    bool valid_graph = true, slot_found = false;
    int node_index, node_count = 0, edge_count = 0;
-   
-   for(node_index = 0; node_index < graph->nodes.size; node_index++)    
-   {
-      Node *node = getNode(graph, node_index);
-      /* Invariant (1) */
-      if(node->index == -1) 
-      {
-         int i;
-         for(i = 0; i < graph->nodes.holes.size; i++)
-         {
-            if(graph->nodes.holes.items[i] == node_index) 
-            {
-               slot_found = true;
-               break;
-            }
-         }
-         if(!slot_found)
-         {
-            fprintf(stderr, "(1) Dummy node at array index %d but the index is not "
-                    "in the holes array.\n", node_index);
-            valid_graph = false;
-         }
-         slot_found = false;
-      }     
-      else
-      {
-         /* Keep a count of the number of nodes in the array. */
-         node_count++;
-         int n;
-         for(n = 0; n < node->out_edges.size + 2; n++)
-         {
-            Edge *node_edge = getNthOutEdge(graph, node, n);
-            /* Keep a count of the number of outedges in the array. */
-            if(node_edge != NULL) edge_count++;           
-         }
-         /* Invariant (3) */
-         if(node->outdegree != edge_count)
-         {
-            fprintf(stderr, "(3) Node %d's outdegree (%d) is not equal to the "
-                    "number of edges in its outedges array (%d).\n",
-                    node->index, node->outdegree, edge_count);
-            valid_graph = false;
-         }
-         edge_count = 0;
 
-         for(n = 0; n < node->in_edges.size + 2; n++)
-         {
-            Edge *node_edge = getNthInEdge(graph, node, n);
-            /* Keep a count of the number of inedges in the array. */
-            if(node_edge != NULL) edge_count++;
-         }
-         /* Invariant (4) */
-         if(node->indegree != edge_count)
-         {
-            fprintf(stderr, "(4) Node %d's indegree (%d) is not equal to the number "
-                    "of edges in its inedges array (%d).\n", node->index, 
-                    node->indegree, edge_count);
-            valid_graph = false;
-         } 
-         edge_count = 0;
+   NodeList *nlistpos = NULL;
+   for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;
+       node_count++)
+   {
+      int inedge_count = 0, outedge_count = 0;
+
+      EdgeList *elistpos = NULL;
+      for(Edge *edge; (edge = yieldNextOutEdge(node, &elistpos)) != NULL;
+          outedge_count++)
+        ;
+      if(node->outdegree != outedge_count)
+      {
+         fprintf(stderr, "(3) Node %d's outdegree (%d) is not equal to the "
+                 "number of edges in its outedges array (%d).\n",
+                 node_count, node->outdegree, outedge_count);
+         valid_graph = false;
+      }
+
+      for(Edge *edge; (edge = yieldNextInEdge(node, &elistpos)) != NULL;
+          inedge_count++)
+        ;
+      /* Invariant (4) */
+      if(node->indegree != inedge_count)
+      {
+         fprintf(stderr, "(4) Node %d's indegree (%d) is not equal to the"
+                 "number of edges in its inedges array (%d).\n",
+                 node_count, node->indegree, inedge_count);
+         valid_graph = false;
       }
    }
    /* Invariant (2) */
@@ -144,85 +107,45 @@ bool validGraph(Graph *graph)
       fprintf(stderr, "(2) graph->number_of_nodes (%d) is not equal to the number of "
               "nodes in the node array (%d).\n", graph->number_of_nodes, node_count);
       valid_graph = false;
-   }   
-  
-   int edge_index;
-   for(edge_index = 0; edge_index < graph->edges.size; edge_index++)    
+   }
+
+   EdgeList *elistpos = NULL;
+   for(Edge *edge; (edge = yieldNextEdge(graph, &elistpos)) != NULL;
+       edge_count++)
    {
-      Edge *edge = getEdge(graph, edge_index);
-      slot_found = false;
-      /* Invariant (5) */
-      if(edge->index == -1) 
-      { 
-         int count;
-         for(count = 0; count < graph->edges.holes.size; count++)
-         {
-            if(graph->edges.holes.items[count] == edge_index) 
-            {
-               slot_found = true;
-               break;
-            }
-         }
-         if(!slot_found)
-         {
-            fprintf(stderr, "(5) Dummy edge at array index %d but the index "
-                    "is not in the holes array.\n", edge_index);
-            valid_graph = false;
-         }
-      }    
-      else
+      bool source_found = false;
+      EdgeList *olistpos = NULL;
+      for(Edge *outedge; (outedge = yieldNextOutEdge(edge->source, &olistpos)) != NULL;)
       {
-         /* Keep a count of the number of edges in the array. */
-         edge_count++;
-         Node *source = getNode(graph, edge->source); 
-         Node *target = getNode(graph, edge->target);
-
-         bool source_found = false;
-         if(source->first_out_edge == edge->index || source->second_out_edge == edge->index)
+         if(outedge == edge)
+         {
             source_found = true;
-         if(!source_found)
-         {
-            int counter;
-            for(counter = 0; counter < source->out_edges.size; counter++)
-            {
-               if(source->out_edges.items[counter] == edge->index)
-               {
-                  source_found = true;
-                  break;
-               }
-            }
+            break;
          }
-         /* Invariant (7) */
-         if(!source_found)
-         {
-            fprintf(stderr, "(7) Edge %d does not occur in node %d's outedge "
-                    "array.\n", edge_index, source->index);   
-            valid_graph = false;
-         }   
+      }
+      /* Invariant (7) */
+      if(!source_found)
+      {
+         fprintf(stderr, "(7) Edge %d does not occur in source's outedge "
+                 "array.\n", edge_count);
+         valid_graph = false;
+      }
 
-         bool target_found = false;
-         if(target->first_in_edge == edge->index || target->second_in_edge == edge->index)
+      bool target_found = false;
+      Edge *ilistpos = NULL;
+      for(Edge *inedge; (inedge = yieldNextInEdge(edge->target, &ilistpos)) != NULL;)
+      {
+         if(inedge == edge)
+         {
             target_found = true;
-         if(!target_found)
-         {
-            int counter;
-            for(counter = 0; counter < target->in_edges.size; counter++)
-            {
-               if(target->in_edges.items[counter] == edge->index)
-               {
-                  target_found = true;
-                  break;
-               }
-            }
+            break;
          }
-         if(!target_found)
-         {
-            fprintf(stderr, "(7) Edge %d does not occur in node %d's inedge "
-                    "array.\n", edge_index, target->index);   
-            valid_graph = false;
-         }   
-
-
+      }
+      if(!target_found)
+      {
+         fprintf(stderr, "(7) Edge %d does not occur in target's inedge "
+                 "array.\n", edge_count);
+         valid_graph = false;
       }
    }
    /* Invariant (6) */
@@ -231,45 +154,41 @@ bool validGraph(Graph *graph)
       fprintf(stderr, "(6) graph->number_of_edges (%d) is not equal to the number of "
               "edges in the edge array (%d).\n", graph->number_of_edges, edge_count);
       valid_graph = false;
-   }     
-    
+   }
+
    if(valid_graph) fprintf(stderr, "Graph satisfies all the data invariants!\n");
    printf("\n");
    return valid_graph;
 }
 
-void printVerboseGraph(Graph *graph, FILE *file) 
+void printVerboseGraph(Graph *graph, FILE *file)
 {
-    int index;
     PTF("Nodes\n=====\n");
-    for(index = 0; index < graph->nodes.size; index++)
+    NodeList *nlistpos = NULL;
+    for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;)
     {
-       Node *node = getNode(graph, index);
-       if(node->index >= 0) printVerboseNode(node, file);
-    }   
+       printVerboseNode(node, file);
+    }
     PTF("Root Node List: ");
     RootNodes *iterator = graph->root_nodes;
     while(iterator != NULL)
     {
-       if(iterator->next == NULL) PTF("%d\n", iterator->index);
-       else PTF("%d, ", iterator->index);
+       if(iterator->next == NULL) PTF("%p\n", (void *) iterator->node);
+       else PTF("%p, ", (void *) iterator->node);
        iterator = iterator->next;
     }
     PTF("\n");
     PTF("Edges\n=====\n");
-    for(index = 0; index < graph->edges.size; index++)
-    {
-       Edge *edge = getEdge(graph, index);
-       if(edge->index >= 0) printVerboseEdge(edge, file);
-    } 
+    EdgeList *elistpos = NULL;
+    for(Edge *edge; (node = yieldNextEdge(graph, &elistpos)) != NULL;)
+       printVerboseEdge(edge, file);
     PTF("\n");
 }
 
 void printVerboseNode(Node *node, FILE *file)
 {
-    PTF("Index: %d", node->index);
-    if(node->root) PTF(" (Root)");
-    PTF("\n");
+    PTF("ID: %p", (void *) node);
+    if(node->root) PTF(" (Root)\n");
     PTF("Label: ");
     printHostLabel(node->label, file);
     PTF("\n");
@@ -296,13 +215,12 @@ void printVerboseNode(Node *node, FILE *file)
     PTF("\n\n");
 }
 
-void printVerboseEdge(Edge *edge, FILE *file) 
+void printVerboseEdge(Edge *edge, FILE *file)
 {
-    PTF("Index: %d", edge->index);
-    PTF("\n");
+    PTF("ID: %p", (void *) edge);
     PTF("Label: ");
     printHostLabel(edge->label, file);
     PTF("\n");
-    PTF("Source: %d. Target: %d\n\n", edge->source, edge->target);
+    PTF("Source: %p. Target: %p\n\n", (void *) edge->source, (void *) edge->target);
 }
 
