@@ -18,9 +18,6 @@
 Node dummy_node = {false, {NONE, 0, NULL}, 0, 0,
                    NULL, NULL, false, false, false};
 Edge dummy_edge = {{NONE, 0, NULL}, NULL, NULL, false, false, false};
-//Node dummy_node = {-1, false, {NONE, 0, NULL}, 0, 0, -1, -1, -1, -1, 
-//                   {0, 0, NULL}, {0, 0, NULL}, false};
-//Edge dummy_edge = {-1, {NONE, 0, NULL}, -1, -1, false};
 
 IntArray makeIntArray(int initial_capacity)
 {
@@ -89,123 +86,6 @@ void removeFromIntArray(IntArray *array, int index)
       }
    }
 }
-   
-//static NodeArray makeNodeArray(int initial_capacity)
-//{
-//   NodeArray array;
-//   array.capacity = initial_capacity;
-//   array.size = 0;
-//   array.items = calloc(initial_capacity, sizeof(Node));
-//   if(array.items == NULL)
-//   {
-//      print_to_log("Error (makeNodeArray): malloc failure.\n");
-//      exit(1);
-//   }
-//   array.holes = makeIntArray(16);
-//   return array;
-//}
-//
-//static void doubleNodeArray(NodeArray *array)
-//{
-//   array->capacity *= 2;
-//   array->items = realloc(array->items, array->capacity * sizeof(Node));
-//   if(array->items == NULL)
-//   {
-//      print_to_log("Error (doubleCapacity): malloc failure.\n");
-//      exit(1);
-//   }
-//}
-//
-//static int addToNodeArray(NodeArray *array, Node node)
-//{
-//   /* If the holes array is empty, the node's index is the current size
-//    * of the node array. */
-//   if(array->holes.size == 0)
-//   {
-//      node.index = array->size;
-//      if(array->size >= array->capacity) doubleNodeArray(array);
-//      array->items[array->size++] = node;
-//   }
-//   /* If the holes array is non-empty, the node is placed in the hole marked by 
-//    * the rightmost element of the holes array. */
-//   else 
-//   {
-//      array->holes.size--;
-//      assert(array->holes.items[array->holes.size] >= 0);
-//      node.index = array->holes.items[array->holes.size];
-//      array->items[node.index] = node;
-//      array->holes.items[array->holes.size] = -1;
-//   }
-//   return node.index;
-//}
-//
-//static void removeFromNodeArray(NodeArray *array, int index)
-//{
-//   array->items[index] = dummy_node;
-//   /* If the index is the last index in the array, no hole is created. */
-//   if(index == array->size - 1) array->size--;
-//   else addToIntArray(&(array->holes), index);
-//}
-//   
-//static EdgeArray makeEdgeArray(int initial_capacity)
-//{
-//   EdgeArray array;
-//   array.capacity = initial_capacity;
-//   array.size = 0;
-//   array.items = calloc(initial_capacity, sizeof(Edge));
-//   if(array.items == NULL)
-//   {
-//      print_to_log("Error (makeEdgeArray): malloc failure.\n");
-//      exit(1);
-//   }
-//   array.holes = makeIntArray(16);
-//   return array;
-//}
-//
-//
-//static void doubleEdgeArray(EdgeArray *array)
-//{
-//   array->capacity *= 2;
-//   array->items = realloc(array->items, array->capacity * sizeof(Edge));
-//   if(array->items == NULL)
-//   {
-//      print_to_log("Error (doubleCapacity): malloc failure.\n");
-//      exit(1);
-//   }
-//}
-//
-//static int addToEdgeArray(EdgeArray *array, Edge edge)
-//{
-//   /* If the holes array is empty, the edge's index is the current size
-//    * of the edge array. */
-//   if(array->holes.size == 0)
-//   {
-//      /* There are no holes in the node array, so the node's index is the current
-//       * size of the node array. */
-//      edge.index  = array->size;
-//      if(array->size >= array->capacity) doubleEdgeArray(array);
-//      array->items[array->size++] = edge;
-//   }
-//   /* If the holes array is non-empty, the edge is placed in the hole marked by 
-//    * the rightmost element of the holes array. */
-//   else 
-//   {
-//      array->holes.size--;
-//      assert(array->holes.items[array->holes.size] >= 0);
-//      edge.index = array->holes.items[array->holes.size];
-//      array->items[edge.index] = edge;
-//      array->holes.items[array->holes.size] = -1;
-//   }
-//   return edge.index;
-//}
-//
-//static void removeFromEdgeArray(EdgeArray *array, int index)
-//{
-//   array->items[index] = dummy_edge;
-//   /* If the index is the last index in the array, no hole is created. */
-//   if(index == array->size - 1) array->size--;
-//   else addToIntArray(&(array->holes), index);
-//}
 
 
 /* ===============

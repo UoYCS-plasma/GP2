@@ -65,20 +65,6 @@ typedef struct NodeQuery {
   MarkType mark;
 } NodeQuery;
 
-//typedef struct NodeArray {
-//   int capacity;
-//   int size;
-//   struct Node *items;
-//   struct IntArray holes;
-//} NodeArray;
-//
-//typedef struct EdgeArray {
-//   int capacity;
-//   int size;
-//   struct Edge *items;
-//   struct IntArray holes;
-//} EdgeArray;
-
 /* ================================
  * Graph Data Structure + Functions
  * ================================ */
@@ -86,8 +72,6 @@ typedef struct Graph
 {
   NodeList *nodes;
   EdgeList *edges;
-//   NodeArray nodes;
-//   EdgeArray edges;
    /* The number of non-dummy items in the graph's nodes/edges array.
     * Do NOT use these as an iteration index over the arrays because the items
     * may not be stored contiguously in the array. Instead use nodes.size and
@@ -126,20 +110,6 @@ void changeEdgeMark(Edge *edge, MarkType new_mark);
 void resetMatchedEdgeFlag(Edge *edge);
 
 
-//int addNode(Graph *graph, bool root, HostLabel label);
-//void addRootNode(Graph *graph, int index);
-//int addEdge(Graph *graph, HostLabel label, int source_index, int target_index);
-//void removeNode(Graph *graph, int index);
-//void removeRootNode(Graph *graph, int index);
-//void removeEdge(Graph *graph, int index);
-//void relabelNode(Graph *graph, int index, HostLabel new_label);
-//void changeNodeMark(Graph *graph, int index, MarkType new_mark);
-//void changeRoot(Graph *graph, int index);
-//void resetMatchedNodeFlag(Graph *graph, int index);
-//void relabelEdge(Graph *graph, int index, HostLabel new_label);
-//void changeEdgeMark(Graph *graph, int index, MarkType new_mark);
-//void resetMatchedEdgeFlag(Graph *graph, int index);
-
 /* =========================
  * Node and Edge Definitions
  * ========================= */
@@ -147,10 +117,6 @@ typedef struct Node {
    bool root;
    HostLabel label;
    int outdegree, indegree;
-//   int first_out_edge, second_out_edge;
-//   int first_in_edge, second_in_edge;
-//   /* Dynamic integer arrays for the node's outgoing and incoming edges. */
-//   IntArray out_edges, in_edges;
   EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
    bool matched;
    bool deleted; // 1 if going to be garbage-collected
@@ -197,28 +163,6 @@ HostLabel getNodeLabel(Node *node);
 HostLabel getEdgeLabel(Edge *edge); 
 int getIndegree(Node *node);
 int getOutdegree(Node *node);
-
-
-//Node *getNode(Graph *graph, int index);
-//Edge *getEdge(Graph *graph, int index);
-//RootNodes *getRootNodeList(Graph *graph);
-//
-///* Called with a positive integer n. The node structures store two outedge indices
-// * and two inedge indices. More incident edges are placed in a dynamic array.
-// * Pass n = 0 to get the node's first incident edge.
-// * Pass n = 1 to get the node's second incident edge.
-// * Pass n >= 2 to get the (n-2)th incident edge in the appropriate array. 
-// * Designed for iteration e.g. 
-// * for(i = 0; i < n->out_edges.size + 2; i++) getNthOutEdge(g, n, i); 
-// * I'm sure there's a nicer way to do this... */
-//Edge *getNthOutEdge(Graph *graph, Node *node, int n);
-//Edge *getNthInEdge(Graph *graph, Node *node, int n);
-//Node *getSource(Graph *graph, Edge *edge); 
-//Node *getTarget(Graph *graph, Edge *edge);
-//HostLabel getNodeLabel(Graph *graph, int index);
-//HostLabel getEdgeLabel(Graph *graph, int index); 
-//int getIndegree(Graph *graph, int index);
-//int getOutdegree(Graph *graph, int index);
 
 void printGraph(Graph *graph, FILE *file);
 void freeGraph(Graph *graph);
