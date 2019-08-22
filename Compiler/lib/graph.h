@@ -50,13 +50,13 @@ void addToIntArray(IntArray *array, int item);
 void removeFromIntArray(IntArray *array, int index);
 
 typedef struct NodeList {
-  struct Node node;
+  struct Node *node;
   struct NodeList *next;
   struct NodeList *prev;
 } NodeList;
 
 typedef struct EdgeList {
-  struct Edge edge;
+  struct Edge *edge;
   struct EdgeList *next;
   struct EdgeList *prev;
 } EdgeList;
@@ -84,8 +84,8 @@ typedef struct NodeQuery {
  * ================================ */
 typedef struct Graph 
 {
-  NodeList nodes;
-  EdgeList edges;
+  NodeList *nodes;
+  EdgeList *edges;
 //   NodeArray nodes;
 //   EdgeArray edges;
    /* The number of non-dummy items in the graph's nodes/edges array.
@@ -98,7 +98,7 @@ typedef struct Graph
     * In words, each of the first nodes.size items of the node array is either
     * a dummy node (a hole created by the removal of a node), or a valid node. */
    int number_of_nodes, number_of_edges;
-   
+
    /* Root nodes referenced in a linked list for fast access. */
    struct RootNodes *root_nodes;
 } Graph;
@@ -111,9 +111,9 @@ Graph *newGraph();
  * functions. They take the necessary construction data as their arguments and 
  * return their index in the graph. */
 
-int addNode(Graph *graph, bool root, HostLabel label);
+Node *addNode(Graph *graph, bool root, HostLabel label);
 void addRootNode(Graph *graph, Node *node);
-int addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
+Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
 void removeNode(Graph *graph, Node *node);
 void removeRootNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);
@@ -170,6 +170,8 @@ typedef struct Edge {
    bool matched;
    bool deleted; // 1 if going to be garbage-collected
    bool in_stack; // 1 if still being watched in stack, dont free it
+   bool in_srclst;  // Flags for if still in src/trg edge lists
+   bool in_trglst;
 } Edge;
 
 extern struct Edge dummy_edge;
@@ -177,12 +179,18 @@ extern struct Edge dummy_edge;
 /* ========================
  * Graph Querying Functions
  * ======================== */
-NodeList *getNodeList(Graph *graph);
-EdgeList *getEdgeList(Graph *graph);
+
+// Given the current position in the list of nodes/edges,
+// yield the next element in the list.
+// Done this way so deleted nodes/edges are garbage
+// collected when passed by.
+Node *yieldNextNode(Graph *graph, NodeList **current);
+Node *yieldNextEdge(Graph *graph, EdgeList **current);
+Node *yieldNextOutEdge(Node *node, EdgeList **current);
+Node *yieldNextInEdge(Node *node, EdgeList **current);
+
 RootNodes *getRootNodeList(Graph *graph);
 
-Edge *getNthOutEdge(Graph *graph, Node *node, int n);
-Edge *getNthInEdge(Graph *graph, Node *node, int n);
 Node *getSource(Edge *edge); 
 Node *getTarget(Edge *edge);
 HostLabel getNodeLabel(Node *node);

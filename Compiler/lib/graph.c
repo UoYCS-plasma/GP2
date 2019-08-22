@@ -15,9 +15,12 @@
 
 #include "graph.h"
 
-Node dummy_node = {-1, false, {NONE, 0, NULL}, 0, 0, -1, -1, -1, -1, 
-                   {0, 0, NULL}, {0, 0, NULL}, false};
-Edge dummy_edge = {-1, {NONE, 0, NULL}, -1, -1, false};
+Node dummy_node = {false, {NONE, 0, NULL}, 0, 0,
+                   NULL, NULL, false, false, false};
+Edge dummy_edge = {{NONE, 0, NULL}, NULL, NULL, false, false, false};
+//Node dummy_node = {-1, false, {NONE, 0, NULL}, 0, 0, -1, -1, -1, -1, 
+//                   {0, 0, NULL}, {0, 0, NULL}, false};
+//Edge dummy_edge = {-1, {NONE, 0, NULL}, -1, -1, false};
 
 IntArray makeIntArray(int initial_capacity)
 {
@@ -87,128 +90,128 @@ void removeFromIntArray(IntArray *array, int index)
    }
 }
    
-static NodeArray makeNodeArray(int initial_capacity)
-{
-   NodeArray array;
-   array.capacity = initial_capacity;
-   array.size = 0;
-   array.items = calloc(initial_capacity, sizeof(Node));
-   if(array.items == NULL)
-   {
-      print_to_log("Error (makeNodeArray): malloc failure.\n");
-      exit(1);
-   }
-   array.holes = makeIntArray(16);
-   return array;
-}
-
-static void doubleNodeArray(NodeArray *array)
-{
-   array->capacity *= 2;
-   array->items = realloc(array->items, array->capacity * sizeof(Node));
-   if(array->items == NULL)
-   {
-      print_to_log("Error (doubleCapacity): malloc failure.\n");
-      exit(1);
-   }
-}
-
-static int addToNodeArray(NodeArray *array, Node node)
-{
-   /* If the holes array is empty, the node's index is the current size
-    * of the node array. */
-   if(array->holes.size == 0)
-   {
-      node.index = array->size;
-      if(array->size >= array->capacity) doubleNodeArray(array);
-      array->items[array->size++] = node;
-   }
-   /* If the holes array is non-empty, the node is placed in the hole marked by 
-    * the rightmost element of the holes array. */
-   else 
-   {
-      array->holes.size--;
-      assert(array->holes.items[array->holes.size] >= 0);
-      node.index = array->holes.items[array->holes.size];
-      array->items[node.index] = node;
-      array->holes.items[array->holes.size] = -1;
-   }
-   return node.index;
-}
-
-static void removeFromNodeArray(NodeArray *array, int index)
-{
-   array->items[index] = dummy_node;
-   /* If the index is the last index in the array, no hole is created. */
-   if(index == array->size - 1) array->size--;
-   else addToIntArray(&(array->holes), index);
-}
-   
-static EdgeArray makeEdgeArray(int initial_capacity)
-{
-   EdgeArray array;
-   array.capacity = initial_capacity;
-   array.size = 0;
-   array.items = calloc(initial_capacity, sizeof(Edge));
-   if(array.items == NULL)
-   {
-      print_to_log("Error (makeEdgeArray): malloc failure.\n");
-      exit(1);
-   }
-   array.holes = makeIntArray(16);
-   return array;
-}
-
-
-static void doubleEdgeArray(EdgeArray *array)
-{
-   array->capacity *= 2;
-   array->items = realloc(array->items, array->capacity * sizeof(Edge));
-   if(array->items == NULL)
-   {
-      print_to_log("Error (doubleCapacity): malloc failure.\n");
-      exit(1);
-   }
-}
-
-static int addToEdgeArray(EdgeArray *array, Edge edge)
-{
-   /* If the holes array is empty, the edge's index is the current size
-    * of the edge array. */
-   if(array->holes.size == 0)
-   {
-      /* There are no holes in the node array, so the node's index is the current
-       * size of the node array. */
-      edge.index  = array->size;
-      if(array->size >= array->capacity) doubleEdgeArray(array);
-      array->items[array->size++] = edge;
-   }
-   /* If the holes array is non-empty, the edge is placed in the hole marked by 
-    * the rightmost element of the holes array. */
-   else 
-   {
-      array->holes.size--;
-      assert(array->holes.items[array->holes.size] >= 0);
-      edge.index = array->holes.items[array->holes.size];
-      array->items[edge.index] = edge;
-      array->holes.items[array->holes.size] = -1;
-   }
-   return edge.index;
-}
-
-static void removeFromEdgeArray(EdgeArray *array, int index)
-{
-   array->items[index] = dummy_edge;
-   /* If the index is the last index in the array, no hole is created. */
-   if(index == array->size - 1) array->size--;
-   else addToIntArray(&(array->holes), index);
-}
+//static NodeArray makeNodeArray(int initial_capacity)
+//{
+//   NodeArray array;
+//   array.capacity = initial_capacity;
+//   array.size = 0;
+//   array.items = calloc(initial_capacity, sizeof(Node));
+//   if(array.items == NULL)
+//   {
+//      print_to_log("Error (makeNodeArray): malloc failure.\n");
+//      exit(1);
+//   }
+//   array.holes = makeIntArray(16);
+//   return array;
+//}
+//
+//static void doubleNodeArray(NodeArray *array)
+//{
+//   array->capacity *= 2;
+//   array->items = realloc(array->items, array->capacity * sizeof(Node));
+//   if(array->items == NULL)
+//   {
+//      print_to_log("Error (doubleCapacity): malloc failure.\n");
+//      exit(1);
+//   }
+//}
+//
+//static int addToNodeArray(NodeArray *array, Node node)
+//{
+//   /* If the holes array is empty, the node's index is the current size
+//    * of the node array. */
+//   if(array->holes.size == 0)
+//   {
+//      node.index = array->size;
+//      if(array->size >= array->capacity) doubleNodeArray(array);
+//      array->items[array->size++] = node;
+//   }
+//   /* If the holes array is non-empty, the node is placed in the hole marked by 
+//    * the rightmost element of the holes array. */
+//   else 
+//   {
+//      array->holes.size--;
+//      assert(array->holes.items[array->holes.size] >= 0);
+//      node.index = array->holes.items[array->holes.size];
+//      array->items[node.index] = node;
+//      array->holes.items[array->holes.size] = -1;
+//   }
+//   return node.index;
+//}
+//
+//static void removeFromNodeArray(NodeArray *array, int index)
+//{
+//   array->items[index] = dummy_node;
+//   /* If the index is the last index in the array, no hole is created. */
+//   if(index == array->size - 1) array->size--;
+//   else addToIntArray(&(array->holes), index);
+//}
+//   
+//static EdgeArray makeEdgeArray(int initial_capacity)
+//{
+//   EdgeArray array;
+//   array.capacity = initial_capacity;
+//   array.size = 0;
+//   array.items = calloc(initial_capacity, sizeof(Edge));
+//   if(array.items == NULL)
+//   {
+//      print_to_log("Error (makeEdgeArray): malloc failure.\n");
+//      exit(1);
+//   }
+//   array.holes = makeIntArray(16);
+//   return array;
+//}
+//
+//
+//static void doubleEdgeArray(EdgeArray *array)
+//{
+//   array->capacity *= 2;
+//   array->items = realloc(array->items, array->capacity * sizeof(Edge));
+//   if(array->items == NULL)
+//   {
+//      print_to_log("Error (doubleCapacity): malloc failure.\n");
+//      exit(1);
+//   }
+//}
+//
+//static int addToEdgeArray(EdgeArray *array, Edge edge)
+//{
+//   /* If the holes array is empty, the edge's index is the current size
+//    * of the edge array. */
+//   if(array->holes.size == 0)
+//   {
+//      /* There are no holes in the node array, so the node's index is the current
+//       * size of the node array. */
+//      edge.index  = array->size;
+//      if(array->size >= array->capacity) doubleEdgeArray(array);
+//      array->items[array->size++] = edge;
+//   }
+//   /* If the holes array is non-empty, the edge is placed in the hole marked by 
+//    * the rightmost element of the holes array. */
+//   else 
+//   {
+//      array->holes.size--;
+//      assert(array->holes.items[array->holes.size] >= 0);
+//      edge.index = array->holes.items[array->holes.size];
+//      array->items[edge.index] = edge;
+//      array->holes.items[array->holes.size] = -1;
+//   }
+//   return edge.index;
+//}
+//
+//static void removeFromEdgeArray(EdgeArray *array, int index)
+//{
+//   array->items[index] = dummy_edge;
+//   /* If the index is the last index in the array, no hole is created. */
+//   if(index == array->size - 1) array->size--;
+//   else addToIntArray(&(array->holes), index);
+//}
 
 
 /* ===============
  * Graph Functions
  * =============== */
-Graph *newGraph(int nodes, int edges) 
+Graph *newGraph() 
 {
    Graph *graph = malloc(sizeof(Graph));
    if(graph == NULL) 
@@ -216,37 +219,48 @@ Graph *newGraph(int nodes, int edges)
       print_to_log("Error (newGraph): malloc failure.\n");
       exit(1);
    }
-   graph->nodes = makeNodeArray(nodes);
-   graph->edges = makeEdgeArray(edges);
-
    graph->number_of_nodes = 0;
    graph->number_of_edges = 0;
    graph->root_nodes = NULL;
    return graph;
 }
 
-int addNode(Graph *graph, bool root, HostLabel label) 
+Node *addNode(Graph *graph, bool root, HostLabel label)
 {
-   Node node;
-   node.root = root;
-   node.label = label;
-   node.first_out_edge = -1;
-   node.second_out_edge = -1;
-   node.first_in_edge = -1;
-   node.second_in_edge = -1;
-   node.out_edges = makeIntArray(0);
-   node.in_edges = makeIntArray(0);
-   node.outdegree = 0;
-   node.indegree = 0;
-   node.matched = false;
+   NodeList *nlist = malloc(sizeof(NodeList));
+   if(nlist == NULL)
+   {
+      print_to_log("Error (addNode): malloc failure.\n");
+      exit(1);
+   }
+   Node *node = malloc(sizeof(Node));
+   if(node == NULL)
+   {
+      print_to_log("Error (addNode): malloc failure.\n");
+      exit(1);
+   }
+   node->root = root;
+   node->label = label;
+   node->out_edges = NULL;
+   node->in_edges = NULL;
+   node->outdegree = 0;
+   node->indegree = 0;
+   node->matched = false;
+   node->deleted = false;
+   node->in_stack = false;
 
-   int index = addToNodeArray(&(graph->nodes), node);
-   if(root) addRootNode(graph, index);
+   nlist->node = node;
+   if (graph->nodes != NULL)
+     graph->nodes->prev = nlist;
+   nlist->next = graph->nodes;
+   graph->nodes = nlist;
+
+   if(root) addRootNode(graph, node);
    graph->number_of_nodes++;
-   return index; 
+   return node;
 }
 
-void addRootNode(Graph *graph, int index)
+void addRootNode(Graph *graph, Node *node)
 {
    RootNodes *root_node = malloc(sizeof(RootNodes));
    if(root_node == NULL)
@@ -254,59 +268,82 @@ void addRootNode(Graph *graph, int index)
       print_to_log("Error (addRootNode): malloc failure.\n");
       exit(1);
    }
-   root_node->index = index;
+   root_node->node = node;
    root_node->next = graph->root_nodes;
    graph->root_nodes = root_node;
 }
 
-int addEdge(Graph *graph, HostLabel label, int source_index, int target_index) 
+Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 {
-   Edge edge;
-   edge.label = label;
-   edge.source = source_index;
-   edge.target = target_index;
-   edge.matched = false;
+   EdgeList *elist = malloc(sizeof(EdgeList));
+   if(elist == NULL)
+   {
+      print_to_log("Error (addEdge): malloc failure.\n");
+      exit(1);
+   }
+   Edge *edge = malloc(sizeof(Edge));
+   if(edge == NULL)
+   {
+      print_to_log("Error (addEdge): malloc failure.\n");
+      exit(1);
+   }
+   edge->label = label;
+   edge->source = source;
+   edge->target = target;
+   edge->matched = false;
+   edge->deleted = false;
+   edge->in_stack = false;
 
-   int index = addToEdgeArray(&(graph->edges), edge);
+   elist->edge = edge;
+   if (graph->edges != NULL)
+     graph->edges->prev = elist;
+   elist->next = graph->edges;
+   graph->edges = elist;
 
-   Node *source = getNode(graph, source_index);
-   assert(source != NULL);
-   if(source->first_out_edge == -1) source->first_out_edge = index;
-   else if(source->second_out_edge == -1) source->second_out_edge = index;
-   else addToIntArray(&(source->out_edges), index);
+   // add to source edgelist
+   EdgeList *srclist = malloc(sizeof(EdgeList));
+   if(srclist == NULL)
+   {
+      print_to_log("Error (addEdge): malloc failure.\n");
+      exit(1);
+   }
+   srclist->edge = edge;
+   if (source->out_edges != NULL)
+     source->out_edges->prev = srclist;
+   srclist->next = source->out_edges;
+   source->out_edges = srclist;
    source->outdegree++;
 
-   Node *target = getNode(graph, target_index);
-   assert(target != NULL);
-   if(target->first_in_edge == -1) target->first_in_edge = index;
-   else if(target->second_in_edge == -1) target->second_in_edge = index;
-   else addToIntArray(&(target->in_edges), index);
+   EdgeList *trglist = malloc(sizeof(EdgeList));
+   if(trglist == NULL)
+   {
+      print_to_log("Error (addEdge): malloc failure.\n");
+      exit(1);
+   }
+   trglist->edge = edge;
+   if (target->out_edges != NULL)
+     target->out_edges->prev = trglist;
+   trglist->next = target->out_edges;
+   target->out_edges = trglist;
    target->indegree++;
 
    graph->number_of_edges++;
-   return index; 
+   return edge;
 }
 
-void removeNode(Graph *graph, int index)
-{   
-   Node *node = getNode(graph, index);  
-   assert(node->indegree == 0 && node->outdegree == 0);
-   if(node->out_edges.items != NULL) free(node->out_edges.items);
-   if(node->in_edges.items != NULL) free(node->in_edges.items); 
-   if(node->root) removeRootNode(graph, index);
-
-   removeHostList(node->label.list);
-   
-   removeFromNodeArray(&(graph->nodes), index);
+void removeNode(Graph *graph, Node *node)
+{
+   node->deleted = true;
+   if(node->root) removeRootNode(graph, node);
    graph->number_of_nodes--;
 }
 
-void removeRootNode(Graph *graph, int index)
+void removeRootNode(Graph *graph, Node *node)
 {
    RootNodes *current = graph->root_nodes, *previous = NULL;
    while(current != NULL)
    {
-      if(current->index == index) 
+      if(current->node == node)
       {
          if(previous == NULL) graph->root_nodes = current->next;
          else previous->next = current->next;
@@ -318,81 +355,202 @@ void removeRootNode(Graph *graph, int index)
    }
 }
 
-void removeEdge(Graph *graph, int index) 
+void removeEdge(Graph *graph, Edge *edge)
 {
-   Node *source = getNode(graph, graph->edges.items[index].source);
-   if(source->first_out_edge == index) source->first_out_edge = -1;
-   else if(source->second_out_edge == index) source->second_out_edge = -1;
-   else removeFromIntArray(&(source->out_edges), index);
-   source->outdegree--;
+   edge->deleted = true;
+   edge->source->outdegree--;
+   edge->target->indegree--;
 
-   Node *target = getNode(graph, graph->edges.items[index].target);
-   if(target->first_in_edge == index) target->first_in_edge = -1;
-   else if(target->second_in_edge == index) target->second_in_edge = -1;
-   else removeFromIntArray(&(target->in_edges), index);
-   target->indegree--;
-
-   removeHostList(graph->edges.items[index].label.list);
-
-   removeFromEdgeArray(&(graph->edges), index);
    graph->number_of_edges--;
 }
 
-void relabelNode(Graph *graph, int index, HostLabel new_label) 
+void relabelNode(Node *node, HostLabel new_label)
 {
-   removeHostList(graph->nodes.items[index].label.list);
-   graph->nodes.items[index].label = new_label;
+   removeHostList(node->label.list);
+   node->label = new_label;
 }
 
-void changeNodeMark(Graph *graph, int index, MarkType new_mark)
+void changeNodeMark(Node *node, MarkType new_mark)
 {
-   graph->nodes.items[index].label.mark = new_mark;
+   node->label.mark = new_mark;
 }
 
-void changeRoot(Graph *graph, int index)
+void changeRoot(Graph *graph, Node *node)
 {
-   bool is_root = graph->nodes.items[index].root;
-   if(is_root) removeRootNode(graph, index);
-   else addRootNode(graph, index);
-   graph->nodes.items[index].root = !is_root;
+   if(node->root) removeRootNode(graph, node);
+   else addRootNode(graph, node);
+   node->root = !root;
 }
 
-void resetMatchedNodeFlag(Graph *graph, int index)
+void resetMatchedNodeFlag(Node *node)
 {
-   graph->nodes.items[index].matched = false;
+   node->matched = false;
 }
 
-void relabelEdge(Graph *graph, int index, HostLabel new_label)
-{	
-   removeHostList(graph->edges.items[index].label.list);
-   graph->edges.items[index].label = new_label;
+void relabelEdge(Edge *edge, HostLabel new_label)
+{
+   removeHostList(edge->label.list);
+   edge->label = new_label;
 }
 
-void changeEdgeMark(Graph *graph, int index, MarkType new_mark)
+void changeEdgeMark(Edge *edge, MarkType new_mark)
 {
-   graph->edges.items[index].label.mark = new_mark;
+   edge->label.mark = new_mark;
 }
 
-void resetMatchedEdgeFlag(Graph *graph, int index)
+void resetMatchedEdgeFlag(Edge *edge)
 {
-   graph->edges.items[index].matched = false; 
+   edge->matched = false; 
 }
 
 /* ========================
  * Graph Querying Functions 
  * ======================== */
-Node *getNode(Graph *graph, int index)
+
+Node *yieldNextNode(Graph *graph, NodeList **current)
 {
-   assert(index < graph->nodes.size);
-   if(index == -1) return NULL;
-   else return &(graph->nodes.items[index]);
+   if(*current == NULL) *current = graph->nodes;
+
+   bool deleted_node = true;
+
+   while(deleted_node) {
+     if(*current == NULL) return NULL;
+
+     Node *node = (*current)->node;
+
+     deleted_node = node->deleted;
+     if(node->deleted)
+     {
+       if((*current)->prev != NULL)
+         (*current)->prev->next = (*current)->next;
+       else
+         graph->nodes = (*current)->next;
+       if((*current)->next != NULL)
+         (*current)->next->prev = (*current)->prev;
+       *current = (*current)->next;
+       free((*current)->prev);
+       // If the node is referenced in the stack, just forget about it.
+       if(!node->in_stack)
+       {
+         removeHostList(node->label.list);
+         // free out_edges and in_edges
+         // not possible to have a dangling edge pointer; when garbage collected, edges clean these out of source/target nodes
+         for(EdgeList *curr = node->out_edges; curr != NULL; curr = curr->next)
+         {
+           curr->edge->in_srclst = false;
+           if(curr->prev != NULL) free(curr->prev);
+         }
+         for(EdgeList *curr = node->in_edges; curr != NULL; curr = curr->next)
+         {
+           curr->edge->in_trglst = false;
+           if(curr->prev != NULL) free(curr->prev);
+         }
+         free(node);
+       }
+     }
+   }
+   return (*current)->node;
 }
 
-Edge *getEdge(Graph *graph, int index)
+Edge *yieldNextOutEdge(Node *node, Edgelist **current)
 {
-   assert(index < graph->edges.size);
-   if(index == -1) return NULL;
-   else return &(graph->edges.items[index]);
+   if(*current == NULL) *current = node->out_edges;
+
+   bool deleted_edge = true;
+
+   while(deleted_edge) {
+     if(*current == NULL) return NULL;
+
+     Edge *edge = (*current)->edge;
+
+     deleted_edge = edge->deleted;
+     if(edge->deleted)
+     {
+       if((*current)->prev != NULL)
+         (*current)->prev->next = (*current)->next;
+       else
+         node->out_edges = (*current)->next;
+       if((*current)->next != NULL)
+         (*current)->next->prev = (*current)->prev;
+       *current = (*current)->next;
+       free((*current)->prev);
+       edge->in_srclist = false;
+       // Don't try and delete edge here.
+     }
+   }
+   return (*current)->edge;
+}
+
+Edge *yieldNextInEdge(Node *node, Edgelist **current)
+{
+   if(*current == NULL) *current = node->in_edges;
+
+   bool deleted_edge = true;
+
+   while(deleted_edge) {
+     if(*current == NULL) return NULL;
+
+     Edge *edge = (*current)->edge;
+
+     deleted_edge = edge->deleted;
+     if(edge->deleted)
+     {
+       if((*current)->prev != NULL)
+         (*current)->prev->next = (*current)->next;
+       else
+         node->in_edges = (*current)->next;
+       if((*current)->next != NULL)
+         (*current)->next->prev = (*current)->prev;
+       *current = (*current)->next;
+       free((*current)->prev);
+       edge->in_trglst = false;
+       // Don't try and delete edge here.
+     }
+   }
+   return (*current)->edge;
+}
+
+Edge *yieldNextEdge(Graph *graph, Edgelist **current)
+{
+   if(*current == NULL) *current = graph->edges;
+
+   bool deleted_edge = true;
+
+   while(deleted_edge) {
+     if(*current == NULL) return NULL;
+
+     Edge *edge = (*current)->edge;
+
+     deleted_edge = edge->deleted;
+     if(edge->deleted)
+     {
+       if((*current)->prev != NULL)
+         (*current)->prev->next = (*current)->next;
+       else
+         graph->edges = (*current)->next;
+       if((*current)->next != NULL)
+         (*current)->next->prev = (*current)->prev;
+       *current = (*current)->next;
+       free((*current)->prev);
+       // If edge is in stack, just forget about it.
+       if(!edge->in_stack)
+       {
+         // Clean out references in src/trg to edge by iterating through them.
+         // (If source/target garbage collected, in_srclst/trglst = false.)
+         if(edge->in_srclst)
+           for(EdgeList *elistpos = NULL, Edge *e;
+               (e = yieldNextOutEdge(edge->source, &elistpos)) != NULL;)
+             ;
+         if(edge->in_trglst)
+           for(EdgeList *elistpos = NULL, Edge *e;
+               (e = yieldNextInEdge(edge->target, &elistpos)) != NULL;)
+             ;
+         removeHostList(edge->label.list);
+         free(edge);
+       }
+     }
+   }
+   return (*current)->edge;
 }
 
 RootNodes *getRootNodeList(Graph *graph)
@@ -400,61 +558,35 @@ RootNodes *getRootNodeList(Graph *graph)
    return graph->root_nodes;
 }
 
-Edge *getNthOutEdge(Graph *graph, Node *node, int n)
-{
-   assert(n >= 0);
-   if(n == 0) return getEdge(graph, node->first_out_edge);
-   else if(n == 1) return getEdge(graph, node->second_out_edge);
-   else
-   {
-      assert(n - 2 < node->out_edges.size);
-      return getEdge(graph, node->out_edges.items[n - 2]);
-   }
-}
-
-Edge *getNthInEdge(Graph *graph, Node *node, int n)
-{
-   assert(n >= 0);
-   if(n == 0) return getEdge(graph, node->first_in_edge);
-   else if(n == 1) return getEdge(graph, node->second_in_edge);
-   else
-   {
-      assert(n - 2 < node->in_edges.size);
-      return getEdge(graph, node->in_edges.items[n - 2]);
-   }
-}
-
 Node *getSource(Graph *graph, Edge *edge) 
 {
-   return getNode(graph, edge->source);
+   assert(!edge->source->deleted);
+   return edge->source;
 }
 
 Node *getTarget(Graph *graph, Edge *edge) 
 {
-   return getNode(graph, edge->target);
+   assert(!edge->target->deleted);
+   return edge->target;
 }
 
-HostLabel getNodeLabel(Graph *graph, int index) 
+HostLabel getNodeLabel(Node *node) 
 {
-   Node *node = getNode(graph, index);
    return node->label;
 }
 
-HostLabel getEdgeLabel(Graph *graph, int index) 
+HostLabel getEdgeLabel(Edge *edge) 
 {
-   Edge *edge = getEdge(graph, index);
    return edge->label;
 }
 
-int getIndegree(Graph *graph, int index) 
+int getIndegree(Node *node) 
 {
-   Node *node = getNode(graph, index);
    return node->indegree;
 }
 
-int getOutdegree(Graph *graph, int index) 
+int getOutdegree(Node *node) 
 {
-   Node *node = getNode(graph, index);
    return node->outdegree;
 }
 
@@ -464,7 +596,7 @@ void printGraph(Graph *graph, FILE *file)
     * index in the graph is not suitable for this purpose because there may be holes
     * in the graph's node array. The counts are also used to control the number of
     * nodes and edges printed per line. */
-   int index, node_count = 0, edge_count = 0;
+   int node_count = 0, edge_count = 0;
    if(graph == NULL || graph->number_of_nodes == 0) 
    {
       PTF("[ | ]\n\n");
@@ -472,18 +604,13 @@ void printGraph(Graph *graph, FILE *file)
    }
    PTF("[ ");
    /* Maps a node's graph-index to the ID it is printed with (node_count). */
-   int output_indices[graph->nodes.size];
-   for(index = 0; index < graph->nodes.size; index++)
+   Node *output_indices[graph->nodes.size];
+   for(NodeList *nlistpos = NULL, Node *node;
+       (node = yieldNextNode(graph, &nlistpos)) != NULL;)
    {
-      Node *node = getNode(graph, index);
-      if(node->index == -1) 
-      {
-         output_indices[index] = -1;
-         continue; 
-      }
       /* Five nodes per line */
       if(node_count != 0 && node_count % 5 == 0) PTF("\n  ");
-      output_indices[index] = node_count;
+      output_indices[node_count] = node;
       if(node->root) PTF("(%d(R), ", node_count++);
       else PTF("(%d, ", node_count++);
       printHostLabel(node->label, file);
@@ -495,15 +622,20 @@ void printGraph(Graph *graph, FILE *file)
       return;
    }
    PTF("|\n  ");
-   for(index = 0; index < graph->edges.size; index++)
+   for(EdgeList *elistpos = NULL, Edge *edge;
+       (edge = yieldNextEdge(graph, &elistpos)) != NULL;)
    {
-      Edge *edge = getEdge(graph, index);
-      if(edge->index == -1) continue; 
-
       /* Three edges per line */
       if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
       PTF("(%d, ", edge_count++);
-      PTF("%d, %d, ", output_indices[edge->source], output_indices[edge->target]);
+
+      int src_index, trg_index;
+      for(int i = 0; i < node_count; i++)
+      {
+        if(edge->source == output_indices[i]) src_index = i;
+        if(edge->target == output_indices[i]) trg_index = i;
+      }
+      PTF("%d, %d, ", src_index, trg_index);
       printHostLabel(edge->label, file);
       PTF(") ");
    }
@@ -513,26 +645,15 @@ void printGraph(Graph *graph, FILE *file)
 void freeGraph(Graph *graph) 
 {
    if(graph == NULL) return;
-   int index;
-   for(index = 0; index < graph->nodes.size; index++)
-   {
-      Node *node = getNode(graph, index);
-      if(node == NULL) continue;
-      if(node->out_edges.items != NULL) free(node->out_edges.items);
-      if(node->in_edges.items != NULL) free(node->in_edges.items);
-      removeHostList(node->label.list);
-   }
-   if(graph->nodes.holes.items) free(graph->nodes.holes.items);
-   if(graph->nodes.items) free(graph->nodes.items);
 
-   for(index = 0; index < graph->edges.size; index++)
-   {
-      Edge *edge = getEdge(graph, index);
-      if(edge == NULL) continue;
-      removeHostList(edge->label.list);
-   }
-   if(graph->edges.holes.items) free(graph->edges.holes.items);
-   if(graph->edges.items) free(graph->edges.items);
+   for(EdgeList *elistpos = NULL, Edge *edge;
+       (edge = yieldNextEdge(graph, &elistpos)) != NULL;)
+     removeEdge(edge);
+
+   for(NodeList *nlistpos = NULL, Node *node;
+       (node = yieldNextNode(graph, &nlistpos)) != NULL;)
+     removeNode(node);
+
    if(graph->root_nodes != NULL) 
    {
       RootNodes *iterator = graph->root_nodes;
