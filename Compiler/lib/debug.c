@@ -180,7 +180,7 @@ void printVerboseGraph(Graph *graph, FILE *file)
     PTF("\n");
     PTF("Edges\n=====\n");
     EdgeList *elistpos = NULL;
-    for(Edge *edge; (node = yieldNextEdge(graph, &elistpos)) != NULL;)
+    for(Edge *edge; (edge = yieldNextEdge(graph, &elistpos)) != NULL;)
        printVerboseEdge(edge, file);
     PTF("\n");
 }
@@ -195,23 +195,13 @@ void printVerboseNode(Node *node, FILE *file)
     PTF("Outdegree: %d. Indegree: %d\n", node->outdegree, node->indegree);
 
     PTF("Outedges: ");
-    if(node->first_out_edge >= 0) PTF("%d ", node->first_out_edge);
-    if(node->second_out_edge >= 0) PTF("%d ", node->second_out_edge);
-    int index;
-    for(index = 0; index < node->out_edges.size; index++)
-    {
-       int out_edge = node->out_edges.items[index];
-       if(out_edge >= 0) PTF("%d ", out_edge);
-    }
+    EdgeList *elistpos = NULL;
+    for(Edge *out_edge; (out_edge = yieldNextOutEdge(node, &elistpos)) != NULL;)
+       PTF("%d ", out_edge);
 
     PTF("\nInedges: ");
-    if(node->first_in_edge >= 0) PTF("%d ", node->first_in_edge);
-    if(node->second_in_edge >= 0) PTF("%d ", node->second_in_edge);
-    for(index = 0; index < node->in_edges.size; index++)
-    {
-       int in_edge = node->in_edges.items[index];
-       if(in_edge >= 0) PTF("%d ", in_edge);
-    }
+    for(Edge *in_edge; (in_edge = yieldNextInEdge(node, &elistpos)) != NULL;)
+       PTF("%d ", out_edge);
     PTF("\n\n");
 }
 
