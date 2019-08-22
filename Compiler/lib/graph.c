@@ -101,6 +101,8 @@ Graph *newGraph()
    }
    graph->number_of_nodes = 0;
    graph->number_of_edges = 0;
+   graph->nodes = NULL;
+   graph->edges = NULL;
    graph->root_nodes = NULL;
    return graph;
 }
