@@ -127,7 +127,6 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    node->in_edges = NULL;
    node->outdegree = 0;
    node->indegree = 0;
-   node->matched = false;
    node->deleted = false;
    node->in_graph = true;
    node->in_stack = 0;
@@ -195,7 +194,6 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    edge->label = label;
    edge->source = source;
    edge->target = target;
-   edge->matched = false;
    edge->deleted = false;
    edge->in_graph = true;
    edge->in_stack = 0;
@@ -346,11 +344,6 @@ void changeRoot(Graph *graph, Node *node)
    node->root = !node->root;
 }
 
-void resetMatchedNodeFlag(Node *node)
-{
-   node->matched = false;
-}
-
 void relabelEdge(Edge *edge, HostLabel new_label)
 {
    removeHostList(edge->label.list);
@@ -360,11 +353,6 @@ void relabelEdge(Edge *edge, HostLabel new_label)
 void changeEdgeMark(Edge *edge, MarkType new_mark)
 {
    edge->label.mark = new_mark;
-}
-
-void resetMatchedEdgeFlag(Edge *edge)
-{
-   edge->matched = false; 
 }
 
 void tryGarbageCollectNode(Node *node)

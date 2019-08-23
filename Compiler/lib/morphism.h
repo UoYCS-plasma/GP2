@@ -93,11 +93,6 @@ void removeNodeMap(Morphism *morphism, int left_index);
 void addEdgeMap(Morphism *morphism, int left_index, Edge *host_edge, int assignments);
 void removeEdgeMap(Morphism *morphism, int left_index);
 
-//void addNodeMap(Morphism *morphism, int left_index, int host_index, int assignments);
-//void removeNodeMap(Morphism *morphism, int left_index);
-//void addEdgeMap(Morphism *morphism, int left_index, int host_index, int assignments);
-//void removeEdgeMap(Morphism *morphism, int left_index);
-
 /* Tests a potential variable-value assignment against the assignments in the
  * morphism. If the variable is not in the assignment, its name and value are 
  * added to the assignments array in the morphism. 

@@ -106,10 +106,8 @@ void removeEdge(Graph *graph, Edge *edge);
 void relabelNode(Node *node, HostLabel new_label);
 void changeNodeMark(Node *node, MarkType new_mark);
 void changeRoot(Graph *graph, Node *node);
-void resetMatchedNodeFlag(Node *node);
 void relabelEdge(Edge *edge, HostLabel new_label);
 void changeEdgeMark(Edge *edge, MarkType new_mark);
-void resetMatchedEdgeFlag(Edge *edge);
 
 
 /* =========================
@@ -120,7 +118,6 @@ typedef struct Node {
    HostLabel label;
    int outdegree, indegree;
   EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
-   bool matched;
    bool deleted; // 1 if going to be garbage-collected
    bool in_graph; // 1 if in a graph's nodelist
    int in_stack; // Number of times node appears in stack; dont garbage coll
@@ -137,7 +134,6 @@ typedef struct RootNodes {
 typedef struct Edge {
    HostLabel label;
    Node *source, *target;
-   bool matched;
    bool deleted; // 1 if going to be garbage-collected
    bool in_graph; // 1 if in a graph's edgelist
    int in_stack; // Number of times edge appears in stack; dont garbage coll
