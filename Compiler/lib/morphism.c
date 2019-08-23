@@ -78,16 +78,24 @@ void initialiseMorphism(Morphism *morphism, Graph *graph)
    int index;
    for(index = 0; index < morphism->nodes; index++)
    {
-      if(graph != NULL && morphism->node_map[index].host_index >= 0)
-         resetMatchedNodeFlag(graph, morphism->node_map[index].host_index);
-      morphism->node_map[index].host_index = -1;
+      if(graph != NULL && morphism->node_map[index].node != NULL)
+      {
+         resetMatchedNodeFlag(morphism->node_map[index].node);
+         morphism->node_map[index].node->in_morphism--;
+         tryGarbageCollectNode(morphism->node_map[index].node);
+      }
+      morphism->node_map[index].node = NULL;
       morphism->node_map[index].assignments = 0;
    }
    for(index = 0; index < morphism->edges; index++)
    {
-      if(graph != NULL && morphism->edge_map[index].host_index >= 0)
-         resetMatchedEdgeFlag(graph, morphism->edge_map[index].host_index);
-      morphism->edge_map[index].host_index = -1;
+      if(graph != NULL && morphism->edge_map[index].edge != NULL)
+      {
+         resetMatchedEdgeFlag(morphism->edge_map[index].edge);
+         morphism->edge_map[index].edge->in_morphism--;
+         tryGarbageCollectEdge(morphism->edge_map[index].edge);
+      }
+      morphism->edge_map[index].edge = NULL;
       morphism->edge_map[index].assignments = 0;
    }
    morphism->variable_index = 0;
@@ -108,17 +116,21 @@ void initialiseMorphism(Morphism *morphism, Graph *graph)
    }
 }
 
-void addNodeMap(Morphism *morphism, int left_index, int host_index, int assignments)
+void addNodeMap(Morphism *morphism, int left_index, Node *node, int assignments)
 {
    assert(left_index < morphism->nodes);
-   morphism->node_map[left_index].host_index = host_index;
+   morphism->node_map[left_index].node = node;
+   morphism->node_map[left_index].node->matched = true;
+   morphism->node_map[left_index].node->in_morphism++;
    morphism->node_map[left_index].assignments = assignments;
 }
 
-void addEdgeMap(Morphism *morphism, int left_index, int host_index, int assignments)
+void addEdgeMap(Morphism *morphism, int left_index, Edge *edge, int assignments)
 {
    assert(left_index < morphism->edges);
-   morphism->edge_map[left_index].host_index = host_index;
+   morphism->edge_map[left_index].edge = edge;
+   morphism->edge_map[left_index].edge->matched = true;
+   morphism->edge_map[left_index].edge->in_morphism++;
    morphism->edge_map[left_index].assignments = assignments;
 }
 
@@ -183,14 +195,26 @@ int addStringAssignment(Morphism *morphism, int id, string str)
 
 void removeNodeMap(Morphism *morphism, int left_index)
 {
-   morphism->node_map[left_index].host_index = -1;
+   if(graph != NULL && morphism->node_map[index].node != NULL)
+   {
+      resetMatchedNodeFlag(morphism->node_map[index].node);
+      morphism->node_map[index].node->in_morphism--;
+      tryGarbageCollectNode(morphism->node_map[index].node);
+   }
+   morphism->node_map[index].node = NULL;
    removeAssignments(morphism, morphism->node_map[left_index].assignments);
    morphism->node_map[left_index].assignments = 0;
 }
 
 void removeEdgeMap(Morphism *morphism, int left_index)
 {
-   morphism->edge_map[left_index].host_index = -1;
+   if(graph != NULL && morphism->edge_map[index].edge != NULL)
+   {
+      resetMatchedEdgeFlag(morphism->edge_map[index].edge);
+      morphism->edge_map[index].edge->in_morphism--;
+      tryGarbageCollectEdge(morphism->edge_map[index].edge);
+   }
+   morphism->edge_map[left_index].edge = NULL;
    removeAssignments(morphism, morphism->edge_map[left_index].assignments);
    morphism->edge_map[left_index].assignments = 0;
 }

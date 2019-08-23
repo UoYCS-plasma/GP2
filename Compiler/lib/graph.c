@@ -131,6 +131,7 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    node->deleted = false;
    node->in_graph = true;
    node->in_stack = 0;
+   node->in_morphism = 0;
 
    nlist->node = node;
    if (graph->nodes != NULL)
@@ -198,6 +199,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    edge->deleted = false;
    edge->in_graph = true;
    edge->in_stack = 0;
+   edge->in_morphism = 0;
 
    elist->edge = edge;
    if (graph->edges != NULL)
@@ -367,7 +369,8 @@ void resetMatchedEdgeFlag(Edge *edge)
 
 void tryGarbageCollectNode(Node *node)
 {
-   if(!(node->in_graph || node->in_stack) && node->deleted)
+   if(!(node->in_graph || node->in_stack || node->in_morphism)
+      && node->deleted)
    {
       removeHostList(node->label.list);
       // free out_edges and in_edges
@@ -389,7 +392,8 @@ void tryGarbageCollectNode(Node *node)
 
 void tryGarbageCollectEdge(Edge *edge)
 {
-   if(!(edge->in_graph || edge->in_stack) && edge->deleted)
+   if(!(edge->in_graph || edge->in_stack || edge->in_morphism)
+      && edge->deleted)
    {
       // Clean out references in src/trg to edge by iterating through them.
       // (If source/target garbage collected, in_srclst/trglst = false.)

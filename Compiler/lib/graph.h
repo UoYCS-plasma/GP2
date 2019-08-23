@@ -124,6 +124,7 @@ typedef struct Node {
    bool deleted; // 1 if going to be garbage-collected
    bool in_graph; // 1 if in a graph's nodelist
    int in_stack; // Number of times node appears in stack; dont garbage coll
+   int in_morphism; // Number of times node appears in morphisms
 } Node;
 
 extern struct Node dummy_node;
@@ -140,6 +141,7 @@ typedef struct Edge {
    bool deleted; // 1 if going to be garbage-collected
    bool in_graph; // 1 if in a graph's edgelist
    int in_stack; // Number of times edge appears in stack; dont garbage coll
+   int in_morphism; // Number of times edge appears in morphisms
    bool in_srclst;  // Flags for if still in src/trg edge lists
    bool in_trglst;
 } Edge;
