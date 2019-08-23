@@ -129,7 +129,8 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    node->indegree = 0;
    node->matched = false;
    node->deleted = false;
-   node->in_stack = false;
+   node->in_graph = true;
+   node->in_stack = 0;
 
    nlist->node = node;
    if (graph->nodes != NULL)
@@ -155,6 +156,27 @@ void addRootNode(Graph *graph, Node *node)
    graph->root_nodes = root_node;
 }
 
+// Assume node flags are already correct / edges exist.
+void insertNode(Graph *graph, Node *node)
+{
+   NodeList *nlist = malloc(sizeof(NodeList));
+   if(nlist == NULL)
+   {
+      print_to_log("Error (insertNode): malloc failure.\n");
+      exit(1);
+   }
+
+   nlist->node = node;
+   if (graph->nodes != NULL)
+     graph->nodes->prev = nlist;
+   nlist->next = graph->nodes;
+   graph->nodes = nlist;
+   node->in_graph = true;
+
+   if(node->root) addRootNode(graph, node);
+   graph->number_of_nodes++;
+}
+
 Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 {
    EdgeList *elist = malloc(sizeof(EdgeList));
@@ -174,7 +196,8 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    edge->target = target;
    edge->matched = false;
    edge->deleted = false;
-   edge->in_stack = false;
+   edge->in_graph = true;
+   edge->in_stack = 0;
 
    elist->edge = edge;
    if (graph->edges != NULL)
@@ -195,6 +218,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    srclist->next = source->out_edges;
    source->out_edges = srclist;
    source->outdegree++;
+   edge->in_srclst = true;
 
    EdgeList *trglist = malloc(sizeof(EdgeList));
    if(trglist == NULL)
@@ -208,9 +232,65 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    trglist->next = target->out_edges;
    target->out_edges = trglist;
    target->indegree++;
+   edge->in_trglst = true;
 
    graph->number_of_edges++;
    return edge;
+}
+
+// Assume edge flags are already correct / src and trg exist.
+void insertEdge(Graph *graph, Edge *edge)
+{
+   NodeList *elist = malloc(sizeof(EdgeList));
+   if(elist == NULL)
+   {
+      print_to_log("Error (insertEdge): malloc failure.\n");
+      exit(1);
+   }
+
+   elist->edge = edge;
+   if (graph->edges != NULL)
+     graph->edges ->prev = elist;
+   elist->next = graph->edges;
+   graph->edges = elist;
+   edge->in_graph = true;
+
+   if(!edge->in_srclst)
+   {
+     // add to source edgelist
+     EdgeList *srclist = malloc(sizeof(EdgeList));
+     if(srclist == NULL)
+     {
+        print_to_log("Error (addEdge): malloc failure.\n");
+        exit(1);
+     }
+     srclist->edge = edge;
+     if (source->out_edges != NULL)
+       source->out_edges->prev = srclist;
+     srclist->next = source->out_edges;
+     source->out_edges = srclist;
+     source->outdegree++;
+     edge->in_srclst = true;
+   }
+
+   if(!edge->in_trglst)
+   {
+     EdgeList *trglist = malloc(sizeof(EdgeList));
+     if(trglist == NULL)
+     {
+        print_to_log("Error (addEdge): malloc failure.\n");
+        exit(1);
+     }
+     trglist->edge = edge;
+     if (target->out_edges != NULL)
+       target->out_edges->prev = trglist;
+     trglist->next = target->out_edges;
+     target->out_edges = trglist;
+     target->indegree++;
+     edge->in_trglst = true;
+   }
+
+   graph->number_of_edges++;
 }
 
 void removeNode(Graph *graph, Node *node)
@@ -285,6 +365,46 @@ void resetMatchedEdgeFlag(Edge *edge)
    edge->matched = false; 
 }
 
+void tryGarbageCollectNode(Node *node)
+{
+   if(!(node->in_graph || node->in_stack) && node->deleted)
+   {
+      removeHostList(node->label.list);
+      // free out_edges and in_edges
+      // not possible to have a dangling edge pointer;
+      // when collected, edges clean these out of source/target nodes
+      for(EdgeList *curr = node->out_edges; curr != NULL; curr = curr->next)
+      {
+        curr->edge->in_srclst = false;
+        if(curr->prev != NULL) free(curr->prev);
+      }
+      for(EdgeList *curr = node->in_edges; curr != NULL; curr = curr->next)
+      {
+        curr->edge->in_trglst = false;
+        if(curr->prev != NULL) free(curr->prev);
+      }
+      free(node);
+   }
+}
+
+void tryGarbageCollectEdge(Edge *edge)
+{
+   if(!(edge->in_graph || edge->in_stack) && edge->deleted)
+   {
+      // Clean out references in src/trg to edge by iterating through them.
+      // (If source/target garbage collected, in_srclst/trglst = false.)
+      EdgeList *elpos = NULL;
+      if(edge->in_srclst)
+        for(Edge *e; (e = yieldNextOutEdge(edge->source, &elpos)) != NULL;)
+          ;
+      if(edge->in_trglst)
+        for(Edge *e; (e = yieldNextInEdge(edge->target, &elpos)) != NULL;)
+          ;
+      removeHostList(edge->label.list);
+      free(edge);
+   }
+}
+
 /* ========================
  * Graph Querying Functions 
  * ======================== */
@@ -311,24 +431,8 @@ Node *yieldNextNode(Graph *graph, NodeList **current)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
        free((*current)->prev);
-       // If the node is referenced in the stack, just forget about it.
-       if(!node->in_stack)
-       {
-         removeHostList(node->label.list);
-         // free out_edges and in_edges
-         // not possible to have a dangling edge pointer; when garbage collected, edges clean these out of source/target nodes
-         for(EdgeList *curr = node->out_edges; curr != NULL; curr = curr->next)
-         {
-           curr->edge->in_srclst = false;
-           if(curr->prev != NULL) free(curr->prev);
-         }
-         for(EdgeList *curr = node->in_edges; curr != NULL; curr = curr->next)
-         {
-           curr->edge->in_trglst = false;
-           if(curr->prev != NULL) free(curr->prev);
-         }
-         free(node);
-       }
+       node->in_graph = false;
+       tryGarbageCollectNode(node);
      }
    }
    return (*current)->node;
@@ -357,7 +461,6 @@ Edge *yieldNextOutEdge(Node *node, EdgeList **current)
        *current = (*current)->next;
        free((*current)->prev);
        edge->in_srclst = false;
-       // Don't try and delete edge here.
      }
    }
    return (*current)->edge;
@@ -386,7 +489,6 @@ Edge *yieldNextInEdge(Node *node, EdgeList **current)
        *current = (*current)->next;
        free((*current)->prev);
        edge->in_trglst = false;
-       // Don't try and delete edge here.
      }
    }
    return (*current)->edge;
@@ -414,21 +516,8 @@ Edge *yieldNextEdge(Graph *graph, EdgeList **current)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
        free((*current)->prev);
-       // If edge is in stack, just forget about it.
-       if(!edge->in_stack)
-       {
-         // Clean out references in src/trg to edge by iterating through them.
-         // (If source/target garbage collected, in_srclst/trglst = false.)
-         EdgeList *elpos = NULL;
-         if(edge->in_srclst)
-           for(Edge *e; (e = yieldNextOutEdge(edge->source, &elpos)) != NULL;)
-             ;
-         if(edge->in_trglst)
-           for(Edge *e; (e = yieldNextInEdge(edge->target, &elpos)) != NULL;)
-             ;
-         removeHostList(edge->label.list);
-         free(edge);
-       }
+       edge->in_graph = false;
+       tryGarbageCollectEdge(edge);
      }
    }
    return (*current)->edge;

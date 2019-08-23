@@ -96,8 +96,10 @@ Graph *newGraph();
  * return their index in the graph. */
 
 Node *addNode(Graph *graph, bool root, HostLabel label);
+void insertNode(Graph *graph, Node *node);
 void addRootNode(Graph *graph, Node *node);
 Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
+void insertEdge(Graph *graph, Edge *edge);
 void removeNode(Graph *graph, Node *node);
 void removeRootNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);
@@ -120,7 +122,8 @@ typedef struct Node {
   EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
    bool matched;
    bool deleted; // 1 if going to be garbage-collected
-   bool in_stack; // 1 if still being watched in stack, dont free it
+   bool in_graph; // 1 if in a graph's nodelist
+   int in_stack; // Number of times node appears in stack; dont garbage coll
 } Node;
 
 extern struct Node dummy_node;
@@ -135,12 +138,18 @@ typedef struct Edge {
    Node *source, *target;
    bool matched;
    bool deleted; // 1 if going to be garbage-collected
-   bool in_stack; // 1 if still being watched in stack, dont free it
+   bool in_graph; // 1 if in a graph's edgelist
+   int in_stack; // Number of times edge appears in stack; dont garbage coll
    bool in_srclst;  // Flags for if still in src/trg edge lists
    bool in_trglst;
 } Edge;
 
 extern struct Edge dummy_edge;
+
+// Try and free a node/edge's memory, fixing all references.
+// If the node/edge is still needed anywhere, do nothing.
+void tryGarbageCollectNode(Node *node);
+void tryGarbageCollectEdge(Edge *edge);
 
 /* ========================
  * Graph Querying Functions
