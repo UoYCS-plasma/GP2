@@ -56,24 +56,16 @@ typedef struct GraphChange
    {
       /* Records the array index to which this item was added and a flag to signal
        * whether the item was added using an index from the holes array or not. */
-      struct {
-         Node *node;
-      } added_node;
-      struct {
-        Edge *edge;
-      } added_edge;
+      Node *added_node;
+      Edge *added_edge;
       /* Records the root status and label of the removed node, along with its 
        * index in the node array and a flag set to true if the removal of this
        * node created a hole in the node array. */
-      struct {
-         Node *node;
-      } removed_node;
+      Node *removed_node;
       /* Records the label, source and target of the removed edge, along with its 
        * index in the edge array and a flag set to true if the removal of this
        * edge created a hole in the edge array. */
-      struct {
-         Edge *edge;
-      } removed_edge;
+      Edge *removed_edge;
       /* Records the index of the relabelled item and the item's previous label. */
       struct {
          Node *node;
@@ -93,7 +85,7 @@ typedef struct GraphChange
          MarkType old_mark;
       } remarked_edge;
       /* Records the node whose root status was changed. */
-      Node *changed_root_index;
+      Node *changed_root;
    };
 } GraphChange; 
 
@@ -123,20 +115,5 @@ void pushChangedRootNode(Node *node);
 void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);
 void freeGraphChangeStack(void);
-
-
-extern Graph **graph_stack;
-extern int graph_stack_index;
-extern int graph_copy_count;
-
-/* Creates a memory copy of the passed graph and pushes it to the graph stack. */
-void copyGraph(Graph *graph);
-
-/* Returns the graph at the stack entry <restore_point> entries from the
- * bottom of the stack. Frees the passed graph unless the restore point
- * refers to the stack's index. */
-Graph *revertGraph(Graph *current_graph, int restore_point);
-void discardGraphs(int depth);
-void freeGraphStack(void);
 
 #endif /* INC_GRAPH_STACKS_H */
