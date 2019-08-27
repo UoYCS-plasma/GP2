@@ -15,79 +15,6 @@
 
 #include "graph.h"
 
-Node dummy_node = {false, {NONE, 0, NULL}, 0, 0,
-                   NULL, NULL, false, false, false};
-Edge dummy_edge = {{NONE, 0, NULL}, NULL, NULL, false, false, false};
-
-IntArray makeIntArray(int initial_capacity)
-{
-   IntArray array;
-   array.capacity = initial_capacity;
-   array.size = 0;
-   if(initial_capacity > 0)
-   {
-      array.items = calloc(initial_capacity, sizeof(int));
-      if(array.items == NULL)
-      {
-         print_to_log("Error (makeIntArray): malloc failure.\n");
-         exit(1);
-      }
-      int i;
-      for(i = 0; i < initial_capacity; i++) array.items[i] = -1;
-   }
-   else array.items = NULL;
-   return array;
-}
-
-static void growIntArray(IntArray *array)
-{
-   int old_capacity = array->capacity;
-   /* Node's incident edge arrays have initial capacity of 0. On the first
-    * allocation, they are allocated space for 4 integers. In all other cases,
-    * the old capacity is doubled. */
-   array->capacity = old_capacity == 0 ? 4 : 2*old_capacity;
-   array->items = realloc(array->items, array->capacity * sizeof(int));
-   if(array->items == NULL)
-   {
-      print_to_log("Error (doubleCapacity): malloc failure.\n");
-      exit(1);
-   }
-   int i;
-   for(i = old_capacity; i < array->capacity; i++) array->items[i] = -1;
-}
-
-void addToIntArray(IntArray *array, int item)
-{
-   if(array->size >= array->capacity) growIntArray(array);
-   array->items[array->size++] = item;
-}
-
-void removeFromIntArray(IntArray *array, int index)
-{
-   int i;
-   for(i = 0; i < array->size; i++)
-   {
-      if(array->items[i] == index) 
-      {
-         array->items[i] = -1;
-         /* If the index of the removed item directly precedes the size of the
-          * array, decrement the size until it refers to the array element
-          * one place to the right of the right-most -1. */
-         if(i == array->size - 1) 
-         {
-            array->size--;
-            while(array->size > 0)
-            {
-               if(array->items[array->size - 1] == -1) array->size--;
-               else break;
-            }
-         }
-         break;
-      }
-   }
-}
-
-
 /* ===============
  * Graph Functions
  * =============== */
@@ -103,28 +30,29 @@ Graph *newGraph()
    graph->number_of_edges = 0;
    graph->nodes = NULL;
    graph->edges = NULL;
+   graph->_nodearray = makeBigArray(256, sizeof(Node));
+   graph->_edgearray = makeBigArray(256, sizeof(Edge));
+   graph->_nodelistarray = makeBigArray(256, sizeof(NodeList));
+   graph->_edgelistarray = makeBigArray(256, sizeof(EdgeList));
    graph->root_nodes = NULL;
    return graph;
 }
 
 Node *addNode(Graph *graph, bool root, HostLabel label)
 {
-   NodeList *nlist = malloc(sizeof(NodeList));
-   if(nlist == NULL)
-   {
-      print_to_log("Error (addNode): malloc failure.\n");
-      exit(1);
-   }
-   Node *node = malloc(sizeof(Node));
-   if(node == NULL)
-   {
-      print_to_log("Error (addNode): malloc failure.\n");
-      exit(1);
-   }
+   int nlistind = genFreeBigArrayPos(&(graph->_nodelistarray));
+   NodeList *nlist = (NodeList *) getBigArrayValue(
+       graph->_nodelistarray, nlistind);
+   nlist->index = nlistind;
+   int nodeind = genFreeBigArrayPos(&(graph->_nodearray));
+   Node *node = (Node *) getBigArrayValue(graph->_nodearray, nodeind);
+   node->index = nodeind;
    node->root = root;
    node->label = label;
    node->out_edges = NULL;
    node->in_edges = NULL;
+   node->_outedgearray = makeBigArray(16, sizeof(EdgeList));
+   node->_inedgearray = makeBigArray(16, sizeof(EdgeList));
    node->outdegree = 0;
    node->indegree = 0;
    node->deleted = false;
@@ -159,13 +87,12 @@ void addRootNode(Graph *graph, Node *node)
 // Assume node flags are already correct / edges exist.
 void insertNode(Graph *graph, Node *node)
 {
-   NodeList *nlist = malloc(sizeof(NodeList));
-   if(nlist == NULL)
-   {
-      print_to_log("Error (insertNode): malloc failure.\n");
-      exit(1);
-   }
-
+   int nlistind = genFreeBigArrayPos(&(graph->_nodelistarray));
+   NodeList *nlist = (NodeList *) getBigArrayValue(
+       graph->_nodelistarray, nlistind);
+   nlist->index = nlistind;
+   int nodeind = genFreeBigArrayPos(&(graph->_nodearray));
+   node->index = nodeind;
    nlist->node = node;
    if (graph->nodes != NULL)
      graph->nodes->prev = nlist;
@@ -179,18 +106,13 @@ void insertNode(Graph *graph, Node *node)
 
 Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 {
-   EdgeList *elist = malloc(sizeof(EdgeList));
-   if(elist == NULL)
-   {
-      print_to_log("Error (addEdge): malloc failure.\n");
-      exit(1);
-   }
-   Edge *edge = malloc(sizeof(Edge));
-   if(edge == NULL)
-   {
-      print_to_log("Error (addEdge): malloc failure.\n");
-      exit(1);
-   }
+   int elistind = genFreeBigArrayPos(&(graph->_edgelistarray));
+   NodeList *elist = (EdgeList *) getBigArrayValue(
+       graph->_Edgelistarray, elistind);
+   elist->index = elistind;
+   int edgeind = genFreeBigArrayPos(&(graph->_edgearray));
+   Edge *edge = (Edge *) getBigArrayValue(graph->_edgearray, edgeind);
+   edge->index = edgeind;
    edge->label = label;
    edge->source = source;
    edge->target = target;
@@ -206,12 +128,10 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    graph->edges = elist;
 
    // add to source edgelist
-   EdgeList *srclist = malloc(sizeof(EdgeList));
-   if(srclist == NULL)
-   {
-      print_to_log("Error (addEdge): malloc failure.\n");
-      exit(1);
-   }
+   int srclstind = genFreeBigArrayPos(&(node->_outedgearray));
+   NodeList *srclist = (EdgeList *) getBigArrayValue(
+       node->_outedgearray, srclstind);
+   srclist->index = srclstind;
    srclist->edge = edge;
    if (source->out_edges != NULL)
      source->out_edges->prev = srclist;
@@ -220,12 +140,10 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    source->outdegree++;
    edge->in_srclst = true;
 
-   EdgeList *trglist = malloc(sizeof(EdgeList));
-   if(trglist == NULL)
-   {
-      print_to_log("Error (addEdge): malloc failure.\n");
-      exit(1);
-   }
+   int trglstind = genFreeBigArrayPos(&(node->_inedgearray));
+   NodeList *trglist = (EdgeList *) getBigArrayValue(
+       node->_inedgearray, trglstind);
+   trglist->index = trglstind;
    trglist->edge = edge;
    if (target->out_edges != NULL)
      target->out_edges->prev = trglist;
@@ -241,54 +159,43 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 // Assume edge flags are already correct / src and trg exist.
 void insertEdge(Graph *graph, Edge *edge)
 {
-   NodeList *elist = malloc(sizeof(EdgeList));
-   if(elist == NULL)
-   {
-      print_to_log("Error (insertEdge): malloc failure.\n");
-      exit(1);
-   }
+   int elistind = genFreeBigArrayPos(&(graph->_edgelistarray));
+   NodeList *elist = (EdgeList *) getBigArrayValue(
+       graph->_Edgelistarray, elistind);
+   elist->index = elistind;
+   int edgeind = genFreeBigArrayPos(graph->_edgearray);
+   edge->index = edgeind;
+   edge->in_graph = true;
 
    elist->edge = edge;
    if (graph->edges != NULL)
-     graph->edges ->prev = elist;
+     graph->edges->prev = elist;
    elist->next = graph->edges;
    graph->edges = elist;
-   edge->in_graph = true;
 
-   if(!edge->in_srclst)
-   {
-     // add to source edgelist
-     EdgeList *srclist = malloc(sizeof(EdgeList));
-     if(srclist == NULL)
-     {
-        print_to_log("Error (addEdge): malloc failure.\n");
-        exit(1);
-     }
-     srclist->edge = edge;
-     if (source->out_edges != NULL)
-       source->out_edges->prev = srclist;
-     srclist->next = source->out_edges;
-     source->out_edges = srclist;
-     source->outdegree++;
-     edge->in_srclst = true;
-   }
+   int srclstind = genFreeBigArrayPos(&(node->_outedgearray));
+   NodeList *srclist = (EdgeList *) getBigArrayValue(
+       node->_outedgearray, srclstind);
+   srclist->index = srclstind;
+   srclist->edge = edge;
+   if (source->out_edges != NULL)
+     source->out_edges->prev = srclist;
+   srclist->next = source->out_edges;
+   source->out_edges = srclist;
+   source->outdegree++;
+   edge->in_srclst = true;
 
-   if(!edge->in_trglst)
-   {
-     EdgeList *trglist = malloc(sizeof(EdgeList));
-     if(trglist == NULL)
-     {
-        print_to_log("Error (addEdge): malloc failure.\n");
-        exit(1);
-     }
-     trglist->edge = edge;
-     if (target->out_edges != NULL)
-       target->out_edges->prev = trglist;
-     trglist->next = target->out_edges;
-     target->out_edges = trglist;
-     target->indegree++;
-     edge->in_trglst = true;
-   }
+   int trglstind = genFreeBigArrayPos(&(node->_inedgearray));
+   NodeList *trglist = (EdgeList *) getBigArrayValue(
+       node->_inedgearray, trglstind);
+   trglist->index = trglstind;
+   trglist->edge = edge;
+   if (target->out_edges != NULL)
+     target->out_edges->prev = trglist;
+   trglist->next = target->out_edges;
+   target->out_edges = trglist;
+   target->indegree++;
+   edge->in_trglst = true;
 
    graph->number_of_edges++;
 }
@@ -355,7 +262,7 @@ void changeEdgeMark(Edge *edge, MarkType new_mark)
    edge->label.mark = new_mark;
 }
 
-void tryGarbageCollectNode(Node *node)
+void tryGarbageCollectNode(Graph *graph, Node *node)
 {
    if(!(node->in_graph || node->in_stack || node->in_morphism)
       && node->deleted)
@@ -367,18 +274,22 @@ void tryGarbageCollectNode(Node *node)
       for(EdgeList *curr = node->out_edges; curr != NULL; curr = curr->next)
       {
         curr->edge->in_srclst = false;
-        if(curr->prev != NULL) free(curr->prev);
+        if(curr->prev != NULL)
+          removeFromBigArray(&(node->_outedgearray), curr->prev->index);
       }
       for(EdgeList *curr = node->in_edges; curr != NULL; curr = curr->next)
       {
         curr->edge->in_trglst = false;
-        if(curr->prev != NULL) free(curr->prev);
+        if(curr->prev != NULL)
+          removeFromBigArray(&(node->_inedgearray), curr->prev->index);
       }
-      free(node);
+      emptyBigArray(&(node->_outedgearray));
+      emptyBigArray(&(node->_inedgearray));
+      removeFromBigArray(&(graph->_nodearray), node->index);
    }
 }
 
-void tryGarbageCollectEdge(Edge *edge)
+void tryGarbageCollectEdge(Graph *graph, Edge *edge)
 {
    if(!(edge->in_graph || edge->in_stack || edge->in_morphism)
       && edge->deleted)
@@ -393,7 +304,7 @@ void tryGarbageCollectEdge(Edge *edge)
         for(Edge *e; (e = yieldNextInEdge(edge->target, &elpos)) != NULL;)
           ;
       removeHostList(edge->label.list);
-      free(edge);
+      removeFromBigArray(graph->_edgearray, edge->index);
    }
 }
 
@@ -422,9 +333,9 @@ Node *yieldNextNode(Graph *graph, NodeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       free((*current)->prev);
+       removeFromBigArray(&(graph->_nodelistarray), (*current)->prev->index);
        node->in_graph = false;
-       tryGarbageCollectNode(node);
+       tryGarbageCollectNode(graph, node);
      }
    }
    return (*current)->node;
@@ -451,7 +362,7 @@ Edge *yieldNextOutEdge(Node *node, EdgeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       free((*current)->prev);
+       removeFromBigArray(&(node->_outedgearray), (*current)->prev->index);
        edge->in_srclst = false;
      }
    }
@@ -479,7 +390,7 @@ Edge *yieldNextInEdge(Node *node, EdgeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       free((*current)->prev);
+       removeFromBigArray(&(node->_inedgearray), (*current)->prev->index);
        edge->in_trglst = false;
      }
    }
@@ -507,9 +418,9 @@ Edge *yieldNextEdge(Graph *graph, EdgeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       free((*current)->prev);
+       removeFromBigArray(&(node->_edgelistarray), (*current)->prev->index);
        edge->in_graph = false;
-       tryGarbageCollectEdge(edge);
+       tryGarbageCollectEdge(graph, edge);
      }
    }
    return (*current)->edge;
@@ -617,6 +528,10 @@ void freeGraph(Graph *graph)
          free(temp);
       }
    }
+   emptyBigArray(graph->_nodearray);
+   emptyBigArray(graph->_edgearray);
+   emptyBigArray(graph->_nodelistarray);
+   emptyBigArray(graph->_edgelistarray);
    free(graph);
 }
 

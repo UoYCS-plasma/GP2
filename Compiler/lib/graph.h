@@ -45,17 +45,15 @@ typedef struct IntArray {
    int *items;
 } IntArray;
 
-IntArray makeIntArray(int initial_capacity);
-void addToIntArray(IntArray *array, int item);
-void removeFromIntArray(IntArray *array, int index);
-
 typedef struct NodeList {
+  int index;
   struct Node *node;
   struct NodeList *next;
   struct NodeList *prev;
 } NodeList;
 
 typedef struct EdgeList {
+  int index;
   struct Edge *edge;
   struct EdgeList *next;
   struct EdgeList *prev;
@@ -65,22 +63,49 @@ typedef struct NodeQuery {
   MarkType mark;
 } NodeQuery;
 
+extern struct NodeList dummy_nodelist;
+extern struct EdgeList dummy_edgelist;
+
+
+typedef struct BigArrayElem {
+  int size;
+  void *items;
+  struct BigArrayElem *next;
+} BigArrayElem;
+
+// Dynamic data struct of arbitrary size, which never moves elements.
+// Hence, pointers to its elements are never invalidated.
+// This structure is a linked list of arrays repeatedly doubling in size
+// and an IntArray of available holes in said array.
+// Useful for minimizing the number of malloc's while keeping pointers valid.
+typedef struct BigArray {
+  int capacity;
+  int size;
+  size_t elem_sz;
+  BigArrayElem *elems;
+  IntArray holes;
+} BigArray;
+
+BigArray makeBigArray(int initial_capacity, size_t elem_sz);
+int genFreeBigArrayPos(BigArray *array);
+void *getBigArrayValue(BigArray array, int index);
+void removeFromBigArray(BigArray *array, int index);
+void emptyBigArray(BigArray *array);
+
 /* ================================
  * Graph Data Structure + Functions
  * ================================ */
 typedef struct Graph 
 {
-  NodeList *nodes;
-  EdgeList *edges;
-   /* The number of non-dummy items in the graph's nodes/edges array.
-    * Do NOT use these as an iteration index over the arrays because the items
-    * may not be stored contiguously in the array. Instead use nodes.size and
-    * edges.size. 
-    * The equations below are invariant properties of this data structure.
-    * number_of_nodes + node_holes.size = nodes.size. 
-    * number_of_edges + edge_holes.size = edges.size.
-    * In words, each of the first nodes.size items of the node array is either
-    * a dummy node (a hole created by the removal of a node), or a valid node. */
+   NodeList *nodes;
+   EdgeList *edges;
+
+   // Internally keep arrays to reduce malloc/free's to O(log n).
+   BigArray _nodearray;
+   BigArray _edgearray;
+   BigArray _nodelistarray;
+   BigArray _edgelistarray;
+
    int number_of_nodes, number_of_edges;
 
    /* Root nodes referenced in a linked list for fast access. */
@@ -114,10 +139,12 @@ void changeEdgeMark(Edge *edge, MarkType new_mark);
  * Node and Edge Definitions
  * ========================= */
 typedef struct Node {
+   int index;
    bool root;
    HostLabel label;
    int outdegree, indegree;
-  EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
+   EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
+   BigArray *_outedgearray, *_inedgearray;
    bool deleted; // 1 if going to be garbage-collected
    bool in_graph; // 1 if in a graph's nodelist
    int in_stack; // Number of times node appears in stack; dont garbage coll
@@ -132,6 +159,7 @@ typedef struct RootNodes {
 } RootNodes;
 
 typedef struct Edge {
+   int index;
    HostLabel label;
    Node *source, *target;
    bool deleted; // 1 if going to be garbage-collected
@@ -146,8 +174,8 @@ extern struct Edge dummy_edge;
 
 // Try and free a node/edge's memory, fixing all references.
 // If the node/edge is still needed anywhere, do nothing.
-void tryGarbageCollectNode(Node *node);
-void tryGarbageCollectEdge(Edge *edge);
+void tryGarbageCollectNode(Graph *graph, Node *node);
+void tryGarbageCollectEdge(Graph *graph, Edge *edge);
 
 /* ========================
  * Graph Querying Functions
