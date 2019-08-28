@@ -125,7 +125,7 @@ typedef struct Node {
    HostLabel label;
    int outdegree, indegree;
    EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
-   BigArray *_outedgearray, *_inedgearray;
+   BigArray _outedgearray, _inedgearray;
    bool deleted; // 1 if going to be garbage-collected
    bool in_graph; // 1 if in a graph's nodelist
    int in_stack; // Number of times node appears in stack; dont garbage coll

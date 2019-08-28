@@ -107,8 +107,8 @@ void insertNode(Graph *graph, Node *node)
 Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 {
    int elistind = genFreeBigArrayPos(&(graph->_edgelistarray));
-   NodeList *elist = (EdgeList *) getBigArrayValue(
-       graph->_Edgelistarray, elistind);
+   EdgeList *elist = (EdgeList *) getBigArrayValue(
+       graph->_edgelistarray, elistind);
    elist->index = elistind;
    int edgeind = genFreeBigArrayPos(&(graph->_edgearray));
    Edge *edge = (Edge *) getBigArrayValue(graph->_edgearray, edgeind);
@@ -128,9 +128,9 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    graph->edges = elist;
 
    // add to source edgelist
-   int srclstind = genFreeBigArrayPos(&(node->_outedgearray));
-   NodeList *srclist = (EdgeList *) getBigArrayValue(
-       node->_outedgearray, srclstind);
+   int srclstind = genFreeBigArrayPos(&(source->_outedgearray));
+   EdgeList *srclist = (EdgeList *) getBigArrayValue(
+       source->_outedgearray, srclstind);
    srclist->index = srclstind;
    srclist->edge = edge;
    if (source->out_edges != NULL)
@@ -140,9 +140,9 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    source->outdegree++;
    edge->in_srclst = true;
 
-   int trglstind = genFreeBigArrayPos(&(node->_inedgearray));
-   NodeList *trglist = (EdgeList *) getBigArrayValue(
-       node->_inedgearray, trglstind);
+   int trglstind = genFreeBigArrayPos(&(target->_inedgearray));
+   EdgeList *trglist = (EdgeList *) getBigArrayValue(
+       target->_inedgearray, trglstind);
    trglist->index = trglstind;
    trglist->edge = edge;
    if (target->out_edges != NULL)
@@ -160,10 +160,10 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 void insertEdge(Graph *graph, Edge *edge)
 {
    int elistind = genFreeBigArrayPos(&(graph->_edgelistarray));
-   NodeList *elist = (EdgeList *) getBigArrayValue(
-       graph->_Edgelistarray, elistind);
+   EdgeList *elist = (EdgeList *) getBigArrayValue(
+       graph->_edgelistarray, elistind);
    elist->index = elistind;
-   int edgeind = genFreeBigArrayPos(graph->_edgearray);
+   int edgeind = genFreeBigArrayPos(&(graph->_edgearray));
    edge->index = edgeind;
    edge->in_graph = true;
 
@@ -173,28 +173,28 @@ void insertEdge(Graph *graph, Edge *edge)
    elist->next = graph->edges;
    graph->edges = elist;
 
-   int srclstind = genFreeBigArrayPos(&(node->_outedgearray));
-   NodeList *srclist = (EdgeList *) getBigArrayValue(
-       node->_outedgearray, srclstind);
+   int srclstind = genFreeBigArrayPos(&(edge->source->_outedgearray));
+   EdgeList *srclist = (EdgeList *) getBigArrayValue(
+       edge->source->_outedgearray, srclstind);
    srclist->index = srclstind;
    srclist->edge = edge;
-   if (source->out_edges != NULL)
-     source->out_edges->prev = srclist;
-   srclist->next = source->out_edges;
-   source->out_edges = srclist;
-   source->outdegree++;
+   if (edge->source->out_edges != NULL)
+     edge->source->out_edges->prev = srclist;
+   srclist->next = edge->source->out_edges;
+   edge->source->out_edges = srclist;
+   edge->source->outdegree++;
    edge->in_srclst = true;
 
-   int trglstind = genFreeBigArrayPos(&(node->_inedgearray));
-   NodeList *trglist = (EdgeList *) getBigArrayValue(
-       node->_inedgearray, trglstind);
+   int trglstind = genFreeBigArrayPos(&(edge->target->_inedgearray));
+   EdgeList *trglist = (EdgeList *) getBigArrayValue(
+       edge->target->_inedgearray, trglstind);
    trglist->index = trglstind;
    trglist->edge = edge;
-   if (target->out_edges != NULL)
-     target->out_edges->prev = trglist;
-   trglist->next = target->out_edges;
-   target->out_edges = trglist;
-   target->indegree++;
+   if (edge->target->out_edges != NULL)
+     edge->target->out_edges->prev = trglist;
+   trglist->next = edge->target->out_edges;
+   edge->target->out_edges = trglist;
+   edge->target->indegree++;
    edge->in_trglst = true;
 
    graph->number_of_edges++;
@@ -296,7 +296,7 @@ void tryGarbageCollectEdge(Graph *graph, Edge *edge)
         for(Edge *e; (e = yieldNextInEdge(edge->target, &elpos)) != NULL;)
           ;
       removeHostList(edge->label.list);
-      removeFromBigArray(graph->_edgearray, edge->index);
+      removeFromBigArray(&(graph->_edgearray), edge->index);
    }
 }
 
@@ -410,7 +410,7 @@ Edge *yieldNextEdge(Graph *graph, EdgeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       removeFromBigArray(&(node->_edgelistarray), (*current)->prev->index);
+       removeFromBigArray(&(graph->_edgelistarray), (*current)->prev->index);
        edge->in_graph = false;
        tryGarbageCollectEdge(graph, edge);
      }
@@ -520,10 +520,10 @@ void freeGraph(Graph *graph)
          free(temp);
       }
    }
-   emptyBigArray(graph->_nodearray);
-   emptyBigArray(graph->_edgearray);
-   emptyBigArray(graph->_nodelistarray);
-   emptyBigArray(graph->_edgelistarray);
+   emptyBigArray(&(graph->_nodearray));
+   emptyBigArray(&(graph->_edgearray));
+   emptyBigArray(&(graph->_nodelistarray));
+   emptyBigArray(&(graph->_edgelistarray));
    free(graph);
 }
 

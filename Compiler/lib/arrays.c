@@ -149,13 +149,14 @@ int genFreeBigArrayPos(BigArray *array)
   }
 }
 
-void *getBigArrayValue(BigArray *array, int index)
+void *getBigArrayValue(BigArray array, int index)
 {
-  BigArrayElem *curr = array->elems;
-  int curr_min_index = array->capacity - curr->size;
+  BigArrayElem *curr = array.elems;
+  int curr_min_index = array.capacity - curr->size;
   for(; curr != NULL && index < curr_min_index; curr = curr->next)
     curr_min_index -= curr->size;
-  return curr->items + (void *) (index * array->elem_sz);
+  int loc = ((int) curr->items) + index * array.elem_sz;
+  return (void *) loc;
 }
 
 void removeFromBigArray(BigArray *array, int index)
@@ -189,5 +190,5 @@ void emptyBigArray(BigArray *array)
       prev = curr;
     }
   }
-  free(holes->items);
+  free(array->holes.items);
 }
