@@ -116,25 +116,6 @@ typedef struct Graph
  * edge array respectively. */
 Graph *newGraph();
 
-/* Nodes and edges are created and added to the graph with the addNode and addEdge
- * functions. They take the necessary construction data as their arguments and 
- * return their index in the graph. */
-
-Node *addNode(Graph *graph, bool root, HostLabel label);
-void insertNode(Graph *graph, Node *node);
-void addRootNode(Graph *graph, Node *node);
-Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
-void insertEdge(Graph *graph, Edge *edge);
-void removeNode(Graph *graph, Node *node);
-void removeRootNode(Graph *graph, Node *node);
-void removeEdge(Graph *graph, Edge *edge);
-void relabelNode(Node *node, HostLabel new_label);
-void changeNodeMark(Node *node, MarkType new_mark);
-void changeRoot(Graph *graph, Node *node);
-void relabelEdge(Edge *edge, HostLabel new_label);
-void changeEdgeMark(Edge *edge, MarkType new_mark);
-
-
 /* =========================
  * Node and Edge Definitions
  * ========================= */
@@ -171,6 +152,24 @@ typedef struct Edge {
 } Edge;
 
 extern struct Edge dummy_edge;
+
+/* Nodes and edges are created and added to the graph with the addNode and addEdge
+ * functions. They take the necessary construction data as their arguments and 
+ * return their index in the graph. */
+
+Node *addNode(Graph *graph, bool root, HostLabel label);
+void insertNode(Graph *graph, Node *node);
+void addRootNode(Graph *graph, Node *node);
+Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
+void insertEdge(Graph *graph, Edge *edge);
+void removeNode(Graph *graph, Node *node);
+void removeRootNode(Graph *graph, Node *node);
+void removeEdge(Graph *graph, Edge *edge);
+void relabelNode(Node *node, HostLabel new_label);
+void changeNodeMark(Node *node, MarkType new_mark);
+void changeRoot(Graph *graph, Node *node);
+void relabelEdge(Edge *edge, HostLabel new_label);
+void changeEdgeMark(Edge *edge, MarkType new_mark);
 
 // Try and free a node/edge's memory, fixing all references.
 // If the node/edge is still needed anywhere, do nothing.

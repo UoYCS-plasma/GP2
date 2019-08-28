@@ -132,7 +132,7 @@ bool validGraph(Graph *graph)
       }
 
       bool target_found = false;
-      Edge *ilistpos = NULL;
+      EdgeList *ilistpos = NULL;
       for(Edge *inedge; (inedge = yieldNextInEdge(edge->target, &ilistpos)) != NULL;)
       {
          if(inedge == edge)
@@ -197,11 +197,11 @@ void printVerboseNode(Node *node, FILE *file)
     PTF("Outedges: ");
     EdgeList *elistpos = NULL;
     for(Edge *out_edge; (out_edge = yieldNextOutEdge(node, &elistpos)) != NULL;)
-       PTF("%d ", out_edge);
+       PTF("%p ", out_edge);
 
     PTF("\nInedges: ");
     for(Edge *in_edge; (in_edge = yieldNextInEdge(node, &elistpos)) != NULL;)
-       PTF("%d ", out_edge);
+       PTF("%p ", in_edge);
     PTF("\n\n");
 }
 
