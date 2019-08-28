@@ -44,7 +44,7 @@ int yylex(void);
 /* Declarations of global variables placed at the bottom of hostParser.h. */ 
  %code provides {
 extern struct Graph *host;
-extern Node *node_map;
+extern Node **node_map;
 extern string yytext;
 extern FILE *yyin;
 extern int yylineno;
