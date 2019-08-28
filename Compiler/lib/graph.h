@@ -121,6 +121,7 @@ Graph *newGraph();
  * ========================= */
 typedef struct Node {
    int index;
+   Graph *graph; // for garbage collection
    bool root;
    HostLabel label;
    int outdegree, indegree;
@@ -141,6 +142,7 @@ typedef struct RootNodes {
 
 typedef struct Edge {
    int index;
+   Graph *graph; // for garbage collection
    HostLabel label;
    Node *source, *target;
    bool deleted; // 1 if going to be garbage-collected
@@ -173,8 +175,8 @@ void changeEdgeMark(Edge *edge, MarkType new_mark);
 
 // Try and free a node/edge's memory, fixing all references.
 // If the node/edge is still needed anywhere, do nothing.
-void tryGarbageCollectNode(Graph *graph, Node *node);
-void tryGarbageCollectEdge(Graph *graph, Edge *edge);
+void tryGarbageCollectNode(Node *node);
+void tryGarbageCollectEdge(Edge *edge);
 
 /* ========================
  * Graph Querying Functions

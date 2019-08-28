@@ -104,6 +104,7 @@ void pushRemarkedNode(Node *node, MarkType old_mark);
 void pushRemarkedEdge(Edge *edge, MarkType old_mark);
 void pushChangedRootNode(Node *node);
 void undoChanges(Graph *graph, int restore_point);
+// Need to pass graph here in case node/edges need to be collected
 void discardChanges(int restore_point);
 void freeGraphChangeStack(void);
 

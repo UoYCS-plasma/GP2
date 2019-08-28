@@ -47,6 +47,7 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    int nodeind = genFreeBigArrayPos(&(graph->_nodearray));
    Node *node = (Node *) getBigArrayValue(graph->_nodearray, nodeind);
    node->index = nodeind;
+   node->graph = graph;
    node->root = root;
    node->label = label;
    node->out_edges = NULL;
@@ -93,6 +94,7 @@ void insertNode(Graph *graph, Node *node)
    nlist->index = nlistind;
    int nodeind = genFreeBigArrayPos(&(graph->_nodearray));
    node->index = nodeind;
+   node->graph = graph;
    nlist->node = node;
    if (graph->nodes != NULL)
      graph->nodes->prev = nlist;
@@ -113,6 +115,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    int edgeind = genFreeBigArrayPos(&(graph->_edgearray));
    Edge *edge = (Edge *) getBigArrayValue(graph->_edgearray, edgeind);
    edge->index = edgeind;
+   edge->graph = graph;
    edge->label = label;
    edge->source = source;
    edge->target = target;
@@ -165,6 +168,7 @@ void insertEdge(Graph *graph, Edge *edge)
    elist->index = elistind;
    int edgeind = genFreeBigArrayPos(&(graph->_edgearray));
    edge->index = edgeind;
+   edge->graph = graph;
    edge->in_graph = true;
 
    elist->edge = edge;
@@ -262,8 +266,9 @@ void changeEdgeMark(Edge *edge, MarkType new_mark)
    edge->label.mark = new_mark;
 }
 
-void tryGarbageCollectNode(Graph *graph, Node *node)
+void tryGarbageCollectNode(Node *node)
 {
+   Graph *graph = node->graph;
    if(!(node->in_graph || node->in_stack || node->in_morphism)
       && node->deleted)
    {
@@ -281,8 +286,9 @@ void tryGarbageCollectNode(Graph *graph, Node *node)
    }
 }
 
-void tryGarbageCollectEdge(Graph *graph, Edge *edge)
+void tryGarbageCollectEdge(Edge *edge)
 {
+   Graph *graph = edge->graph;
    if(!(edge->in_graph || edge->in_stack || edge->in_morphism)
       && edge->deleted)
    {
@@ -327,7 +333,7 @@ Node *yieldNextNode(Graph *graph, NodeList **current)
        *current = (*current)->next;
        removeFromBigArray(&(graph->_nodelistarray), (*current)->prev->index);
        node->in_graph = false;
-       tryGarbageCollectNode(graph, node);
+       tryGarbageCollectNode(node);
      }
    }
    return (*current)->node;
@@ -412,7 +418,7 @@ Edge *yieldNextEdge(Graph *graph, EdgeList **current)
        *current = (*current)->next;
        removeFromBigArray(&(graph->_edgelistarray), (*current)->prev->index);
        edge->in_graph = false;
-       tryGarbageCollectEdge(graph, edge);
+       tryGarbageCollectEdge(edge);
      }
    }
    return (*current)->edge;
