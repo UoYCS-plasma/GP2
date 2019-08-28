@@ -272,17 +272,9 @@ void tryGarbageCollectNode(Graph *graph, Node *node)
       // not possible to have a dangling edge pointer;
       // when collected, edges clean these out of source/target nodes
       for(EdgeList *curr = node->out_edges; curr != NULL; curr = curr->next)
-      {
         curr->edge->in_srclst = false;
-        if(curr->prev != NULL)
-          removeFromBigArray(&(node->_outedgearray), curr->prev->index);
-      }
       for(EdgeList *curr = node->in_edges; curr != NULL; curr = curr->next)
-      {
         curr->edge->in_trglst = false;
-        if(curr->prev != NULL)
-          removeFromBigArray(&(node->_inedgearray), curr->prev->index);
-      }
       emptyBigArray(&(node->_outedgearray));
       emptyBigArray(&(node->_inedgearray));
       removeFromBigArray(&(graph->_nodearray), node->index);
