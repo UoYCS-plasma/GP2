@@ -39,12 +39,6 @@
 #define NUMBER_OF_MARKS 6 
 #define NUMBER_OF_CLASSES 7
 
-typedef struct IntArray {
-   int capacity;
-   int size;
-   int *items;
-} IntArray;
-
 typedef struct NodeList {
   int index;
   struct Node *node;
@@ -73,6 +67,16 @@ typedef struct BigArrayElem {
   struct BigArrayElem *next;
 } BigArrayElem;
 
+// A hole in a BigArray (below) is filled with the following structure.
+// The holes make up an internal linked list of holes, so the next one
+// can be retrieved quickly.
+// Stores addresses so indices are available at no traversal cost
+typedef struct BigArrayHole {
+  int index;
+  struct BigArrayHole *prev;
+  struct BigArrayHole *next;
+} BigArrayHole;
+
 // Dynamic data struct of arbitrary size, which never moves elements.
 // Hence, pointers to its elements are never invalidated.
 // This structure is a linked list of arrays repeatedly doubling in size
@@ -83,7 +87,7 @@ typedef struct BigArray {
   int size;
   size_t elem_sz;
   BigArrayElem *elems;
-  IntArray holes;
+  BigArrayHole *first_hole;
 } BigArray;
 
 BigArray makeBigArray(int initial_capacity, size_t elem_sz);
