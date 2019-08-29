@@ -95,14 +95,14 @@ BigArray makeBigArray(int initial_capacity, size_t elem_sz)
   array.capacity = initial_capacity;
   array.size = 0;
   array.elem_sz = elem_sz;
-  array.elems = calloc(1, sizeof(BigArrayElem));
+  array.elems = malloc(1, sizeof(BigArrayElem));
   if(array.elems == NULL)
   {
     print_to_log("Error (makeArray): malloc failure.\n");
     exit(1);
   }
   array.elems->size = initial_capacity;
-  array.elems->items = calloc(initial_capacity, elem_sz);
+  array.elems->items = malloc(initial_capacity, elem_sz);
   if(array.elems->items == NULL)
   {
     print_to_log("Error (makeArray): malloc failure.\n");
@@ -121,7 +121,7 @@ void doubleBigArray(BigArray *array)
     exit(1);
   }
   new_elem->size = array->capacity;
-  new_elem->items = calloc(array->capacity, array->elem_sz);
+  new_elem->items = malloc(array->capacity, array->elem_sz);
   if(new_elem->items == NULL)
   {
     print_to_log("Error (doubleArray): malloc failure.\n");
