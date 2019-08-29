@@ -36,6 +36,7 @@
 
 /* Code placed at the top of hostParser.h.  */
 %code requires {
+#include <Judy.h>
 #include "graph.h"
 #include "label.h"
 int yylex(void);
@@ -44,7 +45,7 @@ int yylex(void);
 /* Declarations of global variables placed at the bottom of hostParser.h. */ 
  %code provides {
 extern struct Graph *host;
-extern Node **node_map;
+extern Pvoid_t node_map;
 extern string yytext;
 extern FILE *yyin;
 extern int yylineno;
@@ -106,11 +107,14 @@ HostGraph: '[' '|' ']'  		{ }
 HostNodeList: HostNode			{ }
             | HostNodeList HostNode	{ }
 
-HostNode: '(' NodeID RootNode ',' HostLabel ')' { node_map[$2] = addNode(host, is_root, $5); 
- 				   	          is_root = false; } 
-        | '(' NodeID RootNode ',' HostLabel Position ')'
-    					{ node_map[$2] = addNode(host, is_root, $5); 
- 					  is_root = false; } 
+HostNode: '(' NodeID RootNode ',' HostLabel ')' {
+             PWord_t node = (PWord_t) addNode(host, is_root, $5);
+             JLI(node, node_map, $2);
+ 				   	 is_root = false; } 
+        | '(' NodeID RootNode ',' HostLabel Position ')' {
+             PWord_t node = (PWord_t) addNode(host, is_root, $5);
+             JLI(node, node_map, $2);
+ 				   	 is_root = false; } 
 
 RootNode: /* empty */ 
 	| ROOT 				{ is_root = true; }
@@ -130,7 +134,10 @@ HostEdgeList: HostEdge			{ }
             | HostEdgeList HostEdge	{ } 
 
 HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
-					{ addEdge(host, $8, node_map[$4], node_map[$6]); }
+					{ PWord_t src, trg;
+          JLG(src, node_map, $4);
+          JLG(trg, node_map, $6);
+          addEdge(host, $8, (Node *) src, (Node *) trg); }
 
 NodeID:  NUM				/* default $$ = $1 */
 EdgeID:  NUM				/* default $$ = $1 */

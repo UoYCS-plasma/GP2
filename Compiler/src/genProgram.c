@@ -86,6 +86,7 @@ void generateRuntimeMain(List *declarations, string output_dir,
    }
 
    PTF("#include <time.h>\n");
+   PTF("#include <Judy.h>\n");
    PTF("#include \"common.h\"\n");
    PTF("#include \"debug.h\"\n");
    PTF("#include \"graph.h\"\n");
@@ -115,7 +116,7 @@ void generateRuntimeMain(List *declarations, string output_dir,
    PTF("}\n\n");
 
    PTF("Graph *host = NULL;\n");
-   PTF("int *node_map = NULL;\n\n");
+   PTF("Pvoid_t node_map = (Pvoid_t) NULL;\n\n");
 
    /* Print the function that builds the host graph via the host graph parser. */
    PTF("static Graph *buildHostGraph(char *host_file)\n");
@@ -127,16 +128,9 @@ void generateRuntimeMain(List *declarations, string output_dir,
    PTFI("return NULL;\n", 6);
    PTFI("}\n\n", 3);
    PTFI("host = newGraph(%u, %u);\n", 3, max_nodes, max_edges);
-   PTFI("node_map = calloc(%u, sizeof(int));\n", 3, max_nodes);
-   PTFI("if(node_map == NULL)\n", 3);
-   PTFI("{\n", 3);
-   PTFI("freeGraph(host);\n", 6);
-   PTFI("return NULL;\n", 6);
-   PTFI("}\n", 3);
    PTFI("/* The parser populates the host graph using node_map to add edges with\n", 3);
    PTFI(" * the correct source and target indices. */\n", 3);
    PTFI("int result = yyparse();\n", 3);
-   PTFI("free(node_map);\n", 3);
    PTFI("fclose(yyin);\n", 3);
    PTFI("if(result == 0) return host;\n", 3);
    PTFI("else\n", 3);
