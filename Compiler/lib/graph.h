@@ -82,6 +82,8 @@ typedef struct BigArray {
   int capacity;
   int size;
   size_t elem_sz;
+#define BIGAR_INIT_SZ 256
+  char firstelems[BIGAR_INIT_SZ]; // use this before malloc'ing space
   BigArrayElem *elems;
   BigArrayHole *first_hole;
 } BigArray;

@@ -18,25 +18,37 @@
 BigArray makeBigArray(int initial_capacity, size_t elem_sz)
 {
   BigArray array;
-  array.capacity = initial_capacity;
   array.size = 0;
+
   if(sizeof(BigArrayHole) > elem_sz)
     array.elem_sz = sizeof(BigArrayHole);
   else
     array.elem_sz = elem_sz;
-  array.elems = malloc(sizeof(BigArrayElem));
-  if(array.elems == NULL)
+
+  if(initial_capacity < BIGAR_INIT_SZ / array.elem_sz)
   {
-    print_to_log("Error (makeArray): malloc failure.\n");
-    exit(1);
+    array.elems = NULL;
+    array.capacity = BIGAR_INIT_SZ / array.elem_sz;
   }
-  array.elems->size = initial_capacity;
-  array.elems->items = malloc(initial_capacity * array.elem_sz);
-  if(array.elems->items == NULL)
+  else
   {
-    print_to_log("Error (makeArray): malloc failure.\n");
-    exit(1);
+    array.capacity = initial_capacity;
+    array.elems = malloc(sizeof(BigArrayElem));
+    if(array.elems == NULL)
+    {
+      print_to_log("Error (makeArray): malloc failure.\n");
+      exit(1);
+    }
+    array.elems->size = initial_capacity - BIGAR_INIT_SZ;
+    array.elems->items = malloc((initial_capacity - BIGAR_INIT_SZ)
+        * array.elem_sz);
+    if(array.elems->items == NULL)
+    {
+      print_to_log("Error (makeArray): malloc failure.\n");
+      exit(1);
+    }
   }
+
   array.first_hole = NULL;
   return array;
 }
@@ -80,6 +92,10 @@ int genFreeBigArrayPos(BigArray *array)
 
 void *getBigArrayValue(BigArray array, int index)
 {
+  if(index < BIGAR_INIT_SZ / array.elem_sz)
+    return array.firstelems[index * array.elem_sz];
+  else
+    index -= BIGAR_INIT_SZ / array.elem_sz;
   BigArrayElem *curr = array.elems;
   int curr_min_index = array.capacity - curr->size;
   for(; curr != NULL && index < curr_min_index; curr = curr->next)
@@ -89,11 +105,19 @@ void *getBigArrayValue(BigArray array, int index)
 
 void removeFromBigArray(BigArray *array, int index)
 {
-  // First elem in linked list will represent last one in array;
-  // must go backwards in indices.
+  BigArrayHole *hole;
+
   if(index == array->size - 1) array->size--;
+  else if(index < BIGAR_INIT_SZ / array->elem_sz)
+  {
+    hole = (BigArrayHole *) &(array->first_items[index]);
+    hole->index = index;
+  }
   else
   {
+    index -= BIGAR_INIT_SZ / array->elem_sz;
+    // First elem in linked list will represent last one in array;
+    // must go backwards in indices.
     BigArrayElem *curr = array->elems;
     int curr_min_index = array->capacity - curr->size;
     for(; curr != NULL && index < curr_min_index; curr = curr->next)
@@ -101,12 +125,13 @@ void removeFromBigArray(BigArray *array, int index)
 
     assert(curr != NULL);
     curr_min_index -= curr->size;
-    BigArrayHole *hole = (BigArrayHole *) &(curr->items[index-curr_min_index]);
-    hole->index = index - curr_min_index;
-    hole->next = array->first_hole;
-    array->first_hole->prev = hole;
-    array->first_hole = hole;
+    hole = (BigArrayHole *) &(curr->items[index-curr_min_index]);
+    hole->index = index - curr_min_index + (BIGAR_INIT_SZ / array->elem_sz);
   }
+
+  hole->next = array->first_hole;
+  array->first_hole->prev = hole;
+  array->first_hole = hole;
 }
 
 void emptyBigArray(BigArray *array)
