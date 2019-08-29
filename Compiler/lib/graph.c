@@ -42,10 +42,10 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
 {
    int nlistind = genFreeBigArrayPos(&(graph->_nodelistarray));
    NodeList *nlist = (NodeList *) getBigArrayValue(
-       graph->_nodelistarray, nlistind);
+       &(graph->_nodelistarray), nlistind);
    nlist->index = nlistind;
    int nodeind = genFreeBigArrayPos(&(graph->_nodearray));
-   Node *node = (Node *) getBigArrayValue(graph->_nodearray, nodeind);
+   Node *node = (Node *) getBigArrayValue(&(graph->_nodearray), nodeind);
    node->index = nodeind;
    node->graph = graph;
    node->root = root;
@@ -90,7 +90,7 @@ void recoverNode(Graph *graph, Node *node)
 {
    int nlistind = genFreeBigArrayPos(&(graph->_nodelistarray));
    NodeList *nlist = (NodeList *) getBigArrayValue(
-       graph->_nodelistarray, nlistind);
+       &(graph->_nodelistarray), nlistind);
    nlist->index = nlistind;
    node->graph = graph;
    nlist->node = node;
@@ -108,10 +108,10 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 {
    int elistind = genFreeBigArrayPos(&(graph->_edgelistarray));
    EdgeList *elist = (EdgeList *) getBigArrayValue(
-       graph->_edgelistarray, elistind);
+       &(graph->_edgelistarray), elistind);
    elist->index = elistind;
    int edgeind = genFreeBigArrayPos(&(graph->_edgearray));
-   Edge *edge = (Edge *) getBigArrayValue(graph->_edgearray, edgeind);
+   Edge *edge = (Edge *) getBigArrayValue(&(graph->_edgearray), edgeind);
    edge->index = edgeind;
    edge->graph = graph;
    edge->label = label;
@@ -131,7 +131,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    // add to source edgelist
    int srclstind = genFreeBigArrayPos(&(source->_outedgearray));
    EdgeList *srclist = (EdgeList *) getBigArrayValue(
-       source->_outedgearray, srclstind);
+       &(source->_outedgearray), srclstind);
    srclist->index = srclstind;
    srclist->edge = edge;
    if (source->out_edges != NULL)
@@ -143,7 +143,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 
    int trglstind = genFreeBigArrayPos(&(target->_inedgearray));
    EdgeList *trglist = (EdgeList *) getBigArrayValue(
-       target->_inedgearray, trglstind);
+       &(target->_inedgearray), trglstind);
    trglist->index = trglstind;
    trglist->edge = edge;
    if (target->out_edges != NULL)
@@ -162,7 +162,7 @@ void recoverEdge(Graph *graph, Edge *edge)
 {
    int elistind = genFreeBigArrayPos(&(graph->_edgelistarray));
    EdgeList *elist = (EdgeList *) getBigArrayValue(
-       graph->_edgelistarray, elistind);
+       &(graph->_edgelistarray), elistind);
    elist->index = elistind;
    edge->graph = graph;
    edge->in_graph = true;
@@ -175,7 +175,7 @@ void recoverEdge(Graph *graph, Edge *edge)
 
    int srclstind = genFreeBigArrayPos(&(edge->source->_outedgearray));
    EdgeList *srclist = (EdgeList *) getBigArrayValue(
-       edge->source->_outedgearray, srclstind);
+       &(edge->source->_outedgearray), srclstind);
    srclist->index = srclstind;
    srclist->edge = edge;
    if (edge->source->out_edges != NULL)
@@ -187,7 +187,7 @@ void recoverEdge(Graph *graph, Edge *edge)
 
    int trglstind = genFreeBigArrayPos(&(edge->target->_inedgearray));
    EdgeList *trglist = (EdgeList *) getBigArrayValue(
-       edge->target->_inedgearray, trglstind);
+       &(edge->target->_inedgearray), trglstind);
    trglist->index = trglstind;
    trglist->edge = edge;
    if (edge->target->out_edges != NULL)

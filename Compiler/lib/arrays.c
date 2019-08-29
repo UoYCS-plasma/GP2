@@ -13,6 +13,7 @@
   You should have received a copy of the GNU General Public License
   along with the GP 2 Compiler. If not, see <http://www.gnu.org/licenses/>. */
 
+#include <stdint.h>
 #include "graph.h"
 
 BigArray makeBigArray(int initial_capacity, size_t elem_sz)
@@ -90,17 +91,17 @@ int genFreeBigArrayPos(BigArray *array)
   }
 }
 
-void *getBigArrayValue(BigArray array, int index)
+void *getBigArrayValue(BigArray *array, int index)
 {
-  if(index < BIGAR_INIT_SZ / array.elem_sz)
-    return array.firstelems[index * array.elem_sz];
+  if(index < BIGAR_INIT_SZ / array->elem_sz)
+    return (void *) &(array->firstelems[index * array->elem_sz]);
   else
-    index -= BIGAR_INIT_SZ / array.elem_sz;
-  BigArrayElem *curr = array.elems;
-  int curr_min_index = array.capacity - curr->size;
+    index -= BIGAR_INIT_SZ / array->elem_sz;
+  BigArrayElem *curr = array->elems;
+  int curr_min_index = array->capacity - curr->size;
   for(; curr != NULL && index < curr_min_index; curr = curr->next)
     curr_min_index -= curr->size;
-  return (void *) (((int) curr->items) + index * array.elem_sz);
+  return (void *) (((uintptr_t) curr->items) + index * array->elem_sz);
 }
 
 void removeFromBigArray(BigArray *array, int index)
@@ -110,7 +111,7 @@ void removeFromBigArray(BigArray *array, int index)
   if(index == array->size - 1) array->size--;
   else if(index < BIGAR_INIT_SZ / array->elem_sz)
   {
-    hole = (BigArrayHole *) &(array->first_items[index]);
+    hole = (BigArrayHole *) &(array->firstelems[index]);
     hole->index = index;
   }
   else
@@ -125,7 +126,9 @@ void removeFromBigArray(BigArray *array, int index)
 
     assert(curr != NULL);
     curr_min_index -= curr->size;
-    hole = (BigArrayHole *) &(curr->items[index-curr_min_index]);
+
+    hole = (BigArrayHole *) (((uintptr_t) curr->items)
+                             + (index-curr_min_index) * array->elem_sz);
     hole->index = index - curr_min_index + (BIGAR_INIT_SZ / array->elem_sz);
   }
 

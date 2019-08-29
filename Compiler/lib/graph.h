@@ -90,7 +90,7 @@ typedef struct BigArray {
 
 BigArray makeBigArray(int initial_capacity, size_t elem_sz);
 int genFreeBigArrayPos(BigArray *array);
-void *getBigArrayValue(BigArray array, int index);
+void *getBigArrayValue(BigArray *array, int index);
 void removeFromBigArray(BigArray *array, int index);
 void emptyBigArray(BigArray *array);
 
