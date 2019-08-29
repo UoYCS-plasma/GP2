@@ -23,7 +23,7 @@ AC_PROG_RANLIB
 PKG_CHECK_MODULES([GLIB], [glib-2.0])
 
 # Checks for header files.
-AC_CHECK_HEADERS([glib.h stdlib.h string.h unistd.h])
+AC_CHECK_HEADERS([glib.h stdlib.h string.h unistd.h Judy.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
