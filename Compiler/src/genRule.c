@@ -339,7 +339,7 @@ static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_
    PTFI("RootNodes *nodes;\n", 3);   
    PTFI("for(nodes = getRootNodeList(host); nodes != NULL; nodes = nodes->next)\n", 3);
    PTFI("{\n", 3);
-   PTFI("Node *host_node = getNode(host, nodes->index);\n", 6);
+   PTFI("Node *host_node = nodes->node;\n", 6);
    PTFI("if(host_node == NULL) continue;\n", 6);
    PTFI("if(host_node->matched) continue;\n", 6);
    if(left_node->label.mark == ANY)
@@ -366,11 +366,9 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism)\n", left_node->index);
    PTF("{\n");
-   PTFI("int host_index;\n", 3);
-   PTFI("for(host_index = 0; host_index < host->nodes.size; host_index++)\n", 3);
+   PTFI("NodeList *nlistpos;\n", 3);
+   PTFI("for(Node *host_node; (host_node = yieldNextNode(host, nlistpos) != NULL;))\n", 3);
    PTFI("{\n", 3);
-   PTFI("Node *host_node = getNode(host, host_index);\n", 6);
-   PTFI("if(host_node == NULL || host_node->index == -1) continue;\n", 6);
    PTFI("if(host_node->matched) continue;\n", 6);
    if(left_node->label.mark == ANY)
       PTFI("if(host_node->label.mark == 0) continue;\n", 6);
