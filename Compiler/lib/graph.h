@@ -160,10 +160,13 @@ extern struct Edge dummy_edge;
  * return their index in the graph. */
 
 Node *addNode(Graph *graph, bool root, HostLabel label);
-void insertNode(Graph *graph, Node *node);
 void addRootNode(Graph *graph, Node *node);
 Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
-void insertEdge(Graph *graph, Edge *edge);
+
+// Recover a deleted node that hasn't been garbage collected.
+void recoverNode(Graph *graph, Node *node);
+void recoverEdge(Graph *graph, Edge *edge);
+
 void removeNode(Graph *graph, Node *node);
 void removeRootNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);

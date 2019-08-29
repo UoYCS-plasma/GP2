@@ -197,14 +197,14 @@ void undoChanges(Graph *graph, int restore_point)
               change.removed_node->in_stack--;
               change.removed_node->deleted = false;
               if(!change.removed_node->in_graph)
-                insertNode(graph, change.removed_node);
+                recoverNode(graph, change.removed_node);
               break;
 
          case REMOVED_EDGE:
               change.removed_edge->in_stack--;
               change.removed_edge->deleted = false;
               if(!change.removed_edge->in_graph)
-                insertEdge(graph, change.removed_edge);
+                recoverEdge(graph, change.removed_edge);
               break;
 
          case RELABELLED_NODE:
