@@ -57,10 +57,6 @@ typedef struct NodeQuery {
   MarkType mark;
 } NodeQuery;
 
-extern struct NodeList dummy_nodelist;
-extern struct EdgeList dummy_edgelist;
-
-
 typedef struct BigArrayElem {
   int size;
   void *items;
@@ -137,8 +133,6 @@ typedef struct Node {
    int in_morphism; // Number of times node appears in morphisms
 } Node;
 
-extern struct Node dummy_node;
-
 typedef struct RootNodes {
    Node *node;
    struct RootNodes *next;
@@ -156,8 +150,6 @@ typedef struct Edge {
    bool in_srclst;  // Flags for if still in src/trg edge lists
    bool in_trglst;
 } Edge;
-
-extern struct Edge dummy_edge;
 
 /* Nodes and edges are created and added to the graph with the addNode and addEdge
  * functions. They take the necessary construction data as their arguments and 

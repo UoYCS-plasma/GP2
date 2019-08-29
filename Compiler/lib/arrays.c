@@ -15,12 +15,6 @@
 
 #include "graph.h"
 
-NodeList dummy_nodelist = {0, NULL, NULL, NULL};
-EdgeList dummy_edgelist = {0, NULL, NULL, NULL};
-Node dummy_node = {0, NULL, false, {NONE, 0, NULL}, 0, 0,
-                   NULL, NULL, false, false, 0, 0};
-Edge dummy_edge = {0, NULL, {NONE, 0, NULL}, NULL, NULL, false, false, 0, 0};
-
 BigArray makeBigArray(int initial_capacity, size_t elem_sz)
 {
   BigArray array;
