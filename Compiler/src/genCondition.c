@@ -145,7 +145,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
       {
          if(node->predicates[p] == predicate)
          {
-            PTFI("int n%d = lookupNode(morphism, %d);\n", 3, index, index);
+            PTFI("Node *n%d = lookupNode(morphism, %d);\n", 3, index, index);
             PTFI("/* If the node is not yet matched by the morphism, return. */\n", 3);
             PTFI("if(n%d == -1) return;\n\n", 3, index);
             break;
@@ -225,12 +225,11 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
       {
            int source = predicate->edge_pred.source;
            int target = predicate->edge_pred.target;
-           PTFI("Node *source = getNode(host, n%d);\n", 3, source);
            PTFI("bool edge_found = false;\n", 3);
-           PTFI("int counter;\n", 3);
-           PTFI("for(counter = 0; counter < source->out_edges.size + 2; counter++)\n", 3);
+           PTFI("EdgeList *elist;\n", 3);
+           //PTFI("for(counter = 0; counter < source->out_edges.size + 2; counter++)\n", 3);
+           PTFI("for(Edge *edge; (edge = yieldNextOutEdge(n%d, elist)) != NULL;)\n", 3, source);
            PTFI("{\n", 3);
-           PTFI("Edge *edge = getNthOutEdge(host, source, counter);\n", 6);
            PTFI("if(edge != NULL && edge->target == n%d)\n", 6, target);
            if(predicate->edge_pred.label.length >= 0)
            {
