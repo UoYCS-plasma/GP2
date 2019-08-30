@@ -38,35 +38,27 @@
 
 #include <assert.h>
 #include <stdbool.h>
-#include <stdlib.h> 
-#include <stdio.h> 
+#include <stdlib.h>
+#include <stdio.h>
 
 /* A GraphChange stores the data sufficient to undo a particular graph modification.
  * Specifically, an undo operation must restore the graph to its exact state,
  * which includes the indices of nodes and edges in their arrays and the graph's
  * holes arrays. */
-typedef enum { ADDED_NODE = 0, ADDED_EDGE, REMOVED_NODE, REMOVED_EDGE, 
+typedef enum { ADDED_NODE = 0, ADDED_EDGE, REMOVED_NODE, REMOVED_EDGE,
 	       RELABELLED_NODE, RELABELLED_EDGE, REMARKED_NODE, REMARKED_EDGE,
-               CHANGED_ROOT_NODE} GraphChangeType; 
+               CHANGED_ROOT_NODE} GraphChangeType;
 
-typedef struct GraphChange 
+typedef struct GraphChange
 {
    GraphChangeType type;
    union
    {
-      /* Records the array index to which this item was added and a flag to signal
-       * whether the item was added using an index from the holes array or not. */
       Node *added_node;
       Edge *added_edge;
-      /* Records the root status and label of the removed node, along with its 
-       * index in the node array and a flag set to true if the removal of this
-       * node created a hole in the node array. */
       Node *removed_node;
-      /* Records the label, source and target of the removed edge, along with its 
-       * index in the edge array and a flag set to true if the removal of this
-       * edge created a hole in the edge array. */
       Edge *removed_edge;
-      /* Records the index of the relabelled item and the item's previous label. */
+      /* Records the relabelled item and the item's previous label. */
       struct {
          Node *node;
          HostLabel old_label;
@@ -74,7 +66,7 @@ typedef struct GraphChange
       struct {
          Edge *edge;
          HostLabel old_label;
-      } relabelled_edge;   
+      } relabelled_edge;
       /* Records the remarked item and the item's previous mark. */
       struct {
          Node *node;
@@ -87,7 +79,7 @@ typedef struct GraphChange
       /* Records the node whose root status was changed. */
       Node *changed_root;
    };
-} GraphChange; 
+} GraphChange;
 
 struct GraphChangeStack;
 extern struct GraphChangeStack *graph_change_stack;
