@@ -72,8 +72,7 @@ static void generateFailureCode(string rule_name, CommandData data);
 static bool nullCommand(GPCommand *command);
 static bool singleRule(GPCommand *command);
 
-void generateRuntimeMain(List *declarations, string output_dir,
-                         unsigned int max_nodes, unsigned int max_edges)
+void generateRuntimeMain(List *declarations, string output_dir)
 {
    int length = strlen(output_dir) + 7;
    char main_file[length];
@@ -126,7 +125,7 @@ void generateRuntimeMain(List *declarations, string output_dir,
    PTFI("perror(host_file);\n", 6);
    PTFI("return NULL;\n", 6);
    PTFI("}\n\n", 3);
-   PTFI("host = newGraph(%u, %u);\n", 3, max_nodes, max_edges);
+   PTFI("host = newGraph();\n", 3);
    PTFI("/* The parser populates the host graph using node_map to add edges with\n", 3);
    PTFI(" * the correct source and target indices. */\n", 3);
    PTFI("int result = yyparse();\n", 3);

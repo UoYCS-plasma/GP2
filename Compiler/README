@@ -8,7 +8,7 @@ The GP 2 Compiler
 
 The GP 2 compiler translates a GP 2 program into executable C code. The generated code is executable with the support of the GP 2 library.
 
-Default usage: gp2 [-c] [-d] [-l <rootdir>] [-o <outdir>] <gp2-program_file>
+Default usage: gp2 [-d] [-l <rootdir>] [-o <outdir>] <gp2-program_file>
 
 Compiles _gp2-program_ into C code. The generated code is placed in _/tmp/gp2_ unless an alternate location is specified with the -O flag.
 
@@ -17,8 +17,6 @@ To execute the generated code, run make and ./gp2run <host-graph-file> from _/tm
 If GP 2 is installed in a non-standard directory, use the -L option to ensure the generated code can be compiled and executed. See Installation for more information.
 
 Options:
-
--C - Enable graph copying.
 
 -D - Compile program with GCC debugging flags.
 

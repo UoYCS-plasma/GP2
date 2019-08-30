@@ -22,8 +22,6 @@ for more information.
 
 Options:
 
-**-c** - Enable graph copying.
-
 **-d** - Compile program with GCC debugging flags.
 
 **-l** - Specify root directory of installed files.
