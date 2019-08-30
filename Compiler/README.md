@@ -8,7 +8,7 @@ The GP 2 compiler translates a GP 2 program into executable C code.
 The generated code is executable with the support of the GP 2 library.
 
 Default usage:
-`gp2 [-c] [-d] [-l <rootdir>] [-o <outdir>] <gp2-program_file>`
+`gp2 [-d] [-l <rootdir>] [-o <outdir>] <gp2-program_file>`
 
 Compiles *gp2-program* into C code. The generated code is placed in
 */tmp/gp2* unless an alternate location is specified with the **-o** flag. 
