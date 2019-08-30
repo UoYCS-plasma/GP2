@@ -838,27 +838,27 @@ void generateApplicationCode(Rule *rule)
       Variable variable = rule->variable_list[index];
       if(variable.used_by_rule) generateVariableCode(index, variable.type);
    }
-   bool node_index_declared = false;
+   bool node_declared = false;
    for(index = 0; index < rule->lhs->node_index; index++)
    {
       RuleNode *node = getRuleNode(rule->lhs, index);
       if(node->indegree_arg || node->outdegree_arg)
       {
-         if(!node_index_declared) 
+         if(!node_declared)
          {
-            PTFI("int node_index = lookupNode(morphism, %d);\n", 3, index);
-            node_index_declared = true;
+            PTFI("Node *node = lookupNode(morphism, %d);\n", 3, index);
+            node_declared = true;
          }
-         else PTFI("node_index = lookupNode(morphism, %d);\n", 3, index);
-         if(node->indegree_arg) 
-            PTFI("int indegree%d = getIndegree(host, node_index);\n", 3, index);
-         if(node->outdegree_arg) 
-            PTFI("int outdegree%d = getOutdegree(host, node_index);\n", 3, index);
+         else PTFI("node = lookupNode(morphism, %d);\n", 3, index);
+         if(node->indegree_arg)
+            PTFI("int indegree%d = getIndegree(host, node);\n", 3, index);
+         if(node->outdegree_arg)
+            PTFI("int outdegree%d = getOutdegree(host, node);\n", 3, index);
       }
    }
-   bool label_declared = false, host_edge_index_declared = false,
-        host_node_index_declared = false;
-   /* Host graph modifications are performed in the following order: 
+   bool label_declared = false, host_edge_declared = false,
+        host_node_declared = false;
+   /* Host graph modifications are performed in the following order:
     * (1) Delete/relabel edges.
     * (2) Delete/relabel nodes.
     * (3) Add nodes.
@@ -874,42 +874,36 @@ void generateApplicationCode(Rule *rule)
    for(index = 0; index < rule->lhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->lhs, index);
-      if(edge->interface == NULL) 
+      if(edge->interface == NULL)
       {
          /* Generate code to remove the edge. */
-         if(!host_edge_index_declared)
+         if(!host_edge_declared)
          {
-            PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
-            host_edge_index_declared = true;
+            PTFI("Edge *host_edge= lookupEdge(morphism, %d);\n", 3, index);
+            host_edge_declared = true;
          }
-         else PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
-         PTFI("if(record_changes)\n", 3);
-         PTFI("{\n", 3);
-         PTFI("Edge *edge = getEdge(host, host_edge_index);\n", 6);
-         PTFI("/* A hole is created if the edge is not at the right-most index of the array. */\n", 6);
-         PTFI("pushRemovedEdge(edge->label, edge->source, edge->target, edge->index,\n", 6);
-         PTFI("                edge->index < host->edges.size - 1);\n", 6);
-         PTFI("}\n", 3);
-         PTFI("removeEdge(host, host_edge_index);\n\n", 3);   
+         else PTFI("host_edge = lookupEdge(morphism, %d);\n", 3, index);
+         PTFI("if(record_changes) pushRemovedEdge(edge);\n", 3);
+         PTFI("removeEdge(host, host_edge_index);\n\n", 3);
       }
       else
       {
          if(edge->interface->relabelled || edge->interface->remarked)
          {
-            if(!host_edge_index_declared)
+            if(!host_edge_declared)
             {
-               PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
-               host_edge_index_declared = true;
+               PTFI("Edge *host_edge = lookupEdge(morphism, %d);\n", 3, index);
+               host_edge_declared = true;
             }
-            else PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
+            else PTFI("host_edge = lookupEdge(morphism, %d);\n", 3, index);
             RuleLabel label = edge->interface->label;
-            PTFI("HostLabel label_e%d = getEdgeLabel(host, host_edge_index);\n", 3, index);
+            PTFI("HostLabel label_e%d = getEdgeLabel(host, host_edge);\n", 3, index);
             if(edge->interface->relabelled)
             {
                /* Generate code to evaluate the RHS label. Note that the code generated
                 * here is suitable for an edge relabelling independently of whether it
                 * is remarked or not. */
-               if(!label_declared) 
+               if(!label_declared)
                {
                   PTFI("HostLabel label;\n", 3);
                   label_declared = true;
@@ -920,9 +914,9 @@ void generateApplicationCode(Rule *rule)
                PTFI("if(equalHostLabels(label_e%d, label)) removeHostList(label.list);\n", 3, index);
                PTFI("else\n", 3);
                PTFI("{\n", 3);
-               PTFI("if(record_changes) pushRelabelledEdge(host_edge_index, label_e%d);\n",
+               PTFI("if(record_changes) pushRelabelledEdge(host_edge, label_e%d);\n",
                     6, index);
-               PTFI("relabelEdge(host, host_edge_index, label);\n", 6);
+               PTFI("relabelEdge(host, host_edge, label);\n", 6);
                PTFI("}\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
@@ -930,68 +924,63 @@ void generateApplicationCode(Rule *rule)
             else if(edge->interface->remarked)
             {
                /* Generate code to re-mark the edge. */
-               PTFI("if(record_changes) pushRemarkedEdge(host_edge_index, label_e%d.mark);\n",
+               PTFI("if(record_changes) pushRemarkedEdge(host_edge, label_e%d.mark);\n",
                     3, index);
-               PTFI("changeEdgeMark(host, host_edge_index, %d);\n\n", 3, label.mark);
+               PTFI("changeEdgeMark(host, host_edge, %d);\n\n", 3, label.mark);
             }
          }
       }
    }
    /* (2) Delete/relabel nodes. */
    for(index = 0; index < rule->lhs->node_index; index++)
-   { 
+   {
       RuleNode *node = getRuleNode(rule->lhs, index);
-      if(node->interface == NULL) 
+      if(node->interface == NULL)
       {
-         if(!host_node_index_declared)
+         if(!host_node_declared)
          {
-            PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
-            host_node_index_declared = true;
+            PTFI("Node *host_node = lookupNode(morphism, %d);\n", 3, index);
+            host_node_declared = true;
          }
-         else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
+         else PTFI("host_node = lookupNode(morphism, %d);\n", 3, index);
          /* Generate code to remove the node. */
          PTFI("if(record_changes)\n", 3);
-         PTFI("{\n", 3);
-         PTFI("Node *node = getNode(host, host_node_index);\n", 6);
-         PTFI("/* A hole is created if the node is not at the right-most index of the array. */\n", 6);
-         PTFI("pushRemovedNode(node->root, node->label, node->index,\n", 6);
-         PTFI("                node->index < host->nodes.size - 1);\n", 6);  
-         PTFI("}\n", 3);
-         PTFI("removeNode(host, host_node_index);\n\n", 3);   
+         PTFI("pushRemovedNode(host_node);\n", 6);
+         PTFI("removeNode(host, host_node);\n\n", 3);
       }
       else
       {
          RuleNode *rhs_node = node->interface;
          if(rhs_node->relabelled || rhs_node->remarked)
          {
-            if(!host_node_index_declared)
+            if(!host_node_declared)
             {
-               PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
-               host_node_index_declared = true;
+               PTFI("Node *host_node = lookupNode(morphism, %d);\n", 3, index);
+               host_node_declared = true;
             }
-            else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
+            else PTFI("host_node = lookupNode(morphism, %d);\n", 3, index);
             RuleLabel label = rhs_node->label;
-            PTFI("HostLabel label_n%d = getNodeLabel(host, host_node_index);\n", 3, index);
+            PTFI("HostLabel label_n%d = getNodeLabel(host, host_node);\n", 3, index);
             if(rhs_node->relabelled)
             {
                /* Generate code to evaluate the RHS label. Note that the code generated
                 * here is suitable for a node relabelling independently of whether it
                 * is re-marked or not. */
-               if(!label_declared) 
+               if(!label_declared)
                {
                   PTFI("HostLabel label;\n", 3);
                   label_declared = true;
                }
                if(label.length == 0 && label.mark == NONE) PTFI("label = blank_label;\n", 3);
                else generateLabelEvaluationCode(label, true, list_count++, 0, 3);
-               
+
                /* If the two labels are equal, no relabelling needs to be done. */
                PTFI("if(equalHostLabels(label_n%d, label)) removeHostList(label.list);\n", 3, index);
                PTFI("else\n", 3);
                PTFI("{\n", 3);
-               PTFI("if(record_changes) pushRelabelledNode(host_node_index, label_n%d);\n",
+               PTFI("if(record_changes) pushRelabelledNode(host_node, label_n%d);\n",
                     6, index);
-               PTFI("relabelNode(host, host_node_index, label);\n", 6);
+               PTFI("relabelNode(host, host_node, label);\n", 6);
                PTFI("}\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
@@ -999,38 +988,37 @@ void generateApplicationCode(Rule *rule)
             else if(rhs_node->remarked)
             {
                /* Generate code to re-mark the edge. */
-               PTFI("if(record_changes) pushRemarkedNode(host_node_index, label_n%d.mark);\n",
+               PTFI("if(record_changes) pushRemarkedNode(host_node, label_n%d.mark);\n",
                     3, index);
-               PTFI("changeNodeMark(host, host_node_index, %d);\n\n", 3, label.mark);
+               PTFI("changeNodeMark(host, host_node, %d);\n\n", 3, label.mark);
             }
          }
          if(rhs_node->root_changed)
          {
-            if(!host_node_index_declared)
+            if(!host_node_declared)
             {
-               PTFI("int host_node_index = lookupNode(morphism, %d);\n", 3, index);
-               host_node_index_declared = true;
+               PTFI("Node *host_node_index = lookupNode(morphism, %d);\n", 3, index);
+               host_node_declared = true;
             }
-            else PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
+            else PTFI("host_node = lookupNode(morphism, %d);\n", 3, index);
             /* The root is changed in two cases:
              * (1) The LHS node is rooted and the RHS node is non-rooted.
              * (2) The LHS node is non-rooted, the RHS node is rooted, and
              *     the matched host node is non-rooted. */
 
             /* Case (1) */
-            if(node->root && !node->interface->root) 
+            if(node->root && !node->interface->root)
             {
-               PTFI("if(record_changes) pushChangedRootNode(host_node_index);\n", 3);
-               PTFI("changeRoot(host, host_node_index);\n", 3);
+               PTFI("if(record_changes) pushChangedRootNode(host_node);\n", 3);
+               PTFI("changeRoot(host, host_node);\n", 3);
             }
             /* Case (2) */
-            if(!node->root && node->interface->root) 
+            if(!node->root && node->interface->root)
             {
-               PTFI("Node *node%d = getNode(host, host_node_index);\n", 3, index);
-               PTFI("if(!node%d->root)\n", 3, index);
+               PTFI("if(!host_node%d->root)\n", 3, index);
                PTFI("{\n", 3);
-               PTFI("if(record_changes) pushChangedRootNode(host_node_index);\n", 6);
-               PTFI("changeRoot(host, host_node_index);\n", 6);
+               PTFI("if(record_changes) pushChangedRootNode(host_node);\n", 6);
+               PTFI("changeRoot(host, host_node);\n", 6);
                PTFI("}\n", 3);
             }
          }
@@ -1065,52 +1053,49 @@ void generateApplicationCode(Rule *rule)
 
    /* (3) Add nodes. */
    for(index = 0; index < rule->rhs->node_index; index++)
-   { 
+   {
       RuleNode *node = getRuleNode(rule->rhs, index);
       if(node->interface != NULL) continue;
-      if(!host_node_index_declared)
+      if(!host_node_declared)
       {
-         PTFI("int host_node_index;\n", 3);
-         host_node_index_declared = true;
+         PTFI("Node *host_node;\n", 3);
+         host_node_declared = true;
       }
       PTFI("int node_array_size%d = host->nodes.size;\n", 3, index);
       if(node->label.length == 0 && node->label.mark == NONE)
-         PTFI("host_node_index = addNode(host, %d, blank_label);\n", 3, node->root);
+         PTFI("host_node = addNode(host, %d, blank_label);\n", 3, node->root);
       else
       {
-         if(!label_declared) 
+         if(!label_declared)
          {
             PTFI("HostLabel label;\n", 3);
             label_declared = true;
          }
          generateLabelEvaluationCode(node->label, true, list_count++, 0, 3);
-         PTFI("host_node_index = addNode(host, %d, label);\n", 3, node->root);
+         PTFI("host_node = addNode(host, %d, label);\n", 3, node->root);
       }
-      if(rule->adds_edges) PTFI("rhs_node_map[%d] = host_node_index;\n", 3, node->index);
-      PTFI("/* If the node array size has not increased after the node addition, then\n", 3);
-      PTFI("   the node was added to a hole in the array. */\n", 3);
+      if(rule->adds_edges) PTFI("rhs_node_map[%d] = host_node;\n", 3, node->index);
       PTFI("if(record_changes)\n", 3);
-      PTFI("pushAddedNode(host_node_index, node_array_size%d == host->nodes.size);\n", 6, index);
-   }   
+      PTFI("pushAddedNode(host_node);\n", 6);
+   }
    /* (4) Add edges. */
    bool source_target_declared = false;
    for(index = 0; index < rule->rhs->edge_index; index++)
-   { 
+   {
       RuleEdge *edge = getRuleEdge(rule->rhs, index);
       if(edge->interface != NULL) continue;
-      if(!host_edge_index_declared)
+      if(!host_edge_declared)
       {
-         PTFI("int host_edge_index;\n", 3);
-         host_edge_index_declared = true;
+         PTFI("Edge *host_edge;\n", 3);
+         host_edge_declared = true;
       }
       if(!source_target_declared)
       {
-         PTFI("int source, target;\n", 3);
+         PTFI("Node *source, target;\n", 3);
          source_target_declared = true;
       }
-      PTFI("int edge_array_size%d = host->edges.size;\n", 3, index);
-      /* The source and target edges are either nodes preserved by the rule or 
-       * nodes added by the rule. 
+      /* The source and target edges are either nodes preserved by the rule or
+       * nodes added by the rule.
        * The host node indices of preserved nodes are obtained from the morphism.
        * The host node indices of added nodes are obtained from rhs_node_map. */
       if(edge->source->interface != NULL)
@@ -1122,21 +1107,21 @@ void generateApplicationCode(Rule *rule)
       else PTFI("target = rhs_node_map[%d];\n", 3, edge->target->index);
 
       if(edge->label.length == 0 && edge->label.mark == NONE)
-         PTFI("host_edge_index = addEdge(host, blank_label, source, target);\n", 3);
+         PTFI("host_edge = addEdge(host, blank_label, source, target);\n", 3);
       else
       {
-         if(!label_declared) 
+         if(!label_declared)
          {
             PTFI("HostLabel label;\n", 3);
             label_declared = true;
          }
          generateLabelEvaluationCode(edge->label, false, list_count++, 0, 3);
-         PTFI("host_edge_index = addEdge(host, label, source, target);\n", 3);
+         PTFI("host_edge = addEdge(host, label, source, target);\n", 3);
       }
       PTFI("/* If the edge array size has not increased after the edge addition, then\n", 3);
       PTFI("   the edge was added to a hole in the array. */\n", 3);
       PTFI("if(record_changes)\n", 3);
-      PTFI("pushAddedEdge(host_edge_index, edge_array_size%d == host->edges.size);\n", 6, index);
+      PTFI("pushAddedEdge(host_edge);\n", 6, index);
    }
    PTFI("/* Reset the morphism. */\n", 3);
    PTFI("initialiseMorphism(morphism, host);\n}\n\n", 3);
