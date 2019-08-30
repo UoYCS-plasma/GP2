@@ -367,7 +367,7 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    PTF("static bool match_n%d(Morphism *morphism)\n", left_node->index);
    PTF("{\n");
    PTFI("NodeList *nlistpos;\n", 3);
-   PTFI("for(Node *host_node; (host_node = yieldNextNode(host, nlistpos) != NULL;))\n", 3);
+   PTFI("for(Node *host_node; (host_node = yieldNextNode(host, nlistpos)) != NULL;)\n", 3);
    PTFI("{\n", 3);
    PTFI("if(host_node->matched) continue;\n", 6);
    if(left_node->label.mark == ANY)
@@ -526,11 +526,9 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    PTF("static bool match_e%d(Morphism *morphism)\n", left_edge->index);
    PTF("{\n");
-   PTFI("int host_index;\n", 3);
-   PTFI("for(host_index = 0; host_index < host->edges.size; host_index++)\n", 3);
+   PTFI("EdgeList *elistpos;\n", 3);
+   PTFI("for(Edge *host_edge; (host_edge = yieldNextEdge(host, elistpos)) != NULL;)\n", 3);
    PTFI("{\n", 3);
-   PTFI("Edge *host_edge = getEdge(host, host_index);\n", 6);
-   PTFI("if(host_edge == NULL || host_edge->index == -1) continue;\n", 6);
    PTFI("if(host_edge->matched) continue;\n", 6);
    if(left_edge->label.mark == ANY) 
       PTFI("if(host_edge->label.mark == 0) continue;\n\n", 6);
@@ -551,15 +549,12 @@ static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_
    PTF("static bool match_e%d(Morphism *morphism)\n", left_edge->index);
    PTF("{\n");
    PTFI("/* Matching a loop. */\n", 3);
-   PTFI("int node_index = lookupNode(morphism, %d);\n", 3, left_edge->source->index);
-   PTFI("if(node_index < 0) return false;\n", 3);
-   PTFI("Node *host_node = getNode(host, node_index);\n\n", 3);
+   PTFI("Node *host_node = lookupNode(morphism, %d);\n", 3, left_edge->source->index);
+   PTFI("if(host_node == NULL) return false;\n", 3);
 
-   PTFI("int counter;\n", 3);
-   PTFI("for(counter = 0; counter < host_node->out_edges.size + 2; counter++)\n", 3);
+   PTFI("EdgeList *elistpos;\n", 3);
+   PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host_node, elistpos)) != NULL;)\n", 3);
    PTFI("{\n", 3);
-   PTFI("Edge *host_edge = getNthOutEdge(host, host_node, counter);\n", 6);
-   PTFI("if(host_edge == NULL) continue;\n", 6);
    PTFI("if(host_edge->matched) continue;\n", 6);
    PTFI("if(host_edge->source != host_edge->target) continue;\n", 6);
    if(left_edge->label.mark == ANY)
@@ -610,26 +605,17 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
       PTF("{\n");
       PTFI("/* Start node is the already-matched node from which the candidate\n", 3);
       PTFI("   edges are drawn. End node may or may not have been matched already. */\n", 3);
-      PTFI("int start_index = lookupNode(morphism, %d);\n", 3, start_index);
-      PTFI("int end_index = lookupNode(morphism, %d);\n", 3, end_index);
-      PTFI("if(start_index < 0) return false;\n", 3);
-      PTFI("Node *host_node = getNode(host, start_index);\n\n", 3);
-      PTFI("int counter;\n", 3);
+      PTFI("Node *host_node = lookupNode(morphism, %d);\n", 3, start_index);
+      PTFI("Node *end_node = lookupNode(morphism, %d);\n", 3, end_index);
+      PTFI("if(host_node == NULL) return false;\n", 3);
+      PTFI("EdgeList *elistpos;\n", 3);
    }
    if(source)
-   {
-      PTFI("for(counter = 0; counter < host_node->out_edges.size + 2; counter++)\n", 3);
-      PTFI("{\n", 3);
-      PTFI("Edge *host_edge = getNthOutEdge(host, host_node, counter);\n", 6);
-   }
+      PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host_node, elistpos)) != NULL;)\n", 3);
    else
-   {
-      PTFI("for(counter = 0; counter < host_node->in_edges.size + 2; counter++)\n", 3);
-      PTFI("{\n", 3);
-      PTFI("Edge *host_edge = getNthInEdge(host, host_node, counter);\n", 6);
-   }
+      PTFI("for(Edge *host_edge; (host_edge = yieldNextInEdge(host_node, elistpos)) != NULL;)\n", 3);
 
-   PTFI("if(host_edge == NULL) continue;\n", 6);
+   PTFI("{\n", 3);
    PTFI("if(host_edge->matched) continue;\n", 6);
    PTFI("if(host_edge->source == host_edge->target) continue;\n", 6);
    if(left_edge->label.mark == ANY)
@@ -638,15 +624,12 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
 
    PTFI("/* If the end node has been matched, check that the %s of the\n", 6, end_node_type);
    PTFI(" * host edge is the image of the end node. */\n", 6);
-   PTFI("if(end_index >= 0)\n", 6);
+   PTFI("if(end_node != NULL)\n", 6);
    PTFI("{\n", 6);
-   PTFI("if(host_edge->%s != end_index) continue;\n", 9, end_node_type);
+   PTFI("if(host_edge->%s != end_node) continue;\n", 9, end_node_type);
    PTFI("}\n", 6);
    PTFI("/* Otherwise, the %s of the host edge should be unmatched. */\n", 6, end_node_type);
-   PTFI("else\n", 6);
-   PTFI("{\n", 6);
-   PTFI("Node *end_node = getNode(host, host_edge->%s);\n", 9, end_node_type);
-   PTFI("if(end_node->matched) continue;\n", 9);
+   PTFI("else if(end_node->matched) continue;\n", 6);
    PTFI("}\n\n", 6);
 
    PTFI("HostLabel label = host_edge->label;\n", 6);
@@ -667,7 +650,7 @@ static void emitEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
 {
    PTFI("if(match)\n", indent);
    PTFI("{\n", indent);
-   PTFI("addEdgeMap(morphism, %d, host_edge->index, new_assignments);\n", indent + 3, index);
+   PTFI("addEdgeMap(morphism, %d, host_edge, new_assignments);\n", indent + 3, index);
    PTFI("host_edge->matched = true;\n", indent + 3);
    if(next_op == NULL)
    {
@@ -677,10 +660,10 @@ static void emitEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
    else
    {
       PTFI("if(", indent + 3);
-      emitNextMatcherCall(next_op); 
-      PTF(") return true;\n");           
+      emitNextMatcherCall(next_op);
+      PTF(") return true;\n");
       PTFI("else\n", indent + 3);
-      PTFI("{\n", indent + 3);                              
+      PTFI("{\n", indent + 3);
       PTFI("removeEdgeMap(morphism, %d);\n", indent + 6, index);
       PTFI("host_edge->matched = false;\n", indent + 6); 
       PTFI("}\n", indent + 3);
@@ -726,27 +709,19 @@ void generateRemoveLHSCode(string rule_name)
 
    PTFI("int count;\n", 3);
    PTFI("for(count = 0; count < morphism->edges; count++)\n", 3);
-   PTFI("{\n", 3);                        
+   PTFI("{\n", 3);
+   PTFI("Edge *edge = morphism->edge_map[count].edge);\n", 9);
    PTFI("if(record_changes)\n", 6);
-   PTFI("{\n", 6);
-   PTFI("Edge *edge = getEdge(host, morphism->edge_map[count].host_index);\n", 9);
-   PTFI("/* A hole is created if the edge is not at the right-most index of the array. */\n", 9);
-   PTFI("pushRemovedEdge(edge->label, edge->source, edge->target, edge->index,\n", 9);
-   PTFI("                edge->index < host->edges.size - 1);\n", 9);  
-   PTFI("}\n", 6);
-   PTFI("removeEdge(host, morphism->edge_map[count].host_index);\n", 6);
+   PTFI("pushRemovedEdge(edge);\n", 9);
+   PTFI("removeEdge(host, edge);\n", 6);
    PTFI("}\n", 3);
-                                                                           
+
    PTFI("for(count = 0; count < morphism->nodes; count++)\n", 3);
-   PTFI("{\n", 3);                        
+   PTFI("{\n", 3);
+   PTFI("Node *node = morphism->node_map[count].node);\n", 9);
    PTFI("if(record_changes)\n", 6);
-   PTFI("{\n", 6);
-   PTFI("Node *node = getNode(host, morphism->node_map[count].host_index);\n", 9); 
-   PTFI("/* A hole is created if the node is not at the right-most index of the array. */\n", 9);
-   PTFI("pushRemovedNode(node->root, node->label, node->index,\n", 9);
-   PTFI("                node->index < host->nodes.size - 1);\n", 9);  
-   PTFI("}\n", 6);
-   PTFI("removeNode(host, morphism->node_map[count].host_index);\n", 6);
+   PTFI("pushRemovedNode(node);\n", 9);
+   PTFI("removeNode(host, node);\n", 6);
    PTFI("}\n", 3);
    PTFI("initialiseMorphism(morphism, NULL);\n", 3);
    PTFI("}\n\n", 3);
@@ -776,8 +751,10 @@ void generateAddRHSCode(Rule *rule)
    if(rule->adds_edges)
    {
       PTFI("/* Array of host node indices indexed by RHS node index. */\n", 3);
-      PTFI("int map[%d];\n\n", 3, rule->rhs->node_index);
+      PTFI("Node *map[%d];\n\n", 3, rule->rhs->node_index);
    }
+   PTFI("Node *host_node;\n", 3);
+   PTFI("Edge *host_edge;\n", 3);
    for(index = 0; index < rule->rhs->node_index; index++)
    {
       RuleNode *node = getRuleNode(rule->rhs, index);
@@ -806,13 +783,10 @@ void generateAddRHSCode(Rule *rule)
          if (node->label.mark == ANY) PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
          generateLabelEvaluationCode(node->label, true, index, 0, 3);
       }
-      PTFI("int node_array_size%d = host->nodes.size;\n", 3, index);
-      PTFI("index = addNode(host, %d, label);\n", 3, node->root);
-      if(rule->adds_edges) PTFI("map[%d] = index;\n", 3, node->index);
-      PTFI("/* If the node array size has not increased after the node addition, then\n", 3);
-      PTFI("   the node was added to a hole in the array. */\n", 3);
+      PTFI("host_node = addNode(host, %d, label);\n", 3, node->root);
+      if(rule->adds_edges) PTFI("map[%d] = host_node;\n", 3, node->index);
       PTFI("if(record_changes)\n", 3);
-      PTFI("pushAddedNode(index, node_array_size%d == host->nodes.size);\n", 6, index);
+      PTFI("pushAddedNode(host_node);\n", 6, index);
    }
    PTF("\n");
    for(index = 0; index < rule->rhs->edge_index; index++)
@@ -842,13 +816,10 @@ void generateAddRHSCode(Rule *rule)
       }
       /* The host-source and host-target of added edges are taken from the 
        * map populated in the previous loop. */
-      PTFI("int edge_array_size%d = host->edges.size;\n", 3, index);
-      PTFI("index = addEdge(host, label, map[%d], map[%d]);\n",
+      PTFI("host_edge = addEdge(host, label, map[%d], map[%d]);\n",
            3, edge->source->index, edge->target->index);
-      PTFI("/* If the edge array size has not increased after the edge addition, then\n", 3);
-      PTFI("   the edge was added to a hole in the array. */\n", 3);
       PTFI("if(record_changes)\n", 3);
-      PTFI("pushAddedEdge(index, edge_array_size%d == host->edges.size);\n", 6, index);
+      PTFI("pushAddedEdge(host_edge);\n", 6, index);
    }
    PTF("}\n");
    return;
