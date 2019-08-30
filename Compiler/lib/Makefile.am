@@ -1,6 +1,6 @@
 BUILT_SOURCES = lexer.c parser.h parser.c
 AM_YFLAGS = -d -Wno-yacc
-AM_CFLAGS = -l:Judy
+AM_CFLAGS = -lJudy
 
 lib_LIBRARIES = libgp2.a
 
