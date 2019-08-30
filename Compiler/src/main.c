@@ -35,15 +35,13 @@
 #include "genRule.h"
 #include "parser.h"
 #include "pretty.h"
-#include "seman.h" 
+#include "seman.h"
 
 #include <sys/stat.h>
-//#include <unistd.h>
 #include <stdbool.h>
-#include <stdlib.h> 
-#include <stdio.h> 
-#include <string.h> 
-#include <ctype.h> 
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 /* Toggle tracing of the Bison parser. The trace is printed to stderr. */
 #undef PARSER_TRACE 
