@@ -126,7 +126,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    if (graph->edges != NULL)
      graph->edges->prev = elist;
    else
-     graph->edges->prev = NULL;
+     elist->prev = NULL;
    elist->next = graph->edges;
    graph->edges = elist;
 
@@ -138,7 +138,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    if (source->out_edges != NULL)
      source->out_edges->prev = srclist;
    else
-     source->out_edges->prev = NULL;
+     srclist->prev = NULL;
    srclist->next = source->out_edges;
    source->out_edges = srclist;
    source->outdegree++;
@@ -152,7 +152,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    if (target->in_edges != NULL)
      target->in_edges->prev = trglist;
    else
-     target->in_edges->prev = NULL;
+     trglist->prev = NULL;
    trglist->next = target->in_edges;
    target->in_edges = trglist;
    target->indegree++;
@@ -176,7 +176,7 @@ void recoverEdge(Graph *graph, Edge *edge)
    if (graph->edges != NULL)
      graph->edges->prev = elist;
    else
-     graph->edges->prev = NULL;
+     elist->prev = NULL;
    elist->next = graph->edges;
    graph->edges = elist;
 
@@ -188,7 +188,7 @@ void recoverEdge(Graph *graph, Edge *edge)
    if (edge->source->out_edges != NULL)
      edge->source->out_edges->prev = srclist;
    else
-     edge->source->out_edges->prev = NULL;
+     srclist->prev = NULL;
    srclist->next = edge->source->out_edges;
    edge->source->out_edges = srclist;
    edge->source->outdegree++;
@@ -202,7 +202,7 @@ void recoverEdge(Graph *graph, Edge *edge)
    if (edge->target->in_edges != NULL)
      edge->target->in_edges->prev = trglist;
    else
-     edge->target->in_edges->prev = NULL;
+     trglist->prev = NULL;
    trglist->next = edge->target->in_edges;
    edge->target->in_edges = trglist;
    edge->target->indegree++;
