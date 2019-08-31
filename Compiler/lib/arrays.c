@@ -109,34 +109,38 @@ void *getBigArrayValue(BigArray *array, int index)
 
 void removeFromBigArray(BigArray *array, int index)
 {
-  BigArrayHole *hole;
-
   if(index == array->size - 1) array->size--;
-  else if(index < BIGAR_INIT_SZ / array->elem_sz)
-  {
-    hole = (BigArrayHole *) &(array->firstelems[index]);
-    hole->index = index;
-  }
   else
   {
-    index -= BIGAR_INIT_SZ / array->elem_sz;
-    // First elem in linked list will represent last one in array;
-    // must go backwards in indices.
-    BigArrayElem *curr = array->elems;
-    int curr_min_index = array->capacity - (BIGAR_INIT_SZ / array->elem_sz) - curr->size;
-    for(; curr != NULL && index < curr_min_index; curr = curr->next)
-      if(curr->next != NULL) curr_min_index -= curr->next->size;
+    BigArrayHole *hole;
+    if(index < BIGAR_INIT_SZ / array->elem_sz)
+    {
+      hole = (BigArrayHole *) &(array->firstelems[index]);
+      hole->index = index;
+    }
+    else
+    {
+      index -= BIGAR_INIT_SZ / array->elem_sz;
+      // First elem in linked list will represent last one in array;
+      // must go backwards in indices.
+      BigArrayElem *curr = array->elems;
+      int curr_min_index = array->capacity - (BIGAR_INIT_SZ / array->elem_sz) - curr->size;
+      for(; curr != NULL && index < curr_min_index; curr = curr->next)
+        if(curr->next != NULL) curr_min_index -= curr->next->size;
 
-    assert(curr != NULL);
+      assert(curr != NULL);
 
-    hole = (BigArrayHole *) (((uintptr_t) curr->items)
-                             + (index-curr_min_index) * array->elem_sz);
-    hole->index = index - curr_min_index + (BIGAR_INIT_SZ / array->elem_sz);
+      hole = (BigArrayHole *) (((uintptr_t) curr->items)
+                               + (index-curr_min_index) * array->elem_sz);
+      hole->index = index - curr_min_index + (BIGAR_INIT_SZ / array->elem_sz);
+    }
+
+    hole->next = array->first_hole;
+    if (array->first_hole != NULL) {
+      array->first_hole->prev = hole;
+    }
+    array->first_hole = hole;
   }
-
-  hole->next = array->first_hole;
-  array->first_hole->prev = hole;
-  array->first_hole = hole;
 }
 
 void emptyBigArray(BigArray *array)
