@@ -322,6 +322,7 @@ Node *yieldNextNode(Graph *graph, NodeList **current)
      deleted_node = node->deleted;
      if(node->deleted)
      {
+       int index = (*current)->index;
        if((*current)->prev != NULL)
          (*current)->prev->next = (*current)->next;
        else
@@ -329,7 +330,7 @@ Node *yieldNextNode(Graph *graph, NodeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       removeFromBigArray(&(graph->_nodelistarray), (*current)->prev->index);
+       removeFromBigArray(&(graph->_nodelistarray), index);
        node->in_graph = false;
        tryGarbageCollectNode(node);
      }
@@ -353,6 +354,7 @@ Edge *yieldNextOutEdge(Node *node, EdgeList **current)
      deleted_edge = edge->deleted;
      if(edge->deleted)
      {
+       int index = (*current)->index;
        if((*current)->prev != NULL)
          (*current)->prev->next = (*current)->next;
        else
@@ -360,7 +362,7 @@ Edge *yieldNextOutEdge(Node *node, EdgeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       removeFromBigArray(&(node->_outedgearray), (*current)->prev->index);
+       removeFromBigArray(&(node->_outedgearray), index);
        edge->in_srclst = false;
      }
    }
@@ -383,6 +385,7 @@ Edge *yieldNextInEdge(Node *node, EdgeList **current)
      deleted_edge = edge->deleted;
      if(edge->deleted)
      {
+       int index = (*current)->index;
        if((*current)->prev != NULL)
          (*current)->prev->next = (*current)->next;
        else
@@ -390,7 +393,7 @@ Edge *yieldNextInEdge(Node *node, EdgeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       removeFromBigArray(&(node->_inedgearray), (*current)->prev->index);
+       removeFromBigArray(&(node->_inedgearray), index);
        edge->in_trglst = false;
      }
    }
@@ -413,6 +416,7 @@ Edge *yieldNextEdge(Graph *graph, EdgeList **current)
      deleted_edge = edge->deleted;
      if(edge->deleted)
      {
+       int index = (*current)->index;
        if((*current)->prev != NULL)
          (*current)->prev->next = (*current)->next;
        else
@@ -420,7 +424,7 @@ Edge *yieldNextEdge(Graph *graph, EdgeList **current)
        if((*current)->next != NULL)
          (*current)->next->prev = (*current)->prev;
        *current = (*current)->next;
-       removeFromBigArray(&(graph->_edgelistarray), (*current)->prev->index);
+       removeFromBigArray(&(graph->_edgelistarray), index);
        edge->in_graph = false;
        tryGarbageCollectEdge(edge);
      }
