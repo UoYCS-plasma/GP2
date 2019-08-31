@@ -786,7 +786,7 @@ void generateAddRHSCode(Rule *rule)
       PTFI("host_node = addNode(host, %d, label);\n", 3, node->root);
       if(rule->adds_edges) PTFI("map[%d] = host_node;\n", 3, node->index);
       PTFI("if(record_changes)\n", 3);
-      PTFI("pushAddedNode(host_node);\n", 6, index);
+      PTFI("pushAddedNode(host_node);\n", 6);
    }
    PTF("\n");
    for(index = 0; index < rule->rhs->edge_index; index++)
@@ -819,7 +819,7 @@ void generateAddRHSCode(Rule *rule)
       PTFI("host_edge = addEdge(host, label, map[%d], map[%d]);\n",
            3, edge->source->index, edge->target->index);
       PTFI("if(record_changes)\n", 3);
-      PTFI("pushAddedEdge(host_edge);\n", 6, index);
+      PTFI("pushAddedEdge(host_edge);\n", 6);
    }
    PTF("}\n");
    return;
@@ -1121,7 +1121,7 @@ void generateApplicationCode(Rule *rule)
       PTFI("/* If the edge array size has not increased after the edge addition, then\n", 3);
       PTFI("   the edge was added to a hole in the array. */\n", 3);
       PTFI("if(record_changes)\n", 3);
-      PTFI("pushAddedEdge(host_edge);\n", 6, index);
+      PTFI("pushAddedEdge(host_edge);\n", 6);
    }
    PTFI("/* Reset the morphism. */\n", 3);
    PTFI("initialiseMorphism(morphism, host);\n}\n\n", 3);
