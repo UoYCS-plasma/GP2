@@ -102,6 +102,9 @@ void *getBigArrayValue(BigArray *array, int index)
   int curr_min_index = array->capacity - (BIGAR_INIT_SZ / array->elem_sz) - curr->size;
   for(; curr != NULL && index < curr_min_index; curr = curr->next)
     if(curr->next != NULL) curr_min_index -= curr->next->size;
+
+  assert(curr != NULL);
+
   index -= curr_min_index;
   return (void *) (((uintptr_t) curr->items) + index * array->elem_sz);
 }
@@ -122,12 +125,11 @@ void removeFromBigArray(BigArray *array, int index)
     // First elem in linked list will represent last one in array;
     // must go backwards in indices.
     BigArrayElem *curr = array->elems;
-    int curr_min_index = array->capacity - curr->size;
+    int curr_min_index = array->capacity - (BIGAR_INIT_SZ / array->elem_sz) - curr->size;
     for(; curr != NULL && index < curr_min_index; curr = curr->next)
       if(curr->next != NULL) curr_min_index -= curr->next->size;
 
     assert(curr != NULL);
-    curr_min_index -= curr->size;
 
     hole = (BigArrayHole *) (((uintptr_t) curr->items)
                              + (index-curr_min_index) * array->elem_sz);
