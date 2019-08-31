@@ -484,8 +484,8 @@ void printGraph(Graph *graph, FILE *file)
    {
       /* Five nodes per line */
       if(node_count != 0 && node_count % 5 == 0) PTF("\n  ");
-      if(node->root) PTF("(%p(R), ", (void *) node);
-      else PTF("(%p, ", (void *) node);
+      if(node->root) PTF("(%d(R), ", node->index);
+      else PTF("(%d, ", node->index);
       printHostLabel(node->label, file);
       PTF(") ");
    }
@@ -500,8 +500,8 @@ void printGraph(Graph *graph, FILE *file)
    {
       /* Three edges per line */
       if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
-      PTF("(%p, %p, %p, ", (void *) edge,
-          (void *) edge->source, (void *) edge->target);
+      PTF("(%d, %d, %d, ", edge->index,
+          edge->source->index, edge->target->index);
       printHostLabel(edge->label, file);
       PTF(") ");
    }

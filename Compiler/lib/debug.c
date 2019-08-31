@@ -173,8 +173,8 @@ void printVerboseGraph(Graph *graph, FILE *file)
     RootNodes *iterator = graph->root_nodes;
     while(iterator != NULL)
     {
-       if(iterator->next == NULL) PTF("%p\n", (void *) iterator->node);
-       else PTF("%p, ", (void *) iterator->node);
+       if(iterator->next == NULL) PTF("%d\n",iterator->node->index);
+       else PTF("%d, ", iterator->node->index);
        iterator = iterator->next;
     }
     PTF("\n");
@@ -187,7 +187,7 @@ void printVerboseGraph(Graph *graph, FILE *file)
 
 void printVerboseNode(Node *node, FILE *file)
 {
-    PTF("ID: %p", (void *) node);
+    PTF("ID: %d", node->index);
     if(node->root) PTF(" (Root)\n");
     PTF("Label: ");
     printHostLabel(node->label, file);
@@ -197,20 +197,20 @@ void printVerboseNode(Node *node, FILE *file)
     PTF("Outedges: ");
     EdgeList *elistpos = NULL;
     for(Edge *out_edge; (out_edge = yieldNextOutEdge(node, &elistpos)) != NULL;)
-       PTF("%p ", out_edge);
+       PTF("%d ", out_edge->index);
 
     PTF("\nInedges: ");
     for(Edge *in_edge; (in_edge = yieldNextInEdge(node, &elistpos)) != NULL;)
-       PTF("%p ", in_edge);
+       PTF("%d ", in_edge->index);
     PTF("\n\n");
 }
 
 void printVerboseEdge(Edge *edge, FILE *file)
 {
-    PTF("ID: %p", (void *) edge);
+    PTF("ID: %d", edge->index);
     PTF("Label: ");
     printHostLabel(edge->label, file);
     PTF("\n");
-    PTF("Source: %p. Target: %p\n\n", (void *) edge->source, (void *) edge->target);
+    PTF("Source: %d. Target: %d\n\n", edge->source->index, edge->target->index);
 }
 
