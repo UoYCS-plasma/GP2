@@ -62,8 +62,9 @@ void doubleBigArray(BigArray *array)
     print_to_log("Error (doubleArray): malloc failure.\n");
     exit(1);
   }
-  new_elem->size = array->capacity;
-  new_elem->items = malloc(array->capacity * array->elem_sz);
+  new_elem->size = array->capacity - (BIGAR_INIT_SZ / array->elem_sz);
+  if(new_elem->size == 0) new_elem->size = 1;
+  new_elem->items = malloc(new_elem->size * array->elem_sz);
   if(new_elem->items == NULL)
   {
     print_to_log("Error (doubleArray): malloc failure.\n");
@@ -71,7 +72,7 @@ void doubleBigArray(BigArray *array)
   }
   new_elem->next = array->elems;
   array->elems = new_elem;
-  array->capacity *= 2;
+  array->capacity += new_elem->size;
 }
 
 int genFreeBigArrayPos(BigArray *array)
@@ -98,9 +99,10 @@ void *getBigArrayValue(BigArray *array, int index)
   else
     index -= BIGAR_INIT_SZ / array->elem_sz;
   BigArrayElem *curr = array->elems;
-  int curr_min_index = array->capacity - curr->size;
+  int curr_min_index = array->capacity - (BIGAR_INIT_SZ / array->elem_sz) - curr->size;
   for(; curr != NULL && index < curr_min_index; curr = curr->next)
-    curr_min_index -= curr->size;
+    if(curr->next != NULL) curr_min_index -= curr->next->size;
+  index -= curr_min_index;
   return (void *) (((uintptr_t) curr->items) + index * array->elem_sz);
 }
 

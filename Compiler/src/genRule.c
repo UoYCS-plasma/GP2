@@ -454,7 +454,7 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
 {
    PTFI("if(match)\n", indent);
    PTFI("{\n", indent);
-   PTFI("addNodeMap(morphism, %d, host_node->index, new_assignments);\n",
+   PTFI("addNodeMap(morphism, %d, host_node, new_assignments);\n",
         indent + 3, node->index);
    PTFI("host_node->matched = true;\n", indent + 3);
    if(node->predicates != NULL)
