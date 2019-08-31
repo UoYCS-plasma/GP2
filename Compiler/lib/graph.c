@@ -309,6 +309,8 @@ void tryGarbageCollectEdge(Edge *edge)
 Node *yieldNextNode(Graph *graph, NodeList **current)
 {
    if(*current == NULL) *current = graph->nodes;
+   else if(!(*current)->node->deleted)
+     *current = (*current)->next;
 
    bool deleted_node = true;
 
@@ -338,6 +340,8 @@ Node *yieldNextNode(Graph *graph, NodeList **current)
 Edge *yieldNextOutEdge(Node *node, EdgeList **current)
 {
    if(*current == NULL) *current = node->out_edges;
+   else if(!(*current)->edge->deleted)
+     *current = (*current)->next;
 
    bool deleted_edge = true;
 
@@ -366,6 +370,8 @@ Edge *yieldNextOutEdge(Node *node, EdgeList **current)
 Edge *yieldNextInEdge(Node *node, EdgeList **current)
 {
    if(*current == NULL) *current = node->in_edges;
+   else if(!(*current)->edge->deleted)
+     *current = (*current)->next;
 
    bool deleted_edge = true;
 
@@ -394,6 +400,8 @@ Edge *yieldNextInEdge(Node *node, EdgeList **current)
 Edge *yieldNextEdge(Graph *graph, EdgeList **current)
 {
    if(*current == NULL) *current = graph->edges;
+   else if(!(*current)->edge->deleted)
+     *current = (*current)->next;
 
    bool deleted_edge = true;
 
