@@ -128,7 +128,6 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    elist->next = graph->edges;
    graph->edges = elist;
 
-   // add to source edgelist
    int srclstind = genFreeBigArrayPos(&(source->_outedgearray));
    EdgeList *srclist = (EdgeList *) getBigArrayValue(
        &(source->_outedgearray), srclstind);
@@ -146,10 +145,10 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
        &(target->_inedgearray), trglstind);
    trglist->index = trglstind;
    trglist->edge = edge;
-   if (target->out_edges != NULL)
-     target->out_edges->prev = trglist;
-   trglist->next = target->out_edges;
-   target->out_edges = trglist;
+   if (target->in_edges != NULL)
+     target->in_edges->prev = trglist;
+   trglist->next = target->in_edges;
+   target->in_edges = trglist;
    target->indegree++;
    edge->in_trglst = true;
 
@@ -190,10 +189,10 @@ void recoverEdge(Graph *graph, Edge *edge)
        &(edge->target->_inedgearray), trglstind);
    trglist->index = trglstind;
    trglist->edge = edge;
-   if (edge->target->out_edges != NULL)
-     edge->target->out_edges->prev = trglist;
-   trglist->next = edge->target->out_edges;
-   edge->target->out_edges = trglist;
+   if (edge->target->in_edges != NULL)
+     edge->target->in_edges->prev = trglist;
+   trglist->next = edge->target->in_edges;
+   edge->target->in_edges = trglist;
    edge->target->indegree++;
    edge->in_trglst = true;
 
