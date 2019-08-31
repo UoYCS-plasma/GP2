@@ -40,9 +40,8 @@ BigArray makeBigArray(int initial_capacity, size_t elem_sz)
       print_to_log("Error (makeArray): malloc failure.\n");
       exit(1);
     }
-    array.elems->size = initial_capacity - BIGAR_INIT_SZ;
-    array.elems->items = malloc((initial_capacity - BIGAR_INIT_SZ)
-        * array.elem_sz);
+    array.elems->size = initial_capacity - BIGAR_INIT_SZ / array.elem_sz;
+    array.elems->items = malloc((initial_capacity * array.elem_sz) - BIGAR_INIT_SZ);
     if(array.elems->items == NULL)
     {
       print_to_log("Error (makeArray): malloc failure.\n");
@@ -62,8 +61,7 @@ void doubleBigArray(BigArray *array)
     print_to_log("Error (doubleArray): malloc failure.\n");
     exit(1);
   }
-  new_elem->size = array->capacity - (BIGAR_INIT_SZ / array->elem_sz);
-  if(new_elem->size == 0) new_elem->size = 1;
+  new_elem->size = array->capacity;
   new_elem->items = malloc(new_elem->size * array->elem_sz);
   if(new_elem->items == NULL)
   {
