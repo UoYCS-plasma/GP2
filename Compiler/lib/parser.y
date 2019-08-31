@@ -139,7 +139,7 @@ HostEdge: '(' EdgeID ',' NodeID ',' NodeID ',' HostLabel ')'
 					{ PWord_t src, trg;
           JLG(src, node_map, $4);
           JLG(trg, node_map, $6);
-          addEdge(host, $8, (Node *) src, (Node *) trg); }
+          addEdge(host, $8, (Node *) *src, (Node *) *trg); }
 
 NodeID:  NUM				/* default $$ = $1 */
 EdgeID:  NUM				/* default $$ = $1 */
