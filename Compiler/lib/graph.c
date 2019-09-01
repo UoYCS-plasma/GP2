@@ -65,6 +65,7 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    nlist->node = node;
    if (graph->nodes != NULL)
      graph->nodes->prev = nlist;
+   nlist->prev = NULL;
    nlist->next = graph->nodes;
    graph->nodes = nlist;
 
@@ -98,6 +99,7 @@ void recoverNode(Graph *graph, Node *node)
    if (graph->nodes != NULL)
      graph->nodes->prev = nlist;
    nlist->next = graph->nodes;
+   nlist->prev = NULL;
    graph->nodes = nlist;
    node->in_graph = true;
 
@@ -127,8 +129,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    elist->edge = edge;
    if (graph->edges != NULL)
      graph->edges->prev = elist;
-   else
-     elist->prev = NULL;
+   elist->prev = NULL;
    elist->next = graph->edges;
    graph->edges = elist;
 
@@ -139,8 +140,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    srclist->edge = edge;
    if (source->out_edges != NULL)
      source->out_edges->prev = srclist;
-   else
-     srclist->prev = NULL;
+   srclist->prev = NULL;
    srclist->next = source->out_edges;
    source->out_edges = srclist;
    source->outdegree++;
@@ -153,8 +153,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    trglist->edge = edge;
    if (target->in_edges != NULL)
      target->in_edges->prev = trglist;
-   else
-     trglist->prev = NULL;
+   trglist->prev = NULL;
    trglist->next = target->in_edges;
    target->in_edges = trglist;
    target->indegree++;
@@ -177,8 +176,7 @@ void recoverEdge(Graph *graph, Edge *edge)
    elist->edge = edge;
    if (graph->edges != NULL)
      graph->edges->prev = elist;
-   else
-     elist->prev = NULL;
+   elist->prev = NULL;
    elist->next = graph->edges;
    graph->edges = elist;
 
@@ -189,8 +187,7 @@ void recoverEdge(Graph *graph, Edge *edge)
    srclist->edge = edge;
    if (edge->source->out_edges != NULL)
      edge->source->out_edges->prev = srclist;
-   else
-     srclist->prev = NULL;
+   srclist->prev = NULL;
    srclist->next = edge->source->out_edges;
    edge->source->out_edges = srclist;
    edge->source->outdegree++;
@@ -203,8 +200,7 @@ void recoverEdge(Graph *graph, Edge *edge)
    trglist->edge = edge;
    if (edge->target->in_edges != NULL)
      edge->target->in_edges->prev = trglist;
-   else
-     trglist->prev = NULL;
+   trglist->prev = NULL;
    trglist->next = edge->target->in_edges;
    edge->target->in_edges = trglist;
    edge->target->indegree++;
