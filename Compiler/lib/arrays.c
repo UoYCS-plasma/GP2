@@ -47,6 +47,7 @@ BigArray makeBigArray(int initial_capacity, size_t elem_sz)
       print_to_log("Error (makeArray): malloc failure.\n");
       exit(1);
     }
+    array.elems->next = NULL;
   }
 
   array.first_hole = NULL;
