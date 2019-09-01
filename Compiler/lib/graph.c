@@ -56,6 +56,7 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    node->_inedgearray = makeBigArray(16, sizeof(EdgeList));
    node->outdegree = 0;
    node->indegree = 0;
+   node->matched = false;
    node->deleted = false;
    node->in_graph = true;
    node->in_stack = 0;
@@ -117,6 +118,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    edge->label = label;
    edge->source = source;
    edge->target = target;
+   edge->matched = false;
    edge->deleted = false;
    edge->in_graph = true;
    edge->in_stack = 0;

@@ -129,6 +129,7 @@ typedef struct Node {
    int outdegree, indegree;
    EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
    BigArray _outedgearray, _inedgearray;
+   bool matched;
    bool deleted; // 1 if going to be garbage-collected
    bool in_graph; // 1 if in a graph's nodelist
    int in_stack; // Number of times node appears in stack; dont garbage coll
@@ -145,6 +146,7 @@ typedef struct Edge {
    Graph *graph; // for garbage collection
    HostLabel label;
    Node *source, *target;
+   bool matched;
    bool deleted; // 1 if going to be garbage-collected
    bool in_graph; // 1 if in a graph's edgelist
    bool in_srclst;  // Flags for if still in src/trg edge lists
