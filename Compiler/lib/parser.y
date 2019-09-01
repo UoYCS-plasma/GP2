@@ -37,6 +37,7 @@
 /* Code placed at the top of hostParser.h.  */
 %code requires {
 #include <Judy.h>
+#include <stddef.h>
 #include "graph.h"
 #include "label.h"
 int yylex(void);
@@ -110,12 +111,12 @@ HostNodeList: HostNode			{ }
 HostNode: '(' NodeID RootNode ',' HostLabel ')' {
              PWord_t node;
              JLI(node, node_map, $2);
-             *node = addNode(host, is_root, $5);
+             *node = (ptrdiff_t) addNode(host, is_root, $5);
  				   	 is_root = false; } 
         | '(' NodeID RootNode ',' HostLabel Position ')' {
              PWord_t node;
              JLI(node, node_map, $2);
-             *node = addNode(host, is_root, $5);
+             *node = (ptrdiff_t) addNode(host, is_root, $5);
 				   	 is_root = false; } 
 
 RootNode: /* empty */ 
