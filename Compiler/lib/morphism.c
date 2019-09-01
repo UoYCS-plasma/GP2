@@ -80,7 +80,21 @@ void initialiseMorphism(Morphism *morphism, Graph *graph)
    for(int index = 0; index < morphism->edges; index++)
      removeEdgeMap(morphism, index);
    morphism->variable_index = 0;
-   removeAssignments(morphism, morphism->variables);
+   for(int index = 0; index < morphism->variables; index++)
+   {
+      if(morphism->assignment[index].type == 's')
+      {
+         free(morphism->assignment[index].str);
+         morphism->assignment[index].str = NULL;
+      }
+      if(morphism->assignment[index].type == 'l')
+      {
+         removeHostList(morphism->assignment[index].list);
+         morphism->assignment[index].list = NULL;
+      }
+      morphism->assignment[index].type = 'n';
+      morphism->assigned_variables[index] = -1;
+   }
 }
 
 void addNodeMap(Morphism *morphism, int left_index, Node *node, int assignments)
