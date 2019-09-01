@@ -745,7 +745,7 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
               if(context == 0)
                    PTFI("array%d[index%d++].num = indegree%d;\n", 
                         indent, count, count, atom->node_id); 
-              else PTFI("array%d[index%d++].num = getIndegree(host, n%d);\n", 
+              else PTFI("array%d[index%d++].num = getIndegree(n%d);\n", 
                         indent, count, count, atom->node_id); 
               break;
            
@@ -754,7 +754,7 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
               if(context == 0)
                    PTFI("array%d[index%d++].num = outdegree%d;\n", 
                         indent, count, count, atom->node_id); 
-              else PTFI("array%d[index%d++].num = getOutdegree(host, n%d);\n", 
+              else PTFI("array%d[index%d++].num = getOutdegree(n%d);\n", 
                         indent, count, count, atom->node_id); 
               break;
 
@@ -857,12 +857,12 @@ void generateIntExpression(RuleAtom *atom, int context, bool nested)
 
       case INDEGREE:
            if(context == 0) PTF("indegree%d", atom->node_id);
-           else PTF("getIndegree(host, n%d)", atom->node_id);
+           else PTF("getIndegree(n%d)", atom->node_id);
            break;
 
       case OUTDEGREE:
            if(context == 0) PTF("outdegree%d", atom->node_id);
-           else PTF("getOutdegree(host, n%d)", atom->node_id);
+           else PTF("getOutdegree(n%d)", atom->node_id);
            break;
 
       case NEG:
