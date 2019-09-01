@@ -733,7 +733,6 @@ void generateAddRHSCode(Rule *rule)
    PTF("void apply%s(Morphism *morphism, bool record_changes)\n", rule->name);
    PTF("{\n");
    PTFI("UNUSED(morphism);\n", 3);
-   PTFI("int index;\n", 3);
    PTFI("HostLabel label;\n\n", 3);
    /* Generate code to retrieve the values assigned to the variables in the
     * matching phase. */
@@ -753,8 +752,9 @@ void generateAddRHSCode(Rule *rule)
       PTFI("/* Array of host node indices indexed by RHS node index. */\n", 3);
       PTFI("Node *map[%d];\n\n", 3, rule->rhs->node_index);
    }
-   PTFI("Node *host_node;\n", 3);
-   PTFI("Edge *host_edge;\n", 3);
+   if (rule->rhs->node_index > 0) PTFI("Node *host_node;\n", 3);
+   if (rule->rhs->edge_index > 0) PTFI("Edge *host_edge;\n", 3);
+
    for(index = 0; index < rule->rhs->node_index; index++)
    {
       RuleNode *node = getRuleNode(rule->rhs, index);
