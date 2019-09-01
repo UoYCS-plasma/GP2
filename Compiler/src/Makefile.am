@@ -1,5 +1,5 @@
 BUILT_SOURCES = lexer.c parser.h parser.c
-AM_YFLAGS = -d
+AM_YFLAGS = -d -Wno-yacc
 
 bin_PROGRAMS = gp2
 
