@@ -98,8 +98,8 @@ void recoverNode(Graph *graph, Node *node)
    nlist->node = node;
    if (graph->nodes != NULL)
      graph->nodes->prev = nlist;
-   nlist->next = graph->nodes;
    nlist->prev = NULL;
+   nlist->next = graph->nodes;
    graph->nodes = nlist;
    node->in_graph = true;
 
