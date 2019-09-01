@@ -882,8 +882,8 @@ void generateApplicationCode(Rule *rule)
             host_edge_declared = true;
          }
          else PTFI("host_edge = lookupEdge(morphism, %d);\n", 3, index);
-         PTFI("if(record_changes) pushRemovedEdge(edge);\n", 3);
-         PTFI("removeEdge(host, host_edge_index);\n\n", 3);
+         PTFI("if(record_changes) pushRemovedEdge(host_edge);\n", 3);
+         PTFI("removeEdge(host, host_edge);\n\n", 3);
       }
       else
       {
