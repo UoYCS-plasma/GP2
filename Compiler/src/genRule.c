@@ -366,7 +366,7 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism)\n", left_node->index);
    PTF("{\n");
-   PTFI("NodeList *nlistpos;\n", 3);
+   PTFI("NodeList *nlistpos = NULL;\n", 3);
    PTFI("for(Node *host_node; (host_node = yieldNextNode(host, &nlistpos)) != NULL;)\n", 3);
    PTFI("{\n", 3);
    PTFI("if(host_node->matched) continue;\n", 6);
@@ -526,7 +526,7 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
 {
    PTF("static bool match_e%d(Morphism *morphism)\n", left_edge->index);
    PTF("{\n");
-   PTFI("EdgeList *elistpos;\n", 3);
+   PTFI("EdgeList *elistpos = NULL;\n", 3);
    PTFI("for(Edge *host_edge; (host_edge = yieldNextEdge(host, &elistpos)) != NULL;)\n", 3);
    PTFI("{\n", 3);
    PTFI("if(host_edge->matched) continue;\n", 6);
@@ -552,7 +552,7 @@ static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_
    PTFI("Node *host_node = lookupNode(morphism, %d);\n", 3, left_edge->source->index);
    PTFI("if(host_node == NULL) return false;\n", 3);
 
-   PTFI("EdgeList *elistpos;\n", 3);
+   PTFI("EdgeList *elistpos = NULL;\n", 3);
    PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host_node, &elistpos)) != NULL;)\n", 3);
    PTFI("{\n", 3);
    PTFI("if(host_edge->matched) continue;\n", 6);
@@ -608,8 +608,9 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
       PTFI("Node *host_node = lookupNode(morphism, %d);\n", 3, start_index);
       PTFI("Node *end_node = lookupNode(morphism, %d);\n", 3, end_index);
       PTFI("if(host_node == NULL) return false;\n", 3);
-      PTFI("EdgeList *elistpos;\n", 3);
+      PTFI("EdgeList *elistpos = NULL;\n", 3);
    }
+
    if(source)
       PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host_node, &elistpos)) != NULL;)\n", 3);
    else

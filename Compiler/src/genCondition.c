@@ -226,7 +226,7 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            int source = predicate->edge_pred.source;
            int target = predicate->edge_pred.target;
            PTFI("bool edge_found = false;\n", 3);
-           PTFI("EdgeList *elist;\n", 3);
+           PTFI("EdgeList *elist = NULL;\n", 3);
            //PTFI("for(counter = 0; counter < source->out_edges.size + 2; counter++)\n", 3);
            PTFI("for(Edge *edge; (edge = yieldNextOutEdge(n%d, &elist)) != NULL;)\n", 3, source);
            PTFI("{\n", 3);
