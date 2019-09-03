@@ -137,9 +137,9 @@ void removeFromBigArray(BigArray *array, int index)
     }
 
     hole->next = array->first_hole;
-    if (array->first_hole != NULL) {
+    hole->prev = NULL;
+    if (array->first_hole != NULL)
       array->first_hole->prev = hole;
-    }
     array->first_hole = hole;
   }
 }
