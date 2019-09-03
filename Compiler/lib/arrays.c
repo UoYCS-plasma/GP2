@@ -158,5 +158,7 @@ void emptyBigArray(BigArray *array)
       }
       prev = curr;
     }
+    free(prev->items);
+    free(prev);
   }
 }
