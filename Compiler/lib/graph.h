@@ -27,6 +27,7 @@
 #ifndef INC_GRAPH_H
 #define INC_GRAPH_H
 
+#include "arrays.h"
 #include "common.h"
 #include "label.h"
 
@@ -56,43 +57,6 @@ typedef struct EdgeList {
 typedef struct NodeQuery {
   MarkType mark;
 } NodeQuery;
-
-typedef struct BigArrayElem {
-  int size;
-  void *items;
-  struct BigArrayElem *next;
-} BigArrayElem;
-
-// A hole in a BigArray (below) is filled with the following structure.
-// The holes make up an internal linked list of holes, so the next one
-// can be retrieved quickly.
-// Stores addresses so indices are available at no traversal cost
-typedef struct BigArrayHole {
-  int index;
-  struct BigArrayHole *prev;
-  struct BigArrayHole *next;
-} BigArrayHole;
-
-// Dynamic data struct of arbitrary size, which never moves elements.
-// Hence, pointers to its elements are never invalidated.
-// This structure is a linked list of arrays repeatedly doubling in size
-// and an IntArray of available holes in said array.
-// Useful for minimizing the number of malloc's while keeping pointers valid.
-typedef struct BigArray {
-  int capacity;
-  int size;
-  size_t elem_sz;
-#define BIGAR_INIT_SZ 256
-  char firstelems[BIGAR_INIT_SZ]; // use this before malloc'ing space
-  BigArrayElem *elems;
-  BigArrayHole *first_hole;
-} BigArray;
-
-BigArray makeBigArray(int initial_capacity, size_t elem_sz);
-int genFreeBigArrayPos(BigArray *array);
-void *getBigArrayValue(BigArray *array, int index);
-void removeFromBigArray(BigArray *array, int index);
-void emptyBigArray(BigArray *array);
 
 /* ================================
  * Graph Data Structure + Functions
