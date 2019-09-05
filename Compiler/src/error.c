@@ -31,4 +31,3 @@ void closeLogFile(void)
 {
    fclose(log_file);
 }
-

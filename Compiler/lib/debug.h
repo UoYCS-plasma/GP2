@@ -26,22 +26,12 @@
 #ifndef INC_DEBUG_H
 #define INC_DEBUG_H
 
-#define print_trace(trace, ...)                       \
-    do { fprintf(trace_file, trace, ##__VA_ARGS__); }   \
-  while(0)
-
 #include "common.h"
-#include "graph.h"
 
-#include <stdbool.h>
 #include <stdlib.h> 
 #include <stdio.h> 
 
 void openLogFile(string log_file_name);
 void closeLogFile(void);
-
-extern FILE *trace_file;
-void openTraceFile(string trace_file_name);
-void closeTraceFile(void);
 
 #endif /* INC_DEBUG_H */
