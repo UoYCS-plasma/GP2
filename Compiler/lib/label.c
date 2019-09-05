@@ -15,7 +15,7 @@
 
 #include "label.h"
 
-HostLabel blank_label = {NONE, 0, NULL};
+HostLabel blank_label = {NULL, 0, NONE};
 
 #ifdef LIST_HASHING
 Bucket **list_store = NULL;

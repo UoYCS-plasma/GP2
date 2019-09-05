@@ -31,7 +31,7 @@ BigArray makeBigArray(size_t elem_sz)
 
   array.elem_sz = elem_sz;
   array.elems = NULL;
-  array.capacity = BIGAR_INIT_SZ / array.elem_sz
+  array.capacity = BIGAR_INIT_SZ / array.elem_sz;
   array.first_hole = NULL;
 
   return array;

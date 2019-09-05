@@ -45,13 +45,20 @@
  * Specifically, an undo operation must restore the graph to its exact state,
  * which includes the indices of nodes and edges in their arrays and the graph's
  * holes arrays. */
-typedef enum { ADDED_NODE = 0, ADDED_EDGE, REMOVED_NODE, REMOVED_EDGE,
-	       RELABELLED_NODE, RELABELLED_EDGE, REMARKED_NODE, REMARKED_EDGE,
-               CHANGED_ROOT_NODE} GraphChangeType;
+typedef enum {
+   ADDED_NODE = 0,
+   ADDED_EDGE,
+   REMOVED_NODE,
+   REMOVED_EDGE,
+	 RELABELLED_NODE,
+   RELABELLED_EDGE,
+   REMARKED_NODE,
+   REMARKED_EDGE,
+   CHANGED_ROOT_NODE
+} __attribute__ ((__packed__)) GraphChangeType;
 
 typedef struct GraphChange
 {
-   GraphChangeType type;
    union
    {
       Node *added_node;
@@ -79,11 +86,15 @@ typedef struct GraphChange
       /* Records the node whose root status was changed. */
       Node *changed_root;
    };
+   GraphChangeType type;
+   bool first_occurrence; // true if node/edge first appears here in stack
 } GraphChange;
 
 struct GraphChangeStack;
 extern struct GraphChangeStack *graph_change_stack;
 extern int graph_change_count;
+
+void setStackGraph(Graph *graph);
 
 int topOfGraphChangeStack(void);
 void pushAddedNode(Node *node);
@@ -95,7 +106,7 @@ void pushRelabelledEdge(Edge *edge, HostLabel old_label);
 void pushRemarkedNode(Node *node, MarkType old_mark);
 void pushRemarkedEdge(Edge *edge, MarkType old_mark);
 void pushChangedRootNode(Node *node);
-void undoChanges(Graph *graph, int restore_point);
+void undoChanges(int restore_point);
 // Need to pass graph here in case node/edges need to be collected
 void discardChanges(int restore_point);
 void freeGraphChangeStack(void);

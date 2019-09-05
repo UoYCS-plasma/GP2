@@ -180,10 +180,10 @@ void changeEdgeMark(Edge *edge, MarkType new_mark);
 #define setEdgeInStack(edge) (edge)->flags |= EFLAG_INSTACK
 #define setEdgeInSrcLst(edge) (edge)->flags |= EFLAG_INSRCLST
 #define setEdgeInTrgLst(edge) (edge)->flags |= EFLAG_INTRGLST
-#define clearEdgeMatched(Edge) (edge)->flags &= ~EFLAG_MATCHED
-#define clearEdgeDeleted(Edge) (edge)->flags &= ~EFLAG_DELETED
-#define clearEdgeInGraph(Edge) (edge)->flags &= ~EFLAG_INGRAPH
-#define clearEdgeInStack(Edge) (edge)->flags &= ~EFLAG_INSTACK
+#define clearEdgeMatched(edge) (edge)->flags &= ~EFLAG_MATCHED
+#define clearEdgeDeleted(edge) (edge)->flags &= ~EFLAG_DELETED
+#define clearEdgeInGraph(edge) (edge)->flags &= ~EFLAG_INGRAPH
+#define clearEdgeInStack(edge) (edge)->flags &= ~EFLAG_INSTACK
 #define clearEdgeInSrcLst(edge) (edge)->flags &= ~EFLAG_INSRCLST
 #define clearEdgeInTrgLst(edge) (edge)->flags &= ~EFLAG_INTRGLST
 

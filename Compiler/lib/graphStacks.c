@@ -19,6 +19,7 @@ typedef struct GraphChangeStack {
    int size;
    int capacity;
    GraphChange *stack;
+   Graph *graph;
 } GraphChangeStack;
 
 GraphChangeStack *graph_change_stack = NULL;
@@ -40,6 +41,7 @@ static void makeGraphChangeStack(int initial_capacity)
       print_to_log("Error (makeGraphChangeStack): malloc failure.\n");
       exit(1);
    }
+   stack->graph = NULL;
    graph_change_stack = stack;
 }
 
@@ -70,6 +72,11 @@ static GraphChange pullGraphChange(void)
    return graph_change_stack->stack[--graph_change_stack->size];
 }
 
+void setStackGraph(Graph *graph)
+{
+   graph_change_stack->graph = graph;
+}
+
 int topOfGraphChangeStack(void)
 {
    return graph_change_stack->size;
@@ -80,7 +87,8 @@ void pushAddedNode(Node *node)
    GraphChange change;
    change.type = ADDED_NODE;
    change.added_node = node;
-   node->in_stack++; // TODO
+   change.first_occurrence = !nodeInStack(node);
+   setNodeInStack(node);
    pushGraphChange(change);
 }
 
@@ -89,7 +97,8 @@ void pushAddedEdge(Edge *edge)
    GraphChange change;
    change.type = ADDED_EDGE;
    change.added_edge = edge;
-   edge->in_stack++; // TODO
+   change.first_occurrence = !edgeInStack(edge);
+   setEdgeInStack(edge);
    pushGraphChange(change);
 }
 
@@ -98,7 +107,8 @@ void pushRemovedNode(Node *node)
    GraphChange change;
    change.type = REMOVED_NODE;
    change.removed_node = node;
-   node->in_stack++; // TODO
+   change.first_occurrence = !nodeInStack(node);
+   setNodeInStack(node);
    pushGraphChange(change);
 }
 
@@ -107,7 +117,8 @@ void pushRemovedEdge(Edge *edge)
    GraphChange change;
    change.type = REMOVED_EDGE;
    change.removed_edge = edge;
-   edge->in_stack++; // TODO
+   change.first_occurrence = !edgeInStack(edge);
+   setEdgeInStack(edge);
    pushGraphChange(change);
 }
 
@@ -116,7 +127,8 @@ void pushRelabelledNode(Node *node, HostLabel old_label)
    GraphChange change;
    change.type = RELABELLED_NODE;
    change.relabelled_node.node = node;
-   node->in_stack++; // TODO
+   change.first_occurrence = !nodeInStack(node);
+   setNodeInStack(node);
    change.relabelled_node.old_label = old_label;
    /* Keep a record of the list as the relabelling of the node could free this
     * list or remove its bucket from the hash table. */
@@ -133,7 +145,8 @@ void pushRelabelledEdge(Edge *edge, HostLabel old_label)
    GraphChange change;
    change.type = RELABELLED_EDGE;
    change.relabelled_edge.edge = edge;
-   edge->in_stack++; // TODO
+   change.first_occurrence = !edgeInStack(edge);
+   setEdgeInStack(edge);
    change.relabelled_edge.old_label = old_label;
    /* Keep a record of the list as the relabelling of the edge could free this
     * list or remove its bucket from the hash table. */
@@ -150,7 +163,8 @@ void pushRemarkedNode(Node *node, MarkType old_mark)
    GraphChange change;
    change.type = REMARKED_NODE;
    change.remarked_node.node = node;
-   node->in_stack++; // TODO
+   change.first_occurrence = !nodeInStack(node);
+   setNodeInStack(node);
    change.remarked_node.old_mark = old_mark;
    pushGraphChange(change);
 }
@@ -160,7 +174,8 @@ void pushRemarkedEdge(Edge *edge, MarkType old_mark)
    GraphChange change;
    change.type = REMARKED_EDGE;
    change.remarked_edge.edge = edge;
-   edge->in_stack++; // TODO
+   change.first_occurrence = !edgeInStack(edge);
+   setEdgeInStack(edge);
    change.remarked_edge.old_mark = old_mark;
    pushGraphChange(change);
 }
@@ -170,65 +185,76 @@ void pushChangedRootNode(Node *node)
    GraphChange change;
    change.type = CHANGED_ROOT_NODE;
    change.changed_root = node;
-   change.changed_root->in_stack++; // TODO
+   change.first_occurrence = !nodeInStack(node);
+   setNodeInStack(node);
    pushGraphChange(change);
 }
 
-void undoChanges(Graph *graph, int restore_point)
+void undoChanges(int restore_point)
 {
    if(graph_change_stack == NULL) return;
    assert(restore_point >= 0);
+   Graph *graph = graph_change_stack->graph;
    while(graph_change_stack->size > restore_point)
    {
       GraphChange change = pullGraphChange();
       switch(change.type)
       {
          case ADDED_NODE:
-              change.added_node->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearNodeInStack(change.added_node);
               removeNode(graph, change.added_node);
               break;
 
          case ADDED_EDGE:
-              change.added_edge->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearEdgeInStack(change.added_edge);
               removeEdge(graph, change.added_edge);
               break;
 
          case REMOVED_NODE:
-              change.removed_node->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearNodeInStack(change.removed_node);
               clearNodeDeleted(change.removed_node);
               if(!nodeInGraph(change.removed_node))
                 recoverNode(graph, change.removed_node);
               break;
 
          case REMOVED_EDGE:
-              change.removed_edge->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearEdgeInStack(change.removed_edge);
               clearEdgeDeleted(change.removed_edge);
               if(!edgeInGraph(change.removed_edge))
                 recoverEdge(graph, change.removed_edge);
               break;
 
          case RELABELLED_NODE:
-              change.relabelled_node.node->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearNodeInStack(change.relabelled_node.node);
               relabelNode(change.relabelled_node.node, change.relabelled_node.old_label);
               break;
 
          case RELABELLED_EDGE:
-              change.relabelled_edge.edge->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearEdgeInStack(change.relabelled_edge.edge);
               relabelEdge(change.relabelled_edge.edge, change.relabelled_edge.old_label);
               break;
 
          case REMARKED_NODE:
-              change.remarked_node.node->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearNodeInStack(change.remarked_node.node);
               changeNodeMark(change.remarked_node.node, change.remarked_node.old_mark);
               break;
 
          case REMARKED_EDGE:
-              change.remarked_edge.edge->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearEdgeInStack(change.remarked_edge.edge);
               changeEdgeMark(change.remarked_edge.edge, change.remarked_edge.old_mark);
               break;
 
          case CHANGED_ROOT_NODE:
-              change.changed_root->in_stack--; // TODO
+              if(change.first_occurrence)
+                clearNodeInStack(change.changed_root);
               changeRoot(graph, change.changed_root);
               break;
 
@@ -242,45 +268,58 @@ void undoChanges(Graph *graph, int restore_point)
 
 static void freeGraphChange(GraphChange change)
 {
+   Graph *graph = graph_change_stack->graph;
    switch(change.type)
    {
       case ADDED_NODE:
-           change.added_node->in_stack--; // TODO
-           tryGarbageCollectNode(change.added_node);
+           if(change.first_occurrence)
+             clearNodeInStack(change.added_node);
+           tryGarbageCollectNode(graph, change.added_node);
            break;
 
       case ADDED_EDGE:
-           change.added_edge->in_stack--; // TODO
-           tryGarbageCollectEdge(change.added_edge);
-           break;
-
-      case CHANGED_ROOT_NODE:
+           if(change.first_occurrence)
+             clearEdgeInStack(change.added_edge);
+           if(edgeFree(change.added_edge))
+           {
+             removeHostList(change.added_edge->label.list);
+             removeFromBigArray(&(graph->_edgearray), change.added_edge->index);
+           }
            break;
 
       case REMOVED_NODE:
-           change.removed_node->in_stack--; // TODO
+           if(change.first_occurrence)
+             clearNodeInStack(change.removed_node);
            break;
 
       case REMOVED_EDGE:
-           change.removed_edge->in_stack--; // TODO
+           if(change.first_occurrence)
+             clearEdgeInStack(change.removed_edge);
            break;
 
       case RELABELLED_NODE:
-           change.relabelled_node.node->in_stack--; // TODO
-           removeHostList(change.relabelled_node.old_label.list);
+           if(change.first_occurrence)
+             clearNodeInStack(change.relabelled_node.node);
            break;
 
       case RELABELLED_EDGE:
-           change.relabelled_edge.edge->in_stack--; // TODO
-           removeHostList(change.relabelled_edge.old_label.list);
+           if(change.first_occurrence)
+             clearEdgeInStack(change.relabelled_edge.edge);
            break;
 
       case REMARKED_NODE:
-           change.remarked_node.node->in_stack--; // TODO
+           if(change.first_occurrence)
+             clearNodeInStack(change.remarked_node.node);
            break;
 
       case REMARKED_EDGE:
-           change.remarked_edge.edge->in_stack--; // TODO
+           if(change.first_occurrence)
+             clearEdgeInStack(change.remarked_edge.edge);
+           break;
+
+      case CHANGED_ROOT_NODE:
+           if(change.first_occurrence)
+             clearNodeInStack(change.changed_root);
            break;
 
       default:
@@ -293,7 +332,7 @@ static void freeGraphChange(GraphChange change)
 void discardChanges(int restore_point)
 {
    if(graph_change_stack == NULL) return;
-   while(graph_change_stack->size > restore_point) 
+   while(graph_change_stack->size > restore_point)
    {
       GraphChange change = pullGraphChange();
       freeGraphChange(change);

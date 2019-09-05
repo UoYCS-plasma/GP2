@@ -45,8 +45,8 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    int nodeind = genFreeBigArrayPos(&(graph->_nodearray));
    Node *node = (Node *) getBigArrayValue(&(graph->_nodearray), nodeind);
    node->index = nodeind;
-   if(root) initializeRootNodeInGraph(node)
-   else initializeNodeInGraph(node)
+   if(root) initializeRootNodeInGraph(node);
+   else initializeNodeInGraph(node);
    node->label = label;
    node->out_edges = NULL;
    node->in_edges = NULL;
