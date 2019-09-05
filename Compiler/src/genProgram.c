@@ -118,6 +118,7 @@ void generateRuntimeMain(List *declarations, string output_dir)
    PTFI("return NULL;\n", 6);
    PTFI("}\n\n", 3);
    PTFI("host = newGraph();\n", 3);
+   PTFI("setStackGraph(host);\n", 3);
    PTFI("/* The parser populates the host graph using node_map to add edges with\n", 3);
    PTFI(" * the correct source and target indices. */\n", 3);
    PTFI("int result = yyparse();\n", 3);
@@ -476,7 +477,7 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
    PTFI("} while(false);\n\n", data.indent);
 
    if(condition_data.context == IF_BODY && condition_data.restore_point >= 0)
-      PTFI("undoChanges(host, restore_point%d);\n", data.indent, condition_data.restore_point);
+      PTFI("undoChanges(restore_point%d);\n", data.indent, condition_data.restore_point);
 
    /* Update the indentation of the passed command data for the calls to generate the
     * then-branch and else-branch code. */
@@ -496,7 +497,7 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
    PTFI("{\n", data.indent);
 
    if(condition_data.context == TRY_BODY && condition_data.restore_point >= 0)
-      PTFI("undoChanges(host, restore_point%d);\n", new_data.indent, condition_data.restore_point);
+      PTFI("undoChanges(restore_point%d);\n", new_data.indent, condition_data.restore_point);
 
    PTFI("success = true;\n", new_data.indent); /* Reset success flag before executing else branch. */
    generateProgramCode(command->cond_branch.else_command, new_data);
@@ -576,7 +577,7 @@ static void generateFailureCode(string rule_name, CommandData data)
    if(data.context == IF_BODY || data.context == TRY_BODY) PTFI("break;\n", data.indent);
 
    if(data.context == LOOP_BODY && data.restore_point >= 0)
-      PTFI("undoChanges(host, restore_point%d);\n", data.indent, data.restore_point);
+      PTFI("undoChanges(restore_point%d);\n", data.indent, data.restore_point);
 }
 
 /* The function singleRule returns true if the passed command amounts to a single

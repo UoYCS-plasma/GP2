@@ -74,6 +74,7 @@ static GraphChange pullGraphChange(void)
 
 void setStackGraph(Graph *graph)
 {
+   if(graph_change_stack == NULL) makeGraphChangeStack(128);
    graph_change_stack->graph = graph;
 }
 
