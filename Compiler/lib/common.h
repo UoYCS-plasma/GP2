@@ -42,9 +42,32 @@
 #define PTF printToFile
 
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef char* string;
 
 extern FILE *log_file;
+
+inline void *mallocSafe(size_t sz, char *fn)
+{
+  void *result = malloc(sz);
+  if(result == NULL)
+  {
+    print_to_log("Error (%s): malloc failure.\n", fn);
+    exit(1);
+  }
+  return result;
+}
+
+inline void *reallocSafe(void *ptr, size_t sz, char *fn)
+{
+  void *result = realloc(ptr, sz);
+  if(result == NULL)
+  {
+    print_to_log("Error (%s): realloc failure.\n", fn);
+    exit(1);
+  }
+  return result;
+}
 
 #endif /* INC_COMMON_H */

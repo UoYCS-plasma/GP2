@@ -30,8 +30,6 @@
  // 20 bytes
 typedef struct BigArrayElem {
   void *items;
-  struct BigArrayElem *next;
-  int size; // TODO: UNSIGNED
 } BigArrayElem;
 
 // A hole in a BigArray (below) is filled with the following structure.
@@ -54,6 +52,7 @@ typedef struct BigArrayHole {
 
 // 32 bytes + BIGAR_INIT_SZ
 // currently, 192 bytes
+// dno m8
 typedef struct BigArray {
   int capacity; // TODO: UNSIGNED
   int size; // TODO: UNSIGNED
@@ -62,6 +61,8 @@ typedef struct BigArray {
   char firstelems[BIGAR_INIT_SZ]; // use this before malloc'ing space
   BigArrayElem *elems;
   BigArrayHole *first_hole;
+  unsigned char max_array;
+  unsigned char num_arrays;
 } BigArray;
 
 BigArray makeBigArray(size_t elem_sz);

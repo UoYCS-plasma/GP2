@@ -14,7 +14,11 @@
   along with the GP 2 Compiler. If not, see <http://www.gnu.org/licenses/>. */
 
 #include <stdint.h>
+#include <stddef.h>
 #include "graph.h"
+
+// Find leading bit in an int.
+#define fls(x) ((sizeof(int)<<3) - __builtin_clz(x))
 
 BigArray makeBigArray(size_t elem_sz)
 {
@@ -30,6 +34,8 @@ BigArray makeBigArray(size_t elem_sz)
   //   array.elem_sz = elem_sz;
 
   array.elem_sz = elem_sz;
+  array.num_arrays = 0;
+  array.max_array = 0;
   array.elems = NULL;
   array.capacity = BIGAR_INIT_SZ / array.elem_sz;
   array.first_hole = NULL;
@@ -39,22 +45,23 @@ BigArray makeBigArray(size_t elem_sz)
 
 void doubleBigArray(BigArray *array)
 {
-  BigArrayElem *new_elem = malloc(sizeof(BigArrayElem));
-  if(new_elem == NULL)
+  if(array->elems == NULL)
   {
-    print_to_log("Error (doubleArray): malloc failure.\n");
-    exit(1);
+    array->elems = mallocSafe(sizeof(BigArrayElem), "doubleBigArray");
+    array->num_arrays = 1;
   }
-  new_elem->size = array->capacity;
-  new_elem->items = malloc(new_elem->size * array->elem_sz);
-  if(new_elem->items == NULL)
+  else if(array->num_arrays == array->max_array+1)
   {
-    print_to_log("Error (doubleArray): malloc failure.\n");
-    exit(1);
+    array->elems = reallocSafe(array->elems,
+        sizeof(BigArrayElem) * (array->max_array++), "doubleBigArray");
+    array->num_arrays <<= 1;
   }
-  new_elem->next = array->elems;
-  array->elems = new_elem;
-  array->capacity += new_elem->size;
+  else
+    array->max_array++;
+
+  BigArrayElem *new_elem = &(array->elems[array->max_array]);
+  new_elem->items = mallocSafe(array->elem_sz * (1 << array->max_array), "doubleBigArray");
+  array->capacity += (1 << array->max_array);
 }
 
 int genFreeBigArrayPos(BigArray *array)
@@ -78,17 +85,12 @@ void *getBigArrayValue(BigArray *array, int index)
 {
   if(index < BIGAR_INIT_SZ / array->elem_sz)
     return (void *) &(array->firstelems[index * array->elem_sz]);
-  else
-    index -= BIGAR_INIT_SZ / array->elem_sz;
-  BigArrayElem *curr = array->elems;
-  int curr_min_index = array->capacity - (BIGAR_INIT_SZ / array->elem_sz) - curr->size;
-  for(; curr != NULL && index < curr_min_index; curr = curr->next)
-    if(curr->next != NULL) curr_min_index -= curr->next->size;
 
-  assert(curr != NULL);
+  index -= BIGAR_INIT_SZ / array->elem_sz;
+  BigArrayElem subarray = array->elems[fls(index)];
+  ptrdiff_t inarray_index = (ptrdiff_t) index - (1 << fls(index));
 
-  index -= curr_min_index;
-  return (void *) (((uintptr_t) curr->items) + index * array->elem_sz);
+  return (void *) subarray.items + inarray_index;
 }
 
 void removeFromBigArray(BigArray *array, int index)
@@ -96,28 +98,8 @@ void removeFromBigArray(BigArray *array, int index)
   if(index == array->size - 1) array->size--;
   else
   {
-    BigArrayHole *hole;
-    if(index < BIGAR_INIT_SZ / array->elem_sz)
-    {
-      hole = (BigArrayHole *) &(array->firstelems[index]);
-      hole->index = index;
-    }
-    else
-    {
-      index -= BIGAR_INIT_SZ / array->elem_sz;
-      // First elem in linked list will represent last one in array;
-      // must go backwards in indices.
-      BigArrayElem *curr = array->elems;
-      int curr_min_index = array->capacity - (BIGAR_INIT_SZ / array->elem_sz) - curr->size;
-      for(; curr != NULL && index < curr_min_index; curr = curr->next)
-        if(curr->next != NULL) curr_min_index -= curr->next->size;
-
-      assert(curr != NULL);
-
-      hole = (BigArrayHole *) (((uintptr_t) curr->items)
-                               + (index-curr_min_index) * array->elem_sz);
-      hole->index = index - curr_min_index + (BIGAR_INIT_SZ / array->elem_sz);
-    }
+    BigArrayHole *hole = (BigArrayHole *) getBigArrayValue(array, index);
+    hole->index = index;
 
     hole->next = array->first_hole;
     hole->prev = NULL;
@@ -131,17 +113,8 @@ void emptyBigArray(BigArray *array)
 {
   if(array->elems != NULL)
   {
-    BigArrayElem *curr = array->elems, *prev = array->elems;
-    for(; curr != NULL; curr = curr->next)
-    {
-      if(curr != prev)
-      {
-        free(prev->items);
-        free(prev);
-      }
-      prev = curr;
-    }
-    free(prev->items);
-    free(prev);
+    for(int i = 0; i < array->max_array; i++)
+      free(array->elems[i].items);
+    free(array->elems);
   }
 }
