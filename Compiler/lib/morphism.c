@@ -101,7 +101,7 @@ void addNodeMap(Morphism *morphism, int left_index, Node *node, int assignments)
 {
    assert(left_index < morphism->nodes);
    morphism->node_map[left_index].node = node;
-   morphism->node_map[left_index].node->in_morphism++;
+   morphism->node_map[left_index].node->in_morphism++; // TODO
    morphism->node_map[left_index].assignments = assignments;
 }
 
@@ -109,7 +109,7 @@ void addEdgeMap(Morphism *morphism, int left_index, Edge *edge, int assignments)
 {
    assert(left_index < morphism->edges);
    morphism->edge_map[left_index].edge = edge;
-   morphism->edge_map[left_index].edge->in_morphism++;
+   morphism->edge_map[left_index].edge->in_morphism++; // TODO
    morphism->edge_map[left_index].assignments = assignments;
 }
 
@@ -176,7 +176,7 @@ void removeNodeMap(Morphism *morphism, int left_index)
 {
    if(morphism->node_map[left_index].node != NULL)
    {
-      morphism->node_map[left_index].node->in_morphism--;
+      morphism->node_map[left_index].node->in_morphism--; // TODO
       tryGarbageCollectNode(morphism->node_map[left_index].node);
    }
    morphism->node_map[left_index].node = NULL;
@@ -188,7 +188,7 @@ void removeEdgeMap(Morphism *morphism, int left_index)
 {
    if(morphism->edge_map[left_index].edge != NULL)
    {
-      morphism->edge_map[left_index].edge->in_morphism--;
+      morphism->edge_map[left_index].edge->in_morphism--; // TODO
       tryGarbageCollectEdge(morphism->edge_map[left_index].edge);
    }
    morphism->edge_map[left_index].edge = NULL;

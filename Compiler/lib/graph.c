@@ -45,9 +45,8 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    int nodeind = genFreeBigArrayPos(&(graph->_nodearray));
    Node *node = (Node *) getBigArrayValue(&(graph->_nodearray), nodeind);
    node->index = nodeind;
-   node->flags = (char) 0;
-   if(root) setNodeRoot(node);
-   setNodeInGraph(node);
+   if(root) initializeRootNodeInGraph(node)
+   else initializeNodeInGraph(node)
    node->label = label;
    node->out_edges = NULL;
    node->in_edges = NULL;
@@ -131,25 +130,25 @@ void recoverEdge(Graph *graph, Edge *edge)
 {
    setEdgeInGraph(edge);
 
-   int srclstind = genFreeBigArrayPos(&(edge->source->_edgelistarray));
+   int srclstind = genFreeBigArrayPos(&(getSource(edge)->_edgelistarray));
    EdgeList *srclist = (EdgeList *) getBigArrayValue(
-       &(edge->source->_edgelistarray), srclstind);
+       &(getSource(edge)->_edgelistarray), srclstind);
    srclist->index = srclstind;
    srclist->edge = edge;
-   srclist->next = edge->source->out_edges;
-   edge->source->out_edges = srclist;
+   srclist->next = getSource(edge)->out_edges;
+   getSource(edge)->out_edges = srclist;
    setEdgeInSrcLst(edge);
-   edge->source->outdegree++;
+   getSource(edge)->outdegree++;
 
-   int trglstind = genFreeBigArrayPos(&(edge->target->_edgelistarray));
+   int trglstind = genFreeBigArrayPos(&(getTarget(edge)->_edgelistarray));
    EdgeList *trglist = (EdgeList *) getBigArrayValue(
-       &(edge->target->_edgelistarray), trglstind);
+       &(getTarget(edge)->_edgelistarray), trglstind);
    trglist->index = trglstind;
    trglist->edge = edge;
-   trglist->next = edge->target->in_edges;
-   edge->target->in_edges = trglist;
+   trglist->next = getTarget(edge)->in_edges;
+   getTarget(edge)->in_edges = trglist;
    setEdgeInTrgLst(edge);
-   edge->target->indegree++;
+   getTarget(edge)->indegree++;
 
    graph->number_of_edges++;
 }
@@ -181,8 +180,8 @@ void removeRootNode(Graph *graph, Node *node)
 void removeEdge(Graph *graph, Edge *edge)
 {
    setEdgeDeleted(edge);
-   edge->source->outdegree--;
-   edge->target->indegree--;
+   getSource(edge)->outdegree--;
+   getTarget(edge)->indegree--;
    graph->number_of_edges--;
 }
 
@@ -452,7 +451,7 @@ void printGraph(Graph *graph, FILE *file)
          /* Three edges per line */
          if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
          PTF("(%d, %d, %d, ", edge->index,
-             edge->source->index, edge->target->index);
+             getSource(edge)->index, getTarget(edge)->index);
          printHostLabel(edge->label, file);
          PTF(") ");
       }

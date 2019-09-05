@@ -80,7 +80,7 @@ void pushAddedNode(Node *node)
    GraphChange change;
    change.type = ADDED_NODE;
    change.added_node = node;
-   node->in_stack++;
+   node->in_stack++; // TODO
    pushGraphChange(change);
 }
 
@@ -89,7 +89,7 @@ void pushAddedEdge(Edge *edge)
    GraphChange change;
    change.type = ADDED_EDGE;
    change.added_edge = edge;
-   edge->in_stack++;
+   edge->in_stack++; // TODO
    pushGraphChange(change);
 }
 
@@ -98,7 +98,7 @@ void pushRemovedNode(Node *node)
    GraphChange change;
    change.type = REMOVED_NODE;
    change.removed_node = node;
-   node->in_stack++;
+   node->in_stack++; // TODO
    pushGraphChange(change);
 }
 
@@ -107,7 +107,7 @@ void pushRemovedEdge(Edge *edge)
    GraphChange change;
    change.type = REMOVED_EDGE;
    change.removed_edge = edge;
-   edge->in_stack++;
+   edge->in_stack++; // TODO
    pushGraphChange(change);
 }
 
@@ -116,7 +116,7 @@ void pushRelabelledNode(Node *node, HostLabel old_label)
    GraphChange change;
    change.type = RELABELLED_NODE;
    change.relabelled_node.node = node;
-   node->in_stack++;
+   node->in_stack++; // TODO
    change.relabelled_node.old_label = old_label;
    /* Keep a record of the list as the relabelling of the node could free this
     * list or remove its bucket from the hash table. */
@@ -133,7 +133,7 @@ void pushRelabelledEdge(Edge *edge, HostLabel old_label)
    GraphChange change;
    change.type = RELABELLED_EDGE;
    change.relabelled_edge.edge = edge;
-   edge->in_stack++;
+   edge->in_stack++; // TODO
    change.relabelled_edge.old_label = old_label;
    /* Keep a record of the list as the relabelling of the edge could free this
     * list or remove its bucket from the hash table. */
@@ -150,7 +150,7 @@ void pushRemarkedNode(Node *node, MarkType old_mark)
    GraphChange change;
    change.type = REMARKED_NODE;
    change.remarked_node.node = node;
-   node->in_stack++;
+   node->in_stack++; // TODO
    change.remarked_node.old_mark = old_mark;
    pushGraphChange(change);
 }
@@ -160,7 +160,7 @@ void pushRemarkedEdge(Edge *edge, MarkType old_mark)
    GraphChange change;
    change.type = REMARKED_EDGE;
    change.remarked_edge.edge = edge;
-   edge->in_stack++;
+   edge->in_stack++; // TODO
    change.remarked_edge.old_mark = old_mark;
    pushGraphChange(change);
 }
@@ -170,7 +170,7 @@ void pushChangedRootNode(Node *node)
    GraphChange change;
    change.type = CHANGED_ROOT_NODE;
    change.changed_root = node;
-   change.changed_root->in_stack++;
+   change.changed_root->in_stack++; // TODO
    pushGraphChange(change);
 }
 
@@ -184,51 +184,51 @@ void undoChanges(Graph *graph, int restore_point)
       switch(change.type)
       {
          case ADDED_NODE:
-              change.added_node->in_stack--;
+              change.added_node->in_stack--; // TODO
               removeNode(graph, change.added_node);
               break;
 
          case ADDED_EDGE:
-              change.added_edge->in_stack--;
+              change.added_edge->in_stack--; // TODO
               removeEdge(graph, change.added_edge);
               break;
 
          case REMOVED_NODE:
-              change.removed_node->in_stack--;
-              change.removed_node->deleted = false;
-              if(!change.removed_node->in_graph)
+              change.removed_node->in_stack--; // TODO
+              clearNodeDeleted(change.removed_node);
+              if(!nodeInGraph(change.removed_node))
                 recoverNode(graph, change.removed_node);
               break;
 
          case REMOVED_EDGE:
-              change.removed_edge->in_stack--;
-              change.removed_edge->deleted = false;
-              if(!change.removed_edge->in_graph)
+              change.removed_edge->in_stack--; // TODO
+              clearEdgeDeleted(change.removed_edge);
+              if(!edgeInGraph(change.removed_edge))
                 recoverEdge(graph, change.removed_edge);
               break;
 
          case RELABELLED_NODE:
-              change.relabelled_node.node->in_stack--;
+              change.relabelled_node.node->in_stack--; // TODO
               relabelNode(change.relabelled_node.node, change.relabelled_node.old_label);
               break;
 
          case RELABELLED_EDGE:
-              change.relabelled_edge.edge->in_stack--;
+              change.relabelled_edge.edge->in_stack--; // TODO
               relabelEdge(change.relabelled_edge.edge, change.relabelled_edge.old_label);
               break;
 
          case REMARKED_NODE:
-              change.remarked_node.node->in_stack--;
+              change.remarked_node.node->in_stack--; // TODO
               changeNodeMark(change.remarked_node.node, change.remarked_node.old_mark);
               break;
 
          case REMARKED_EDGE:
-              change.remarked_edge.edge->in_stack--;
+              change.remarked_edge.edge->in_stack--; // TODO
               changeEdgeMark(change.remarked_edge.edge, change.remarked_edge.old_mark);
               break;
 
          case CHANGED_ROOT_NODE:
-              change.changed_root->in_stack--;
+              change.changed_root->in_stack--; // TODO
               changeRoot(graph, change.changed_root);
               break;
 
@@ -245,12 +245,12 @@ static void freeGraphChange(GraphChange change)
    switch(change.type)
    {
       case ADDED_NODE:
-           change.added_node->in_stack--;
+           change.added_node->in_stack--; // TODO
            tryGarbageCollectNode(change.added_node);
            break;
 
       case ADDED_EDGE:
-           change.added_edge->in_stack--;
+           change.added_edge->in_stack--; // TODO
            tryGarbageCollectEdge(change.added_edge);
            break;
 
@@ -258,29 +258,29 @@ static void freeGraphChange(GraphChange change)
            break;
 
       case REMOVED_NODE:
-           change.removed_node->in_stack--;
+           change.removed_node->in_stack--; // TODO
            break;
 
       case REMOVED_EDGE:
-           change.removed_edge->in_stack--;
+           change.removed_edge->in_stack--; // TODO
            break;
 
       case RELABELLED_NODE:
-           change.relabelled_node.node->in_stack--;
+           change.relabelled_node.node->in_stack--; // TODO
            removeHostList(change.relabelled_node.old_label.list);
            break;
 
       case RELABELLED_EDGE:
-           change.relabelled_edge.edge->in_stack--;
+           change.relabelled_edge.edge->in_stack--; // TODO
            removeHostList(change.relabelled_edge.old_label.list);
            break;
 
       case REMARKED_NODE:
-           change.remarked_node.node->in_stack--;
+           change.remarked_node.node->in_stack--; // TODO
            break;
 
       case REMARKED_EDGE:
-           change.remarked_edge.edge->in_stack--;
+           change.remarked_edge.edge->in_stack--; // TODO
            break;
 
       default:

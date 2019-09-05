@@ -142,6 +142,8 @@ void changeRoot(Graph *graph, Node *node);
 void relabelEdge(Edge *edge, HostLabel new_label);
 void changeEdgeMark(Edge *edge, MarkType new_mark);
 
+#define initializeNodeInGraph(node) (node)->flags = NFLAG_INGRAPH
+#define initializeRootNodeInGraph(node) (node)->flags = NFLAG_ROOT & NFLAG_INGRAPH
 #define nodeRoot(node) (node)->flags & NFLAG_ROOT
 #define nodeMatched(node) (node)->flags & NFLAG_MATCHED
 #define nodeDeleted(node) (node)->flags & NFLAG_DELETED
