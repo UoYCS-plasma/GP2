@@ -406,7 +406,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
    string fail_code = (type == 'b') ? "candidate_node = false;" : "return false;";
    if(type == 'b') PTFI("bool candidate_node = true;\n", 3);
    PTFI("if(nodeMatched(host_node)) %s\n", 3, fail_code);
-   if(left_node->root) PTFI("if(!(host_node->root)) %s\n", 3, fail_code);
+   if(left_node->root) PTFI("if(!nodeRoot(host_node)) %s\n", 3, fail_code);
    if(left_node->label.mark == ANY)
       PTFI("if(host_node->label.mark == 0) %s\n", 3, fail_code);
    else PTFI("if(host_node->label.mark != %d) %s\n", 3, left_node->label.mark, fail_code);
@@ -424,7 +424,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
            PTFI("host_node = edgeSource(host_edge);\n", 6);
       else PTFI("host_node = edgeTarget(host_edge);\n", 6);
       PTFI("if(nodeMatched(host_node)) return false;\n", 6);
-      if(left_node->root) PTFI("if(!(host_node->root)) return false;\n", 6);
+      if(left_node->root) PTFI("if(!nodeRoot(host_node)) return false;\n", 6);
       if(left_node->label.mark == ANY)
 	 PTFI("if(host_node->label.mark == 0) return false;\n", 6);
       else PTFI("if(host_node->label.mark != %d) return false;\n", 6, left_node->label.mark);
@@ -998,7 +998,7 @@ void generateApplicationCode(Rule *rule)
             /* Case (2) */
             if(!node->root && node->interface->root)
             {
-               PTFI("if(!host_node->root)\n", 3);
+               PTFI("if(!nodeRoot(host_node))\n", 3);
                PTFI("{\n", 3);
                PTFI("if(record_changes) pushChangedRootNode(host_node);\n", 6);
                PTFI("changeRoot(host, host_node);\n", 6);
