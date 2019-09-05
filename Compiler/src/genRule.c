@@ -1047,7 +1047,7 @@ void generateApplicationCode(Rule *rule)
       if (setup_rhs_node_map)
       {
          PTFI("/* Array of host node indices indexed by RHS node index. */\n", 3);
-         PTFI("int rhs_node_map[%d];\n\n", 3, rule->rhs->node_index);
+         PTFI("Node *rhs_node_map[%d];\n\n", 3, rule->rhs->node_index);
       }
    }
 
