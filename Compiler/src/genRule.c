@@ -456,7 +456,7 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
    PTFI("{\n", indent);
    PTFI("addNodeMap(morphism, %d, host_node, new_assignments);\n",
         indent + 3, node->index);
-   PTFI("nodeMatched(host_node) = true;\n", indent + 3);
+   PTFI("setNodeMatched(host_node);\n", indent + 3);
    if(node->predicates != NULL)
    {
       PTFI("/* Update global booleans representing the node's predicates. */\n", indent + 3);
@@ -492,7 +492,7 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
          else PTFI("b%d = true;\n", indent + 6, predicate->bool_id);
       }
       PTFI("removeNodeMap(morphism, %d);\n", indent + 6, node->index);
-      PTFI("nodeMatched(host_node) = false;\n", indent + 6);  
+      PTFI("clearNodeMatched(host_node);\n", indent + 6);  
       PTFI("}\n", indent + 3);
    }
    else
@@ -510,7 +510,7 @@ static void emitNodeMatchResultCode(RuleNode *node, SearchOp *next_op, int inden
          PTFI("else\n", indent + 3);
          PTFI("{\n", indent + 3);  
          PTFI("removeNodeMap(morphism, %d);\n", indent + 6, node->index);
-         PTFI("nodeMatched(host_node) = false;\n", indent + 6);  
+         PTFI("clearNodeMatched(host_node);\n", indent + 6);  
          PTFI("}\n", indent + 3);
       }
    }
@@ -651,7 +651,7 @@ static void emitEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
    PTFI("if(match)\n", indent);
    PTFI("{\n", indent);
    PTFI("addEdgeMap(morphism, %d, host_edge, new_assignments);\n", indent + 3, index);
-   PTFI("edgeMatched(host_edge) = true;\n", indent + 3);
+   PTFI("setEdgeMatched(host_edge);\n", indent + 3);
    if(next_op == NULL)
    {
       PTFI("/* All items matched! */\n", indent);
@@ -665,7 +665,7 @@ static void emitEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
       PTFI("else\n", indent + 3);
       PTFI("{\n", indent + 3);
       PTFI("removeEdgeMap(morphism, %d);\n", indent + 6, index);
-      PTFI("edgeMatched(host_edge) = false;\n", indent + 6); 
+      PTFI("clearEdgeMatched(host_edge);\n", indent + 6); 
       PTFI("}\n", indent + 3);
    } 
    PTFI("}\n", indent);
