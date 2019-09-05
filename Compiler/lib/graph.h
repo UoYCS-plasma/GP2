@@ -40,18 +40,21 @@
 #define NUMBER_OF_MARKS 6 
 #define NUMBER_OF_CLASSES 7
 
+// 20 bytes
 typedef struct NodeList {
   struct Node *node;
   struct NodeList *next;
-  int index;
+  int index; // TODO: UNSIGNED
 } NodeList;
 
+// 20 bytes
 typedef struct EdgeList {
   struct Edge *edge;
   struct EdgeList *next;
-  int index;
+  int index; // TODO: UNSIGNED
 } EdgeList;
 
+// 1 byte
 typedef struct NodeQuery {
   MarkType mark;
 } NodeQuery;
@@ -59,19 +62,19 @@ typedef struct NodeQuery {
 /* ================================
  * Graph Data Structure + Functions
  * ================================ */
-typedef struct Graph 
+
+// 120 + BIGAR_INIT_SZ * 3 bytes
+// currently, 888 bytes
+typedef struct Graph
 {
    NodeList *nodes;
+   struct RootNodes *root_nodes;
+   int number_of_nodes, number_of_edges; // TODO: UNSIGNED
 
    // Internally keep arrays to reduce malloc/free's to O(log n).
    BigArray _nodearray;
    BigArray _edgearray;
    BigArray _nodelistarray;
-
-   int number_of_nodes, number_of_edges;
-
-   /* Root nodes referenced in a linked list for fast access. */
-   struct RootNodes *root_nodes;
 } Graph;
 
 /* The arguments nodes and edges are the initial sizes of the node array and the
@@ -81,10 +84,13 @@ Graph *newGraph();
 /* =========================
  * Node and Edge Definitions
  * ========================= */
+
+// 72 bytes + BIGAR_INIT_SZ
+// currently, 328 bytes
 typedef struct Node {
    BigArray _edgelistarray;
    HostLabel label;
-   int index;
+   int index; // TODO: UNSIGNED
 #define NFLAG_ROOT 0b1
 #define NFLAG_MATCHED 0b10
 #define NFLAG_DELETED 0b100
@@ -92,17 +98,18 @@ typedef struct Node {
 #define NFLAG_INSTACK 0b10000
    char flags; // All flags stored here.
    EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
-   int outdegree, indegree;
+   int outdegree, indegree; // TODO: UNSIGNED
 } Node;
 
+// 16 bytes
 typedef struct RootNodes {
    Node *node;
    struct RootNodes *next;
 } RootNodes;
 
+// 32 bytes
 typedef struct Edge {
    HostLabel label;
-   int index;
 #define EFLAG_MATCHED 0b10
 #define EFLAG_DELETED 0b100
 #define EFLAG_INGRAPH 0b1000
@@ -110,6 +117,7 @@ typedef struct Edge {
 #define EFLAG_INSRCLST 0b100000
 #define EFLAG_INTRGLST 0b1000000
    char flags;
+   int index; // TODO: UNSIGNED
    Node *source, *target;
 } Edge;
 

@@ -27,20 +27,23 @@
 #include <assert.h>
 #include <stdlib.h>
  
+ // 20 bytes
 typedef struct BigArrayElem {
-  int size;
   void *items;
   struct BigArrayElem *next;
+  int size; // TODO: UNSIGNED
 } BigArrayElem;
 
 // A hole in a BigArray (below) is filled with the following structure.
 // The holes make up an internal linked list of holes, so the next one
 // can be retrieved quickly.
 // Stores addresses so indices are available at no traversal cost
+
+ // 20 bytes
 typedef struct BigArrayHole {
-  int index;
   struct BigArrayHole *prev;
   struct BigArrayHole *next;
+  int index; // TODO: UNSIGNED
 } BigArrayHole;
 
 // Dynamic data struct of arbitrary size, which never moves elements.
@@ -48,9 +51,12 @@ typedef struct BigArrayHole {
 // This structure is a linked list of arrays repeatedly doubling in size
 // and an IntArray of available holes in said array.
 // Useful for minimizing the number of malloc's while keeping pointers valid.
+
+// 32 bytes + BIGAR_INIT_SZ
+// currently, 288 bytes
 typedef struct BigArray {
-  int capacity;
-  int size;
+  int capacity; // TODO: UNSIGNED
+  int size; // TODO: UNSIGNED
   size_t elem_sz;
 #define BIGAR_INIT_SZ 256
   char firstelems[BIGAR_INIT_SZ]; // use this before malloc'ing space

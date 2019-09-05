@@ -39,10 +39,12 @@
 #include <stdio.h> 
 #include <string.h> 
 
+// 1 byte
 typedef enum {
   NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY
 } __attribute__ ((__packed__)) MarkType;
 
+// 11 bytes
 typedef struct HostLabel {
    struct HostList *list;
    unsigned short length;
@@ -51,31 +53,35 @@ typedef struct HostLabel {
 
 extern struct HostLabel blank_label;
 
+// 20 bytes
 typedef struct HostList {
-   int hash;
    struct HostListItem *first;
    struct HostListItem *last;
+   int hash;
 } HostList;
 
+// 9 bytes
 typedef struct HostAtom {
-   char type; /* (i)nteger or (s)tring */
    union {
-      int num;
+      int num; // TODO: LONG
       string str;
    };
+   char type; /* (i)nteger or (s)tring */ // TODO: ENUM
 } HostAtom;
 
+// 24 bytes
 typedef struct HostListItem {
    struct HostAtom atom;
    struct HostListItem *next;
    struct HostListItem *prev;
 } HostListItem;
 
+// 28 bytes
 typedef struct Bucket {
    HostList *list;
-   int reference_count;
    struct Bucket *next;
    struct Bucket *prev;
+   int reference_count; // TODO: UNSIGNED
 } Bucket;
 
 /* Hash table to store lists at runtime. Collisions are handled by separate chaining
