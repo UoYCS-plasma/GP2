@@ -29,9 +29,9 @@ Graph *newGraph()
    graph->number_of_nodes = 0;
    graph->number_of_edges = 0;
    graph->nodes = NULL;
-   graph->_nodearray = makeBigArray(256, sizeof(Node));
-   graph->_edgearray = makeBigArray(256, sizeof(Edge));
-   graph->_nodelistarray = makeBigArray(256, sizeof(NodeList));
+   graph->_nodearray = makeBigArray(sizeof(Node));
+   graph->_edgearray = makeBigArray(sizeof(Edge));
+   graph->_nodelistarray = makeBigArray(sizeof(NodeList));
    graph->root_nodes = NULL;
    return graph;
 }
@@ -51,7 +51,7 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    node->label = label;
    node->out_edges = NULL;
    node->in_edges = NULL;
-   node->_edgelistarray = makeBigArray(2, sizeof(EdgeList));
+   node->_edgelistarray = makeBigArray(sizeof(EdgeList));
 
    nlist->node = node;
    nlist->next = graph->nodes;

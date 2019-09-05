@@ -16,46 +16,24 @@
 #include <stdint.h>
 #include "graph.h"
 
-BigArray makeBigArray(int initial_capacity, size_t elem_sz)
+BigArray makeBigArray(size_t elem_sz)
 {
   BigArray array;
   array.size = 0;
 
-  if(sizeof(BigArrayHole) > elem_sz)
-    array.elem_sz = sizeof(BigArrayHole);
-  else
-    array.elem_sz = elem_sz;
+  // THIS IS ONLY SAFE TO NOT EXECUTE BECAUSE sizeof(BigArrayHole) > elem_sz
+  // IS ALWAYS FALSE IN OUR USAGE. CALLERS BEWARE!
 
-  if(initial_capacity < BIGAR_INIT_SZ / array.elem_sz)
-  {
-    array.elems = NULL;
-    array.capacity = BIGAR_INIT_SZ / array.elem_sz;
-  }
-  else
-  {
-    array.capacity = initial_capacity;
-    array.elems = malloc(sizeof(BigArrayElem));
-    if(array.elems == NULL)
-    {
-      print_to_log("Error (makeArray): malloc failure.\n");
-      exit(1);
-    }
-    array.elems->size = initial_capacity - (BIGAR_INIT_SZ / array.elem_sz);
-    if(array.elems->size == 0)
-    {
-      array.elems->size = 1;
-      array.capacity++;
-    }
-    array.elems->items = malloc(array.elems->size * array.elem_sz);
-    if(array.elems->items == NULL)
-    {
-      print_to_log("Error (makeArray): malloc failure.\n");
-      exit(1);
-    }
-    array.elems->next = NULL;
-  }
+  // if(sizeof(BigArrayHole) > elem_sz)
+  //   array.elem_sz = sizeof(BigArrayHole);
+  // else
+  //   array.elem_sz = elem_sz;
 
+  array.elem_sz = elem_sz;
+  array.elems = NULL;
+  array.capacity = BIGAR_INIT_SZ / array.elem_sz
   array.first_hole = NULL;
+
   return array;
 }
 

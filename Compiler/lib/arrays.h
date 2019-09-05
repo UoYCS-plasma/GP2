@@ -64,7 +64,7 @@ typedef struct BigArray {
   BigArrayHole *first_hole;
 } BigArray;
 
-BigArray makeBigArray(int initial_capacity, size_t elem_sz);
+BigArray makeBigArray(size_t elem_sz);
 int genFreeBigArrayPos(BigArray *array);
 void *getBigArrayValue(BigArray *array, int index);
 void removeFromBigArray(BigArray *array, int index);
