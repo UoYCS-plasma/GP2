@@ -295,18 +295,18 @@ static void emitDegreeCheck(RuleNode *left_node, int indent)
    {
       /* Dangling node degree check. If the if condition evaluates to true,
        * then the node is not a valid match. */
-      PTFI("if(host_node->indegree < %d || host_node->outdegree < %d ||\n",
+      PTFI("if(nodeInDegree(host_node) < %d || nodeOutDegree(host_node) < %d ||\n",
            indent, left_node->indegree, left_node->outdegree);
-      PTFI("   ((host_node->outdegree + host_node->indegree - %d - %d - %d) != 0)) ", 
-           indent, left_node->outdegree, left_node->indegree, left_node->bidegree);
+      PTFI("   ((nodeOutDegree(host_node) + nodeInDegree(host_node) - %d) != 0)) ", 
+           indent, left_node->outdegree + left_node->indegree + left_node->bidegree);
    }
    else
    {
       /* Standard node degree check. */
-      PTFI("if(host_node->indegree < %d || host_node->outdegree < %d ||\n",
+      PTFI("if(nodeInDegree(host_node) < %d || nodeOutDegree(host_node) < %d ||\n",
            indent, left_node->indegree, left_node->outdegree);
-      PTFI("   ((host_node->outdegree + host_node->indegree - %d - %d - %d) < 0)) ", 
-           indent, left_node->outdegree, left_node->indegree, left_node->bidegree);
+      PTFI("   ((nodeOutDegree(host_node) + nodeInDegree(host_node) - %d) < 0)) ", 
+           indent, left_node->outdegree + left_node->indegree + left_node->bidegree);
    }
 }
 
@@ -834,9 +834,9 @@ void generateApplicationCode(Rule *rule)
          }
          else PTFI("node = lookupNode(morphism, %d);\n", 3, index);
          if(node->indegree_arg)
-            PTFI("int indegree%d = nodeIndegree(node);\n", 3, index);
+            PTFI("int indegree%d = nodeInDegree(node);\n", 3, index);
          if(node->outdegree_arg)
-            PTFI("int outdegree%d = nodeOutdegree(node);\n", 3, index);
+            PTFI("int outdegree%d = nodeOutDegree(node);\n", 3, index);
       }
    }
    bool label_declared = false, host_edge_declared = false,

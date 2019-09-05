@@ -72,7 +72,7 @@
  *    int n0 = lookupNode(morphism, 0);
  *    if(n0 == -1) return false;
  *    
- *    if(nodeIndegree(host, 0) > 1) b0 = true;
+ *    if(nodeInDegree(host, 0) > 1) b0 = true;
  *    return true;
  * }
  *

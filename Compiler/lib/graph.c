@@ -109,7 +109,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    srclist->next = source->out_edges;
    source->out_edges = srclist;
    setEdgeInSrcLst(edge);
-   source->outdegree++;
+   incrementInDegree(source);
 
    int trglstind = genFreeBigArrayPos(&(target->_edgelistarray));
    EdgeList *trglist = (EdgeList *) getBigArrayValue(
@@ -119,7 +119,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    trglist->next = target->in_edges;
    target->in_edges = trglist;
    setEdgeInTrgLst(edge);
-   target->indegree++;
+   incrementInDegree(target);
 
    graph->number_of_edges++;
    return edge;
@@ -138,7 +138,7 @@ void recoverEdge(Graph *graph, Edge *edge)
    srclist->next = edgeSource(edge)->out_edges;
    edgeSource(edge)->out_edges = srclist;
    setEdgeInSrcLst(edge);
-   edgeSource(edge)->outdegree++;
+   incrementOutDegree(edgeSource(edge));
 
    int trglstind = genFreeBigArrayPos(&(edgeTarget(edge)->_edgelistarray));
    EdgeList *trglist = (EdgeList *) getBigArrayValue(
@@ -148,7 +148,7 @@ void recoverEdge(Graph *graph, Edge *edge)
    trglist->next = edgeTarget(edge)->in_edges;
    edgeTarget(edge)->in_edges = trglist;
    setEdgeInTrgLst(edge);
-   edgeTarget(edge)->indegree++;
+   incrementInDegree(edgeTarget(edge));
 
    graph->number_of_edges++;
 }
@@ -180,8 +180,8 @@ void removeRootNode(Graph *graph, Node *node)
 void removeEdge(Graph *graph, Edge *edge)
 {
    setEdgeDeleted(edge);
-   edgeSource(edge)->outdegree--;
-   edgeTarget(edge)->indegree--;
+   decrementOutDegree(edgeSource(edge));
+   decrementInDegree(edgeTarget(edge));
    graph->number_of_edges--;
 }
 
