@@ -29,11 +29,11 @@ BigArray makeBigArray(size_t elem_sz)
   // IS ALWAYS FALSE IN OUR USAGE. CALLERS BEWARE!
 
   // if(sizeof(BigArrayHole) > elem_sz)
-  //   array.elem_sz = sizeof(BigArrayHole);
+  //   array.elem_sz = (int) sizeof(BigArrayHole);
   // else
-  //   array.elem_sz = elem_sz;
+  //   array.elem_sz = (int) elem_sz;
 
-  array.elem_sz = elem_sz;
+  array.elem_sz = (int) elem_sz;
   array.num_arrays = 0;
   array.max_array = 0;
   array.elems = NULL;
@@ -50,7 +50,7 @@ void doubleBigArray(BigArray *array)
     array->elems = mallocSafe(sizeof(BigArrayElem), "doubleBigArray");
     array->num_arrays = 1;
   }
-  else if(array->num_arrays == array->max_array+1)
+  else if(array->num_arrays == array->max_array + 1)
   {
     array->elems = reallocSafe(array->elems,
         sizeof(BigArrayElem) * (array->max_array++), "doubleBigArray");
