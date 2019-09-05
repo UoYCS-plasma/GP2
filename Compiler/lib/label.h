@@ -39,12 +39,14 @@
 #include <stdio.h> 
 #include <string.h> 
 
-typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; 
+typedef enum {
+  NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY
+} __attribute__ ((__packed__)) MarkType;
 
 typedef struct HostLabel {
-   MarkType mark;
-   int length;
    struct HostList *list;
+   unsigned short length;
+   MarkType mark;
 } HostLabel;
 
 extern struct HostLabel blank_label;

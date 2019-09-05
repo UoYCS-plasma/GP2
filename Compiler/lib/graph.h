@@ -41,17 +41,15 @@
 #define NUMBER_OF_CLASSES 7
 
 typedef struct NodeList {
-  int index;
   struct Node *node;
   struct NodeList *next;
-  struct NodeList *prev;
+  int index;
 } NodeList;
 
 typedef struct EdgeList {
-  int index;
   struct Edge *edge;
   struct EdgeList *next;
-  struct EdgeList *prev;
+  int index;
 } EdgeList;
 
 typedef struct NodeQuery {
@@ -64,13 +62,11 @@ typedef struct NodeQuery {
 typedef struct Graph 
 {
    NodeList *nodes;
-   EdgeList *edges;
 
    // Internally keep arrays to reduce malloc/free's to O(log n).
    BigArray _nodearray;
    BigArray _edgearray;
    BigArray _nodelistarray;
-   BigArray _edgelistarray;
 
    int number_of_nodes, number_of_edges;
 
@@ -86,18 +82,17 @@ Graph *newGraph();
  * Node and Edge Definitions
  * ========================= */
 typedef struct Node {
-   int index;
-   Graph *graph; // for garbage collection
-   bool root;
+   BigArray _edgelistarray;
    HostLabel label;
-   int outdegree, indegree;
+   int index;
+#define NFLAG_ROOT 0b1
+#define NFLAG_MATCHED 0b10
+#define NFLAG_DELETED 0b100
+#define NFLAG_INGRAPH 0b1000
+#define NFLAG_INSTACK 0b10000
+   char flags; // All flags stored here.
    EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
-   BigArray _outedgearray, _inedgearray;
-   bool matched;
-   bool deleted; // 1 if going to be garbage-collected
-   bool in_graph; // 1 if in a graph's nodelist
-   int in_stack; // Number of times node appears in stack; dont garbage coll
-   int in_morphism; // Number of times node appears in morphisms
+   int outdegree, indegree;
 } Node;
 
 typedef struct RootNodes {
@@ -106,17 +101,16 @@ typedef struct RootNodes {
 } RootNodes;
 
 typedef struct Edge {
-   int index;
-   Graph *graph; // for garbage collection
    HostLabel label;
+   int index;
+#define EFLAG_MATCHED 0b10
+#define EFLAG_DELETED 0b100
+#define EFLAG_INGRAPH 0b1000
+#define EFLAG_INSTACK 0b10000
+#define EFLAG_INSRCLST 0b100000
+#define EFLAG_INTRGLST 0b1000000
+   char flags;
    Node *source, *target;
-   bool matched;
-   bool deleted; // 1 if going to be garbage-collected
-   bool in_graph; // 1 if in a graph's edgelist
-   bool in_srclst;  // Flags for if still in src/trg edge lists
-   bool in_trglst;
-   int in_stack; // Number of times edge appears in stack; dont garbage coll
-   int in_morphism; // Number of times edge appears in morphisms
 } Edge;
 
 /* Nodes and edges are created and added to the graph with the addNode and addEdge
@@ -140,10 +134,47 @@ void changeRoot(Graph *graph, Node *node);
 void relabelEdge(Edge *edge, HostLabel new_label);
 void changeEdgeMark(Edge *edge, MarkType new_mark);
 
+#define nodeRoot(node) (node)->flags & NFLAG_ROOT
+#define nodeMatched(node) (node)->flags & NFLAG_MATCHED
+#define nodeDeleted(node) (node)->flags & NFLAG_DELETED
+#define nodeInGraph(node) (node)->flags & NFLAG_INGRAPH
+#define nodeInStack(node) (node)->flags & NFLAG_INSTACK
+#define setNodeRoot(node) (node)->flags |= NFLAG_ROOT
+#define setNodeMatched(node) (node)->flags |= NFLAG_MATCHED
+#define setNodeDeleted(node) (node)->flags |= NFLAG_DELETED
+#define setNodeInGraph(node) (node)->flags |= NFLAG_INGRAPH
+#define setNodeInStack(node) (node)->flags |= NFLAG_INSTACK
+#define clearNodeRoot(node) (node)->flags &= ~NFLAG_ROOT
+#define clearNodeMatched(node) (node)->flags &= ~NFLAG_MATCHED
+#define clearNodeDeleted(node) (node)->flags &= ~NFLAG_DELETED
+#define clearNodeInGraph(node) (node)->flags &= ~NFLAG_INGRAPH
+#define clearNodeInStack(node) (node)->flags &= ~NFLAG_INSTACK
+
+#define edgeMatched(edge) (edge)->flags & EFLAG_MATCHED
+#define edgeDeleted(edge) (edge)->flags & EFLAG_DELETED
+#define edgeInGraph(edge) (edge)->flags & EFLAG_INGRAPH
+#define edgeInStack(edge) (edge)->flags & EFLAG_INSTACK
+#define edgeInSrcLst(edge) (edge)->flags & EFLAG_INSRCLST
+#define edgeInTrgLst(edge) (edge)->flags & EFLAG_INTRGLST
+#define setEdgeMatched(edge) (edge)->flags |= EFLAG_MATCHED
+#define setEdgeDeleted(edge) (edge)->flags |= EFLAG_DELETED
+#define setEdgeInGraph(edge) (edge)->flags |= EFLAG_INGRAPH
+#define setEdgeInStack(edge) (edge)->flags |= EFLAG_INSTACK
+#define setEdgeInSrcLst(edge) (edge)->flags |= EFLAG_INSRCLST
+#define setEdgeInTrgLst(edge) (edge)->flags |= EFLAG_INTRGLST
+#define clearEdgeMatched(Edge) (edge)->flags &= ~EFLAG_MATCHED
+#define clearEdgeDeleted(Edge) (edge)->flags &= ~EFLAG_DELETED
+#define clearEdgeInGraph(Edge) (edge)->flags &= ~EFLAG_INGRAPH
+#define clearEdgeInStack(Edge) (edge)->flags &= ~EFLAG_INSTACK
+#define clearEdgeInSrcLst(edge) (edge)->flags &= ~EFLAG_INSRCLST
+#define clearEdgeInTrgLst(edge) (edge)->flags &= ~EFLAG_INTRGLST
+
+#define edgeFree(edge) \
+   !(edgeInStack(edge) || edgeInSrcLst(edge) || edgeInTrgLst(edge))
+
 // Try and free a node/edge's memory, fixing all references.
 // If the node/edge is still needed anywhere, do nothing.
-void tryGarbageCollectNode(Node *node);
-void tryGarbageCollectEdge(Edge *edge);
+void tryGarbageCollectNode(Graph *graph, Node *node);
 
 /* ========================
  * Graph Querying Functions
@@ -154,9 +185,8 @@ void tryGarbageCollectEdge(Edge *edge);
 // Done this way so deleted nodes/edges are garbage
 // collected when passed by.
 Node *yieldNextNode(Graph *graph, NodeList **current);
-Edge *yieldNextEdge(Graph *graph, EdgeList **current);
-Edge *yieldNextOutEdge(Node *node, EdgeList **current);
-Edge *yieldNextInEdge(Node *node, EdgeList **current);
+Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current);
+Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current);
 
 RootNodes *getRootNodeList(Graph *graph);
 
