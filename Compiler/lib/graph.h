@@ -64,7 +64,7 @@ typedef struct NodeQuery {
  * ================================ */
 
 // 120 + BIGAR_INIT_SZ * 3 bytes
-// currently, 888 bytes
+// currently, 600 bytes
 typedef struct Graph
 {
    NodeList *nodes;
@@ -86,7 +86,7 @@ Graph *newGraph();
  * ========================= */
 
 // 72 bytes + BIGAR_INIT_SZ
-// currently, 328 bytes
+// currently, 232 bytes
 typedef struct Node {
    BigArray _edgelistarray;
    HostLabel label;
