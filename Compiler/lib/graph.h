@@ -142,13 +142,16 @@ void changeRoot(Graph *graph, Node *node);
 void relabelEdge(Edge *edge, HostLabel new_label);
 void changeEdgeMark(Edge *edge, MarkType new_mark);
 
-#define initializeNodeInGraph(node) (node)->flags = NFLAG_INGRAPH
-#define initializeRootNodeInGraph(node) (node)->flags = NFLAG_ROOT & NFLAG_INGRAPH
+#define nodeLabel(node) (node)->label
+#define nodeIndegree(node) (node)->indegree
+#define nodeOutdegree(node) (node)->outdegree
 #define nodeRoot(node) (node)->flags & NFLAG_ROOT
 #define nodeMatched(node) (node)->flags & NFLAG_MATCHED
 #define nodeDeleted(node) (node)->flags & NFLAG_DELETED
 #define nodeInGraph(node) (node)->flags & NFLAG_INGRAPH
 #define nodeInStack(node) (node)->flags & NFLAG_INSTACK
+#define initializeNodeInGraph(node) (node)->flags = NFLAG_INGRAPH
+#define initializeRootNodeInGraph(node) (node)->flags = NFLAG_ROOT & NFLAG_INGRAPH
 #define setNodeRoot(node) (node)->flags |= NFLAG_ROOT
 #define setNodeMatched(node) (node)->flags |= NFLAG_MATCHED
 #define setNodeDeleted(node) (node)->flags |= NFLAG_DELETED
@@ -160,6 +163,9 @@ void changeEdgeMark(Edge *edge, MarkType new_mark);
 #define clearNodeInGraph(node) (node)->flags &= ~NFLAG_INGRAPH
 #define clearNodeInStack(node) (node)->flags &= ~NFLAG_INSTACK
 
+#define edgeSource(edge) (edge)->source
+#define edgeTarget(edge) (edge)->target
+#define edgeLabel(edge) (edge)->label
 #define edgeMatched(edge) (edge)->flags & EFLAG_MATCHED
 #define edgeDeleted(edge) (edge)->flags & EFLAG_DELETED
 #define edgeInGraph(edge) (edge)->flags & EFLAG_INGRAPH
@@ -199,13 +205,6 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current);
 Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current);
 
 RootNodes *getRootNodeList(Graph *graph);
-
-Node *getSource(Edge *edge); 
-Node *getTarget(Edge *edge);
-HostLabel getNodeLabel(Node *node);
-HostLabel getEdgeLabel(Edge *edge); 
-int getIndegree(Node *node);
-int getOutdegree(Node *node);
 
 void printGraph(Graph *graph, FILE *file);
 void freeGraph(Graph *graph);
