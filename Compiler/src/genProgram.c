@@ -83,7 +83,7 @@ void generateRuntimeMain(List *declarations, string output_dir)
    PTF("#include <time.h>\n");
    PTF("#include <Judy.h>\n");
    PTF("#include \"common.h\"\n");
-   PTF("#include \"error.h\"\n");
+   PTF("#include \"debug.h\"\n");
    PTF("#include \"graph.h\"\n");
    PTF("#include \"graphStacks.h\"\n");
    PTF("#include \"parser.h\"\n");
