@@ -1048,13 +1048,33 @@ void generateApplicationCode(Rule *rule)
          }
       }
    }
+
    /* If both nodes and edges are added by the rule, the host indices of the 
-    * added nodes need to be recorded in case the added edges require them. */
-   if(rule->adds_nodes && rule->adds_edges)
+    * added nodes need to be recorded in case the added edges require them.
+    * It's also possible that non-interface nodes that are formally deleted and
+    * re-added need this too. */
+   if(rule->adds_edges)
    {
-      PTFI("/* Array of host node indices indexed by RHS node index. */\n", 3);
-      PTFI("int rhs_node_map[%d];\n\n", 3, rule->rhs->node_index);
+      bool setup_rhs_node_map = rule->adds_nodes;
+      if (!setup_rhs_node_map)
+      {
+         for(index = 0; index < rule->rhs->node_index; index++)
+         { 
+            if(getRuleNode(rule->rhs, index)->interface == NULL)
+            {
+               setup_rhs_node_map = true;
+               break;
+            }
+         }
+      }
+
+      if (setup_rhs_node_map)
+      {
+         PTFI("/* Array of host node indices indexed by RHS node index. */\n", 3);
+         PTFI("int rhs_node_map[%d];\n\n", 3, rule->rhs->node_index);
+      }
    }
+
    /* (3) Add nodes. */
    for(index = 0; index < rule->rhs->node_index; index++)
    { 
