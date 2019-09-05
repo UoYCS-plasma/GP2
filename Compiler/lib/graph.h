@@ -142,11 +142,11 @@ void changeRoot(Graph *graph, Node *node);
 void relabelEdge(Edge *edge, HostLabel new_label);
 void changeEdgeMark(Edge *edge, MarkType new_mark);
 
-#define nodeRoot(node) (node)->flags & NFLAG_ROOT
-#define nodeMatched(node) (node)->flags & NFLAG_MATCHED
-#define nodeDeleted(node) (node)->flags & NFLAG_DELETED
-#define nodeInGraph(node) (node)->flags & NFLAG_INGRAPH
-#define nodeInStack(node) (node)->flags & NFLAG_INSTACK
+#define nodeRoot(node) ((node)->flags & NFLAG_ROOT)
+#define nodeMatched(node) ((node)->flags & NFLAG_MATCHED)
+#define nodeDeleted(node) ((node)->flags & NFLAG_DELETED)
+#define nodeInGraph(node) ((node)->flags & NFLAG_INGRAPH)
+#define nodeInStack(node) ((node)->flags & NFLAG_INSTACK)
 #define initializeNodeInGraph(node) (node)->flags = NFLAG_INGRAPH
 #define initializeRootNodeInGraph(node) (node)->flags = NFLAG_ROOT & NFLAG_INGRAPH
 #define setNodeRoot(node) (node)->flags |= NFLAG_ROOT
@@ -168,12 +168,12 @@ void changeEdgeMark(Edge *edge, MarkType new_mark);
 #define incrementOutDegree(node) (node)->outdegree++
 #define decrementOutDegree(node) (node)->outdegree--
 
-#define edgeMatched(edge) (edge)->flags & EFLAG_MATCHED
-#define edgeDeleted(edge) (edge)->flags & EFLAG_DELETED
-#define edgeInGraph(edge) (edge)->flags & EFLAG_INGRAPH
-#define edgeInStack(edge) (edge)->flags & EFLAG_INSTACK
-#define edgeInSrcLst(edge) (edge)->flags & EFLAG_INSRCLST
-#define edgeInTrgLst(edge) (edge)->flags & EFLAG_INTRGLST
+#define edgeMatched(edge) ((edge)->flags & EFLAG_MATCHED)
+#define edgeDeleted(edge) ((edge)->flags & EFLAG_DELETED)
+#define edgeInGraph(edge) ((edge)->flags & EFLAG_INGRAPH)
+#define edgeInStack(edge) ((edge)->flags & EFLAG_INSTACK)
+#define edgeInSrcLst(edge) ((edge)->flags & EFLAG_INSRCLST)
+#define edgeInTrgLst(edge) ((edge)->flags & EFLAG_INTRGLST)
 #define setEdgeMatched(edge) (edge)->flags |= EFLAG_MATCHED
 #define setEdgeDeleted(edge) (edge)->flags |= EFLAG_DELETED
 #define setEdgeInGraph(edge) (edge)->flags |= EFLAG_INGRAPH
