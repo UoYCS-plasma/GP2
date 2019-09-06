@@ -261,9 +261,10 @@ Node *yieldNextNode(Graph *graph, NodeList **current_prev)
    if(*current_prev == NULL) current = graph->nodes;
    else current = (*current_prev)->next;
 
-   if(!nodeDeleted(current->node))
+   if(current == NULL) return NULL;
+   else if(!nodeDeleted(current->node))
    {
-     *current_prev = (*current_prev)->next;
+     *current_prev = current;
      current = current->next;
    }
 
@@ -300,9 +301,10 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
    if(*current_prev == NULL) current = node->out_edges;
    else current = (*current_prev)->next;
 
-   if(!edgeDeleted(current->edge))
+   if(current == NULL) return NULL;
+   else if(!edgeDeleted(current->edge))
    {
-     *current_prev = (*current_prev)->next;
+     *current_prev = current;
      current = current->next;
    }
 
@@ -341,9 +343,10 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
    if(*current_prev == NULL) current = node->in_edges;
    else current = (*current_prev)->next;
 
-   if(!edgeDeleted(current->edge))
+   if(current == NULL) return NULL;
+   else if(!edgeDeleted(current->edge))
    {
-     *current_prev = (*current_prev)->next;
+     *current_prev = current;
      current = current->next;
    }
 
