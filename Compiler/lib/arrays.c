@@ -18,7 +18,7 @@
 #include "graph.h"
 
 // Find leading bit in an int.
-#define fls(x) ((sizeof(int)<<3) - __builtin_clz(x))
+#define fls(x) (int) ((sizeof(int)<<3) - __builtin_clz(x) - 1)
 
 BigArray makeBigArray(size_t elem_sz)
 {
