@@ -756,9 +756,10 @@ void generateRemoveLHSCode(string rule_name)
 
 void generateAddRHSCode(Rule *rule)
 {
-   fprintf(header, "void apply%s(bool record_changes);\n", rule->name);
-   PTF("void apply%s(bool record_changes)\n", rule->name);
+   fprintf(header, "void apply%s(Morphism *morphism, bool record_changes);\n", rule->name);
+   PTF("void apply%s(Morphism *morphism, bool record_changes)\n", rule->name);
    PTF("{\n");
+   PTFI("UNUSED(morphism);\n", 3);
    PTFI("int index;\n", 3);
    PTFI("HostLabel label;\n\n", 3);
    /* Generate code to retrieve the values assigned to the variables in the
@@ -781,6 +782,15 @@ void generateAddRHSCode(Rule *rule)
    }
    for(index = 0; index < rule->rhs->node_index; index++)
    {
+      RuleNode *node = getRuleNode(rule->rhs, index);
+      if((node->label.mark != NONE || node->label.length > 0) && node->label.mark == ANY)
+      {
+         PTFI("int host_node_index;\n", 3);
+         break;
+       }
+   }
+   for(index = 0; index < rule->rhs->node_index; index++)
+   {
       /* Add each node to the host graph. If the rule adds edges, extra
        * code is emitted to maintain a rule-to-host index map so that
        * the correct edges are added. */
@@ -793,7 +803,11 @@ void generateAddRHSCode(Rule *rule)
             blank_label = true;
          }
       }
-      else generateLabelEvaluationCode(node->label, true, index, 0, 3);
+      else
+      {
+         if (node->label.mark == ANY) PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
+         generateLabelEvaluationCode(node->label, true, index, 0, 3);
+      }
       PTFI("int node_array_size%d = host->nodes.size;\n", 3, index);
       PTFI("index = addNode(host, %d, label);\n", 3, node->root);
       if(rule->adds_edges) PTFI("map[%d] = index;\n", 3, node->index);
@@ -806,6 +820,15 @@ void generateAddRHSCode(Rule *rule)
    for(index = 0; index < rule->rhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->rhs, index);
+      if((edge->label.mark != NONE || edge->label.length > 0) && edge->label.mark == ANY)
+      {
+         PTFI("int host_edge_index;\n", 3);
+         break;
+       }
+   }
+   for(index = 0; index < rule->rhs->edge_index; index++)
+   {
+      RuleEdge *edge = getRuleEdge(rule->rhs, index);
       if(edge->label.mark == NONE && edge->label.length == 0)
       {
          if(!blank_label)
@@ -814,7 +837,11 @@ void generateAddRHSCode(Rule *rule)
             blank_label = true;
          }
       }
-      else generateLabelEvaluationCode(edge->label, false, index, 0, 3);
+      else
+      {
+         if (edge->label.mark == ANY) PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
+         generateLabelEvaluationCode(edge->label, false, index, 0, 3);
+      }
       /* The host-source and host-target of added edges are taken from the 
        * map populated in the previous loop. */
       PTFI("int edge_array_size%d = host->edges.size;\n", 3, index);
@@ -824,7 +851,7 @@ void generateAddRHSCode(Rule *rule)
       PTFI("   the edge was added to a hole in the array. */\n", 3);
       PTFI("if(record_changes)\n", 3);
       PTFI("pushAddedEdge(index, edge_array_size%d == host->edges.size);\n", 6, index);
-   }     
+   }
    PTF("}\n");
    return;
 }

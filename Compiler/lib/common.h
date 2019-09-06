@@ -28,6 +28,8 @@
  * reference. Otherwise, nodes and edges point to their own copies of their list. */
 #define LIST_HASHING
 
+#define UNUSED(x) (void)(x)
+
 #define print_to_log(error_message, ...)                    \
   do { fprintf(log_file, error_message, ##__VA_ARGS__); }   \
   while(0)

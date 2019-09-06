@@ -102,9 +102,9 @@ HostLabel makeHostLabel(MarkType mark, int length, HostList *list);
 /* Used to determine whether a node or edge needs relabelling, and to evaluate
  * the edge predicate if a label argument is provided. */
 bool equalHostLabels(HostLabel label1, HostLabel label2);
+bool equalHostLabelsModMarks(HostLabel label1, HostLabel label2);
 /* Used to evaluate list comparison predicates. */
-bool equalHostLists(HostAtom *left_list, HostAtom *right_list,
-                    int left_length, int right_length);
+bool equalHostLists(HostAtom *left_list, HostAtom *right_list, int left_length, int right_length);
 /* Used when adding list assignments to the morphism and when copying the host graph. */
 HostList *copyHostList(HostList *list);
 
