@@ -26,6 +26,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include "common.h"
  
  // 8 bytes
 typedef struct BigArrayElem {
