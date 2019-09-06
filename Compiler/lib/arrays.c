@@ -53,7 +53,7 @@ void doubleBigArray(BigArray *array)
   else if(array->num_arrays == array->max_array + 1)
   {
     array->elems = reallocSafe(array->elems,
-        sizeof(BigArrayElem) * (array->max_array++), "doubleBigArray");
+        sizeof(BigArrayElem) * (++(array->max_array)), "doubleBigArray");
     array->num_arrays <<= 1;
   }
   else
@@ -87,10 +87,9 @@ void *getBigArrayValue(BigArray *array, int index)
     return (void *) &(array->firstelems[index * array->elem_sz]);
 
   index -= BIGAR_INIT_SZ / array->elem_sz;
-  BigArrayElem subarray = array->elems[fls(index)];
-  ptrdiff_t inarray_index = (ptrdiff_t) index - (1 << fls(index));
+  ptrdiff_t inarray_index = (ptrdiff_t) index & (1 << fls(index));
 
-  return (void *) subarray.items + inarray_index;
+  return (void *) array->elems[fls(index)].items + inarray_index;
 }
 
 void removeFromBigArray(BigArray *array, int index)
