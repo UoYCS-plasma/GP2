@@ -752,18 +752,8 @@ void generateAddRHSCode(Rule *rule)
       PTFI("/* Array of host node indices indexed by RHS node index. */\n", 3);
       PTFI("Node *map[%d];\n\n", 3, rule->rhs->node_index);
    }
-   if (rule->rhs->node_index > 0) PTFI("Node *host_node;\n", 3);
-   if (rule->rhs->edge_index > 0) PTFI("Edge *host_edge;\n", 3);
 
-   for(index = 0; index < rule->rhs->node_index; index++)
-   {
-      RuleNode *node = getRuleNode(rule->rhs, index);
-      if((node->label.mark != NONE || node->label.length > 0) && node->label.mark == ANY)
-      {
-         PTFI("int host_node_index;\n", 3);
-         break;
-       }
-   }
+   if (rule->rhs->node_index > 0) PTFI("Node *host_node;\n", 3);
    for(index = 0; index < rule->rhs->node_index; index++)
    {
       /* Add each node to the host graph. If the rule adds edges, extra
@@ -780,7 +770,7 @@ void generateAddRHSCode(Rule *rule)
       }
       else
       {
-         if (node->label.mark == ANY) PTFI("host_node_index = lookupNode(morphism, %d);\n", 3, index);
+         if (node->label.mark == ANY) PTFI("host_node = lookupNode(morphism, %d);\n", 3, index);
          generateLabelEvaluationCode(node->label, true, index, 0, 3);
       }
       PTFI("host_node = addNode(host, %d, label);\n", 3, node->root);
@@ -789,15 +779,8 @@ void generateAddRHSCode(Rule *rule)
       PTFI("pushAddedNode(host_node);\n", 6);
    }
    PTF("\n");
-   for(index = 0; index < rule->rhs->edge_index; index++)
-   {
-      RuleEdge *edge = getRuleEdge(rule->rhs, index);
-      if((edge->label.mark != NONE || edge->label.length > 0) && edge->label.mark == ANY)
-      {
-         PTFI("int host_edge_index;\n", 3);
-         break;
-       }
-   }
+
+   if (rule->rhs->edge_index > 0) PTFI("Edge *host_edge;\n", 3);
    for(index = 0; index < rule->rhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->rhs, index);
@@ -811,7 +794,7 @@ void generateAddRHSCode(Rule *rule)
       }
       else
       {
-         if (edge->label.mark == ANY) PTFI("host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
+         if (edge->label.mark == ANY) PTFI("host_edge = lookupEdge(morphism, %d);\n", 3, index);
          generateLabelEvaluationCode(edge->label, false, index, 0, 3);
       }
       /* The host-source and host-target of added edges are taken from the 
