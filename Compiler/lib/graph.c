@@ -185,17 +185,6 @@ void removeEdge(Graph *graph, Edge *edge)
    graph->number_of_edges--;
 }
 
-void relabelNode(Node *node, HostLabel new_label)
-{
-   removeHostList(node->label.list);
-   node->label = new_label;
-}
-
-void changeNodeMark(Node *node, MarkType new_mark)
-{
-   node->label.mark = new_mark;
-}
-
 void changeRoot(Graph *graph, Node *node)
 {
    if(nodeRoot(node))
@@ -208,17 +197,6 @@ void changeRoot(Graph *graph, Node *node)
      addRootNode(graph, node);
      setNodeRoot(node);
    }
-}
-
-void relabelEdge(Edge *edge, HostLabel new_label)
-{
-   removeHostList(edge->label.list);
-   edge->label = new_label;
-}
-
-void changeEdgeMark(Edge *edge, MarkType new_mark)
-{
-   edge->label.mark = new_mark;
 }
 
 void tryGarbageCollectNode(Graph *graph, Node *node)

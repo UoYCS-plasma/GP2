@@ -136,11 +136,12 @@ void recoverEdge(Graph *graph, Edge *edge);
 void removeNode(Graph *graph, Node *node);
 void removeRootNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);
-void relabelNode(Node *node, HostLabel new_label);
-void changeNodeMark(Node *node, MarkType new_mark);
 void changeRoot(Graph *graph, Node *node);
-void relabelEdge(Edge *edge, HostLabel new_label);
-void changeEdgeMark(Edge *edge, MarkType new_mark);
+
+#define relabelNode(node, new_label) do { removeHostList(node->label.list); node->label = new_label; } while (0)
+#define changeNodeMark(node, new_mark) node->label.mark = new_mark
+#define relabelEdge(edge, new_label) do { removeHostList(edge->label.list); edge->label = new_label; } while (0)
+#define changeEdgeMark(edge, new_mark) edge->label.mark = new_mark
 
 #define nodeRoot(node) ((node)->flags & NFLAG_ROOT)
 #define nodeMatched(node) ((node)->flags & NFLAG_MATCHED)
