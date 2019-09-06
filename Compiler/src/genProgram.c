@@ -382,7 +382,6 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
          PTFI("apply%s(M_%s, true);\n", data.indent, rule_name, rule_name);
       else
          PTFI("apply%s(M_%s, false);\n", data.indent, rule_name, rule_name);
-      #ifdef GRAPH_TRACING
       PTFI("success = true;\n\n", data.indent);
    }
    else
