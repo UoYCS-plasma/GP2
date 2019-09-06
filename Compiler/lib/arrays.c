@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "graph.h"
+#include "arrays.h"
 
 // Find leading bit in an int.
 #define fls(x) (int) ((sizeof(int)<<3) - __builtin_clz(x) - 1)
@@ -37,7 +37,7 @@ BigArray makeBigArray(size_t elem_sz)
   array.num_arrays = 0;
   array.max_array = 0;
   array.elems = NULL;
-  array.capacity = BIGAR_INIT_SZ / array.elem_sz;
+  array.capacity = BIGAR_INIT_SZ / array.elem_sz - 1;
   array.first_hole = NULL;
 
   return array;
@@ -53,14 +53,16 @@ void doubleBigArray(BigArray *array)
   else if(array->num_arrays == array->max_array + 1)
   {
     array->elems = reallocSafe(array->elems,
-        sizeof(BigArrayElem) * (++(array->max_array)), "doubleBigArray");
+        sizeof(BigArrayElem) * (array->num_arrays << 1), "doubleBigArray");
     array->num_arrays <<= 1;
+    array->max_array++;
   }
   else
     array->max_array++;
 
-  BigArrayElem *new_elem = &(array->elems[array->max_array]);
-  new_elem->items = mallocSafe(array->elem_sz * (1 << array->max_array), "doubleBigArray");
+  array->elems[array->max_array].items = mallocSafe(
+      (long) array->elem_sz * ((long) 1 << (long) array->max_array),
+      "doubleBigArray");
   array->capacity += (1 << array->max_array);
 }
 
@@ -75,7 +77,8 @@ int genFreeBigArrayPos(BigArray *array)
   {
     BigArrayHole *hole = array->first_hole;
     array->first_hole = array->first_hole->next;
-    array->first_hole->prev = NULL;
+    if(array->first_hole != NULL)
+      array->first_hole->prev = NULL;
     assert(hole->index >= 0);
     return hole->index;
   }
@@ -86,10 +89,12 @@ void *getBigArrayValue(BigArray *array, int index)
   if(index < BIGAR_INIT_SZ / array->elem_sz)
     return (void *) &(array->firstelems[index * array->elem_sz]);
 
-  index -= BIGAR_INIT_SZ / array->elem_sz;
-  ptrdiff_t inarray_index = (ptrdiff_t) index & (1 << fls(index));
+  index -= BIGAR_INIT_SZ / array->elem_sz - 1;
+  ptrdiff_t inarray_index = (ptrdiff_t) index & ~(1 << fls(index));
 
-  return (void *) array->elems[fls(index)].items + inarray_index;
+  void *pos = (void *) array->elems[fls(index)].items + inarray_index;
+
+  return (void *) array->elems[fls(index)].items + inarray_index*array->elem_sz;
 }
 
 void removeFromBigArray(BigArray *array, int index)
