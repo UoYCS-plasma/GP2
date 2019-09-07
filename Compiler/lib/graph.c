@@ -374,12 +374,12 @@ void printGraph(Graph *graph, FILE *file)
       return;
    }
    PTF("[ ");
-   /* Maps a node's graph-index to the ID it is printed with (node_count). */
    NodeList *nlistpos = NULL;
    for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;)
    {
       /* Five nodes per line */
       if(node_count != 0 && node_count % 5 == 0) PTF("\n  ");
+      node_count++;
       if(nodeRoot(node)) PTF("(%d(R), ", node->index);
       else PTF("(%d, ", node->index);
       printHostLabel(node->label, file);
@@ -391,16 +391,17 @@ void printGraph(Graph *graph, FILE *file)
       return;
    }
    PTF("|\n  ");
+   EdgeList *elistpos = NULL;
+   nlistpos = NULL;
    for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;)
    {
-      EdgeList *elistpos = NULL;
-      for(Edge *edge;
-          (edge = yieldNextOutEdge(graph, node, &elistpos)) != NULL;)
+      elistpos = NULL;
+      for(Edge *edge; (edge = yieldNextOutEdge(graph, node, &elistpos)) != NULL;)
       {
          /* Three edges per line */
          if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
-         PTF("(%d, %d, %d, ", edge->index,
-             edgeSource(edge)->index, edgeTarget(edge)->index);
+         edge_count++;
+         PTF("(%d, %d, %d, ", edge->index, edgeSource(edge)->index, edgeTarget(edge)->index);
          printHostLabel(edge->label, file);
          PTF(") ");
       }
