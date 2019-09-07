@@ -403,6 +403,10 @@ void freeGraph(Graph *graph)
    for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;)
      removeNode(graph, node);
 
+   nlistpos = NULL;
+   for(Node *node; (node = yieldNextNode(graph, &nlistpos)) != NULL;)
+     removeNode(graph, node);
+
    if(graph->root_nodes != NULL)
    {
       RootNodes *iterator = graph->root_nodes;
