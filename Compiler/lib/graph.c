@@ -236,15 +236,8 @@ Node *yieldNextNode(Graph *graph, NodeList **current_prev)
 {
    NodeList *current;
 
-   if(*current_prev == NULL) current = graph->nodes;
+   if(*current_prev == NULL) *current_prev = current = graph->nodes;
    else current = (*current_prev)->next;
-
-   if(current == NULL) return NULL;
-   else if(!nodeDeleted(current->node))
-   {
-     *current_prev = current;
-     current = current->next;
-   }
 
    bool deleted_node = true;
 
@@ -254,10 +247,10 @@ Node *yieldNextNode(Graph *graph, NodeList **current_prev)
      Node *node = current->node;
 
      deleted_node = nodeDeleted(node);
-     if(nodeDeleted(node))
+     if(deleted_node)
      {
        int index = current->index;
-       if((*current_prev) != NULL)
+       if((*current_prev) != current)
          (*current_prev)->next = current->next;
        else
          graph->nodes = current->next;
@@ -267,8 +260,9 @@ Node *yieldNextNode(Graph *graph, NodeList **current_prev)
        clearNodeInGraph(node);
        tryGarbageCollectNode(graph, node);
      }
-
    }
+
+   *current_prev = current;
    return current->node;
 }
 
@@ -276,15 +270,8 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
 {
    EdgeList *current;
 
-   if(*current_prev == NULL) current = node->out_edges;
+   if(*current_prev == NULL) *current_prev = current = node->out_edges;
    else current = (*current_prev)->next;
-
-   if(current == NULL) return NULL;
-   else if(!edgeDeleted(current->edge))
-   {
-     *current_prev = current;
-     current = current->next;
-   }
 
    bool deleted_edge = true;
 
@@ -294,10 +281,10 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
      Edge *edge = current->edge;
 
      deleted_edge = edgeDeleted(edge);
-     if(edgeDeleted(edge))
+     if(deleted_edge)
      {
        int index = current->index;
-       if((*current_prev) != NULL)
+       if((*current_prev) != current)
          (*current_prev)->next = current->next;
        else
          node->out_edges = current->next;
@@ -311,6 +298,8 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
        }
      }
    }
+
+   *current_prev = current;
    return current->edge;
 }
 
@@ -318,15 +307,8 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
 {
    EdgeList *current;
 
-   if(*current_prev == NULL) current = node->in_edges;
+   if(*current_prev == NULL) *current_prev = current = node->in_edges;
    else current = (*current_prev)->next;
-
-   if(current == NULL) return NULL;
-   else if(!edgeDeleted(current->edge))
-   {
-     *current_prev = current;
-     current = current->next;
-   }
 
    bool deleted_edge = true;
 
@@ -336,10 +318,10 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
      Edge *edge = current->edge;
 
      deleted_edge = edgeDeleted(edge);
-     if(edgeDeleted(edge))
+     if(deleted_edge)
      {
        int index = current->index;
-       if((*current_prev) != NULL)
+       if((*current_prev) != current)
          (*current_prev)->next = current->next;
        else
          node->in_edges = current->next;
@@ -353,6 +335,8 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
        }
      }
    }
+
+   *current_prev = current;
    return current->edge;
 }
 
