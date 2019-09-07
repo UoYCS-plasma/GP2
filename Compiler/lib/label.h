@@ -49,18 +49,18 @@ typedef struct HostLabel {
    struct HostList *list;
    unsigned short length;
    MarkType mark;
-} HostLabel;
+} __attribute__((packed)) HostLabel;
 
 extern struct HostLabel blank_label;
 
-// 20 bytes
+// 24 bytes
 typedef struct HostList {
    struct HostListItem *first;
    struct HostListItem *last;
    int hash;
 } HostList;
 
-// 9 bytes
+// 16 bytes
 typedef struct HostAtom {
    union {
       int num; // TODO: LONG
@@ -76,7 +76,7 @@ typedef struct HostListItem {
    struct HostListItem *prev;
 } HostListItem;
 
-// 28 bytes
+// 32 bytes
 typedef struct Bucket {
    HostList *list;
    struct Bucket *next;

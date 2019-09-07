@@ -40,31 +40,26 @@
 #define NUMBER_OF_MARKS 6 
 #define NUMBER_OF_CLASSES 7
 
-// 20 bytes
+// 24 bytes
 typedef struct NodeList {
   struct Node *node;
   struct NodeList *next;
   int index; // TODO: UNSIGNED
 } NodeList;
 
-// 20 bytes
+// 24 bytes
 typedef struct EdgeList {
   struct Edge *edge;
   struct EdgeList *next;
   int index; // TODO: UNSIGNED
 } EdgeList;
 
-// 1 byte
-typedef struct NodeQuery {
-  MarkType mark;
-} NodeQuery;
-
 /* ================================
  * Graph Data Structure + Functions
  * ================================ */
 
 // 120 + BIGAR_INIT_SZ * 3 bytes
-// currently, 600 bytes
+// currently, 696 bytes
 typedef struct Graph
 {
    NodeList *nodes;
@@ -86,19 +81,19 @@ Graph *newGraph();
  * ========================= */
 
 // 72 bytes + BIGAR_INIT_SZ
-// currently, 232 bytes
+// currently, 264 bytes
 typedef struct Node {
-   BigArray _edgelistarray;
    HostLabel label;
-   int index; // TODO: UNSIGNED
 #define NFLAG_ROOT 0b1
 #define NFLAG_MATCHED 0b10
 #define NFLAG_DELETED 0b100
 #define NFLAG_INGRAPH 0b1000
 #define NFLAG_INSTACK 0b10000
    char flags; // All flags stored here.
+   int index; // TODO: UNSIGNED
    EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
    int outdegree, indegree; // TODO: UNSIGNED
+   BigArray _edgelistarray;
 } Node;
 
 // 16 bytes

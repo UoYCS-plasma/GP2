@@ -38,7 +38,7 @@ typedef struct BigArrayElem {
 // can be retrieved quickly.
 // Stores addresses so indices are available at no traversal cost
 
- // 20 bytes
+ // 24 bytes
 typedef struct BigArrayHole {
   struct BigArrayHole *prev;
   struct BigArrayHole *next;
@@ -52,14 +52,14 @@ typedef struct BigArrayHole {
 // Useful for minimizing the number of malloc's while keeping pointers valid.
 
 // 32 bytes + BIGAR_INIT_SZ
-// currently, 192 bytes
+// currently, 224 bytes
 typedef struct BigArray {
   int capacity; // TODO: UNSIGNED
   int size; // TODO: UNSIGNED
   int elem_sz; // TODO: UNSIGNED
   unsigned short max_array;
   unsigned short num_arrays;
-#define BIGAR_INIT_SZ 160
+#define BIGAR_INIT_SZ 192
   char firstelems[BIGAR_INIT_SZ]; // use this before malloc'ing space
   BigArrayElem *elems;
   BigArrayHole *first_hole;
