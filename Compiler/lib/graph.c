@@ -109,7 +109,7 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    srclist->next = source->out_edges;
    source->out_edges = srclist;
    setEdgeInSrcLst(edge);
-   incrementInDegree(source);
+   incrementOutDegree(source);
 
    int trglstind = genFreeBigArrayPos(&(target->_edgelistarray));
    EdgeList *trglist = (EdgeList *) getBigArrayValue(
