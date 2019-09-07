@@ -50,6 +50,8 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    node->label = label;
    node->out_edges = NULL;
    node->in_edges = NULL;
+   node->outdegree = 0;
+   node->indegree = 0;
    node->_edgelistarray = makeBigArray(sizeof(EdgeList));
 
    nlist->node = node;

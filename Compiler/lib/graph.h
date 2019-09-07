@@ -144,7 +144,7 @@ void changeRoot(Graph *graph, Node *node);
 #define nodeInGraph(node) ((node)->flags & NFLAG_INGRAPH)
 #define nodeInStack(node) ((node)->flags & NFLAG_INSTACK)
 #define initializeNodeInGraph(node) (node)->flags = NFLAG_INGRAPH
-#define initializeRootNodeInGraph(node) (node)->flags = NFLAG_ROOT & NFLAG_INGRAPH
+#define initializeRootNodeInGraph(node) (node)->flags = (NFLAG_ROOT | NFLAG_INGRAPH)
 #define setNodeRoot(node) (node)->flags |= NFLAG_ROOT
 #define setNodeMatched(node) (node)->flags |= NFLAG_MATCHED
 #define setNodeDeleted(node) (node)->flags |= NFLAG_DELETED
