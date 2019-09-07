@@ -862,7 +862,7 @@ void generateApplicationCode(Rule *rule)
          /* Generate code to remove the edge. */
          if(!host_edge_declared)
          {
-            PTFI("Edge *host_edge= lookupEdge(morphism, %d);\n", 3, index);
+            PTFI("Edge *host_edge = lookupEdge(morphism, %d);\n", 3, index);
             host_edge_declared = true;
          }
          else PTFI("host_edge = lookupEdge(morphism, %d);\n", 3, index);
