@@ -37,7 +37,7 @@ BigArray makeBigArray(size_t elem_sz)
   array.num_arrays = 0;
   array.max_array = 0;
   array.elems = NULL;
-  array.capacity = BIGAR_INIT_SZ / array.elem_sz - 1;
+  array.capacity = BIGAR_INIT_SZ / array.elem_sz;
   array.first_hole = NULL;
 
   return array;
@@ -48,29 +48,29 @@ void doubleBigArray(BigArray *array)
   if(array->elems == NULL)
   {
     array->elems = mallocSafe(sizeof(BigArrayElem), "doubleBigArray");
+    array->elems[array->max_array].items = mallocSafe((long) array->elem_sz * 2, "doubleBigArray");
     array->num_arrays = 1;
-  }
-  else if(array->num_arrays == array->max_array + 1)
-  {
-    array->elems = reallocSafe(array->elems,
-        sizeof(BigArrayElem) * (array->num_arrays << 1), "doubleBigArray");
-    array->num_arrays <<= 1;
-    array->max_array++;
+    array->capacity += 2;
   }
   else
+  {
+    if(array->num_arrays == array->max_array + 1)
+    {
+      array->elems = reallocSafe(array->elems, sizeof(BigArrayElem) * (array->num_arrays << 1), "doubleBigArray");
+      array->num_arrays <<= 1;
+    }
     array->max_array++;
-
-  array->elems[array->max_array].items = mallocSafe(
-      (long) array->elem_sz * ((long) 1 << (long) array->max_array),
-      "doubleBigArray");
-  array->capacity += (1 << array->max_array);
+    array->elems[array->max_array].items = mallocSafe((long) array->elem_sz * (1 << (fls(array->max_array)+2)), "doubleBigArray");
+    array->capacity += (1 << (fls(array->max_array)+2));
+  }
 }
 
 int genFreeBigArrayPos(BigArray *array)
 {
   if(array->first_hole == NULL)
   {
-    if(array->size == array->capacity) doubleBigArray(array);
+    if(array->size == array->capacity)
+      doubleBigArray(array);
     return array->size++;
   }
   else
@@ -89,12 +89,10 @@ void *getBigArrayValue(BigArray *array, int index)
   if(index < BIGAR_INIT_SZ / array->elem_sz)
     return (void *) &(array->firstelems[index * array->elem_sz]);
 
-  index -= BIGAR_INIT_SZ / array->elem_sz - 1;
-  ptrdiff_t inarray_index = (ptrdiff_t) index & ~(1 << fls(index));
+  index -= BIGAR_INIT_SZ / array->elem_sz;
+  ptrdiff_t inarray_index = (ptrdiff_t) index - (2 * (1 << (fls(index+2)-1)) - 2);
 
-  void *pos = (void *) array->elems[fls(index)].items + inarray_index;
-
-  return (void *) array->elems[fls(index)].items + inarray_index*array->elem_sz;
+  return (void *) array->elems[fls(index+2)-1].items + inarray_index*array->elem_sz;
 }
 
 void removeFromBigArray(BigArray *array, int index)
@@ -117,7 +115,7 @@ void emptyBigArray(BigArray *array)
 {
   if(array->elems != NULL)
   {
-    for(int i = 0; i < array->max_array; i++)
+    for(int i = 0; i <= array->max_array; i++)
       free(array->elems[i].items);
     free(array->elems);
   }
