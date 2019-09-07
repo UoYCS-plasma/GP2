@@ -307,7 +307,7 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
        if(edgeFree(edge))
        {
           removeHostList(edge->label.list);
-          removeFromBigArray(&(graph->_edgearray), edge->index);
+          removeFromBigArray(&(graph->_edgearray), index);
        }
      }
    }
@@ -349,7 +349,7 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
        if(edgeFree(edge))
        {
           removeHostList(edge->label.list);
-          removeFromBigArray(&(graph->_edgearray), edge->index);
+          removeFromBigArray(&(graph->_edgearray), index);
        }
      }
    }
