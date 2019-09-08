@@ -125,11 +125,8 @@ void generateRuntimeMain(List *declarations, string output_dir)
    PTFI(" * the correct source and target indices. */\n", 3);
    PTFI("int result = yyparse();\n", 3);
    PTFI("fclose(yyin);\n", 3);
-   if(!fast_shutdown)
-   {
-      PTFI("yylex_destroy();\n", 3);
-      PTFI("yy_delete_buffer(YY_CURRENT_BUFFER);\n", 3);
-   }
+   PTFI("yylex_destroy();\n", 3);
+   PTFI("yy_delete_buffer(YY_CURRENT_BUFFER);\n", 3);
    PTFI("Word_t Rc_word;\n", 3);
    PTFI("JLFA(Rc_word, node_map);\n", 3);
    PTFI("if(result == 0) return host;\n", 3);
