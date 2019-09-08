@@ -401,7 +401,11 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
                  PTFI("apply%s(M_%s, true);\n", data.indent + 3, rule_name, rule_name);
             else PTFI("apply%s(M_%s, false);\n", data.indent + 3, rule_name, rule_name);
          }
-         else PTFI("initialiseMorphism(M_%s, host);\n", data.indent + 3, rule_name);
+         else
+         {
+            PTFI("clearMatched(M_%s);\n", data.indent + 3, rule_name);
+            PTFI("initialiseMorphism(M_%s);\n", data.indent + 3, rule_name);
+         }
       }
       PTFI("success = true;\n", data.indent + 3);
       /* If this rule call is within a rule set, and it is not the last rule in that

@@ -87,7 +87,8 @@ Morphism *makeMorphism(int nodes, int edges, int variables);
  * are reset to their default values. 
  * The host graph is passed as an optional second argument to reset the matched flags
  * of all host graph items matched by the morphism. */
-void initialiseMorphism(Morphism *morphism, Graph *graph);
+void initialiseMorphism(Morphism *morphism);
+void clearMatched(Morphism *morphism);
 void addNodeMap(Morphism *morphism, int left_index, Node *host_node, int assignments);
 void removeNodeMap(Morphism *morphism, int left_index);
 void addEdgeMap(Morphism *morphism, int left_index, Edge *host_edge, int assignments);

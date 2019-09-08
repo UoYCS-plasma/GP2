@@ -191,7 +191,8 @@ static void generateMatchingCode(Rule *rule, bool predicate)
       PTFI("bool match = match_%c%d(morphism);\n", 3, item, searchplan->first->index);
       /* Reset the matched flags in the host graph. This is normally done after
        * rule application, but predicate rules are not applied. */
-      PTFI("initialiseMorphism(morphism, host);\n", 3);
+      PTFI("clearMatched(morphism);\n", 3);
+      PTFI("initialiseMorphism(morphism);\n", 3);
       PTFI("return match;\n", 3);
    }
    else 
@@ -199,7 +200,8 @@ static void generateMatchingCode(Rule *rule, bool predicate)
       PTFI("if(match_%c%d(morphism)) return true;\n", 3, item, searchplan->first->index);
       PTFI("else\n", 3);
       PTFI("{\n", 3);
-      PTFI("initialiseMorphism(morphism, host);\n", 6);
+      PTFI("clearMatched(morphism);\n", 6);
+      PTFI("initialiseMorphism(morphism);\n", 6);
       PTFI("return false;\n", 6);
       PTFI("}\n", 3);
    }
@@ -723,8 +725,8 @@ void generateRemoveLHSCode(string rule_name)
    PTFI("pushRemovedNode(node);\n", 9);
    PTFI("removeNode(host, node);\n", 6);
    PTFI("}\n", 3);
-   PTFI("initialiseMorphism(morphism, NULL);\n", 3);
-   PTFI("}\n\n", 3);
+   PTFI("initialiseMorphism(morphism);\n", 3);
+   PTF("}\n\n");
 }
 
 void generateAddRHSCode(Rule *rule)
@@ -1106,6 +1108,7 @@ void generateApplicationCode(Rule *rule)
       PTFI("pushAddedEdge(host_edge);\n", 6);
    }
    PTFI("/* Reset the morphism. */\n", 3);
-   PTFI("initialiseMorphism(morphism, host);\n}\n\n", 3);
+   PTFI("clearMatched(morphism);\n", 3);
+   PTFI("initialiseMorphism(morphism);\n", 3);
+   PTF("}\n\n");
 }
-

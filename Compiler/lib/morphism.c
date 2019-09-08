@@ -69,16 +69,18 @@ Morphism *makeMorphism(int nodes, int edges, int variables)
       morphism->assignment = NULL;
       morphism->assigned_variables = NULL;
    }
-   initialiseMorphism(morphism, NULL);
+   initialiseMorphism(morphism);
    return morphism;
 }
 
-void initialiseMorphism(Morphism *morphism, Graph *graph)
+void initialiseMorphism(Morphism *morphism)
 { 
    for(int index = 0; index < morphism->nodes; index++)
-     removeNodeMap(morphism, index);
+      removeNodeMap(morphism, index);
+     
    for(int index = 0; index < morphism->edges; index++)
-     removeEdgeMap(morphism, index);
+      removeEdgeMap(morphism, index);
+
    morphism->variable_index = 0;
    for(int index = 0; index < morphism->variables; index++)
    {
@@ -94,6 +96,21 @@ void initialiseMorphism(Morphism *morphism, Graph *graph)
       }
       morphism->assignment[index].type = 'n';
       morphism->assigned_variables[index] = -1;
+   }
+}
+
+void clearMatched(Morphism *morphism)
+{ 
+   for(int index = 0; index < morphism->nodes; index++)
+   {
+      if (morphism->node_map[index].node != NULL)
+         clearNodeMatched(morphism->node_map[index].node);
+   }
+     
+   for(int index = 0; index < morphism->edges; index++)
+   {
+      if (morphism->edge_map[index].edge != NULL)
+         clearEdgeMatched(morphism->edge_map[index].edge);
    }
 }
 

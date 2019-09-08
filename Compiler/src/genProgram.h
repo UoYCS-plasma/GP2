@@ -60,6 +60,7 @@ void generateRuntimeMain(List *declarations, string output_dir);
  * (2) R does not change the host graph:
  * if(matchR(M_R))
  * {
+ *    clearMatched(M_R);
  *    initialiseMorphism(M_R);
  *    success = true;
  * }
@@ -72,6 +73,7 @@ void generateRuntimeMain(List *declarations, string output_dir);
  * if(matchR(M_R))
  * {
  *    applyR(M_R);
+ *    clearMatched(M_R);
  *    initialiseMorphism(M_R);
  *    success = true;
  * }

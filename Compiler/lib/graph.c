@@ -203,7 +203,7 @@ void changeRoot(Graph *graph, Node *node)
 
 void tryGarbageCollectNode(Graph *graph, Node *node)
 {
-   if(!(nodeInGraph(node) || nodeInStack(node)) && nodeDeleted(node))
+   if(!(nodeInGraph(node) || nodeInStack(node) || nodeMatched(node)) && nodeDeleted(node))
    {
       removeHostList(node->label.list);
       // free out_edges and in_edges
