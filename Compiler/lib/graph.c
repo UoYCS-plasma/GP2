@@ -257,7 +257,6 @@ Node *yieldNextNode(Graph *graph, NodeList **current_prev)
          (*current_prev)->next = current->next;
        if (initial)
          graph->nodes = current->next;
-       *current_prev = current;
        current = current->next;
        removeFromBigArray(&(graph->_nodelistarray), index);
        clearNodeInGraph(node);
@@ -291,7 +290,6 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
          (*current_prev)->next = current->next;
        if (initial)
          node->out_edges = current->next;
-       *current_prev = current;
        current = current->next;
        clearEdgeInSrcLst(edge);
        if(edgeFree(edge))
@@ -328,7 +326,6 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
          (*current_prev)->next = current->next;
        if (initial)
          node->in_edges = current->next;
-       *current_prev = current;
        current = current->next;
        clearEdgeInSrcLst(edge);
        if(edgeFree(edge))
