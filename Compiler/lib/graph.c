@@ -169,6 +169,7 @@ void removeRootNode(Graph *graph, Node *node)
    {
       if(current->node == node)
       {
+         clearNodeRoot(node);
          if(previous == NULL) graph->root_nodes = current->next;
          else previous->next = current->next;
          free(current);
