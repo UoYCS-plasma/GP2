@@ -93,11 +93,11 @@ void generateRuntimeMain(List *declarations, string output_dir)
    /* Declare the global morphism variables for each rule. */
    generateMorphismCode(declarations, 'd', true);
 
-   /* Declare the runtime global variables and functions. */
-   generateMorphismCode(declarations, 'f', true);
-
    if(!fast_shutdown)
    {
+      /* Declare the runtime global variables and functions. */
+      generateMorphismCode(declarations, 'f', true);
+
       PTF("static void garbageCollect(void)\n");
       PTF("{\n");
       PTF("   freeGraph(host);\n");
