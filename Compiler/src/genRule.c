@@ -632,7 +632,10 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
    PTFI("if(%s(host_edge) != end_node) continue;\n", 9, end_node_access);
    PTFI("}\n", 6);
    PTFI("/* Otherwise, the %s of the host edge should be unmatched. */\n", 6, end_node_access);
-   PTFI("else if(edgeMatched(edgeTarget(host_edge))) continue;\n", 6);
+   if(source)
+      PTFI("else if(nodeMatched(edgeTarget(host_edge))) continue;\n", 6);
+   else
+      PTFI("else if(nodeMatched(edgeSource(host_edge))) continue;\n", 6);
 
    PTFI("HostLabel label = host_edge->label;\n", 6);
    PTFI("bool match = false;\n", 6);
