@@ -209,6 +209,7 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current);
 RootNodes *getRootNodeList(Graph *graph);
 
 void printGraph(Graph *graph, FILE *file);
+void printGraphFast(Graph *graph, FILE *file);
 void freeGraph(Graph *graph);
 
 #endif /* INC_GRAPH_H */

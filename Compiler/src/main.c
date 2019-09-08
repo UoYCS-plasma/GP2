@@ -120,8 +120,7 @@ static bool validateHostGraph(string host_file)
    return (yyparse() == 0);
 }
 
-/* Controls the CFLAGS in the generated makefile. */
-bool debug_flags = false;
+bool debug_flags, fast_shutdown = false;
 
 void printMakeFile(string output_dir, string install_dir)
 {
@@ -157,12 +156,13 @@ void printMakeFile(string output_dir, string install_dir)
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "gp2 [-c] [-d] [-l <rootdir>] [-o <outdir>] <program_file>\n"
+                        "gp2 [-d] [-f] [-l <rootdir>] [-o <outdir>] <program_file>\n"
                         "gp2 -p <program_file>\n"
                         "gp2 -r <rule_file>\n"
                         "gp2 -h <host_file>\n\n"
                         "Flags:\n"
                         "-d - Compile program with GCC debugging flags.\n"
+                        "-f - Compile in fast shutdown mode.\n"
                         "-p - Validate a GP 2 program.\n"
                         "-r - Validate a GP 2 rule.\n"
                         "-h - Validate a GP 2 host graph.\n"
@@ -223,6 +223,10 @@ int main(int argc, char **argv)
           {
              case 'd':
                   debug_flags = true;
+                  break;
+
+             case 'f':
+                  fast_shutdown = true;
                   break;
 
              case 'l':

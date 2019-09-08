@@ -96,14 +96,16 @@ void generateRuntimeMain(List *declarations, string output_dir)
    /* Declare the runtime global variables and functions. */
    generateMorphismCode(declarations, 'f', true);
 
-   PTF("static void garbageCollect(void)\n");
-   PTF("{\n");
-   PTF("   freeGraph(host);\n");
-   PTF("   freeHostListStore();\n");
-   PTF("   freeMorphisms();\n");
-   PTF("   freeGraphChangeStack();\n");
-   PTF("   closeLogFile();\n");
-   PTF("}\n\n");
+   if(!fast_shutdown)
+   {
+      PTF("static void garbageCollect(void)\n");
+      PTF("{\n");
+      PTF("   freeGraph(host);\n");
+      PTF("   freeHostListStore();\n");
+      PTF("   freeMorphisms();\n");
+      PTF("   freeGraphChangeStack();\n");
+      PTF("}\n\n");
+   }
 
    PTF("Graph *host = NULL;\n");
    PTF("Pvoid_t node_map = (Pvoid_t) NULL;\n\n");
@@ -122,15 +124,18 @@ void generateRuntimeMain(List *declarations, string output_dir)
    PTFI("/* The parser populates the host graph using node_map to add edges with\n", 3);
    PTFI(" * the correct source and target indices. */\n", 3);
    PTFI("int result = yyparse();\n", 3);
+   if(!fast_shutdown)
+   {
+      PTFI("yylex_destroy();\n", 3);
+      PTFI("yy_delete_buffer(YY_CURRENT_BUFFER);\n", 3);
+   }
    PTFI("fclose(yyin);\n", 3);
-   PTFI("yylex_destroy();\n", 3);
-   PTFI("yy_delete_buffer(YY_CURRENT_BUFFER);\n", 3);
    PTFI("Word_t Rc_word;\n", 3);
    PTFI("JLFA(Rc_word, node_map);\n", 3);
    PTFI("if(result == 0) return host;\n", 3);
    PTFI("else\n", 3);
    PTFI("{\n", 3);
-   PTFI("freeGraph(host);\n", 6);
+   if(!fast_shutdown) PTFI("freeGraph(host);\n", 6);
    PTFI("return NULL;\n", 6);
    PTFI("}\n", 3);
    PTF("}\n\n");
@@ -177,9 +182,14 @@ void generateRuntimeMain(List *declarations, string output_dir)
       }
       iterator = iterator->next;
    }
-   PTF("   printGraph(host, output_file);\n");
+   if(fast_shutdown) PTF("   printGraphFast(host, output_file);\n");
+   else
+   {
+      PTF("   printGraph(host, output_file);\n");
+      PTF("   garbageCollect();\n");
+   }
+   PTF("   closeLogFile();\n");
    PTF("   printf(\"Output graph saved to file gp2.output\\n\");\n");
-   PTF("   garbageCollect();\n");
    PTF("   fclose(output_file);\n");
    PTF("   return 0;\n");
    PTF("}\n\n");
@@ -570,7 +580,8 @@ static void generateFailureCode(string rule_name, CommandData data)
       else PTFI("fprintf(output_file, \"No output graph: Fail statement invoked\\n\");\n",
                 data.indent);
       PTFI("printf(\"Output information saved to file gp2.output\\n\");\n", data.indent);
-      PTFI("garbageCollect();\n", data.indent);
+      if(!fast_shutdown) PTFI("garbageCollect();\n", data.indent);
+      PTFI("closeLogFile();\n", data.indent);
       PTFI("fclose(output_file);\n", data.indent);
       PTFI("return 0;\n", data.indent);
    }

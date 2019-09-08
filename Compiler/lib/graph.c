@@ -268,6 +268,23 @@ Node *yieldNextNode(Graph *graph, NodeList **current_prev)
    return current->node;
 }
 
+Node *yieldNextNodeFast(Graph *graph, NodeList **current_prev)
+{
+   NodeList *current;
+   if(*current_prev == NULL) *current_prev = current = graph->nodes;
+   else current = (*current_prev)->next;
+
+   bool deleted_node = true;
+   while(deleted_node) {
+     if(current == NULL) return NULL;
+     deleted_node = nodeDeleted(current->node);
+     if(deleted_node) current = current->next;
+   }
+
+   *current_prev = current;
+   return current->node;
+}
+
 Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
 {
    EdgeList *current;
@@ -298,6 +315,23 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
           removeFromBigArray(&(graph->_edgearray), index);
        }
      }
+   }
+
+   *current_prev = current;
+   return current->edge;
+}
+
+Edge *yieldNextOutEdgeFast(Graph *graph, Node *node, EdgeList **current_prev)
+{
+   EdgeList *current;
+   if(*current_prev == NULL) *current_prev = current = node->out_edges;
+   else current = (*current_prev)->next;
+
+   bool deleted_edge = true;
+   while(deleted_edge) {
+     if(current == NULL) return NULL;
+     deleted_edge = edgeDeleted(current->edge);
+     if(deleted_edge) current = current->next;
    }
 
    *current_prev = current;
@@ -385,6 +419,43 @@ void printGraph(Graph *graph, FILE *file)
          /* Three edges per line */
          if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
          edge_count++;
+         PTF("(%d, %d, %d, ", edge->index, edgeSource(edge)->index, edgeTarget(edge)->index);
+         printHostLabel(edge->label, file);
+         PTF(") ");
+      }
+   }
+   PTF("]\n\n");
+}
+
+void printGraphFast(Graph *graph, FILE *file) 
+{
+   if(graph == NULL || graph->number_of_nodes == 0) 
+   {
+      PTF("[ | ]\n\n");
+      return;
+   }
+   PTF("[ ");
+   NodeList *nlistpos = NULL;
+   for(Node *node; (node = yieldNextNodeFast(graph, &nlistpos)) != NULL;)
+   {
+      if(nodeRoot(node)) PTF("(%d(R), ", node->index);
+      else PTF("(%d, ", node->index);
+      printHostLabel(node->label, file);
+      PTF(") ");
+   }
+   if(graph->number_of_edges == 0)
+   {
+      PTF("| ]\n\n");
+      return;
+   }
+   PTF("|\n  ");
+   EdgeList *elistpos = NULL;
+   nlistpos = NULL;
+   for(Node *node; (node = yieldNextNodeFast(graph, &nlistpos)) != NULL;)
+   {
+      elistpos = NULL;
+      for(Edge *edge; (edge = yieldNextOutEdgeFast(graph, node, &elistpos)) != NULL;)
+      {
          PTF("(%d, %d, %d, ", edge->index, edgeSource(edge)->index, edgeTarget(edge)->index);
          printHostLabel(edge->label, file);
          PTF(") ");
