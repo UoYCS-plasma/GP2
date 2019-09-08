@@ -237,10 +237,9 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
               PTFI("{\n", 6);
               PTFI("HostLabel label;\n", 9);
               /* Create runtime variables for each variable in the label. */
-              RuleListItem *item = predicate->edge_pred.label.list->first;
-
               if(predicate->edge_pred.label.length > 0)
               {
+                 RuleListItem *item = predicate->edge_pred.label.list->first;
                  int count;
                  for(count = 0; count < predicate->edge_pred.label.length; count++)
                  {
