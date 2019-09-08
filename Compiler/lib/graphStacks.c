@@ -133,11 +133,7 @@ void pushRelabelledNode(Node *node, HostLabel old_label)
    change.relabelled_node.old_label = old_label;
    /* Keep a record of the list as the relabelling of the node could free this
     * list or remove its bucket from the hash table. */
-   #ifdef LIST_HASHING
-      addHostList(old_label.list);
-   #else
-      change.relabelled_node.old_label.list = copyHostList(old_label.list);
-   #endif
+   addHostList(old_label.list);
    pushGraphChange(change);
 }
 
@@ -151,11 +147,7 @@ void pushRelabelledEdge(Edge *edge, HostLabel old_label)
    change.relabelled_edge.old_label = old_label;
    /* Keep a record of the list as the relabelling of the edge could free this
     * list or remove its bucket from the hash table. */
-   #ifdef LIST_HASHING
-      addHostList(old_label.list);
-   #else
-      change.relabelled_edge.old_label.list = copyHostList(old_label.list);
-   #endif
+   addHostList(old_label.list);
    pushGraphChange(change);
 }
 
@@ -343,9 +335,7 @@ void discardChanges(int restore_point)
 void freeGraphChangeStack(void)
 {
    if(graph_change_stack == NULL) return;
-   #ifndef LIST_HASHING
-      discardChanges(0);
-   #endif
+   discardChanges(0);
    free(graph_change_stack->stack);
    free(graph_change_stack);
 }

@@ -294,8 +294,8 @@ void generateVariableListMatchingCode(Rule *rule, RuleLabel label, int indent)
    PTFI("sublist[list_index++] = iterator->atom;\n", indent + 9);
    PTFI("iterator = iterator->next;\n", indent + 9);
    PTFI("}\n", indent + 6);
-   PTFI("HostList *list = makeHostList(sublist, label.length - %d, false);\n", indent + 6,  
-        host_atoms_matched);
+   PTFI("HostList *list = makeHostList(sublist, label.length - %hu, false);\n", indent + 6,  
+        (unsigned short) host_atoms_matched);
    PTFI("result = addListAssignment(morphism, %d, list);\n", indent + 6,
         list_variable_id);
    PTFI("}\n", indent + 3);
@@ -642,7 +642,7 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
       }
       else
       {
-         PTFI("int list_length%d = 0;\n", indent, count);
+         PTFI("unsigned short list_length%d = 0;\n", indent, count);
          PTFI("HostAtom *array%d = NULL;\n", indent, count);
       }
       return;
@@ -652,7 +652,7 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
     * its length to the runtime accumulator <list_var_length>. A compile-time
     * accumulator <number_of_atoms> counts the number of non-list-variable atoms. */
    int number_of_atoms = 0;
-   PTFI("int list_var_length%d = 0;\n", indent, count);
+   PTFI("unsigned short list_var_length%d = 0;\n", indent, count);
    RuleListItem *item = label.list->first;
    while(item != NULL)
    {
@@ -662,7 +662,7 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
       else number_of_atoms++;
       item = item->next;
    }
-   PTFI("int list_length%d = list_var_length%d + %d;\n", indent, count, count, number_of_atoms);
+   PTFI("unsigned short list_length%d = list_var_length%d + %d;\n", indent, count, count, number_of_atoms);
    PTFI("HostAtom array%d[list_length%d];\n", indent, count, count);
    PTFI("int index%d = 0;\n\n", indent, count);
    /* Generate code to build the list. */

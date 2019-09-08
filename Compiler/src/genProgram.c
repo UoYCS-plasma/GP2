@@ -99,9 +99,7 @@ void generateRuntimeMain(List *declarations, string output_dir)
    PTF("static void garbageCollect(void)\n");
    PTF("{\n");
    PTF("   freeGraph(host);\n");
-   #ifdef LIST_HASHING
-      PTF("   freeHostListStore();\n");
-   #endif
+   PTF("   freeHostListStore();\n");
    PTF("   freeMorphisms();\n");
    PTF("   freeGraphChangeStack();\n");
    PTF("   closeLogFile();\n");

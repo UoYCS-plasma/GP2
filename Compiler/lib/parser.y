@@ -60,7 +60,7 @@ void yyerror(const char *error_message);
 
 /* Variables used in the Graph construction. */
 bool is_root = false;
-int length = 0;
+unsigned short length = 0;
 
 /* Temporary automatic storage for host lists before they are added to the list hashtable. */
 HostAtom array[64];

@@ -24,10 +24,6 @@
 #ifndef INC_COMMON_H
 #define INC_COMMON_H
 
-/* If defined, lists are stored in a hash table at runtime as a single point of
- * reference. Otherwise, nodes and edges point to their own copies of their list. */
-#define LIST_HASHING
-
 #define UNUSED(x) (void)(x)
 
 #define print_to_log(error_message, ...)                    \

@@ -55,18 +55,18 @@ extern struct HostLabel blank_label;
 
 // 24 bytes
 typedef struct HostList {
+   int hash;
    struct HostListItem *first;
    struct HostListItem *last;
-   int hash;
 } HostList;
 
 // 16 bytes
 typedef struct HostAtom {
+   char type; /* (i)nteger or (s)tring */ // TODO: ENUM
    union {
       int num; // TODO: LONG
       string str;
    };
-   char type; /* (i)nteger or (s)tring */ // TODO: ENUM
 } HostAtom;
 
 // 24 bytes
@@ -79,9 +79,9 @@ typedef struct HostListItem {
 // 32 bytes
 typedef struct Bucket {
    HostList *list;
+   unsigned int reference_count;
    struct Bucket *next;
    struct Bucket *prev;
-   int reference_count; // TODO: UNSIGNED
 } Bucket;
 
 /* Hash table to store lists at runtime. Collisions are handled by separate chaining
@@ -94,7 +94,7 @@ extern Bucket **list_store;
 /* If list hashing is enabled, makeHostList returns a pointer to the HostList represented 
  * by the passed array from the hash table (list_store). If not, the function returns a
  * pointer to a newly-allocated HostList. */
-HostList *makeHostList(HostAtom *array, int length, bool free_strings);
+HostList *makeHostList(HostAtom *array, unsigned short length, bool free_strings);
 /* Expects the passed pointer to exist in the list hash table. Increments the reference
  * count of the list's bucket. */
 void addHostList(HostList *list);
@@ -105,14 +105,14 @@ void removeHostList(HostList *list);
 
 /* Called at runtime to build labels. */
 HostLabel makeEmptyLabel(MarkType mark);
-HostLabel makeHostLabel(MarkType mark, int length, HostList *list);
+HostLabel makeHostLabel(MarkType mark, unsigned short length, HostList *list);
 
 /* Used to determine whether a node or edge needs relabelling, and to evaluate
  * the edge predicate if a label argument is provided. */
 bool equalHostLabels(HostLabel label1, HostLabel label2);
 bool equalHostLabelsModMarks(HostLabel label1, HostLabel label2);
 /* Used to evaluate list comparison predicates. */
-bool equalHostLists(HostAtom *left_list, HostAtom *right_list, int left_length, int right_length);
+bool equalHostLists(HostAtom *left_list, HostAtom *right_list, unsigned short left_length, unsigned short right_length);
 /* Used when adding list assignments to the morphism and when copying the host graph. */
 HostList *copyHostList(HostList *list);
 

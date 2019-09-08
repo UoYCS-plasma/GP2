@@ -135,13 +135,8 @@ int addListAssignment(Morphism *morphism, int id, HostList *list)
    if(morphism->assignment[id].type == 'n') 
    {
       morphism->assignment[id].type = 'l';
-      #ifdef LIST_HASHING
-         addHostList(list);
-         morphism->assignment[id].list = list;
-      #else
-         HostList *list_copy = copyHostList(list);
-         morphism->assignment[id].list = list_copy;
-      #endif
+      addHostList(list);
+      morphism->assignment[id].list = list;
       pushVariableId(morphism, id);
       return 1;
    }
@@ -356,10 +351,8 @@ void freeMorphism(Morphism *morphism)
       {
          if(morphism->assignment[index].type == 's') 
             free(morphism->assignment[index].str);
-         #ifdef LIST_HASHING
-            if(morphism->assignment[index].type == 'l')
-               removeHostList(morphism->assignment[index].list);
-         #endif
+         if(morphism->assignment[index].type == 'l')
+            removeHostList(morphism->assignment[index].list);
       }
       free(morphism->assignment);
    }

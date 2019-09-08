@@ -17,7 +17,6 @@
 
 HostLabel blank_label = {NULL, 0, NONE};
 
-#ifdef LIST_HASHING
 Bucket **list_store = NULL;
 
 /* The list hash table has 400 buckets. It is structured as follows:
@@ -28,19 +27,18 @@ Bucket **list_store = NULL;
  * The first unit in the first atom (an integer or the first character of a string)
  * gives the index to add to the 'base' (the appropriate multiple of 100) as defined
  * in the function. */
-static unsigned hashHostList(HostAtom *list, int length)
+static unsigned hashHostList(HostAtom *list, unsigned short length)
 {
    unsigned hash = 0;
-   int index;
+   unsigned short index;
    for(index = 0; index < length; index++)
    {
       HostAtom atom = list[index];
       int value = atom.type == 'i' ? atom.num : atom.str[0];
       hash = ((hash << 5) + hash) + value; /* hash = hash * 33 + value */
    }
-   return hash % LIST_TABLE_SIZE ;
+   return hash % LIST_TABLE_SIZE;
 }
-#endif
 
 static HostList *appendHostAtom(HostList *list, HostAtom atom, bool free_strings)
 {
@@ -81,10 +79,9 @@ static HostList *appendHostAtom(HostList *list, HostAtom atom, bool free_strings
    }
 }
 
-#ifdef LIST_HASHING
 /* Create a new bucket, allocate a list defined by the function arguments, and
  * point the bucket to that list. */
-static Bucket *makeBucket(HostAtom *array, int length, bool free_strings)
+static Bucket *makeBucket(HostAtom *array, unsigned short length, bool free_strings)
 {
    Bucket *bucket = malloc(sizeof(Bucket));
    if(bucket == NULL)
@@ -102,7 +99,6 @@ static Bucket *makeBucket(HostAtom *array, int length, bool free_strings)
    bucket->prev = NULL;
    return bucket;
 }
-#endif
 
 /* Adds a host list, represented by the passed array and its length, to the hash
  * table. The array and the length is passed to the hashing function. 
@@ -114,98 +110,89 @@ static Bucket *makeBucket(HostAtom *array, int length, bool free_strings)
  * host graph parser which requires the strings it parses to be strdup'd (otherwise 
  * things go wrong). Calls to addListToStore in other contexts pass arrays with 
  * automatic strings which should not be freed. */
-HostList *makeHostList(HostAtom *array, int length, bool free_strings)
+HostList *makeHostList(HostAtom *array, unsigned short length, bool free_strings)
 {
-   #ifdef LIST_HASHING
+   if(list_store == NULL)
+   {
+      list_store = calloc(LIST_TABLE_SIZE, sizeof(Bucket*));
       if(list_store == NULL)
       {
-         list_store = calloc(LIST_TABLE_SIZE, sizeof(Bucket*));
-         if(list_store == NULL)
-         {
-            print_to_log("Error(addListToStore): malloc failure.\n");
-            exit(1);
-         }
+         print_to_log("Error(addListToStore): malloc failure.\n");
+         exit(1);
       }
-      int hash = hashHostList(array, length);
-      if(list_store[hash] == NULL)
+   }
+   unsigned hash = hashHostList(array, length);
+   if(list_store[hash] == NULL)
+   {
+      Bucket *bucket = makeBucket(array, length, free_strings);
+      list_store[hash] = bucket;
+      bucket->list->hash = hash;
+      return bucket->list;
+   }
+   /* Check each list in the bucket for equality with the list represented
+    * by the passed array. */
+   else
+   {
+      Bucket *bucket = list_store[hash];
+      unsigned short index;
+      bool make_bucket = true;
+      while(bucket != NULL)
       {
-         Bucket *bucket = makeBucket(array, length, free_strings);
-         list_store[hash] = bucket;
-         bucket->list->hash = hash;
+         HostListItem *item = bucket->list->first;
+         for(index = 0; index < length; index++) 
+         {
+            if(item == NULL) break;
+            HostAtom atom = array[index];
+            if(item->atom.type != atom.type) break;
+            if(item->atom.type == 'i') 
+            {
+               if(item->atom.num != atom.num) break;
+            }
+            else
+            {
+               if(strcmp(item->atom.str, atom.str) != 0) break;
+            }
+            item = item->next;
+         }
+         /* The lists are equal if and only if the ends of both lists are reached.
+          * If an atom comparison failed, the for loop breaks before the end of
+          * either list is reached. If the array is shorter, then the for loop
+          * exits before item reaches its terminating NULL pointer. If the list
+          * is shorter, the first line in the for loop body will cause the loop
+          * to break before index == length. */
+         if(index == length && item == NULL)
+         {
+            make_bucket = false; 
+            break;
+         }
+         /* Exit the loop while maintaining the pointer to the last item in the
+          * bucket list, because a list is going to be appended! */
+         if(bucket->next == NULL) break;
+         bucket = bucket->next;
+      }
+      /* If control reaches this point, then no list in the bucket is equal to
+       * the passed list. Make a new list! */
+      if(make_bucket)
+      {
+         Bucket *new_bucket = makeBucket(array, length, free_strings);
+         bucket->next = new_bucket;
+         new_bucket->prev = bucket;
+         new_bucket->list->hash = hash;
+         return new_bucket->list;
+      }
+      else 
+      {
+         bucket->reference_count++;
+         if(free_strings)
+         {
+            for(index = 0; index < length; index++) 
+               if(array[index].type == 's') free(array[index].str);
+         }
          return bucket->list;
       }
-      /* Check each list in the bucket for equality with the list represented
-       * by the passed array. */
-      else
-      {
-         Bucket *bucket = list_store[hash];
-         int index;
-         bool make_bucket = true;
-         while(bucket != NULL)
-         {
-            HostListItem *item = bucket->list->first;
-            for(index = 0; index < length; index++) 
-            {
-               if(item == NULL) break;
-               HostAtom atom = array[index];
-               if(item->atom.type != atom.type) break;
-               if(item->atom.type == 'i') 
-               {
-                  if(item->atom.num != atom.num) break;
-               }
-               else
-               {
-                  if(strcmp(item->atom.str, atom.str) != 0) break;
-               }
-               item = item->next;
-            }
-            /* The lists are equal if and only if the ends of both lists are reached.
-             * If an atom comparison failed, the for loop breaks before the end of
-             * either list is reached. If the array is shorter, then the for loop
-             * exits before item reaches its terminating NULL pointer. If the list
-             * is shorter, the first line in the for loop body will cause the loop
-             * to break before index == length. */
-            if(index == length && item == NULL)
-            {
-               make_bucket = false; 
-               break;
-            }
-            /* Exit the loop while maintaining the pointer to the last item in the
-             * bucket list, because a list is going to be appended! */
-            if(bucket->next == NULL) break;
-            bucket = bucket->next;
-         }
-         /* If control reaches this point, then no list in the bucket is equal to
-          * the passed list. Make a new list! */
-         if(make_bucket)
-         {
-            Bucket *new_bucket = makeBucket(array, length, free_strings);
-            bucket->next = new_bucket;
-            new_bucket->prev = bucket;
-            new_bucket->list->hash = hash;
-            return new_bucket->list;
-         }
-         else 
-         {
-            bucket->reference_count++;
-            if(free_strings)
-            {
-               for(index = 0; index < length; index++) 
-                  if(array[index].type == 's') free(array[index].str);
-            }
-            return bucket->list;
-         }
-      }
-   #else
-      HostList *list = NULL;
-      int index;
-      for(index = 0; index < length; index++) 
-         list = appendHostAtom(list, array[index], free_strings);
-      return list;
-   #endif
+   }
 }
 
-#ifdef LIST_HASHING
 /* Returns the bucket containing the passed list. */
 static Bucket *getBucket(HostList *list)
 {
@@ -227,28 +214,23 @@ void addHostList(HostList *list)
    assert(bucket != NULL);
    bucket->reference_count++;
 }
-#endif
 
 void removeHostList(HostList *list)
 {
    if(list == NULL) return;
-   #ifdef LIST_HASHING
-      Bucket *bucket = getBucket(list); 
-      /* The passed list is expected to exist in the host table. */
-      assert(bucket != NULL);
-      bucket->reference_count--;
-      if(bucket->reference_count == 0)
-      {
-         /* Delete the bucket. */
-         if(bucket->prev == NULL) list_store[list->hash] = bucket->next;
-         else bucket->prev->next = bucket->next;
-         if(bucket->next != NULL) bucket->next->prev = bucket->prev;
-         freeHostList(list);
-         free(bucket);
-      }
-   #else
+   Bucket *bucket = getBucket(list); 
+   /* The passed list is expected to exist in the host table. */
+   assert(bucket != NULL);
+   bucket->reference_count--;
+   if(bucket->reference_count == 0)
+   {
+      /* Delete the bucket. */
+      if(bucket->prev == NULL) list_store[list->hash] = bucket->next;
+      else bucket->prev->next = bucket->next;
+      if(bucket->next != NULL) bucket->next->prev = bucket->prev;
       freeHostList(list);
-   #endif
+      free(bucket);
+   }
 }
 
 HostLabel makeEmptyLabel(MarkType mark)
@@ -257,7 +239,7 @@ HostLabel makeEmptyLabel(MarkType mark)
    return label;
 }
 
-HostLabel makeHostLabel(MarkType mark, int length, HostList *list)
+HostLabel makeHostLabel(MarkType mark, unsigned short length, HostList *list)
 {
    HostLabel label = { .mark = mark, .length = length, .list = list };
    return label;
@@ -279,10 +261,10 @@ bool equalHostLabelsModMarks(HostLabel label1, HostLabel label2)
    return true;
 }
 
-bool equalHostLists(HostAtom *left_list, HostAtom *right_list, int left_length, int right_length)
+bool equalHostLists(HostAtom *left_list, HostAtom *right_list, unsigned short left_length, unsigned short right_length)
 { 
    if(left_length != right_length) return false;
-   int index;
+   unsigned short index;
    for(index = 0; index < left_length; index++)
    {
       HostAtom left_atom = left_list[index];
@@ -336,7 +318,8 @@ void printHostList(HostListItem *item, FILE *file)
 static void freeHostListItems(HostListItem *item)
 {
    if(item == NULL) return;
-   if(item->atom.type == 's') free(item->atom.str);
+   if(item->atom.type == 's')
+      free(item->atom.str);
    freeHostListItems(item->next);
    free(item);
 }
@@ -348,8 +331,6 @@ void freeHostList(HostList *list)
    free(list);
 }
 
-
-#ifdef LIST_HASHING
 static void freeBuckets(Bucket *bucket)
 {
    if(bucket == NULL) return; 
@@ -362,7 +343,7 @@ void freeHostListStore(void)
 {
    if(list_store == NULL) return;
    int index;
-   for(index = 0; index < LIST_TABLE_SIZE; index++) freeBuckets(list_store[index]);
+   for(index = 0; index < LIST_TABLE_SIZE; index++)
+      freeBuckets(list_store[index]);
    free(list_store);
 }
-#endif
