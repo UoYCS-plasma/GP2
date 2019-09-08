@@ -48,21 +48,19 @@ void doubleBigArray(BigArray *array)
   if(array->elems == NULL)
   {
     array->elems = mallocSafe(sizeof(BigArrayElem), "doubleBigArray");
-    array->elems[array->max_array].items = mallocSafe((long) array->elem_sz * 2, "doubleBigArray");
     array->num_arrays = 1;
-    array->capacity += 2;
   }
-  else
+  else if(array->num_arrays == array->max_array + 1)
   {
-    if(array->num_arrays == array->max_array + 1)
-    {
-      array->elems = reallocSafe(array->elems, sizeof(BigArrayElem) * (array->num_arrays << 1), "doubleBigArray");
-      array->num_arrays <<= 1;
-    }
+    array->elems = reallocSafe(array->elems, sizeof(BigArrayElem) * (array->num_arrays << 1), "doubleBigArray");
+    array->num_arrays <<= 1;
     array->max_array++;
-    array->elems[array->max_array].items = mallocSafe((long) array->elem_sz * (1 << (fls(array->max_array)+2)), "doubleBigArray");
-    array->capacity += (1 << (fls(array->max_array)+2));
   }
+  else array->max_array++;
+
+  long array_size = (long) 1 << (array->max_array+1);
+  array->elems[array->max_array].items = mallocSafe((long) array->elem_sz * array_size, "doubleBigArray");
+  array->capacity += array_size;
 }
 
 int genFreeBigArrayPos(BigArray *array)
@@ -90,7 +88,7 @@ void *getBigArrayValue(BigArray *array, int index)
     return (void *) &(array->firstelems[index * array->elem_sz]);
 
   index -= BIGAR_INIT_SZ / array->elem_sz;
-  ptrdiff_t inarray_index = (ptrdiff_t) index - (2 * (1 << (fls(index+2)-1)) - 2);
+  ptrdiff_t inarray_index = (ptrdiff_t) index - (1 << fls(index+2)) + 2;
 
   return (void *) array->elems[fls(index+2)-1].items + inarray_index*array->elem_sz;
 }
