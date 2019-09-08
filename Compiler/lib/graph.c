@@ -238,8 +238,8 @@ void tryGarbageCollectNode(Graph *graph, Node *node)
 Node *yieldNextNode(Graph *graph, NodeList **current_prev)
 {
    NodeList *current;
-
-   if(*current_prev == NULL) *current_prev = current = graph->nodes;
+   bool initial = *current_prev == NULL;
+   if(initial) *current_prev = current = graph->nodes;
    else current = (*current_prev)->next;
 
    bool deleted_node = true;
@@ -255,7 +255,7 @@ Node *yieldNextNode(Graph *graph, NodeList **current_prev)
        int index = current->index;
        if((*current_prev) != current)
          (*current_prev)->next = current->next;
-       else
+       if (initial)
          graph->nodes = current->next;
        *current_prev = current;
        current = current->next;
@@ -272,8 +272,8 @@ Node *yieldNextNode(Graph *graph, NodeList **current_prev)
 Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
 {
    EdgeList *current;
-
-   if(*current_prev == NULL) *current_prev = current = node->out_edges;
+   bool initial = *current_prev == NULL;
+   if(initial) *current_prev = current = node->out_edges;
    else current = (*current_prev)->next;
 
    bool deleted_edge = true;
@@ -289,7 +289,7 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
        int index = current->index;
        if((*current_prev) != current)
          (*current_prev)->next = current->next;
-       else
+       if (initial)
          node->out_edges = current->next;
        *current_prev = current;
        current = current->next;
@@ -309,8 +309,8 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
 Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
 {
    EdgeList *current;
-
-   if(*current_prev == NULL) *current_prev = current = node->in_edges;
+   bool initial = *current_prev == NULL;
+   if(initial) *current_prev = current = node->in_edges;
    else current = (*current_prev)->next;
 
    bool deleted_edge = true;
@@ -326,7 +326,7 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
        int index = current->index;
        if((*current_prev) != current)
          (*current_prev)->next = current->next;
-       else
+       if (initial)
          node->in_edges = current->next;
        *current_prev = current;
        current = current->next;
