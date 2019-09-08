@@ -697,6 +697,23 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
        * edges and fewer LHS wildcard edges. I think. */
       if(wildcard && side == 'r')
       {
+         bool source_in_interface, target_in_interface = false;
+         List *iterator = interface;
+         while(iterator != NULL)  
+         {
+            if(!strcmp(source_id, iterator->node_id))
+               source_in_interface = true;
+            if(!strcmp(target_id, iterator->node_id))
+               target_in_interface = true;
+            iterator = iterator->next;
+         }
+         if(!source_in_interface || !target_in_interface) 
+         {
+            print_error("Error (%s): Wildcard edge %s in %s graph not exclusively "
+                        "incident to interface nodes.\n", rule_name, edge_id, graph_type);
+            abort_compilation = true;  
+         }
+
          symbol = symbol_list;
          while(symbol) 
          {
