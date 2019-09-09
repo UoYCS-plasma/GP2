@@ -91,6 +91,8 @@ typedef struct Bucket {
  * exactly once and has a single point of reference. */
 extern Bucket **list_store;
 
+void initialiseHostListStore(void);
+
 /* If list hashing is enabled, makeHostList returns a pointer to the HostList represented 
  * by the passed array from the hash table (list_store). If not, the function returns a
  * pointer to a newly-allocated HostList. */

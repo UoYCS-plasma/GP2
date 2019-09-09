@@ -20,12 +20,7 @@
  * =============== */
 Graph *newGraph() 
 {
-   Graph *graph = malloc(sizeof(Graph));
-   if(graph == NULL) 
-   {
-      print_to_log("Error (newGraph): malloc failure.\n");
-      exit(1);
-   }
+   Graph *graph = mallocSafe(sizeof(Graph), "newGraph");
    graph->number_of_nodes = 0;
    graph->number_of_edges = 0;
    graph->nodes = NULL;
@@ -65,12 +60,7 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
 
 void addRootNode(Graph *graph, Node *node)
 {
-   RootNodes *root_node = malloc(sizeof(RootNodes));
-   if(root_node == NULL)
-   {
-      print_to_log("Error (addRootNode): malloc failure.\n");
-      exit(1);
-   }
+   RootNodes *root_node = mallocSafe(sizeof(RootNodes), "addRootNode");
    root_node->node = node;
    root_node->next = graph->root_nodes;
    graph->root_nodes = root_node;

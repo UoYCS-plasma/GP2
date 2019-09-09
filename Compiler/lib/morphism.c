@@ -17,52 +17,21 @@
 
 Morphism *makeMorphism(int nodes, int edges, int variables)
 {
-   Morphism *morphism = malloc(sizeof(Morphism));
-   if(morphism == NULL)
-   {
-      print_to_log("Error (makeMorphism): malloc failure.\n");
-      exit(1);
-   }
+   Morphism *morphism = mallocSafe(sizeof(Morphism), "makeMorphism");
    morphism->nodes = nodes;
-   if(nodes > 0) 
-   {
-      morphism->node_map = calloc(nodes, sizeof(Map));
-      if(morphism->node_map == NULL)
-      {
-         print_to_log("Error (makeMorphism): malloc failure.\n");
-         exit(1);
-      }
-   }
+   if(nodes > 0) morphism->node_map = callocSafe(nodes, sizeof(Map), "makeMorphism");
    else morphism->node_map = NULL;
 
    morphism->edges = edges;
-   if(edges > 0) 
-   {
-      morphism->edge_map = calloc(edges, sizeof(Map));
-      if(morphism->edge_map == NULL)
-      {
-         print_to_log("Error (makeMorphism): malloc failure.\n");
-         exit(1);
-      }
-   }
+   if(edges > 0) morphism->edge_map = callocSafe(edges, sizeof(Map), "makeMorphism");
    else morphism->edge_map = NULL;
 
    morphism->variables = variables;
    morphism->variable_index = 0;
    if(variables > 0) 
    {
-      morphism->assignment = calloc(variables, sizeof(Assignment));
-      if(morphism->assignment == NULL)
-      {
-         print_to_log("Error (makeMorphism): malloc failure.\n");
-         exit(1);
-      }
-      morphism->assigned_variables = calloc(variables, sizeof(int));
-      if(morphism->assigned_variables == NULL)
-      {
-         print_to_log("Error (makeMorphism): malloc failure.\n");
-         exit(1);
-      }
+      morphism->assignment = callocSafe(variables, sizeof(Assignment), "makeMorphism");
+      morphism->assigned_variables = mallocSafe(variables * sizeof(int), "makeMorphism");
    }
    else 
    {

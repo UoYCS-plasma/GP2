@@ -44,6 +44,17 @@ typedef char* string;
 
 extern FILE *log_file;
 
+inline void *callocSafe(size_t ni, size_t sz, char *fn)
+{
+  void *result = calloc(ni, sz);
+  if(result == NULL)
+  {
+    print_to_log("Error (%s): calloc failure.\n", fn);
+    exit(1);
+  }
+  return result;
+}
+
 inline void *mallocSafe(size_t sz, char *fn)
 {
   void *result = malloc(sz);

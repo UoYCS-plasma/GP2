@@ -27,20 +27,10 @@ int graph_change_count = 0;
 
 static void makeGraphChangeStack(int initial_capacity)
 {
-   GraphChangeStack *stack = malloc(sizeof(GraphChangeStack));
-   if(stack == NULL)
-   {
-      print_to_log("Error (makeGraphChangeStack): malloc failure.\n");
-      exit(1);
-   }
+   GraphChangeStack *stack = mallocSafe(sizeof(GraphChangeStack), "makeGraphChangeStack");
    stack->size = 0;
    stack->capacity = initial_capacity;
-   stack->stack = calloc(initial_capacity, sizeof(GraphChange)); 
-   if(stack->stack == NULL)
-   {
-      print_to_log("Error (makeGraphChangeStack): malloc failure.\n");
-      exit(1);
-   }
+   stack->stack = mallocSafe(initial_capacity * sizeof(GraphChange), "makeGraphChangeStack"); 
    stack->graph = NULL;
    graph_change_stack = stack;
 }
@@ -48,13 +38,11 @@ static void makeGraphChangeStack(int initial_capacity)
 static void growGraphChangeStack(void)
 {
    graph_change_stack->capacity *= 2;
-   graph_change_stack->stack = realloc(graph_change_stack->stack,
-                                       graph_change_stack->capacity * sizeof(GraphChange)); 
-   if(graph_change_stack->stack == NULL)
-   {
-      print_to_log("Error (growGraphChangeStack): malloc failure.\n");
-      exit(1);
-   }
+   graph_change_stack->stack = reallocSafe(
+     graph_change_stack->stack,
+     graph_change_stack->capacity * sizeof(GraphChange),
+     "growGraphChangeStack"
+   );
 }
 
 static void pushGraphChange(GraphChange change)

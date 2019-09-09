@@ -42,12 +42,7 @@ static unsigned hashHostList(HostAtom *list, unsigned short length)
 
 static HostList *appendHostAtom(HostList *list, HostAtom atom, bool free_strings)
 {
-   HostListItem *new_item = malloc(sizeof(HostListItem));
-   if(new_item == NULL)
-   {
-      print_to_log("Error (appendAtom): malloc failure.\n");
-      exit(1);
-   }
+   HostListItem *new_item = mallocSafe(sizeof(HostListItem), "appendAtom");
    new_item->atom = atom;
    if(atom.type == 's') 
    {
@@ -59,12 +54,7 @@ static HostList *appendHostAtom(HostList *list, HostAtom atom, bool free_strings
    if(list == NULL)
    {
       new_item->prev = NULL;
-      HostList *new_list = malloc(sizeof(HostList));
-      if(new_list == NULL)
-      {
-         print_to_log("Error (appendAtom): malloc failure.\n");
-         exit(1);
-      }
+      HostList *new_list = mallocSafe(sizeof(HostList), "appendAtom");
       new_list->hash = -1;
       new_list->first = new_item;
       new_list->last = new_item;
@@ -83,12 +73,7 @@ static HostList *appendHostAtom(HostList *list, HostAtom atom, bool free_strings
  * point the bucket to that list. */
 static Bucket *makeBucket(HostAtom *array, unsigned short length, bool free_strings)
 {
-   Bucket *bucket = malloc(sizeof(Bucket));
-   if(bucket == NULL)
-   {
-      print_to_log("Error (makeBucket): malloc failure.\n");
-      exit(1);
-   }
+   Bucket *bucket = mallocSafe(sizeof(Bucket), "makeBucket");
    HostList *list = NULL;
    int index;
    for(index = 0; index < length; index++) 
@@ -98,6 +83,11 @@ static Bucket *makeBucket(HostAtom *array, unsigned short length, bool free_stri
    bucket->next = NULL;
    bucket->prev = NULL;
    return bucket;
+}
+
+void initialiseHostListStore(void)
+{
+   list_store = callocSafe(LIST_TABLE_SIZE, sizeof(Bucket*), "initialiseHostListStore");
 }
 
 /* Adds a host list, represented by the passed array and its length, to the hash
@@ -112,15 +102,6 @@ static Bucket *makeBucket(HostAtom *array, unsigned short length, bool free_stri
  * automatic strings which should not be freed. */
 HostList *makeHostList(HostAtom *array, unsigned short length, bool free_strings)
 {
-   if(list_store == NULL)
-   {
-      list_store = calloc(LIST_TABLE_SIZE, sizeof(Bucket*));
-      if(list_store == NULL)
-      {
-         print_to_log("Error(addListToStore): malloc failure.\n");
-         exit(1);
-      }
-   }
    unsigned hash = hashHostList(array, length);
    if(list_store[hash] == NULL)
    {

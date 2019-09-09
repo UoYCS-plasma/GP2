@@ -150,6 +150,8 @@ void generateRuntimeMain(List *declarations, string output_dir)
    PTFI("return 0;\n", 6);
    PTFI("}\n\n", 3);
 
+   PTFI("initialiseHostListStore();\n", 3);
+
    PTFI("host = buildHostGraph(argv[1]);\n", 3);
    PTFI("if(host == NULL)\n", 3);
    PTFI("{\n", 3);
