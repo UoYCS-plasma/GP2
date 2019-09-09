@@ -58,13 +58,12 @@ void initialiseMorphism(Morphism *morphism)
          free(morphism->assignment[index].str);
          morphism->assignment[index].str = NULL;
       }
-      if(morphism->assignment[index].type == 'l')
+      else if(morphism->assignment[index].type == 'l')
       {
          removeHostList(morphism->assignment[index].list);
          morphism->assignment[index].list = NULL;
       }
       morphism->assignment[index].type = 'n';
-      morphism->assigned_variables[index] = -1;
    }
 }
 
@@ -99,8 +98,9 @@ void addEdgeMap(Morphism *morphism, int left_index, Edge *edge, int assignments)
 
 int addListAssignment(Morphism *morphism, int id, HostList *list) 
 {
-   /* Search the morphism for an existing assignment to the passed variable. */
    assert(id < morphism->variables);
+   
+   /* Search the morphism for an existing assignment to the passed variable. */
    if(morphism->assignment[id].type == 'n') 
    {
       morphism->assignment[id].type = 'l';
@@ -109,17 +109,17 @@ int addListAssignment(Morphism *morphism, int id, HostList *list)
       pushVariableId(morphism, id);
       return 1;
    }
+
    /* Compare the list in the assignment to the list passed to the function. */
-   else 
-   {
-      if(morphism->assignment[id].list == list) return 0;
-      else return -1;
-   }
+   if(morphism->assignment[id].list == list) return 0;
+   
+   return -1;
 }
 
 int addIntegerAssignment(Morphism *morphism, int id, int num)
 {
    assert(id < morphism->variables);
+
    if(morphism->assignment[id].type == 'n') 
    {
       morphism->assignment[id].type = 'i';
@@ -127,16 +127,16 @@ int addIntegerAssignment(Morphism *morphism, int id, int num)
       pushVariableId(morphism, id);
       return 1;
    }
-   else
-   {
-      if(morphism->assignment[id].num == num) return 0;
-      else return -1;
-   }
+
+   if(morphism->assignment[id].num == num) return 0;
+   
+   return -1;
 }
 
 int addStringAssignment(Morphism *morphism, int id, string str)
 {
    assert(id < morphism->variables);
+
    if(morphism->assignment[id].type == 'n') 
    {
       morphism->assignment[id].type = 's';
@@ -144,11 +144,10 @@ int addStringAssignment(Morphism *morphism, int id, string str)
       pushVariableId(morphism, id);
       return 1;
    }
-   else
-   {
-      if(strcmp(morphism->assignment[id].str, str) == 0) return 0;
-      else return -1;
-   }
+   
+   if(strcmp(morphism->assignment[id].str, str) == 0) return 0;
+   
+   return -1;
 }
 
 void removeNodeMap(Morphism *morphism, int left_index)
@@ -176,7 +175,7 @@ void removeAssignments(Morphism *morphism, int number)
          free(morphism->assignment[id].str);
          morphism->assignment[id].str = NULL;
       }
-      if(morphism->assignment[id].type == 'l')
+      else if(morphism->assignment[id].type == 'l')
       {
          removeHostList(morphism->assignment[id].list);
          morphism->assignment[id].list = NULL;
