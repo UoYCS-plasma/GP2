@@ -158,7 +158,7 @@ bool syntax_error = false;
 %destructor { freeASTLabel($$); } <label>
 %destructor { freeASTAtom($$); } <atom_exp>
 
-%error-verbose
+%define parse.error verbose
 
 %start Initialise
 

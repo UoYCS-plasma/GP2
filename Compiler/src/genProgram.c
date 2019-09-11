@@ -69,7 +69,6 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
 static void generateBranchStatement(GPCommand *command, CommandData data);
 static void generateLoopStatement(GPCommand *command, CommandData data);
 static void generateFailureCode(string rule_name, CommandData data);
-static bool neverFails(GPCommand *command);
 static bool nullCommand(GPCommand *command);
 static bool singleRule(GPCommand *command);
 
@@ -711,7 +710,6 @@ void generateLoopStatement(GPCommand *command, CommandData data)
  * (1) A rule fails to match. The name of the rule is passed as the first
  *     argument.
  * (2) The fail statement is called. NULL is passed as the first argument. */
-
 static void generateFailureCode(string rule_name, CommandData data)
 {
    /* A failure in the main body ends the execution. Emit code to report the
@@ -762,7 +760,6 @@ static void generateFailureCode(string rule_name, CommandData data)
  *
  * The analysis skips leading null commands in a command sequence, and it also
  * returns true if both operands of an OR statement fit the criteria. */
-
 static bool singleRule(GPCommand *command)
 {
    switch(command->type)
@@ -805,87 +802,6 @@ static bool singleRule(GPCommand *command)
 
       default:
            print_to_log("Error (getCommandType): Unexpected command type %d.\n",
-                        command->type);
-           break;
-   }
-   return false;
-}
-
-
-/* A simple command is non-failing (NF) if it never fails. Specifically:
- * 'skip' and 'break' are NF.
- * 'fail' is not NF.
- * A rule R is NF if its LHS is empty.
- * A rule set is NF if all the rules in the set are NF.
- *
- * The NF status of more complicated commands is defined recursively.
- * A looped subprogram is NF.
- * if/try C then P else Q is NF if both P and Q are NF.
- * P or Q is NF if both P and Q are NF.
- *
- * A command sequence C1; ... ; Cn is NF if all its commands are NF. */
-
-/* The function neverFails returns true if the passed GP 2 command is non-failing.
- * Used to test conditions and loop bodies: if these always succeed, then backtracking
- * is not necessary for try statements and loops. */
-static bool neverFails(GPCommand *command)
-{
-   switch(command->type)
-   {
-      case COMMAND_SEQUENCE:
-      {
-           List *commands = command->commands;
-           while(commands != NULL)
-           {
-              if(!neverFails(commands->command)) return false;
-              else commands = commands->next;
-           }
-           return true;
-      }
-      case RULE_CALL:
-           if(command->rule_call.rule->empty_lhs) return true;
-           else return false;
-
-      case RULE_SET_CALL:
-      {
-           List *rule_set = command->rule_set;
-           while(rule_set != NULL)
-           {
-              if(!rule_set->rule_call.rule->empty_lhs) return false;
-              else rule_set = rule_set->next;
-           }
-           return true;
-
-           if(command->rule_set->rule_call.rule->empty_lhs) return true;
-           else return false;
-      }
-
-      case PROCEDURE_CALL:
-           return neverFails(command->proc_call.procedure->commands);
-
-      case IF_STATEMENT:
-      case TRY_STATEMENT:
-           if(!neverFails(command->cond_branch.then_command)) return false;
-           if(!neverFails(command->cond_branch.else_command)) return false;
-           else return true;
-
-      case ALAP_STATEMENT:
-           return true;
-
-      case PROGRAM_OR:
-           if(!neverFails(command->or_stmt.left_command)) return false;
-           if(!neverFails(command->or_stmt.right_command)) return false;
-           else return true;
-
-      case BREAK_STATEMENT:
-      case SKIP_STATEMENT:
-           return true;
-
-      case FAIL_STATEMENT:
-           return false;
-
-      default:
-           print_to_log("Error (neverFails): Unexpected command type %d.\n",
                         command->type);
            break;
    }

@@ -90,7 +90,7 @@ HostList *host_list = NULL;
 %type <atom> HostAtom
 %type <num> NodeID EdgeID
 
-%error-verbose
+%define parse.error verbose
 
 %start HostGraph
 
