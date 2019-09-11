@@ -271,8 +271,15 @@ bool equalHostLabels(HostLabel label1, HostLabel label2)
    return true;
 }
 
-bool equalHostLists(HostAtom *left_list, HostAtom *right_list,
-                    int left_length, int right_length)
+bool equalHostLabelsModMarks(HostLabel label1, HostLabel label2)
+{
+   if (!((label1.mark == NONE && label2.mark == NONE) || (label1.mark != NONE && label2.mark != NONE))) return false;
+   if(label1.length != label2.length) return false;
+   if(label1.list != label2.list) return false;
+   return true;
+}
+
+bool equalHostLists(HostAtom *left_list, HostAtom *right_list, int left_length, int right_length)
 { 
    if(left_length != right_length) return false;
    int index;

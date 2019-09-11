@@ -237,21 +237,36 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
               PTFI("{\n", 6);
               PTFI("HostLabel label;\n", 9);
               /* Create runtime variables for each variable in the label. */
-              RuleListItem *item = predicate->edge_pred.label.list->first;
-              int count;
-              for(count = 0; count < predicate->edge_pred.label.length; count++)
+              if(predicate->edge_pred.label.length > 0)
               {
-                 if(item->atom->type == VARIABLE)
+                 RuleListItem *item = predicate->edge_pred.label.list->first;
+                 int count;
+                 for(count = 0; count < predicate->edge_pred.label.length; count++)
                  {
-                    /* generateVariableCode prints with indent 3. Indent of 9 is required. */
-                    PTF("      ");
-                    generateVariableCode(item->atom->variable.id, item->atom->variable.type);
+                    if(item->atom->type == VARIABLE)
+                    {
+                       /* generateVariableCode prints with indent 3. Indent of 9 is required. */
+                       PTF("      ");
+                       generateVariableCode(item->atom->variable.id, item->atom->variable.type);
+                    }
+                    item = item->next;
                  }
-                 item = item->next;
               }
-              PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 9, index);
+              bool label_any_marked = false;
+              if (predicate->edge_pred.label.mark == ANY) {
+                label_any_marked = true;
+                predicate->edge_pred.label.mark = GREY;
+              }
               generateLabelEvaluationCode(predicate->edge_pred.label, false, list_count++, 1, 9);
-              PTFI("if(equalHostLabels(label, edge->label))\n", 9);
+              if (label_any_marked)
+              {
+                 PTFI("if(equalHostLabelsModMarks(label, edge->label))\n", 9);
+                 predicate->edge_pred.label.mark = ANY;
+              }
+              else
+              {
+                 PTFI("if(equalHostLabels(label, edge->label))\n", 9);
+              }
               PTFI("{\n", 9);
               PTFI("b%d = true;\n", 12, predicate->bool_id);
               PTFI("edge_found = true;\n", 12);
@@ -292,7 +307,6 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            }
            else
            {
-              PTFI("int host_edge_index = lookupEdge(morphism, %d);\n", 3, index);
               generateLabelEvaluationCode(left_label, false, list_count++, 2, 3);
               generateLabelEvaluationCode(right_label, false, list_count++, 3, 3);
               PTFI("if(", 3);

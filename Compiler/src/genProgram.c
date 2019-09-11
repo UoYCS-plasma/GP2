@@ -423,8 +423,9 @@ static void generateRuleCall(string rule_name, bool empty_lhs, bool predicate,
       #endif
       if(predicate) return;
       if(data.restore_point >= 0 && !graph_copying)
-         PTFI("apply%s(true);\n", data.indent, rule_name);
-      else PTFI("apply%s(false);\n", data.indent, rule_name);
+         PTFI("apply%s(M_%s, true);\n", data.indent, rule_name, rule_name);
+      else
+         PTFI("apply%s(M_%s, false);\n", data.indent, rule_name, rule_name);
       #ifdef GRAPH_TRACING
          PTFI("print_trace(\"Graph after applying rule %s:\\n\");\n",
               data.indent, rule_name);
