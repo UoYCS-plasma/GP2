@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 
    unsigned int max_nodes = HOST_NODE_SIZE;
    unsigned int max_edges = HOST_EDGE_SIZE;
-   char **p;
+   char **p = NULL;
 
    if(argc < 2)
    {
@@ -238,7 +238,7 @@ int main(int argc, char **argv)
                  print_to_console("%s", usage);
                  exit(EXIT_FAILURE);
              }
-             long inp =  strtol(argv[++argv_index], p, 10);
+             long inp = strtol(argv[++argv_index], p, 10);
              if (inp > INT_MAX || inp < 1) {
                 print_to_console("Error: invalid size for max_nodes/max_edges\n");
                 exit(EXIT_FAILURE);
@@ -252,7 +252,7 @@ int main(int argc, char **argv)
                  print_to_console("%s", usage);
                  exit(EXIT_FAILURE);
              }
-             long inp =  strtol(argv[++argv_index], p, 10);
+             long inp = strtol(argv[++argv_index], p, 10);
              if (inp > INT_MAX || inp < 1) {
                 print_to_console("Error: invalid size for max_nodes/max_edges\n");
                 exit(EXIT_FAILURE);
