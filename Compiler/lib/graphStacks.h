@@ -92,7 +92,7 @@ typedef struct GraphChange
 
 struct GraphChangeStack;
 extern struct GraphChangeStack *graph_change_stack;
-extern int graph_change_count;
+extern unsigned int graph_change_count;
 
 void setStackGraph(Graph *graph);
 
@@ -109,6 +109,8 @@ void pushChangedRootNode(Node *node);
 void undoChanges(int restore_point);
 // Need to pass graph here in case node/edges need to be collected
 void discardChanges(int restore_point);
+#ifndef MINIMAL_GC
 void freeGraphChangeStack(void);
+#endif
 
 #endif /* INC_GRAPH_STACKS_H */

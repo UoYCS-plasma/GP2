@@ -136,7 +136,8 @@ int isPrefix(const string rule_string, const string host_string);
  * returned. */
 int isSuffix(const string rule_string, const string host_string);
 
-void printMorphism(Morphism *morphism);
+#ifndef MINIMAL_GC
 void freeMorphism(Morphism *morphism);
- 
+#endif
+
 #endif /* INC_MATCH_H */

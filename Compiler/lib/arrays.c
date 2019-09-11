@@ -38,7 +38,9 @@ BigArray makeBigArray(size_t elem_sz)
   array.max_array = 0;
   array.elems = NULL;
   array.capacity = BIGAR_INIT_SZ / array.elem_sz;
+  #ifndef MINIMAL_GC
   array.first_hole = NULL;
+  #endif
 
   return array;
 }
@@ -65,6 +67,7 @@ void doubleBigArray(BigArray *array)
 
 int genFreeBigArrayPos(BigArray *array)
 {
+  #ifndef MINIMAL_GC
   if(array->first_hole == NULL)
   {
     if(array->size == array->capacity)
@@ -80,6 +83,11 @@ int genFreeBigArrayPos(BigArray *array)
     assert(hole->index >= 0);
     return hole->index;
   }
+  #else
+  if(array->size == array->capacity)
+    doubleBigArray(array);
+  return array->size++;
+  #endif
 }
 
 void *getBigArrayValue(BigArray *array, int index)
@@ -93,6 +101,7 @@ void *getBigArrayValue(BigArray *array, int index)
   return (void *) array->elems[fls(index+2)-1].items + inarray_index*array->elem_sz;
 }
 
+#ifndef MINIMAL_GC
 void removeFromBigArray(BigArray *array, int index)
 {
   if(index == array->size - 1) array->size--;
@@ -118,3 +127,4 @@ void emptyBigArray(BigArray *array)
     free(array->elems);
   }
 }
+#endif

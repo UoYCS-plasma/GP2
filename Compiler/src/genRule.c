@@ -368,12 +368,27 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism)\n", left_node->index);
    PTF("{\n");
-   PTFI("NodeList *nlistpos = NULL;\n", 3);
-   PTFI("for(Node *host_node; (host_node = yieldNextNode(host, &nlistpos)) != NULL;)\n", 3);
-   PTFI("{\n", 3);
-   PTFI("if(nodeMatched(host_node)) continue;\n", 6);
-   if(left_node->label.mark == ANY)
-      PTFI("if(host_node->label.mark == 0) continue;\n", 6);
+   if(no_node_list)
+   {
+      PTFI("Node *host_node;\n", 3);
+      PTFI("for (int i = 0; i < host->_nodearray.size; i++)\n", 3);
+      PTFI("{\n", 3);
+      PTFI("host_node = (Node *) getBigArrayValue(&(host->_nodearray), i);\n", 6);
+      PTFI("if(nodeDeleted(host_node))\n", 6);
+      PTFI("{\n", 6);
+      PTFI("clearNodeInGraph(host_node);\n", 9);
+      PTFI("continue;\n", 6);
+      PTFI("}\n", 6);
+   }
+   else
+   {
+      PTFI("NodeList *nlistpos = NULL;\n", 3);
+      PTFI("for(Node *host_node; (host_node = yieldNextNode(host, &nlistpos)) != NULL;)\n", 3);
+      PTFI("{\n", 3);
+   }
+   if(reflect_roots) PTFI("if(nodeMatched(host_node) || nodeRoot(host_node)) continue;\n", 6);
+   else PTFI("if(nodeMatched(host_node)) continue;\n", 6);
+   if(left_node->label.mark == ANY) PTFI("if(host_node->label.mark == 0) continue;\n", 6);
    else PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
    emitDegreeCheck(left_node, 6);  
    PTF("continue;\n\n");
@@ -899,11 +914,15 @@ void generateApplicationCode(Rule *rule)
                if(label.length == 0 && label.mark == NONE) PTFI("label = blank_label;\n", 3);
                else generateLabelEvaluationCode(label, false, list_count++, 0, 3);
                PTFI("/* Relabel the edge if its label is not equal to the RHS label. */\n", 3);
-               PTFI("if(equalHostLabels(label_e%d, label)) removeHostList(label.list);\n", 3, index);
-               PTFI("else\n", 3);
+               if(minimal_gc) PTFI("if(!equalHostLabels(label_e%d, label))\n", 3, index);
+               else
+               {
+                  PTFI("if(equalHostLabels(label_e%d, label)) removeHostList(label.list);\n", 3, index);
+                  PTFI("else\n", 3);
+               }
                PTFI("{\n", 3);
-               PTFI("if(record_changes) pushRelabelledEdge(host_edge, label_e%d);\n",
-                    6, index);
+               PTFI("if(record_changes) pushRelabelledEdge(host_edge, label_e%d);\n", 6, index);
+               if(!minimal_gc) PTFI("removeHostList(host_edge->label.list);\n", 6);
                PTFI("relabelEdge(host_edge, label);\n", 6);
                PTFI("}\n", 3);
             }
@@ -912,8 +931,7 @@ void generateApplicationCode(Rule *rule)
             else if(edge->interface->remarked)
             {
                /* Generate code to re-mark the edge. */
-               PTFI("if(record_changes) pushRemarkedEdge(host_edge, label_e%d.mark);\n",
-                    3, index);
+               PTFI("if(record_changes) pushRemarkedEdge(host_edge, label_e%d.mark);\n", 3, index);
                PTFI("changeEdgeMark(host_edge, %d);\n\n", 3, label.mark);
             }
          }
@@ -963,11 +981,15 @@ void generateApplicationCode(Rule *rule)
                else generateLabelEvaluationCode(label, true, list_count++, 0, 3);
 
                /* If the two labels are equal, no relabelling needs to be done. */
-               PTFI("if(equalHostLabels(label_n%d, label)) removeHostList(label.list);\n", 3, index);
-               PTFI("else\n", 3);
+               if(minimal_gc) PTFI("if(!equalHostLabels(label_n%d, label))\n", 3, index);
+               else
+               {
+                  PTFI("if(equalHostLabels(label_n%d, label)) removeHostList(label.list);\n", 3, index);
+                  PTFI("else\n", 3);
+               }
                PTFI("{\n", 3);
-               PTFI("if(record_changes) pushRelabelledNode(host_node, label_n%d);\n",
-                    6, index);
+               PTFI("if(record_changes) pushRelabelledNode(host_node, label_n%d);\n", 6, index);
+               if(!minimal_gc) PTFI("removeHostList(host_node->label.list);\n", 6);
                PTFI("relabelNode(host_node, label);\n", 6);
                PTFI("}\n", 3);
             }
@@ -976,8 +998,7 @@ void generateApplicationCode(Rule *rule)
             else if(rhs_node->remarked)
             {
                /* Generate code to re-mark the edge. */
-               PTFI("if(record_changes) pushRemarkedNode(host_node, label_n%d.mark);\n",
-                    3, index);
+               PTFI("if(record_changes) pushRemarkedNode(host_node, label_n%d.mark);\n", 3, index);
                PTFI("changeNodeMark(host_node, %d);\n\n", 3, label.mark);
             }
          }

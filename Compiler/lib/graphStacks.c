@@ -23,7 +23,7 @@ typedef struct GraphChangeStack {
 } GraphChangeStack;
 
 GraphChangeStack *graph_change_stack = NULL;
-int graph_change_count = 0;
+unsigned int graph_change_count = 0;
 
 static void makeGraphChangeStack(int initial_capacity)
 {
@@ -121,7 +121,9 @@ void pushRelabelledNode(Node *node, HostLabel old_label)
    change.relabelled_node.old_label = old_label;
    /* Keep a record of the list as the relabelling of the node could free this
     * list or remove its bucket from the hash table. */
+   #ifndef MINIMAL_GC
    addHostList(old_label.list);
+   #endif
    pushGraphChange(change);
 }
 
@@ -135,7 +137,9 @@ void pushRelabelledEdge(Edge *edge, HostLabel old_label)
    change.relabelled_edge.old_label = old_label;
    /* Keep a record of the list as the relabelling of the edge could free this
     * list or remove its bucket from the hash table. */
+   #ifndef MINIMAL_GC
    addHostList(old_label.list);
+   #endif
    pushGraphChange(change);
 }
 
@@ -212,12 +216,18 @@ void undoChanges(int restore_point)
          case RELABELLED_NODE:
               if(change.first_occurrence)
                 clearNodeInStack(change.relabelled_node.node);
+              #ifndef MINIMAL_GC
+              removeHostList((change.relabelled_node.node)->label.list);
+              #endif
               relabelNode(change.relabelled_node.node, change.relabelled_node.old_label);
               break;
 
          case RELABELLED_EDGE:
               if(change.first_occurrence)
                 clearEdgeInStack(change.relabelled_edge.edge);
+              #ifndef MINIMAL_GC
+              removeHostList((change.relabelled_edge.edge)->label.list);
+              #endif
               relabelEdge(change.relabelled_edge.edge, change.relabelled_edge.old_label);
               break;
 
@@ -249,23 +259,31 @@ void undoChanges(int restore_point)
 
 static void freeGraphChange(GraphChange change)
 {
+   #ifndef MINIMAL_GC
    Graph *graph = graph_change_stack->graph;
+   #endif
    switch(change.type)
    {
       case ADDED_NODE:
            if(change.first_occurrence)
              clearNodeInStack(change.added_node);
+           #ifndef MINIMAL_GC
+           #ifndef NO_NODE_LIST
            tryGarbageCollectNode(graph, change.added_node);
+           #endif
+           #endif
            break;
 
       case ADDED_EDGE:
            if(change.first_occurrence)
              clearEdgeInStack(change.added_edge);
+           #ifndef MINIMAL_GC
            if(edgeFree(change.added_edge))
            {
              removeHostList(change.added_edge->label.list);
              removeFromBigArray(&(graph->_edgearray), change.added_edge->index);
            }
+           #endif
            break;
 
       case REMOVED_NODE:
@@ -320,6 +338,7 @@ void discardChanges(int restore_point)
    }
 } 
 
+#ifndef MINIMAL_GC
 void freeGraphChangeStack(void)
 {
    if(graph_change_stack == NULL) return;
@@ -327,3 +346,4 @@ void freeGraphChangeStack(void)
    free(graph_change_stack->stack);
    free(graph_change_stack);
 }
+#endif

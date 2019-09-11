@@ -76,10 +76,12 @@ typedef struct HostListItem {
    struct HostListItem *prev;
 } HostListItem;
 
-// 32 bytes
+// 24/32 bytes
 typedef struct Bucket {
    HostList *list;
+   #ifndef MINIMAL_GC
    unsigned int reference_count;
+   #endif
    struct Bucket *next;
    struct Bucket *prev;
 } Bucket;
@@ -97,6 +99,8 @@ void initialiseHostListStore(void);
  * by the passed array from the hash table (list_store). If not, the function returns a
  * pointer to a newly-allocated HostList. */
 HostList *makeHostList(HostAtom *array, unsigned short length, bool free_strings);
+
+#ifndef MINIMAL_GC
 /* Expects the passed pointer to exist in the list hash table. Increments the reference
  * count of the list's bucket. */
 void addHostList(HostList *list);
@@ -104,6 +108,7 @@ void addHostList(HostList *list);
  * count of the list's bucket. Deletes/frees the list and its containing bucket if
  * the new reference count is 0. */
 void removeHostList(HostList *list);
+#endif
 
 /* Called at runtime to build labels. */
 HostLabel makeEmptyLabel(MarkType mark);
@@ -121,7 +126,9 @@ HostList *copyHostList(HostList *list);
 void printHostLabel(HostLabel label, FILE *file);
 void printHostList(HostListItem *item, FILE *file);
 
+#ifndef MINIMAL_GC
 void freeHostList(HostList *list);
 void freeHostListStore(void);
+#endif
 
 #endif /* INC_LABEL_H */

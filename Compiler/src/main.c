@@ -120,9 +120,9 @@ static bool validateHostGraph(string host_file)
    return (yyparse() == 0);
 }
 
-bool debug_flags, fast_shutdown = false;
+bool debug_flags, fast_shutdown, minimal_gc, reflect_roots, no_node_list = false;
 
-void printMakeFile(string output_dir, string install_dir)
+void printMakeFile(string output_dir)
 {
    int length = strlen(output_dir) + 9;
    char makefile_name[length];
@@ -135,44 +135,66 @@ void printMakeFile(string output_dir, string install_dir)
       perror("Makefile");
       exit(1);
    }
-   
-   if(install_dir != NULL) 
-   { 
-      fprintf(makefile, "INCDIR := %s/include\n", install_dir);
-      fprintf(makefile, "LIBDIR := %s/lib\n", install_dir);
-   }
-   fprintf(makefile, "OBJECTS := $(patsubst %%.c, %%.o, $(wildcard *.c))\n");  
-   fprintf(makefile, "CC := gcc\n\n");
 
-   if(debug_flags) fprintf(makefile, "CFLAGS = -g -I$(INCDIR) -L$(LIBDIR) -L/usr/lib -L/usr/lib/x86_64-linux-gnu -Og -Wall -Wextra -lgp2 -lJudy\n\n");
-   else fprintf(makefile, "CFLAGS = -I$(INCDIR) -L$(LIBDIR) -L/usr/lib -L/usr/lib/x86_64-linux-gnu -O3 -Wall -Wextra -lgp2 -lJudy\n\n");
+   fprintf(makefile, "OBJECTS = $(patsubst lexer.o,,$(patsubst %%.c,%%.o,$(wildcard *.c)))\n");  
+   fprintf(makefile, "CC = gcc\n\n");
+   fprintf(makefile, "CFLAGS = -L/usr/lib -L/usr/lib/x86_64-linux-gnu -lJudy -Wall");
+   if (minimal_gc) fprintf(makefile, " -DMINIMAL_GC");
+   if (no_node_list) fprintf(makefile, " -DNO_NODE_LIST");
+   if(debug_flags) fprintf(makefile, " -g -Og\n\n");
+   else fprintf(makefile, " -DNDEBUG -O3 -flto -fuse-linker-plugin\n\n");
    fprintf(makefile, "default:\t$(OBJECTS)\n\t\t$(CC) $(OBJECTS) $(CFLAGS) -o gp2run\n\n");
    fprintf(makefile, "%%.o:\t\t%%.c\n\t\t$(CC) -c $(CFLAGS) -o $@ $<\n\n");
    fprintf(makefile, "clean:\t\n\t\trm *\n");
+
    fclose(makefile);
 } 
 
+void printBuildScript(string output_dir, string lib_dir)
+{
+   int length = strlen(output_dir) + 9;
+   char buildscript_name[length];
+   strcpy(buildscript_name, output_dir);
+   strcat(buildscript_name, "/");
+   strcat(buildscript_name, "build.sh");
+   FILE *buildscript = fopen(buildscript_name, "w");
+   if(buildscript == NULL)
+   { 
+      perror("build.sh");
+      exit(1);
+   }
+
+   fprintf(buildscript, "#!/bin/bash\n\n");
+   if(lib_dir != NULL) fprintf(buildscript, "LIBDIR=\"%s\"\n\n", lib_dir);
+   fprintf(buildscript, "cp ${LIBDIR}/*.{c,h} ${PWD}\n");
+   fprintf(buildscript, "make -j4\n");
+
+   fclose(buildscript);
+} 
 
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "gp2 [-d] [-f] [-l <rootdir>] [-o <outdir>] <program_file>\n"
+                        "gp2 [-d] [-f] [-g] [-m] [-n] [-l <libdir>] [-o <outdir>] <program_file>\n"
                         "gp2 -p <program_file>\n"
                         "gp2 -r <rule_file>\n"
                         "gp2 -h <host_file>\n\n"
                         "Flags:\n"
-                        "-d - Compile program with GCC debugging flags.\n"
+                        "-d - Compile program with debugging flags.\n"
                         "-f - Compile in fast shutdown mode.\n"
+                        "-g - Compile with minimal garbage collection (requires fast shutdown).\n"
+                        "-m - Compile with root reflecting matches.\n"
+                        "-n - Compile without graph node lists.\n"
+                        "-l - Specify directory of lib source files.\n"
+                        "-o - Specify directory for generated code and program output.\n"
                         "-p - Validate a GP 2 program.\n"
                         "-r - Validate a GP 2 rule.\n"
-                        "-h - Validate a GP 2 host graph.\n"
-                        "-l - Specify root directory of installed files.\n"
-                        "-o - Specify directory for generated code and program output.\n";
+                        "-h - Validate a GP 2 host graph.\n";
 
    /* If true, only parsing and semantic analysis executed on the GP2 source files. */
    bool validate = false;
    string program_file = NULL, host_file = NULL, rule_file = NULL, 
-          install_dir = NULL, output_dir = NULL;
+          lib_dir = NULL, output_dir = NULL;
 
    if(argc < 2)
    {
@@ -229,6 +251,18 @@ int main(int argc, char **argv)
                   fast_shutdown = true;
                   break;
 
+             case 'g':
+                  minimal_gc = true;
+                  break;
+
+             case 'm':
+                  reflect_roots = true;
+                  break;
+
+             case 'n':
+                  no_node_list = true;
+                  break;
+
              case 'l':
                   argv_index++;
                   if(argv_index == argc)
@@ -236,7 +270,7 @@ int main(int argc, char **argv)
                      print_to_console("%s", usage);
                      exit(EXIT_FAILURE);
                   }
-                  install_dir = argv[argv_index];
+                  lib_dir = argv[argv_index];
                   break;
 
              case 'o':
@@ -261,6 +295,12 @@ int main(int argc, char **argv)
          exit(EXIT_FAILURE);
       }
       program_file = argv[argv_index];
+   }
+
+   if (!fast_shutdown && minimal_gc)
+   {
+      print_to_console("%s\n", "Error: minimal garbage collection requires fast shutdowns.");
+      exit(EXIT_FAILURE);
    }
 
    /* If no output directory specified, make a directory in /tmp. */
@@ -321,7 +361,8 @@ int main(int argc, char **argv)
          print_to_console("Generating program code...\n");
          generateRules(gp_program, output_dir);
          generateRuntimeMain(gp_program, output_dir);
-         printMakeFile(output_dir, install_dir);
+         printMakeFile(output_dir);
+         printBuildScript(output_dir, lib_dir);
       }
    }
    if(yyin != NULL) fclose(yyin);
@@ -329,4 +370,3 @@ int main(int argc, char **argv)
    closeLogFile();
    return 0;
 }
-

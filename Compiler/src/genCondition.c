@@ -269,10 +269,10 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
               PTFI("{\n", 9);
               PTFI("b%d = true;\n", 12, predicate->bool_id);
               PTFI("edge_found = true;\n", 12);
-              PTFI("removeHostList(label.list);\n", 12);
+              if(!minimal_gc) PTFI("removeHostList(label.list);\n", 12);
               PTFI("break;\n", 12);
               PTFI("}\n", 9);
-              PTFI("removeHostList(label.list);\n", 9);
+              if(!minimal_gc) PTFI("removeHostList(label.list);\n", 9);
               PTFI("}\n", 6);
            }
            else

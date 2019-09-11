@@ -40,12 +40,14 @@
 #define NUMBER_OF_MARKS 6 
 #define NUMBER_OF_CLASSES 7
 
+#ifndef NO_NODE_LIST
 // 24 bytes
 typedef struct NodeList {
   struct Node *node;
   struct NodeList *next;
   int index; // TODO: UNSIGNED
 } NodeList;
+#endif
 
 // 24 bytes
 typedef struct EdgeList {
@@ -58,18 +60,22 @@ typedef struct EdgeList {
  * Graph Data Structure + Functions
  * ================================ */
 
-// 120 + BIGAR_INIT_SZ * 3 bytes
-// currently, 696 bytes
+// 96/120 + BIGAR_INIT_SZ * 3 bytes
+// currently, 672/696 bytes
 typedef struct Graph
 {
+   #ifndef NO_NODE_LIST
    NodeList *nodes;
+   #endif
    struct RootNodes *root_nodes;
    int number_of_nodes, number_of_edges; // TODO: UNSIGNED
 
    // Internally keep arrays to reduce malloc/free's to O(log n).
    BigArray _nodearray;
    BigArray _edgearray;
+   #ifndef NO_NODE_LIST
    BigArray _nodelistarray;
+   #endif
 } Graph;
 
 /* The arguments nodes and edges are the initial sizes of the node array and the
@@ -80,8 +86,8 @@ Graph *newGraph();
  * Node and Edge Definitions
  * ========================= */
 
-// 72 bytes + BIGAR_INIT_SZ
-// currently, 264 bytes
+// 64/72 bytes + BIGAR_INIT_SZ
+// currently, 256/264 bytes
 typedef struct Node {
    HostLabel label;
 #define NFLAG_ROOT 0b1
@@ -133,9 +139,10 @@ void removeRootNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);
 void changeRoot(Graph *graph, Node *node);
 
-#define relabelNode(node, new_label) do { removeHostList((node)->label.list); (node)->label = new_label; } while (0)
+
+#define relabelNode(node, new_label) (node)->label = new_label
 #define changeNodeMark(node, new_mark) (node)->label.mark = new_mark
-#define relabelEdge(edge, new_label) do { removeHostList((edge)->label.list); (edge)->label = new_label; } while (0)
+#define relabelEdge(edge, new_label) (edge)->label = new_label
 #define changeEdgeMark(edge, new_mark) (edge)->label.mark = new_mark
 
 #define nodeRoot(node) ((node)->flags & NFLAG_ROOT)
@@ -187,12 +194,14 @@ void changeRoot(Graph *graph, Node *node);
 #define edgeTarget(edge) (edge)->target
 #define edgeLabel(edge) (edge)->label
 
+#ifndef MINIMAL_GC
 #define edgeFree(edge) \
    !(edgeInStack(edge) || edgeInSrcLst(edge) || edgeInTrgLst(edge))
 
 // Try and free a node/edge's memory, fixing all references.
 // If the node/edge is still needed anywhere, do nothing.
 void tryGarbageCollectNode(Graph *graph, Node *node);
+#endif
 
 /* ========================
  * Graph Querying Functions
@@ -202,7 +211,9 @@ void tryGarbageCollectNode(Graph *graph, Node *node);
 // yield the next element in the list.
 // Done this way so deleted nodes/edges are garbage
 // collected when passed by.
+#ifndef NO_NODE_LIST
 Node *yieldNextNode(Graph *graph, NodeList **current);
+#endif
 Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current);
 Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current);
 
@@ -210,6 +221,9 @@ RootNodes *getRootNodeList(Graph *graph);
 
 void printGraph(Graph *graph, FILE *file);
 void printGraphFast(Graph *graph, FILE *file);
+
+#ifndef MINIMAL_GC
 void freeGraph(Graph *graph);
+#endif
 
 #endif /* INC_GRAPH_H */

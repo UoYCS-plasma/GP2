@@ -51,8 +51,8 @@ typedef struct BigArrayHole {
 // and an IntArray of available holes in said array.
 // Useful for minimizing the number of malloc's while keeping pointers valid.
 
-// 32 bytes + BIGAR_INIT_SZ
-// currently, 224 bytes
+// 24/32 bytes + BIGAR_INIT_SZ
+// currently, 216/224 bytes
 typedef struct BigArray {
   int capacity; // TODO: UNSIGNED
   int size; // TODO: UNSIGNED
@@ -62,11 +62,16 @@ typedef struct BigArray {
 #define BIGAR_INIT_SZ 192
   char firstelems[BIGAR_INIT_SZ]; // use this before malloc'ing space
   BigArrayElem *elems;
+  #ifndef MINIMAL_GC
   BigArrayHole *first_hole;
+  #endif
 } BigArray;
 
 BigArray makeBigArray(size_t elem_sz);
 int genFreeBigArrayPos(BigArray *array);
 void *getBigArrayValue(BigArray *array, int index);
+
+#ifndef MINIMAL_GC
 void removeFromBigArray(BigArray *array, int index);
 void emptyBigArray(BigArray *array);
+#endif

@@ -181,12 +181,14 @@ void generateRuntimeMain(List *declarations, string output_dir)
       }
       iterator = iterator->next;
    }
+
    if(fast_shutdown) PTF("   printGraphFast(host, output_file);\n");
    else
    {
       PTF("   printGraph(host, output_file);\n");
       PTF("   garbageCollect();\n");
    }
+
    PTF("   closeLogFile();\n");
    PTF("   printf(\"Output graph saved to file gp2.output\\n\");\n");
    PTF("   fclose(output_file);\n");

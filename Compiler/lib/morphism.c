@@ -60,7 +60,9 @@ void initialiseMorphism(Morphism *morphism)
       }
       else if(morphism->assignment[index].type == 'l')
       {
+         #ifndef MINIMAL_GC
          removeHostList(morphism->assignment[index].list);
+         #endif
          morphism->assignment[index].list = NULL;
       }
       morphism->assignment[index].type = 'n';
@@ -104,7 +106,9 @@ int addListAssignment(Morphism *morphism, int id, HostList *list)
    if(morphism->assignment[id].type == 'n') 
    {
       morphism->assignment[id].type = 'l';
+      #ifndef MINIMAL_GC
       addHostList(list);
+      #endif
       morphism->assignment[id].list = list;
       pushVariableId(morphism, id);
       return 1;
@@ -177,7 +181,9 @@ void removeAssignments(Morphism *morphism, int number)
       }
       else if(morphism->assignment[id].type == 'l')
       {
+         #ifndef MINIMAL_GC
          removeHostList(morphism->assignment[id].list);
+         #endif
          morphism->assignment[id].list = NULL;
       }
       morphism->assignment[id].type = 'n';
@@ -265,48 +271,7 @@ int isSuffix(const string rule_string, const string host_string)
    else return -1;
 }
 
-void printMorphism(Morphism *morphism)
-{
-   if(morphism == NULL)
-   {
-      printf("No morphism exists.\n\n");
-      return;
-   }
-   int index;
-   if(morphism->node_map != NULL)
-   {
-      printf("\nNode Mappings\n=============\n");
-      for(index = 0; index < morphism->nodes; index++)
-         printf("%d --> %p\n", index, (void *) morphism->node_map[index].node);
-      printf("\n");
-   }
-   if(morphism->edge_map != NULL)
-   {
-      printf("Edge Mappings\n=============\n");
-      for(index = 0; index < morphism->edges; index++)
-         printf("%d --> %p\n", index, (void *) morphism->edge_map[index].edge);
-      printf("\n");
-   }
-   if(morphism->assignment != NULL)
-   {
-      for(index = 0; index < morphism->variables; index++)
-      {
-         printf("Variable %d -> ", index);
-         if(morphism->assignment[index].type == 'n') printf("Unassigned");
-         if(morphism->assignment[index].type == 'i') 
-           printf("%d", morphism->assignment[index].num);
-         if(morphism->assignment[index].type == 's')
-           printf("\"%s\"", morphism->assignment[index].str);
-         if(morphism->assignment[index].type == 'l')
-         {
-            if(morphism->assignment[index].list == NULL) printf("empty");
-            else printHostList(morphism->assignment[index].list->first, stdout);
-         }
-         printf("\n\n");
-      }
-   }
-}
-
+#ifndef MINIMAL_GC
 void freeMorphism(Morphism *morphism)
 {
    if(morphism == NULL) return;
@@ -327,4 +292,4 @@ void freeMorphism(Morphism *morphism)
    if(morphism->assigned_variables != NULL) free(morphism->assigned_variables);
    free(morphism);
 }
-
+#endif

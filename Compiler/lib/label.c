@@ -79,7 +79,9 @@ static Bucket *makeBucket(HostAtom *array, unsigned short length, bool free_stri
    for(index = 0; index < length; index++) 
       list = appendHostAtom(list, array[index], free_strings);
    bucket->list = list;
+   #ifndef MINIMAL_GC
    bucket->reference_count = 1;
+   #endif
    bucket->next = NULL;
    bucket->prev = NULL;
    return bucket;
@@ -163,7 +165,9 @@ HostList *makeHostList(HostAtom *array, unsigned short length, bool free_strings
       }
       else 
       {
+         #ifndef MINIMAL_GC
          bucket->reference_count++;
+         #endif
          if(free_strings)
          {
             for(index = 0; index < length; index++) 
@@ -174,6 +178,7 @@ HostList *makeHostList(HostAtom *array, unsigned short length, bool free_strings
    }
 }
 
+#ifndef MINIMAL_GC
 /* Returns the bucket containing the passed list. */
 static Bucket *getBucket(HostList *list)
 {
@@ -213,6 +218,7 @@ void removeHostList(HostList *list)
       free(bucket);
    }
 }
+#endif
 
 HostLabel makeEmptyLabel(MarkType mark)
 {
@@ -296,6 +302,7 @@ void printHostList(HostListItem *item, FILE *file)
    }
 }
 
+#ifndef MINIMAL_GC
 static void freeHostListItems(HostListItem *item)
 {
    if(item == NULL) return;
@@ -328,3 +335,4 @@ void freeHostListStore(void)
       freeBuckets(list_store[index]);
    free(list_store);
 }
+#endif
