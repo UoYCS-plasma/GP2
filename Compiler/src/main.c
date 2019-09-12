@@ -157,18 +157,19 @@ void printMakeFile(string output_dir, string install_dir)
 } 
 
    
-bool graph_copying = false;
+bool graph_copying, reflect_roots = false;
 
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "gp2 [-c] [-d] [-l <rootdir>] [-o <outdir>] <program_file>\n"
+                        "gp2 [-c] [-d] [-m] [-l <rootdir>] [-o <outdir>] <program_file>\n"
                         "gp2 -p <program_file>\n"
                         "gp2 -r <rule_file>\n"
                         "gp2 -h <host_file>\n\n"
                         "Flags:\n"
                         "-c - Enable graph copying.\n"
                         "-d - Compile program with GCC debugging flags.\n"
+                        "-m - Compile with root reflecting matches.\n"
                         "-p - Validate a GP 2 program.\n"
                         "-r - Validate a GP 2 rule.\n"
                         "-h - Validate a GP 2 host graph.\n"
@@ -268,6 +269,10 @@ int main(int argc, char **argv)
 
                case 'd':
                     debug_flags = true;
+                    break;
+
+               case 'm':
+                    reflect_roots = true;
                     break;
 
                case 'l':

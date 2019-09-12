@@ -371,7 +371,8 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    PTFI("{\n", 3);
    PTFI("Node *host_node = getNode(host, host_index);\n", 6);
    PTFI("if(host_node == NULL || host_node->index == -1) continue;\n", 6);
-   PTFI("if(host_node->matched) continue;\n", 6);
+   if(reflect_roots) PTFI("if(host_node->matched || host_node->root) continue;\n", 6);
+   else PTFI("if(host_node->matched) continue;\n", 6);
    if(left_node->label.mark == ANY)
       PTFI("if(host_node->label.mark == 0) continue;\n", 6);
    else PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
@@ -409,6 +410,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
    if(type == 'b') PTFI("bool candidate_node = true;\n", 3);
    PTFI("if(host_node->matched) %s\n", 3, fail_code);
    if(left_node->root) PTFI("if(!(host_node->root)) %s\n", 3, fail_code);
+   if(reflect_roots && !(left_node->root)) PTFI("if(host_node->root) %s\n", 3, fail_code);
    if(left_node->label.mark == ANY)
       PTFI("if(host_node->label.mark == 0) %s\n", 3, fail_code);
    else PTFI("if(host_node->label.mark != %d) %s\n", 3, left_node->label.mark, fail_code);
@@ -427,6 +429,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
       else PTFI("host_node = getTarget(host, host_edge);\n", 6);
       PTFI("if(host_node->matched) return false;\n", 6);
       if(left_node->root) PTFI("if(!(host_node->root)) return false;\n", 6);
+      if(reflect_roots && !(left_node->root)) PTFI("if(host_node->root) return false;\n", 6);
       if(left_node->label.mark == ANY)
 	 PTFI("if(host_node->label.mark == 0) return false;\n", 6);
       else PTFI("if(host_node->label.mark != %d) return false;\n", 6, left_node->label.mark);
@@ -1046,7 +1049,8 @@ void generateApplicationCode(Rule *rule)
             /* The root is changed in two cases:
              * (1) The LHS node is rooted and the RHS node is non-rooted.
              * (2) The LHS node is non-rooted, the RHS node is rooted, and
-             *     the matched host node is non-rooted. */
+             *     the matched host node is non-rooted. If we are root
+             *     reflecting, there is no need to check the condition. */
 
             /* Case (1) */
             if(node->root && !node->interface->root) 
@@ -1057,12 +1061,20 @@ void generateApplicationCode(Rule *rule)
             /* Case (2) */
             if(!node->root && node->interface->root) 
             {
-               PTFI("Node *node%d = getNode(host, host_node_index);\n", 3, index);
-               PTFI("if(!node%d->root)\n", 3, index);
-               PTFI("{\n", 3);
-               PTFI("if(record_changes) pushChangedRootNode(host_node_index);\n", 6);
-               PTFI("changeRoot(host, host_node_index);\n", 6);
-               PTFI("}\n", 3);
+               if(reflect_roots)
+               {
+                  PTFI("if(record_changes) pushChangedRootNode(host_node_index);\n", 3);
+                  PTFI("changeRoot(host, host_node_index);\n", 3);
+               }
+               else
+               {
+                  PTFI("Node *node%d = getNode(host, host_node_index);\n", 3, index);
+                  PTFI("if(!node%d->root)\n", 3, index);
+                  PTFI("{\n", 3);
+                  PTFI("if(record_changes) pushChangedRootNode(host_node_index);\n", 6);
+                  PTFI("changeRoot(host, host_node_index);\n", 6);
+                  PTFI("}\n", 3);
+               }
             }
          }
       }
