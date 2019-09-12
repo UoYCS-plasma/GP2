@@ -448,6 +448,7 @@ void printGraph(Graph *graph, FILE *file)
    for (int i = 0; i < graph->_nodearray.size; i++)
    {
       node = (Node *) getBigArrayValue(&(graph->_nodearray), i);
+      if(nodeDeleted(node)) continue;
    #endif
       elistpos = NULL;
       for(Edge *edge; (edge = yieldNextOutEdge(graph, node, &elistpos)) != NULL;)
