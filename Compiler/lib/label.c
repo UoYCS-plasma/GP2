@@ -104,6 +104,7 @@ void initialiseHostListStore(void)
  * automatic strings which should not be freed. */
 HostList *makeHostList(HostAtom *array, unsigned short length, bool free_strings)
 {
+   assert(list_store != NULL);
    unsigned hash = hashHostList(array, length);
    if(list_store[hash] == NULL)
    {
@@ -182,6 +183,7 @@ HostList *makeHostList(HostAtom *array, unsigned short length, bool free_strings
 /* Returns the bucket containing the passed list. */
 static Bucket *getBucket(HostList *list)
 {
+   assert(list_store != NULL);
    Bucket *bucket = list_store[list->hash];
    assert(bucket != NULL);
    while(bucket != NULL)
@@ -211,6 +213,7 @@ void removeHostList(HostList *list)
    if(bucket->reference_count == 0)
    {
       /* Delete the bucket. */
+      assert(list_store != NULL);
       if(bucket->prev == NULL) list_store[list->hash] = bucket->next;
       else bucket->prev->next = bucket->next;
       if(bucket->next != NULL) bucket->next->prev = bucket->prev;

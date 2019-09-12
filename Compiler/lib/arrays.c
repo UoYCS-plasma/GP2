@@ -92,6 +92,8 @@ int genFreeBigArrayPos(BigArray *array)
 
 void *getBigArrayValue(BigArray *array, int index)
 {
+  assert(index >= 0);
+
   if(index < BIGAR_INIT_SZ / array->elem_sz)
     return (void *) &(array->firstelems[index * array->elem_sz]);
 
@@ -104,6 +106,8 @@ void *getBigArrayValue(BigArray *array, int index)
 #ifndef MINIMAL_GC
 void removeFromBigArray(BigArray *array, int index)
 {
+  assert(index >= 0);
+
   if(index == array->size - 1) array->size--;
   else
   {
