@@ -16,8 +16,39 @@
 #include "graph.h"
 
 /* ===============
+ * Static Graph Functions
+ * =============== */
+
+static void addRootNode(Graph *graph, Node *node)
+{
+   RootNodes *root_node = mallocSafe(sizeof(RootNodes), "addRootNode");
+   root_node->node = node;
+   root_node->next = graph->root_nodes;
+   graph->root_nodes = root_node;
+}
+
+static void removeRootNode(Graph *graph, Node *node)
+{
+   RootNodes *current = graph->root_nodes, *previous = NULL;
+   while(current != NULL)
+   {
+      if(current->node == node)
+      {
+         clearNodeRoot(node);
+         if(previous == NULL) graph->root_nodes = current->next;
+         else previous->next = current->next;
+         free(current);
+         break;
+      }
+      previous = current;
+      current = current->next;
+   }
+}
+
+/* ===============
  * Graph Functions
  * =============== */
+
 Graph *newGraph() 
 {
    Graph *graph = mallocSafe(sizeof(Graph), "newGraph");
@@ -66,14 +97,6 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    if(root) addRootNode(graph, node);
    graph->number_of_nodes++;
    return node;
-}
-
-void addRootNode(Graph *graph, Node *node)
-{
-   RootNodes *root_node = mallocSafe(sizeof(RootNodes), "addRootNode");
-   root_node->node = node;
-   root_node->next = graph->root_nodes;
-   graph->root_nodes = root_node;
 }
 
 // Assume node flags are already correct / edges exist.
@@ -162,24 +185,6 @@ void removeNode(Graph *graph, Node *node)
    setNodeDeleted(node);
    if(nodeRoot(node)) removeRootNode(graph, node);
    graph->number_of_nodes--;
-}
-
-void removeRootNode(Graph *graph, Node *node)
-{
-   RootNodes *current = graph->root_nodes, *previous = NULL;
-   while(current != NULL)
-   {
-      if(current->node == node)
-      {
-         clearNodeRoot(node);
-         if(previous == NULL) graph->root_nodes = current->next;
-         else previous->next = current->next;
-         free(current);
-         break;
-      }
-      previous = current;
-      current = current->next;
-   }
 }
 
 void removeEdge(Graph *graph, Edge *edge)
