@@ -627,9 +627,10 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
       PTFI("Node *host_node = lookupNode(morphism, %d);\n", 3, start_index);
       PTFI("Node *end_node = lookupNode(morphism, %d);\n", 3, end_index);
       PTFI("if(host_node == NULL) return false;\n", 3);
-      PTFI("EdgeList *elistpos = NULL;\n", 3);
+      PTFI("EdgeList *elistpos;\n", 3);
    }
 
+   PTFI("elistpos = NULL;\n", 3);
    if(source)
       PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos)) != NULL;)\n", 3);
    else
