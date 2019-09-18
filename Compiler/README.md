@@ -1,20 +1,28 @@
 ## About GP 2
 
-GP 2 (Graph Programs 2) is a rule-based, nondeterministic programming language for solving graph problems at a high level of abstraction, freeing programmers from handling low-level data structures. The core of GP 2 consists of four constructs: single-step application of a set of conditional graph-transformation rules, sequential composition, branching and iteration. The language has a small structural operational semantics and a visual editor for writing GP 2 programs, running them, and tracing their execution.
+GP 2 (Graph Programs 2) is a rule-based, nondeterministic programming language
+for solving graph problems at a high level of abstraction, freeing programmers
+from handling low-level data structures. The core of GP 2 consists of four
+constructs: single-step application of a set of conditional graph
+transformation rules, sequential composition, branching and iteration. The
+language has a small structural operational semantics and a visual editor for
+writing GP 2 programs, running them, and tracing their execution.
 
 ## The GP 2 Compiler
 
 The GP 2 compiler translates a GP 2 program into executable C code.
 The generated code is executable with the support of the GP 2 library.
 
+### Compiling Programs
+
 Default usage:
-`gp2 [-d] [-l <rootdir>] [-o <outdir>] <gp2-program_file>`
+`gp2 [-d] [-f] [-g] [-m] [-n] [-q] [-l <libdir>] [-o <outdir>] <program_file>`
 
 Compiles *gp2-program* into C code. The generated code is placed in
 */tmp/gp2* unless an alternate location is specified with the **-o** flag. 
 
-To execute the generated code, run `make` and `./gp2run <host-graph-file>`
-from */tmp/gp2*.
+To execute the generated code, run `./build.sh` and
+`./gp2run <host-graph-file>` from */tmp/gp2*.
 
 If GP 2 is installed in a non-standard directory, use the **-l** option to 
 ensure the generated code can be compiled and executed. See Installation 
@@ -22,11 +30,23 @@ for more information.
 
 Options:
 
-**-d** - Compile program with GCC debugging flags.
+**-d** - Compile program with debugging flags
 
-**-l** - Specify root directory of installed files.
+**-f** - Compile in fast shutdown mode.
+
+**-g** - Compile with minimal garbage collection (requires fast shutdown).
+
+**-m** - Compile with root reflecting matches.
+
+**-n** - Compile without graph node lists.
+
+**-q** - Compile program quickly without optimisations.
+
+**-l** - Specify directory of lib source files.
 
 **-o** - Specify directory for generated code and program output.
+
+### Validating Programs
 
 The compiler can also be used to validate GP 2 source files.
 
@@ -53,7 +73,7 @@ Superusers install GP 2 as follows:
 
 If you are not a superuser, install GP 2 locally as follows:
 
-1. Run `./configure --prefix={dest-dir}' from the top-level directory.
+1. Run `./configure --prefix={dest-dir}` from the top-level directory.
 
 2. Run `make`.
 
