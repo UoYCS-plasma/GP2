@@ -120,7 +120,7 @@ static bool validateHostGraph(string host_file)
    return (yyparse() == 0);
 }
 
-bool debug_flags, fast_shutdown, minimal_gc, reflect_roots, no_node_list = false;
+bool debug_flags, fast_shutdown, minimal_gc, reflect_roots, no_node_list, quick_compile = false;
 
 void printMakeFile(string output_dir)
 {
@@ -141,8 +141,17 @@ void printMakeFile(string output_dir)
    fprintf(makefile, "CFLAGS = -L/usr/lib -L/usr/lib/x86_64-linux-gnu -lJudy -Wall");
    if (minimal_gc) fprintf(makefile, " -DMINIMAL_GC");
    if (no_node_list) fprintf(makefile, " -DNO_NODE_LIST");
-   if(debug_flags) fprintf(makefile, " -g -Og\n\n");
-   else fprintf(makefile, " -DNDEBUG -O3 -flto -fuse-linker-plugin\n\n");
+   if(quick_compile)
+   {
+      if(debug_flags) fprintf(makefile, " -g -O0\n\n");
+      else fprintf(makefile, " -DNDEBUG -O0\n\n");
+   }
+   else
+   {
+      if(debug_flags) fprintf(makefile, " -g -Og\n\n");
+      else fprintf(makefile, " -DNDEBUG -O3 -flto -fuse-linker-plugin\n\n");
+   }
+
    fprintf(makefile, "default:\t$(OBJECTS)\n\t\t$(CC) $(OBJECTS) $(CFLAGS) -o gp2run\n\n");
    fprintf(makefile, "%%.o:\t\t%%.c\n\t\t$(CC) -c $(CFLAGS) -o $@ $<\n\n");
    fprintf(makefile, "clean:\t\n\t\trm *\n");
@@ -175,7 +184,7 @@ void printBuildScript(string output_dir, string lib_dir)
 int main(int argc, char **argv)
 {
    string const usage = "Usage:\n"
-                        "gp2 [-d] [-f] [-g] [-m] [-n] [-l <libdir>] [-o <outdir>] <program_file>\n"
+                        "gp2 [-d] [-f] [-g] [-m] [-n] [-q] [-l <libdir>] [-o <outdir>] <program_file>\n"
                         "gp2 -p <program_file>\n"
                         "gp2 -r <rule_file>\n"
                         "gp2 -h <host_file>\n\n"
@@ -185,6 +194,7 @@ int main(int argc, char **argv)
                         "-g - Compile with minimal garbage collection (requires fast shutdown).\n"
                         "-m - Compile with root reflecting matches.\n"
                         "-n - Compile without graph node lists.\n"
+                        "-q - Compile program quickly without optimisations.\n"
                         "-l - Specify directory of lib source files.\n"
                         "-o - Specify directory for generated code and program output.\n"
                         "-p - Validate a GP 2 program.\n"
@@ -261,6 +271,10 @@ int main(int argc, char **argv)
 
              case 'n':
                   no_node_list = true;
+                  break;
+
+             case 'q':
+                  quick_compile = true;
                   break;
 
              case 'l':
