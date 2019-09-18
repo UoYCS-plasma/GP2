@@ -30,7 +30,7 @@ for more information.
 
 Options:
 
-**-d** - Compile program with debugging flags
+**-d** - Compile program with debugging flags.
 
 **-f** - Compile in fast shutdown mode.
 
