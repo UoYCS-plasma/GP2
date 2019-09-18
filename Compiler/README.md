@@ -1,20 +1,28 @@
 ## About GP 2
 
-GP 2 (Graph Programs 2) is a rule-based, nondeterministic programming language for solving graph problems at a high level of abstraction, freeing programmers from handling low-level data structures. The core of GP 2 consists of four constructs: single-step application of a set of conditional graph-transformation rules, sequential composition, branching and iteration. The language has a small structural operational semantics and a visual editor for writing GP 2 programs, running them, and tracing their execution.
+GP 2 (Graph Programs 2) is a rule-based, nondeterministic programming language
+for solving graph problems at a high level of abstraction, freeing programmers
+from handling low-level data structures. The core of GP 2 consists of four
+constructs: single-step application of a set of conditional graph
+transformation rules, sequential composition, branching and iteration. The
+language has a small structural operational semantics and a visual editor for
+writing GP 2 programs, running them, and tracing their execution.
 
 ## The GP 2 Compiler
 
 The GP 2 compiler translates a GP 2 program into executable C code.
 The generated code is executable with the support of the GP 2 library.
 
+### Compiling Programs
+
 Default usage:
-`gp2 [-c] [-d] [-m] [-l <rootdir>] [-o <outdir>] <program_file>`
+`gp2 [-c] [-d] [-m] [-l <libdir>] [-o <outdir>] [--max-nodes <nodes>] [--max-edges <edges>] <program_file>`
 
 Compiles *gp2-program* into C code. The generated code is placed in
 */tmp/gp2* unless an alternate location is specified with the **-o** flag. 
 
-To execute the generated code, run `make` and `./gp2run <host-graph-file>`
-from */tmp/gp2*.
+To execute the generated code, run `./build.sh` and
+`./gp2run <host-graph-file>` from */tmp/gp2*.
 
 If GP 2 is installed in a non-standard directory, use the **-l** option to 
 ensure the generated code can be compiled and executed. See Installation 
@@ -31,6 +39,12 @@ Options:
 **-l** - Specify root directory of installed files.
 
 **-o** - Specify directory for generated code and program output.
+
+**--max-nodes** - Specify maximum number of nodes in a host graph.
+
+**--max-edges** - Specify maximum number of edges in a host graph.
+
+### Validating Programs
 
 The compiler can also be used to validate GP 2 source files.
 
@@ -57,7 +71,7 @@ Superusers install GP 2 as follows:
 
 If you are not a superuser, install GP 2 locally as follows:
 
-1. Run `./configure --prefix={dest-dir}' from the top-level directory.
+1. Run `./configure --prefix={dest-dir}` from the top-level directory.
 
 2. Run `make`.
 
