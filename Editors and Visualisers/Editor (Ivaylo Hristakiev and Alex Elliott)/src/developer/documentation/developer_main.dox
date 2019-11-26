@@ -1,0 +1,27 @@
+/*!
+ * \page developer GP Developer
+ *
+ * GP Developer is an Integrated Development Environment (IDE) built for the
+ * University of York's experimental Graph Programming language (GP). It allows
+ * developers to create, debug and run GP projects using intuitive tools and
+ * automatic developer aids.
+ *
+ * GP Developer for Users
+ * ----------------------
+ *
+ * To get started with GP Developer as quickly as possible the GP Developer
+ * Quickstart page is recommended. In addition there is a set of Reference
+ * documentation for developers using the IDE.
+ *
+ * GP Developer for Contributors
+ * -----------------------------
+ *
+ * If you would like to contribute to the GP Developer project then we recommend
+ * that you familiarise yourself with the Overall Design document, and the
+ * Coding Guidelines used within the codebase.
+ *
+ * The codebase is documented using Doxygen to act as a reference for developers
+ * working on the code. Contributed code should also be documented, with a focus
+ * on answering questions that other developers might ask rather than single
+ * line descriptions of methods and parameters.
+ */

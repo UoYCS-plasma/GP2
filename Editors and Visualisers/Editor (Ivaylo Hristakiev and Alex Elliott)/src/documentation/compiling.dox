@@ -1,0 +1,15 @@
+/*!
+ * \page compiling Compiling a GP2 Program
+ *
+ * GP2 programs are designed to be translated into programs written in pure C
+ * which can then be compiled into machine code using any standards compliant
+ * compiler toolchain (such as GCC, Clang or MSVC). These objects can wrapped
+ * by a stand-alone executable by the GP2 build tools, or the objects can be
+ * used like any other compiled C object file. Because of this, the objects can
+ * be utilised by any arbitrary C program by including the interface header and
+ * linking against the object produced. In order to make this process easier the
+ * build tools can also generate a shared library which contains all of the
+ * necessary symbols in one .so/.dll.
+ *
+ * \todo Expand on this
+ */

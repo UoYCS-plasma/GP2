@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ProjectPreferences</class>
+ <widget class="QWidget" name="ProjectPreferences">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>402</width>
+    <height>318</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QFormLayout" name="formLayout">
+   <item row="0" column="0">
+    <widget class="QLabel" name="defaultProjectLocationLabel">
+     <property name="text">
+      <string>Default Project Location:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <layout class="QHBoxLayout" name="defaultProjectLocationLayout">
+     <item>
+      <widget class="QLineEdit" name="defaultProjectLocationEdit"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="selectDefaultProjectLocationButton">
+       <property name="text">
+        <string>Select Directory</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>selectDefaultProjectLocationButton</sender>
+   <signal>pressed()</signal>
+   <receiver>ProjectPreferences</receiver>
+   <slot>selectDefaultProjectLocation()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>363</x>
+     <y>17</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>589</x>
+     <y>27</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>selectDefaultProjectLocation()</slot>
+ </slots>
+</ui>

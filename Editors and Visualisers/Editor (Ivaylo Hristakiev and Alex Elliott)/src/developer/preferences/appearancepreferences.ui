@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AppearancePreferences</class>
+ <widget class="QWidget" name="AppearancePreferences">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>700</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="graphsTab">
+      <attribute name="title">
+       <string>Graphs</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="Developer::GraphWidget" name="lhsGraph">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>160</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="Developer::GraphWidget" name="rhsGraph">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>160</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTabWidget" name="tabWidget_2">
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="graphGeneralTab">
+          <attribute name="title">
+           <string>General</string>
+          </attribute>
+          <layout class="QFormLayout" name="formLayout_2">
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>Background Colour:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QLineEdit" name="lineEdit_2"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_2">
+               <property name="text">
+                <string>PushButton</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="graphNodesTab">
+          <attribute name="title">
+           <string>Nodes</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="margin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QScrollArea" name="scrollArea">
+             <property name="styleSheet">
+              <string notr="true">QFrame#scrollArea { border: 0; }</string>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::NoFrame</enum>
+             </property>
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="scrollAreaWidgetContents">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>491</width>
+                <height>355</height>
+               </rect>
+              </property>
+              <layout class="QFormLayout" name="formLayout_3">
+               <item row="0" column="0">
+                <widget class="QLabel" name="shapeLabel">
+                 <property name="text">
+                  <string>Shape:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QComboBox" name="shapeComboBox">
+                 <item>
+                  <property name="text">
+                   <string>Ellipse</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Circle</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Rectangle</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Rounded Rectangle</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="paddingLabel">
+                 <property name="text">
+                  <string>Padding:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <layout class="QHBoxLayout" name="paddingLayout">
+                 <item>
+                  <widget class="QSpinBox" name="paddingTopSpinBox">
+                   <property name="value">
+                    <number>6</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="paddingRightSpinBox">
+                   <property name="value">
+                    <number>8</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="paddingBottomSpinBox">
+                   <property name="value">
+                    <number>6</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="paddingLeftSpinBox">
+                   <property name="value">
+                    <number>8</number>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLabel" name="paddingGuide">
+                 <property name="text">
+                  <string>Top, Right, Bottom, Left (clockwise)</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QLabel" name="cornerRadiusLabel">
+                 <property name="text">
+                  <string>Corner Radius:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="1">
+                <widget class="QSpinBox" name="cornerRadiusSpinBox">
+                 <property name="value">
+                  <number>6</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QLabel" name="fontLabel">
+                 <property name="text">
+                  <string>Font:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <layout class="QHBoxLayout" name="fontLayout">
+                 <item>
+                  <widget class="QLabel" name="fontPreviewLabel">
+                   <property name="text">
+                    <string>Font</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="selectFontButton">
+                   <property name="text">
+                    <string>Select Font</string>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="../icons.qrc">
+                     <normaloff>:/icons/small_font.png</normaloff>:/icons/small_font.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="5" column="0">
+                <widget class="QLabel" name="fontColourLabel">
+                 <property name="text">
+                  <string>Font Colour:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="1">
+                <layout class="QHBoxLayout" name="fontColourLayout">
+                 <item>
+                  <widget class="QLineEdit" name="fontColourEdit"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="selectFontColourButton">
+                   <property name="text">
+                    <string>Select Colour</string>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="../icons.qrc">
+                     <normaloff>:/icons/small_palette.png</normaloff>:/icons/small_palette.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="6" column="0">
+                <widget class="QLabel" name="backgroundColourLabel">
+                 <property name="text">
+                  <string>Background Colour:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="1">
+                <layout class="QHBoxLayout" name="backgroundColourLayout">
+                 <item>
+                  <widget class="QLineEdit" name="backgroundColourEdit"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="selectBackgroundColourButton">
+                   <property name="text">
+                    <string>Select Colour</string>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="../icons.qrc">
+                     <normaloff>:/icons/small_palette.png</normaloff>:/icons/small_palette.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="7" column="0">
+                <widget class="QLabel" name="borderColourLabel">
+                 <property name="text">
+                  <string>Border Colour:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="1">
+                <layout class="QHBoxLayout" name="borderColourLayout">
+                 <item>
+                  <widget class="QLineEdit" name="borderColourEdit"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="selectBorderColourButton">
+                   <property name="text">
+                    <string>Select Colour</string>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="../icons.qrc">
+                     <normaloff>:/icons/small_palette.png</normaloff>:/icons/small_palette.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="8" column="0">
+                <widget class="QLabel" name="hoverColourLabel">
+                 <property name="text">
+                  <string>Hover Colour:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="1">
+                <layout class="QHBoxLayout" name="hoverColourLayout">
+                 <item>
+                  <widget class="QLineEdit" name="hoverColourEdit"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="selectHoverColourButton">
+                   <property name="text">
+                    <string>Select Colour</string>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="../icons.qrc">
+                     <normaloff>:/icons/small_palette.png</normaloff>:/icons/small_palette.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="9" column="0">
+                <widget class="QLabel" name="hoverBorderColourLabel">
+                 <property name="text">
+                  <string>Hover Border Colour:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="9" column="1">
+                <layout class="QHBoxLayout" name="hoverBorderColourLayout">
+                 <item>
+                  <widget class="QLineEdit" name="hoverBorderColourEdit"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="selectHoverBorderColourButton">
+                   <property name="text">
+                    <string>Select Colour</string>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="../icons.qrc">
+                     <normaloff>:/icons/small_palette.png</normaloff>:/icons/small_palette.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="10" column="0">
+                <widget class="QLabel" name="selectedColourLabel">
+                 <property name="text">
+                  <string>Selected Colour:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="1">
+                <layout class="QHBoxLayout" name="selectedColourLayout">
+                 <item>
+                  <widget class="QLineEdit" name="selectedColourEdit"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="selectSelectedColourButton">
+                   <property name="text">
+                    <string>Select Colour</string>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="../icons.qrc">
+                     <normaloff>:/icons/small_palette.png</normaloff>:/icons/small_palette.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="11" column="0">
+                <widget class="QLabel" name="selectedBorderColourLabel">
+                 <property name="text">
+                  <string>Selected Border Colour:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="11" column="1">
+                <layout class="QHBoxLayout" name="selectedBorderColourLayout">
+                 <item>
+                  <widget class="QLineEdit" name="selectedBorderColourEdit"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="selectSelectedBorderColourButton">
+                   <property name="text">
+                    <string>Select Colour</string>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="../icons.qrc">
+                     <normaloff>:/icons/small_palette.png</normaloff>:/icons/small_palette.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="graphEdgesTab">
+          <attribute name="title">
+           <string>Edges</string>
+          </attribute>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="editorTab">
+      <attribute name="title">
+       <string>Editor</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="Developer::ProgramEditor" name="plainTextEdit"/>
+       </item>
+       <item>
+        <widget class="QTabWidget" name="tabWidget_3">
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="editorGeneralTab">
+          <attribute name="title">
+           <string>General</string>
+          </attribute>
+          <layout class="QFormLayout" name="formLayout">
+           <item row="0" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Background Colour:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <widget class="QLineEdit" name="lineEdit"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton">
+               <property name="text">
+                <string>Select Colour</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../icons.qrc">
+                 <normaloff>:/icons/small_palette.png</normaloff>:/icons/small_palette.png</iconset>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="editorProgramsTab">
+          <attribute name="title">
+           <string>Programs</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <widget class="QTableWidget" name="programTokenTable">
+             <attribute name="horizontalHeaderStretchLastSection">
+              <bool>true</bool>
+             </attribute>
+             <attribute name="verticalHeaderVisible">
+              <bool>false</bool>
+             </attribute>
+             <column>
+              <property name="text">
+               <string>Token</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Font</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Foreground</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Background</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="editorConditionsTab">
+          <attribute name="title">
+           <string>Conditions</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_6">
+           <item>
+            <widget class="QTableWidget" name="tableWidget">
+             <attribute name="horizontalHeaderStretchLastSection">
+              <bool>true</bool>
+             </attribute>
+             <attribute name="verticalHeaderVisible">
+              <bool>false</bool>
+             </attribute>
+             <column>
+              <property name="text">
+               <string>Token</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Font</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Foreground</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Background</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Developer::GraphWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>graphview/graphwidget.hpp</header>
+  </customwidget>
+  <customwidget>
+   <class>Developer::ProgramEditor</class>
+   <extends>QPlainTextEdit</extends>
+   <header>programeditor.hpp</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../icons.qrc"/>
+ </resources>
+ <connections/>
+</ui>

@@ -1,0 +1,10 @@
+QWidget#tabBar
+{
+    background: #ddd;
+    border-right: 1px solid #ccc;
+}
+
+QWidget#pageStack
+{
+    background: #f7f7f7;
+}

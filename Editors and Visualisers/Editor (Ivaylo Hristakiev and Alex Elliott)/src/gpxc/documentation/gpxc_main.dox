@@ -1,0 +1,13 @@
+/*!
+ * \page gpxc GP Program Compiler (gpxc)
+ *
+ * \section Overview
+ *
+ * The GP Program Compiler (gpxc) takes in GP2 programs (specified in .gpx
+ * files) and produces object files which can be used to produce either a
+ * stand-alone executable version of the program or a shared library which can
+ * be integrated into arbitrary C programs.
+ *
+ * For more information on the GP2 compile process see \ref compiling
+ *
+ */

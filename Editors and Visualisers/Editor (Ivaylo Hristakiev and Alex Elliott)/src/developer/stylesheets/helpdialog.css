@@ -1,0 +1,10 @@
+QStackedWidget
+{
+    background: #f7f7f7;
+    border-bottom: 1px solid #ccc;
+}
+
+QWidget#buttons
+{
+    background: #f0f0f0;
+}

@@ -1,0 +1,1391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>GP Developer</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="icons.qrc">
+    <normaloff>:/icons/application-icon.png</normaloff>:/icons/application-icon.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QWidget" name="titleWidget" native="true">
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="pixmap">
+          <pixmap resource="icons.qrc">:/icons/application-icon.png</pixmap>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="title">
+         <property name="styleSheet">
+          <string notr="true">QLabel { font-size: 18px; }</string>
+         </property>
+         <property name="text">
+          <string>GP Developer</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>294</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="Developer::QuickRunWidget" name="quickRunWidget" native="true"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="Developer::PrettyTabWidget" name="tabWidget" native="true"/>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1024</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuNew">
+     <property name="toolTip">
+      <string>Create a new project or file</string>
+     </property>
+     <property name="title">
+      <string>New...</string>
+     </property>
+     <property name="icon">
+      <iconset resource="icons.qrc">
+       <normaloff>:/icons/small_page_add.png</normaloff>:/icons/small_page_add.png</iconset>
+     </property>
+     <addaction name="actionNewProject"/>
+     <addaction name="separator"/>
+     <addaction name="actionNewProgram"/>
+     <addaction name="actionNewRule"/>
+     <addaction name="actionNewGraph"/>
+    </widget>
+    <widget class="QMenu" name="menuOpen">
+     <property name="title">
+      <string>Open/Import...</string>
+     </property>
+     <property name="icon">
+      <iconset resource="icons.qrc">
+       <normaloff>:/icons/small_open_folder.png</normaloff>:/icons/small_open_folder.png</iconset>
+     </property>
+     <addaction name="actionOpenProject"/>
+     <addaction name="separator"/>
+     <addaction name="actionOpenProgram"/>
+     <addaction name="actionOpenRule"/>
+     <addaction name="actionOpenGraph"/>
+    </widget>
+    <widget class="QMenu" name="menuRecentProjects">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Recent Projects</string>
+     </property>
+     <property name="icon">
+      <iconset theme="document-open-recent">
+       <normaloff/>
+      </iconset>
+     </property>
+    </widget>
+    <addaction name="menuNew"/>
+    <addaction name="menuOpen"/>
+    <addaction name="menuRecentProjects"/>
+    <addaction name="separator"/>
+    <addaction name="actionCloseProject"/>
+    <addaction name="separator"/>
+    <addaction name="actionSaveCurrentFile"/>
+    <addaction name="actionSaveCurrentFileAs"/>
+    <addaction name="actionSaveAll"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <widget class="QMenu" name="menuFindReplace">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Find/Replace</string>
+     </property>
+     <property name="icon">
+      <iconset resource="icons.qrc">
+       <normaloff>:/icons/small_find.png</normaloff>:/icons/small_find.png</iconset>
+     </property>
+     <addaction name="actionReplaceInCurrentFile"/>
+     <addaction name="actionReplaceInAllFiles"/>
+    </widget>
+    <addaction name="actionUndo"/>
+    <addaction name="actionRedo"/>
+    <addaction name="separator"/>
+    <addaction name="actionCut"/>
+    <addaction name="actionCopy"/>
+    <addaction name="actionPaste"/>
+    <addaction name="separator"/>
+    <addaction name="actionSelectAll"/>
+    <addaction name="separator"/>
+    <addaction name="menuFindReplace"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <widget class="QMenu" name="menuExport">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Export</string>
+     </property>
+     <widget class="QMenu" name="menuGraph">
+      <property name="title">
+       <string>Graph</string>
+      </property>
+      <property name="icon">
+       <iconset resource="icons.qrc">
+        <normaloff>:/icons/application-icon.png</normaloff>:/icons/application-icon.png</iconset>
+      </property>
+      <addaction name="actionExportAsPng"/>
+      <addaction name="actionExportAsSvg"/>
+      <addaction name="actionExportAsLaTeX"/>
+      <addaction name="actionExportAsDot"/>
+      <addaction name="actionExportAsGxl"/>
+     </widget>
+     <addaction name="menuGraph"/>
+    </widget>
+    <widget class="QMenu" name="menuLayout">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Layout</string>
+     </property>
+     <widget class="QMenu" name="menuTree">
+      <property name="title">
+       <string>Tree</string>
+      </property>
+      <addaction name="actionLayoutTreeTopToBottom"/>
+      <addaction name="actionLayoutTreeRightToLeft"/>
+      <addaction name="actionLayoutTreeBottomToTop"/>
+      <addaction name="actionLayoutTreeLefttoRight"/>
+      <addaction name="actionLayoutRadialTree"/>
+     </widget>
+     <widget class="QMenu" name="menuPlanar">
+      <property name="title">
+       <string>Planar</string>
+      </property>
+      <addaction name="actionLayoutFPP"/>
+      <addaction name="actionLayoutPlanarDraw"/>
+      <addaction name="actionLayoutPlanarStraight"/>
+      <addaction name="actionLayoutSchnyder"/>
+      <addaction name="actionLayoutPlanarizationGrid"/>
+     </widget>
+     <widget class="QMenu" name="menuEnergy_based">
+      <property name="title">
+       <string>Energy-based</string>
+      </property>
+      <addaction name="actionLayoutSpring"/>
+      <addaction name="actionLayoutDavidsonHarel"/>
+      <addaction name="actionLayoutFMMM"/>
+      <addaction name="actionLayoutGEM"/>
+     </widget>
+     <addaction name="menuTree"/>
+     <addaction name="menuPlanar"/>
+     <addaction name="menuEnergy_based"/>
+     <addaction name="actionLayoutSugiyama"/>
+     <addaction name="actionLayoutCircular"/>
+    </widget>
+    <addaction name="menuLayout"/>
+    <addaction name="menuExport"/>
+    <addaction name="separator"/>
+    <addaction name="actionOptions"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionShowFirstRunDialog"/>
+    <addaction name="actionApplicationHelp"/>
+    <addaction name="separator"/>
+    <addaction name="actionAboutApplication"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionApplicationHelp">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_bookmark.png</normaloff>:/icons/small_bookmark.png</iconset>
+   </property>
+   <property name="text">
+    <string>Application Help</string>
+   </property>
+   <property name="shortcut">
+    <string>F1</string>
+   </property>
+  </action>
+  <action name="actionAboutApplication">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/application-icon.png</normaloff>:/icons/application-icon.png</iconset>
+   </property>
+   <property name="text">
+    <string>About GP Developer</string>
+   </property>
+  </action>
+  <action name="actionNewProject">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_folder.png</normaloff>:/icons/small_folder.png</iconset>
+   </property>
+   <property name="text">
+    <string>GP Project</string>
+   </property>
+   <property name="toolTip">
+    <string>Create a new GP Project</string>
+   </property>
+   <property name="statusTip">
+    <string>Create a new GP Project</string>
+   </property>
+  </action>
+  <action name="actionNewProgram">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_page.png</normaloff>:/icons/small_page.png</iconset>
+   </property>
+   <property name="text">
+    <string>Program</string>
+   </property>
+  </action>
+  <action name="actionNewRule">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_brick.png</normaloff>:/icons/small_brick.png</iconset>
+   </property>
+   <property name="text">
+    <string>Rule</string>
+   </property>
+  </action>
+  <action name="actionNewGraph">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/application-icon.png</normaloff>:/icons/application-icon.png</iconset>
+   </property>
+   <property name="text">
+    <string>Graph</string>
+   </property>
+  </action>
+  <action name="actionOpenProject">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_folder.png</normaloff>:/icons/small_folder.png</iconset>
+   </property>
+   <property name="text">
+    <string>GP Project</string>
+   </property>
+  </action>
+  <action name="actionOpenGraph">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/application-icon.png</normaloff>:/icons/application-icon.png</iconset>
+   </property>
+   <property name="text">
+    <string>Graph</string>
+   </property>
+  </action>
+  <action name="actionCloseProject">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Close Project</string>
+   </property>
+  </action>
+  <action name="actionSaveCurrentFile">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_page_save.png</normaloff>:/icons/small_page_save.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save File</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionSaveCurrentFileAs">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_save_as.png</normaloff>:/icons/small_save_as.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save File As...</string>
+   </property>
+  </action>
+  <action name="actionSaveAll">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_page_save.png</normaloff>:/icons/small_page_save.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save All</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_cancel.png</normaloff>:/icons/small_cancel.png</iconset>
+   </property>
+   <property name="text">
+    <string>Exit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionUndo">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_arrow_undo.png</normaloff>:/icons/small_arrow_undo.png</iconset>
+   </property>
+   <property name="text">
+    <string>Undo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="actionRedo">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_arrow_redo.png</normaloff>:/icons/small_arrow_redo.png</iconset>
+   </property>
+   <property name="text">
+    <string>Redo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Y</string>
+   </property>
+  </action>
+  <action name="actionCut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_cut.png</normaloff>:/icons/small_cut.png</iconset>
+   </property>
+   <property name="text">
+    <string>Cut</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+X</string>
+   </property>
+  </action>
+  <action name="actionCopy">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_page_copy.png</normaloff>:/icons/small_page_copy.png</iconset>
+   </property>
+   <property name="text">
+    <string>Copy</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+C</string>
+   </property>
+  </action>
+  <action name="actionPaste">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_paste.png</normaloff>:/icons/small_paste.png</iconset>
+   </property>
+   <property name="text">
+    <string>Paste</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+V</string>
+   </property>
+  </action>
+  <action name="actionSelectAll">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_page_white_text.png</normaloff>:/icons/small_page_white_text.png</iconset>
+   </property>
+   <property name="text">
+    <string>Select All</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+A</string>
+   </property>
+  </action>
+  <action name="actionReplaceInCurrentFile">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Current File</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="actionReplaceInAllFiles">
+   <property name="text">
+    <string>All Files</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+R</string>
+   </property>
+  </action>
+  <action name="actionLayoutSugiyama">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Sugiyama</string>
+   </property>
+  </action>
+  <action name="actionLayoutCircular">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Circular</string>
+   </property>
+  </action>
+  <action name="actionOptions">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/icons/small_wrench.png</normaloff>:/icons/small_wrench.png</iconset>
+   </property>
+   <property name="text">
+    <string>Options</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionLayoutSpring">
+   <property name="text">
+    <string>Spring</string>
+   </property>
+  </action>
+  <action name="actionOpenRule">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_brick.png</normaloff>:/icons/small_brick.png</iconset>
+   </property>
+   <property name="text">
+    <string>Rule</string>
+   </property>
+  </action>
+  <action name="actionOpenProgram">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_page.png</normaloff>:/icons/small_page.png</iconset>
+   </property>
+   <property name="text">
+    <string>Program</string>
+   </property>
+  </action>
+  <action name="actionExportAsPng">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_image.png</normaloff>:/icons/small_image.png</iconset>
+   </property>
+   <property name="text">
+    <string>PNG</string>
+   </property>
+  </action>
+  <action name="actionLayoutTreeTopToBottom">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Top to Bottom</string>
+   </property>
+  </action>
+  <action name="actionLayoutTreeRightToLeft">
+   <property name="text">
+    <string>Right to Left</string>
+   </property>
+  </action>
+  <action name="actionLayoutTreeBottomToTop">
+   <property name="text">
+    <string>Bottom to Top</string>
+   </property>
+  </action>
+  <action name="actionLayoutTreeLefttoRight">
+   <property name="text">
+    <string>Left to Right</string>
+   </property>
+  </action>
+  <action name="actionLayoutRadialTree">
+   <property name="text">
+    <string>Radial Tree</string>
+   </property>
+  </action>
+  <action name="actionLayoutFPP">
+   <property name="text">
+    <string>FPP</string>
+   </property>
+  </action>
+  <action name="actionLayoutPlanarDraw">
+   <property name="text">
+    <string>Planar Draw</string>
+   </property>
+  </action>
+  <action name="actionLayoutPlanarStraight">
+   <property name="text">
+    <string>Planar Straight</string>
+   </property>
+  </action>
+  <action name="actionLayoutSchnyder">
+   <property name="text">
+    <string>Schnyder</string>
+   </property>
+  </action>
+  <action name="actionLayoutPlanarizationGrid">
+   <property name="text">
+    <string>Planarization Grid</string>
+   </property>
+  </action>
+  <action name="actionLayoutDavidsonHarel">
+   <property name="text">
+    <string>Davidson Harel</string>
+   </property>
+  </action>
+  <action name="actionLayoutFMMM">
+   <property name="text">
+    <string>FMMM</string>
+   </property>
+  </action>
+  <action name="actionLayoutGEM">
+   <property name="text">
+    <string>GEM</string>
+   </property>
+  </action>
+  <action name="actionExportAsDot">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/icons/small_page_white_text.png</normaloff>:/icons/small_page_white_text.png</iconset>
+   </property>
+   <property name="text">
+    <string>Dot / Graphviz</string>
+   </property>
+  </action>
+  <action name="actionExportAsGxl">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/icons/small_page_white_text.png</normaloff>:/icons/small_page_white_text.png</iconset>
+   </property>
+   <property name="text">
+    <string>GXL</string>
+   </property>
+  </action>
+  <action name="actionShowFirstRunDialog">
+   <property name="text">
+    <string>Show First Run Dialog</string>
+   </property>
+  </action>
+  <action name="actionExportAsLaTeX">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/icons/small_page_white_text.png</normaloff>:/icons/small_page_white_text.png</iconset>
+   </property>
+   <property name="text">
+    <string>LaTeX</string>
+   </property>
+  </action>
+  <action name="actionExportAsSvg">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/small_image.png</normaloff>:/icons/small_image.png</iconset>
+   </property>
+   <property name="text">
+    <string>SVG</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>Developer::PrettyTabWidget</class>
+   <extends>QWidget</extends>
+   <header>prettytabwidget.hpp</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>Developer::QuickRunWidget</class>
+   <extends>QWidget</extends>
+   <header>quickrunwidget.hpp</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="icons.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>actionExit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionApplicationHelp</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>showApplicationHelp()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionNewProject</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>newProject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionAboutApplication</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>showApplicationAbout()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionOptions</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>showPreferences()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionOpenProject</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>openProject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionNewRule</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>newRule()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionNewProgram</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>newProgram()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionNewGraph</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>newGraph()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionSaveCurrentFile</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>save()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionSaveAll</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>saveAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionSaveCurrentFileAs</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>saveAs()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutCircular</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutCircular()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutSugiyama</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutSugiyama()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutSpring</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutSpring()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionOpenGraph</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>openGraph()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionOpenProgram</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>openProgram()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionOpenRule</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>openRule()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCloseProject</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>closeProject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionExportAsPng</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>exportGraphToPng()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutTreeLefttoRight</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutTreeLeftToRight()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutDavidsonHarel</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutDavidsonHarel()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutFMMM</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutFMMM()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutFPP</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutFPP()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutGEM</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutGEM()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutPlanarDraw</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutPlanarDraw()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutPlanarStraight</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutPlanarStraight()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutPlanarizationGrid</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutPlanarizationGrid()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutRadialTree</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutRadialTree()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutSchnyder</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutSchnyder()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutTreeBottomToTop</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutTreeBottomToTop()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutTreeRightToLeft</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutTreeRightToLeft()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLayoutTreeTopToBottom</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>layoutTreeTopToBottom()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionExportAsDot</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>exportGraphToDot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionExportAsGxl</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>exportGraphToGxl()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionShowFirstRunDialog</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>showFirstRunDialog()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionExportAsLaTeX</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>exportGraphToLaTeX()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionExportAsSvg</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>exportGraphToSvg()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>383</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>showApplicationHelp()</slot>
+  <slot>newProject()</slot>
+  <slot>showPreferences()</slot>
+  <slot>showApplicationAbout()</slot>
+  <slot>openProject()</slot>
+  <slot>openProject(QString)</slot>
+  <slot>newRule()</slot>
+  <slot>newProgram()</slot>
+  <slot>newGraph()</slot>
+  <slot>save()</slot>
+  <slot>saveAs()</slot>
+  <slot>saveAll()</slot>
+  <slot>layoutSugiyama()</slot>
+  <slot>layoutCircular()</slot>
+  <slot>layoutSpring()</slot>
+  <slot>openProgram()</slot>
+  <slot>openRule()</slot>
+  <slot>openGraph()</slot>
+  <slot>closeProject()</slot>
+  <slot>exportGraphToPng()</slot>
+  <slot>layoutTreeTopToBottom()</slot>
+  <slot>layoutTreeRightToLeft()</slot>
+  <slot>layoutTreeBottomToTop()</slot>
+  <slot>layoutTreeLeftToRight()</slot>
+  <slot>layoutRadialTree()</slot>
+  <slot>layoutFPP()</slot>
+  <slot>layoutPlanarDraw()</slot>
+  <slot>layoutPlanarStraight()</slot>
+  <slot>layoutSchnyder()</slot>
+  <slot>layoutPlanarizationGrid()</slot>
+  <slot>layoutDavidsonHarel()</slot>
+  <slot>layoutFMMM()</slot>
+  <slot>layoutGEM()</slot>
+  <slot>exportGraphToDot()</slot>
+  <slot>exportGraphToGxl()</slot>
+  <slot>showFirstRunDialog()</slot>
+  <slot>exportGraphToLaTeX()</slot>
+  <slot>exportGraphToSvg()</slot>
+ </slots>
+</ui>

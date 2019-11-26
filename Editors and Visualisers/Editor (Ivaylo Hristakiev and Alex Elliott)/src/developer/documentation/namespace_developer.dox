@@ -1,0 +1,18 @@
+/*!
+ * \namespace Developer
+ * \brief The Developer namespace covers all of the objects specific to the GP
+ *  Developer application
+ *
+ * For more information on GP Developer see
+ *
+ * \todo Flesh out this
+ */
+
+/*!
+ * \namespace Ui
+ * \brief The Ui namespace is an automatically generated namespace for .ui files
+ *
+ * There is no reason for the programmer to directly involve themselves with
+ * anything within this namespace, it only exists to encapsulate the definitions
+ * created by Qt's uic (UI Compiler).
+ */

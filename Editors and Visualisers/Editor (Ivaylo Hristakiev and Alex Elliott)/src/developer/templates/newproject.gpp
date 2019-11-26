@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="%1" gpversion="%2" developerversion="%3">
+    <rules>
+    </rules>
+    <programs>
+    </programs>
+    <graphs>
+    </graphs>
+    <runconfigurations>
+    </runconfigurations>
+</project>

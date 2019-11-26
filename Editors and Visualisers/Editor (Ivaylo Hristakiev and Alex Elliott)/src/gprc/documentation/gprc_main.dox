@@ -1,0 +1,13 @@
+/*!
+ * \page gprc GP Rule Compiler (gprc)
+ *
+ * \section Overview
+ *
+ * The GP Rule Compiler (gprc) takes in GP2 rules (specified in .gpr files)
+ * and produces object files which are typically used in the process of
+ * compiling GP programs. They can however be used directly if desired by
+ * including the interface header and linking against the object produced.
+ *
+ * For more information on the GP2 compile process see \ref compiling
+ *
+ */

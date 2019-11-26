@@ -1,0 +1,10 @@
+/*!
+ * \page libgp libGP
+ *
+ * \section Overview
+ *
+ * libGP is a simple utility library written in C designed for use within the
+ * GP toolset and to allow for communication and interoperability between
+ * general-purpose C and GP2.
+ *
+ */

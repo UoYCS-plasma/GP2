@@ -1,0 +1,12 @@
+/*!
+ * \page gpmake GP Build Tool (gpmake)
+ *
+ * \section Overview
+ *
+ * The GP Build Tool (gpmake) takes in GP2 projects (specified in .gpp files)
+ * and can produce a range of executables or shared libraries for each of the
+ * programs contained within the specified project.
+ *
+ * For more information on the GP2 compile process see \ref compiling
+ *
+ */

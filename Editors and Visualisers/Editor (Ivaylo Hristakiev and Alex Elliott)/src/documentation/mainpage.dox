@@ -1,0 +1,15 @@
+/*!
+ * \mainpage
+ *
+ * GP is "Graph Programs", an experimental graph programming language developed
+ * by the University of York.
+ *
+ * The project is split into several components, all of which are included in
+ * this documentation. These are:
+ *
+ *- \ref libgp
+ *- \ref developer
+ *- \ref gprc
+ *- \ref gpxc
+ *- \ref gpmake
+ */
