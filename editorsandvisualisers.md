@@ -13,3 +13,5 @@ The following are previous text-based GP 2 graph and rule visualisers. However, 
 <a href="Editors and Visualisers/Visualisers (Timothy Atkinson)/rule_edit" target="_blank">Rule Visualiser</a>
 
 # Ivaylo Hristakiev's and Alex Elliott's Editors
+
+[Editor](https://github.com/UoYCS-plasma/GP2/tree/legacy/Editors%20and%20Visualisers/Editor%20(Ivaylo%20Hristakiev%20and%20Alex%20Elliott))
