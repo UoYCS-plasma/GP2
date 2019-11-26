@@ -9,18 +9,31 @@ To get started, head over to the [GP 2 compiler's github repository](https://git
 The [Compiler subdirectory](https://github.com/UoYCS-plasma/GP2/tree/master/Compiler) contains everything you need to know about building and installing the compiler
 and running individual programs. 
 
+## Using Docker
+Alternatively, on Linux or MacOS, you can run the GP 2 compiler via Docker. The program can be found in your software repository or on the [Docker website](https://docs.docker.com/install/). For institutions, [Rootless Docker](https://medium.com/@tonistiigi/experimenting-with-rootless-docker-416c9ad8c0d6) may be the preferred choice since it does not allow users to execute programs as a root user.
+
+Note that GP 2 on Docker runs locally on the host machine, and can hence be used offline.
+```
+docker run -v ${PWD}:/data registry.gitlab.com/yorkcs/batman/gp2i:latest <program> <input graph>
+```
+Replace ``<program>`` with the relative path to your program from your working directory, and ``<input graph>`` with the relative path to your input graph.
+You can also pass flags to the compiler:
+```
+docker run -v ${PWD}:/data -e GP2_FLAGS='-f -q' registry.gitlab.com/yorkcs/batman/gp2i:latest <program> <input graph>
+```
+
 ## Example: Transitive Closure
 
 The first program we'll look at is this:
 
-![alt text](/images/link.png "A program for computing the transitive closure of a graph.")
+![test](images/link.png "A program for computing the transitive closure of a graph.")
 
 This program computes the **transitive closure** of a graph. The transitive closure of a graph is the smallest extension of that graph that is **transitive**.
 A graph is transitive when for every pair of nodes *v1, v2* with a path from *v1* to *v2*, there is an edge directly from *v1* to *v2*.
 
 For example, this graph is *not* transitive:
 
-![alt text](/images/notrans.png "A non-transitive graph.")
+![test](images/notrans.png "A non-transitive graph.")
 
 There is a path from the left-most node to the right-most node but there is no edge directly from the left-most node to the right-most node. 
 The purpose of the program we're looking at is the *transform* this graph into the smallest extension of this graph which *is* transitive. 
@@ -130,4 +143,4 @@ This will generate a file *"/tmp/gp2/gp2run"* which is a runnable implementation
 
 If everything's gone to plan this will generate a file *"/tmp/gp2/gp2.output"* which contains this produced graph:
 
-![alt text](/images/trans.png "A transitive graph.")
+![test](images/trans.png "A transitive graph.")
