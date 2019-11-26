@@ -8,8 +8,8 @@
 
 The following are previous text-based GP 2 graph and rule visualisers. However, they do not support rooted nodes or bidirectional edges.
 
-<a href="graph_edit" target="_blank">Graph Visualiser</a>
+<a href="Editors and Visualisers/Visualisers (Timothy Atkinson)/graph_edit.html" target="_blank">Graph Visualiser</a>
 
-<a href="rule_edit" target="_blank">Rule Visualiser</a>
+<a href="Editors and Visualisers/Visualisers (Timothy Atkinson)/rule_edit" target="_blank">Rule Visualiser</a>
 
 # Ivaylo Hristakiev's and Alex Elliott's Editors
