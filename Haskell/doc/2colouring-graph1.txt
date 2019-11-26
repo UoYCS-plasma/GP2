@@ -1,4 +1,0 @@
-[( n1, 1) ( n2, empty) ( n3, "l" ) (n4, 5) |
-( e1, n1, n2, empty) ( e2, n2, n3, empty)
-( e3, n3, n4, empty) ( e4, n4, n1, empty)
-]

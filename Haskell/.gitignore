@@ -1,9 +1,0 @@
-*.hi
-*.o
-*.cmi
-Benchmarks/*/*.d/
-IsoChecker
-ViewGraph
-gp2
-gp2c
-Tests/*.c

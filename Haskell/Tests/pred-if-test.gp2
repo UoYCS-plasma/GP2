@@ -1,8 +1,0 @@
-Main = if a then skip else fail
-
-a () = [
-	(n1, empty)
-] => [
-	(n1, empty)
-]
-
