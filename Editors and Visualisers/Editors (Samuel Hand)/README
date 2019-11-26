@@ -1,0 +1,7 @@
+Building the project requires Elm.
+
+To build simply run `elm make src/Main.elm --output docs/main.js; elm make src/Rule.elm --output docs/rule.js`.
+
+Once built simply start a web server of your choice with docs as the root directory, and point a browser at it to start using the graph editor. The rule editor is accessible at the /rule subdirectory.
+
+All the code was developed by Samuel Hand, except dist/full.render.js and dist/viz.js, which are both part of the viz.js JavaScript library.
