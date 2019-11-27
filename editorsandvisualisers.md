@@ -2,6 +2,10 @@
 
 These are web-based GP 2 graph and rule editors. They can import and export `.dot` files as well as GP 2's own `.host` and `.rule` files.
 
+<a href="Editors and Visualisers/Editors (Samuel Hand)/docs/index.html" target="_blank">Graph Editor</a>
+
+<a href="Editors and Visualisers/Editors (Samuel Hand)/docs/rule/index.html" target="_blank">Rule Editor</a>
+
 The interface works as follows.
 - **Create node:** doube click background
 - **Move node:** left click and drag node
@@ -10,10 +14,6 @@ The interface works as follows.
 - **Delete selected item:** press delete on keyboard
 - **Zoom in/out:** mouse wheel up/down
 - **Pan:** left click and drag background
-
-<a href="Editors and Visualisers/Editors (Samuel Hand)/docs/index.html" target="_blank">Graph Editor</a>
-
-<a href="Editors and Visualisers/Editors (Samuel Hand)/docs/rule/index.html" target="_blank">Rule Editor</a>
 
 # Timothy Atkinson's Visualisers
 
