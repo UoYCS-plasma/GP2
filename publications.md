@@ -70,10 +70,6 @@
 
 ### Verification of Graph Programs
 
-*   T. Atkinson, D. Plump and S. Stepney  
-    [Horizontal Gene Transfer for Recombining Graphs](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GENP.20.pdf)  
-    _Genetic Programming and Evolvable Machines_, 27 pages. Springer, 2020. To appear. 
-
 *   G. Wulandari and D. Plump  
     [Verifying a Copying Garbage Collector in GP 2](http://www.cs.york.ac.uk/plasma/publications/pdf/WulandariPlump.GCM18.pdf)  
     _Software Technologies: Applications and Foundations - STAF 2018 Collocated Workshops, Revised Selected Papers_. Lecture Notes in Computer Science 11176, pages 479-494. Springer, 2018.  
@@ -113,6 +109,10 @@
 
 ### Checking Graph Programs for Confluence
 
+*   T. Atkinson, D. Plump and S. Stepney  
+    [Horizontal Gene Transfer for Recombining Graphs](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GENP.20.pdf)  
+    _Genetic Programming and Evolvable Machines_, 27 pages. Springer, 2020. To appear. 
+    
 *   I. Hristakiev and D. Plump  
     [Checking Graph Programs for Confluence](http://www.cs.york.ac.uk/plasma/publications/pdf/HristakievPlump.GCM17.pdf)  
     _Software Technologies: Applications and Foundations - STAF 2017 Collocated Workshops, Revised Selected Papers_. Lecture Notes in Computer Science 10748, pages 92-108. Springer, 2018.  
@@ -145,6 +145,11 @@
 * * *
 
 ### Probabilistic GP 2
+
+*   T. Atkinson, D. Plump and S. Stepney  
+    [Evolving Graphs with Semantic Neutral Drift](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.NAC.19.pdf)  
+    _Natural Computing_, 18 pages. Springer, 2019.  
+    doi: [10.1007/s11047-019-09772-4](https://doi.org/10.1007/s11047-019-09772-4)
 
 *   T. Atkinson, D. Plump and S. Stepney  
     [Probabilistic Graph Programs for Randomised and Evolutionary Algorithms](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.ICGT.18.pdf)  
