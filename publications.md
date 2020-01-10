@@ -2,9 +2,9 @@
 
 ### Graph Programs and the Language GP 2
 
-*   G. Campbell, B. Courtehoute and D. Plump
-    [Linear-Time Graph Algorithms in GP 2](http://www.cs.york.ac.uk/plasma/publications/pdf/CampbellCourtehoutePlump.CALCO.19.pdf)
-    _Proc. 8th Conference on Algebra and Coalgebra in Computer Science (CALCO 2019)_. Volume 139 of Leibniz International     Proceedings in Informatics (LIPICS), pages 16:1-16:23, 2019.
+*   G. Campbell, B. Courtehoute and D. Plump  
+    [Linear-Time Graph Algorithms in GP 2](http://www.cs.york.ac.uk/plasma/publications/pdf/CampbellCourtehoutePlump.CALCO.19.pdf)  
+    _Proc. 8th Conference on Algebra and Coalgebra in Computer Science (CALCO 2019)_. Volume 139 of Leibniz International     Proceedings in Informatics (LIPICS), pages 16:1-16:23, 2019.  
     doi: [10.4230/LIPIcs.CALCO.2019.16](https://doi.org/10.4230/LIPIcs.CALCO.2019.16)
 
 *   D. Plump  
