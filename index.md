@@ -2,7 +2,7 @@
 
 GP 2 is a visual, rule-based, non-deterministic graph programming language which frees programmers from handling low-level data structures for graphs. The main motivation behind GP 2 is facilitating formal reasoning about programs while supporting practical problem solving.
 
-A GP 2 program algorithmically transforms an input graph into an output graph by sequentially applying graph transformation rules. GP 2 is computationally complete in that every computable partial function on labelled graphs can be programmed. There are a number of results on formally verifying graph programs using Hoare logics, on checking confluence of programs (see *Verification of Graph Programs* and *Checking Graph Programs for Confluence* on the [publications page](https://uoycs-plasma.github.io/GP2/publications)). 
+A GP 2 program algorithmically transforms an input graph into an output graph by sequentially applying graph transformation rules. GP 2 is computationally complete in that every computable partial function on labelled graphs can be programmed. There are a number of results on formally verifying graph programs using Hoare logics, and on checking programs for confluence (see *Verification of Graph Programs* and *Checking Graph Programs for Confluence* on the [publications page](https://uoycs-plasma.github.io/GP2/publications)). 
 
 The core of GP 2 consists of four constructs: single-step application of a set of conditional graph transformation rules, sequential composition, branching and iteration. The language has a small structural operational semantics.
 
