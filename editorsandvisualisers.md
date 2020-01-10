@@ -1,4 +1,4 @@
-# Smauel Hand's Editors
+# Samuel Hand's Editors
 
 These are web-based GP 2 graph and rule editors. They can import and export `.dot` files as well as GP 2's own `.host` and `.rule` files.
 

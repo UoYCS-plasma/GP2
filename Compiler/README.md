@@ -1,13 +1,3 @@
-## About GP 2
-
-GP 2 (Graph Programs 2) is a rule-based, nondeterministic programming language
-for solving graph problems at a high level of abstraction, freeing programmers
-from handling low-level data structures. The core of GP 2 consists of four
-constructs: single-step application of a set of conditional graph
-transformation rules, sequential composition, branching and iteration. The
-language has a small structural operational semantics and a visual editor for
-writing GP 2 programs, running them, and tracing their execution.
-
 ## The GP 2 Compiler
 
 The GP 2 compiler translates a GP 2 program into executable C code.
