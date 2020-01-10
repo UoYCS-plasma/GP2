@@ -1,1 +1,1 @@
-/index.md
+../master/index.md
