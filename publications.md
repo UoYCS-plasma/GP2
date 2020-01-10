@@ -70,9 +70,14 @@
 
 ### Verification of Graph Programs
 
+*   T. Atkinson, D. Plump and S. Stepney  
+    [Horizontal Gene Transfer for Recombining Graphs](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GENP.20.pdf)  
+    _Genetic Programming and Evolvable Machines_, 27 pages. Springer, 2020. To appear. 
+
 *   G. Wulandari and D. Plump  
-    Verifying a Copying Garbage Collector in GP 2  
-    _Proc. Graph Computation Models (GCM 2018)_. To appear.
+    [Verifying a Copying Garbage Collector in GP 2](http://www.cs.york.ac.uk/plasma/publications/pdf/WulandariPlump.GCM18.pdf)  
+    _Software Technologies: Applications and Foundations - STAF 2018 Collocated Workshops, Revised Selected Papers_. Lecture Notes in Computer Science 11176, pages 479-494. Springer, 2018.  
+    doi: [10.1007/978-3-030-04771-9_34](https://doi.org/10.1007/978-3-030-04771-9_34)
     
 *   D. Plump  
     [Reasoning about Graph Programs](http://www.cs.york.ac.uk/plasma/publications/pdf/Plump.TG.16.pdf)  
