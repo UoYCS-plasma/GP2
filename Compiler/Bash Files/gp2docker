@@ -1,0 +1,4 @@
+#!/bin/bash
+
+docker run -v ${PWD}:/data registry.gitlab.com/yorkcs/batman/gp2i:latest $1 $2
+
