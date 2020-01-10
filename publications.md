@@ -107,12 +107,7 @@
 
 * * *
 
-### Checking Graph Programs for Termination or Confluence
-
-*   D. Plump  
-    [Modular Termination of Graph Transformation](http://www.cs.york.ac.uk/plasma/publications/pdf/Plump.FMHE.17.pdf)  
-    In _Graph Transformation, Specifications, and Nets: In Memory of Hartmut Ehrig_. Lecture Notes in Computer Science 10800, eds. R. Heckel and G. Taentzer, pages 231-244. Springer, 2018.  
-    [doi: 10.1007/978-3-319-75396-6_13](https://doi.org/10.1007/978-3-319-75396-6_13)
+### Checking Graph Programs for Confluence
 
 *   I. Hristakiev and D. Plump  
     [Checking Graph Programs for Confluence](http://www.cs.york.ac.uk/plasma/publications/pdf/HristakievPlump.GCM17.pdf)  
