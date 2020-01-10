@@ -1,0 +1,11 @@
+[
+	(0, empty)
+	(1, empty)
+	(2, empty)
+	(3, empty)
+	|
+	(4, 0, 1, empty)
+	(5, 1, 2, empty)
+	(6, 2, 3, empty)
+	(7, 3, 0, empty)
+]
