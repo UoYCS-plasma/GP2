@@ -12,9 +12,9 @@ GP 2 programs combine the speed of low-level C programming with the expressivene
 
 ## How do I get started?
 
-Head over to [this page](../GP2/gettingstarted) for instructions on installing GP 2 and running your first program. 
+Head over to [this page](https://uoycs-plasma.github.io/GP2/gettingstarted) for instructions on installing GP 2 and running your first program. 
 
 ## How can I find out more?
 
-You can [contact us](../GP2contact) at any time or take a look at our various [publications](../GP2/publications) for more information.
+You can [contact us](https://uoycs-plasma.github.io/GP2/contact) at any time or take a look at our various [publications](https://uoycs-plasma.github.io/GP2/publications) for more information.
 
