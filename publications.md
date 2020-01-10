@@ -109,10 +109,6 @@
 
 ### Checking Graph Programs for Confluence
 
-*   T. Atkinson, D. Plump and S. Stepney  
-    [Horizontal Gene Transfer for Recombining Graphs](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GENP.20.pdf)  
-    _Genetic Programming and Evolvable Machines_, 27 pages. Springer, 2020. To appear. 
-    
 *   I. Hristakiev and D. Plump  
     [Checking Graph Programs for Confluence](http://www.cs.york.ac.uk/plasma/publications/pdf/HristakievPlump.GCM17.pdf)  
     _Software Technologies: Applications and Foundations - STAF 2017 Collocated Workshops, Revised Selected Papers_. Lecture Notes in Computer Science 10748, pages 92-108. Springer, 2018.  
@@ -147,16 +143,25 @@
 ### Probabilistic GP 2
 
 *   T. Atkinson, D. Plump and S. Stepney  
+    [Horizontal Gene Transfer for Recombining Graphs](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GENP.20.pdf)  
+    _Genetic Programming and Evolvable Machines_, 27 pages. Springer, 2020. To appear. 
+    
+*   T. Atkinson, D. Plump and S. Stepney  
     [Evolving Graphs with Semantic Neutral Drift](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.NAC.19.pdf)  
     _Natural Computing_, 18 pages. Springer, 2019.  
     doi: [10.1007/s11047-019-09772-4](https://doi.org/10.1007/s11047-019-09772-4)
 
 *   T. Atkinson, D. Plump and S. Stepney  
-    [Probabilistic Graph Programs for Randomised and Evolutionary Algorithms](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.ICGT.18.pdf)  
+    [Evolving Graphs with Horizontal Gene Transfer](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GECCO.19.pdf)  
+    _Proc. Genetic and Evolutionary Computation Conference (GECCO 2019)_, pages 968-976. ACM, 2019.  
+   doi: [10.1145/3321707.3321788](https://doi.org/10.1145/3321707.3321788)
+   
+   *   T. Atkinson, D. Plump and S. Stepney  
+      [Probabilistic Graph Programs for Randomised and Evolutionary Algorithms](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.ICGT.18.pdf)  
     _Proc. International Conference on Graph Transformation (ICGT 2018)_. Lecture Notes in Computer Science 10887. Springer, 2018, to appear.
     
 *   T. Atkinson, D. Plump and S. Stepney  
-    [Evolving Graphs by Graph Programming](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.EuroGP.18.pdf)  
+    [Evolving Graphs by Graph Programming](http://www.cs.york.ac.uk/plasma/publications/AtkinsonPlumpStepney.EuroGP.18.pdf)  
     _Proc. European Conference on Genetic Programming (EuroGP 2018)_. Lecture Notes in Computer Science 10781, pages 35-51. Springer, 2018.  
     doi: [10.1007/978-3-319-77553-1_3](https://doi.org/10.1007/978-3-319-77553-1_3)
     
