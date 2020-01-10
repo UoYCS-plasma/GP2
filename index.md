@@ -10,7 +10,7 @@ Our existing compiler generates raw C code from a GP 2 program's source code. Th
 
 GP 2 programs combine the speed of low-level C programming with the expressiveness of graph transformation. If you want to transform graphs, GP 2 should be your go-to tool.
 
-In addition, we have a probabilistic version of GP 2, called P-GP 2, which has been applied to problems in evolutionary computation (see *Probabilistic Graph Programs* on the [publications page](https://uoycs-plasma.github.io/GP2/publications)).
+In addition, we have a probabilistic version of GP 2, called P-GP 2, which has been applied to problems in evolutionary computation (see *Probabilistic GP 2* on the [publications page](https://uoycs-plasma.github.io/GP2/publications)).
 
 ## How do I get started?
 
