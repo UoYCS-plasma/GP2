@@ -82,6 +82,6 @@ See the file [COPYING](COPYING).
 
 ## Authors
 
-The GP 2 language was designed by Detlef Plump.
+The GP 2 language was designed by [Detlef Plump](http://www-users.cs.york.ac.uk/~det/).
 
-The GP 2 compiler and runtime library was developed by Christopher Bak.
+The GP 2 compiler and runtime library was developed by Christopher Bak. Recent improvements to the compiler were implemented by [Graham Campbell](https://gjcampbell.co.uk/) and [Jack Romo](http://jackromo.com/).
