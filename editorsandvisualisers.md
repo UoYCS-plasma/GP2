@@ -15,6 +15,8 @@ The interface works as follows.
 - **Zoom in/out:** mouse wheel up/down
 - **Pan:** left click and drag background
 
+These editors were made as part of Samuel Hand's BSc degree, the report of which can be found <a href="Editors and Visualisers/Editors (Samuel Hand)/A_Graphical_Editor_For_GP2.pdf" target="_blank">here</a>.
+
 # Timothy Atkinson's Visualisers
 
 These are web-based GP 2 graph and rule visualisers. The textual form of a GP 2 graph/rule is entered in a text box and an image is generated. However, the visualisers do not support rooted nodes or bidirectional edges.
