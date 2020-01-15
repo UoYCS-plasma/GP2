@@ -55,6 +55,8 @@ Compiles *gp2-program* into C code. The generated code is placed in
 To execute the generated code, run `./build.sh` and
 `./gp2run <graph_file>` from */tmp/gp2*.
 
+This will generate a file *"gp2.output"* containing the output graph.
+
 Before executing, you may need to copy library files from the source code.
 ```
 cp <path_to_source_code_directory>/lib/*.{c,h} ./gp2_code_temp/
@@ -189,7 +191,7 @@ Now we can compile our program by calling:
 ```
 ./gp2bash PATH/TO/transitive_closure.gp2 PATH/TO/cycle.host
 ```
-This will generate a file *"gp2.output"* which contains this produced graph:
+This will output the following graph:
 
 ![test](images/trans.png "A transitive graph.")
 
