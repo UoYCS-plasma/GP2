@@ -4,7 +4,9 @@ The GP 2 compiler translates a GP 2 program into executable C code. The generate
 
 ## Prerequisites
 
-To run the compiler, you need the [Judy](http://judy.sourceforge.net/index.html) C library, which can be installed via your distribution's package manager. Alternatively, if you install the compiler via Make, you can get the [Judy.h file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Judy/Judy.h) from the GP 2 Github and copy it to the ``gp2-1.0`` folder during the installation. See the section on "Installation via Make" for more details.
+To run the compiler, you need the following packages (if you're on Ubuntu): ``bison``, ``flex``, ``libperl-dev``, ``libgtk2.0-dev``, ``libjudy-dev``, and ``pandoc``.
+
+[Judy](http://judy.sourceforge.net/index.html) is a C library that can be installed via your distribution's package manager. Alternatively, if you install the compiler via Make, you can get the [Judy.h file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Judy/Judy.h) from the GP 2 Github and copy it to the ``gp2-1.0`` folder during the installation. See the section on "Installation via Make" for more details.
 
 ## Installation via Docker
 This installation method requires Docker. The program can be found in your software repository or on the [Docker website](https://docs.docker.com/install/). For institutions, [Rootless Docker](https://medium.com/@tonistiigi/experimenting-with-rootless-docker-416c9ad8c0d6) may be the preferred choice since it does not allow users to execute programs as a root user.
