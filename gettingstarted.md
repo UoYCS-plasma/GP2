@@ -31,7 +31,7 @@ The following is the list of compiler flags:
 - **-l** - Specify directory of lib source files.
 - **-o** - Specify directory for generated code and program output.
 
-For a more concise command, you can download this [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2docker).
+For a more concise command, you can download this [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2docker). You may need to make the bash file executable with ``chmod u+x gp2docker``.
 
 ## Installation via Make
 
@@ -86,7 +86,7 @@ The compiler can also be used to validate GP 2 source files.
 - Run `gp2 -r <rule_file>` to validate a rule.
 - Run `gp2 -h <host_file>` to validate a host graph.
 
-You can use the `gp2c` [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2c) to concisely run GP 2 programs using `./gp2c <program_file> <graph_file>`. Just modify `install_dir` and `source_dir` to be the paths to the installation and source code respectively.
+You can use the `gp2c` [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2c) to concisely run GP 2 programs using `./gp2c <program_file> <graph_file>`. Just modify `install_dir` and `source_dir` to be the paths to the installation and source code respectively. You may need to make the bash file executable with ``chmod u+x gp2c``.
 
 ## Example: Editing, Compiling, and Running a Transitive Closure Program
 
