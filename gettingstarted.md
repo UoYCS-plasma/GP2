@@ -75,9 +75,9 @@ The following is the list of compiler flags:
 - **-o** - Specify directory for generated code and program output.
 
 The compiler can also be used to validate GP 2 source files.
-Run `gp2 -p <program_file>` to validate a program.
-Run `gp2 -r <rule_file>` to validate a rule.
-Run `gp2 -h <host_file>` to validate a host graph.
+- Run `gp2 -p <program_file>` to validate a program.
+- Run `gp2 -r <rule_file>` to validate a rule.
+- Run `gp2 -h <host_file>` to validate a host graph.
 
 You can use the `gp2c` [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2c) to concisely run GP 2 programs using `./gp2c <program_file> <graph_file>`. Just modify `install_dir` and `source_dir` to be the paths to the installation and source code respectively.
 
