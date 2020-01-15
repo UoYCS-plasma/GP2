@@ -1,28 +1,86 @@
 # Getting Started
 
-## Download
-*Note: The current implementation of GP 2 is designed for use on Linux only, we make no guarantees about its stability on Windows or Mac.*
+The GP 2 compiler translates a GP 2 program into executable C code. The generated code is executable with the support of the GP 2 library. There are two ways to set it up. You can build the compiler using make. However, the setup process is not guaranteed to be stable on all Linux machines, or on machines running MacOS or Windows. We therefore provide an installation via Docker as an alternative for Linux and MacOS.
 
-To get started, head over to the [GP 2 compiler's github repository](https://github.com/UoYCS-plasma/GP2) and either download or checkout the whole thing. 
-The [Compiler subdirectory](https://github.com/UoYCS-plasma/GP2/tree/master/Compiler) contains everything you need to know about building and installing the compiler
-and running individual programs. 
+## Installation via Docker
+This installation method requires Docker. The program can be found in your software repository or on the [Docker website](https://docs.docker.com/install/). For institutions, [Rootless Docker](https://medium.com/@tonistiigi/experimenting-with-rootless-docker-416c9ad8c0d6) may be the preferred choice since it does not allow users to execute programs as a root user.
 
-## Using Docker
-Alternatively, on Linux or MacOS, you can run the GP 2 compiler via Docker. The program can be found in your software repository or on the [Docker website](https://docs.docker.com/install/). For institutions, [Rootless Docker](https://medium.com/@tonistiigi/experimenting-with-rootless-docker-416c9ad8c0d6) may be the preferred choice since it does not allow users to execute programs as a root user.
-
-Note that GP 2 on Docker runs locally on the host machine, and can hence be used offline.
+To set up GP 2 via Docker, use the command below as a superuser to run a GP 2 program. The first time you run the command, Docker will download the necessary files for executing GP 2 programs. Subsequently, programs can be run offline.
 ```
 docker run -v ${PWD}:/data registry.gitlab.com/yorkcs/batman/gp2i:latest <program> <input graph>
 ```
 Replace ``<program>`` with the relative path to your program from your working directory, and ``<input graph>`` with the relative path to your input graph.
+
 You can also pass flags to the compiler:
 ```
 docker run -v ${PWD}:/data -e GP2_FLAGS='-f -q' registry.gitlab.com/yorkcs/batman/gp2i:latest <program> <input graph>
 ```
 
-## Example: Transitive Closure
+The following is the list of compiler flags:
 
-The first program we'll look at is this:
+- **-d** - Compile program with debugging flags.
+- **-f** - Compile in fast shutdown mode.
+- **-g** - Compile with minimal garbage collection (requires fast shutdown).
+- **-m** - Compile with root reflecting matches.
+- **-n** - Compile without graph node lists.
+- **-q** - Compile program quickly without optimisations.
+- **-l** - Specify directory of lib source files.
+- **-o** - Specify directory for generated code and program output.
+
+For a more concise command, you can download this [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2docker).
+
+## Installation via Make
+
+After downloading the files from the [GP 2 Github Page](https://github.com/UoYCS-plasma/GP2/). Then in the folder `GP2/Compiler` run the following commands.
+1. `autoreconf -i`
+2. `autoconf -i`
+3. `automake -a`
+4. `./configure`
+5. `make dist`
+6. `tar -xzvf gp2-1.0.tar.gz`
+7. `cd gp2-1.0`
+8. `./configure --prefix=<path_to_build_directory>` where `<path_to_build_directory>` is where you want the compiler to reside.
+8. `cp ../lib/*.{c,h} lib/`
+9. `make`
+10. `make install`
+
+You can now compile GP 2 programs using the `gp2`. From the `bin` folder, run
+`./gp2 [-d] [-f] [-g] [-m] [-n] [-q] [-l <libdir>] [-o <outdir>] <program_file>`
+
+Compiles *gp2-program* into C code. The generated code is placed in
+*/tmp/gp2* unless an alternate location is specified with the **-o** flag. 
+
+To execute the generated code, run `./build.sh` and
+`./gp2run <graph_file>` from */tmp/gp2*.
+
+Befor executing, you may need to copy library files from the source code `cp <path_to_source_code_directory>/lib/*.{c,h} ./gp2_code_temp/`.
+
+If GP 2 is installed in a non-standard directory, use the **-l** option to 
+ensure the generated code can be compiled and executed.
+
+The following is the list of compiler flags:
+
+- **-d** - Compile program with debugging flags.
+- **-f** - Compile in fast shutdown mode.
+- **-g** - Compile with minimal garbage collection (requires fast shutdown).
+- **-m** - Compile with root reflecting matches.
+- **-n** - Compile without graph node lists.
+- **-q** - Compile program quickly without optimisations.
+- **-l** - Specify directory of lib source files.
+- **-o** - Specify directory for generated code and program output.
+
+The compiler can also be used to validate GP 2 source files.
+Run `gp2 -p <program_file>` to validate a program.
+Run `gp2 -r <rule_file>` to validate a rule.
+Run `gp2 -h <host_file>` to validate a host graph.
+
+You can use the `gp2c` [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2c) to concisely run GP 2 programs using `./gp2c <program_file> <graph_file>`. Just modify `install_dir` and `source_dir` to be the paths to the installation and source code respectively.
+
+## Example: Editing, Compiling, and Running a Transitive Closure Program
+
+For this section, we assume to have a bash file `gp2bash` which we can run GP 2 programs with using `./gp2bash <program_file> <graph_file>`
+
+The program we'll look at is this:
 
 ![test](images/link.png "A program for computing the transitive closure of a graph.")
 
@@ -124,21 +182,18 @@ node to the 3rd node. The 'interface' describes which nodes survive; none of the
 Now we can compile our program by calling:
 
 ```
-gp2 PATH/TO/transitive_closure.gp2
+./gp2bash PATH/TO/transitive_closure.gp2 PATH/TO/cycle.host
 ```
-
-This will generate c code in the directory *"/tmp/gp2"*. We can build this generated c code into a program by calling:
-
-```
-make
-```
-
-This will generate a file *"/tmp/gp2/gp2run"* which is a runnable implementation of our program. We can run this program on our graph by calling:
-
-```
-./gp2run PATH/TO/cycle.host
-```
-
-If everything's gone to plan this will generate a file *"/tmp/gp2/gp2.output"* which contains this produced graph:
+This will generate a file *"gp2.output"* which contains this produced graph:
 
 ![test](images/trans.png "A transitive graph.")
+
+## Copying
+
+See the file [COPYING](COPYING).
+
+## Authors
+
+The GP 2 language was designed by [Detlef Plump](http://www-users.cs.york.ac.uk/~det/).
+
+The GP 2 compiler and runtime library was developed by Christopher Bak. Recent improvements to the compiler were implemented by [Graham Campbell](https://gjcampbell.co.uk/) and [Jack Romo](http://jackromo.com/).
