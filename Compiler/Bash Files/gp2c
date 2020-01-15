@@ -34,10 +34,6 @@ echo "		rm -r -f gp2_code_temp"
 rm -r -f gp2_code_temp
 echo ""
 
-
-
 echo "Final Result (stored in gp2.output) is:"
 echo "		cat gp2.output"
 cat gp2.output
-
-#rm -f gp2.log
