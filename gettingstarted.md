@@ -45,7 +45,9 @@ After downloading the files from the [GP 2 Github Page](https://github.com/UoYCS
 10. `make install`
 
 You can now compile GP 2 programs using the `gp2`. From the `bin` folder, run
-`./gp2 [-d] [-f] [-g] [-m] [-n] [-q] [-l <libdir>] [-o <outdir>] <program_file>`
+```
+./gp2 [-d] [-f] [-g] [-m] [-n] [-q] [-l <libdir>] [-o <outdir>] <program_file>
+```
 
 Compiles *gp2-program* into C code. The generated code is placed in
 */tmp/gp2* unless an alternate location is specified with the **-o** flag. 
@@ -53,7 +55,10 @@ Compiles *gp2-program* into C code. The generated code is placed in
 To execute the generated code, run `./build.sh` and
 `./gp2run <graph_file>` from */tmp/gp2*.
 
-Befor executing, you may need to copy library files from the source code `cp <path_to_source_code_directory>/lib/*.{c,h} ./gp2_code_temp/`.
+Before executing, you may need to copy library files from the source code.
+```
+cp <path_to_source_code_directory>/lib/*.{c,h} ./gp2_code_temp/
+```
 
 If GP 2 is installed in a non-standard directory, use the **-l** option to 
 ensure the generated code can be compiled and executed.
