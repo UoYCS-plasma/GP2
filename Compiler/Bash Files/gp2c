@@ -1,0 +1,43 @@
+#!/bin/bash
+
+install_dir="."
+
+echo "1. Making Code Directory"
+echo "		mkdir -p ./gp2_code_temp"
+mkdir -p ./gp2_code_temp
+echo ""
+
+echo "2. Executing GP2 Compiler on $1"
+echo "		$install_dir/Build/bin/gp2 -o ./gp2_code_temp $1"
+$install_dir/Build/bin/gp2 -o ./gp2_code_temp $1
+echo ""
+
+echo "3. Coping GP2 Library Files"
+echo "		cp $install_dir/Source/gp2-1.0/lib/*.{c,h} ./gp2_code_temp/"
+cp $install_dir/Source/gp2-1.0/lib/*.{c,h} ./gp2_code_temp/
+echo "		cp $install_dir/Source/lib/*.{c,h} ./gp2_code_temp/"
+cp $install_dir/Source/lib/*.{c,h} ./gp2_code_temp/
+echo ""
+
+echo "4. Building GP2 Executable"
+echo "		make -C gp2_code_temp"
+make -C gp2_code_temp
+echo ""
+
+echo "5. Executing on Host Graph $2"
+echo "		gp2_code_temp/gp2run $2"
+gp2_code_temp/gp2run $2
+echo ""
+
+echo "6. Removing code & executable"
+echo "		rm -r -f gp2_code_temp"
+rm -r -f gp2_code_temp
+echo ""
+
+
+
+echo "Final Result (stored in gp2.output) is:"
+echo "		cat gp2.output"
+cat gp2.output
+
+#rm -f gp2.log
