@@ -1,3 +1,5 @@
+# Building the GP 2 Compiler
+
 To build the compiler, first download the files from the [GP 2 Github Page](https://github.com/UoYCS-plasma/GP2/). Then in the folder `GP2/Compiler` run the following commands.
 
 1. `autoreconf -i; autoconf -i; automake -a`
