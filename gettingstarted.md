@@ -2,27 +2,28 @@
 
 The GP 2 compiler translates a GP 2 program into executable C code. The generated code is executable with the support of the GP 2 library. There are two ways to set it up. You can build the compiler using make. However, the setup process is not guaranteed to be stable on all Linux machines, or on machines running MacOS or Windows. We therefore provide an installation via Docker as an alternative for Linux and MacOS.
 
-## Prerequisites
+## Installation
 
-To run the compiler, you need the following packages (if you're on Ubuntu): ``bison``, ``flex``, ``libperl-dev``, ``libgtk2.0-dev``, ``libjudy-dev``, and ``pandoc``.
+To run the compiler, you need to install the C library [Judy](http://judy.sourceforge.net/index.html) which you may find in your distribution's package manager. In the Ubuntu repositories, you can find it under ``libjudy-dev``.
 
-[Judy](http://judy.sourceforge.net/index.html) is a C library that can be installed via your distribution's package manager. Alternatively, if you install the compiler via Make, you can get the [Judy.h file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Judy/Judy.h) from the GP 2 Github and copy it to the ``gp2-1.0`` folder during the installation. See the section on "Installation via Make" for more details.
+- You can find a pre-built version of the compiler [here](https://github.com/UoYCS-plasma/GP2/blob/master/Pre-built).
+- Follow [this guide](https://uoycs-plasma.github.io/GP2/installation/buildcompiler) if you want to build the compiler yourself.
+- To use GP 2 via Docker, take a look at [this guide](https://uoycs-plasma.github.io/GP2/installation/docker).
+- In the University of York Department of Computer Science, the compiler is installed on most Linux machines.
 
-## Installation via Docker
-This installation method requires Docker. The program can be found in your software repository or on the [Docker website](https://docs.docker.com/install/). For institutions, [Rootless Docker](https://medium.com/@tonistiigi/experimenting-with-rootless-docker-416c9ad8c0d6) may be the preferred choice since it does not allow users to execute programs as a root user.
+## Usage
 
-To set up GP 2 via Docker, use the command below as a superuser to run a GP 2 program. The first time you run the command, Docker will download the necessary files for executing GP 2 programs. Subsequently, programs can be run offline.
+In order to use the GP 2 Compiler with Docker or after building it yourself, take a look at these [bash files](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/bin).
+
+Alternatively, [This guide](https://uoycs-plasma.github.io/GP2/usage) gives a step-by-step exmplanation of how to use the compiler.
+
+On University of York Linux machines, simply call
 ```
-docker run -v ${PWD}:/data registry.gitlab.com/yorkcs/batman/gp2i:latest <program> <input graph>
+gp2c <flags> <program> <input graph>
 ```
-Replace ``<program>`` with the relative path to your program from your working directory, and ``<input graph>`` with the relative path to your input graph.
+where ``<flags>`` consists of the flags you wish to use seperated by spaces, ``<program>`` is the relative path to your GP 2 program, and ``<input graph>`` the relative path to your input graph.
 
-You can also pass flags to the compiler:
-```
-docker run -v ${PWD}:/data -e GP2_FLAGS='-f -q' registry.gitlab.com/yorkcs/batman/gp2i:latest <program> <input graph>
-```
-
-The following is the list of compiler flags:
+These are the flags:
 
 - **-d** - Compile program with debugging flags.
 - **-f** - Compile in fast shutdown mode.
@@ -33,62 +34,6 @@ The following is the list of compiler flags:
 - **-l** - Specify directory of lib source files.
 - **-o** - Specify directory for generated code and program output.
 
-For a more concise command, you can download this [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2docker). You may need to make the bash file executable with ``chmod u+x gp2docker``.
-
-## Installation via Make
-
-After downloading the files from the [GP 2 Github Page](https://github.com/UoYCS-plasma/GP2/). Then in the folder `GP2/Compiler` run the following commands.
-1. `autoreconf -i`
-2. `autoconf -i`
-3. `automake -a`
-4. `./configure`
-5. `make dist`
-6. `tar -xzvf gp2-1.0.tar.gz`
-7. `cd gp2-1.0`
-8. `./configure --prefix=<path_to_build_directory>` where `<path_to_build_directory>` is where you want the compiler to reside.
-8. `cp ../lib/*.{c,h} lib/`
-8. If Judy is not installed on your machine, copy the [Judy.h file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Judy/Judy.h) to the ``gp2-1.0`` folder.
-9. `make`
-10. `make install`
-
-You can now compile GP 2 programs using the `gp2`. From the `bin` folder, run
-```
-./gp2 [-d] [-f] [-g] [-m] [-n] [-q] [-l <libdir>] [-o <outdir>] <program_file>
-```
-
-Compiles *gp2-program* into C code. The generated code is placed in
-*/tmp/gp2* unless an alternate location is specified with the **-o** flag. 
-
-To execute the generated code, run `./build.sh` and
-`./gp2run <graph_file>` from */tmp/gp2*.
-
-This will generate a file *"gp2.output"* containing the output graph.
-
-Before executing, you may need to copy library files from the source code.
-```
-cp <path_to_source_code_directory>/lib/*.{c,h} ./gp2_code_temp/
-```
-
-If GP 2 is installed in a non-standard directory, use the **-l** option to 
-ensure the generated code can be compiled and executed.
-
-The following is the list of compiler flags:
-
-- **-d** - Compile program with debugging flags.
-- **-f** - Compile in fast shutdown mode.
-- **-g** - Compile with minimal garbage collection (requires fast shutdown).
-- **-m** - Compile with root reflecting matches.
-- **-n** - Compile without graph node lists.
-- **-q** - Compile program quickly without optimisations.
-- **-l** - Specify directory of lib source files.
-- **-o** - Specify directory for generated code and program output.
-
-The compiler can also be used to validate GP 2 source files.
-- Run `gp2 -p <program_file>` to validate a program.
-- Run `gp2 -r <rule_file>` to validate a rule.
-- Run `gp2 -h <host_file>` to validate a host graph.
-
-You can use the `gp2c` [bash file](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/Bash%20Files/gp2c) to concisely run GP 2 programs using `./gp2c <program_file> <graph_file>`. Just modify `install_dir` and `source_dir` to be the paths to the installation and source code respectively. You may need to make the bash file executable with ``chmod u+x gp2c``.
 
 ## Example: Editing, Compiling, and Running a Transitive Closure Program
 
