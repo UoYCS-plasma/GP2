@@ -1,4 +1,4 @@
-To use the compiler, follow these steps:
+To set up the compiler, follow these steps:
 
 1. Move these files to a directory of your choice.
 1. In the ``gp2c`` file, edit the variable ``install_dir`` at the top to be the path to said directory.
