@@ -37,7 +37,7 @@ These are the flags:
 
 ## Example: Editing, Compiling, and Running a Transitive Closure Program
 
-For this section, we assume to have a bash file `gp2bash` which we can run GP 2 programs with using `./gp2bash <program_file> <graph_file>`
+For this section, we assume that we can run GP 2 programs with using the command `gp2c <program_file> <graph_file>`.
 
 The program we'll look at is this:
 
@@ -141,7 +141,7 @@ node to the 3rd node. The 'interface' describes which nodes survive; none of the
 Now we can compile our program by calling:
 
 ```
-./gp2bash PATH/TO/transitive_closure.gp2 PATH/TO/cycle.host
+gp2c PATH/TO/transitive_closure.gp2 PATH/TO/cycle.host
 ```
 This will output the following graph:
 
