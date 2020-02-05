@@ -1,3 +1,5 @@
+Make sure to make the bash file executable by calling ``chmod u+x gp2c`` or ``chmod u+x gp2docker``.
+
 Use ``gp2c`` with after you built the GP 2 compiler. Edit the variables at the top of the file. ``install_dir`` should be the path of the directory containing the built compiler, and ``source_dir`` the path of the compiler's source code. To use the compiler flags, add them to the command in step 2 of the bash file. Run the compiler as follows:
 ```
 ./gp2c <program> <input graph>
