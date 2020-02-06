@@ -7,7 +7,7 @@ These are web-based GP 2 graph and rule editors. They can import and export `.do
 <a href="Editors and Visualisers/Editors (Samuel Hand)/docs/rule/index.html" target="_blank">Rule Editor</a>
 
 The interface works as follows.
-- **Create node:** doube click background
+- **Create node:** double click background
 - **Move node:** left click and drag node
 - **Create edge:** right click and drag from source to target
 - **Select item:** left click item
