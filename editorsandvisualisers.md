@@ -23,4 +23,4 @@ These are web-based GP 2 graph and rule visualisers. The textual form of a GP 2 
 
 <a href="https://uoycs-plasma.github.io/GP2-Visualiser/graph_edit.html" target="_blank">Graph Visualiser</a>
 
-<a href="Edithttps://uoycs-plasma.github.io/GP2-Visualiser/rule_edit.html" target="_blank">Rule Visualiser</a>
+<a href="https://uoycs-plasma.github.io/GP2-Visualiser/rule_edit.html" target="_blank">Rule Visualiser</a>
