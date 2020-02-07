@@ -147,9 +147,9 @@ This will output the following graph:
 
 ![test](images/trans.png "A transitive graph.")
 
-## Copying
+## License
 
-See the file [COPYING](COPYING).
+See the file [LICENSE](../master/LICENSE).
 
 ## Authors
 
