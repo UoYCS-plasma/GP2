@@ -1,8 +1,0 @@
-[
- (n1, empty # grey)
- (n2 (R), empty # red)
- (n3, empty # blue)
-|
- (e4, n2, n1, empty)
- (e5, n3, n2, empty)
-]
