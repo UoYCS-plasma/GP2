@@ -6,16 +6,16 @@ The GP 2 compiler translates a GP 2 program into executable C code. The generate
 
 To run the compiler, you need to install the C library [Judy](http://judy.sourceforge.net/index.html) which you may find in your distribution's package manager. In the Ubuntu repositories, you can find it under ``libjudy-dev``.
 
-- You can find a pre-built version of the compiler [here](https://github.com/UoYCS-plasma/GP2/blob/master/Pre-built).
-- Follow [this guide](https://uoycs-plasma.github.io/GP2/installation/buildcompiler) if you want to build the compiler yourself.
-- To use GP 2 via Docker, take a look at [this guide](https://uoycs-plasma.github.io/GP2/installation/docker).
+- You can find a pre-built version of the compiler [here](pre-built).
+- Follow [this guide](installation/buildcompiler) if you want to build the compiler yourself.
+- To use GP 2 via Docker, take a look at [this guide](installation/docker).
 - In the University of York Department of Computer Science, the compiler is installed on most Linux machines.
 
 ## Usage
 
-In order to use the GP 2 Compiler with Docker or after building it yourself, take a look at these [bash files](https://github.com/UoYCS-plasma/GP2/blob/master/Compiler/bin).
+In order to use the GP 2 Compiler with Docker or after building it yourself, take a look at these [bash files](https://github.com/UoYCS-plasma/GP2/blob/master/bin).
 
-Alternatively, [This guide](https://uoycs-plasma.github.io/GP2/usage) gives a step-by-step exmplanation of how to use the compiler.
+Alternatively, [This guide](usage) gives a step-by-step exmplanation of how to use the compiler.
 
 On University of York Linux machines, simply call
 ```
