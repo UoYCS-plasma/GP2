@@ -1,1 +1,1 @@
-index.md
+../gettingstarted.md
