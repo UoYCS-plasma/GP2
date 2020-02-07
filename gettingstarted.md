@@ -149,7 +149,7 @@ This will output the following graph:
 
 ## License
 
-See the file [LICENSE](../master/LICENSE).
+See the file [LICENSE](https://github.com/UoYCS-plasma/GP2/blob/master/LICENSE).
 
 ## Authors
 
