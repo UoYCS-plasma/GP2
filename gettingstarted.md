@@ -6,33 +6,21 @@ The GP 2 compiler translates a GP 2 program into executable C code. The generate
 
 To run the compiler, you need to install the C library [Judy](http://judy.sourceforge.net/index.html) which you may find in your distribution's package manager. In the Ubuntu repositories, you can find it under ``libjudy-dev``.
 
-- You can find a pre-built version of the compiler [here](pre-built).
-- Follow [this guide](installation/buildcompiler) if you want to build the compiler yourself.
-- To use GP 2 via Docker, take a look at [this guide](installation/docker).
+There are several ways to install the compiler:
+
+- [Pre-built](pre-built) - Use a version of the compiler that has already been built. This might not work correctly on every Linux distribution, but does work on Ubuntu 18.04 for instance.
+- [Build from source code](installation/buildcompiler) - Follow the link for a guide on how to build the compiler yourself.
+- [Docker](installation/docker) - Follow the link for instructions on how to install the compiler via Docker. This method is recommended for MacOS users.
 - In the University of York Department of Computer Science, the compiler is installed on most Linux machines.
 
 ## Usage
 
-In order to use the GP 2 Compiler with Docker or after building it yourself, take a look at these [bash files](https://github.com/UoYCS-plasma/GP2/blob/master/bin).
+Usage depends on which installation method you used:
 
-Alternatively, [This guide](usage) gives a step-by-step exmplanation of how to use the compiler.
-
-On University of York Linux machines, simply call
-```
-gp2c <flags> <program> <input graph>
-```
-where ``<flags>`` consists of the flags you wish to use seperated by spaces, ``<program>`` is the relative path to your GP 2 program, and ``<input graph>`` the relative path to your input graph.
-
-These are the flags:
-
-- **-d** - Compile program with debugging flags.
-- **-f** - Compile in fast shutdown mode.
-- **-g** - Compile with minimal garbage collection (requires fast shutdown).
-- **-m** - Compile with root reflecting matches.
-- **-n** - Compile without graph node lists.
-- **-q** - Compile program quickly without optimisations.
-- **-l** - Specify directory of lib source files.
-- **-o** - Specify directory for generated code and program output.
+- **Pre-built** - [bash file usage](usage/pre-built)
+- **Build from source code** - [usage guide](usage/compiler), [bash file usage](https://github.com/UoYCS-plasma/GP2/tree/master/bin/compiler)
+- **Docker** - [bash file usage](https://github.com/UoYCS-plasma/GP2/tree/master/bin/docker)
+- **University of York** - [usage guide](usage/uoy)
 
 
 ## Example: Editing, Compiling, and Running a Transitive Closure Program
