@@ -1,4 +1,4 @@
-# Usage
+# Usage: University of York
 
 On University of York Linux machines, simply call
 ```
