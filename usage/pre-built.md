@@ -1,4 +1,4 @@
-# Usage: Pre-built
+# Usage: Pre-Built
 
 In the directory containing your bash file, simply call
 ```
