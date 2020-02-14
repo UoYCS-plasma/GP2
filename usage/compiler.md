@@ -1,4 +1,4 @@
-# Usage
+# Usage: Build From Source Code
 
 You can compile GP 2 programs using the `gp2`. From the `bin` folder, run
 ```
