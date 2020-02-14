@@ -1,5 +1,3 @@
-# Usage
-
 To set up the compiler, follow these steps:
 
 1. Move the files in this directory to a directory of your choice.
