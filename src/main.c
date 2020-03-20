@@ -179,6 +179,7 @@ void printBuildScript(string output_dir, string lib_dir)
    fprintf(buildscript, "make -j4\n");
 
    fclose(buildscript);
+   chmod(buildscript_name, 0755);
 } 
 
 int main(int argc, char **argv)
@@ -320,9 +321,9 @@ int main(int argc, char **argv)
    /* If no output directory specified, make a directory in /tmp. */
    if(output_dir == NULL) 
    {
-      mkdir("/tmp/gp2", S_IRWXU | S_IRWXG | S_IRWXO );
+      mkdir("/tmp/gp2", S_IRWXU | S_IRWXG | S_IRWXO);
       output_dir = "/tmp/gp2";
-      chmod(output_dir, S_IRWXU | S_IRWXG | S_IRWXO );
+      chmod(output_dir, S_IRWXU | S_IRWXG | S_IRWXO);
       openLogFile("/tmp/gp2/gp2-compile.log");
    }
    else

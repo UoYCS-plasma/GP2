@@ -340,15 +340,14 @@ void commandScan(GPCommand *command, string scope, List *declarations, bool in_l
            if(!in_loop) 
            {
               YYLTYPE location = command->location;
-              print_to_console("Error: break command not in loop.\n");
-              print_to_log("%d.%d-%d.%d: Error: break command not in loop.\n", 
+              print_error("Error: break command not in loop (%d.%d-%d.%d).\n", 
                            location.first_line, location.first_column, 
                            location.last_line, location.last_column);
               abort_compilation = true;
            }
            break;
 
-      default: print_to_log("Error (commandScan): Unexpected type %d at "
+      default: print_error("Error (commandScan): Unexpected type %d at "
                              "AST node %d\n", command->type, command->id);
                abort_compilation = true;
                break;   
@@ -475,7 +474,7 @@ void ruleScan(GPRule *rule, string scope)
 	      break;  	 
 
 	 default:
-	      print_to_log("Error: Unexpected list type %d in AST node %d\n",
+	      print_error("Error: Unexpected list type %d in AST node %d\n",
 		           variable_list->type, variable_list->id);
               abort_compilation = true;
 	      break;
@@ -594,7 +593,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
       }
       if(node_list->node->label->mark == DASHED)
       {
-          print_to_log("Error (%s): Node %s in %s graph has invalid mark " 
+          print_error("Error (%s): Node %s in %s graph has invalid mark " 
 	               "\"dashed\".\n", rule_name, node_id, graph_type);
           abort_compilation = true; 
       }
@@ -637,13 +636,10 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
                {
                   if(symbol->type == LEFT_NODE_S && !(symbol->wildcard)) 
                   {
-                     print_to_log("Error (%s): RHS wildcard node %s has no "
-                                  "matching LHS wildcard.", rule_name, node_id);  
+                     print_error("Error (%s): RHS wildcard node %s has no "
+                                  "matching LHS wildcard.\n", rule_name, node_id);  
                      abort_compilation = true; 
                   }
-                  /* Regardless of the outcome of the inner if statement, exit
-                   * the loop as the single appropriate node has been located. */
-                  break;
                }
                symbol = symbol->next;
             }
@@ -711,7 +707,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
          {
             print_error("Error (%s): Wildcard edge %s in %s graph not exclusively "
                         "incident to interface nodes.\n", rule_name, edge_id, graph_type);
-            abort_compilation = true;  
+            abort_compilation = true;
          }
 
          symbol = symbol_list;
@@ -723,7 +719,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
             {
                if(symbol->type == LEFT_EDGE_S && !(symbol->wildcard)) 
                {
-                  print_to_log("Error (%s): RHS wildcard edge %s has no "
+                  print_error("Error (%s): RHS wildcard edge %s has no "
                                "matching LHS wildcard.", rule_name, edge_id);  
                   abort_compilation = true; 
                }
@@ -772,7 +768,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
                {
                   if(list_edge.graph == side)
                   {
-                     print_to_log("Error (%s): Parallel bidirectional edges "
+                     print_error("Error (%s): Parallel bidirectional edges "
                                   "in %s.\n", rule_name, graph_type);
                      abort_compilation = true;
                      add_bi_edge = false;
@@ -783,7 +779,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
          }
          if(side == 'r' && !matching_bi_edge) 
          {
-	    print_to_log("Error (%s): RHS bidirectional edge %s has no "
+            print_error("Error (%s): RHS bidirectional edge %s has no "
                          "matching LHS bidirectional edge.\n", rule_name, edge_id);
             abort_compilation = true; 
          }
@@ -796,7 +792,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
       symbol_list = g_hash_table_lookup(symbol_table, source_id);
       if(symbol_list == NULL) 
       {
-	 print_to_log("Error (%s): Source node %s of edge %s does not "
+         print_error("Error (%s): Source node %s of edge %s does not "
                       "exist in %s graph.\n", rule_name, source_id, edge_id, 
                       graph_type);     
          abort_compilation = true; 
@@ -815,7 +811,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
          {   
             if(symbol_list->next == NULL) 
             {
-               print_to_log("Error (%s): Source node %s of edge %s does "
+               print_error("Error (%s): Source node %s of edge %s does "
                             "not exist in %s graph.\n", 
                             rule_name, source_id, edge_id, graph_type);     
                abort_compilation = true; 
@@ -826,9 +822,9 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
       }
       /* Verify target node exists in the graph. */
       symbol_list = g_hash_table_lookup(symbol_table, target_id);    
-       if(symbol_list == NULL) 
+      if(symbol_list == NULL) 
       {
-	 print_to_log("Error (%s): Target node %s of edge %s does not "
+         print_error("Error (%s): Target node %s of edge %s does not "
                       "exist in %s graph.\n", 
                       rule_name, target_id, edge_id, graph_type);     
          abort_compilation = true; 
@@ -847,7 +843,7 @@ void graphScan(GPRule *rule, List *interface, string scope, string rule_name, ch
          {
             if(symbol_list->next == NULL) 
             {
-               print_to_log("Error (%s): Target node %s of edge %s does "
+               print_error("Error (%s): Target node %s of edge %s does "
                             "not exist in %s graph.\n", 
                             rule_name, target_id, edge_id, graph_type);   
                abort_compilation = true; 
@@ -891,13 +887,13 @@ void interfaceScan(List *interface, string scope, string rule_name)
       }
       if(!in_lhs)  
       {
-         print_to_log("Error (%s): Interface node %s not in the LHS "
+         print_error("Error (%s): Interface node %s not in the LHS "
                       "graph.\n", rule_name, interface->node_id);
          abort_compilation = true; 
       }
       if(!in_rhs) 
       {
-         print_to_log("Error (%s): Interface node %s not in the RHS "
+         print_error("Error (%s): Interface node %s not in the RHS "
                       "graph.\n", rule_name, interface->node_id);
          abort_compilation = true; 
       }
@@ -1023,7 +1019,7 @@ int conditionScan(GPCondition *condition, List *interface, string scope,
            break;
 
       default:
-	   print_to_log("Error: Unexpected condition type %d at AST node %d\n",
+           print_error("Error: Unexpected condition type %d at AST node %d\n",
 	                condition->type, condition->id);
            abort_compilation = true; 
            break;
@@ -1179,7 +1175,7 @@ void atomScan(GPAtom *atom, List *interface, string scope, string rule_name,
            break;
 
       default:
-           print_to_log("Error: Unexpected atom type %d at AST node %d.\n",
+           print_error("Error: Unexpected atom type %d at AST node %d.\n",
                         atom->type, atom->id);
            abort_compilation = true;
            break;                
@@ -1256,7 +1252,7 @@ void variableScan(GPAtom *atom, string scope, string rule_name,
               break;
 
          default:
-              print_to_log("Error (variableCheck): Unexpected symbol type "
+              print_error("Error (variableCheck): Unexpected symbol type "
                             "%d.\n", var_list->type);
               break;
       }

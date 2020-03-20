@@ -631,9 +631,9 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
          * host item's label. */
          if(label.mark == ANY)
          {
-            if(node) PTFI("HostLabel host_label%d = nodeLabel(host, host_node);\n", 
+            if(node) PTFI("HostLabel host_label%d = nodeLabel(host_node);\n", 
                         indent, host_label_count);
-            else PTFI("HostLabel host_label%d = edgeLabel(host, host_edge);\n", 
+            else PTFI("HostLabel host_label%d = edgeLabel(host_edge);\n", 
                      indent, host_label_count);
             PTFI("label = makeEmptyLabel(host_label%d.mark);\n\n", indent, host_label_count);
          }
@@ -799,9 +799,9 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
       /* If the RHS has the 'ANY' mark, generate code to retrieve the mark of the
        * host item's label. */
       {
-         if(node) PTFI("HostLabel host_label%d = nodeLabel(host, host_node);\n",
+         if(node) PTFI("HostLabel host_label%d = nodeLabel(host_node);\n",
                        indent, host_label_count);
-         else PTFI("HostLabel host_label%d = edgeLabel(host, host_edge);\n",
+         else PTFI("HostLabel host_label%d = edgeLabel(host_edge);\n",
                    indent, host_label_count);
       }
       PTFI("if(list_length%d > 0)\n", indent, count);
