@@ -414,8 +414,7 @@ GPAtom *newASTBinaryOp(AtomType type, YYLTYPE location,
     {
        if(right_exp->number == 0)
        {
-          print_error("Error: You are trying to divide by 0. I cannot allow "
-                      "you to destroy the universe. Abort!\n");
+          print_error("Error: Division by zero not permitted in label expressions.\n");
           exit(1);
        }
     }
