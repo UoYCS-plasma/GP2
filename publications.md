@@ -71,6 +71,10 @@
 ### Verification of Graph Programs
 
 *   G. Wulandari and D. Plump  
+    [Verification of Graph Programs with First-Order Logic](https://docs.google.com/viewer?url=https://github.com/UoYCS-plasma/GP2/blob/gh-pages/documents/WP20a_FOLver.pdf?raw=true)  
+    _Technical Report_. 2020.  
+    
+*   G. Wulandari and D. Plump  
     [Verifying a Copying Garbage Collector in GP 2](http://www.cs.york.ac.uk/plasma/publications/pdf/WulandariPlump.GCM18.pdf)  
     _Software Technologies: Applications and Foundations - STAF 2018 Collocated Workshops, Revised Selected Papers_. Lecture Notes in Computer Science 11176, pages 479-494. Springer, 2018.  
     doi: [10.1007/978-3-030-04771-9_34](https://doi.org/10.1007/978-3-030-04771-9_34)
