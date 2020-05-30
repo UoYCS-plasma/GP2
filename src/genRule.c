@@ -182,10 +182,25 @@ static void generateMatchingCode(Rule *rule, bool predicate)
    fprintf(header, "bool match%s(Morphism *morphism);\n\n", rule->name);
    PTF("\nbool match%s(Morphism *morphism)\n", rule->name);
    PTF("{\n");
-   PTFI("if(host->number_of_nodes < %d || host->number_of_edges < %d) return false;\n",
+
+   if(rule->lhs->node_index > 0 && rule->lhs->edge_index > 0)
+   {
+      PTFI("if(host->number_of_nodes < %d || host->number_of_edges < %d) return false;\n",
         3, rule->lhs->node_index, rule->lhs->edge_index);
+   }
+   else if(rule->lhs->node_index > 0)
+   {
+      PTFI("if(host->number_of_nodes < %d) return false;\n",
+        3, rule->lhs->node_index);
+   }
+   else if(rule->lhs->edge_index > 0)
+   {
+      PTFI("if(host->number_of_edges < %d) return false;\n",
+        3, rule->lhs->edge_index);
+   }
+
    char item = searchplan->first->is_node ? 'n' : 'e';
-   
+
    if(predicate)
    {
       PTFI("bool match = match_%c%d(morphism);\n", 3, item, searchplan->first->index);
