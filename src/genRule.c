@@ -16,7 +16,7 @@
 #include "genRule.h"
 
 static void generateMatchingCode(Rule *rule, bool predicate);
-static void emitDegreeCheck(RuleNode *left_node, int indent);
+static bool emitDegreeCheck(RuleNode *left_node, int indent);
 static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op);
 static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op);
 static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type, SearchOp *next_op);
@@ -182,7 +182,7 @@ static void generateMatchingCode(Rule *rule, bool predicate)
    fprintf(header, "bool match%s(Morphism *morphism);\n\n", rule->name);
    PTF("\nbool match%s(Morphism *morphism)\n", rule->name);
    PTF("{\n");
-   PTFI("if(%d > host->number_of_nodes || %d > host->number_of_edges) return false;\n",
+   PTFI("if(host->number_of_nodes < %d || host->number_of_edges < %d) return false;\n",
         3, rule->lhs->node_index, rule->lhs->edge_index);
    char item = searchplan->first->is_node ? 'n' : 'e';
    
@@ -286,30 +286,79 @@ static void generateMatchingCode(Rule *rule, bool predicate)
  *     then standard matching is violated (above). If it is greater,
  *     then the dangling condition is violated. */
 
-static void emitDegreeCheck(RuleNode *left_node, int indent)
+static bool emitDegreeCheck(RuleNode *left_node, int indent)
 {
+   bool emitted = false;
+
    /* For condition (3) above, the number of edges incident to the host node
     * is given by the sum of the outdegree and the indegree. The edges
     * incident to the rule node is the sum of the node's outdegree, indegree
     * and bidegree. The number of rule edges is subtracted from the number of
     * host edges and the result is compared to 0. */
+   if(left_node->indegree > 0 && left_node->outdegree > 0)
+   {
+      emitted = true;
+      PTFI("if(nodeInDegree(host_node) < %d || nodeOutDegree(host_node) < %d",
+           indent, left_node->indegree, left_node->outdegree);
+   }
+   else if(left_node->indegree > 0)
+   {
+      emitted = true;
+      PTFI("if(nodeInDegree(host_node) < %d",
+           indent, left_node->indegree);
+   }
+   else if(left_node->outdegree > 0)
+   {
+      emitted = true;
+      PTFI("if(nodeOutDegree(host_node) < %d",
+           indent, left_node->outdegree);
+   }
+
    if(left_node->interface == NULL)
    {
       /* Dangling node degree check. If the if condition evaluates to true,
        * then the node is not a valid match. */
-      PTFI("if(nodeInDegree(host_node) < %d || nodeOutDegree(host_node) < %d ||\n",
-           indent, left_node->indegree, left_node->outdegree);
-      PTFI("   ((nodeOutDegree(host_node) + nodeInDegree(host_node) - %d) != 0)) ", 
-           indent, left_node->outdegree + left_node->indegree + left_node->bidegree);
+      if(emitted == false)
+      {
+         emitted = true;
+         PTFI("if((nodeOutDegree(host_node) + nodeInDegree(host_node)) != %d) ", 
+              indent, left_node->outdegree + left_node->indegree + left_node->bidegree);
+      }
+      else
+      {
+         PTFI(" ||\n", indent);
+         PTFI("   ((nodeOutDegree(host_node) + nodeInDegree(host_node)) != %d)) ", 
+              indent, left_node->outdegree + left_node->indegree + left_node->bidegree);
+      }
    }
    else
    {
       /* Standard node degree check. */
-      PTFI("if(nodeInDegree(host_node) < %d || nodeOutDegree(host_node) < %d ||\n",
-           indent, left_node->indegree, left_node->outdegree);
-      PTFI("   ((nodeOutDegree(host_node) + nodeInDegree(host_node) - %d) < 0)) ", 
-           indent, left_node->outdegree + left_node->indegree + left_node->bidegree);
+      if(emitted == false)
+      {
+         if (left_node->outdegree + left_node->indegree + left_node->bidegree > 0)
+         {
+            emitted = true;
+            PTFI("if((nodeOutDegree(host_node) + nodeInDegree(host_node)) < %d) ", 
+                 indent, left_node->outdegree + left_node->indegree + left_node->bidegree);
+         }
+      }
+      else
+      {
+         if (left_node->outdegree + left_node->indegree + left_node->bidegree > 0)
+         {
+            PTFI(" ||\n", indent);
+            PTFI("   ((nodeOutDegree(host_node) + nodeInDegree(host_node)) < %d)) ", 
+                 indent, left_node->outdegree + left_node->indegree + left_node->bidegree);
+         }
+         else
+         {
+            PTFI(") ", indent);
+         }
+      }
    }
+
+   return emitted;
 }
 
  
@@ -344,16 +393,14 @@ static void emitRootNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_
    PTFI("Node *host_node = nodes->node;\n", 6);
    PTFI("if(host_node == NULL) continue;\n", 6);
    PTFI("if(nodeMatched(host_node)) continue;\n", 6);
-   if(left_node->label.mark == ANY)
-      PTFI("if(host_node->label.mark == 0) continue;\n", 6);
+   if(left_node->label.mark == ANY) PTFI("if(host_node->label.mark == 0) continue;\n", 6);
    else PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
-   emitDegreeCheck(left_node, 6);  
-   PTF("continue;\n\n");
+   if(emitDegreeCheck(left_node, 6)) PTF("continue;\n");
+   PTF("\n");
 
    PTFI("HostLabel label = host_node->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(hasListVariable(left_node->label))
-      generateVariableListMatchingCode(rule, left_node->label, 6);
+   if(hasListVariable(left_node->label)) generateVariableListMatchingCode(rule, left_node->label, 6);
    else generateFixedListMatchingCode(rule, left_node->label, 6);
    emitNodeMatchResultCode(left_node, next_op, 6);
    PTFI("}\n", 3);
@@ -390,13 +437,12 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    else PTFI("if(nodeMatched(host_node)) continue;\n", 6);
    if(left_node->label.mark == ANY) PTFI("if(host_node->label.mark == 0) continue;\n", 6);
    else PTFI("if(host_node->label.mark != %d) continue;\n", 6, left_node->label.mark);
-   emitDegreeCheck(left_node, 6);  
-   PTF("continue;\n\n");
+   if(emitDegreeCheck(left_node, 6)) PTF("continue;\n");
+   PTF("\n");
 
    PTFI("HostLabel label = host_node->label;\n", 6);
    PTFI("bool match = false;\n", 6);
-   if(hasListVariable(left_node->label))
-      generateVariableListMatchingCode(rule, left_node->label, 6);
+   if(hasListVariable(left_node->label)) generateVariableListMatchingCode(rule, left_node->label, 6);
    else generateFixedListMatchingCode(rule, left_node->label, 6);
    emitNodeMatchResultCode(left_node, next_op, 6);
    PTFI("}\n", 3);
@@ -425,11 +471,10 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
    PTFI("if(nodeMatched(host_node)) %s\n", 3, fail_code);
    if(left_node->root) PTFI("if(!nodeRoot(host_node)) %s\n", 3, fail_code);
    if(reflect_roots && !left_node->root) PTFI("if(nodeRoot(host_node)) %s\n", 3, fail_code);
-   if(left_node->label.mark == ANY)
-      PTFI("if(host_node->label.mark == 0) %s\n", 3, fail_code);
+   if(left_node->label.mark == ANY) PTFI("if(host_node->label.mark == 0) %s\n", 3, fail_code);
    else PTFI("if(host_node->label.mark != %d) %s\n", 3, left_node->label.mark, fail_code);
-   emitDegreeCheck(left_node, 6);  
-   PTF("%s;\n\n", fail_code);
+   if(emitDegreeCheck(left_node, 6)) PTF("%s;\n", fail_code);
+   PTF("\n");
 
    /* If the above check fails and the edge is bidirectional, check the other 
     * node incident to the host edge. Otherwise return false. */
@@ -438,24 +483,21 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
       PTFI("if(!candidate_node)\n", 3);
       PTFI("{\n", 3); 
       PTFI("/* Matching from bidirectional edge: check the second incident node. */\n", 6);
-      if(type == 'i' || type == 'b') 
-           PTFI("host_node = edgeSource(host_edge);\n", 6);
+      if(type == 'i' || type == 'b') PTFI("host_node = edgeSource(host_edge);\n", 6);
       else PTFI("host_node = edgeTarget(host_edge);\n", 6);
       PTFI("if(nodeMatched(host_node)) return false;\n", 6);
       if(left_node->root) PTFI("if(!nodeRoot(host_node)) return false;\n", 6);
       if(reflect_roots && !left_node->root) PTFI("if(nodeRoot(host_node)) return false;\n", 6);
-      if(left_node->label.mark == ANY)
-	 PTFI("if(host_node->label.mark == 0) return false;\n", 6);
+      if(left_node->label.mark == ANY) PTFI("if(host_node->label.mark == 0) return false;\n", 6);
       else PTFI("if(host_node->label.mark != %d) return false;\n", 6, left_node->label.mark);
-      emitDegreeCheck(left_node, 6);  
-      PTF("return false;\n\n");
+      if (emitDegreeCheck(left_node, 6)) PTF("return false;\n");
+      PTF("\n");
       PTFI("}\n", 3);
    }
 
    PTFI("HostLabel label = host_node->label;\n", 3);
    PTFI("bool match = false;\n", 3);
-   if(hasListVariable(left_node->label))
-      generateVariableListMatchingCode(rule, left_node->label, 3);
+   if(hasListVariable(left_node->label)) generateVariableListMatchingCode(rule, left_node->label, 3);
    else generateFixedListMatchingCode(rule, left_node->label, 3);
 
    emitNodeMatchResultCode(left_node, next_op, 3);
