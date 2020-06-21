@@ -67,6 +67,7 @@ void doubleBigArray(BigArray *array)
 
 int genFreeBigArrayPos(BigArray *array)
 {
+  assert(array->size <= array->capacity);
   #ifndef MINIMAL_GC
   if(array->first_hole == NULL)
   {
@@ -81,6 +82,7 @@ int genFreeBigArrayPos(BigArray *array)
     if(array->first_hole != NULL)
       array->first_hole->prev = NULL;
     assert(hole->index >= 0);
+    assert(hole->index < array->size);
     return hole->index;
   }
   #else
@@ -93,6 +95,7 @@ int genFreeBigArrayPos(BigArray *array)
 void *getBigArrayValue(BigArray *array, int index)
 {
   assert(index >= 0);
+  assert(index < array->size);
 
   if(index < BIGAR_INIT_SZ / array->elem_sz)
     return (void *) &(array->firstelems[index * array->elem_sz]);
@@ -107,6 +110,7 @@ void *getBigArrayValue(BigArray *array, int index)
 void removeFromBigArray(BigArray *array, int index)
 {
   assert(index >= 0);
+  assert(index < array->size);
 
   if(index == array->size - 1) array->size--;
   else

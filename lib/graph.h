@@ -36,10 +36,6 @@
 #include <stdlib.h> 
 #include <stdio.h> 
 
-/* There are 7 marks, but the 'any' mark does not occur in host graphs. */
-#define NUMBER_OF_MARKS 6 
-#define NUMBER_OF_CLASSES 7
-
 #ifndef NO_NODE_LIST
 // 24 bytes
 typedef struct NodeList {

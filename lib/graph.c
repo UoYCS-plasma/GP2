@@ -288,9 +288,6 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
      deleted_edge = edgeDeleted(edge);
      if(deleted_edge)
      {
-       #ifndef MINIMAL_GC
-       int index = current->index;
-       #endif
        if((*current_prev) != current)
          (*current_prev)->next = current->next;
        if (initial)
@@ -301,7 +298,7 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
        if(edgeFree(edge))
        {
           removeHostList(edge->label.list);
-          removeFromBigArray(&(graph->_edgearray), index);
+          removeFromBigArray(&(graph->_edgearray), edge->index);
        }
        #endif
      }
@@ -345,9 +342,6 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
      deleted_edge = edgeDeleted(edge);
      if(deleted_edge)
      {
-       #ifndef MINIMAL_GC
-       int index = current->index;
-       #endif
        if((*current_prev) != current)
          (*current_prev)->next = current->next;
        if (initial)
@@ -358,7 +352,7 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
        if(edgeFree(edge))
        {
           removeHostList(edge->label.list);
-          removeFromBigArray(&(graph->_edgearray), index);
+          removeFromBigArray(&(graph->_edgearray), edge->index);
        }
        #endif
      }

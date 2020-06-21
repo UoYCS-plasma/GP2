@@ -90,10 +90,6 @@ typedef struct GraphChange
    bool first_occurrence; // true if node/edge first appears here in stack
 } GraphChange;
 
-struct GraphChangeStack;
-extern struct GraphChangeStack *graph_change_stack;
-extern unsigned int graph_change_count;
-
 void setStackGraph(Graph *graph);
 
 int topOfGraphChangeStack(void);

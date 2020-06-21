@@ -138,7 +138,7 @@ void printMakeFile(string output_dir)
 
    fprintf(makefile, "OBJECTS = $(patsubst lexer.o,,$(patsubst %%.c,%%.o,$(wildcard *.c)))\n");  
    fprintf(makefile, "CC = gcc\n\n");
-   fprintf(makefile, "CFLAGS = -L/usr/lib -L/usr/lib/x86_64-linux-gnu -lJudy -Wall");
+   fprintf(makefile, "CFLAGS = -L/usr/lib -L/usr/lib/x86_64-linux-gnu -lJudy -Wall -Wno-unused-but-set-variable");
    if (minimal_gc) fprintf(makefile, " -DMINIMAL_GC");
    if (no_node_list) fprintf(makefile, " -DNO_NODE_LIST");
    if(quick_compile)

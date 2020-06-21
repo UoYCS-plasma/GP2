@@ -100,10 +100,10 @@ void generateRuntimeMain(List *declarations, string output_dir)
 
       PTF("static void garbageCollect(void)\n");
       PTF("{\n");
-      PTF("   freeGraph(host);\n");
-      PTF("   freeHostListStore();\n");
       PTF("   freeMorphisms();\n");
       PTF("   freeGraphChangeStack();\n");
+      PTF("   freeGraph(host);\n");
+      PTF("   freeHostListStore();\n");
       PTF("}\n\n");
    }
 
@@ -349,8 +349,17 @@ static void generateProgramCode(GPCommand *command, CommandData data)
          PTFI("/* Break Statement */\n", data.indent);
          if(data.restore_point >= 0)
          {
-            PTFI("/* Update restore point for next iteration of inner loop. */\n", data.indent);
-            PTFI("if(success) restore_point%d = topOfGraphChangeStack();\n", data.indent, data.restore_point);
+            if (data.loop_depth > 1)
+            {
+               PTFI("/* Update restore point for next iteration of inner loop. */\n", data.indent);
+               PTFI("if(success) restore_point%d = topOfGraphChangeStack();\n", data.indent, data.restore_point);
+            }
+            else
+            {
+               PTFI("/* Graph changes from loop body not required.\n", data.indent);
+               PTFI("   Discard them so that future graph roll backs are uncorrupted. */\n", data.indent);
+               PTFI("discardChanges(restore_point%d);\n", data.indent, data.restore_point);
+            }
          }
          PTFI("break;\n", data.indent);
          break;
@@ -436,6 +445,7 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
    CommandData condition_data = data;
    condition_data.context = command->type == IF_STATEMENT ? IF_BODY : TRY_BODY;
    condition_data.indent = data.indent + 3;
+   condition_data.loop_depth++;
 
    /* No restore point set if:
     * (1) The branch is if-then-else and the condition is sufficiently simple.
@@ -474,7 +484,7 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
 
    PTFI("/* Condition */\n", data.indent);
    if(condition_data.restore_point >= 0)
-      PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n", data.indent, condition_data.restore_point);
+      PTFI("int restore_point%d = topOfGraphChangeStack();\n", data.indent, condition_data.restore_point);
 
    PTFI("do\n", data.indent);
    PTFI("{\n", data.indent);
@@ -492,7 +502,7 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
    PTFI("if(success)\n", data.indent);
    PTFI("{\n", data.indent);
 
-   if(condition_data.context == TRY_BODY && condition_data.restore_point >= 0)
+   if(condition_data.context == TRY_BODY && condition_data.restore_point >= 0 && condition_data.loop_depth == 1)
       PTFI("discardChanges(restore_point%d);\n", new_data.indent, condition_data.restore_point);
 
    generateProgramCode(command->cond_branch.then_command, new_data);
@@ -530,7 +540,7 @@ void generateLoopStatement(GPCommand *command, CommandData data)
 
    PTFI("/* Loop Statement */\n", data.indent);
    if(loop_data.restore_point >= 0)
-      PTFI("int restore_point%d = graph_change_stack == NULL ? 0 : topOfGraphChangeStack();\n", data.indent, loop_data.restore_point);
+      PTFI("int restore_point%d = topOfGraphChangeStack();\n", data.indent, loop_data.restore_point);
 
    PTFI("while(success)\n", data.indent);
    PTFI("{\n", data.indent);

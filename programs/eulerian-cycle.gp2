@@ -2,11 +2,6 @@
 // edges containing all nodes and edges in G.
 // Output: The graph G with an eulerian cycle identified via edge numbering.
 
-// The program chooses a node, colours it red, and nondeterministically 
-// colours the whole graph via edges from coloured nodes to uncoloured
-// nodes. Once all the nodes are coloured, if there exists an edge connecting
-// two nodes of the same colour, then the graph is not 2-colourable.
-
 Main = try (init; loop!) then (Cycle; (Next; Cycle)!; clean_up!)
 Cycle = (grow; loop!)!; unmark
 Next = first; loop!
@@ -48,5 +43,3 @@ clean_up(a:atom; x:list)
 [ (n0, a) | ]
 interface = {n0}
 where length(x) > 0
-
-

@@ -22,8 +22,7 @@ typedef struct GraphChangeStack {
    Graph *graph;
 } GraphChangeStack;
 
-GraphChangeStack *graph_change_stack = NULL;
-unsigned int graph_change_count = 0;
+static GraphChangeStack *graph_change_stack = NULL;
 
 static void makeGraphChangeStack(int initial_capacity)
 {
@@ -50,7 +49,6 @@ static void pushGraphChange(GraphChange change)
    if(graph_change_stack == NULL) makeGraphChangeStack(128);
    else if(graph_change_stack->size >= graph_change_stack->capacity) growGraphChangeStack();
    graph_change_stack->stack[graph_change_stack->size++] = change;
-   graph_change_count++;
 }
 
 static GraphChange pullGraphChange(void)
@@ -68,7 +66,7 @@ void setStackGraph(Graph *graph)
 
 int topOfGraphChangeStack(void)
 {
-   return graph_change_stack->size;
+   return graph_change_stack == NULL ? 0 : graph_change_stack->size;
 }
 
 void pushAddedNode(Node *node)
@@ -265,11 +263,6 @@ static void freeGraphChange(GraphChange change)
       case ADDED_NODE:
            if(change.first_occurrence)
              clearNodeInStack(change.added_node);
-           #ifndef MINIMAL_GC
-           #ifndef NO_NODE_LIST
-           tryGarbageCollectNode(graph, change.added_node);
-           #endif
-           #endif
            break;
 
       case ADDED_EDGE:

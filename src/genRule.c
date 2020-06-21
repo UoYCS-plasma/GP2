@@ -488,7 +488,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
    if(reflect_roots && !left_node->root) PTFI("if(nodeRoot(host_node)) %s\n", 3, fail_code);
    if(left_node->label.mark == ANY) PTFI("if(host_node->label.mark == 0) %s\n", 3, fail_code);
    else PTFI("if(host_node->label.mark != %d) %s\n", 3, left_node->label.mark, fail_code);
-   if(emitDegreeCheck(left_node, 6)) PTF("%s;\n", fail_code);
+   if(emitDegreeCheck(left_node, 6)) PTF("%s\n", fail_code);
    PTF("\n");
 
    /* If the above check fails and the edge is bidirectional, check the other 
