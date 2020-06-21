@@ -349,17 +349,8 @@ static void generateProgramCode(GPCommand *command, CommandData data)
          PTFI("/* Break Statement */\n", data.indent);
          if(data.restore_point >= 0)
          {
-            if(command->inner_loop)
-            {
-               PTFI("/* Update restore point for next iteration of inner loop. */\n", data.indent);
-               PTFI("if(success) restore_point%d = topOfGraphChangeStack();\n", data.indent, data.restore_point);
-            }
-            else
-            {
-               PTFI("/* Graph changes from loop body not required.\n", data.indent);
-               PTFI("   Discard them so that future graph roll backs are uncorrupted. */\n", data.indent);
-               PTFI("discardChanges(restore_point%d);\n", data.indent, data.restore_point);
-            }
+            PTFI("/* Update restore point for next iteration of inner loop. */\n", data.indent);
+            PTFI("if(success) restore_point%d = topOfGraphChangeStack();\n", data.indent, data.restore_point);
          }
          PTFI("break;\n", data.indent);
          break;
@@ -516,8 +507,6 @@ static void generateBranchStatement(GPCommand *command, CommandData data)
    PTFI("success = true;\n", new_data.indent); /* Reset success flag before executing else branch. */
    generateProgramCode(command->cond_branch.else_command, new_data);
    PTFI("}\n", data.indent);
-
-   if(data.context == IF_BODY || data.context == TRY_BODY) PTFI("break;\n", data.indent);
 
    return;
 }

@@ -153,13 +153,11 @@ typedef struct GPCommand {
     struct {
        struct GPCommand *loop_body;
        bool record_changes;
-       bool inner_loop;
     } loop_stmt;                        /* ALAP_STATEMENT */
     struct { 
       struct GPCommand *left_command; 
       struct GPCommand *right_command; 
     } or_stmt;			        /* PROGRAM_OR */
-    bool inner_loop; 			/* BREAK_STATEMENT */      
     /* skip and fail statements are represented by a GPCommand
      * containing only a type and location. */
   };

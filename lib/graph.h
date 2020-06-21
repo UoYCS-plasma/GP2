@@ -113,7 +113,6 @@ typedef struct Edge {
    HostLabel label;
 #define EFLAG_MATCHED 0b10
 #define EFLAG_DELETED 0b100
-#define EFLAG_INGRAPH 0b1000
 #define EFLAG_INSTACK 0b10000
 #define EFLAG_INSRCLST 0b100000
 #define EFLAG_INTRGLST 0b1000000
@@ -131,7 +130,6 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
 
 // Recover a deleted node that hasn't been garbage collected.
 void recoverNode(Graph *graph, Node *node);
-void recoverEdge(Graph *graph, Edge *edge);
 
 void removeNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);
@@ -171,19 +169,16 @@ void changeRoot(Graph *graph, Node *node);
 
 #define edgeMatched(edge) ((edge)->flags & EFLAG_MATCHED)
 #define edgeDeleted(edge) ((edge)->flags & EFLAG_DELETED)
-#define edgeInGraph(edge) ((edge)->flags & EFLAG_INGRAPH)
 #define edgeInStack(edge) ((edge)->flags & EFLAG_INSTACK)
 #define edgeInSrcLst(edge) ((edge)->flags & EFLAG_INSRCLST)
 #define edgeInTrgLst(edge) ((edge)->flags & EFLAG_INTRGLST)
 #define setEdgeMatched(edge) (edge)->flags |= EFLAG_MATCHED
 #define setEdgeDeleted(edge) (edge)->flags |= EFLAG_DELETED
-#define setEdgeInGraph(edge) (edge)->flags |= EFLAG_INGRAPH
 #define setEdgeInStack(edge) (edge)->flags |= EFLAG_INSTACK
 #define setEdgeInSrcLst(edge) (edge)->flags |= EFLAG_INSRCLST
 #define setEdgeInTrgLst(edge) (edge)->flags |= EFLAG_INTRGLST
 #define clearEdgeMatched(edge) (edge)->flags &= ~EFLAG_MATCHED
 #define clearEdgeDeleted(edge) (edge)->flags &= ~EFLAG_DELETED
-#define clearEdgeInGraph(edge) (edge)->flags &= ~EFLAG_INGRAPH
 #define clearEdgeInStack(edge) (edge)->flags &= ~EFLAG_INSTACK
 #define clearEdgeInSrcLst(edge) (edge)->flags &= ~EFLAG_INSRCLST
 #define clearEdgeInTrgLst(edge) (edge)->flags &= ~EFLAG_INTRGLST

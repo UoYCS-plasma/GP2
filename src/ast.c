@@ -240,7 +240,6 @@ GPCommand *newASTAlap(YYLTYPE location, GPCommand *loop_body)
    GPCommand *command = makeGPCommand(location, ALAP_STATEMENT);
    command->loop_stmt.loop_body = loop_body;
    command->loop_stmt.record_changes = false;
-   command->loop_stmt.inner_loop = false;
    return command;
 }
 
@@ -255,8 +254,7 @@ GPCommand *newASTOrStmt(YYLTYPE location, GPCommand *left_command,
 
 GPCommand *newASTBreak(YYLTYPE location)
 {
-   GPCommand *command = makeGPCommand(location, BREAK_STATEMENT); 
-   command->inner_loop = false; 
+   GPCommand *command = makeGPCommand(location, BREAK_STATEMENT);
    return command;
 }
 

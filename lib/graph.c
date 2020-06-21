@@ -126,7 +126,6 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
    edge->source = source;
    edge->target = target;
    edge->flags = (char) 0;
-   setEdgeInGraph(edge);
 
    int srclstind = genFreeBigArrayPos(&(source->_edgelistarray));
    EdgeList *srclist = (EdgeList *) getBigArrayValue(
@@ -150,34 +149,6 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 
    graph->number_of_edges++;
    return edge;
-}
-
-// Assume edge flags are already correct / src and trg exist.
-void recoverEdge(Graph *graph, Edge *edge)
-{
-   setEdgeInGraph(edge);
-
-   int srclstind = genFreeBigArrayPos(&(edgeSource(edge)->_edgelistarray));
-   EdgeList *srclist = (EdgeList *) getBigArrayValue(
-       &(edgeSource(edge)->_edgelistarray), srclstind);
-   srclist->index = srclstind;
-   srclist->edge = edge;
-   srclist->next = edgeSource(edge)->out_edges;
-   edgeSource(edge)->out_edges = srclist;
-   setEdgeInSrcLst(edge);
-   incrementOutDegree(edgeSource(edge));
-
-   int trglstind = genFreeBigArrayPos(&(edgeTarget(edge)->_edgelistarray));
-   EdgeList *trglist = (EdgeList *) getBigArrayValue(
-       &(edgeTarget(edge)->_edgelistarray), trglstind);
-   trglist->index = trglstind;
-   trglist->edge = edge;
-   trglist->next = edgeTarget(edge)->in_edges;
-   edgeTarget(edge)->in_edges = trglist;
-   setEdgeInTrgLst(edge);
-   incrementInDegree(edgeTarget(edge));
-
-   graph->number_of_edges++;
 }
 
 void removeNode(Graph *graph, Node *node)
