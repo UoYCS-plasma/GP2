@@ -148,8 +148,8 @@ void printMakeFile(string output_dir, string install_dir)
    fprintf(makefile, "OBJECTS := $(patsubst %%.c, %%.o, $(wildcard *.c))\n");  
    fprintf(makefile, "CC=gcc\n\n");
 
-   if(debug_flags) fprintf(makefile, "CFLAGS = -g -I$(INCDIR) -L$(LIBDIR) -Og -Wall -Wextra -lgp2\n\n");
-   else fprintf(makefile, "CFLAGS = -I$(INCDIR) -L$(LIBDIR) -O3 -Wall -Wextra -lgp2\n\n");
+   if(debug_flags) fprintf(makefile, "CFLAGS = -g -I$(INCDIR) -L$(LIBDIR) -Og -Wall -Wno-unused-but-set-variable -lgp2\n\n");
+   else fprintf(makefile, "CFLAGS = -I$(INCDIR) -L$(LIBDIR) -O3 -Wall -Wno-unused-but-set-variable -lgp2\n\n");
    fprintf(makefile, "default:\t$(OBJECTS)\n\t\t$(CC) $(OBJECTS) $(CFLAGS) -o gp2run\n\n");
    fprintf(makefile, "%%.o:\t\t%%.c\n\t\t$(CC) -c $(CFLAGS) -o $@ $<\n\n");
    fprintf(makefile, "clean:\t\n\t\trm *\n");

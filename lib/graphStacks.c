@@ -21,8 +21,7 @@ typedef struct GraphChangeStack {
    GraphChange *stack;
 } GraphChangeStack;
 
-GraphChangeStack *graph_change_stack = NULL;
-int graph_change_count = 0;
+static GraphChangeStack *graph_change_stack = NULL;
 
 static void makeGraphChangeStack(int initial_capacity)
 {
@@ -60,7 +59,6 @@ static void pushGraphChange(GraphChange change)
    if(graph_change_stack == NULL) makeGraphChangeStack(128);
    else if(graph_change_stack->size >= graph_change_stack->capacity) growGraphChangeStack();
    graph_change_stack->stack[graph_change_stack->size++] = change;
-   graph_change_count++;
 }
 
 static GraphChange pullGraphChange(void)
@@ -72,7 +70,7 @@ static GraphChange pullGraphChange(void)
 
 int topOfGraphChangeStack(void)
 {
-   return graph_change_stack->size;
+   return graph_change_stack == NULL ? 0 : graph_change_stack->size;
 }
 
 void pushAddedNode(int index, bool hole_filled)
@@ -392,9 +390,8 @@ void freeGraphChangeStack(void)
 }
 
 
-Graph **graph_stack = NULL;
-int graph_stack_index = 0;
-int graph_copy_count = 0;
+static Graph **graph_stack = NULL;
+static int graph_stack_index = 0;
 
 void copyGraph(Graph *graph)
 { 
@@ -511,7 +508,6 @@ void copyGraph(Graph *graph)
       }
    }
    graph_stack[graph_stack_index++] = graph_copy;
-   graph_copy_count++;
 }
 
 Graph *revertGraph(Graph *current_graph, int restore_point)

@@ -94,10 +94,6 @@ typedef struct GraphChange
    };
 } GraphChange; 
 
-struct GraphChangeStack;
-extern struct GraphChangeStack *graph_change_stack;
-extern int graph_change_count;
-
 int topOfGraphChangeStack(void);
 void pushAddedNode(int index, bool hole_filled);
 void pushAddedEdge(int index, bool hole_filled);
@@ -112,10 +108,6 @@ void undoChanges(Graph *graph, int restore_point);
 void discardChanges(int restore_point);
 void freeGraphChangeStack(void);
 
-
-extern Graph **graph_stack;
-extern int graph_stack_index;
-extern int graph_copy_count;
 
 /* Creates a memory copy of the passed graph and pushes it to the graph stack. */
 void copyGraph(Graph *graph);
