@@ -33,6 +33,7 @@ void generateConditionVariables(Condition *condition)
       /* Booleans representing 'not' predicates are initialised with false. */
       case 'n':
            PTF("bool b%d = false;\n", bool_count++);
+           generateConditionVariables(condition->neg_condition);
            break;
 
       case 'a':
