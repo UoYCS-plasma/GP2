@@ -71,7 +71,16 @@
 ### Verification of Graph Programs
 
 *   G. Wulandari and D. Plump  
-    [Verification of Graph Programs with First-Order Logic](https://docs.google.com/viewer?url=https://github.com/UoYCS-plasma/GP2/blob/gh-pages/documents/WP20a_FOLver.pdf?raw=true)  
+    [Verification of Graph Programs with Monadic Second-Order Logic](https://docs.google.com/viewer?url=https://github.com/UoYCS-plasma/GP2/blob/gh-pages/documents/Verifying_Graph_Programs_with_MSOL(extended).pdf?raw=true)  
+    _Technical Report_. 2021.  
+    
+*   G. Wulandari and D. Plump  
+    [Verification of Graph Programs with First-Order Logic](http://eptcs.web.cse.unsw.edu.au/paper.cgi?GCM2020.11)  
+    _Proc. Graph Computation Models (GCM 2020)_. Electronic Proceeding in Computer Science 330, pages 181-200. 2020.  
+    doi: [10.4204/EPTCS.330](https://doi.org/10.4204/EPTCS.330)
+    
+*   G. Wulandari and D. Plump  
+    [Verification of Graph Programs with First-Order Logic (long version)](https://arxiv.org/abs/2010.14549)  
     _Technical Report_. 2020.  
     
 *   G. Wulandari and D. Plump  
