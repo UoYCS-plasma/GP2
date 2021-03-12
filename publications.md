@@ -71,7 +71,7 @@
 ### Verification of Graph Programs
 
 *   G. Wulandari and D. Plump  
-    [Verification of Graph Programs with Monadic Second-Order Logic](https://docs.google.com/viewer?url=https://github.com/UoYCS-plasma/GP2/blob/gh-pages/documents/Verifying_Graph_Programs_with_MSOL(extended).pdf?raw=true)  
+    [Verification of Graph Programs with Monadic Second-Order Logic (long version)](https://docs.google.com/viewer?url=https://github.com/UoYCS-plasma/GP2/blob/gh-pages/documents/Verifying_Graph_Programs_with_MSOL(extended).pdf?raw=true)  
     _Technical Report_. 2021.  
     
 *   G. Wulandari and D. Plump  
