@@ -173,6 +173,10 @@ These are the flags:
 - **-l** - Specify directory of lib source files.
 - **-o** - Specify directory for generated code and program output.
 
+## GP 2 Home Page
+
+The GP 2 home page can be found [here](https://github.com/UoYCS-plasma/GP2).
+
 ## License
 
 See the file [LICENSE](https://github.com/UoYCS-plasma/GP2/blob/master/LICENSE).
