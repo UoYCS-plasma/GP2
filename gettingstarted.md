@@ -4,7 +4,7 @@ The GP 2 compiler translates a GP 2 program into executable C code. The generate
 
 ## Installation
 
-To run the compiler, you need to install the C library [Judy](http://judy.sourceforge.net/index.html) which you may find in your distribution's package manager. In the Ubuntu repositories, you can find it under ``libjudy-dev``.
+To run the compiler, you need to install the C library [Judy](http://judy.sourceforge.net/index.html) which you may find in your distribution's package manager. In the Ubuntu repositories, you can find it under ``libjudy-dev``. You also need to install ``cmake``.
 
 There are several ways to install the compiler:
 
