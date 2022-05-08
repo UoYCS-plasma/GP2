@@ -8,7 +8,8 @@ To run the compiler, you need to install the C library [Judy](http://judy.source
 
 There are several ways to install the compiler:
 
-- [**Pre-built**](https://github.com/UoYCS-plasma/GP2/tree/gh-pages/pre-built) - Use a version of the compiler that has already been built. This might not work correctly on every Linux distribution, but does work on Ubuntu 18.04 for instance.
+- [**DEB Package**](https://github.com/UoYCS-plasma/GP2/tree/gh-pages/deb) - This is the recommended installation method for Ubuntu users.
+- [**Pre-built**](https://github.com/UoYCS-plasma/GP2/tree/gh-pages/pre-built) - Use a version of the compiler that has already been built. This may work on non-Ubuntu distributions.
 - [**Build from source code**](installation/buildcompiler) - Follow the link for a guide on how to build the compiler yourself.
 - [**Docker**](installation/docker) - Follow the link for instructions on how to install the compiler via Docker. This method is recommended for MacOS users.
 - **University of York** - In the Department of Computer Science, the compiler is installed on most Linux machines.
