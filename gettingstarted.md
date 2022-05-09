@@ -8,7 +8,7 @@ To run the compiler, you need to install the C library [Judy](http://judy.source
 
 There are several ways to install the compiler:
 
-- [**DEB Package**](https://github.com/UoYCS-plasma/GP2/tree/gh-pages/deb) - This is the recommended installation method for Ubuntu users.
+- [**.deb Package**](https://github.com/UoYCS-plasma/GP2/tree/gh-pages/deb) - This is the recommended (and a common) installation method for Ubuntu users. Advantage: easy to install by opening the file in "Software Install" or run the command ``sudo apt install ./gp2c.deb`` in the folder containing the .deb file. Disadantage: may not work on non-Ubuntu distributions.
 - [**Pre-built**](https://github.com/UoYCS-plasma/GP2/tree/gh-pages/pre-built) - Use a version of the compiler that has already been built. This may work on non-Ubuntu distributions.
 - [**Build from source code**](installation/buildcompiler) - Follow the link for a guide on how to build the compiler yourself.
 - [**Docker**](installation/docker) - Follow the link for instructions on how to install the compiler via Docker. This method is recommended for MacOS users.
@@ -18,6 +18,7 @@ There are several ways to install the compiler:
 
 Usage depends on which installation method you used:
 
+- **.deb Package** - [usage guide](usage/deb)
 - **Pre-built** - [bash file usage](usage/pre-built)
 - **Build from source code** - [usage guide](usage/compiler), [bash file usage](https://github.com/UoYCS-plasma/GP2/tree/master/bin/compiler)
 - **Docker** - [bash file usage](https://github.com/UoYCS-plasma/GP2/tree/master/bin/docker)
