@@ -92,7 +92,7 @@ interface =
 {
 	n1, n2, n3
 }
-where not edge(1, 3)
+where not edge(n1, n3)
 ```
 
 and saving it as *"transitive_closure.gp2"*. The general form of a program in text form is:
