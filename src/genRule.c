@@ -247,12 +247,22 @@ static void generateMatchingCode(Rule *rule, bool predicate)
               emitNodeFromEdgeMatcher(rule, node, operation->type, operation->next);
               break;
 
+         case 'x':
+              node = getRuleNode(rule->lhs, operation->index);
+              emitNodeFromEdgeMatcher(rule, node, operation->type, operation->next);
+              break;
+
          case 'e': 
               edge = getRuleEdge(rule->lhs, operation->index);
               emitEdgeMatcher(rule, edge, operation->next);
               break;
 
          case 'l':
+              edge = getRuleEdge(rule->lhs, operation->index);
+              emitLoopEdgeMatcher(rule, edge, operation->next);
+              break;
+         
+         case 'd':
               edge = getRuleEdge(rule->lhs, operation->index);
               emitLoopEdgeMatcher(rule, edge, operation->next);
               break;
@@ -477,7 +487,7 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
    PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge)\n",
        left_node->index);
    PTF("{\n");
-   if(type == 'i' || type == 'b') 
+   if(type == 'i' || type == 'b' || type == 'x') 
         PTFI("Node *host_node = edgeTarget(host_edge);\n\n", 3);
    else PTFI("Node *host_node = edgeSource(host_edge);\n\n", 3);
 
@@ -603,7 +613,9 @@ static void emitEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_op)
    PTF("static bool match_e%d(Morphism *morphism)\n", left_edge->index);
    PTF("{\n");
    PTFI("EdgeList *elistpos = NULL;\n", 3);
-   PTFI("for(Edge *host_edge; (host_edge = yieldNextEdge(host, &elistpos)) != NULL;)\n", 3);
+   if(left_edge->label.mark == DASHED)
+      PTFI("for(Edge *host_edge; (host_edge = yieldNextEdge(host, &elistpos, true)) != NULL;)\n", 3);
+   else PTFI("for(Edge *host_edge; (host_edge = yieldNextEdge(host, &elistpos, false)) != NULL;)\n", 3);
    PTFI("{\n", 3);
    PTFI("if(edgeMatched(host_edge)) continue;\n", 6);
    if(left_edge->label.mark == ANY) 
@@ -629,7 +641,9 @@ static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_
    PTFI("if(host_node == NULL) return false;\n", 3);
 
    PTFI("EdgeList *elistpos = NULL;\n", 3);
-   PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos)) != NULL;)\n", 3);
+   if(left_edge->label.mark == DASHED)
+      PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos, true)) != NULL;)\n", 3);
+   else PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos, false)) != NULL;)\n", 3);
    PTFI("{\n", 3);
    PTFI("if(edgeMatched(host_edge)) continue;\n", 6);
    PTFI("if(edgeSource(host_edge) != edgeTarget(host_edge)) continue;\n", 6);
@@ -688,10 +702,16 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
    }
 
    PTFI("elistpos = NULL;\n", 3);
-   if(source)
-      PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos)) != NULL;)\n", 3);
-   else
-      PTFI("for(Edge *host_edge; (host_edge = yieldNextInEdge(host, host_node, &elistpos)) != NULL;)\n", 3);
+   if(source){
+      if(left_edge->label.mark == DASHED)
+         PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos, true)) != NULL;)\n", 3);
+      else PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos, false)) != NULL;)\n", 3);
+   }
+   else{
+      if(left_edge->label.mark == DASHED)
+         PTFI("for(Edge *host_edge; (host_edge = yieldNextInEdge(host, host_node, &elistpos, true)) != NULL;)\n", 3);
+      else PTFI("for(Edge *host_edge; (host_edge = yieldNextInEdge(host, host_node, &elistpos, false)) != NULL;)\n", 3);
+   }
 
    PTFI("{\n", 3);
    PTFI("if(edgeMatched(host_edge)) continue;\n", 6);
@@ -937,7 +957,7 @@ void generateApplicationCode(Rule *rule)
    for(index = 0; index < rule->lhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->lhs, index);
-      if(edge->interface == NULL)
+      if(edge->interface == NULL || edge->redashed == true)
       {
          /* Generate code to remove the edge. */
          if(!host_edge_declared)

@@ -38,13 +38,17 @@
 /* Search operations are categorised by a character as follows:
  * 'n': Non-root node.
  * 'r': Root node.
- * 'i': Node matched from its incoming edge.
- * 'o': Node matched from its outgoing edge.
- * 'b': Node matched from an incident bidirectional edge.
- * 'e': Edge.
+ * 'i': Node matched from its incoming undashed edge.
+ * 'o': Node matched from its outgoing undashed edge.
+ * 'b': Node matched from an incident undashed bidirectional edge.
+ * 'u': Node matched from its incoming dashed edge.
+ * 'v': Node matched from its outgoing dashed edge.
+ * 'x': Node matched from an incident dashed bidirectional edge.
+ * 'e': Edge (either dashed or undashed).
  * 's': Edge matched from its source.
  * 't': Edge matched from its target.
- * 'l': Looping edge matched from its incident node.
+ * 'l': Undashed looping edge matched from its incident node.
+ * 'd': Dashed looping edge matched from its incident node.
  *
  * The index of a search operation refers to the index of the node or edge
  * in the LHS graph's corresponding pointer array. */

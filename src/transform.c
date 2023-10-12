@@ -363,6 +363,10 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
             right_edge->interface = left_edge;
             if(left_edge->label.mark == right_edge->label.mark)
                right_edge->remarked = false;
+            if(left_edge->label.mark == DASHED && right_edge->label.mark != DASHED)
+               right_edge->redashed = true;
+            if(left_edge->label.mark != DASHED && right_edge->label.mark == DASHED)
+               right_edge->redashed = true;
             if(equalRuleLists(left_edge->label, right_edge->label))
                right_edge->relabelled = false;
             else right_edge->relabelled = true;
