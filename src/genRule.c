@@ -158,7 +158,13 @@ static void generateMatchingCode(Rule *rule, bool predicate)
 
          case 'i': 
          case 'o': 
+         case 'u': 
+         case 'v': 
          case 'b':
+              PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge);\n",
+                  operation->index);
+              break;
+         case 'x':
               PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge);\n",
                   operation->index);
               break;
@@ -167,6 +173,9 @@ static void generateMatchingCode(Rule *rule, bool predicate)
          case 's': 
          case 't':
          case 'l':
+              PTF("static bool match_e%d(Morphism *morphism);\n", operation->index);
+              break;
+         case 'd':
               PTF("static bool match_e%d(Morphism *morphism);\n", operation->index);
               break;
 
@@ -242,6 +251,8 @@ static void generateMatchingCode(Rule *rule, bool predicate)
 
          case 'i': 
          case 'o': 
+         case 'u': 
+         case 'v': 
          case 'b':
               node = getRuleNode(rule->lhs, operation->index);
               emitNodeFromEdgeMatcher(rule, node, operation->type, operation->next);
@@ -480,19 +491,19 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
  * the previous searchplan function as one of its arguments. It gets the
  * appropriate host node (source or target of the host edge) and checks if this
  * node is compatible with the rule node. 
- * The type argument is either 'i', 'o', or 'b'. */
+ * The type argument is either 'i', 'o', 'u', 'v', 'b' or 'x'. */
 static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
                                     SearchOp *next_op)
 {
    PTF("static bool match_n%d(Morphism *morphism, Edge *host_edge)\n",
        left_node->index);
    PTF("{\n");
-   if(type == 'i' || type == 'b' || type == 'x') 
+   if(type == 'i' || type == 'u' || type == 'b' || type == 'x') 
         PTFI("Node *host_node = edgeTarget(host_edge);\n\n", 3);
    else PTFI("Node *host_node = edgeSource(host_edge);\n\n", 3);
 
-   string fail_code = (type == 'b') ? "candidate_node = false;" : "return false;";
-   if(type == 'b') PTFI("bool candidate_node = true;\n", 3);
+   string fail_code = (type == 'b' || type == 'x') ? "candidate_node = false;" : "return false;";
+   if(type == 'b' || type == 'x') PTFI("bool candidate_node = true;\n", 3);
    PTFI("if(nodeMatched(host_node)) %s\n", 3, fail_code);
    if(left_node->root) PTFI("if(!nodeRoot(host_node)) %s\n", 3, fail_code);
    if(reflect_roots && !left_node->root) PTFI("if(nodeRoot(host_node)) %s\n", 3, fail_code);
@@ -503,12 +514,12 @@ static void emitNodeFromEdgeMatcher(Rule *rule, RuleNode *left_node, char type,
 
    /* If the above check fails and the edge is bidirectional, check the other 
     * node incident to the host edge. Otherwise return false. */
-   if(type == 'b')
+   if(type == 'b' || type == 'x')
    {
       PTFI("if(!candidate_node)\n", 3);
       PTFI("{\n", 3); 
       PTFI("/* Matching from bidirectional edge: check the second incident node. */\n", 6);
-      if(type == 'i' || type == 'b') PTFI("host_node = edgeSource(host_edge);\n", 6);
+      if(type == 'i' || type == 'b' || type == 'u' || type == 'x') PTFI("host_node = edgeSource(host_edge);\n", 6);
       else PTFI("host_node = edgeTarget(host_edge);\n", 6);
       PTFI("if(nodeMatched(host_node)) return false;\n", 6);
       if(left_node->root) PTFI("if(!nodeRoot(host_node)) return false;\n", 6);
@@ -761,7 +772,7 @@ static void emitEdgeMatchResultCode(int index, SearchOp *next_op, int indent)
    {
       PTFI("if(", indent + 3);
       emitNextMatcherCall(next_op);
-      PTF(") return true;\n");
+      PTF(") return true; //%c\n", next_op->type);
       PTFI("else\n", indent + 3);
       PTFI("{\n", indent + 3);
       PTFI("removeEdgeMap(morphism, %d);\n", indent + 6, index);
@@ -781,16 +792,26 @@ static void emitNextMatcherCall(SearchOp *next_operation)
            PTF("match_n%d(morphism)", next_operation->index);
            break;
 
-      case 'i':
+      case 'i' :
       case 'o':
+      case 'u':
+      case 'v':
       case 'b':
            PTF("match_n%d(morphism, host_edge)", next_operation->index);
            break;
-  
+           
+      case 'x':
+           PTF("match_n%d(morphism, host_edge)", next_operation->index);
+           break;
+
       case 'e':
       case 's':
       case 't':
       case 'l':
+           PTF("match_e%d(morphism)", next_operation->index);
+           break;
+
+      case 'd':
            PTF("match_e%d(morphism)", next_operation->index);
            break;
 
@@ -919,7 +940,8 @@ void generateApplicationCode(Rule *rule)
    for(index = 0; index < rule->variables; index++)
    {
       Variable variable = rule->variable_list[index];
-      if(variable.used_by_rule) generateVariableCode(index, variable.type);
+      //if(variable.used_by_rule) TODO: FIX THE UNUSUED VARIABLES.
+         generateVariableCode(index, variable.type);
    }
    bool node_declared = false;
    for(index = 0; index < rule->lhs->node_index; index++)
@@ -957,11 +979,12 @@ void generateApplicationCode(Rule *rule)
    for(index = 0; index < rule->lhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->lhs, index);
-      if(edge->interface == NULL || edge->redashed == true)
+      if(edge->interface == NULL || edge->redashed)
       {
          /* Generate code to remove the edge. */
+
          if(!host_edge_declared)
-         {
+         {  
             PTFI("Edge *host_edge = lookupEdge(morphism, %d);\n", 3, index);
             host_edge_declared = true;
          }
@@ -1180,7 +1203,7 @@ void generateApplicationCode(Rule *rule)
    for(index = 0; index < rule->rhs->edge_index; index++)
    {
       RuleEdge *edge = getRuleEdge(rule->rhs, index);
-      if(edge->interface != NULL) continue;
+      if(edge->interface != NULL && !edge->redashed) continue;
       if(!host_edge_declared)
       {
          PTFI("Edge *host_edge;\n", 3);

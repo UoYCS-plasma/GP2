@@ -359,8 +359,6 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
          {
             RuleEdge *left_edge = getRuleEdge(rule->lhs, map->left_index);
             RuleEdge *right_edge = getRuleEdge(rule->rhs, edge_index);
-            left_edge->interface = right_edge;
-            right_edge->interface = left_edge;
             if(left_edge->label.mark == right_edge->label.mark)
                right_edge->remarked = false;
             if(left_edge->label.mark == DASHED && right_edge->label.mark != DASHED)
@@ -370,6 +368,8 @@ void scanRHS(Rule *rule, GPGraph *ast_rhs, List *interface)
             if(equalRuleLists(left_edge->label, right_edge->label))
                right_edge->relabelled = false;
             else right_edge->relabelled = true;
+            left_edge->interface = right_edge;
+            right_edge->interface = left_edge;
             /* Remove the map for the LHS-edge, otherwise a parallel RHS-edge
              * may be associated with this edge. */
             edge_map = removeMap(edge_map, map);     

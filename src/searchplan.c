@@ -41,7 +41,7 @@ static void appendSearchOp(Searchplan *plan, char type, int index)
      print_to_log("Error (makeSearchplan): malloc failure.\n");
      exit(1);
    }   
-    if(type == 'e' || type == 's' || type == 't' || type == 'l')
+    if(type == 'e' || type == 's' || type == 't' || type == 'l' || type == 'd')
         new_op->is_node = false;
    else new_op->is_node = true;
    new_op->type = type;
