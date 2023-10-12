@@ -84,6 +84,8 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    node->label = label;
    node->out_edges = NULL;
    node->in_edges = NULL;
+   node->out_edges_dashed = NULL;
+   node->in_edges_dashed = NULL;
    node->outdegree = 0;
    node->indegree = 0;
    node->_edgelistarray = makeBigArray(sizeof(EdgeList));
@@ -132,8 +134,14 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
        &(source->_edgelistarray), srclstind);
    srclist->index = srclstind;
    srclist->edge = edge;
-   srclist->next = source->out_edges;
-   source->out_edges = srclist;
+   if(label.mark == DASHED){
+      srclist->next = source->out_edges_dashed;
+      source->out_edges_dashed = srclist;
+   }
+   else{
+      srclist->next = source->out_edges;
+      source->out_edges = srclist;
+   }
    setEdgeInSrcLst(edge);
    incrementOutDegree(source);
 
@@ -142,8 +150,14 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
        &(target->_edgelistarray), trglstind);
    trglist->index = trglstind;
    trglist->edge = edge;
-   trglist->next = target->in_edges;
-   target->in_edges = trglist;
+   if(label.mark == DASHED){
+      trglist->next = target->in_edges_dashed;
+      target->in_edges_dashed = trglist;
+   }
+   else{
+      trglist->next = target->in_edges;
+      target->in_edges = trglist;
+   }
    setEdgeInTrgLst(edge);
    incrementInDegree(target);
 
@@ -271,12 +285,18 @@ Node *yieldNextNodeFast(Graph *graph, NodeList **current_prev)
 }
 #endif
 
-Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
+Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev, bool dashed)
 {
    EdgeList *current;
    bool initial = *current_prev == NULL;
-   if(initial) *current_prev = current = node->out_edges;
-   else current = (*current_prev)->next;
+   if(dashed){
+      if(initial) *current_prev = current = node->out_edges_dashed;
+      else current = (*current_prev)->next;
+   }
+   else{
+      if(initial) *current_prev = current = node->out_edges;
+      else current = (*current_prev)->next;
+   }
 
    bool deleted_edge = true;
 
@@ -308,11 +328,17 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev)
    return current->edge;
 }
 
-Edge *yieldNextOutEdgeFast(Graph *graph, Node *node, EdgeList **current_prev)
+Edge *yieldNextOutEdgeFast(Graph *graph, Node *node, EdgeList **current_prev, bool dashed)
 {
    EdgeList *current;
-   if(*current_prev == NULL) *current_prev = current = node->out_edges;
-   else current = (*current_prev)->next;
+   if(dashed){
+      if(*current_prev == NULL) *current_prev = current = node->out_edges_dashed;
+      else current = (*current_prev)->next;
+   }
+   else{
+      if(*current_prev == NULL) *current_prev = current = node->out_edges;
+      else current = (*current_prev)->next;
+   }
 
    bool deleted_edge = true;
    while(deleted_edge) {
@@ -325,12 +351,18 @@ Edge *yieldNextOutEdgeFast(Graph *graph, Node *node, EdgeList **current_prev)
    return current->edge;
 }
 
-Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev)
+Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev, bool dashed)
 {
    EdgeList *current;
    bool initial = *current_prev == NULL;
-   if(initial) *current_prev = current = node->in_edges;
-   else current = (*current_prev)->next;
+   if(dashed){
+      if(initial) *current_prev = current = node->in_edges_dashed;
+      else current = (*current_prev)->next;
+   }
+   else{
+      if(initial) *current_prev = current = node->in_edges;
+      else current = (*current_prev)->next;
+   }
 
    bool deleted_edge = true;
 
@@ -421,7 +453,7 @@ void printGraph(Graph *graph, FILE *file)
       if(nodeDeleted(node)) continue;
    #endif
       elistpos = NULL;
-      for(Edge *edge; (edge = yieldNextOutEdge(graph, node, &elistpos)) != NULL;)
+      for(Edge *edge; (edge = yieldNextOutEdge(graph, node, &elistpos, false)) != NULL;)
       {
          /* Three edges per line */
          if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
@@ -481,7 +513,7 @@ void printGraphFast(Graph *graph, FILE *file)
       if(nodeDeleted(node)) continue;
    #endif
       elistpos = NULL;
-      for(Edge *edge; (edge = yieldNextOutEdgeFast(graph, node, &elistpos)) != NULL;)
+      for(Edge *edge; (edge = yieldNextOutEdgeFast(graph, node, &elistpos, false)) != NULL;)
       {
          PTF("(%d, %d, %d, ", edge->index, edgeSource(edge)->index, edgeTarget(edge)->index);
          printHostLabel(edge->label, file);
