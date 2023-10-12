@@ -462,6 +462,16 @@ void printGraph(Graph *graph, FILE *file)
          printHostLabel(edge->label, file);
          PTF(") ");
       }
+      elistpos = NULL;
+      for(Edge *edge; (edge = yieldNextOutEdge(graph, node, &elistpos, true)) != NULL;)
+      {
+         /* Three edges per line */
+         if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
+         edge_count++;
+         PTF("(%d, %d, %d, ", edge->index, edgeSource(edge)->index, edgeTarget(edge)->index);
+         printHostLabel(edge->label, file);
+         PTF(") ");
+      }
    }
    PTF("]\n\n");
 }
@@ -514,6 +524,13 @@ void printGraphFast(Graph *graph, FILE *file)
    #endif
       elistpos = NULL;
       for(Edge *edge; (edge = yieldNextOutEdgeFast(graph, node, &elistpos, false)) != NULL;)
+      {
+         PTF("(%d, %d, %d, ", edge->index, edgeSource(edge)->index, edgeTarget(edge)->index);
+         printHostLabel(edge->label, file);
+         PTF(") ");
+      }
+      elistpos = NULL;
+      for(Edge *edge; (edge = yieldNextOutEdgeFast(graph, node, &elistpos, true)) != NULL;)
       {
          PTF("(%d, %d, %d, ", edge->index, edgeSource(edge)->index, edgeTarget(edge)->index);
          printHostLabel(edge->label, file);
