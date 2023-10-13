@@ -310,8 +310,10 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev, bool d
      {
        if((*current_prev) != current)
          (*current_prev)->next = current->next;
-       if (initial)
-         node->out_edges = current->next;
+       if (initial){
+         if(dashed) node->out_edges_dashed = current->next;
+         else node->out_edges = current->next;
+       }
        current = current->next;
        clearEdgeInSrcLst(edge);
        #ifndef MINIMAL_GC
@@ -376,8 +378,10 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev, bool da
      {
        if((*current_prev) != current)
          (*current_prev)->next = current->next;
-       if (initial)
-         node->in_edges = current->next;
+       if (initial){
+         if(dashed) node->in_edges_dashed = current->next;
+         else node->in_edges = current->next;
+       }
        current = current->next;
        clearEdgeInSrcLst(edge);
        #ifndef MINIMAL_GC
