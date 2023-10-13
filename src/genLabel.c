@@ -581,7 +581,6 @@ void generateVariableResultCode(Rule *rule, int id, bool list_variable, int inde
  * variable name generated. */
 void generateVariableCode(int id, GPType type)
 {
-   PTFI("// Called before\n", 3);
    switch(type)
    {
       case INTEGER_VAR:
@@ -595,12 +594,10 @@ void generateVariableCode(int id, GPType type)
 
       case ATOM_VAR:
       case LIST_VAR:
-           PTFI("// Called\n", 3);
            PTFI("Assignment var_%d = getAssignment(morphism, %d);\n", 3, id, id);
            break;
       
       default:
-           PTFI("// Failed to match\n", 3);
            print_to_log("Error (generateVariableCode): Unexpected type %d\n", type);
            break;
    }

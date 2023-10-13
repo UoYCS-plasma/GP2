@@ -41,7 +41,7 @@ static void appendSearchOp(Searchplan *plan, char type, int index)
      print_to_log("Error (makeSearchplan): malloc failure.\n");
      exit(1);
    }   
-    if(type == 'e' || type == 's' || type == 't' || type == 'l' || type == 'd')
+    if(type == 'e' || type == 's' || type == 't' || type == 'l')
         new_op->is_node = false;
    else new_op->is_node = true;
    new_op->type = type;
@@ -98,8 +98,7 @@ static void traverseNode(Searchplan *searchplan, RuleNode *node, char type,
    appendSearchOp(searchplan, type, node->index);
    /* Search the node's incident edges for an untagged edge. Outedges
     * are arbitrarily examined first. If no such edges exist, the function
-    * exits and control passes to the caller. Undashed edges are first checked,
-    * and dashed ones follow.*/
+    * exits and control passes to the caller. */
    RuleEdges *iterator = node->outedges;
    while(iterator != NULL)
    {
@@ -107,7 +106,7 @@ static void traverseNode(Searchplan *searchplan, RuleNode *node, char type,
       if(!tagged_edges[edge->index])
       {
          if(edge->source == edge->target) 
-            traverseEdge(searchplan, edge, 'l', tagged_nodes, tagged_edges);
+              traverseEdge(searchplan, edge, 'l', tagged_nodes, tagged_edges);
          else traverseEdge(searchplan, edge, 's', tagged_nodes, tagged_edges);
       }
       iterator = iterator->next;
@@ -124,30 +123,6 @@ static void traverseNode(Searchplan *searchplan, RuleNode *node, char type,
       }
       iterator = iterator->next;
    }
-   iterator = node->outedges_dashed;
-   while(iterator != NULL)
-   {
-      RuleEdge *edge = iterator->edge;
-      if(!tagged_edges[edge->index])
-      {
-         if(edge->source == edge->target) 
-            traverseEdge(searchplan, edge, 'd', tagged_nodes, tagged_edges);
-         else traverseEdge(searchplan, edge, 's', tagged_nodes, tagged_edges);
-      }
-      iterator = iterator->next;
-   }
-   iterator = node->inedges_dashed;
-   while(iterator != NULL)
-   {
-      RuleEdge *edge = iterator->edge;
-      if(!tagged_edges[edge->index])
-      {
-         if(edge->source == edge->target)
-              traverseEdge(searchplan, edge, 'd', tagged_nodes, tagged_edges);
-         else traverseEdge(searchplan, edge, 't', tagged_nodes, tagged_edges);
-      }
-      iterator = iterator->next;
-   }
 }
 
 static void traverseEdge(Searchplan *searchplan, RuleEdge *edge, char type,
@@ -158,7 +133,7 @@ static void traverseEdge(Searchplan *searchplan, RuleEdge *edge, char type,
 
    /* If the edge is a loop, its incident node has already been examined. 
     * Backtrack by returning control to the caller. */
-   if(type == 'l' || type == 'd') return;
+   if(type == 'l') return;
 
    /* Continue the graph traversal of any untagged nodes incident to the edge. */
    if(type == 's')
@@ -166,16 +141,9 @@ static void traverseEdge(Searchplan *searchplan, RuleEdge *edge, char type,
       RuleNode *target = edge->target;
       if(!tagged_nodes[target->index])
       {
-         if(edge->bidirectional){
-            if(edge->label.mark == DASHED)
-               traverseNode(searchplan, target, 'x', tagged_nodes, tagged_edges);
-            else traverseNode(searchplan, target, 'b', tagged_nodes, tagged_edges);
-         }
-         else{
-            if(edge->label.mark == DASHED)
-               traverseNode(searchplan, target, 'u', tagged_nodes, tagged_edges);
-            else traverseNode(searchplan, target, 'i', tagged_nodes, tagged_edges);
-         }
+         if(edge->bidirectional) 
+              traverseNode(searchplan, target, 'b', tagged_nodes, tagged_edges);
+         else traverseNode(searchplan, target, 'i', tagged_nodes, tagged_edges);
       }
    }      
    else /* type == 't' */ 
@@ -183,16 +151,9 @@ static void traverseEdge(Searchplan *searchplan, RuleEdge *edge, char type,
       RuleNode *source = edge->source;
       if(!tagged_nodes[source->index])
       {
-         if(edge->bidirectional){
-            if(edge->label.mark == DASHED)
-               traverseNode(searchplan, source, 'x', tagged_nodes, tagged_edges);
-            else traverseNode(searchplan, source, 'b', tagged_nodes, tagged_edges);
-         }
-         else{
-            if(edge->label.mark == DASHED)
-               traverseNode(searchplan, source, 'v', tagged_nodes, tagged_edges);
-            else traverseNode(searchplan, source, 'o', tagged_nodes, tagged_edges);
-         }  
+         if(edge->bidirectional) 
+              traverseNode(searchplan, source, 'b', tagged_nodes, tagged_edges);
+         else traverseNode(searchplan, source, 'o', tagged_nodes, tagged_edges);  
       }
    }
 }

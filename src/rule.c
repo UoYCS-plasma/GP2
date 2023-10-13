@@ -121,7 +121,6 @@ int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
    graph->edges[index].bidirectional = bidirectional;
    graph->edges[index].remarked = true;
    graph->edges[index].relabelled = true;
-   graph->edges[index].redashed = true;
    graph->edges[index].interface = NULL;
    graph->edges[index].source = source;
    graph->edges[index].target = target;
