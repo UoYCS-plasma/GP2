@@ -629,7 +629,9 @@ static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_
    PTFI("if(host_node == NULL) return false;\n", 3);
 
    PTFI("EdgeList *elistpos = NULL;\n", 3);
-   PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos)) != NULL;)\n", 3);
+   if(left_edge->label.mark == DASHED)
+      PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos, true)) != NULL;)\n", 3);
+   else PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos, false)) != NULL;)\n", 3);
    PTFI("{\n", 3);
    PTFI("if(edgeMatched(host_edge)) continue;\n", 6);
    PTFI("if(edgeSource(host_edge) != edgeTarget(host_edge)) continue;\n", 6);
