@@ -219,6 +219,24 @@ void tryGarbageCollectNode(Graph *graph, Node *node)
             removeFromBigArray(&(graph->_edgearray), curr->edge->index);
          }
       }
+      for(EdgeList *curr = node->out_edges_dashed; curr != NULL; curr = curr->next)
+      {
+         clearEdgeInSrcLst(curr->edge);
+         if(edgeFree(curr->edge))
+         {
+            removeHostList(curr->edge->label.list);
+            removeFromBigArray(&(graph->_edgearray), curr->edge->index);
+         }
+      }
+      for(EdgeList *curr = node->in_edges_dashed; curr != NULL; curr = curr->next)
+      {
+         clearEdgeInTrgLst(curr->edge);
+         if(edgeFree(curr->edge))
+         {
+            removeHostList(curr->edge->label.list);
+            removeFromBigArray(&(graph->_edgearray), curr->edge->index);
+         }
+      }
       emptyBigArray(&(node->_edgelistarray));
       removeFromBigArray(&(graph->_nodearray), node->index);
    }
@@ -367,7 +385,6 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev, bool da
    }
 
    bool deleted_edge = true;
-
    while(deleted_edge) {
      if(current == NULL) return NULL;
 
