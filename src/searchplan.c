@@ -123,6 +123,30 @@ static void traverseNode(Searchplan *searchplan, RuleNode *node, char type,
       }
       iterator = iterator->next;
    }
+   iterator = node->outedges_dashed;
+   while(iterator != NULL)
+   {
+      RuleEdge *edge = iterator->edge;
+      if(!tagged_edges[edge->index])
+      {
+         if(edge->source == edge->target) 
+              traverseEdge(searchplan, edge, 'l', tagged_nodes, tagged_edges);
+         else traverseEdge(searchplan, edge, 's', tagged_nodes, tagged_edges);
+      }
+      iterator = iterator->next;
+   }
+   iterator = node->inedges_dashed;
+   while(iterator != NULL)
+   {
+      RuleEdge *edge = iterator->edge;
+      if(!tagged_edges[edge->index])
+      {
+         if(edge->source == edge->target)
+              traverseEdge(searchplan, edge, 'l', tagged_nodes, tagged_edges);
+         else traverseEdge(searchplan, edge, 't', tagged_nodes, tagged_edges);
+      }
+      iterator = iterator->next;
+   }
 }
 
 static void traverseEdge(Searchplan *searchplan, RuleEdge *edge, char type,

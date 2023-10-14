@@ -125,8 +125,14 @@ int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
    graph->edges[index].source = source;
    graph->edges[index].target = target;
    graph->edges[index].label = label;
-   source->outedges = addIncidentEdge(source->outedges, &(graph->edges[index]));
-   target->inedges = addIncidentEdge(target->inedges, &(graph->edges[index]));
+   if(label.mark == DASHED){
+      source->outedges_dashed = addIncidentEdge(source->outedges_dashed, &(graph->edges[index]));
+      target->inedges_dashed = addIncidentEdge(target->inedges_dashed, &(graph->edges[index]));
+   }
+   else{
+      source->outedges = addIncidentEdge(source->outedges, &(graph->edges[index]));
+      target->inedges = addIncidentEdge(target->inedges, &(graph->edges[index]));
+   }
    if(bidirectional) 
    {
       source->bidegree++;
