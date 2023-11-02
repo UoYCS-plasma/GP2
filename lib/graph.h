@@ -93,7 +93,8 @@ typedef struct Node {
 #define NFLAG_INSTACK 0b10000
    char flags; // All flags stored here.
    int index; // TODO: UNSIGNED
-   EdgeList *out_edges, *in_edges, *out_edges_dashed, *in_edges_dashed; // Linked list changes nothing complexity-wise.
+   EdgeList *out_edges, *in_edges, *out_edges_dashed, *in_edges_dashed, 
+            *in_loops, *in_loops_dashed, *out_loops, *out_loops_dashed; // Linked list changes nothing complexity-wise.
    int outdegree, indegree; // TODO: UNSIGNED
    BigArray _edgelistarray;
 } Node;
@@ -203,8 +204,8 @@ void tryGarbageCollectNode(Graph *graph, Node *node);
 #ifndef NO_NODE_LIST
 Node *yieldNextNode(Graph *graph, NodeList **current);
 #endif
-Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current, bool dashed);
-Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current, bool dashed);
+Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current, bool dashed, bool loop);
+Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current, bool dashed, bool loop);
 
 RootNodes *getRootNodeList(Graph *graph);
 
