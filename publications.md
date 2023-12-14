@@ -197,9 +197,10 @@
     _Proc. Genetic and Evolutionary Computation Conference (GECCO 2019)_, pages 968-976. ACM, 2019.  
    doi: [10.1145/3321707.3321788](https://doi.org/10.1145/3321707.3321788)
    
-   *   T. Atkinson, D. Plump and S. Stepney  
-      [Probabilistic Graph Programs for Randomised and Evolutionary Algorithms](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.ICGT.18.pdf)  
-    _Proc. International Conference on Graph Transformation (ICGT 2018)_. Lecture Notes in Computer Science 10887. Springer, 2018, to appear.
+*   T. Atkinson, D. Plump and S. Stepney  
+      [Probabilistic Graph Programs for Randomised and Evolutionary Algorithms](https://eprints.whiterose.ac.uk/129963/)  
+    _Proc. International Conference on Graph Transformation (ICGT 2018)_. Lecture Notes in Computer Science 10887, pages 63-78. Springer, 2018.  
+    doi: [10.1007/978-3-319-92991-0_5](https://doi.org/10.1007/978-3-319-92991-0_5)
     
 *   T. Atkinson, D. Plump and S. Stepney  
     [Evolving Graphs by Graph Programming](http://www.cs.york.ac.uk/plasma/publications/AtkinsonPlumpStepney.EuroGP.18.pdf)  
