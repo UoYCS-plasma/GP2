@@ -5,6 +5,10 @@
 *   G. Campbell, B. Courtehoute and D. Plump  
     [Fast Rule-Based Graph Programs](https://doi.org/10.1016/j.scico.2021.102727)  
    _Science of Computer Programming_ 214, Elsevier, 2022.
+
+*   B. Courtehoute and D. Plump  
+    [A Small-Step Operational Semantics for GP 2](https://doi.org/10.4204/EPTCS.350.6)  
+   _Graph Computation Models (GCM 2021), Revised Selected Papers_, Electronic Proceedings in Theoretical Computer Science 350, pages 89-110, 2021.
    
 *   G. Campbell, B. Courtehoute and D. Plump  
     [Linear-Time Graph Algorithms in GP 2](http://www.cs.york.ac.uk/plasma/publications/pdf/CampbellCourtehoutePlump.CALCO.19.pdf)  
