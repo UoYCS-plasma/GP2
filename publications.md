@@ -86,6 +86,10 @@
     [Monadic Second-Order Incorrectness Logic for GP 2](http://dx.doi.org/10.1016/j.jlamp.2022.100825)  
     _Journal of Logical and Algebraic Methods in Programming_ 130, Elsevier, 2023.
 
+*   G. Wulandari  
+    [_Verifying Graph Programs with Monadic Second-Order Logic_](http://etheses.whiterose.ac.uk/29370/)  
+    PhD thesis, University of York, 2021.
+
 *   G. Wulandari and D. Plump  
     [Verification of Graph Programs with Monadic Second-Order Logic](https://eprints.whiterose.ac.uk/176053/)  
     _Proc. 14th International Conference on Graph Transformation (ICGT 2021)_. Lecture Notes in Computer Science 12741, pages 240-261. Springer, 2021.  
