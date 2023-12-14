@@ -189,8 +189,8 @@
     _Natural Computing_ 20(1):127-143. Springer, 2021.  
 
 *   T. Atkinson, D. Plump and S. Stepney  
-    [Horizontal Gene Transfer for Recombining Graphs](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GENP.20.pdf)  
-    _Genetic Programming and Evolvable Machines_, 27 pages. Springer, 2020. To appear. 
+    [Horizontal Gene Transfer for Recombining Graphs](https://doi.org/10.1007/s10710-020-09378-1)  
+    _Genetic Programming and Evolvable Machines_ 21:321-347. Springer, 2020. 
     
 *   T. Atkinson, D. Plump and S. Stepney  
     [Evolving Graphs with Horizontal Gene Transfer](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GECCO.19.pdf)  
