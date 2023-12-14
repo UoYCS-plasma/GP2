@@ -206,7 +206,7 @@
     [Evolving Graphs by Graph Programming](http://www.cs.york.ac.uk/plasma/publications/AtkinsonPlumpStepney.EuroGP.18.pdf)  
     _Proc. European Conference on Genetic Programming (EuroGP 2018)_. Lecture Notes in Computer Science 10781, pages 35-51. Springer, 2018.  
     doi: [10.1007/978-3-319-77553-1_3](https://doi.org/10.1007/978-3-319-77553-1_3)
-    
+
 
 * * *
 
