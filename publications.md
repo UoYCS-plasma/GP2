@@ -88,8 +88,8 @@
 
 *   G. Wulandari and D. Plump  
     [Verification of Graph Programs with Monadic Second-Order Logic](https://eprints.whiterose.ac.uk/176053/)  
-    _Proc. 14th International Conference on Graph Transformation (ICGT 2021)_. Lecture Notes in Computer Science 12741, pages 240-261. Springer, 2021.
-    doi: [https://doi.org/10.1007/978-3-030-78946-6_13)
+    _Proc. 14th International Conference on Graph Transformation (ICGT 2021)_. Lecture Notes in Computer Science 12741, pages 240-261. Springer, 2021.  
+    doi: [10.1007/978-3-030-78946-6_13](https://doi.org/10.1007/978-3-030-78946-6_13)
 
 *   G. Wulandari and D. Plump  
     [Verification of Graph Programs with Monadic Second-Order Logic (long version)](https://docs.google.com/viewer?url=https://github.com/UoYCS-plasma/GP2/blob/gh-pages/documents/Verifying_Graph_Programs_with_MSOL(extended).pdf?raw=true)  
