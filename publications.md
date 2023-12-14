@@ -3,7 +3,7 @@
 ### Graph Programs and the Language GP 2
 
 * G. Campbell, B. Courtehoute and D. Plump
-  [Fast Rule-Based Graph Programs]
+  [Fast Rule-Based Graph Programs](10.1016/j.scico.2021.102727)
   _Science of Computer Programming_ 214, Elsevier, 2022.
   doi: [10.1016/j.scico.2021.102727]
    
