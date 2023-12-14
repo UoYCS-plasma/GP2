@@ -2,10 +2,9 @@
 
 ### Graph Programs and the Language GP 2
 
-* G. Campbell, B. Courtehoute and D. Plump
-  [Fast Rule-Based Graph Programs](https://doi.org/10.1016/j.scico.2021.102727)
-  _Science of Computer Programming_ 214, Elsevier, 2022.
-  doi: [10.1016/j.scico.2021.102727]
+*   G. Campbell, B. Courtehoute and D. Plump  
+    [Fast Rule-Based Graph Programs](https://doi.org/10.1016/j.scico.2021.102727)  
+   _Science of Computer Programming_ 214, Elsevier, 2022.
    
 *   G. Campbell, B. Courtehoute and D. Plump  
     [Linear-Time Graph Algorithms in GP 2](http://www.cs.york.ac.uk/plasma/publications/pdf/CampbellCourtehoutePlump.CALCO.19.pdf)  
@@ -74,6 +73,10 @@
 * * *
 
 ### Verification of Graph Programs
+
+*   C. Poskitt and D. Plump  
+    [Monadic Second-Order Incorrectness Logic for GP 2](http://dx.doi.org/10.1016/j.jlamp.2022.100825)  
+    _Journal of Logical and Algebraic Methods in Programming_ 130, Elsevier, 2023.
 
 *   G. Wulandari and D. Plump  
     [Verification of Graph Programs with Monadic Second-Order Logic (long version)](https://docs.google.com/viewer?url=https://github.com/UoYCS-plasma/GP2/blob/gh-pages/documents/Verifying_Graph_Programs_with_MSOL(extended).pdf?raw=true)  
