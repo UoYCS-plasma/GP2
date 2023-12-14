@@ -185,14 +185,14 @@
     PhD thesis, University of York, 2019.
 
 *   T. Atkinson, D. Plump and S. Stepney  
+    [Evolving Graphs with Semantic Neutral Drift](https://eprints.whiterose.ac.uk/154735/)  
+    _Natural Computing_ 20(1):127-143. Springer, 2021.  
+    doi: [10.1007/s11047-019-09772-4](https://doi.org/10.1007/s11047-019-09772-4)
+
+*   T. Atkinson, D. Plump and S. Stepney  
     [Horizontal Gene Transfer for Recombining Graphs](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GENP.20.pdf)  
     _Genetic Programming and Evolvable Machines_, 27 pages. Springer, 2020. To appear. 
     
-*   T. Atkinson, D. Plump and S. Stepney  
-    [Evolving Graphs with Semantic Neutral Drift](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.NAC.19.pdf)  
-    _Natural Computing_, 18 pages. Springer, 2019.  
-    doi: [10.1007/s11047-019-09772-4](https://doi.org/10.1007/s11047-019-09772-4)
-
 *   T. Atkinson, D. Plump and S. Stepney  
     [Evolving Graphs with Horizontal Gene Transfer](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GECCO.19.pdf)  
     _Proc. Genetic and Evolutionary Computation Conference (GECCO 2019)_, pages 968-976. ACM, 2019.  
