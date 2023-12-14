@@ -2,6 +2,10 @@
 
 ### Graph Programs and the Language GP 2
 
+*   C. Bak  
+    [_Time and Space Complexity of Rule-Based Graph Programs_](http://etheses.whiterose.ac.uk/33407/)  
+    PhD thesis, University of York, 2023.
+
 *   G. Campbell, B. Courtehoute and D. Plump  
     [Fast Rule-Based Graph Programs](https://doi.org/10.1016/j.scico.2021.102727)  
    _Science of Computer Programming_ 214, Elsevier, 2022.
@@ -27,7 +31,7 @@
     
 *   C. Bak  
     [_GP 2: Efficient Implementation of a Graph Programming Language_](http://etheses.whiterose.ac.uk/12586/)  
-    PhD thesis, University of York, 2015
+    PhD thesis, University of York, 2015.
     
 *   C. Bak, G. Faulkner, D. Plump and C. Runciman  
     [A Reference Interpreter for the Graph Programming Language GP 2](http://www.cs.york.ac.uk/plasma/publications/pdf/BakFaulknerPlumpRunciman.GaM15.pdf)  
