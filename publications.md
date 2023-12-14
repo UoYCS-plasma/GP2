@@ -2,7 +2,7 @@
 
 ### Graph Programs and the Language GP 2
 
-*   C. Bak  
+*   B. Courtehoute  
     [_Time and Space Complexity of Rule-Based Graph Programs_](http://etheses.whiterose.ac.uk/33407/)  
     PhD thesis, University of York, 2023.
 
@@ -174,7 +174,11 @@
 
 * * *
 
-### Probabilistic GP 2
+### Probabilistic GP 2 and Evolutionary Algorithms
+
+*   T. Atkinson  
+    [_Evolving Graphs by Graph Programming_](http://etheses.whiterose.ac.uk/26524/)  
+    PhD thesis, University of York, 2019.
 
 *   T. Atkinson, D. Plump and S. Stepney  
     [Horizontal Gene Transfer for Recombining Graphs](http://www.cs.york.ac.uk/plasma/publications/pdf/AtkinsonPlumpStepney.GENP.20.pdf)  
