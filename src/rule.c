@@ -121,6 +121,7 @@ int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
    graph->edges[index].bidirectional = bidirectional;
    graph->edges[index].remarked = true;
    graph->edges[index].relabelled = true;
+   graph->edges[index].relisted = false;
    graph->edges[index].interface = NULL;
    graph->edges[index].source = source;
    graph->edges[index].target = target;
@@ -545,6 +546,7 @@ static void printRuleLabel(RuleLabel label, FILE *file)
    if(label.mark == GREY) fprintf(file, " # grey");
    if(label.mark == DASHED) fprintf(file, " # dashed");
    if(label.mark == ANY) fprintf(file, " # any");
+   if(label.mark == ANYP) fprintf(file, " # any+");
 }
 
 

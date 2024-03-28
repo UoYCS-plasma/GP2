@@ -152,7 +152,7 @@ typedef struct RuleEdge {
    /* Root - true if the node is rooted.
     * Remarked - true if the edge's mark is changed by the rule.
     * Relabelled - true if the edge's list is changed by the rule. */
-   bool bidirectional, remarked, relabelled, redashed;
+   bool bidirectional, remarked, relabelled, relisted;
    /* If the edge is preserved by the rule, this points to the corresponding
     * edge in the other rule graph. Otherwise, it is NULL. */
    struct RuleEdge *interface;

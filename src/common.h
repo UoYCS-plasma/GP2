@@ -70,7 +70,7 @@ typedef struct YYLTYPE {
 /* GP 2's variable types. */
 typedef enum {INTEGER_VAR = 0, CHARACTER_VAR, STRING_VAR, ATOM_VAR, LIST_VAR} GPType;
 
-typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY} MarkType; 
+typedef enum {NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY, ANYP} MarkType; 
 
 typedef enum {INT_CHECK = 0, CHAR_CHECK, STRING_CHECK, ATOM_CHECK, EDGE_PRED,
               EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, 
