@@ -5,7 +5,7 @@ This version is under development. To build GP 2, please consult the [general in
 Improvements so far:
 - Edges are now stored in linked lists respective to their mark.
 - Nodes are now stored in linked lists respective to their mark.
-- Timings are generated at the termination, including and excluding graph building.
+- Timings are generated at termination, including and excluding graph building.
 
 # Getting Started
 
