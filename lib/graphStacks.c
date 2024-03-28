@@ -231,12 +231,14 @@ void undoChanges(int restore_point)
               if(change.first_occurrence)
                 clearNodeInStack(change.remarked_node.node);
               changeNodeMark(change.remarked_node.node, change.remarked_node.old_mark);
+              relistNode(graph, change.remarked_node.node, change.remarked_node.old_mark);
               break;
 
          case REMARKED_EDGE:
               if(change.first_occurrence)
                 clearEdgeInStack(change.remarked_edge.edge);
               changeEdgeMark(change.remarked_edge.edge, change.remarked_edge.old_mark);
+              relistEdge(graph, change.remarked_edge.edge, change.remarked_edge.old_mark);
               break;
 
          case CHANGED_ROOT_NODE:
