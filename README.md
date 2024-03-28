@@ -2,6 +2,11 @@
 
 This version is under development. To build GP 2, please consult the [general installation document](https://github.com/ismaili-ziad/GP2/blob/master/GP_2_Compilation_Tutorial.pdf) (applicable to this fork). To report issues and bugs, please email me at z.ismaili-alaoui@york.ac.uk or use the form on my [academic page](https://www.cs.york.ac.uk/people/?group=Research%20Students&username=zismali).
 
+Improvements so far:
+- Edges are now stored in linked lists respective to their mark.
+- Nodes are now stored in linked lists respective to their mark.
+- Timings are generated at the termination, including and excluding graph building.
+
 # Getting Started
 
 The GP 2 compiler translates a GP 2 program into executable C code. The generated code is executable with the support of the GP 2 library. There are two ways to set it up. You can build the compiler using make. However, the setup process is not guaranteed to be stable on all Linux machines, or on machines running MacOS or Windows. We therefore provide an installation via Docker as an alternative for Linux and MacOS.
