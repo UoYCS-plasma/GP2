@@ -143,8 +143,9 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 
    srclist->next = source->edges[label.mark][0][edge->source == edge->target];
    srclist->prev = NULL;
-   if(source->edges[label.mark][0][edge->source == edge->target] != NULL) 
-      source->edges[label.mark][0][edge->source == edge->target] = srclist;
+   if(source->edges[label.mark][0][edge->source == edge->target] != NULL){
+      source->edges[label.mark][0][edge->source == edge->target]->prev = srclist;
+   }
    source->edges[label.mark][0][edge->source == edge->target] = srclist;
    edge->edgeSrcListAddress = srclist;
 
@@ -159,8 +160,9 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 
    trglist->next = target->edges[label.mark][1][edge->source == edge->target];
    trglist->prev = NULL;
-   if(target->edges[label.mark][1][edge->source == edge->target] != NULL)
-      target->edges[label.mark][1][edge->source == edge->target] = trglist;
+   if(target->edges[label.mark][1][edge->source == edge->target] != NULL){
+      target->edges[label.mark][1][edge->source == edge->target]->prev = trglist;
+   }
    target->edges[label.mark][1][edge->source == edge->target] = trglist;
    edge->edgeTrgListAddress = trglist;
 
