@@ -186,7 +186,7 @@ These are the flags:
 
 The GP 2 home page can be found [here](https://uoycs-plasma.github.io/GP2/).
 
-## License
+## Licence
 
 See the file [LICENSE](https://github.com/UoYCS-plasma/GP2/blob/master/LICENSE).
 
