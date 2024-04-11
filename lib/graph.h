@@ -136,6 +136,9 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
 // Recover a deleted node that hasn't been garbage collected.
 void recoverNode(Graph *graph, Node *node);
 
+// Recover a deleted edge that hasn't been garbage collected.
+void recoverEdge(Graph *graph, Edge *edge);
+
 void removeNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);
 void changeRoot(Graph *graph, Node *node);

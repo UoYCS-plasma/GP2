@@ -208,6 +208,7 @@ void undoChanges(int restore_point)
               if(change.first_occurrence)
                 clearEdgeInStack(change.removed_edge);
               clearEdgeDeleted(change.removed_edge);
+              recoverEdge(graph, change.removed_edge);
               break;
 
          case RELABELLED_NODE:

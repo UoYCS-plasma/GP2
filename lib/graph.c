@@ -107,24 +107,6 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
    return node;
 }
 
-// Assume node flags are already correct / edges exist.
-void recoverNode(Graph *graph, Node *node)
-{
-   #ifndef NO_NODE_LIST
-   int nlistind = genFreeBigArrayPos(&(graph->_nodelistarray));
-   NodeList *nlist = (NodeList *) getBigArrayValue(
-       &(graph->_nodelistarray), nlistind);
-   nlist->index = nlistind;
-   nlist->node = node;
-   nlist->next = graph->nodes[node->label.mark];
-   graph->nodes[node->label.mark] = nlist;
-   #endif
-
-   setNodeInGraph(node);
-   if(nodeRoot(node)) addRootNode(graph, node);
-   graph->number_of_nodes++;
-}
-
 Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 {
    int edgeind = genFreeBigArrayPos(&(graph->_edgearray));
@@ -171,6 +153,65 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target)
 
    graph->number_of_edges++;
    return edge;
+}
+
+// Assume node flags are already correct / edges exist.
+void recoverNode(Graph *graph, Node *node)
+{
+   #ifndef NO_NODE_LIST
+   int nlistind = genFreeBigArrayPos(&(graph->_nodelistarray));
+   NodeList *nlist = (NodeList *) getBigArrayValue(
+       &(graph->_nodelistarray), nlistind);
+   nlist->index = nlistind;
+   nlist->node = node;
+   nlist->next = graph->nodes[node->label.mark];
+   graph->nodes[node->label.mark] = nlist;
+   #endif
+
+   setNodeInGraph(node);
+   if(nodeRoot(node)) addRootNode(graph, node);
+   graph->number_of_nodes++;
+}
+
+void recoverEdge(Graph *graph, Edge *edge)
+{
+   if(!edgeInSrcLst(edge)){
+      Node *source = edge->source;
+      int srclstind = genFreeBigArrayPos(&(source->_edgelistarray));
+      EdgeList *srclist = (EdgeList *) getBigArrayValue(
+         &(source->_edgelistarray), srclstind);
+      srclist->index = srclstind;
+      srclist->edge = edge;
+
+      srclist->next = source->edges[edge->label.mark][0][edge->source == edge->target];
+      srclist->prev = NULL;
+      if(source->edges[edge->label.mark][0][edge->source == edge->target] != NULL){
+         source->edges[edge->label.mark][0][edge->source == edge->target]->prev = srclist;
+      }
+      source->edges[edge->label.mark][0][edge->source == edge->target] = srclist;
+      edge->edgeSrcListAddress = srclist;
+      incrementOutDegree(source);
+      setEdgeInSrcLst(edge);
+   }
+   if(!edgeInTrgLst(edge)){
+      Node *target = edge->target;
+      int trglstind = genFreeBigArrayPos(&(target->_edgelistarray));
+      EdgeList *trglist = (EdgeList *) getBigArrayValue(
+         &(target->_edgelistarray), trglstind);
+      trglist->index = trglstind;
+      trglist->edge = edge;
+
+      trglist->next = target->edges[edge->label.mark][1][edge->source == edge->target];
+      trglist->prev = NULL;
+      if(target->edges[edge->label.mark][1][edge->source == edge->target] != NULL){
+         target->edges[edge->label.mark][1][edge->source == edge->target]->prev = trglist;
+      }
+      target->edges[edge->label.mark][1][edge->source == edge->target] = trglist;
+      edge->edgeTrgListAddress = trglist;
+      setEdgeInTrgLst(edge);
+      incrementInDegree(target);
+   }
+   graph->number_of_edges++;
 }
 
 void removeNode(Graph *graph, Node *node)
