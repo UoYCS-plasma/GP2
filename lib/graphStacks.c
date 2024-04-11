@@ -178,6 +178,7 @@ void undoChanges(int restore_point)
    if(graph_change_stack == NULL) return;
    assert(restore_point >= 0);
    Graph *graph = graph_change_stack->graph;
+   MarkType current_mark;
    while(graph_change_stack->size > restore_point)
    {
       GraphChange change = pullGraphChange();
@@ -230,15 +231,17 @@ void undoChanges(int restore_point)
          case REMARKED_NODE:
               if(change.first_occurrence)
                 clearNodeInStack(change.remarked_node.node);
+              current_mark = change.remarked_node.node->label.mark;
               changeNodeMark(change.remarked_node.node, change.remarked_node.old_mark);
-              relistNode(graph, change.remarked_node.node, change.remarked_node.old_mark);
+              relistNode(graph, change.remarked_node.node, current_mark);
               break;
 
          case REMARKED_EDGE:
               if(change.first_occurrence)
                 clearEdgeInStack(change.remarked_edge.edge);
+              current_mark = change.remarked_edge.edge->label.mark;
               changeEdgeMark(change.remarked_edge.edge, change.remarked_edge.old_mark);
-              relistEdge(graph, change.remarked_edge.edge, change.remarked_edge.old_mark);
+              relistEdge(graph, change.remarked_edge.edge, current_mark);
               break;
 
          case CHANGED_ROOT_NODE:
