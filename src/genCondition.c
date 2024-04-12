@@ -227,64 +227,68 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            int source = predicate->edge_pred.source;
            int target = predicate->edge_pred.target;
            PTFI("bool edge_found = false;\n", 3);
-           PTFI("EdgeList *elist = NULL;\n", 3);
+           PTFI("EdgeList *elist;\n", 3);
            //PTFI("for(counter = 0; counter < source->out_edges.size + 2; counter++)\n", 3);
-           PTFI("for(Edge *edge; (edge = yieldNextOutEdge(host, n%d, &elist)) != NULL;)\n", 3, source);
-           PTFI("{\n", 3);
-           PTFI("if(edge != NULL && edgeTarget(edge) == n%d)\n", 6, target);
-           if(predicate->edge_pred.label.length >= 0)
-           {
-              PTFI("{\n", 6);
-              PTFI("HostLabel label;\n", 9);
-              /* Create runtime variables for each variable in the label. */
-              if(predicate->edge_pred.label.length > 0)
-              {
-                 RuleListItem *item = predicate->edge_pred.label.list->first;
-                 int count;
-                 for(count = 0; count < predicate->edge_pred.label.length; count++)
-                 {
-                    if(item->atom->type == VARIABLE)
+           for(int mark = 0; mark < 6; mark++){
+               if(mark == GREY) continue;
+               PTFI("elist = NULL;\n", 3);
+               PTFI("for(Edge *edge; (edge = yieldNextOutEdge(host, n%d, &elist, %d, %d)) != NULL && !edge_found;)\n", 3, source, mark, source == target);
+               PTFI("{\n", 3);
+               PTFI("if(edge != NULL && edgeTarget(edge) == n%d)\n", 6, target);
+               if(predicate->edge_pred.label.length >= 0)
+               {
+               PTFI("{\n", 6);
+               PTFI("HostLabel label;\n", 9);
+               /* Create runtime variables for each variable in the label. */
+               if(predicate->edge_pred.label.length > 0)
+               {
+                    RuleListItem *item = predicate->edge_pred.label.list->first;
+                    int count;
+                    for(count = 0; count < predicate->edge_pred.label.length; count++)
                     {
-                       /* generateVariableCode prints with indent 3. Indent of 9 is required. */
-                       PTF("      ");
-                       generateVariableCode(item->atom->variable.id, item->atom->variable.type);
+                         if(item->atom->type == VARIABLE)
+                         {
+                         /* generateVariableCode prints with indent 3. Indent of 9 is required. */
+                         PTF("      ");
+                         generateVariableCode(item->atom->variable.id, item->atom->variable.type);
+                         }
+                         item = item->next;
                     }
-                    item = item->next;
-                 }
-              }
-              bool label_any_marked = false;
-              if (predicate->edge_pred.label.mark == ANY) {
-                label_any_marked = true;
-                predicate->edge_pred.label.mark = GREY;
-              }
-              generateLabelEvaluationCode(predicate->edge_pred.label, false, list_count++, 1, 9);
-              if (label_any_marked)
-              {
-                 PTFI("if(equalHostLabelsModMarks(label, edge->label))\n", 9);
-                 predicate->edge_pred.label.mark = ANY;
-              }
-              else
-              {
-                 PTFI("if(equalHostLabels(label, edge->label))\n", 9);
-              }
-              PTFI("{\n", 9);
-              PTFI("b%d = true;\n", 12, predicate->bool_id);
-              PTFI("edge_found = true;\n", 12);
-              if(!minimal_gc) PTFI("removeHostList(label.list);\n", 12);
-              PTFI("break;\n", 12);
-              PTFI("}\n", 9);
-              if(!minimal_gc) PTFI("removeHostList(label.list);\n", 9);
-              PTFI("}\n", 6);
+               }
+               bool label_any_marked = false;
+               if (predicate->edge_pred.label.mark == ANY) {
+                    label_any_marked = true;
+                    predicate->edge_pred.label.mark = GREY;
+               }
+               generateLabelEvaluationCode(predicate->edge_pred.label, false, list_count++, 1, 9);
+               if (label_any_marked)
+               {
+                    PTFI("if(equalHostLabelsModMarks(label, edge->label))\n", 9);
+                    predicate->edge_pred.label.mark = ANY;
+               }
+               else
+               {
+                    PTFI("if(equalHostLabels(label, edge->label))\n", 9);
+               }
+               PTFI("{\n", 9);
+               PTFI("b%d = true;\n", 12, predicate->bool_id);
+               PTFI("edge_found = true;\n", 12);
+               if(!minimal_gc) PTFI("removeHostList(label.list);\n", 12);
+               PTFI("break;\n", 12);
+               PTFI("}\n", 9);
+               if(!minimal_gc) PTFI("removeHostList(label.list);\n", 9);
+               PTFI("}\n", 6);
+               }
+               else
+               {
+               PTFI("{\n", 6);
+               PTFI("b%d = true;\n", 9, predicate->bool_id);
+               PTFI("edge_found = true;\n", 9);
+               PTFI("break;\n", 9);
+               PTFI("}\n", 6);
+               }
+               PTFI("}\n", 3);
            }
-           else
-           {
-              PTFI("{\n", 6);
-              PTFI("b%d = true;\n", 9, predicate->bool_id);
-              PTFI("edge_found = true;\n", 9);
-              PTFI("break;\n", 9);
-              PTFI("}\n", 6);
-           }
-           PTFI("}\n", 3);
            PTFI("if(!edge_found) b%d = false;\n", 3, predicate->bool_id);
            break;
       }
