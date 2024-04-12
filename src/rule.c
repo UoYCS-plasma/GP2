@@ -546,7 +546,6 @@ static void printRuleLabel(RuleLabel label, FILE *file)
    if(label.mark == GREY) fprintf(file, " # grey");
    if(label.mark == DASHED) fprintf(file, " # dashed");
    if(label.mark == ANY) fprintf(file, " # any");
-   if(label.mark == ANYP) fprintf(file, " # any+");
 }
 
 
