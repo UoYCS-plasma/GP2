@@ -528,10 +528,10 @@ void printGraph(Graph *graph, FILE *file)
          node = (Node *) getBigArrayValue(&(graph->_nodearray), i);
          if(nodeDeleted(node)) continue;
       #endif
-         for(int i = 0; i < 6; i++){ //TODO: variable conflict if NO_NODE_LIST is on; to fix
+         for(int k = 0; k < 6; k++){
             for(int j = 0; j < 2; j++){
                elistpos = NULL;
-               for(Edge *edge; (edge = yieldNextOutEdge(graph, node, &elistpos, i, j)) != NULL;)
+               for(Edge *edge; (edge = yieldNextOutEdge(graph, node, &elistpos, k, j)) != NULL;)
                {
                   /* Three edges per line */
                   if(edge_count != 0 && edge_count % 3 == 0) PTF("\n  ");
