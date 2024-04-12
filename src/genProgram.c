@@ -186,7 +186,7 @@ void generateRuntimeMain(List *declarations, string output_dir)
 
    PTF("   double elapsed_time_gb = (double)(clock()-start_time_gb)/CLOCKS_PER_SEC;\n");
    PTF("   double elapsed_time_ngb = (double)(clock()-start_time_ngb)/CLOCKS_PER_SEC;\n");
-   PTF("   FILE *bench = fopen(\"timings_gp2.dat\", \"w\");");
+   PTF("   FILE *bench = fopen(\"timings_gp2.dat\", \"w\");\n");
    PTF("   fprintf(bench, \"Incl. graph building (ms): %%f\\n\", elapsed_time_gb*1000);\n");
    PTF("   fprintf(bench, \"Excl. graph building (ms): %%f\", elapsed_time_ngb*1000);\n");
    if(fast_shutdown) PTF("   printGraphFast(host, output_file);\n");

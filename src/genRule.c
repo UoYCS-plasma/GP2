@@ -1092,7 +1092,10 @@ void generateApplicationCode(Rule *rule)
                PTFI("{\n", 3);
                PTFI("if(record_changes) pushRelabelledNode(host_node, label_n%d);\n", 6, index);
                if(!minimal_gc) PTFI("removeHostList(host_node->label.list);\n", 6);
+               PTFI("int old_mark_relab_n%d = host_node->label.mark;\n", 6, index);
                PTFI("relabelNode(host_node, label);\n", 6);
+               PTFI("int new_mark_relab_n%d = host_node->label.mark;\n", 6, index);
+               PTFI("if(new_mark_relab_n%d != old_mark_relab_n%d) relistNode(host, host_node, old_mark_relab_n%d);\n\n", 6, index, index, index);
                PTFI("}\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list
