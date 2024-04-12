@@ -542,7 +542,9 @@ void printGraph(Graph *graph, FILE *file)
                }
             }
          }
+      #ifndef NO_NODE_LIST
       }
+      #endif
    }
    PTF("]\n\n");
 }
@@ -610,7 +612,9 @@ void printGraphFast(Graph *graph, FILE *file)
             }
          }
       }
+   #ifndef NO_NODE_LIST
    }
+   #endif
    PTF("]\n\n");
 }
 
