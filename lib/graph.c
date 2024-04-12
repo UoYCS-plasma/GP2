@@ -237,7 +237,6 @@ void relistNode(Graph *graph, Node *node, int old_mark)
 }
 
 void relistEdge(Graph *graph, Edge *edge, int old_mark){
-   #ifndef NO_NODE_LIST
    int mark = edge->label.mark;
    EdgeList *eTrgList = edge->edgeTrgListAddress;
    EdgeList *eSrcList = edge->edgeSrcListAddress;
@@ -259,7 +258,6 @@ void relistEdge(Graph *graph, Edge *edge, int old_mark){
    eTrgList->next = trg->edges[mark][1][trg == src];
    if(trg->edges[mark][1][trg == src] != NULL) trg->edges[mark][1][trg == src]->prev = eTrgList;
    trg->edges[mark][1][trg == src] = eTrgList;
-   #endif
 }
 
 void removeEdge(Graph *graph, Edge *edge)

@@ -103,7 +103,9 @@ typedef struct Node {
    EdgeList* edges[6][2][2];
    int outdegree, indegree; // TODO: UNSIGNED
    BigArray _edgelistarray;
+   #ifndef NO_NODE_LIST
    NodeList* nodeListAddress;
+   #endif
 } Node;
 
 // 16 bytes
