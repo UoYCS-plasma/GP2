@@ -459,10 +459,11 @@ static void emitNodeMatcher(Rule *rule, RuleNode *left_node, SearchOp *next_op)
    }
    else
    {
-      PTFI("NodeList *nlistpos = NULL;\n", 3);
+      PTFI("NodeList *nlistpos;\n", 3);
       int times = (left_node->label.mark == ANY)? 6: 1;
       for(int m = 0; m < times; m++){
          if(m == DASHED) continue;
+         PTFI("nlistpos = NULL;\n", 3);
          if(left_node->label.mark == ANY)
             PTFI("for(Node *host_node; (host_node = yieldNextNode(host, &nlistpos, %d)) != NULL;)\n", 3, m);
          else
