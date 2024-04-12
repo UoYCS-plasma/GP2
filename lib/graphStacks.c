@@ -217,7 +217,11 @@ void undoChanges(int restore_point)
               #ifndef MINIMAL_GC
               removeHostList((change.relabelled_node.node)->label.list);
               #endif
+              current_mark = change.relabelled_node.node->label.mark;
               relabelNode(change.relabelled_node.node, change.relabelled_node.old_label);
+              if(current_mark != change.relabelled_node.old_label.mark){
+               relistNode(graph, change.relabelled_node.node, current_mark);
+              }
               break;
 
          case RELABELLED_EDGE:
