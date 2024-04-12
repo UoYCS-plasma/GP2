@@ -83,7 +83,6 @@ Node *addNode(Graph *graph, bool root, HostLabel label)
 
    node->label = label;
    for(int marks = 0; marks < 6; marks++){
-      if(marks == GREY) continue;
       for(int orientations = 0; orientations < 2; orientations++){
          node->edges[marks][orientations][0] = NULL;
          node->edges[marks][orientations][1] = NULL;
@@ -293,7 +292,6 @@ void tryGarbageCollectNode(Graph *graph, Node *node)
       removeHostList(node->label.list);
       // free all edges of all marks
       for(int i = 0; i < 6; i++){
-         if(i == GREY) continue;
          for(int j = 0; j < 2; j++){
             for(int k = 0; k < 2; k++){
                for(EdgeList *curr = node->edges[i][j][k]; curr != NULL; curr = curr->next)
@@ -533,7 +531,6 @@ void printGraph(Graph *graph, FILE *file)
          if(nodeDeleted(node)) continue;
       #endif
          for(int i = 0; i < 6; i++){ //TODO: variable conflict if NO_NODE_LIST is on; to fix
-            if(i == GREY) continue;
             for(int j = 0; j < 2; j++){
                elistpos = NULL;
                for(Edge *edge; (edge = yieldNextOutEdge(graph, node, &elistpos, i, j)) != NULL;)
@@ -604,7 +601,6 @@ void printGraphFast(Graph *graph, FILE *file)
       if(nodeDeleted(node)) continue;
    #endif
          for(int i = 0; i < 6; i++){
-            if(i == GREY) continue;
             for(int j = 0; j < 2; j++){
                elistpos = NULL;
                for(Edge *edge; (edge = yieldNextOutEdgeFast(graph, node, &elistpos, i, j)) != NULL;)
