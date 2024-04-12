@@ -194,4 +194,4 @@ See the file [LICENSE](https://github.com/UoYCS-plasma/GP2/blob/master/LICENSE).
 
 The GP 2 language was designed by [Detlef Plump](http://www-users.cs.york.ac.uk/~det/).
 
-The GP 2 compiler and runtime library were developed by Christopher Bak. Some improvements to the compiler were implemented in 2020 by [Graham Campbell](https://gjcampbell.co.uk/) and [Jack Romo](http://jackromo.com/). Further improvements were implemented in 2024 by [Ziad Ismaili Alaoui](https://www.cs.york.ac.uk/people/?group=Research%20Students&username=zismali).
+Christopher Bak developed the GP 2 compiler and runtime library. In 2020, [Graham Campbell](https://gjcampbell.co.uk/) and [Jack Romo](http://jackromo.com/) implemented additional improvements to the compiler, as well as [Ziad Ismaili Alaoui](https://www.cs.york.ac.uk/people/?group=Research%20Students&username=zismali) in 2024.
