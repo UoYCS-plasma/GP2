@@ -230,7 +230,6 @@ static void generatePredicateCode(Rule *rule, Predicate *predicate)
            PTFI("EdgeList *elist;\n", 3);
            //PTFI("for(counter = 0; counter < source->out_edges.size + 2; counter++)\n", 3);
            for(int mark = 0; mark < 6; mark++){
-               if(mark == GREY) continue;
                PTFI("elist = NULL;\n", 3);
                PTFI("for(Edge *edge; (edge = yieldNextOutEdge(host, n%d, &elist, %d, %d)) != NULL && !edge_found;)\n", 3, source, mark, source == target);
                PTFI("{\n", 3);

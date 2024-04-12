@@ -655,7 +655,6 @@ static void emitLoopEdgeMatcher(Rule *rule, RuleEdge *left_edge, SearchOp *next_
    int times = (left_edge->label.mark == ANY)? 6: 1;
 
    for(int i = 0; i < times; i++){
-      if(i == GREY) continue;
       PTFI("elistpos = NULL;\n", 3);
       if(left_edge->label.mark == ANY)
          PTFI("for(Edge *host_edge; (host_edge = yieldNextOutEdge(host, host_node, &elistpos, %d, true)) != NULL;)\n", 3, i);
@@ -721,7 +720,6 @@ static void emitEdgeFromNodeMatcher(Rule *rule, RuleEdge *left_edge, bool source
    int times = (left_edge->label.mark == ANY)? 6: 1;
 
    for(int i = 0; i < times; i++){
-      if(i == GREY) continue;
       PTFI("elistpos = NULL;\n", 3);
       if(source){
          if(left_edge->label.mark == ANY)
