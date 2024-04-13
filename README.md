@@ -179,15 +179,15 @@ These are the flags:
 - **-l** - Specify the directory of lib source files.
 - **-o** - Specify a directory for generated code and program output.
 
-## GP 2 Home Page
+# GP 2 Home Page
 
 The GP 2 home page can be found [here](https://uoycs-plasma.github.io/GP2/).
 
-## Licence and Copying
+# Licence and Copying
 
 GP 2 is licensed under the GNU General Public License v3.0. See the file [COPYING](https://github.com/UoYCS-plasma/GP2/blob/master/COPYING).
 
-## Authors
+# Authors
 
 The GP 2 language was designed by [Detlef Plump](http://www-users.cs.york.ac.uk/~det/).
 
