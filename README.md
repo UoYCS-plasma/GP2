@@ -177,7 +177,7 @@ These are the flags:
 
 The GP 2 home page can be found [here](https://uoycs-plasma.github.io/GP2/).
 
-## License
+## Licence
 
 See the file [LICENSE](https://github.com/UoYCS-plasma/GP2/blob/master/LICENSE).
 
@@ -185,4 +185,4 @@ See the file [LICENSE](https://github.com/UoYCS-plasma/GP2/blob/master/LICENSE).
 
 The GP 2 language was designed by [Detlef Plump](http://www-users.cs.york.ac.uk/~det/).
 
-The GP 2 compiler and runtime library was developed by Christopher Bak. Recent improvements to the compiler were implemented by [Graham Campbell](https://gjcampbell.co.uk/) and [Jack Romo](http://jackromo.com/).
+Christopher Bak developed the GP 2 compiler and runtime library. In 2020, [Graham Campbell](https://gjcampbell.co.uk/) and [Jack Romo](http://jackromo.com/) implemented additional improvements to the compiler, as well as [Ziad Ismaili Alaoui](https://www.cs.york.ac.uk/people/?group=Research%20Students&username=zismali) in 2024.

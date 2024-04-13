@@ -89,6 +89,8 @@ int addRuleNode(RuleGraph *graph, bool root, RuleLabel label)
    graph->nodes[index].interface = NULL;
    graph->nodes[index].outedges = NULL;
    graph->nodes[index].inedges = NULL;
+   graph->nodes[index].outedges_dashed = NULL;
+   graph->nodes[index].inedges_dashed = NULL;
    graph->nodes[index].label = label;
    graph->nodes[index].predicates = NULL;
    graph->nodes[index].predicate_count = 0;
@@ -119,12 +121,19 @@ int addRuleEdge(RuleGraph *graph, bool bidirectional, RuleNode *source,
    graph->edges[index].bidirectional = bidirectional;
    graph->edges[index].remarked = true;
    graph->edges[index].relabelled = true;
+   graph->edges[index].relisted = false;
    graph->edges[index].interface = NULL;
    graph->edges[index].source = source;
    graph->edges[index].target = target;
    graph->edges[index].label = label;
-   source->outedges = addIncidentEdge(source->outedges, &(graph->edges[index]));
-   target->inedges = addIncidentEdge(target->inedges, &(graph->edges[index]));
+   if(label.mark == DASHED){
+      source->outedges_dashed = addIncidentEdge(source->outedges_dashed, &(graph->edges[index]));
+      target->inedges_dashed = addIncidentEdge(target->inedges_dashed, &(graph->edges[index]));
+   }
+   else{
+      source->outedges = addIncidentEdge(source->outedges, &(graph->edges[index]));
+      target->inedges = addIncidentEdge(target->inedges, &(graph->edges[index]));
+   }
    if(bidirectional) 
    {
       source->bidegree++;
@@ -759,6 +768,8 @@ static void freeRuleGraph(RuleGraph *graph)
       RuleNode *node = getRuleNode(graph, index);
       freeRuleEdges(node->outedges);
       freeRuleEdges(node->inedges);
+      freeRuleEdges(node->outedges_dashed);
+      freeRuleEdges(node->inedges_dashed);
       freeRuleLabel(node->label);
       if(node->predicates) free(node->predicates);
    }

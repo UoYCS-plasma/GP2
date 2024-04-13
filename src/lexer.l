@@ -139,6 +139,7 @@ dashed		    { yylval.mark = DASHED; return MARK; }
  /* Any has a distinct token since it cannot appear in the host graph and
     therefore must be distinguished from the other marks. */
 any		    { yylval.mark = ANY; return ANY_MARK; } 
+any+		    { yylval.mark = ANYP; return ANY_MARK; } 
 
  /* Keywords for GP2 types */
 int		    return INT;  

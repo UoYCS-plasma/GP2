@@ -41,6 +41,7 @@
 typedef struct NodeList {
   struct Node *node;
   struct NodeList *next;
+  struct NodeList *prev;
   int index; // TODO: UNSIGNED
 } NodeList;
 #endif
@@ -49,6 +50,7 @@ typedef struct NodeList {
 typedef struct EdgeList {
   struct Edge *edge;
   struct EdgeList *next;
+  struct EdgeList *prev;
   int index; // TODO: UNSIGNED
 } EdgeList;
 
@@ -61,7 +63,7 @@ typedef struct EdgeList {
 typedef struct Graph
 {
    #ifndef NO_NODE_LIST
-   NodeList *nodes;
+   NodeList* nodes[6];
    #endif
    struct RootNodes *root_nodes;
    int number_of_nodes, number_of_edges; // TODO: UNSIGNED
@@ -91,11 +93,19 @@ typedef struct Node {
 #define NFLAG_DELETED 0b100
 #define NFLAG_INGRAPH 0b1000
 #define NFLAG_INSTACK 0b10000
+#define NFLAG_REMARKED 0b100000
    char flags; // All flags stored here.
    int index; // TODO: UNSIGNED
-   EdgeList *out_edges, *in_edges; // Linked list changes nothing complexity-wise.
+   // A 3D array containing all edge linked lists:
+   // - the first dimension denotes the mark,
+   // - the second dimension denotes the orientation, and
+   // - the third dimension denotes whether the edge in question is a loop.
+   EdgeList* edges[6][2][2];
    int outdegree, indegree; // TODO: UNSIGNED
    BigArray _edgelistarray;
+   #ifndef NO_NODE_LIST
+   NodeList* nodeListAddress;
+   #endif
 } Node;
 
 // 16 bytes
@@ -115,6 +125,7 @@ typedef struct Edge {
    char flags;
    int index; // TODO: UNSIGNED
    Node *source, *target;
+   EdgeList* edgeTrgListAddress, *edgeSrcListAddress;
 } Edge;
 
 /* Nodes and edges are created and added to the graph with the addNode and addEdge
@@ -127,9 +138,14 @@ Edge *addEdge(Graph *graph, HostLabel label, Node *source, Node *target);
 // Recover a deleted node that hasn't been garbage collected.
 void recoverNode(Graph *graph, Node *node);
 
+// Recover a deleted edge that hasn't been garbage collected.
+void recoverEdge(Graph *graph, Edge *edge);
+
 void removeNode(Graph *graph, Node *node);
 void removeEdge(Graph *graph, Edge *edge);
 void changeRoot(Graph *graph, Node *node);
+void relistNode(Graph *graph, Node *node, int old_mark);
+void relistEdge(Graph *graph, Edge *edge, int old_mark);
 
 
 #define relabelNode(node, new_label) (node)->label = new_label
@@ -140,6 +156,7 @@ void changeRoot(Graph *graph, Node *node);
 #define nodeRoot(node) ((node)->flags & NFLAG_ROOT)
 #define nodeMatched(node) ((node)->flags & NFLAG_MATCHED)
 #define nodeDeleted(node) ((node)->flags & NFLAG_DELETED)
+#define nodeRemarked(node) ((node)->flags & NFLAG_REMARKED)
 #define nodeInGraph(node) ((node)->flags & NFLAG_INGRAPH)
 #define nodeInStack(node) ((node)->flags & NFLAG_INSTACK)
 #define initializeNodeInGraph(node) (node)->flags = NFLAG_INGRAPH
@@ -147,11 +164,13 @@ void changeRoot(Graph *graph, Node *node);
 #define setNodeRoot(node) (node)->flags |= NFLAG_ROOT
 #define setNodeMatched(node) (node)->flags |= NFLAG_MATCHED
 #define setNodeDeleted(node) (node)->flags |= NFLAG_DELETED
+#define setNodeRemarked(node) (node)->flags |= NFLAG_REMARKED
 #define setNodeInGraph(node) (node)->flags |= NFLAG_INGRAPH
 #define setNodeInStack(node) (node)->flags |= NFLAG_INSTACK
 #define clearNodeRoot(node) (node)->flags &= ~NFLAG_ROOT
 #define clearNodeMatched(node) (node)->flags &= ~NFLAG_MATCHED
 #define clearNodeDeleted(node) (node)->flags &= ~NFLAG_DELETED
+#define clearNodeRemarked(node) (node)->flags &= ~NFLAG_REMARKED
 #define clearNodeInGraph(node) (node)->flags &= ~NFLAG_INGRAPH
 #define clearNodeInStack(node) (node)->flags &= ~NFLAG_INSTACK
 
@@ -201,10 +220,10 @@ void tryGarbageCollectNode(Graph *graph, Node *node);
 // Done this way so deleted nodes/edges are garbage
 // collected when passed by.
 #ifndef NO_NODE_LIST
-Node *yieldNextNode(Graph *graph, NodeList **current);
+Node *yieldNextNode(Graph *graph, NodeList **current, int mark);
 #endif
-Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current);
-Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current);
+Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current, int mark, bool loop);
+Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current, int mark, bool loop);
 
 RootNodes *getRootNodeList(Graph *graph);
 

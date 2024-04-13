@@ -149,7 +149,7 @@ void generateRuntimeMain(List *declarations, string output_dir)
    PTFI("fprintf(stderr, \"Error: missing <host-file> argument.\\n\");\n", 6);
    PTFI("return 0;\n", 6);
    PTFI("}\n\n", 3);
-
+   PTFI("clock_t start_time_gb = clock();\n", 3);
    PTFI("initialiseHostListStore();\n", 3);
 
    PTFI("host = buildHostGraph(argv[1]);\n", 3);
@@ -165,6 +165,8 @@ void generateRuntimeMain(List *declarations, string output_dir)
    PTFI("perror(\"gp2.output\");\n", 6);
    PTFI("exit(1);\n", 6);
    PTFI("}\n", 3);
+   PTFI("clock_t start_time_ngb = clock();\n", 3);
+
 
    /* Print the calls to allocate memory for each morphism. */
    generateMorphismCode(declarations, 'm', true);
@@ -182,6 +184,11 @@ void generateRuntimeMain(List *declarations, string output_dir)
       iterator = iterator->next;
    }
 
+   PTF("   double elapsed_time_gb = (double)(clock()-start_time_gb)/CLOCKS_PER_SEC;\n");
+   PTF("   double elapsed_time_ngb = (double)(clock()-start_time_ngb)/CLOCKS_PER_SEC;\n");
+   PTF("   FILE *bench = fopen(\"timings_gp2.dat\", \"w\");\n");
+   PTF("   fprintf(bench, \"Incl. graph building (ms): %%f\\n\", elapsed_time_gb*1000);\n");
+   PTF("   fprintf(bench, \"Excl. graph building (ms): %%f\", elapsed_time_ngb*1000);\n");
    if(fast_shutdown) PTF("   printGraphFast(host, output_file);\n");
    else
    {
@@ -191,7 +198,9 @@ void generateRuntimeMain(List *declarations, string output_dir)
 
    PTF("   closeLogFile();\n");
    PTF("   printf(\"Output graph saved to file gp2.output\\n\");\n");
+   PTF("   printf(\"Execution timings saved to file timings_gp2.dat\\n\");\n");
    PTF("   fclose(output_file);\n");
+   PTF("   fclose(bench);\n");
    PTF("   return 0;\n");
    PTF("}\n\n");
    fclose(file);

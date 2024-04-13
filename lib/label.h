@@ -41,7 +41,7 @@
 
 // 1 byte
 typedef enum {
-  NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY
+  NONE = 0, RED, GREEN, BLUE, GREY, DASHED, ANY, ANYP
 } __attribute__ ((__packed__)) MarkType;
 
 // 11 bytes
