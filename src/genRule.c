@@ -955,9 +955,9 @@ void generateApplicationCode(Rule *rule)
          }
          else PTFI("node = lookupNode(morphism, %d);\n", 3, index);
          if(node->indegree_arg)
-            PTFI("int indegree%d = nodeInDegree(node);\n", 3, index);
+            PTFI("int indegree%d __attribute__((unused)) = nodeInDegree(node);\n", 3, index);
          if(node->outdegree_arg)
-            PTFI("int outdegree%d = nodeOutDegree(node);\n", 3, index);
+            PTFI("int outdegree%d __attribute__((unused)) = nodeOutDegree(node);\n", 3, index);
       }
    }
    bool label_declared = false, host_edge_declared = false,
@@ -1024,7 +1024,10 @@ void generateApplicationCode(Rule *rule)
                PTFI("{\n", 3);
                PTFI("if(record_changes) pushRelabelledEdge(host_edge, label_e%d);\n", 6, index);
                if(!minimal_gc) PTFI("removeHostList(host_edge->label.list);\n", 6);
+               PTFI("int old_mark_relab_e%d = host_edge->label.mark;\n", 6, index); 
                PTFI("relabelEdge(host_edge, label);\n", 6);
+               PTFI("int new_mark_relab_e%d = host_edge->label.mark;\n", 6, index);
+               PTFI("if(new_mark_relab_e%d != old_mark_relab_e%d) relistEdge(host, host_edge, old_mark_relab_e%d);\n\n", 6, index, index, index);
                PTFI("}\n", 3);
             }
             /* The else branch is entered when only the mark needs to change (not the list

@@ -743,18 +743,18 @@ void generateLabelEvaluationCode(RuleLabel label, bool node, int count, int cont
          case INDEGREE:
               PTFI("array%d[index%d].type = 'i';\n", indent, count, count); 
               if(context == 0)
-                   PTFI("array%d[index%d++].num = nodeInDegree(%d);\n", 
+                   PTFI("array%d[index%d++].num = nodeInDegree(lookupNode(morphism, %d));\n", 
                         indent, count, count, atom->node_id); 
-              else PTFI("array%d[index%d++].num = nodeInDegree(n%d);\n", 
+              else PTFI("array%d[index%d++].num = nodeInDegree(lookupNode(morphism, n%d));\n", 
                         indent, count, count, atom->node_id); 
               break;
            
          case OUTDEGREE:
               PTFI("array%d[index%d].type = 'i';\n", indent, count, count); 
               if(context == 0)
-                   PTFI("array%d[index%d++].num = nodeOutDegree(%d);\n", 
+                   PTFI("array%d[index%d++].num = nodeOutDegree(lookupNode(morphism, %d));\n", 
                         indent, count, count, atom->node_id); 
-              else PTFI("array%d[index%d++].num = nodeOutDegree(n%d);\n", 
+              else PTFI("array%d[index%d++].num = nodeOutDegree(lookupNode(morphism, n%d));\n", 
                         indent, count, count, atom->node_id); 
               break;
 
