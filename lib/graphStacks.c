@@ -202,6 +202,7 @@ void undoChanges(int restore_point)
               clearNodeDeleted(change.removed_node);
               if(!nodeInGraph(change.removed_node))
                 recoverNode(graph, change.removed_node);
+              else graph->number_of_nodes++;
               break;
 
          case REMOVED_EDGE:
