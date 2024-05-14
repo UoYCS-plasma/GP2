@@ -14,7 +14,7 @@ In addition, we have a probabilistic version of GP 2, called P-GP 2, which has b
 
 ## How do I get started?
 
-Head over to [this page](https://uoycs-plasma.github.io/GP2/gettingstarted) for instructions on installing GP 2 and running your first program. 
+Head over to [this page](https://uoycs-plasma.github.io/GP2/gettingstarted) for instructions on installing GP 2 and running your first program. See also the [GP 2 github page](https://github.com/UoYCS-plasma/GP2/).
 
 ## How can I find out more?
 
