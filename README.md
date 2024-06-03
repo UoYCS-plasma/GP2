@@ -14,7 +14,7 @@ To run the compiler, you need to install the C library [Judy](http://judy.source
 
 There are several ways to install the compiler:
 
-- [**Pre-built**](https://uoycs-plasma.github.io/GP2/usage/pre-built) - Use a version of the compiler that has already been built. This might not work correctly on every Linux distribution, but it does work on Ubuntu 18.04, for instance.
+<!--- - [**Pre-built**](https://uoycs-plasma.github.io/GP2/usage/pre-built) - Use a version of the compiler that has already been built. This might not work correctly on every Linux distribution, but it does work on Ubuntu 18.04, for instance. --->
 - [**Build from source code**](https://github.com/UoYCS-plasma/GP2/blob/master/GP_2_Compilation_Tutorial.pdf) - (Recommended to get the latest version.) Follow the link for a guide on how to build the compiler yourself.
 - [**Docker**](https://uoycs-plasma.github.io/GP2/installation/docker) - Follow the link for instructions on how to install the compiler via Docker. This method is recommended for MacOS users.
 - **University of York** - In the Department of Computer Science, the compiler is installed on most Linux machines.
@@ -23,7 +23,7 @@ There are several ways to install the compiler:
 
 Usage depends on which installation method you used:
 
-- **Pre-built** - [bash file usage](https://uoycs-plasma.github.io/GP2/usage/pre-built)
+<!--- - **Pre-built** - [bash file usage](https://uoycs-plasma.github.io/GP2/usage/pre-built) --->
 - **Build from source code** - [usage guide](https://github.com/UoYCS-plasma/GP2/blob/master/GP_2_Compilation_Tutorial.pdf)
 - **Docker** - [bash file usage](https://github.com/UoYCS-plasma/GP2/blob/master/bin/gp2docker)
 - **University of York** - [usage guide](https://uoycs-plasma.github.io/GP2/usage/uoy)
