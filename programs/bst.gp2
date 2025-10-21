@@ -1,0 +1,455 @@
+Main   = make_root; (try insert then Insert else (
+              try search then Search else (
+                     try delete then Delete else fail)); try next_op else break)!
+
+Insert = try root  then ({go_right1, go_left1}!; add_leaf) else add_root
+
+Search = try root  else break; {go_right1, go_left1}!; try match
+
+Delete = try root  else break; {go_right1, go_left1}!;
+         try Case1 else (try Case2 else Case3)
+Case1  = try delete_leaf else fail
+Case2  = try delete_midl else fail
+Case3  = save_node; go_left2;
+         if go_right2
+         then (go_right2!; {swap1, swap2, swap3, swap4}) else {swap5, swap6};
+         try Case1 else Case2
+         
+swap6(a,b,c,d,e:list)
+[
+(1, a #any)
+(2, b #grey)
+(3(R), c #grey)
+(4, d #grey)
+(5(R), empty #red)
+|
+(1, 1, 2, empty)
+(2, 2, 3, empty)
+(3, 2, 4, empty)
+(4, 5, 2, empty #red)
+]
+=>
+[
+(1, a #any)
+(2(R), b #grey)
+(3, c #grey)
+(4, d #grey)
+|
+(1, 1, 3, empty)
+(2, 3, 2, empty)
+(3, 3, 4, empty)
+]
+interface = {1, 2, 3, 4}
+where(outdeg(3) = 0)
+         
+swap5(a,b,c,d,e:list)
+[
+(1, a #any)
+(2, b #grey)
+(3(R), c #grey)
+(4, d #grey)
+(5(R), empty #red)
+(6, e #grey)
+|
+(1, 1, 2, empty)
+(2, 2, 3, empty)
+(3, 2, 4, empty)
+(4, 5, 2, empty #red)
+(5, 3, 6, empty)
+]
+=>
+[
+(1, a #any)
+(2(R), b #grey)
+(3, c #grey)
+(4, d #grey)
+(6, e #grey)
+|
+(1, 1, 3, empty)
+(2, 3, 2, empty)
+(3, 3, 4, empty)
+(5, 2, 6, empty)
+]
+interface = {1, 2, 3, 4, 6}
+
+swap4(a,b,c,d,e:list)
+[
+(1, a #any)
+(2, b #grey)
+(3, c #grey)
+(4, d #grey)
+(5(R), empty #red)
+(6(R), e #grey)
+|
+(1, 1, 2, empty)
+(2, 2, 3, empty)
+(3, 2, 4, empty)
+(4, 5, 2, empty #red)
+(5, 3, 6, empty)
+]
+=>
+[
+(1, a #any)
+(2(R), b #grey)
+(3, c #grey)
+(4, d #grey)
+(6, e #grey)
+|
+(1, 1, 6, empty)
+(2, 6, 3, empty)
+(3, 6, 4, empty)
+(5, 3, 2, empty)
+]
+interface = {1, 2, 3, 4, 6}
+where(outdeg(6) = 0)
+
+swap3(a,b,c,d,e,f:list)
+[
+(1, a #any)
+(2, b #grey)
+(3, c #grey)
+(4, d #grey)
+(5(R), empty #red)
+(6(R), e #grey)
+(7, f #grey)
+|
+(1, 1, 2, empty)
+(2, 2, 3, empty)
+(3, 2, 4, empty)
+(4, 5, 2, empty #red)
+(5, 3, 6, empty)
+(6, 6, 7, empty)
+]
+=>
+[
+(1, a #any)
+(2(R), b #grey)
+(3, c #grey)
+(4, d #grey)
+(6, e #grey)
+(7, f #grey)
+|
+(1, 1, 6, empty)
+(2, 6, 3, empty)
+(3, 6, 4, empty)
+(5, 3, 2, empty)
+(6, 2, 7, empty)
+]
+interface = {1, 2, 3, 4, 6, 7}
+
+swap1(a,b,c,d,e,f,g:list)
+[
+(1, a #grey)
+(2(R), b #grey)
+(3, c #grey)
+(4, d #any)
+(5, e #grey)
+(6, f #grey)
+(7, g #grey)
+(8(R), empty #red)
+|
+(1, 1, 2, empty)
+(2, 2, 3, empty)
+(3, 4, 5, empty)
+(4, 5, 6, empty)
+(5, 5, 7, empty)
+(6, 8, 5, empty #red)
+]
+=>
+[
+(1, a #grey)
+(2, b #grey)
+(3, c #grey)
+(4, d #any)
+(5(R), e #grey)
+(6, f #grey)
+(7, g #grey)
+|
+(1, 1, 5, empty)
+(2, 5, 3, empty)
+(3, 4, 2, empty)
+(4, 2, 6, empty)
+(5, 2, 7, empty)
+]
+interface = {1, 2, 3, 4, 5, 6, 7}
+
+swap2(a,b,d,e,f,g:list)
+[
+(1, a #grey)
+(2(R), b #grey)
+(4, d #any)
+(5, e #grey)
+(6, f #grey)
+(7, g #grey)
+(8(R), empty #red)
+|
+(1, 1, 2, empty)
+(3, 4, 5, empty)
+(4, 5, 6, empty)
+(5, 5, 7, empty)
+(6, 8, 5, empty #red)
+]
+=>
+[
+(1, a #grey)
+(2, b #grey)
+(4, d #any)
+(5(R), e #grey)
+(6, f #grey)
+(7, g #grey)
+|
+(1, 1, 5, empty)
+(3, 4, 2, empty)
+(4, 2, 6, empty)
+(5, 2, 7, empty)
+]
+interface = {1, 2, 4, 5, 6, 7}
+where(outdeg(2) = 0)
+         
+save_node(x:list)
+[
+(1(R), x #grey)
+|
+]
+=>
+[
+(1(R), x #grey)
+(2(R), empty #red)
+|
+(1, 2, 1, empty #red)
+]
+interface = {1}
+
+delete_leaf(x,y:list)
+[
+(1(R), x #grey)
+(2, y #any)
+|
+(1, 2, 1, empty)
+]
+=>
+[
+(1, x #grey)
+(2, y #any)
+|
+]
+interface = {1, 2}
+where(outdeg(1) = 0)
+
+delete_midl(x,y,z:list)
+[
+(3, y #any)
+(1(R), x #grey)
+(2, z #grey)
+|
+(1, 3, 1, empty)
+(2, 1, 2, empty)
+]
+=>
+[
+(3, y #any)
+(1, x #grey)
+(2, z #grey)
+|
+(3, 3, 2, empty)
+]
+interface = {3, 2, 1}
+where(outdeg(1) = 1)
+         
+make_root()
+[
+|
+]
+=>
+[
+(1, empty #green)
+|
+]
+interface = {}
+
+next_op(x,y:list)
+[
+(1(R), x)
+(2, y)
+|
+(1, 2, 1, empty)
+]
+=>
+[
+(1, x)
+(2(R), y)
+|
+(1, 2, 1, empty)
+]
+interface = {1, 2}
+         
+insert(n:int)
+[
+(1(R), "i":n)
+|
+]
+=>
+[
+(1(R), "i":n)
+|
+]
+interface = {1}
+
+search(n:int)
+[
+(1(R), "s":n)
+|
+]
+=>
+[
+(1(R), "s":n)
+|
+]
+interface = {1}
+
+delete(n:int)
+[
+(1(R), "d":n)
+|
+]
+=>
+[
+(1(R), "d":n)
+|
+]
+interface = {1}
+
+root(a:int)
+[
+(1, empty #green)
+(2, a #grey)
+|
+(1, 1, 2, empty)
+]
+=>
+[
+(1, empty #green)
+(2(R), a #grey)
+|
+(1, 1, 2, empty)
+]
+interface = {1, 2}
+
+add_root(a:int)
+[
+(1, empty #green)
+(2(R), "i":a)
+|
+]
+=>
+[
+(1, empty #green)
+(2(R), "i":a)
+(3, a #grey)
+|
+(1, 1, 3, empty)
+]
+interface = {1, 2}
+
+go_right1(o:char;x,n,m:int)
+[
+(1(R), o:x)
+(2(R), n #grey)
+(3, m #grey)
+|
+(1, 2, 3, empty)
+]
+=>
+[
+(1(R), o:x)
+(2, n #grey)
+(3(R), m #grey)
+|
+(1, 2, 3, empty)
+]
+interface = {1, 2, 3}
+where(m < n and x < n)
+
+go_left1(o:char;x,n,m:int)
+[
+(1(R), o:x)
+(2(R), n #grey)
+(3, m #grey)
+|
+(1, 2, 3, empty)
+]
+=>
+[
+(1(R), o:x)
+(2, n #grey)
+(3(R), m #grey)
+|
+(1, 2, 3, empty)
+]
+interface = {1, 2, 3}
+where(m > n and x > n)
+
+go_right2(n,m:int)
+[
+(2(R), n #grey)
+(3, m #grey)
+|
+(1, 2, 3, empty)
+]
+=>
+[
+(2, n #grey)
+(3(R), m #grey)
+|
+(1, 2, 3, empty)
+]
+interface = {2, 3}
+where(m > n)
+
+go_left2(n,m:int)
+[
+(2(R), n #grey)
+(3, m #grey)
+|
+(1, 2, 3, empty)
+]
+=>
+[
+(2, n #grey)
+(3(R), m #grey)
+|
+(1, 2, 3, empty)
+]
+interface = {2, 3}
+where(m < n)
+
+match(o:char;x:int)
+[
+(1(R), o:x)
+(2(R), x #grey)
+|
+]
+=>
+[
+(1(R), o:x)
+(2, x #grey)
+|
+(1, 1, 2, empty #dashed)
+]
+interface = {1, 2}
+
+add_leaf(o:char;x,n:int)
+[
+(1(R), o:x)
+(2(R), n #grey)
+|
+]
+=>
+[
+(1(R), o:x)
+(2, n #grey)
+(3, x #grey)
+|
+(1, 2, 3, empty)
+]
+interface = {1, 2}
