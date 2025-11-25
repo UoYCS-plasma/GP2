@@ -191,4 +191,4 @@ GP 2 is licensed under the GNU General Public License v3.0. See the file [COPYIN
 
 The GP 2 language was designed by [Detlef Plump](http://www-users.cs.york.ac.uk/~det/).
 
-Christopher Bak developed the GP 2 compiler and runtime library. In 2020, [Graham Campbell](https://gjcampbell.co.uk/) and [Jack Romo](http://jackromo.com/) implemented additional improvements to the compiler, described [here](https://arxiv.org/pdf/2002.02914.pdf), as well as [Ziad Ismaili Alaoui](https://www.cs.york.ac.uk/people/?group=Research%20Students&username=zismali) in 2024.
+Christopher Bak developed the GP 2 compiler and runtime library. In 2020, [Graham Campbell](https://gjcampbell.co.uk/) and [Jack Romo](http://jackromo.com/) implemented additional improvements to the compiler, described [here](https://arxiv.org/pdf/2002.02914.pdf), as well as [Ziad Ismaili Alaoui](https://www.ziadism.com) in 2024.
