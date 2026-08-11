@@ -844,6 +844,7 @@ void generateRemoveLHSCode(string rule_name)
    PTFI("pushRemovedNode(node);\n", 9);
    PTFI("removeNode(host, node);\n", 6);
    PTFI("}\n", 3);
+   PTFI("clearMatched(morphism);\n", 3);
    PTFI("initialiseMorphism(morphism);\n", 3);
    PTF("}\n\n");
 }
