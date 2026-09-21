@@ -1,0 +1,6 @@
+nodes:
+(0,1#red)
+(1,2#red)
+(2,3)
+edges:
+(0,0,1,empty)

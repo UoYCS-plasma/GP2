@@ -1,0 +1,5 @@
+Main = r!
+r(x: list)
+[ (n0, x) | ] => [ (n0, x # red) | ]
+interface = {n0}
+where not not outdeg(n0) = 1
