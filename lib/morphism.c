@@ -233,7 +233,6 @@ Assignment getAssignment(Morphism *morphism, int id)
 
 int getAssignmentLength(Assignment assignment)
 {
-   if(assignment.type == 's') return strlen(assignment.str);
    if(assignment.type != 'l') return 1;
    if(assignment.list == NULL) return 0;
    HostListItem *item = assignment.list->first;
