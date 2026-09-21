@@ -174,6 +174,8 @@ void recoverNode(Graph *graph, Node *node)
 
 void recoverEdge(Graph *graph, Edge *edge)
 {
+   incrementOutDegree(edge->source);
+   incrementInDegree(edge->target);
    if(!edgeInSrcLst(edge)){
       Node *source = edge->source;
       int srclstind = genFreeBigArrayPos(&(source->_edgelistarray));
@@ -189,7 +191,6 @@ void recoverEdge(Graph *graph, Edge *edge)
       }
       source->edges[edge->label.mark][0][edge->source == edge->target] = srclist;
       edge->edgeSrcListAddress = srclist;
-      incrementOutDegree(source);
       setEdgeInSrcLst(edge);
    }
    if(!edgeInTrgLst(edge)){
@@ -208,7 +209,6 @@ void recoverEdge(Graph *graph, Edge *edge)
       target->edges[edge->label.mark][1][edge->source == edge->target] = trglist;
       edge->edgeTrgListAddress = trglist;
       setEdgeInTrgLst(edge);
-      incrementInDegree(target);
    }
    graph->number_of_edges++;
 }
@@ -294,7 +294,8 @@ void tryGarbageCollectNode(Graph *graph, Node *node)
             for(int k = 0; k < 2; k++){
                for(EdgeList *curr = node->edges[i][j][k]; curr != NULL; curr = curr->next)
                {
-                  clearEdgeInSrcLst(curr->edge);
+                  if(j == 0) clearEdgeInSrcLst(curr->edge);
+                  else clearEdgeInTrgLst(curr->edge);
                   if(edgeFree(curr->edge))
                   {
                      removeHostList(curr->edge->label.list);
@@ -393,6 +394,8 @@ Edge *yieldNextOutEdge(Graph *graph, Node *node, EdgeList **current_prev, int ma
        if(initial){
          node->edges[mark][0][loop] = current->next;
        }
+       if(current->next != NULL)
+         current->next->prev = initial ? NULL : *current_prev;
        current = current->next;
        clearEdgeInSrcLst(edge);
        #ifndef MINIMAL_GC
@@ -447,8 +450,10 @@ Edge *yieldNextInEdge(Graph *graph, Node *node, EdgeList **current_prev, int mar
        if(initial){
          node->edges[mark][1][loop] = current->next;
        }
+       if(current->next != NULL)
+         current->next->prev = initial ? NULL : *current_prev;
        current = current->next;
-       clearEdgeInSrcLst(edge);
+       clearEdgeInTrgLst(edge);
        #ifndef MINIMAL_GC
        if(edgeFree(edge))
        {
