@@ -1,0 +1,7 @@
+Main = if (del; skip) then skip else skip
+
+del (a,x,y: list)
+[ (n0, x) (n1, y) | (e0, n0, n1, a) ]
+=>
+[ (n0, x) (n1, y) | ]
+interface = {n0, n1}

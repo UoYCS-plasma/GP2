@@ -1,0 +1,4 @@
+Main = r
+r(x: list)
+[ (n0, x) | ] => [ (n0, x : length(x)) | ]
+interface = {n0}

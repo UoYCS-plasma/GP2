@@ -1,0 +1,29 @@
+// Regression test for the stale matched-flag bug in generateRemoveLHSCode:
+// the if-condition deletes a node (via a rule with an empty RHS) and then
+// fails. The deletion must be rolled back AND the resurrected node must be
+// matchable again, so the else-branch relabels it to 99.
+Main = if (del; never) then yes else no
+
+del()
+[ (n0, 1) | ]
+=>
+[ | ]
+interface = { }
+
+never()
+[ (n0, 42) | ]
+=>
+[ (n0, 42) | ]
+interface = {n0}
+
+yes()
+[ (n0, 0) | ]
+=>
+[ (n0, 100) | ]
+interface = {n0}
+
+no()
+[ (n0, 1) | ]
+=>
+[ (n0, 99) | ]
+interface = {n0}

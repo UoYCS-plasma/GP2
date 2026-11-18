@@ -22,18 +22,17 @@
  * predicate. */
 void generateConditionVariables(Condition *condition)
 {
-   static int bool_count = 0;
    switch(condition->type)
    {
-      /* Booleans representing positive predicates are initialised with true. */
+      /* Booleans are initialised with false under an odd number of negations
+       * and with true otherwise. */
       case 'e':
-           PTF("bool b%d = true;\n", bool_count++);
+           PTF("bool b%d = %s;\n", condition->predicate->bool_id,
+               condition->predicate->negated ? "false" : "true");
            break;
 
-      /* Booleans representing 'not' predicates are initialised with false. */
       case 'n':
-           PTF("bool b%d = false;\n", bool_count++);
-           //generateConditionVariables(condition->neg_condition);
+           generateConditionVariables(condition->neg_condition);
            break;
 
       case 'a':
@@ -53,7 +52,6 @@ void generateConditionVariables(Condition *condition)
  * The tree structure of the condition is used to print the correct expression. */
 void generateConditionEvaluator(Condition *condition, bool nested)
 {
-   static int bool_count = 0;
    if(!nested)
    {
       PTF("static bool evaluateCondition(void)\n");
@@ -63,11 +61,13 @@ void generateConditionEvaluator(Condition *condition, bool nested)
    switch(condition->type)
    {
       case 'e':
-           PTF("b%d", bool_count++);
+           PTF("b%d", condition->predicate->bool_id);
            break;
 
       case 'n':
-           PTF("!b%d", bool_count++);
+           PTF("!(");
+           generateConditionEvaluator(condition->neg_condition, true);
+           PTF(")");
            break;
 
       case 'a':
